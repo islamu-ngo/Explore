@@ -18,6 +18,8 @@
 @using Explore.Blazor.Client.Providers
 @using Explore.Blazor.Client.Routing.Guards
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.JSInterop
+@inject IJSRuntime JSRuntime
 
 <TenantContextProvider>
     <Blazouter.Components.Router Routes="@_routes" DefaultLayout="typeof(MainLayout)">
@@ -55,7 +57,6 @@
             new RouteConfig { Path = "/home", Component = typeof(Home), Transition = RouteTransition.Fade },
             new RouteConfig { Path = "/startup", Component = typeof(StartupGate), Transition = RouteTransition.None, EnableCache = false },
             new RouteConfig { Path = "/setup", Component = typeof(Setup), Transition = RouteTransition.None, EnableCache = false },
-            new RouteConfig { Path = "/loading", Component = typeof(Loading), Transition = RouteTransition.None, EnableCache = false },
             new RouteConfig { Path = "/login", Component = typeof(LoginRedirect), Transition = RouteTransition.None, EnableCache = false },
             new RouteConfig { Path = "/logout", Component = typeof(LogoutRedirect), Transition = RouteTransition.None, EnableCache = false },
             new RouteConfig
@@ -105,5 +106,15 @@
             new RouteConfig { Path = "/admin/organization/:OrganizationId/settings", Component = typeof(OrganizationAdminSettings), Transition = RouteTransition.Fade, Guards = RequireOrgAdmin() },
             new RouteConfig { Path = "/admin/group/:GroupId/settings", Component = typeof(GroupAdminSettings), Transition = RouteTransition.Fade, Guards = RequireGroupAdmin() },
     };
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        await JSRuntime.InvokeVoidAsync("ExploreBootstrap.hideLoader");
     }
 }

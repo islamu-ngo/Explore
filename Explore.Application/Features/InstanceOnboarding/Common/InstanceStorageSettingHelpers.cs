@@ -17,8 +17,8 @@ internal static class InstanceStorageSettingHelpers
         var endpoint = await systemSettingRepository.GetByKey(GovernanceSettingKeys.S3Endpoint);
         var publicEndpoint = await systemSettingRepository.GetByKey(GovernanceSettingKeys.S3PublicEndpoint);
         var bucketName = await systemSettingRepository.GetByKey(GovernanceSettingKeys.S3BucketName);
-        var accessKeyId = await systemSettingRepository.GetByKey(GovernanceSettingKeys.S3AccessKeyId);
-        var secretAccessKey = await systemSettingRepository.GetByKey(GovernanceSettingKeys.S3SecretAccessKey);
+        var accessKeyId = await systemSettingRepository.GetByKey(InfrastructureSecretSettingKeys.Storage.AccessKeyId);
+        var secretAccessKey = await systemSettingRepository.GetByKey(InfrastructureSecretSettingKeys.Storage.SecretAccessKey);
         var region = await systemSettingRepository.GetByKey(GovernanceSettingKeys.S3Region);
         var forcePathStyle = await systemSettingRepository.GetByKey(GovernanceSettingKeys.S3ForcePathStyle);
         var uploadExpiration = await systemSettingRepository.GetByKey(GovernanceSettingKeys.S3UploadUrlExpirationMinutes);
@@ -52,11 +52,11 @@ internal static class InstanceStorageSettingHelpers
             JsonSerializer.Serialize(settings.S3BucketName.Trim()), SettingValueType.String, false,
             "ObjectStorage", 3, "S3 bucket name for object storage");
 
-        await UpsertSystemSettingAsync(systemSettingRepository, GovernanceSettingKeys.S3AccessKeyId,
+        await UpsertSystemSettingAsync(systemSettingRepository, InfrastructureSecretSettingKeys.Storage.AccessKeyId,
             JsonSerializer.Serialize(settings.S3AccessKeyId.Trim()), SettingValueType.String, false,
             "ObjectStorage", 4, "S3 access key ID for authentication");
 
-        await UpsertSystemSettingAsync(systemSettingRepository, GovernanceSettingKeys.S3SecretAccessKey,
+        await UpsertSystemSettingAsync(systemSettingRepository, InfrastructureSecretSettingKeys.Storage.SecretAccessKey,
             JsonSerializer.Serialize(settings.S3SecretAccessKey.Trim()), SettingValueType.String, false,
             "ObjectStorage", 5, "S3 secret access key for authentication");
 

@@ -1,13 +1,13 @@
 {
   "Project": "ISLAMU Event",
   "Stack": ".NET 10 + Blazor + Aspire",
-  "RootPath": "C:\\ISLAMU\\GitHub\\Explore",
+  "RootPath": "C:\\ISLAMU\\GitHub\\Event",
   "ActiveLayers": {
     "Frontend": "Active (MudBlazor)",
     "Backend": "Active (ASP.NET)",
     "Domain": "Active (DDD)",
     "Infra": "Active (EF Core)"
   },
-  "RecentFocus": "Frontend (EventList.razor.cs)",
-  "LastUpdate": "2026-02-19 17:41:20"
+  "RecentFocus": "Unknown (tri-state-tag-filter-context.md)",
+  "LastUpdate": "2026-02-23 18:06:33"
 }

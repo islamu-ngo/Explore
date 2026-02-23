@@ -8,11 +8,35 @@
 
 @if (isLoading)
 {
-    <div class="home-page__loading">
-        <div class="home-page__loading-content">
-            <div class="home-page__loading-title">Loading...</div>
-            <div class="home-page__loading-text">Please wait while we check your authentication status</div>
-        </div>
+    <div class="py-8">
+        <MudContainer MaxWidth="MaxWidth.Large" Class="mb-12">
+            <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="mb-8 text-center">
+                <MudSkeleton Width="200px" Height="16px" Class="mb-2" />
+                <MudSkeleton Width="460px" Height="48px" Class="mb-2" />
+                <MudSkeleton Width="360px" Height="24px" />
+            </MudStack>
+            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="300px" Class="rounded-xl" />
+        </MudContainer>
+
+        <MudContainer MaxWidth="MaxWidth.Large" Class="mb-16">
+            <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="mb-12 text-center">
+                <MudSkeleton Width="140px" Height="32px" Class="mb-2" />
+                <MudSkeleton Width="300px" Height="20px" />
+            </MudStack>
+            <MudGrid Spacing="4">
+                @for (int i = 0; i < 3; i++)
+                {
+                    <MudItem xs="12" md="4">
+                        <MudPaper Elevation="0" Class="pa-8 rounded-xl border-solid border-1 mud-border-lines-default d-flex flex-column align-center">
+                            <MudSkeleton SkeletonType="SkeletonType.Circle" Width="80px" Height="80px" Class="mb-6" />
+                            <MudSkeleton Width="60%" Height="24px" Class="mb-2" />
+                            <MudSkeleton Width="90%" Height="16px" />
+                            <MudSkeleton Width="80%" Height="16px" />
+                        </MudPaper>
+                    </MudItem>
+                }
+            </MudGrid>
+        </MudContainer>
     </div>
 }
 else if (isAuthenticated)

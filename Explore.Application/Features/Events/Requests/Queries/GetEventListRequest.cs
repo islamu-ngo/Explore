@@ -1,5 +1,6 @@
 using Explore.Application.DTOs.Event;
 using Explore.Application.Responses;
+using Explore.Application.Specifications.Events;
 using MediatR;
 
 namespace Explore.Application.Features.Events.Requests.Queries;
@@ -31,9 +32,28 @@ public class GetEventListRequest : IRequest<PaginatedResult<EventListDto>>
     public Guid? CategoryId { get; set; }
 
     /// <summary>
-    /// Filter by tag (via EventTags junction table).
+    /// Tag IDs to include (events must match these tags).
+    /// Combined using <see cref="InclusionMode"/> (AND = all tags, OR = any tag).
     /// </summary>
-    public Guid? TagId { get; set; }
+    public List<Guid>? IncludedTagIds { get; set; }
+
+    /// <summary>
+    /// Tag IDs to exclude (events matching these tags are filtered out).
+    /// Combined using <see cref="ExclusionMode"/> (AND = all tags, OR = any tag).
+    /// </summary>
+    public List<Guid>? ExcludedTagIds { get; set; }
+
+    /// <summary>
+    /// How included tags are combined. AND = event must have all tags. OR = event must have at least one.
+    /// Defaults to AND.
+    /// </summary>
+    public TagFilterMode InclusionMode { get; set; } = TagFilterMode.And;
+
+    /// <summary>
+    /// How excluded tags are combined. OR = exclude if event has any tag. AND = exclude only if event has all tags.
+    /// Defaults to OR.
+    /// </summary>
+    public TagFilterMode ExclusionMode { get; set; } = TagFilterMode.Or;
 
     /// <summary>
     /// Filter by event format (online, in-person, hybrid).

@@ -493,18 +493,13 @@ public partial class CreateEvent
                 createdEventId = response.Id.Value;
                 Logger.LogInformation("Event created with ID: {EventId}", createdEventId);
 
-                // Assign Categories
-                var tenantId = Constants.TenantConstants.DefaultTenantId;
-                foreach (var categoryId in selectedCategoryIds)
+                if (selectedCategoryIds.Any() || selectedTagIds.Any())
                 {
-                    await CategoryService.AssignCategoryToEventAsync(new { EventId = createdEventId, CategoryId = categoryId, TenantId = tenantId });
+                    Logger.LogWarning(
+                        "Selected categories/tags are currently not persisted because the Event API does not expose event-category/event-tag assignment endpoints.");
                 }
 
-                // Assign Tags
-                foreach (var tagId in selectedTagIds)
-                {
-                    await TagService.AssignTagToEventAsync(new { EventId = createdEventId, TagId = tagId, TenantId = tenantId });
-                }
+                var tenantId = Constants.TenantConstants.DefaultTenantId;
 
                 // Handle Sessions
                 var existingSessions = await EventService.GetSessionsByEventAsync(createdEventId);
@@ -519,10 +514,6 @@ public partial class CreateEvent
                     var updateDto = firstSessionModel.ToUpdateDto(createdEventId);
                     await EventService.UpdateSessionAsync(updateDto);
 
-                    if (defaultSession.Id.HasValue)
-                    {
-                        await SaveSessionLanguages(firstSessionModel, defaultSession.Id.Value, tenantId);
-                    }
                 }
 
                 // Process additional sessions (Create)
@@ -532,10 +523,6 @@ public partial class CreateEvent
                     var createSessionDto = sessionModel.ToCreateDto(createdEventId, tenantId);
                     var createResponse = await EventService.CreateSessionAsync(createSessionDto);
 
-                    if (createResponse?.Success == true && createResponse.Id.HasValue)
-                    {
-                        await SaveSessionLanguages(sessionModel, createResponse.Id.Value, tenantId);
-                    }
                 }
 
                 Navigation.NavigateTo($"/event/detail/{createdEventId}");
@@ -558,21 +545,6 @@ public partial class CreateEvent
         finally
         {
             isProcessing = false;
-        }
-    }
-
-    private async Task SaveSessionLanguages(SessionEditorModel session, Guid sessionId, Guid tenantId)
-    {
-        if (session.LanguageIds.Any())
-        {
-            foreach (var languageId in session.LanguageIds)
-            {
-                try
-                {
-                    await EventService.AssignLanguageToSessionAsync(new { EventSessionId = sessionId, LanguageId = languageId, TenantId = tenantId });
-                }
-                catch { /* Ignore duplicates or if endpoint doesn't exist */ }
-            }
         }
     }
 

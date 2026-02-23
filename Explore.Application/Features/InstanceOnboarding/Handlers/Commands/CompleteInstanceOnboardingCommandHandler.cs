@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.Onboarding.Validators;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
@@ -69,6 +70,16 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
             response.Success = false;
             response.Message = "Current user is not synchronized in the local database.";
             response.Errors = new List<string> { "Call /api/User/sync before completing onboarding." };
+            return response;
+        }
+
+        var validator = new InstanceGovernanceSettingsDtoValidator();
+        var validationResult = await validator.ValidateAsync(request.Settings, cancellationToken);
+        if (!validationResult.IsValid)
+        {
+            response.Success = false;
+            response.Message = "Invalid instance governance settings.";
+            response.Errors = validationResult.Errors.Select(x => x.ErrorMessage).ToList();
             return response;
         }
 

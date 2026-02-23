@@ -88,35 +88,38 @@ public class EventListTests : IDisposable
     private void SetupPagedResult(Task<PaginatedResult<EventListDto>> resultTask)
     {
         _eventService.GetEventsPagedAsync(
-            Arg.Any<int>(),
-            Arg.Any<int>(),
-            Arg.Any<string?>(),
-            Arg.Any<Guid?>(),
-            Arg.Any<Guid?>(),
-            Arg.Any<int?>(),
-            Arg.Any<int?>(),
-            Arg.Any<Guid?>(),
-            Arg.Any<int?>(),
-            Arg.Any<int?>(),
-            Arg.Any<DateTimeOffset?>(),
-            Arg.Any<DateTimeOffset?>(),
-            Arg.Any<string?>(),
-            Arg.Any<bool?>(),
-            Arg.Any<int?>(),
-            Arg.Any<int?>(),
-            Arg.Any<int?>(),
-            Arg.Any<int?>(),
-            Arg.Any<int?>(),
-            Arg.Any<bool?>(),
-            Arg.Any<int?>(),
-            Arg.Any<int?>(),
-            Arg.Any<bool?>(),
-            Arg.Any<int?>(),
-            Arg.Any<bool?>(),
-            Arg.Any<bool?>(),
-            Arg.Any<bool?>(),
-            Arg.Any<string?>(),
-            Arg.Any<bool?>(),
+            Arg.Any<int>(),                    // pageNumber
+            Arg.Any<int>(),                    // pageSize
+            Arg.Any<string?>(),                // searchTerm
+            Arg.Any<Guid?>(),                  // categoryId
+            Arg.Any<List<Guid>?>(),            // includedTagIds
+            Arg.Any<List<Guid>?>(),            // excludedTagIds
+            Arg.Any<string?>(),                // inclusionMode
+            Arg.Any<string?>(),                // exclusionMode
+            Arg.Any<int?>(),                   // formatId
+            Arg.Any<int?>(),                   // madhabId
+            Arg.Any<Guid?>(),                  // locationId
+            Arg.Any<int?>(),                   // registrationModeId
+            Arg.Any<int?>(),                   // languageId
+            Arg.Any<DateTimeOffset?>(),        // dateFrom
+            Arg.Any<DateTimeOffset?>(),        // dateTo
+            Arg.Any<string?>(),                // sortBy
+            Arg.Any<bool?>(),                  // sortDescending
+            Arg.Any<int?>(),                   // eventTypeId
+            Arg.Any<int?>(),                   // audienceGenderId
+            Arg.Any<int?>(),                   // audienceAgeId
+            Arg.Any<int?>(),                   // eventStatusId
+            Arg.Any<int?>(),                   // genderModeId
+            Arg.Any<bool?>(),                  // includesQuranRecitation
+            Arg.Any<int?>(),                   // referencePrayerId
+            Arg.Any<int?>(),                   // islamicPrimaryLanguageId
+            Arg.Any<bool?>(),                  // hasIslamicAspect
+            Arg.Any<int?>(),                   // skillLevelId
+            Arg.Any<bool?>(),                  // isCodingCompetition
+            Arg.Any<bool?>(),                  // isHackathon
+            Arg.Any<bool?>(),                  // requiresLaptop
+            Arg.Any<string?>(),                // techStackTag
+            Arg.Any<bool?>(),                  // hasTechAspect
             Arg.Any<CancellationToken>())
             .Returns(resultTask);
     }

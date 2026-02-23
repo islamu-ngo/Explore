@@ -3,7 +3,7 @@
 @using Microsoft.AspNetCore.Authorization
 @layout SetupLayout
 @attribute [Authorize]
-@rendermode @(new InteractiveAutoRenderMode(prerender: false))
+@rendermode InteractiveServer
 @inject ITenantOnboardingService TenantOnboardingService
 @inject IUserService UserService
 @inject NavigationManager Navigation

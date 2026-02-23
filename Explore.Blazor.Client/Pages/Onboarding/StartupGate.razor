@@ -3,9 +3,9 @@
 @inject IInstanceOnboardingService InstanceOnboardingService
 @inject NavigationManager Navigation
 @inject ILogger<StartupGate> Logger
-@rendermode @(new InteractiveAutoRenderMode(prerender: false))
+@rendermode InteractiveServer
 
-<MudContainer Class="d-flex justify-center align-center" Style="min-height: 60vh;">
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-8">
     @if (!string.IsNullOrEmpty(_error))
     {
         <MudAlert Severity="Severity.Error" Variant="Variant.Filled">
@@ -14,11 +14,15 @@
     }
     else
     {
-        <MudStack AlignItems="AlignItems.Center" Spacing="3">
-            <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
-            <MudText Typo="Typo.h6">Preparing your workspace...</MudText>
-            <MudText Typo="Typo.caption">Checking instance and tenant onboarding status.</MudText>
-        </MudStack>
+        <MudPaper Class="pa-6">
+            <MudStack Spacing="3">
+                <MudSkeleton Width="60%" Height="32px" Class="mb-2" />
+                <MudSkeleton Width="100%" Height="20px" />
+                <MudSkeleton Width="80%" Height="20px" Class="mb-4" />
+                <MudSkeleton Width="100%" Height="56px" Class="mb-2" />
+                <MudSkeleton Width="100%" Height="56px" />
+            </MudStack>
+        </MudPaper>
     }
 </MudContainer>
 

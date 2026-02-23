@@ -59,3 +59,40 @@
   2. Implement SMTP section + API/service contract extension.
   3. Remove `/admin` and standalone lookup pages/routes.
   4. Run diagnostics/build/tests.
+
+## Context Reset Session Update (2026-02-23 18:47 Europe/Brussels)
+
+- Current implementation state: Admin consolidation and SMTP integration are implemented and verified in this session.
+- Key decisions made this session:
+  - Kept admin experience panel-driven (MudList sidebar + section content) for both tenant and instance administration.
+  - Embedded lookup management into tenant administration instead of keeping standalone admin lookup pages.
+  - Added SMTP management as instance-level governance capability with dedicated get/update/test API endpoints.
+  - Removed `/admin` dashboard navigation and aligned dropdown labels to "Instance Administration" and "Tenant Administration".
+- Files modified and why:
+  - `Explore.Blazor.Client/Components/Admin/Tenant/TenantOrganizationsSection.razor`: moved organization approval workflow into tenant panel section.
+  - `Explore.Blazor.Client/Components/Admin/Tenant/TenantLookupTablesSection.razor`: consolidated editable + reference lookup tables into tenant panel section.
+  - `Explore.Blazor.Client/Components/Admin/Tenant/TenantAdminSettingsLayout.razor`: added Organizations/Lookup sidebar entries and section rendering.
+  - `Explore.Blazor.Client/Components/Admin/Instance/InstanceSmtpSection.razor`: added SMTP settings UI + connection test action.
+  - `Explore.Blazor.Client/Components/Admin/Instance/InstanceAdminSettingsLayout.razor`: wired SMTP into instance panel load/save/navigation.
+  - `Explore.Blazor.Client/Services/InstanceOnboardingService.cs`: added SMTP client models + get/update/test methods.
+  - `Explore.API/Controllers/InstanceOnboardingController.cs`: added `smtp-settings` and `test-smtp` endpoints.
+  - `Explore.Application/*` new SMTP DTO/service/CQRS files + DI registration to persist/read SMTP settings.
+  - `Explore.Blazor.Client/Layout/NavMenu.razor` and `Explore.Blazor.Client/Routes.razor`: removed legacy admin links/routes and updated administration labels.
+  - Deleted legacy standalone admin pages under `Explore.Blazor.Client/Pages/Admin/` now replaced by panel sections.
+- Complex problems solved:
+  - Route compilation break after deleting pages fixed by removing stale route component registrations in `Routes.razor`.
+  - Dialog parameter type mismatch in `TenantLookupTablesSection` fixed by passing `CategoryListDto` to `EditCategoryDialog`.
+- Integration points discovered:
+  - SMTP persistence and runtime test rely on governance setting keys in `GovernanceSettingKeys.Email*` and existing `IEmailService.TestConnectionAsync`.
+  - Admin role visibility remains claim-driven through existing `NavMenu.razor.cs` helpers.
+- Testing/verification performed:
+  - `dotnet build` passes (warnings only, no new errors).
+  - `dotnet test --project "Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj" --no-build` passes (522/522).
+  - `dotnet test --project "Event.Application.UnitTests/Event.Application.UnitTests.csproj"` passes (278/278).
+- Blockers/issues discovered:
+  - Razor LSP is unavailable in this environment; build/test used as authoritative verification for Razor changes.
+  - Existing repository warnings (nullability/analyzers/Mud analyzer warnings) remain pre-existing and not addressed in this task.
+- Next immediate steps:
+  1. Manual UI smoke pass for tenant/instance admin panel flows in browser.
+  2. Optional cleanup pass for pre-existing analyzer warnings unrelated to this feature.
+  3. Prepare commit when requested by user.

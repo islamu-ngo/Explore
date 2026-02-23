@@ -1,0 +1,15 @@
+/* ABOUTME: Scoped styles for the TriStateTagFilterDropdown component. */
+/* Layout, spacing, and responsive behavior for the tri-state tag filter. */
+
+.tri-state-tag-filter {
+    display: inline-block;
+}
+
+.tri-state-tag-filter__trigger {
+    text-transform: none;
+    font-weight: 500;
+}
+
+::deep .tri-state-tag-filter__popover {
+    z-index: 1300;
+}

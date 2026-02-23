@@ -40,6 +40,12 @@
                     AudienceAges="@audienceAges"
                     EventStatuses="@eventStatuses" />
 
+    <!-- Tri-State Tag Filter -->
+    <div class="mb-4">
+        <TriStateTagFilterDropdown @ref="_tagFilterDropdown"
+                                   TagGroups="@tagGroups" />
+    </div>
+
     <MudGrid Spacing="4">
         @if (isLoading && !_dataLoaded)
         {

@@ -107,8 +107,6 @@ public class InstanceOnboardingController : ControllerBase
 
     [HttpPut("settings")]
     [Authorize]
-    [SetupSecretRequired]
-    [EnableRateLimiting("SetupSecret")]
     [EndpointSummary("Update Instance Governance Settings")]
     [EndpointDescription("Updates instance governance settings at runtime. Requires instance administrator membership.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
@@ -166,8 +164,6 @@ public class InstanceOnboardingController : ControllerBase
 
     [HttpPut("storage-settings")]
     [Authorize]
-    [SetupSecretRequired]
-    [EnableRateLimiting("SetupSecret")]
     [EndpointSummary("Update Instance Storage Settings")]
     [EndpointDescription("Updates instance S3 storage settings. Requires instance administrator membership.")]
     [Consumes("application/json")]
@@ -208,8 +204,6 @@ public class InstanceOnboardingController : ControllerBase
 
     [HttpPost("test-storage")]
     [Authorize]
-    [SetupSecretRequired]
-    [EnableRateLimiting("SetupSecret")]
     [EndpointSummary("Test Storage Connection")]
     [EndpointDescription("Tests the S3 storage connection using current settings. Returns success or failure with message.")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
@@ -248,8 +242,6 @@ public class InstanceOnboardingController : ControllerBase
 
     [HttpPut("smtp-settings")]
     [Authorize]
-    [SetupSecretRequired]
-    [EnableRateLimiting("SetupSecret")]
     [EndpointSummary("Update Instance SMTP Settings")]
     [EndpointDescription("Updates instance SMTP settings. Requires instance administrator membership.")]
     [Consumes("application/json")]
@@ -290,8 +282,6 @@ public class InstanceOnboardingController : ControllerBase
 
     [HttpPost("test-smtp")]
     [Authorize]
-    [SetupSecretRequired]
-    [EnableRateLimiting("SetupSecret")]
     [EndpointSummary("Test SMTP Connection")]
     [EndpointDescription("Tests the SMTP connection using current settings. Returns success or failure with message.")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]

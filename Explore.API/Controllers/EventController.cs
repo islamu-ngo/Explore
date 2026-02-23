@@ -8,6 +8,7 @@ using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Features.Events.Requests.Queries;
 using Explore.Application.Hateoas;
 using Explore.Application.Responses;
+using Explore.Application.Specifications.Events;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -67,7 +68,10 @@ public class EventController : ControllerBase
         // Core event filters
         [FromQuery] string? searchTerm = null,
         [FromQuery] Guid? categoryId = null,
-        [FromQuery] Guid? tagId = null,
+        [FromQuery] List<Guid>? includedTagIds = null,
+        [FromQuery] List<Guid>? excludedTagIds = null,
+        [FromQuery] string? inclusionMode = null,
+        [FromQuery] string? exclusionMode = null,
         [FromQuery] int? formatId = null,
         [FromQuery] int? madhabId = null,
         [FromQuery] Guid? locationId = null,
@@ -107,7 +111,10 @@ public class EventController : ControllerBase
             // Core event filters
             SearchTerm = searchTerm,
             CategoryId = categoryId,
-            TagId = tagId,
+            IncludedTagIds = includedTagIds,
+            ExcludedTagIds = excludedTagIds,
+            InclusionMode = ParseTagFilterMode(inclusionMode, TagFilterMode.And),
+            ExclusionMode = ParseTagFilterMode(exclusionMode, TagFilterMode.Or),
             FormatId = formatId,
             MadhabId = madhabId,
             LocationId = locationId,
@@ -534,4 +541,12 @@ public class EventController : ControllerBase
     }
 
     #endregion
+
+    private static TagFilterMode ParseTagFilterMode(string? value, TagFilterMode defaultValue) =>
+        value?.ToLowerInvariant() switch
+        {
+            "and" => TagFilterMode.And,
+            "or" => TagFilterMode.Or,
+            _ => defaultValue
+        };
 }

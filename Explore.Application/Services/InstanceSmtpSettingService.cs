@@ -23,8 +23,8 @@ public class InstanceSmtpSettingService : IInstanceSmtpSettingService
     {
         var host = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EmailSmtpHost);
         var port = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EmailSmtpPort);
-        var username = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EmailSmtpUsername);
-        var password = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EmailSmtpPassword);
+        var username = await _systemSettingRepository.GetByKey(InfrastructureSecretSettingKeys.Email.SmtpUsername);
+        var password = await _systemSettingRepository.GetByKey(InfrastructureSecretSettingKeys.Email.SmtpPassword);
         var security = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EmailSmtpSecurity);
         var fromAddress = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EmailFromAddress);
         var fromName = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EmailFromName);
@@ -66,7 +66,7 @@ public class InstanceSmtpSettingService : IInstanceSmtpSettingService
             "SMTP server port");
 
         await UpsertSystemSettingAsync(
-            GovernanceSettingKeys.EmailSmtpUsername,
+            InfrastructureSecretSettingKeys.Email.SmtpUsername,
             JsonSerializer.Serialize(settings.Username.Trim()),
             SettingValueType.String,
             false,
@@ -75,7 +75,7 @@ public class InstanceSmtpSettingService : IInstanceSmtpSettingService
             "SMTP username");
 
         await UpsertSystemSettingAsync(
-            GovernanceSettingKeys.EmailSmtpPassword,
+            InfrastructureSecretSettingKeys.Email.SmtpPassword,
             JsonSerializer.Serialize(settings.Password.Trim()),
             SettingValueType.String,
             false,

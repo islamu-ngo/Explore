@@ -295,64 +295,6 @@ public class TagServiceTests
 
     #endregion
 
-    // ========== Neutralized Methods ==========
-
-    #region Neutralized Methods Tests
-
-    [Test]
-    public async Task GetTagsByEventAsync_ReturnsEmptyList_WhenCalled()
-    {
-        // Arrange
-        var eventId = Guid.NewGuid();
-
-        // Act
-        var result = await _service.GetTagsByEventAsync(eventId);
-
-        // Assert
-        await Assert.That(result).IsEmpty();
-    }
-
-    [Test]
-    public async Task GetEventsByTagAsync_ReturnsEmptyList_WhenCalled()
-    {
-        // Arrange
-        var tagId = Guid.NewGuid();
-
-        // Act
-        var result = await _service.GetEventsByTagAsync(tagId);
-
-        // Assert
-        await Assert.That(result).IsEmpty();
-    }
-
-    [Test]
-    public async Task AssignTagToEventAsync_ReturnsNull_WhenCalled()
-    {
-        // Arrange
-        var dto = new object();
-
-        // Act
-        var result = await _service.AssignTagToEventAsync(dto);
-
-        // Assert
-        await Assert.That(result).IsNull();
-    }
-
-    [Test]
-    public async Task RemoveTagFromEventAsync_ReturnsFalse_WhenCalled()
-    {
-        // Arrange
-        var eventTagId = Guid.NewGuid();
-
-        // Act
-        var result = await _service.RemoveTagFromEventAsync(eventTagId);
-
-        // Assert
-        await Assert.That(result).IsFalse();
-    }
-
-    #endregion
-
     // ========== HAL Response Helpers ==========
 
     #region HAL Response Helpers

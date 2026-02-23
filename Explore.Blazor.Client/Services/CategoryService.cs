@@ -17,10 +17,6 @@ public interface ICategoryService
     Task<BaseCommandResponseOfGuid?> CreateCategoryAsync(CreateCategoryDto dto);
     Task<BaseCommandResponseOfGuid?> UpdateCategoryAsync(Guid id, UpdateCategoryDto dto);
     Task<bool> DeleteCategoryAsync(Guid categoryId);
-    Task<ICollection<object>> GetCategoriesByEventAsync(Guid eventId); // Neutralized
-    Task<ICollection<object>> GetEventsByCategoryAsync(Guid categoryId); // Neutralized
-    Task<BaseCommandResponseOfGuid?> AssignCategoryToEventAsync(object dto); // Neutralized
-    Task<bool> RemoveCategoryFromEventAsync(Guid eventCategoryId);
 }
 
 public class CategoryService : ICategoryService
@@ -123,31 +119,4 @@ public class CategoryService : ICategoryService
         }
     }
 
-    public Task<ICollection<object>> GetCategoriesByEventAsync(Guid eventId)
-    {
-        // TODO: Fix this when API client is regenerated. The called method does not exist.
-        _logger.LogWarning("[CATEGORY SERVICE] GetCategoriesByEventAsync is not implemented.");
-        return Task.FromResult<ICollection<object>>(new List<object>());
-    }
-
-    public Task<ICollection<object>> GetEventsByCategoryAsync(Guid categoryId)
-    {
-        // TODO: Fix this when API client is regenerated. The called method does not exist.
-        _logger.LogWarning("[CATEGORY SERVICE] GetEventsByCategoryAsync is not implemented.");
-        return Task.FromResult<ICollection<object>>(new List<object>());
-    }
-
-    public Task<BaseCommandResponseOfGuid?> AssignCategoryToEventAsync(object dto)
-    {
-        // TODO: Fix this when API client is regenerated. The called method does not exist.
-        _logger.LogWarning("[CATEGORY SERVICE] AssignCategoryToEventAsync is not implemented.");
-        return Task.FromResult<BaseCommandResponseOfGuid?>(null);
-    }
-
-    public Task<bool> RemoveCategoryFromEventAsync(Guid eventCategoryId)
-    {
-        // TODO: Fix this when API client is regenerated.
-        _logger.LogWarning("[CATEGORY SERVICE] RemoveCategoryFromEventAsync is not implemented.");
-        return Task.FromResult(false);
-    }
 }

@@ -320,64 +320,6 @@ public class CategoryServiceTests
 
     #endregion
 
-    // ========== Neutralized Methods ==========
-
-    #region Neutralized Methods Tests
-
-    [Test]
-    public async Task GetCategoriesByEventAsync_ReturnsEmptyList_WhenCalled()
-    {
-        // Arrange
-        var eventId = Guid.NewGuid();
-
-        // Act
-        var result = await _service.GetCategoriesByEventAsync(eventId);
-
-        // Assert
-        await Assert.That(result).IsEmpty();
-    }
-
-    [Test]
-    public async Task GetEventsByCategoryAsync_ReturnsEmptyList_WhenCalled()
-    {
-        // Arrange
-        var categoryId = Guid.NewGuid();
-
-        // Act
-        var result = await _service.GetEventsByCategoryAsync(categoryId);
-
-        // Assert
-        await Assert.That(result).IsEmpty();
-    }
-
-    [Test]
-    public async Task AssignCategoryToEventAsync_ReturnsNull_WhenCalled()
-    {
-        // Arrange
-        var dto = new object();
-
-        // Act
-        var result = await _service.AssignCategoryToEventAsync(dto);
-
-        // Assert
-        await Assert.That(result).IsNull();
-    }
-
-    [Test]
-    public async Task RemoveCategoryFromEventAsync_ReturnsFalse_WhenCalled()
-    {
-        // Arrange
-        var eventCategoryId = Guid.NewGuid();
-
-        // Act
-        var result = await _service.RemoveCategoryFromEventAsync(eventCategoryId);
-
-        // Assert
-        await Assert.That(result).IsFalse();
-    }
-
-    #endregion
-
     // ========== HAL Response Helpers ==========
 
     #region HAL Response Helpers

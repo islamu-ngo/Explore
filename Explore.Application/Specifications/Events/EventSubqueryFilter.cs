@@ -20,7 +20,7 @@ public sealed class EventSubqueryFilter
     public EventSubqueryFilterType FilterType { get; }
 
     /// <summary>
-    /// Gets the filter value (Guid for Category/Tag/Location, int for Language/RegistrationMode).
+    /// Gets the filter value (Guid for Category/Location, List&lt;Guid&gt; for tag filters, int for Language/RegistrationMode).
     /// </summary>
     public object Value { get; }
 
@@ -37,10 +37,32 @@ public sealed class EventSubqueryFilter
         new(EventSubqueryFilterType.Category, categoryId);
 
     /// <summary>
-    /// Filters events that have a specific tag assigned (via EventTags junction table).
+    /// Filters events that have ALL specified tags assigned (AND logic).
+    /// Each tag generates a correlated EXISTS subquery against EventTags.
     /// </summary>
-    public static EventSubqueryFilter Tag(Guid tagId) =>
-        new(EventSubqueryFilterType.Tag, tagId);
+    public static EventSubqueryFilter TagsIncludedAll(List<Guid> tagIds) =>
+        new(EventSubqueryFilterType.TagsIncludedAll, tagIds);
+
+    /// <summary>
+    /// Filters events that have at least one of the specified tags assigned (OR logic).
+    /// Uses a single IN clause against EventTags.
+    /// </summary>
+    public static EventSubqueryFilter TagsIncludedAny(List<Guid> tagIds) =>
+        new(EventSubqueryFilterType.TagsIncludedAny, tagIds);
+
+    /// <summary>
+    /// Excludes events that have ANY of the specified tags (OR logic).
+    /// Events with any excluded tag are filtered out.
+    /// </summary>
+    public static EventSubqueryFilter TagsExcludedAny(List<Guid> tagIds) =>
+        new(EventSubqueryFilterType.TagsExcludedAny, tagIds);
+
+    /// <summary>
+    /// Excludes events only if they have ALL of the specified tags simultaneously (AND logic).
+    /// Events are excluded only when every excluded tag is present.
+    /// </summary>
+    public static EventSubqueryFilter TagsExcludedAll(List<Guid> tagIds) =>
+        new(EventSubqueryFilterType.TagsExcludedAll, tagIds);
 
     /// <summary>
     /// Filters events that have at least one session at the specified location.
@@ -88,8 +110,17 @@ public enum EventSubqueryFilterType
     /// <summary>Category filter via EventCategories junction table.</summary>
     Category,
 
-    /// <summary>Tag filter via EventTags junction table.</summary>
-    Tag,
+    /// <summary>Include events that have ALL specified tags (AND).</summary>
+    TagsIncludedAll,
+
+    /// <summary>Include events that have at least one specified tag (OR).</summary>
+    TagsIncludedAny,
+
+    /// <summary>Exclude events that have ANY specified tag (OR).</summary>
+    TagsExcludedAny,
+
+    /// <summary>Exclude events only if they have ALL specified tags (AND).</summary>
+    TagsExcludedAll,
 
     /// <summary>Location filter via EventSessions table.</summary>
     Location,

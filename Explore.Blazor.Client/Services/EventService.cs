@@ -17,7 +17,10 @@ public interface IEventService
         int pageSize,
         string? searchTerm = null,
         Guid? categoryId = null,
-        Guid? tagId = null,
+        List<Guid>? includedTagIds = null,
+        List<Guid>? excludedTagIds = null,
+        string? inclusionMode = null,
+        string? exclusionMode = null,
         int? formatId = null,
         int? madhabId = null,
         Guid? locationId = null,
@@ -57,12 +60,9 @@ public interface IEventService
     Task<ICollection<EventFormatListDto>> GetEventFormatsAsync();
     Task<ICollection<EventSessionListDto>> GetAllSessionsAsync();
     Task<ICollection<EventSessionListDto>> GetSessionsByEventAsync(Guid eventId);
-    Task<ICollection<object>> GetAllSessionLanguagesAsync(); // Neutralized
     Task<BaseCommandResponseOfGuid?> CreateSessionAsync(CreateEventSessionDto session);
     Task<BaseCommandResponseOfGuid?> UpdateSessionAsync(UpdateEventSessionDto session);
     Task<bool> DeleteSessionAsync(Guid sessionId);
-    Task<BaseCommandResponseOfGuid?> AssignLanguageToSessionAsync(object sessionLanguage); // Neutralized
-    Task<bool> DeleteSessionLanguageAsync(int sessionLanguageId);
     Task<BaseCommandResponseOfGuid?> RegisterForEventSessionAsync(CreateEventRegistrationDto registration);
     Task<ICollection<EventRegistrationListDto>> GetRegistrationsForSessionAsync(Guid sessionId);
     Task<ICollection<EventRegistrationListDto>> GetRegistrationsByUserAsync(Guid userId);
@@ -134,7 +134,10 @@ public partial class EventService : IEventService
         int pageSize,
         string? searchTerm = null,
         Guid? categoryId = null,
-        Guid? tagId = null,
+        List<Guid>? includedTagIds = null,
+        List<Guid>? excludedTagIds = null,
+        string? inclusionMode = null,
+        string? exclusionMode = null,
         int? formatId = null,
         int? madhabId = null,
         Guid? locationId = null,
@@ -171,7 +174,10 @@ public partial class EventService : IEventService
                 pageSize: pageSize,
                 searchTerm: searchTerm,
                 categoryId: categoryId,
-                tagId: tagId,
+                includedTagIds: includedTagIds,
+                excludedTagIds: excludedTagIds,
+                inclusionMode: inclusionMode,
+                exclusionMode: exclusionMode,
                 formatId: formatId,
                 madhabId: madhabId,
                 locationId: locationId,
@@ -324,12 +330,6 @@ public partial class EventService : IEventService
         return result?.GetItems() ?? new List<EventSessionListDto>();
     }
 
-    public Task<ICollection<object>> GetAllSessionLanguagesAsync()
-    {
-        // TODO: Fix this when API client is regenerated.
-        return Task.FromResult<ICollection<object>>(new List<object>());
-    }
-
     public Task<BaseCommandResponseOfGuid?> CreateSessionAsync(CreateEventSessionDto session) => _apiClient.CreateEventSessionAsync(session);
 
     public Task<BaseCommandResponseOfGuid?> UpdateSessionAsync(UpdateEventSessionDto session) => _apiClient.UpdateEventSessionAsync(session.Id ?? Guid.Empty, session);
@@ -338,14 +338,6 @@ public partial class EventService : IEventService
     {
         try { await _apiClient.DeleteEventSessionAsync(sessionId); return true; } catch { return false; }
     }
-
-    public Task<BaseCommandResponseOfGuid?> AssignLanguageToSessionAsync(object sessionLanguage)
-    {
-        // TODO: Fix this when API client is regenerated.
-        return Task.FromResult<BaseCommandResponseOfGuid?>(null);
-    }
-
-    public Task<bool> DeleteSessionLanguageAsync(int sessionLanguageId) => throw new NotImplementedException();
 
     public Task<BaseCommandResponseOfGuid?> RegisterForEventSessionAsync(CreateEventRegistrationDto registration) => _apiClient.EventregistrationPOSTAsync(registration);
 

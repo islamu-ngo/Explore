@@ -94,6 +94,7 @@ builder.Services.AddScoped<ILookupCacheService, LookupCacheService>();
 builder.Services.AddScoped<IInstanceOnboardingService, InstanceOnboardingService>();
 builder.Services.AddScoped<ITenantOnboardingService, TenantOnboardingService>();
 builder.Services.AddScoped<IPublicExperienceService, PublicExperienceService>();
+builder.Services.AddScoped<IRuntimeRenderPolicyService, RuntimeRenderPolicyService>();
 builder.Services.AddScoped<IStartupRoutingService, StartupRoutingService>();
 builder.Services.AddScoped<IEventCreationEligibilityService, EventCreationEligibilityService>();
 builder.Services.AddScoped<IAnalyticsInterop, ServerAnalyticsInterop>();

@@ -1,5 +1,5 @@
-@* ABOUTME: Renders governance settings fields for the Instance Admin Settings sidebar. *@
-@* ABOUTME: Includes deployment mode, tenant registration, default home page, and lock controls. *@
+@* ABOUTME: Renders instance governance controls including deployment, home-page, and runtime render policy presets. *@
+@* ABOUTME: Provides preset-first render policy UX with recommended highlighting, help tooltips, and advanced overrides. *@
 
 @using MudBlazor
 @using Explore.Blazor.Client.Services
@@ -35,10 +35,362 @@
         <MudSwitch T="bool" @bind-Value="Model.LockTenantHomePagePreference" Color="Color.Primary">
             Lock tenant home page preference
         </MudSwitch>
+
+        <MudDivider Class="my-2" />
+
+        <MudStack Spacing="2">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                <MudText Typo="Typo.h6" Style="font-weight:600;">Runtime Render Policy</MudText>
+                <MudTooltip Text="Choose a preset strategy for route rendering. SEO Balanced is recommended for most deployments.">
+                    <MudIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
+                </MudTooltip>
+            </MudStack>
+
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Presets balance SEO prerendering and runtime responsiveness. You can enable advanced overrides for per-route-group control.
+            </MudText>
+
+            <div class="instance-governance__preset-grid">
+                @foreach (var option in PresetOptions)
+                {
+                    <MudPaper Class="@GetPresetCardClass(option.Value)" Elevation="0" @onclick="() => SelectPreset(option.Value)">
+                        <MudStack Spacing="1">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudText Typo="Typo.subtitle2" Style="font-weight:600;">@option.Label</MudText>
+                                    <MudTooltip Text="@option.HelpText">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
+                                    </MudTooltip>
+                                </MudStack>
+                                @if (IsRecommendedPreset(option.Value))
+                                {
+                                    <MudChip T="string" Color="Color.Success" Variant="Variant.Outlined" Size="Size.Small">Recommended</MudChip>
+                                }
+                            </MudStack>
+
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@option.Description</MudText>
+                        </MudStack>
+                    </MudPaper>
+                }
+            </div>
+
+            <MudSwitch T="bool"
+                       Value="Model.EnableAdvancedRenderPolicyOverrides"
+                       ValueChanged="OnAdvancedOverridesChanged"
+                       Color="Color.Primary">
+                Enable advanced render-policy overrides
+            </MudSwitch>
+
+            @if (Model.EnableAdvancedRenderPolicyOverrides)
+            {
+                <MudPaper Class="instance-governance__advanced-panel pa-4" Elevation="0">
+                    <MudStack Spacing="2">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudText Typo="Typo.subtitle2" Style="font-weight:600;">Global Fallback</MudText>
+                            <MudTooltip Text="Used when a route-group specific override is unavailable.">
+                                <MudIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
+                            </MudTooltip>
+                        </MudStack>
+
+                        <MudGrid>
+                            <MudItem xs="12" md="6">
+                                <MudSelect T="string"
+                                           Label="Global Render Mode"
+                                           @bind-Value="Model.GlobalRenderMode"
+                                           Variant="Variant.Outlined">
+                                    @foreach (var mode in RenderModeOptions)
+                                    {
+                                        <MudSelectItem Value="@mode.Value">@mode.Label</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudSwitch T="bool" @bind-Value="Model.GlobalPrerenderEnabled" Color="Color.Primary">
+                                    Global Prerender Enabled
+                                </MudSwitch>
+                            </MudItem>
+                        </MudGrid>
+
+                        @foreach (var group in RouteGroupOptions)
+                        {
+                            <MudDivider />
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudText Typo="Typo.subtitle2" Style="font-weight:600;">@group.Label</MudText>
+                                <MudTooltip Text="@group.HelpText">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
+                                </MudTooltip>
+                            </MudStack>
+
+                            <MudGrid>
+                                <MudItem xs="12" md="6">
+                                    <MudSelect T="string"
+                                               Label="@($"{group.Label} Render Mode")"
+                                               Value="@GetRouteGroupMode(group.Value)"
+                                               ValueChanged="mode => SetRouteGroupMode(group.Value, mode)"
+                                               Variant="Variant.Outlined">
+                                        @foreach (var mode in RenderModeOptions.Where(x => !IsOnboardingInteractiveServerRestricted(group.Value) || x.Value != "InteractiveServer"))
+                                        {
+                                            <MudSelectItem Value="@mode.Value">@mode.Label</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <MudSwitch T="bool"
+                                               Value="@GetRouteGroupPrerender(group.Value)"
+                                               ValueChanged="enabled => SetRouteGroupPrerender(group.Value, enabled)"
+                                               Color="Color.Primary">
+                                        @($"{group.Label} Prerender Enabled")
+                                    </MudSwitch>
+                                </MudItem>
+                            </MudGrid>
+                        }
+                    </MudStack>
+                </MudPaper>
+            }
+        </MudStack>
     </MudStack>
 </div>
 
 @code {
+    private const string RecommendedPreset = "SeoBalanced";
+
+    private static readonly IReadOnlyList<PresetOption> PresetOptions =
+    [
+        new("SeoBalanced", "SEO Balanced", "Best default for most instances", "Prioritizes prerendering for SEO-sensitive public pages while keeping operational flows interactive."),
+        new("AllPrerendered", "All Prerendered", "Maximum first paint and crawler readiness", "Forces prerendering across route groups for predictable initial HTML output."),
+        new("AllInteractiveAutoNoPrerender", "All Interactive Auto", "Fast interactivity startup without prerender", "Disables prerender globally and uses InteractiveAuto for all route groups."),
+        new("CustomAdvanced", "Custom Advanced", "Fine-grained per route-group control", "Enables explicit overrides for Public SEO, Operational, Admin, and Onboarding route groups.")
+    ];
+
+    private static readonly IReadOnlyList<RenderModeOption> RenderModeOptions =
+    [
+        new("InteractiveAuto", "Interactive Auto"),
+        new("InteractiveWebAssembly", "Interactive WebAssembly"),
+        new("InteractiveServer", "Interactive Server")
+    ];
+
+    private static readonly IReadOnlyList<RouteGroupOption> RouteGroupOptions =
+    [
+        new("public-seo", "Public SEO", "Public landing and detail routes where SEO/prerender strategy matters most."),
+        new("operational", "Operational", "Authenticated user workflows and day-to-day app interactions."),
+        new("admin", "Admin", "Administrative surfaces under /admin routes."),
+        new("onboarding", "Onboarding", "Setup and onboarding routes. Always uses InteractiveServer for instant interactivity (no WASM download delay).")
+    ];
+
     [Parameter, EditorRequired]
     public InstanceGovernanceSettingsModel Model { get; set; } = null!;
+
+    protected override void OnParametersSet()
+    {
+        EnsurePresetDefaults();
+    }
+
+    private void EnsurePresetDefaults()
+    {
+        if (string.IsNullOrWhiteSpace(Model.RenderPolicyPreset))
+        {
+            SelectPreset(RecommendedPreset);
+            return;
+        }
+
+        if (!PresetOptions.Any(x => x.Value.Equals(Model.RenderPolicyPreset, StringComparison.OrdinalIgnoreCase)))
+        {
+            SelectPreset(RecommendedPreset);
+            return;
+        }
+
+        Model.RenderPolicyPreset = PresetOptions.First(x => x.Value.Equals(Model.RenderPolicyPreset, StringComparison.OrdinalIgnoreCase)).Value;
+        Model.EnableAdvancedRenderPolicyOverrides = Model.RenderPolicyPreset.Equals("CustomAdvanced", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private string GetPresetCardClass(string preset)
+    {
+        var className = "instance-governance__preset-card";
+
+        if (IsRecommendedPreset(preset))
+        {
+            className += " instance-governance__preset-card--recommended";
+        }
+
+        if (Model.RenderPolicyPreset.Equals(preset, StringComparison.OrdinalIgnoreCase))
+        {
+            className += " instance-governance__preset-card--selected";
+        }
+
+        return className;
+    }
+
+    private static bool IsRecommendedPreset(string preset)
+    {
+        return preset.Equals(RecommendedPreset, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void SelectPreset(string preset)
+    {
+        Model.RenderPolicyPreset = preset;
+
+        switch (preset)
+        {
+            case "AllPrerendered":
+                Model.EnableAdvancedRenderPolicyOverrides = false;
+                Model.GlobalRenderMode = "InteractiveAuto";
+                Model.GlobalPrerenderEnabled = true;
+                break;
+            case "AllInteractiveAutoNoPrerender":
+                Model.EnableAdvancedRenderPolicyOverrides = false;
+                Model.GlobalRenderMode = "InteractiveAuto";
+                Model.GlobalPrerenderEnabled = false;
+                break;
+            case "CustomAdvanced":
+                Model.EnableAdvancedRenderPolicyOverrides = true;
+                Model.GlobalRenderMode = NormalizeRenderMode(Model.GlobalRenderMode);
+                break;
+            default:
+                Model.EnableAdvancedRenderPolicyOverrides = false;
+                Model.GlobalRenderMode = "InteractiveAuto";
+                Model.GlobalPrerenderEnabled = false;
+                break;
+        }
+
+        if (!Model.EnableAdvancedRenderPolicyOverrides)
+        {
+            ApplyGlobalFallbackToAllGroups();
+            if (Model.RenderPolicyPreset.Equals("SeoBalanced", StringComparison.OrdinalIgnoreCase))
+            {
+                Model.PublicSeoPrerenderEnabled = true;
+            }
+        }
+
+        EnsureOnboardingGuardrail();
+    }
+
+    private void OnAdvancedOverridesChanged(bool enabled)
+    {
+        if (enabled)
+        {
+            SelectPreset("CustomAdvanced");
+            return;
+        }
+
+        SelectPreset(RecommendedPreset);
+    }
+
+    private string GetRouteGroupMode(string group)
+    {
+        return group switch
+        {
+            "public-seo" => NormalizeRenderMode(Model.PublicSeoRenderMode),
+            "operational" => NormalizeRenderMode(Model.OperationalRenderMode),
+            "admin" => NormalizeRenderMode(Model.AdminRenderMode),
+            "onboarding" => NormalizeOnboardingRenderMode(Model.OnboardingRenderMode),
+            _ => "InteractiveAuto"
+        };
+    }
+
+    private void SetRouteGroupMode(string group, string mode)
+    {
+        var normalizedMode = NormalizeRenderMode(mode);
+
+        switch (group)
+        {
+            case "public-seo":
+                Model.PublicSeoRenderMode = normalizedMode;
+                break;
+            case "operational":
+                Model.OperationalRenderMode = normalizedMode;
+                break;
+            case "admin":
+                Model.AdminRenderMode = normalizedMode;
+                break;
+            case "onboarding":
+                Model.OnboardingRenderMode = NormalizeOnboardingRenderMode(normalizedMode);
+                break;
+        }
+
+        EnsureOnboardingGuardrail();
+    }
+
+    private bool GetRouteGroupPrerender(string group)
+    {
+        return group switch
+        {
+            "public-seo" => Model.PublicSeoPrerenderEnabled,
+            "operational" => Model.OperationalPrerenderEnabled,
+            "admin" => Model.AdminPrerenderEnabled,
+            "onboarding" => Model.OnboardingPrerenderEnabled,
+            _ => false
+        };
+    }
+
+    private void SetRouteGroupPrerender(string group, bool enabled)
+    {
+        switch (group)
+        {
+            case "public-seo":
+                Model.PublicSeoPrerenderEnabled = enabled;
+                break;
+            case "operational":
+                Model.OperationalPrerenderEnabled = enabled;
+                break;
+            case "admin":
+                Model.AdminPrerenderEnabled = enabled;
+                break;
+            case "onboarding":
+                Model.OnboardingPrerenderEnabled = enabled;
+                break;
+        }
+    }
+
+    private static bool IsOnboardingInteractiveServerRestricted(string group)
+    {
+        // InteractiveServer is no longer restricted for onboarding — it's the forced default.
+        return false;
+    }
+
+    private void ApplyGlobalFallbackToAllGroups()
+    {
+        var mode = NormalizeRenderMode(Model.GlobalRenderMode);
+        var prerender = Model.GlobalPrerenderEnabled;
+
+        Model.PublicSeoRenderMode = mode;
+        Model.PublicSeoPrerenderEnabled = prerender;
+        Model.OperationalRenderMode = mode;
+        Model.OperationalPrerenderEnabled = prerender;
+        Model.AdminRenderMode = mode;
+        Model.AdminPrerenderEnabled = prerender;
+        Model.OnboardingRenderMode = NormalizeOnboardingRenderMode(mode);
+        Model.OnboardingPrerenderEnabled = prerender;
+    }
+
+    private void EnsureOnboardingGuardrail()
+    {
+        // Onboarding is always InteractiveServer for best first-impression UX.
+        Model.DisallowInteractiveServerOnOnboarding = false;
+        Model.OnboardingRenderMode = "InteractiveServer";
+    }
+
+    private static string NormalizeRenderMode(string? mode)
+    {
+        if (string.Equals(mode, "InteractiveWebAssembly", StringComparison.OrdinalIgnoreCase))
+        {
+            return "InteractiveWebAssembly";
+        }
+
+        if (string.Equals(mode, "InteractiveServer", StringComparison.OrdinalIgnoreCase))
+        {
+            return "InteractiveServer";
+        }
+
+        return "InteractiveAuto";
+    }
+
+    private static string NormalizeOnboardingRenderMode(string? mode)
+    {
+        // Onboarding always uses InteractiveServer regardless of input.
+        return "InteractiveServer";
+    }
+
+    private sealed record PresetOption(string Value, string Label, string Description, string HelpText);
+    private sealed record RenderModeOption(string Value, string Label);
+    private sealed record RouteGroupOption(string Value, string Label, string HelpText);
 }

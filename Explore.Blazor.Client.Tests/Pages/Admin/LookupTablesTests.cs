@@ -1,7 +1,7 @@
-// ABOUTME: Component tests for LookupTables admin workflow page loading/error/success states.
-// ABOUTME: Verifies parallel lookup loading and resilient snackbar error handling.
+// ABOUTME: Component tests for tenant lookup tables section loading/error/success states.
+// ABOUTME: Verifies parallel lookup loading and consolidated lookup tab rendering.
 
-using Explore.Blazor.Client.Pages.Admin;
+using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 
@@ -34,8 +34,8 @@ public class LookupTablesTests : IDisposable
 
     private IRenderedComponent<DynamicComponent> RenderLookupTables()
     {
-        var componentType = typeof(AdminList).Assembly.GetType("Explore.Blazor.Client.Pages.Admin.LookupTables")
-                            ?? throw new InvalidOperationException("LookupTables component type not found");
+        var componentType = typeof(IAdminService).Assembly.GetType("Explore.Blazor.Client.Components.Admin.Tenant.TenantLookupTablesSection")
+                            ?? throw new InvalidOperationException("TenantLookupTablesSection component type not found");
 
         return _ctx.RenderMudComponent<DynamicComponent>(p => p.Add(x => x.Type, componentType));
     }
@@ -51,8 +51,8 @@ public class LookupTablesTests : IDisposable
         var cut = RenderLookupTables();
 
         // Assert
-        await Assert.That(cut.Markup).Contains("Lookup Tables Management");
-        await Assert.That(cut.Markup).Contains("mud-progress-linear");
+        await Assert.That(cut.Markup).Contains("Lookup Tables");
+        await Assert.That(cut.Markup).Contains("Loading lookup tables");
 
         // Cleanup
         pendingEventTypes.TrySetResult(new List<EventTypeListDto>());
@@ -74,11 +74,11 @@ public class LookupTablesTests : IDisposable
 
         // Act
         var cut = RenderLookupTables();
-        cut.WaitForState(() => cut.Markup.Contains("Conference", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
+        cut.WaitForState(() => cut.Markup.Contains("Lookup Tables", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
 
         // Assert
         await Assert.That(cut.Markup).Contains("Event Types");
-        await Assert.That(cut.Markup).Contains("Conference");
+        await Assert.That(cut.Markup).Contains("Tags");
     }
 
     [Test]
@@ -89,10 +89,10 @@ public class LookupTablesTests : IDisposable
 
         // Act
         var cut = RenderLookupTables();
-        cut.WaitForState(() => !cut.Markup.Contains("mud-progress-linear", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
+        cut.WaitForState(() => cut.Markup.Contains("Failed to load lookup data", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
 
         // Assert
-        _snackbar.Received().Add(Arg.Is<string>(s => s.Contains("Error loading lookup tables", StringComparison.OrdinalIgnoreCase)), Severity.Error);
+        await Assert.That(cut.Markup).Contains("Failed to load lookup data: boom");
     }
 
     private void SetupDefaultLookups()

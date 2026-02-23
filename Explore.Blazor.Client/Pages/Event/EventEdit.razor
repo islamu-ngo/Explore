@@ -387,16 +387,12 @@ else
 
                 var allCategoriesTask = CategoryService.GetAllCategoriesAsync();
                 var allTagsTask = TagService.GetAllTagsAsync();
-                var eventCategoriesTask = CategoryService.GetCategoriesByEventAsync(EventId);
-                var eventTagsTask = TagService.GetTagsByEventAsync(EventId);
                 var sessionsTask = EventService.GetSessionsByEventAsync(EventId);
 
-                await Task.WhenAll(allCategoriesTask, allTagsTask, eventCategoriesTask, eventTagsTask, sessionsTask);
+                await Task.WhenAll(allCategoriesTask, allTagsTask, sessionsTask);
 
                 allCategories = await allCategoriesTask;
                 allTags = await allTagsTask;
-                existingCategoriesRaw = await eventCategoriesTask;
-                existingTagsRaw = await eventTagsTask;
                 var eventSessions = await sessionsTask;
 
                 selectedCategoryIds = new HashSet<Guid?>();

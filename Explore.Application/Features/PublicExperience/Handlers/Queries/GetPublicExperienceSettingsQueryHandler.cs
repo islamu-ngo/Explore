@@ -19,19 +19,22 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
     private readonly ISettingsResolver _settingsResolver;
     private readonly ITenantPolicySettingService _policySettingService;
     private readonly IModuleService _moduleService;
+    private readonly IInstanceGovernanceSettingService _instanceGovernanceSettingService;
 
     public GetPublicExperienceSettingsQueryHandler(
         ITenantContext tenantContext,
         ISystemSettingRepository systemSettingRepository,
         ISettingsResolver settingsResolver,
         ITenantPolicySettingService policySettingService,
-        IModuleService moduleService)
+        IModuleService moduleService,
+        IInstanceGovernanceSettingService instanceGovernanceSettingService)
     {
         _tenantContext = tenantContext;
         _systemSettingRepository = systemSettingRepository;
         _settingsResolver = settingsResolver;
         _policySettingService = policySettingService;
         _moduleService = moduleService;
+        _instanceGovernanceSettingService = instanceGovernanceSettingService;
     }
 
     public async Task<PublicExperienceSettingsDto> Handle(GetPublicExperienceSettingsQuery request, CancellationToken cancellationToken)
@@ -40,6 +43,7 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
         var effectiveTenantSettings = await _policySettingService.ReadEffectiveTenantSettingsAsync(tenantId);
         var enabledModulesInfo = await _moduleService.GetEnabledModulesAsync(tenantId, cancellationToken);
         var enabledModuleKeys = enabledModulesInfo.Select(m => m.ModuleKey).ToList();
+        var governanceSettings = await _instanceGovernanceSettingService.ReadSettingsAsync();
 
         var deploymentModeSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DeploymentMode);
         var deploymentMode = DeserializeString(deploymentModeSetting?.Value, "SingleTenant");
@@ -69,7 +73,21 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
             AnalyticsProvider = analyticsProvider,
             AnalyticsEnabled = shouldEnableAnalytics,
             AnalyticsPublicApiKey = analyticsPublicApiKey ?? string.Empty,
-            AnalyticsEndpointUrl = analyticsEndpointUrl ?? string.Empty
+            AnalyticsEndpointUrl = analyticsEndpointUrl ?? string.Empty,
+            RenderPolicyVersion = governanceSettings.RenderPolicyVersion,
+            RenderPolicyPreset = governanceSettings.RenderPolicyPreset,
+            EnableAdvancedRenderPolicyOverrides = governanceSettings.EnableAdvancedRenderPolicyOverrides,
+            GlobalRenderMode = governanceSettings.GlobalRenderMode,
+            GlobalPrerenderEnabled = governanceSettings.GlobalPrerenderEnabled,
+            PublicSeoRenderMode = governanceSettings.PublicSeoRenderMode,
+            PublicSeoPrerenderEnabled = governanceSettings.PublicSeoPrerenderEnabled,
+            OperationalRenderMode = governanceSettings.OperationalRenderMode,
+            OperationalPrerenderEnabled = governanceSettings.OperationalPrerenderEnabled,
+            AdminRenderMode = governanceSettings.AdminRenderMode,
+            AdminPrerenderEnabled = governanceSettings.AdminPrerenderEnabled,
+            OnboardingRenderMode = governanceSettings.OnboardingRenderMode,
+            OnboardingPrerenderEnabled = governanceSettings.OnboardingPrerenderEnabled,
+            DisallowInteractiveServerOnOnboarding = governanceSettings.DisallowInteractiveServerOnOnboarding
         };
     }
 

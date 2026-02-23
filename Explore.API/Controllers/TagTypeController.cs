@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using Explore.Application.DTOs.TagType;
 using Explore.Application.Features.TagTypes.Requests.Queries;
+using Explore.Application.Features.TagTypeTags.Requests.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -38,5 +39,18 @@ public class TagTypeController : ControllerBase
     {
         var tagType = await _mediator.Send(new GetTagTypeDetailsRequest { Id = id }, cancellationToken);
         return Ok(tagType);
+    }
+
+    // GET: api/tagtype/with-tags
+    [HttpGet("with-tags")]
+    [EndpointSummary("Get Tag Types with Tags")]
+    [EndpointDescription("Returns all tag types with their associated tags grouped. Used by the tri-state tag filter dropdown.")]
+    [AllowAnonymous]
+    [OutputCache(PolicyName = "LookupData")]
+    [ProducesResponseType(typeof(List<TagTypeWithTagsDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<TagTypeWithTagsDto>>> GetWithTags(CancellationToken cancellationToken = default)
+    {
+        var result = await _mediator.Send(new GetTagsGroupedByTagTypeRequest(), cancellationToken);
+        return Ok(result);
     }
 }

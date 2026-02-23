@@ -370,7 +370,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<HalCollectionResourceOfEventListDto> GetEventsAsync(int? pageNumber = null, int? pageSize = null, string? searchTerm = null, System.Guid? categoryId = null, System.Guid? tagId = null, int? formatId = null, int? madhabId = null, System.Guid? locationId = null, int? registrationModeId = null, int? languageId = null, System.DateTimeOffset? dateFrom = null, System.DateTimeOffset? dateTo = null, int? eventTypeId = null, int? audienceGenderId = null, int? audienceAgeId = null, int? eventStatusId = null, int? genderModeId = null, bool? includesQuranRecitation = null, int? referencePrayerId = null, int? islamicPrimaryLanguageId = null, bool? hasIslamicAspect = null, int? skillLevelId = null, bool? isCodingCompetition = null, bool? isHackathon = null, bool? requiresLaptop = null, string? techStackTag = null, bool? hasTechAspect = null, string? metadataJsonContains = null, string? metadataJsonKeyExists = null, string? sortBy = null, bool? sortDescending = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<HalCollectionResourceOfEventListDto> GetEventsAsync(int? pageNumber = null, int? pageSize = null, string? searchTerm = null, System.Guid? categoryId = null, System.Collections.Generic.IEnumerable<System.Guid>? includedTagIds = null, System.Collections.Generic.IEnumerable<System.Guid>? excludedTagIds = null, string? inclusionMode = null, string? exclusionMode = null, int? formatId = null, int? madhabId = null, System.Guid? locationId = null, int? registrationModeId = null, int? languageId = null, System.DateTimeOffset? dateFrom = null, System.DateTimeOffset? dateTo = null, int? eventTypeId = null, int? audienceGenderId = null, int? audienceAgeId = null, int? eventStatusId = null, int? genderModeId = null, bool? includesQuranRecitation = null, int? referencePrayerId = null, int? islamicPrimaryLanguageId = null, bool? hasIslamicAspect = null, int? skillLevelId = null, bool? isCodingCompetition = null, bool? isHackathon = null, bool? requiresLaptop = null, string? techStackTag = null, bool? hasTechAspect = null, string? metadataJsonContains = null, string? metadataJsonKeyExists = null, string? sortBy = null, bool? sortDescending = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -1000,6 +1000,39 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Get Instance SMTP Settings
+        /// </summary>
+        /// <remarks>
+        /// Returns instance SMTP settings. Only instance admins can access this endpoint.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<InstanceSmtpSettingsDto> SmtpSettingsGETAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Update Instance SMTP Settings
+        /// </summary>
+        /// <remarks>
+        /// Updates instance SMTP settings. Requires instance administrator membership.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<BaseCommandResponseOfGuid> SmtpSettingsPUTAsync(InstanceSmtpSettingsDto body, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Test SMTP Connection
+        /// </summary>
+        /// <remarks>
+        /// Tests the SMTP connection using current settings. Returns success or failure with message.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<object> TestSmtpAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Validate Setup Secret
         /// </summary>
         /// <remarks>
@@ -1593,6 +1626,17 @@ namespace Explore.Blazor.Client.Clients
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<TagTypeDto> TagtypeAsync(int id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get Tag Types with Tags
+        /// </summary>
+        /// <remarks>
+        /// Returns all tag types with their associated tags grouped. Used by the tri-state tag filter dropdown.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<System.Collections.Generic.ICollection<TagTypeWithTagsDto>> WithTagsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -5131,7 +5175,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<HalCollectionResourceOfEventListDto> GetEventsAsync(int? pageNumber = null, int? pageSize = null, string? searchTerm = null, System.Guid? categoryId = null, System.Guid? tagId = null, int? formatId = null, int? madhabId = null, System.Guid? locationId = null, int? registrationModeId = null, int? languageId = null, System.DateTimeOffset? dateFrom = null, System.DateTimeOffset? dateTo = null, int? eventTypeId = null, int? audienceGenderId = null, int? audienceAgeId = null, int? eventStatusId = null, int? genderModeId = null, bool? includesQuranRecitation = null, int? referencePrayerId = null, int? islamicPrimaryLanguageId = null, bool? hasIslamicAspect = null, int? skillLevelId = null, bool? isCodingCompetition = null, bool? isHackathon = null, bool? requiresLaptop = null, string? techStackTag = null, bool? hasTechAspect = null, string? metadataJsonContains = null, string? metadataJsonKeyExists = null, string? sortBy = null, bool? sortDescending = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<HalCollectionResourceOfEventListDto> GetEventsAsync(int? pageNumber = null, int? pageSize = null, string? searchTerm = null, System.Guid? categoryId = null, System.Collections.Generic.IEnumerable<System.Guid>? includedTagIds = null, System.Collections.Generic.IEnumerable<System.Guid>? excludedTagIds = null, string? inclusionMode = null, string? exclusionMode = null, int? formatId = null, int? madhabId = null, System.Guid? locationId = null, int? registrationModeId = null, int? languageId = null, System.DateTimeOffset? dateFrom = null, System.DateTimeOffset? dateTo = null, int? eventTypeId = null, int? audienceGenderId = null, int? audienceAgeId = null, int? eventStatusId = null, int? genderModeId = null, bool? includesQuranRecitation = null, int? referencePrayerId = null, int? islamicPrimaryLanguageId = null, bool? hasIslamicAspect = null, int? skillLevelId = null, bool? isCodingCompetition = null, bool? isHackathon = null, bool? requiresLaptop = null, string? techStackTag = null, bool? hasTechAspect = null, string? metadataJsonContains = null, string? metadataJsonKeyExists = null, string? sortBy = null, bool? sortDescending = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -5163,9 +5207,33 @@ namespace Explore.Blazor.Client.Clients
                     {
                         urlBuilder_.Append(System.Uri.EscapeDataString("categoryId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(categoryId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
-                    if (tagId != null)
+                    if (includedTagIds != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("tagId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(tagId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("includedTagIds") + "=");
+                        foreach (var item_ in includedTagIds)
+                        {
+                            urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append(",");
+                        }
+                        urlBuilder_.Length--;
+                        urlBuilder_.Append("&");
+                    }
+                    if (excludedTagIds != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("excludedTagIds") + "=");
+                        foreach (var item_ in excludedTagIds)
+                        {
+                            urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append(",");
+                        }
+                        urlBuilder_.Length--;
+                        urlBuilder_.Append("&");
+                    }
+                    if (inclusionMode != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("inclusionMode")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(inclusionMode, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (exclusionMode != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("exclusionMode")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(exclusionMode, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (formatId != null)
                     {
@@ -11097,6 +11165,285 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Get Instance SMTP Settings
+        /// </summary>
+        /// <remarks>
+        /// Returns instance SMTP settings. Only instance admins can access this endpoint.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<InstanceSmtpSettingsDto> SmtpSettingsGETAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+                
+                    // Operation Path: "api/instanceonboarding/smtp-settings"
+                    urlBuilder_.Append("api/instanceonboarding/smtp-settings");
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<InstanceSmtpSettingsDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Update Instance SMTP Settings
+        /// </summary>
+        /// <remarks>
+        /// Updates instance SMTP settings. Requires instance administrator membership.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<BaseCommandResponseOfGuid> SmtpSettingsPUTAsync(InstanceSmtpSettingsDto body, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            if (body == null)
+                throw new System.ArgumentNullException("body");
+
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    var json_ = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerSettings);
+                    var content_ = new System.Net.Http.ByteArrayContent(json_);
+                    content_.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json; v=0.1");
+                    request_.Content = content_;
+                    request_.Method = new System.Net.Http.HttpMethod("PUT");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+                
+                    // Operation Path: "api/instanceonboarding/smtp-settings"
+                    urlBuilder_.Append("api/instanceonboarding/smtp-settings");
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 400)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<BaseCommandResponseOfGuid>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<BaseCommandResponseOfGuid>("Bad Request", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Test SMTP Connection
+        /// </summary>
+        /// <remarks>
+        /// Tests the SMTP connection using current settings. Returns success or failure with message.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<object> TestSmtpAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+                
+                    // Operation Path: "api/instanceonboarding/test-smtp"
+                    urlBuilder_.Append("api/instanceonboarding/test-smtp");
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<object>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        if (status_ == 403)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<ProblemDetails>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            throw new ApiException<ProblemDetails>("Forbidden", status_, objectResponse_.Text, headers_, objectResponse_.Object, null);
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Validate Setup Secret
         /// </summary>
         /// <remarks>
@@ -16730,6 +17077,83 @@ namespace Explore.Blazor.Client.Clients
                         if (status_ == 200)
                         {
                             var objectResponse_ = await ReadObjectResponseAsync<TagTypeDto>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
+        /// Get Tag Types with Tags
+        /// </summary>
+        /// <remarks>
+        /// Returns all tag types with their associated tags grouped. Used by the tri-state tag filter dropdown.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<System.Collections.Generic.ICollection<TagTypeWithTagsDto>> WithTagsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+                
+                    // Operation Path: "api/tagtype/with-tags"
+                    urlBuilder_.Append("api/tagtype/with-tags");
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<System.Collections.Generic.ICollection<TagTypeWithTagsDto>>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
                             {
                                 throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
@@ -25093,6 +25517,49 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("defaultPublicHomePage")]
         public string? DefaultPublicHomePage { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("renderPolicyVersion")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? RenderPolicyVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("renderPolicyPreset")]
+        public string? RenderPolicyPreset { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("enableAdvancedRenderPolicyOverrides")]
+        public bool? EnableAdvancedRenderPolicyOverrides { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("globalRenderMode")]
+        public string? GlobalRenderMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("globalPrerenderEnabled")]
+        public bool? GlobalPrerenderEnabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("publicSeoRenderMode")]
+        public string? PublicSeoRenderMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("publicSeoPrerenderEnabled")]
+        public bool? PublicSeoPrerenderEnabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("operationalRenderMode")]
+        public string? OperationalRenderMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("operationalPrerenderEnabled")]
+        public bool? OperationalPrerenderEnabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("adminRenderMode")]
+        public string? AdminRenderMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("adminPrerenderEnabled")]
+        public bool? AdminPrerenderEnabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("onboardingRenderMode")]
+        public string? OnboardingRenderMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("onboardingPrerenderEnabled")]
+        public bool? OnboardingPrerenderEnabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("disallowInteractiveServerOnOnboarding")]
+        public bool? DisallowInteractiveServerOnOnboarding { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("enableIslamicModule")]
         public bool? EnableIslamicModule { get; set; } = default!;
 
@@ -25188,6 +25655,50 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("instanceStartedAt")]
         public System.DateTimeOffset? InstanceStartedAt { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class InstanceSmtpSettingsDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("host")]
+        public string? Host { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("port")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Port { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("username")]
+        public string? Username { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("password")]
+        public string? Password { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("security")]
+        public string? Security { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fromAddress")]
+        public string? FromAddress { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fromName")]
+        public string? FromName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("timeoutSeconds")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? TimeoutSeconds { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("skipCertificateValidation")]
+        public bool? SkipCertificateValidation { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -26124,6 +26635,49 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("analyticsEndpointUrl")]
         public string? AnalyticsEndpointUrl { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("renderPolicyVersion")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? RenderPolicyVersion { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("renderPolicyPreset")]
+        public string? RenderPolicyPreset { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("enableAdvancedRenderPolicyOverrides")]
+        public bool? EnableAdvancedRenderPolicyOverrides { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("globalRenderMode")]
+        public string? GlobalRenderMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("globalPrerenderEnabled")]
+        public bool? GlobalPrerenderEnabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("publicSeoRenderMode")]
+        public string? PublicSeoRenderMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("publicSeoPrerenderEnabled")]
+        public bool? PublicSeoPrerenderEnabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("operationalRenderMode")]
+        public string? OperationalRenderMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("operationalPrerenderEnabled")]
+        public bool? OperationalPrerenderEnabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("adminRenderMode")]
+        public string? AdminRenderMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("adminPrerenderEnabled")]
+        public bool? AdminPrerenderEnabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("onboardingRenderMode")]
+        public string? OnboardingRenderMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("onboardingPrerenderEnabled")]
+        public bool? OnboardingPrerenderEnabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("disallowInteractiveServerOnOnboarding")]
+        public bool? DisallowInteractiveServerOnOnboarding { get; set; } = default!;
+
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
         [System.Text.Json.Serialization.JsonExtensionData]
@@ -26586,6 +27140,35 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("fullName")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string FullName { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.4.0.0 (NJsonSchema v11.3.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class TagTypeWithTagsDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("fullName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string FullName { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("description")]
+        public string? Description { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("tags")]
+        public System.Collections.Generic.ICollection<TagListDto>? Tags { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 

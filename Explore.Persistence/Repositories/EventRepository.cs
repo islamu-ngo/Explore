@@ -221,9 +221,17 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
                     _dbContext.EventCategories.Any(ec =>
                         ec.EventId == e.Id && ec.CategoryId == (Guid)subFilter.Value)),
 
-                EventSubqueryFilterType.Tag => query.Where(e =>
+                EventSubqueryFilterType.TagsIncludedAny => query.Where(e =>
                     _dbContext.EventTags.Any(et =>
-                        et.EventId == e.Id && et.TagId == (Guid)subFilter.Value)),
+                        et.EventId == e.Id && ((List<Guid>)subFilter.Value).Contains(et.TagId))),
+
+                EventSubqueryFilterType.TagsExcludedAny => query.Where(e =>
+                    !_dbContext.EventTags.Any(et =>
+                        et.EventId == e.Id && ((List<Guid>)subFilter.Value).Contains(et.TagId))),
+
+                // TagsIncludedAll and TagsExcludedAll are handled below (require loops)
+                EventSubqueryFilterType.TagsIncludedAll => query,
+                EventSubqueryFilterType.TagsExcludedAll => query,
 
                 EventSubqueryFilterType.Location => query.Where(e =>
                     _dbContext.EventSessions.Any(es =>
@@ -251,6 +259,24 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
 
                 _ => query
             };
+
+            // Loop-based filters that can't be expressed in a switch expression
+            if (subFilter.FilterType == EventSubqueryFilterType.TagsIncludedAll)
+            {
+                var tagIds = (List<Guid>)subFilter.Value;
+                foreach (var tagId in tagIds)
+                {
+                    query = query.Where(e =>
+                        _dbContext.EventTags.Any(et => et.EventId == e.Id && et.TagId == tagId));
+                }
+            }
+            else if (subFilter.FilterType == EventSubqueryFilterType.TagsExcludedAll)
+            {
+                var tagIds = (List<Guid>)subFilter.Value;
+                query = query.Where(e =>
+                    !tagIds.All(tid =>
+                        _dbContext.EventTags.Any(et => et.EventId == e.Id && et.TagId == tid)));
+            }
         }
 
         return query;

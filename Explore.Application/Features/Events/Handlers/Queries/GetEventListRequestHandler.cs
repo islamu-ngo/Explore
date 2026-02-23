@@ -115,8 +115,19 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
         if (request.CategoryId.HasValue)
             spec = spec.And(EventSubqueryFilter.Category(request.CategoryId.Value));
 
-        if (request.TagId.HasValue)
-            spec = spec.And(EventSubqueryFilter.Tag(request.TagId.Value));
+        if (request.IncludedTagIds is { Count: > 0 })
+        {
+            spec = request.InclusionMode == TagFilterMode.And
+                ? spec.And(EventSubqueryFilter.TagsIncludedAll(request.IncludedTagIds))
+                : spec.And(EventSubqueryFilter.TagsIncludedAny(request.IncludedTagIds));
+        }
+
+        if (request.ExcludedTagIds is { Count: > 0 })
+        {
+            spec = request.ExclusionMode == TagFilterMode.Or
+                ? spec.And(EventSubqueryFilter.TagsExcludedAny(request.ExcludedTagIds))
+                : spec.And(EventSubqueryFilter.TagsExcludedAll(request.ExcludedTagIds));
+        }
 
         if (request.LocationId.HasValue)
             spec = spec.And(EventSubqueryFilter.Location(request.LocationId.Value));

@@ -477,3 +477,68 @@ ul {
     /* Add any other common card-like styling here */
     border: 1px solid var(--mud-palette-lines-default);
 }
+
+/* ========================================
+   Component: isl-startup-loader
+   Full-screen waiting state for non-SEO paths
+   ======================================== */
+.isl-startup-loader {
+    position: fixed;
+    inset: 0;
+    z-index: 2500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background:
+        radial-gradient(circle at 15% 20%, rgba(0, 209, 111, 0.22), transparent 50%),
+        radial-gradient(circle at 85% 80%, rgba(33, 150, 243, 0.18), transparent 50%),
+        #0f1720;
+    transition: opacity 0.22s ease, visibility 0.22s ease;
+}
+
+.isl-startup-loader--hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.isl-startup-loader__panel {
+    width: min(460px, 100%);
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(8, 14, 21, 0.78);
+    box-shadow: 0 16px 42px rgba(0, 0, 0, 0.36);
+    padding: 28px 24px;
+    text-align: center;
+}
+
+.isl-startup-loader__spinner {
+    width: 42px;
+    height: 42px;
+    margin: 0 auto 14px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.25);
+    border-top-color: #00d16f;
+    animation: isl-startup-loader-spin 0.86s linear infinite;
+}
+
+.isl-startup-loader__title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #f5f7fa;
+}
+
+.isl-startup-loader__subtitle {
+    margin: 8px 0 0;
+    font-size: 0.92rem;
+    line-height: 1.5;
+    color: rgba(245, 247, 250, 0.82);
+}
+
+@keyframes isl-startup-loader-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

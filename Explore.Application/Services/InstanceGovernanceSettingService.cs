@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Domain;
 using Explore.Domain.Constants;
+using Explore.Domain.Enums;
 using Explore.Domain.Modules;
 
 namespace Explore.Application.Services;
@@ -18,6 +19,9 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
     private const string TechModuleKey = "Mod_Tech";
     private const string DefaultBrandDisplayName = "ISLAMU Explore";
     private const string DefaultPublicHomePage = "EventList";
+    private const int DefaultRenderPolicyVersion = 1;
+    private const string DefaultRenderPolicyPreset = "SeoBalanced";
+    private const string DefaultRenderMode = "InteractiveAuto";
 
     private readonly ISystemSettingRepository _systemSettingRepository;
     private readonly ITenantCapabilityRepository _tenantCapabilityRepository;
@@ -39,6 +43,20 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         var tenantSelfService = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantSelfServiceRegistration);
         var tenantWhiteLabeling = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantWhiteLabelingEnabled);
         var defaultHomePage = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingDefaultPublicHomePage);
+        var renderPolicyVersion = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyVersion);
+        var renderPolicyPreset = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyPreset);
+        var renderPolicyAdvancedEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyAdvancedEnabled);
+        var globalRenderMode = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyGlobalRenderMode);
+        var globalPrerenderEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyGlobalPrerenderEnabled);
+        var publicSeoRenderMode = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyPublicSeoRenderMode);
+        var publicSeoPrerenderEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyPublicSeoPrerenderEnabled);
+        var operationalRenderMode = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyOperationalRenderMode);
+        var operationalPrerenderEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyOperationalPrerenderEnabled);
+        var adminRenderMode = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyAdminRenderMode);
+        var adminPrerenderEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyAdminPrerenderEnabled);
+        var onboardingRenderMode = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyOnboardingRenderMode);
+        var onboardingPrerenderEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyOnboardingPrerenderEnabled);
+        var disallowInteractiveServerOnOnboarding = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyDisallowInteractiveServerOnOnboarding);
         var islamicModule = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.ModulesIslamicEnabled);
         var techModule = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.ModulesTechEnabled);
         var userSubmittedEvents = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsUserSubmissionEnabled);
@@ -56,12 +74,26 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         var resolvedDeploymentMode = DeserializeString(deploymentMode?.Value, "SingleTenant");
         var isMultiTenant = resolvedDeploymentMode.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
 
-        return new InstanceGovernanceSettingsDto
+        var settings = new InstanceGovernanceSettingsDto
         {
             DeploymentMode = resolvedDeploymentMode,
             AllowTenantSelfServiceRegistration = isMultiTenant && DeserializeBoolean(tenantSelfService?.Value, false),
             AllowTenantWhiteLabeling = isMultiTenant && DeserializeBoolean(tenantWhiteLabeling?.Value, false),
             DefaultPublicHomePage = NormalizeHomePage(DeserializeString(defaultHomePage?.Value, DefaultPublicHomePage)),
+            RenderPolicyVersion = Math.Max(DeserializeInt(renderPolicyVersion?.Value, DefaultRenderPolicyVersion), 1),
+            RenderPolicyPreset = NormalizeRenderPolicyPreset(DeserializeString(renderPolicyPreset?.Value, DefaultRenderPolicyPreset)),
+            EnableAdvancedRenderPolicyOverrides = DeserializeBoolean(renderPolicyAdvancedEnabled?.Value, false),
+            GlobalRenderMode = NormalizeRenderMode(DeserializeString(globalRenderMode?.Value, DefaultRenderMode)),
+            GlobalPrerenderEnabled = DeserializeBoolean(globalPrerenderEnabled?.Value, false),
+            PublicSeoRenderMode = NormalizeRenderMode(DeserializeString(publicSeoRenderMode?.Value, string.Empty)),
+            PublicSeoPrerenderEnabled = DeserializeBoolean(publicSeoPrerenderEnabled?.Value, false),
+            OperationalRenderMode = NormalizeRenderMode(DeserializeString(operationalRenderMode?.Value, string.Empty)),
+            OperationalPrerenderEnabled = DeserializeBoolean(operationalPrerenderEnabled?.Value, false),
+            AdminRenderMode = NormalizeRenderMode(DeserializeString(adminRenderMode?.Value, string.Empty)),
+            AdminPrerenderEnabled = DeserializeBoolean(adminPrerenderEnabled?.Value, false),
+            OnboardingRenderMode = NormalizeRenderMode(DeserializeString(onboardingRenderMode?.Value, string.Empty)),
+            OnboardingPrerenderEnabled = DeserializeBoolean(onboardingPrerenderEnabled?.Value, false),
+            DisallowInteractiveServerOnOnboarding = DeserializeBoolean(disallowInteractiveServerOnOnboarding?.Value, true),
             EnableIslamicModule = DeserializeBoolean(islamicModule?.Value, true),
             EnableTechModule = DeserializeBoolean(techModule?.Value, true),
             AllowUserSubmittedEvents = DeserializeBoolean(userSubmittedEvents?.Value, true),
@@ -82,6 +114,9 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             LockTenantBrandCustomCssUrl = brandingCustomCssUrl?.IsLocked == true,
             AuthorizationProvider = NormalizeAuthorizationProvider(DeserializeString(authorizationProvider?.Value, "local"))
         };
+
+        NormalizeRenderPolicySettings(settings);
+        return settings;
     }
 
     public async Task ApplySettingsAsync(Guid defaultTenantId, InstanceGovernanceSettingsDto settings, Guid? actorUserId)
@@ -92,6 +127,7 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         settings.DefaultBrandLogoUrl = NormalizeOptionalUrl(settings.DefaultBrandLogoUrl);
         settings.DefaultBrandFaviconUrl = NormalizeOptionalUrl(settings.DefaultBrandFaviconUrl);
         settings.DefaultBrandCustomCssUrl = NormalizeOptionalUrl(settings.DefaultBrandCustomCssUrl);
+        NormalizeRenderPolicySettings(settings);
         var isMultiTenant = settings.DeploymentMode.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
 
         await UpsertSystemSettingAsync(
@@ -131,6 +167,138 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             1,
             "Default public landing experience for tenant domains",
             "[\"EventList\", \"LandingPage\"]");
+
+        await UpsertSystemSettingAsync(
+            GovernanceSettingKeys.RoutingRenderPolicyVersion,
+            JsonSerializer.Serialize(Math.Max(settings.RenderPolicyVersion, 1)),
+            SettingValueType.Integer,
+            true,
+            "Routing",
+            2,
+            "Version number for runtime render-policy schema.");
+
+        await UpsertSystemSettingAsync(
+            GovernanceSettingKeys.RoutingRenderPolicyPreset,
+            JsonSerializer.Serialize(settings.RenderPolicyPreset),
+            SettingValueType.String,
+            false,
+            "Routing",
+            3,
+            "Render-policy preset selected by instance administrator.",
+            "[\"SeoBalanced\", \"AllPrerendered\", \"AllInteractiveAutoNoPrerender\", \"CustomAdvanced\"]");
+
+        await UpsertSystemSettingAsync(
+            GovernanceSettingKeys.RoutingRenderPolicyAdvancedEnabled,
+            JsonSerializer.Serialize(settings.EnableAdvancedRenderPolicyOverrides),
+            SettingValueType.Boolean,
+            false,
+            "Routing",
+            4,
+            "Whether advanced render-policy overrides are enabled.");
+
+        await UpsertSystemSettingAsync(
+            GovernanceSettingKeys.RoutingRenderPolicyGlobalRenderMode,
+            JsonSerializer.Serialize(settings.GlobalRenderMode),
+            SettingValueType.String,
+            false,
+            "Routing",
+            5,
+            "Global fallback render mode used when route-group overrides are disabled or unavailable.",
+            "[\"InteractiveAuto\", \"InteractiveWebAssembly\", \"InteractiveServer\"]");
+
+        await UpsertSystemSettingAsync(
+            GovernanceSettingKeys.RoutingRenderPolicyGlobalPrerenderEnabled,
+            JsonSerializer.Serialize(settings.GlobalPrerenderEnabled),
+            SettingValueType.Boolean,
+            false,
+            "Routing",
+            6,
+            "Global fallback prerender flag used when route-group overrides are disabled or unavailable.");
+
+        await UpsertSystemSettingAsync(
+            GovernanceSettingKeys.RoutingRenderPolicyPublicSeoRenderMode,
+            JsonSerializer.Serialize(settings.PublicSeoRenderMode),
+            SettingValueType.String,
+            false,
+            "Routing",
+            7,
+            "Render mode applied to SEO-focused public routes.",
+            "[\"InteractiveAuto\", \"InteractiveWebAssembly\", \"InteractiveServer\"]");
+
+        await UpsertSystemSettingAsync(
+            GovernanceSettingKeys.RoutingRenderPolicyPublicSeoPrerenderEnabled,
+            JsonSerializer.Serialize(settings.PublicSeoPrerenderEnabled),
+            SettingValueType.Boolean,
+            false,
+            "Routing",
+            8,
+            "Whether SEO-focused public routes are prerendered.");
+
+        await UpsertSystemSettingAsync(
+            GovernanceSettingKeys.RoutingRenderPolicyOperationalRenderMode,
+            JsonSerializer.Serialize(settings.OperationalRenderMode),
+            SettingValueType.String,
+            false,
+            "Routing",
+            9,
+            "Render mode applied to operational routes.",
+            "[\"InteractiveAuto\", \"InteractiveWebAssembly\", \"InteractiveServer\"]");
+
+        await UpsertSystemSettingAsync(
+            GovernanceSettingKeys.RoutingRenderPolicyOperationalPrerenderEnabled,
+            JsonSerializer.Serialize(settings.OperationalPrerenderEnabled),
+            SettingValueType.Boolean,
+            false,
+            "Routing",
+            10,
+            "Whether operational routes are prerendered.");
+
+        await UpsertSystemSettingAsync(
+            GovernanceSettingKeys.RoutingRenderPolicyAdminRenderMode,
+            JsonSerializer.Serialize(settings.AdminRenderMode),
+            SettingValueType.String,
+            false,
+            "Routing",
+            11,
+            "Render mode applied to administrative routes.",
+            "[\"InteractiveAuto\", \"InteractiveWebAssembly\", \"InteractiveServer\"]");
+
+        await UpsertSystemSettingAsync(
+            GovernanceSettingKeys.RoutingRenderPolicyAdminPrerenderEnabled,
+            JsonSerializer.Serialize(settings.AdminPrerenderEnabled),
+            SettingValueType.Boolean,
+            false,
+            "Routing",
+            12,
+            "Whether administrative routes are prerendered.");
+
+        await UpsertSystemSettingAsync(
+            GovernanceSettingKeys.RoutingRenderPolicyOnboardingRenderMode,
+            JsonSerializer.Serialize(settings.OnboardingRenderMode),
+            SettingValueType.String,
+            true,
+            "Routing",
+            13,
+            "Render mode applied to onboarding routes.",
+            "[\"InteractiveAuto\", \"InteractiveWebAssembly\"]");
+
+        await UpsertSystemSettingAsync(
+            GovernanceSettingKeys.RoutingRenderPolicyOnboardingPrerenderEnabled,
+            JsonSerializer.Serialize(settings.OnboardingPrerenderEnabled),
+            SettingValueType.Boolean,
+            false,
+            "Routing",
+            14,
+            "Whether onboarding routes are prerendered.");
+
+        await UpsertSystemSettingAsync(
+            GovernanceSettingKeys.RoutingRenderPolicyDisallowInteractiveServerOnOnboarding,
+            JsonSerializer.Serialize(settings.DisallowInteractiveServerOnOnboarding),
+            SettingValueType.Boolean,
+            true,
+            "Routing",
+            15,
+            "Guardrail that disallows InteractiveServer on onboarding routes.");
 
         await UpsertSystemSettingAsync(
             GovernanceSettingKeys.ModulesIslamicEnabled,
@@ -349,6 +517,103 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         }
 
         return "EventList";
+    }
+
+    private static void NormalizeRenderPolicySettings(InstanceGovernanceSettingsDto settings)
+    {
+        settings.RenderPolicyVersion = Math.Max(settings.RenderPolicyVersion, 1);
+        settings.RenderPolicyPreset = NormalizeRenderPolicyPreset(settings.RenderPolicyPreset);
+        settings.GlobalRenderMode = NormalizeRenderMode(settings.GlobalRenderMode);
+
+        ApplyPresetDefaults(settings);
+
+        settings.PublicSeoRenderMode = NormalizeRenderMode(settings.PublicSeoRenderMode);
+        settings.OperationalRenderMode = NormalizeRenderMode(settings.OperationalRenderMode);
+        settings.AdminRenderMode = NormalizeRenderMode(settings.AdminRenderMode);
+        settings.OnboardingRenderMode = NormalizeRenderMode(settings.OnboardingRenderMode);
+
+        if (!settings.EnableAdvancedRenderPolicyOverrides)
+        {
+            settings.PublicSeoRenderMode = settings.GlobalRenderMode;
+            settings.PublicSeoPrerenderEnabled = settings.GlobalPrerenderEnabled;
+            settings.OperationalRenderMode = settings.GlobalRenderMode;
+            settings.OperationalPrerenderEnabled = settings.GlobalPrerenderEnabled;
+            settings.AdminRenderMode = settings.GlobalRenderMode;
+            settings.AdminPrerenderEnabled = settings.GlobalPrerenderEnabled;
+            settings.OnboardingRenderMode = settings.GlobalRenderMode;
+            settings.OnboardingPrerenderEnabled = settings.GlobalPrerenderEnabled;
+
+            if (settings.RenderPolicyPreset.Equals(RenderPolicyPresetEnum.SeoBalanced.ToString(), StringComparison.OrdinalIgnoreCase))
+            {
+                settings.PublicSeoPrerenderEnabled = true;
+            }
+        }
+
+        if (IsInteractiveServerRenderMode(settings.OnboardingRenderMode))
+        {
+            settings.OnboardingRenderMode = DefaultRenderMode;
+        }
+
+        settings.DisallowInteractiveServerOnOnboarding = true;
+    }
+
+    private static string NormalizeRenderPolicyPreset(string? raw)
+    {
+        if (Enum.TryParse(raw, ignoreCase: true, out RenderPolicyPresetEnum preset))
+        {
+            return preset.ToString();
+        }
+
+        return DefaultRenderPolicyPreset;
+    }
+
+    private static string NormalizeRenderMode(string? raw)
+    {
+        if (Enum.TryParse(raw, ignoreCase: true, out RenderModeOptionEnum mode))
+        {
+            return mode.ToString();
+        }
+
+        return DefaultRenderMode;
+    }
+
+    private static bool IsInteractiveServerRenderMode(string? renderMode)
+    {
+        return Enum.TryParse(renderMode, ignoreCase: true, out RenderModeOptionEnum mode)
+            && mode == RenderModeOptionEnum.InteractiveServer;
+    }
+
+    private static void ApplyPresetDefaults(InstanceGovernanceSettingsDto settings)
+    {
+        if (!Enum.TryParse(settings.RenderPolicyPreset, ignoreCase: true, out RenderPolicyPresetEnum preset))
+        {
+            preset = RenderPolicyPresetEnum.SeoBalanced;
+        }
+
+        switch (preset)
+        {
+            case RenderPolicyPresetEnum.AllPrerendered:
+                settings.EnableAdvancedRenderPolicyOverrides = false;
+                settings.GlobalPrerenderEnabled = true;
+                break;
+
+            case RenderPolicyPresetEnum.AllInteractiveAutoNoPrerender:
+                settings.EnableAdvancedRenderPolicyOverrides = false;
+                settings.GlobalRenderMode = RenderModeOptionEnum.InteractiveAuto.ToString();
+                settings.GlobalPrerenderEnabled = false;
+                break;
+
+            case RenderPolicyPresetEnum.SeoBalanced:
+                settings.EnableAdvancedRenderPolicyOverrides = false;
+                settings.GlobalRenderMode = RenderModeOptionEnum.InteractiveAuto.ToString();
+                settings.GlobalPrerenderEnabled = false;
+                settings.PublicSeoPrerenderEnabled = true;
+                break;
+
+            case RenderPolicyPresetEnum.CustomAdvanced:
+                settings.EnableAdvancedRenderPolicyOverrides = true;
+                break;
+        }
     }
 
     private static string NormalizeAuthorizationProvider(string? raw)

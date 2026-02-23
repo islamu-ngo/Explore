@@ -30,6 +30,7 @@ public partial class EventList : ComponentBase
     public EventListState? PersistedState { get; set; }
 
     private EventFilterBar? _filterBar;
+    private TriStateTagFilterDropdown? _tagFilterDropdown;
     private string? _errorMessage;
     private string? _successMessage;
 
@@ -57,6 +58,7 @@ public partial class EventList : ComponentBase
     private ICollection<LocationListDto> locations = new List<LocationListDto>();
     private ICollection<RegistrationModeListDto> registrationModes = new List<RegistrationModeListDto>();
     private ICollection<LanguageListDto> languages = new List<LanguageListDto>();
+    private ICollection<TagTypeWithTagsDto> tagGroups = new List<TagTypeWithTagsDto>();
 
     private Dictionary<int, string> eventTypeMap = new();
     private Dictionary<int, string> eventFormatMap = new();
@@ -197,8 +199,9 @@ public partial class EventList : ComponentBase
             var locationsTask = LocationService.GetAllLocationsAsync();
             var registrationModesTask = AdminService.GetRegistrationModesAsync();
             var languagesTask = AdminService.GetLanguagesAsync();
+            var tagGroupsTask = TagService.GetTagsGroupedByTagTypeAsync();
 
-            await Task.WhenAll(eventTypesTask, audienceGendersTask, audienceAgesTask, eventStatusesTask, eventFormatsTask, categoriesTask, tagsTask, madhabsTask, locationsTask, registrationModesTask, languagesTask);
+            await Task.WhenAll(eventTypesTask, audienceGendersTask, audienceAgesTask, eventStatusesTask, eventFormatsTask, categoriesTask, tagsTask, madhabsTask, locationsTask, registrationModesTask, languagesTask, tagGroupsTask);
 
             eventTypes = await eventTypesTask ?? new List<EventTypeListDto>();
             audienceGenders = await audienceGendersTask ?? new List<AudienceGenderListDto>();
@@ -211,6 +214,7 @@ public partial class EventList : ComponentBase
             locations = await locationsTask ?? new List<LocationListDto>();
             registrationModes = await registrationModesTask ?? new List<RegistrationModeListDto>();
             languages = await languagesTask ?? new List<LanguageListDto>();
+            tagGroups = await tagGroupsTask ?? new List<TagTypeWithTagsDto>();
 
             BuildLookupMaps();
             _dataLoaded = true;
@@ -239,7 +243,8 @@ public partial class EventList : ComponentBase
         var dateFilter = _filterBar?.SelectedDate ?? "";
         var searchTerm = _filterBar?.SearchTerm ?? SearchQuery;
         var categoryId = _filterBar?.SelectedCategoryId;
-        var tagId = _filterBar?.SelectedTagId;
+        // Tag filter state will be provided by TriStateTagFilterDropdown in Phase 4/5
+        // For now, pass null for multi-tag params
         var formatId = _filterBar?.SelectedFormatId;
         var madhabId = _filterBar?.SelectedMadhabId;
         var locationId = _filterBar?.SelectedLocationId;
@@ -288,7 +293,10 @@ public partial class EventList : ComponentBase
             pageSize,
             searchTerm: searchTerm,
             categoryId: categoryId,
-            tagId: tagId,
+            includedTagIds: _tagFilterDropdown?.GetCurrentFilter().IncludedTagIds,
+            excludedTagIds: _tagFilterDropdown?.GetCurrentFilter().ExcludedTagIds,
+            inclusionMode: _tagFilterDropdown?.GetCurrentFilter().InclusionMode,
+            exclusionMode: _tagFilterDropdown?.GetCurrentFilter().ExclusionMode,
             formatId: formatId,
             madhabId: madhabId,
             locationId: locationId,

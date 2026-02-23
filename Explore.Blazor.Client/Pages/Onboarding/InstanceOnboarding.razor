@@ -4,7 +4,7 @@
 @using Explore.Blazor.Client.Clients
 @layout SetupLayout
 @attribute [Authorize]
-@rendermode @(new InteractiveAutoRenderMode(prerender: false))
+@rendermode InteractiveServer
 @inject IInstanceOnboardingService InstanceOnboardingService
 @inject IGroupService GroupService
 @inject IUserService UserService
@@ -28,7 +28,21 @@
 
         @if (_isLoading)
         {
-            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            <MudStack Spacing="3">
+                <MudSkeleton Width="50%" Height="20px" Class="mb-1" />
+                <MudStack Direction="Direction.Row" Spacing="2" Class="mb-4">
+                    @for (int i = 0; i < 4; i++)
+                    {
+                        <MudSkeleton SkeletonType="SkeletonType.Circle" Width="32px" Height="32px" />
+                        @if (i < 3) { <MudSkeleton Width="60px" Height="4px" Class="align-self-center" /> }
+                    }
+                </MudStack>
+                <MudSkeleton Width="40%" Height="28px" Class="mb-2" />
+                <MudSkeleton Width="100%" Height="56px" Class="mb-2" />
+                <MudSkeleton Width="100%" Height="56px" Class="mb-2" />
+                <MudSkeleton Width="100%" Height="40px" Class="mb-2" />
+                <MudSkeleton Width="100%" Height="40px" />
+            </MudStack>
         }
         else
         {
@@ -346,21 +360,24 @@
             return;
         }
 
-        var validationResult = await InstanceOnboardingService.ValidateSecretAsync(secret);
-        if (!validationResult.Valid)
+        // /bff/setup-secret/sync validates the secret internally — no separate ValidateSecretAsync
+        // call needed, which would otherwise consume an extra rate-limit token before complete.
+        var syncResponse = await Http.PostAsJsonAsync("/bff/setup-secret/sync", new { Secret = secret });
+        if (syncResponse.IsSuccessStatusCode)
+        {
+            _setupSecretSynced = true;
+            return;
+        }
+
+        // 400 = invalid secret, 410 = setup already completed → clear and redirect
+        if (syncResponse.StatusCode == System.Net.HttpStatusCode.BadRequest ||
+            syncResponse.StatusCode == System.Net.HttpStatusCode.Gone)
         {
             await Http.DeleteAsync("/bff/setup-secret");
             await JSRuntime.InvokeVoidAsync("sessionStorage.removeItem", "setup-secret");
             _errorMessage = "Setup secret expired or is invalid. Please enter the current setup secret again.";
             StateHasChanged();
             Navigation.NavigateTo("/setup", forceLoad: true);
-            return;
-        }
-
-        var syncResponse = await Http.PostAsJsonAsync("/bff/setup-secret/sync", new { Secret = secret });
-        if (syncResponse.IsSuccessStatusCode)
-        {
-            _setupSecretSynced = true;
             return;
         }
 

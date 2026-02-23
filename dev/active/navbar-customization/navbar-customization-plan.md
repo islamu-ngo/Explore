@@ -140,3 +140,28 @@ This plan details the implementation of a **Navbar Customization** feature for t
 - **Blazor Admin UI**: M (5h)
 - **Blazor Public UI**: S (2h)
 - **Total**: ~15 hours
+
+## Progress Update (2026-02-23 18:47 Europe/Brussels)
+
+### Completed In This Session
+- Implemented admin consolidation delivery track (panel-first admin UX) in existing tenant/instance administration pages.
+- Added tenant sections:
+  - `TenantOrganizationsSection.razor`
+  - `TenantLookupTablesSection.razor`
+- Added instance SMTP section:
+  - `InstanceSmtpSection.razor`
+- Extended SMTP settings pipeline end-to-end:
+  - Application DTO/service/CQRS handlers
+  - API endpoints in `InstanceOnboardingController`
+  - Blazor client service contract/methods
+- Updated navbar admin dropdown labels/links and removed `/admin` dashboard link.
+- Removed legacy standalone admin pages/routes replaced by panel sections.
+
+### Verification
+- Build and tests passed:
+  - `dotnet build`
+  - `dotnet test --project "Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj" --no-build` (522/522)
+  - `dotnet test --project "Event.Application.UnitTests/Event.Application.UnitTests.csproj"` (278/278)
+
+### Remaining
+- Manual browser smoke verification for tenant/instance admin pages and permissions matrix.

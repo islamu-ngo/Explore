@@ -4,12 +4,15 @@
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.Onboarding;
+using Explore.Application.DTOs.Onboarding.Validators;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using MediatR;
+using Microsoft.Extensions.Logging;
 using TenantSettingsEntity = Explore.Domain.TenantSettings;
 
 namespace Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
@@ -21,19 +24,22 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
     private readonly ITenantRepository _tenantRepository;
     private readonly ITenantSettingsRepository _tenantSettingsRepository;
     private readonly IInstanceGovernanceSettingService _governanceSettingService;
+    private readonly ILogger<UpdateInstanceGovernanceSettingsCommandHandler> _logger;
 
     public UpdateInstanceGovernanceSettingsCommandHandler(
         IAdminContext adminContext,
         IInstanceBootstrapStateRepository instanceBootstrapStateRepository,
         ITenantRepository tenantRepository,
         ITenantSettingsRepository tenantSettingsRepository,
-        IInstanceGovernanceSettingService governanceSettingService)
+        IInstanceGovernanceSettingService governanceSettingService,
+        ILogger<UpdateInstanceGovernanceSettingsCommandHandler> logger)
     {
         _adminContext = adminContext;
         _instanceBootstrapStateRepository = instanceBootstrapStateRepository;
         _tenantRepository = tenantRepository;
         _tenantSettingsRepository = tenantSettingsRepository;
         _governanceSettingService = governanceSettingService;
+        _logger = logger;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateInstanceGovernanceSettingsCommand request, CancellationToken cancellationToken)
@@ -45,6 +51,18 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
         {
             response.Success = false;
             response.Message = "Only instance administrators can update instance governance settings.";
+            return response;
+        }
+
+        var validator = new InstanceGovernanceSettingsDtoValidator();
+        var validationResult = await validator.ValidateAsync(request.Settings, cancellationToken);
+        if (!validationResult.IsValid)
+        {
+            LogOnboardingGuardrailRejectionIfNeeded(request.UserId, request.Settings);
+
+            response.Success = false;
+            response.Message = "Invalid instance governance settings.";
+            response.Errors = validationResult.Errors.Select(x => x.ErrorMessage).ToList();
             return response;
         }
 
@@ -138,5 +156,24 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
         }
 
         return null;
+    }
+
+    private void LogOnboardingGuardrailRejectionIfNeeded(Guid userId, InstanceGovernanceSettingsDto settings)
+    {
+        var usesInteractiveServerOnOnboarding = string.Equals(
+            settings.OnboardingRenderMode,
+            RenderModeOptionEnum.InteractiveServer.ToString(),
+            StringComparison.OrdinalIgnoreCase);
+
+        if (!usesInteractiveServerOnOnboarding && settings.DisallowInteractiveServerOnOnboarding)
+        {
+            return;
+        }
+
+        _logger.LogWarning(
+            "Rejected instance governance update due to onboarding render-policy guardrail violation. UserId: {UserId}, OnboardingRenderMode: {OnboardingRenderMode}, DisallowInteractiveServerOnOnboarding: {DisallowInteractiveServerOnOnboarding}",
+            userId,
+            settings.OnboardingRenderMode,
+            settings.DisallowInteractiveServerOnOnboarding);
     }
 }

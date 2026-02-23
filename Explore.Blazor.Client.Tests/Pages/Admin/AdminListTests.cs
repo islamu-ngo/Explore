@@ -1,7 +1,7 @@
-// ABOUTME: Component tests for AdminList dashboard loading/error/success states.
-// ABOUTME: Verifies admin request summaries render correctly from service data.
+// ABOUTME: Component tests for tenant organization approvals section loading/error/success states.
+// ABOUTME: Verifies organization request summaries render correctly after admin page consolidation.
 
-using Explore.Blazor.Client.Pages.Admin;
+using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
 
@@ -19,8 +19,6 @@ public class AdminListTests : IDisposable
 
         _ctx.Services.AddSingleton(_adminService);
         _ctx.Services.AddSingleton(Substitute.For<IDialogService>());
-        _ctx.Services.AddSingleton(Substitute.For<IUserService>());
-        _ctx.Services.AddSingleton(Substitute.For<ILogger<AdminList>>());
 
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Admin User", "admin@example.com");
     }
@@ -30,10 +28,10 @@ public class AdminListTests : IDisposable
         _ctx.Dispose();
     }
 
-    private IRenderedComponent<DynamicComponent> RenderAdminList()
+    private IRenderedComponent<DynamicComponent> RenderOrganizationsSection()
     {
-        var componentType = typeof(AdminList).Assembly.GetType("Explore.Blazor.Client.Pages.Admin.AdminList")
-                            ?? throw new InvalidOperationException("AdminList component type not found");
+        var componentType = typeof(IAdminService).Assembly.GetType("Explore.Blazor.Client.Components.Admin.Tenant.TenantOrganizationsSection")
+                            ?? throw new InvalidOperationException("TenantOrganizationsSection component type not found");
 
         return _ctx.RenderMudComponent<DynamicComponent>(p => p.Add(x => x.Type, componentType));
     }
@@ -46,7 +44,7 @@ public class AdminListTests : IDisposable
         _adminService.GetOrganizationRequestsAsync().Returns(pending.Task);
 
         // Act
-        var cut = RenderAdminList();
+        var cut = RenderOrganizationsSection();
 
         // Assert
         await Assert.That(cut.Markup).Contains("Loading organization requests...");
@@ -62,7 +60,7 @@ public class AdminListTests : IDisposable
         _adminService.GetOrganizationRequestsAsync().ThrowsAsync(new InvalidOperationException("boom"));
 
         // Act
-        var cut = RenderAdminList();
+        var cut = RenderOrganizationsSection();
         cut.WaitForState(() => cut.Markup.Contains("Failed to load organizations", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
 
         // Assert
@@ -86,11 +84,11 @@ public class AdminListTests : IDisposable
         ]);
 
         // Act
-        var cut = RenderAdminList();
-        cut.WaitForState(() => cut.Markup.Contains("Admin Management", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
+        var cut = RenderOrganizationsSection();
+        cut.WaitForState(() => cut.Markup.Contains("Organization Approvals", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
 
         // Assert
-        await Assert.That(cut.Markup).Contains("Admin Management");
+        await Assert.That(cut.Markup).Contains("Organization Approvals");
         await Assert.That(cut.Markup).Contains("All (1)");
         await Assert.That(cut.Markup).Contains("Pending (1)");
         await Assert.That(cut.Markup).Contains("Approved (0)");

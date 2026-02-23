@@ -86,8 +86,19 @@
 
             @if (_isLoading)
             {
-                <div class="d-flex justify-center py-12">
-                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                <div class="d-flex justify-center gap-6 px-12">
+                    @for (int i = 0; i < 3; i++)
+                    {
+                        <MudCard Elevation="0" Class="border-solid border-1 mud-border-lines-default rounded-xl overflow-hidden d-flex flex-column" Style="flex: 1; max-width: 400px;">
+                            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
+                            <MudCardContent Class="pa-4">
+                                <MudSkeleton Width="80%" Height="24px" Class="mb-2" />
+                                <MudSkeleton Width="100%" Height="16px" Class="mb-1" />
+                                <MudSkeleton Width="90%" Height="16px" Class="mb-4" />
+                                <MudSkeleton Width="120px" Height="20px" />
+                            </MudCardContent>
+                        </MudCard>
+                    }
                 </div>
             }
             else if (_events.Any())

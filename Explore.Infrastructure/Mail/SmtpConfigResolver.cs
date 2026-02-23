@@ -105,8 +105,8 @@ public class SmtpConfigResolver : ISmtpConfigResolver
         {
             Host = host,
             Port = port > 0 ? port : 587,
-            Username = await _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.EmailSmtpUsername, tenantId, cancellationToken),
-            Password = await _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.EmailSmtpPassword, tenantId, cancellationToken),
+            Username = await _settingsResolver.GetSettingAsync<string>(InfrastructureSecretSettingKeys.Email.SmtpUsername, tenantId, cancellationToken),
+            Password = await _settingsResolver.GetSettingAsync<string>(InfrastructureSecretSettingKeys.Email.SmtpPassword, tenantId, cancellationToken),
             Security = Enum.TryParse<SmtpSecurityMode>(securityStr, ignoreCase: true, out var security)
                 ? security
                 : SmtpSecurityMode.StartTls,

@@ -23,3 +23,21 @@ Last Updated: 2026-02-23
 
 - Decision: Before context reset, update every active context/tasks file with a timestamped checkpoint entry, and add deep handoff detail to the currently active track only.
 - Why: Ensures broad continuity for all active tracks while preserving high-signal detail where active implementation is ongoing.
+
+## 2026-02-23 18:47 Europe/Brussels - Admin Consolidation Implementation Completed
+
+- Decision: Complete the consolidation by deleting legacy standalone admin pages/routes after embedding equivalent capabilities into panel sections.
+- Why: Prevent duplicate administrative entry points and keep one canonical settings-style admin UX per role.
+- Outcome:
+  - Tenant administration now hosts organizations + lookup management.
+  - Instance administration now hosts SMTP settings + test connection.
+  - Navbar admin dropdown routes now point directly to tenant/instance administration pages.
+
+## 2026-02-23 18:47 Europe/Brussels - Verification Baseline for This Delivery
+
+- Decision: Treat successful `dotnet build` + targeted Blazor and Application unit tests as release gate for this session due lack of Razor LSP in environment.
+- Why: Ensures functional validation while acknowledging toolchain limitation for `.razor` diagnostics.
+- Evidence:
+  - Build passed.
+  - Blazor client tests passed (522).
+  - Application unit tests passed (278).

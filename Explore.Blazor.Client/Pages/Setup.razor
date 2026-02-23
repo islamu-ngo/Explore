@@ -2,7 +2,7 @@
 @* ABOUTME: Validates secret, stores it in sessionStorage, then routes to onboarding/login flow. *@
 
 @page "/setup"
-@rendermode @(new InteractiveAutoRenderMode(prerender: false))
+@rendermode InteractiveServer
 @layout SetupLayout
 @implements IDisposable
 @inject IInstanceOnboardingService InstanceOnboardingService
@@ -16,9 +16,14 @@
 
         @if (_isLoading)
         {
-            <MudStack Spacing="2" AlignItems="AlignItems.Center">
-                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
-                <MudText Typo="Typo.body2">Checking instance status...</MudText>
+            <MudStack Spacing="2">
+                <MudSkeleton Width="80%" Height="20px" Class="mb-1" />
+                <MudSkeleton Width="100%" Height="56px" Class="mb-2" />
+                <MudSkeleton Width="50%" Height="16px" Class="mb-3" />
+                <MudStack Direction="Direction.Row" Spacing="2">
+                    <MudSkeleton Width="100px" Height="40px" />
+                    <MudSkeleton Width="120px" Height="40px" />
+                </MudStack>
             </MudStack>
         }
         else if (_setupTimedOut)

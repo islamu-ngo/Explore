@@ -105,14 +105,14 @@ public class S3ConfigResolver : IS3ConfigResolver
             return null;
         }
 
-        var accessKeyId = await ResolveStringAsync(GovernanceSettingKeys.S3AccessKeyId, "S3Settings:AccessKeyId", tenantId, cancellationToken);
+        var accessKeyId = await ResolveStringAsync(InfrastructureSecretSettingKeys.Storage.AccessKeyId, "S3Settings:AccessKeyId", tenantId, cancellationToken);
         if (string.IsNullOrWhiteSpace(accessKeyId))
         {
             _logger.LogDebug("S3 not configured for tenant {TenantId}: access_key_id is empty", tenantId);
             return null;
         }
 
-        var secretAccessKey = await ResolveStringAsync(GovernanceSettingKeys.S3SecretAccessKey, "S3Settings:SecretAccessKey", tenantId, cancellationToken);
+        var secretAccessKey = await ResolveStringAsync(InfrastructureSecretSettingKeys.Storage.SecretAccessKey, "S3Settings:SecretAccessKey", tenantId, cancellationToken);
         if (string.IsNullOrWhiteSpace(secretAccessKey))
         {
             _logger.LogDebug("S3 not configured for tenant {TenantId}: secret_access_key is empty", tenantId);

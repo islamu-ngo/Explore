@@ -1,6 +1,6 @@
 # Handoff: Navbar Customization / Admin Consolidation
 
-Last Updated: 2026-02-23 18:12 Europe/Brussels
+Last Updated: 2026-02-23 18:47 Europe/Brussels
 
 ## Goal of Current Changes
 
@@ -10,7 +10,7 @@ Implement user-requested admin UX consolidation:
 - Update navbar admin dropdown labels/links by role.
 - Remove legacy `/admin` dashboard and standalone lookup pages once migrated.
 
-## Exact Files + Lines to Start Editing
+## Exact Files + Lines Last Edited
 
 - `Explore.Blazor.Client/Components/Admin/Tenant/TenantAdminSettingsLayout.razor:45`
   - Insert new sidebar items after Policies/Domain/Branding (`Organizations`, `Lookup Tables`).
@@ -40,9 +40,17 @@ Implement user-requested admin UX consolidation:
 
 ## Current Implementation State
 
-- Completed: exhaustive analysis, implementation plan, dev docs + journal updates.
-- Not started: product code edits for admin consolidation (all implementation tasks remain open).
-- Blockers: none technical; only implementation work pending.
+- Completed in this session:
+  - Tenant panel now includes Organizations and Lookup Tables sections.
+  - Instance panel now includes SMTP section with connection test button.
+  - SMTP settings get/update/test flow implemented in Blazor client + API + Application service/CQRS.
+  - Navbar admin dropdown updated: removed `/admin`, renamed to Instance/Tenant Administration.
+  - Legacy standalone admin pages/routes removed from `Pages/Admin` and `Routes.razor`.
+- Verification completed:
+  - `dotnet build` passed.
+  - `dotnet test --project "Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj" --no-build` passed (522).
+  - `dotnet test --project "Event.Application.UnitTests/Event.Application.UnitTests.csproj"` passed (278).
+- Blockers: no blocking issues; remaining work is manual UI smoke testing and optional warning cleanup.
 
 ## Uncommitted Changes Needing Attention
 
@@ -66,23 +74,32 @@ dotnet build
 ```
 
 ```bash
-dotnet test Explore.Blazor.Client.Tests
+dotnet test --project "Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj" --no-build
 ```
 
 ```bash
-dotnet test Event.Application.UnitTests
+dotnet test --project "Event.Application.UnitTests/Event.Application.UnitTests.csproj"
 ```
 
-## Verification Commands After Implementation
+## Verification Commands (Repeatable)
 
 ```bash
 dotnet build
 ```
 
 ```bash
-dotnet test Explore.Blazor.Client.Tests --filter "NavMenu|Admin|Onboarding"
+dotnet test --project "Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj" --no-build
 ```
 
 ```bash
-dotnet test Event.Application.UnitTests
+dotnet test --project "Event.Application.UnitTests/Event.Application.UnitTests.csproj"
+
+## Remaining Work (Unfinished)
+
+- Manual browser smoke pass:
+  - Tenant admin: Organizations approvals and Lookup Tables CRUD/tabs.
+  - Instance admin: SMTP save and test connection UX feedback.
+  - Navbar dropdown visibility by role claims.
+- Optional cleanup:
+  - Pre-existing analyzer/nullability warnings not introduced by this feature.
 ```

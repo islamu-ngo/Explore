@@ -42,4 +42,24 @@ public class TagTypeTagsRepository : GenericRepository<TagTypeTags, Guid>, ITagT
             .AsNoTracking()
             .AnyAsync(tt => tt.TagId == tagId && tt.TagTypeId == tagTypeId);
     }
+
+    public async Task<List<(TagType TagType, List<Tag> Tags)>> GetAllTagsGroupedByTagType()
+    {
+        var allEntries = await _dbContext.TagTypeTags
+            .AsNoTracking()
+            .Include(tt => tt.TagType)
+            .Include(tt => tt.Tag)
+            .OrderBy(tt => tt.TagType.FullName)
+            .ThenBy(tt => tt.Tag.FullName)
+            .ToListAsync();
+
+        return allEntries
+            .GroupBy(tt => tt.TagTypeId)
+            .Select(g =>
+            {
+                var first = g.First();
+                return (first.TagType, g.Select(tt => tt.Tag).ToList());
+            })
+            .ToList();
+    }
 }

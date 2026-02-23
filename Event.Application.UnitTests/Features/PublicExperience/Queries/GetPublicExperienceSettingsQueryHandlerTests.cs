@@ -17,6 +17,7 @@ public class GetPublicExperienceSettingsQueryHandlerTests
     private readonly ISettingsResolver _settingsResolver;
     private readonly ITenantPolicySettingService _policySettingService;
     private readonly IModuleService _moduleService;
+    private readonly IInstanceGovernanceSettingService _instanceGovernanceSettingService;
     private readonly GetPublicExperienceSettingsQueryHandler _handler;
 
     public GetPublicExperienceSettingsQueryHandlerTests()
@@ -26,13 +27,16 @@ public class GetPublicExperienceSettingsQueryHandlerTests
         _settingsResolver = Substitute.For<ISettingsResolver>();
         _policySettingService = Substitute.For<ITenantPolicySettingService>();
         _moduleService = Substitute.For<IModuleService>();
+        _instanceGovernanceSettingService = Substitute.For<IInstanceGovernanceSettingService>();
+        _instanceGovernanceSettingService.ReadSettingsAsync().Returns(new InstanceGovernanceSettingsDto());
 
         _handler = new GetPublicExperienceSettingsQueryHandler(
             _tenantContext,
             _systemSettingRepository,
             _settingsResolver,
             _policySettingService,
-            _moduleService);
+            _moduleService,
+            _instanceGovernanceSettingService);
     }
 
     [Test]
@@ -180,5 +184,47 @@ public class GetPublicExperienceSettingsQueryHandlerTests
         // Assert
         await Assert.That(result.AnalyticsProvider).IsEqualTo("posthog");
         await Assert.That(result.AnalyticsEnabled).IsFalse();
+    }
+
+    [Test]
+    public async Task Handle_IncludesGovernanceRenderPolicyValuesInPublicPayload()
+    {
+        // Arrange
+        var tenantId = Guid.NewGuid();
+        _tenantContext.TenantId.Returns(tenantId);
+
+        _policySettingService.ReadEffectiveTenantSettingsAsync(tenantId).Returns(new TenantPolicySettingsDto());
+        _moduleService.GetEnabledModulesAsync(tenantId, Arg.Any<CancellationToken>())
+            .Returns(new List<ModuleInfo>());
+
+        _instanceGovernanceSettingService.ReadSettingsAsync().Returns(new InstanceGovernanceSettingsDto
+        {
+            RenderPolicyVersion = 4,
+            RenderPolicyPreset = "CustomAdvanced",
+            EnableAdvancedRenderPolicyOverrides = true,
+            GlobalRenderMode = "InteractiveWebAssembly",
+            GlobalPrerenderEnabled = true,
+            PublicSeoRenderMode = "InteractiveAuto",
+            PublicSeoPrerenderEnabled = true,
+            OperationalRenderMode = "InteractiveServer",
+            OperationalPrerenderEnabled = false,
+            AdminRenderMode = "InteractiveServer",
+            AdminPrerenderEnabled = false,
+            OnboardingRenderMode = "InteractiveAuto",
+            OnboardingPrerenderEnabled = false,
+            DisallowInteractiveServerOnOnboarding = true
+        });
+
+        // Act
+        var result = await _handler.Handle(new GetPublicExperienceSettingsQuery(), CancellationToken.None);
+
+        // Assert
+        await Assert.That(result.RenderPolicyVersion).IsEqualTo(4);
+        await Assert.That(result.RenderPolicyPreset).IsEqualTo("CustomAdvanced");
+        await Assert.That(result.EnableAdvancedRenderPolicyOverrides).IsTrue();
+        await Assert.That(result.GlobalRenderMode).IsEqualTo("InteractiveWebAssembly");
+        await Assert.That(result.GlobalPrerenderEnabled).IsTrue();
+        await Assert.That(result.OperationalRenderMode).IsEqualTo("InteractiveServer");
+        await Assert.That(result.DisallowInteractiveServerOnOnboarding).IsTrue();
     }
 }

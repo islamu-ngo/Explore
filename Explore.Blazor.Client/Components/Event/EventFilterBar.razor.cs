@@ -33,7 +33,7 @@ public partial class EventFilterBar
     public int? SelectedMadhabId { get; set; }
     public int? SelectedRegistrationModeId { get; set; }
     public int? SelectedLanguageId { get; set; }
-    public Guid? SelectedTagId { get; set; }
+    // Tag filtering is handled by TriStateTagFilterDropdown (Phase 4)
 
     // New Core Filters
     public int? SelectedEventTypeId { get; set; }
@@ -76,7 +76,6 @@ public partial class EventFilterBar
         SelectedMadhabId = null;
         SelectedRegistrationModeId = null;
         SelectedLanguageId = null;
-        SelectedTagId = null;
         SelectedEventTypeId = null;
         SelectedAudienceGenderId = null;
         SelectedAudienceAgeId = null;
@@ -111,7 +110,7 @@ public partial class EventFilterBar
         if (SelectedMadhabId.HasValue) count++;
         if (SelectedRegistrationModeId.HasValue) count++;
         if (SelectedLanguageId.HasValue) count++;
-        if (SelectedTagId.HasValue) count++;
+        // Tag filter count handled by TriStateTagFilterDropdown
         if (SelectedEventTypeId.HasValue) count++;
         if (SelectedAudienceGenderId.HasValue) count++;
         if (SelectedAudienceAgeId.HasValue) count++;

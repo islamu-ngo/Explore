@@ -9,7 +9,7 @@ namespace Explore.Blazor.Client.Tests.Pages;
 /// </summary>
 /// <remarks>
 /// Home page has three states:
-/// 1. Loading - Shows loading indicator while checking auth
+/// 1. Loading - Shows skeleton placeholders while checking auth
 /// 2. Authenticated - Shows LandingPageForUsers
 /// 3. Anonymous - Shows LandingPageForNonUsers
 /// </remarks>
@@ -38,8 +38,8 @@ public class HomeTests : IDisposable
         // Act
         var cut = _ctx.RenderMudComponent<Home>();
 
-        // Assert - Should show loading
-        await Assert.That(cut.Markup).Contains("Loading");
+        // Assert - Should show skeleton loading placeholders
+        await Assert.That(cut.Markup).Contains("mud-skeleton");
     }
 
     [Test]
@@ -53,11 +53,11 @@ public class HomeTests : IDisposable
 
         // Act
         var cut = _ctx.RenderMudComponent<Home>();
-        cut.WaitForState(() => !cut.Markup.Contains("Loading", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(2));
+        cut.WaitForState(() => !cut.Markup.Contains("mud-skeleton", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(2));
 
         // Assert - Should render authenticated content
         // LandingPageForUsers typically has different content than non-user page
-        await Assert.That(cut.Markup).DoesNotContain("Loading");
+        await Assert.That(cut.Markup).DoesNotContain("mud-skeleton");
     }
 
     [Test]
@@ -71,10 +71,10 @@ public class HomeTests : IDisposable
 
         // Act
         var cut = _ctx.RenderMudComponent<Home>();
-        cut.WaitForState(() => !cut.Markup.Contains("Loading", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(2));
+        cut.WaitForState(() => !cut.Markup.Contains("mud-skeleton", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(2));
 
         // Assert - Should render anonymous content
-        await Assert.That(cut.Markup).DoesNotContain("Loading");
+        await Assert.That(cut.Markup).DoesNotContain("mud-skeleton");
     }
 
     #endregion
@@ -90,7 +90,7 @@ public class HomeTests : IDisposable
 
         // Act
         var cut = _ctx.RenderMudComponent<Home>();
-        cut.WaitForState(() => !cut.Markup.Contains("Loading", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(2));
+        cut.WaitForState(() => !cut.Markup.Contains("mud-skeleton", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(2));
 
         // Assert - PageTitle component renders in head, check landing page content instead
         // LandingPageForNonUsers has specific content like "Sign Up" and "Explore"
@@ -110,10 +110,10 @@ public class HomeTests : IDisposable
 
         // Act - Should not throw
         var cut = _ctx.RenderMudComponent<Home>();
-        cut.WaitForState(() => !cut.Markup.Contains("Loading", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(2));
+        cut.WaitForState(() => !cut.Markup.Contains("mud-skeleton", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(2));
 
         // Assert - Should render without crash
-        await Assert.That(cut.Markup).DoesNotContain("Loading");
+        await Assert.That(cut.Markup).DoesNotContain("mud-skeleton");
     }
 
     #endregion

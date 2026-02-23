@@ -1,204 +1,134 @@
 # Render Policies
 
-> **Policy-Based UI Rendering Architecture**
->
-> This document describes how the platform manages Blazor render modes dynamically
-> based on policies, not hardcoded configurations.
+> Runtime-governed Blazor render strategy for instance operations.
 
-**Last Updated**: January 2026
+**Last Updated**: February 2026
 
 ---
 
 ## Overview
 
-The platform uses a **Policy-Based Render Mode System** that separates technical implementation (Server, WebAssembly, Auto) from business decisions (which pages need which level of interactivity). This enables Instance Admins to optimize resource usage without code changes.
+The platform uses a runtime render-policy model driven by instance governance settings. Instead of hardcoding render modes in page components, the app resolves mode and prerender behavior at runtime per route group.
+
+This keeps rendering strategy configurable without redeploying code and allows instance admins to tune SEO and interactivity tradeoffs safely.
 
 ---
 
-## The Problem
+## Governance Model
 
-### Traditional Approach Issues
+Render policy is configured in instance governance settings with two layers:
 
-- Render modes hardcoded per component
-- Changing modes requires code deployment
-- One-size-fits-all doesn't match varied tenant needs
-- Resource optimization is developer-driven, not operations-driven
+1. Preset selection (recommended default path)
+2. Optional advanced route-group overrides
 
-### Policy-Based Solution
+### Presets
 
-- Pages classified by logical type, not technical mode
-- Policies map logical types to render modes
-- Instance Admin controls the mapping
-- Tenant Admin may override (if permitted)
+| Preset | Purpose | Default Behavior |
+|------|---------|------------------|
+| `SeoBalanced` | Recommended default | `InteractiveAuto` + prerender off globally, with public SEO prerender on |
+| `AllPrerendered` | Maximum crawler-first HTML output | `InteractiveAuto` + prerender on for all route groups |
+| `AllInteractiveAutoNoPrerender` | Fast interactive startup | `InteractiveAuto` + prerender off for all route groups |
+| `CustomAdvanced` | Fine-grained control | Enables explicit per-route-group mode/prerender controls |
 
----
+### Route Groups
 
-## Page Classification System
-
-### Logical Page Types
-
-Pages are tagged with a logical classification, independent of render technology:
-
-| Type | Characteristics | Examples |
-|------|-----------------|----------|
-| **Content** | Read-heavy, cacheable, SEO-important | Listings, blogs, public profiles |
-| **Operational** | Interactive, form-heavy, real-time updates | Dashboards, editors, admin panels |
-| **Transactional** | Critical operations, payment flows | Checkout, registration completion |
-| **Static** | Rarely changes, no interactivity | About, legal, help pages |
-
-### Classification Guidelines
-
-| Criteria | Content | Operational |
-|----------|---------|-------------|
-| User interaction | Low | High |
-| Data freshness | Can be stale | Must be current |
-| SEO importance | High | Low |
-| Server load | Low per view | Higher per session |
+| Route Group | Intent |
+|------------|--------|
+| `public-seo` | Public listing/detail routes where SEO and prerendering matter most |
+| `operational` | Authenticated workflows and day-to-day interaction surfaces |
+| `admin` | Administrative routes and control panels |
+| `onboarding` | Setup/startup/onboarding flows |
 
 ---
 
-## Render Mode Options
+## Onboarding Guardrail (Invariant)
 
-### Available Modes
+Onboarding routes must never run in `InteractiveServer` mode.
 
-| Mode | Description | Best For |
-|------|-------------|----------|
-| **Static** | Pre-rendered, no interactivity | Content pages, SEO |
-| **Server** | SignalR connection, server-side execution | Operational pages, complex logic |
-| **WebAssembly** | Client-side execution | Offline capability, reduced server load |
-| **Auto** | Server initially, transitions to WASM | Best of both worlds |
+Enforcement is layered:
 
-### Mode Trade-offs
+- Application validation rejects invalid onboarding mode combinations
+- Command handler emits warning telemetry for rejected onboarding violations
+- Runtime resolver normalizes/guards onboarding behavior
+- Admin UI advanced selector excludes `InteractiveServer` for onboarding
 
-| Factor | Static | Server | WASM | Auto |
-|--------|--------|--------|------|------|
-| Initial load | ⚡ Fastest | Fast | Slow | Fast |
-| Interactivity | ❌ None | ✅ Full | ✅ Full | ✅ Full |
-| Server resources | ⚡ Minimal | ⬆️ Higher | ⚡ Minimal | Medium |
-| Offline support | ❌ No | ❌ No | ✅ Yes | ⚡ Partial |
-| SEO | ✅ Best | ✅ Good | ⚠️ Challenging | ✅ Good |
+Covered onboarding routes include:
+
+- `/setup`
+- `/startup`
+- `/onboarding/instance`
+- `/onboarding/tenant`
 
 ---
 
-## Policy Definition
+## Runtime Resolution Flow
 
-### Resolution Matrix
+1. App receives current path.
+2. Route-group classifier maps path to a route group.
+3. Policy resolver loads public-safe governance render settings.
+4. Resolver outputs:
+   - render mode (`InteractiveAuto`, `InteractiveWebAssembly`, `InteractiveServer`)
+   - prerender enabled (`true`/`false`)
+5. App applies resolved policy to `HeadOutlet` and `Routes` render boundaries.
 
-Instance Admin defines how page types map to render modes:
-
-| Policy Name | Content | Operational | Transactional | Use Case |
-|-------------|---------|-------------|---------------|----------|
-| **Performance Saver** | Static | WASM | Server | Free tier, low server cost |
-| **Premium Fast** | Static | Server | Server | Paid tier, responsiveness priority |
-| **Modern Edge** | Auto | Auto | Auto | Modern devices, best UX |
-| **Compatibility** | Static | Server | Server | Legacy browser support |
-
-### Policy Assignment
-
-| Level | Can Assign | Constraints |
-|-------|------------|-------------|
-| System Default | Implicit | Fallback only |
-| Instance | Instance Admin | Any combination |
-| Tenant | Tenant Admin | Within allowed set |
+Fallback behavior is mandatory: malformed or missing settings must resolve to safe defaults and never crash startup.
 
 ---
 
-## Implementation Architecture
+## Instance Admin UX
 
-### Policy Resolution Flow
+Instance settings use a preset-first UX in `InstanceGovernanceSection`:
 
-1. **Page Request** → User navigates to page
-2. **Type Lookup** → System identifies page's logical type
-3. **Policy Check** → Resolver queries current policy
-4. **Mode Selection** → Policy maps type to render mode
-5. **Rendering** → Page renders with selected mode
+- preset cards first
+- recommended preset preselected by default
+- recommended option visually emphasized
+- info icon tooltips for strategy guidance
+- advanced panel for global fallback + route-group overrides
 
-### Policy Service Interface
-
-The policy service answers: "Given this page type and context, what render mode should be used?"
-
-**Inputs**:
-- Page type (Content, Operational, etc.)
-- Tenant context (if any)
-- Device hints (optional)
-- User preferences (optional)
-
-**Output**:
-- Render mode to apply
-
-### Dynamic Wrapper Component
-
-A wrapper component at the layout level:
-1. Reads the policy for the current page type
-2. Applies the resolved render mode
-3. Renders the actual page content
+The default recommendation is `SeoBalanced`.
 
 ---
 
-## Configuration Model
+## Configuration Fields
 
-### Instance-Level Settings
+The runtime policy payload includes:
 
-| Setting | Values | Default |
-|---------|--------|---------|
-| Default Policy | Policy name | "Modern Edge" |
-| Allow Tenant Override | Boolean | true |
-| Allowed Tenant Policies | Policy list | All |
-
-### Tenant-Level Settings
-
-| Setting | Values | Constraint |
-|---------|--------|------------|
-| Active Policy | Policy name | Must be in allowed set |
-| Custom Mappings | Type → Mode | If customization enabled |
-
----
-
-## Optimization Strategies
-
-### Resource-Based Policies
-
-| Tenant Tier | Recommended Policy | Rationale |
-|-------------|-------------------|-----------|
-| Free | Performance Saver | Minimize server usage |
-| Standard | Modern Edge | Balanced experience |
-| Premium | Premium Fast | Best responsiveness |
-| Enterprise | Custom | Tailored to needs |
-
-### Time-Based Policies
-
-Policies can vary by time of day or load conditions:
-
-| Condition | Policy | Rationale |
-|-----------|--------|-----------|
-| Peak hours | Performance Saver | Reduce server strain |
-| Off-peak | Premium Fast | Better UX when capacity available |
-| High load | Performance Saver | Graceful degradation |
+- `RenderPolicyPreset`
+- `EnableAdvancedRenderPolicyOverrides`
+- global fallback:
+  - `GlobalRenderMode`
+  - `GlobalPrerenderEnabled`
+- per route group mode/prerender fields:
+  - `PublicSeoRenderMode`, `PublicSeoPrerenderEnabled`
+  - `OperationalRenderMode`, `OperationalPrerenderEnabled`
+  - `AdminRenderMode`, `AdminPrerenderEnabled`
+  - `OnboardingRenderMode`, `OnboardingPrerenderEnabled`
+- guardrail flag:
+  - `DisallowInteractiveServerOnOnboarding`
 
 ---
 
-## Migration Path
+## Operational Notes
 
-### From Hardcoded to Policy-Based
+- Governance writes are instance-admin controlled.
+- Validation is server-side; UI guidance is assistive, not authoritative.
+- Policy changes are runtime-applied through settings resolution.
 
-1. **Audit** - Document current render mode per component
-2. **Classify** - Assign logical type to each page
-3. **Create Baseline** - Define policy matching current behavior
-4. **Implement Wrapper** - Add policy resolution to layout
-5. **Test** - Verify equivalent behavior
-6. **Enable Policies** - Expose policy selection to admins
-7. **Optimize** - Create additional policies for different scenarios
+### Rollout Timing Contract
+
+- Policy updates apply on the next server round-trip for each tab/session.
+- Open tabs keep their current render boundary until they navigate or perform a full reload.
+- There is no cross-tab push/invalidation for render policy changes.
+- Prerender and mode decisions are recomputed at request/navigation time from current governance settings.
+- Operationally, admins should communicate that active users may need refresh/navigation to observe new policy behavior.
 
 ---
 
 ## Related Documentation
 
-- **[BLAZOR.md](BLAZOR.md)** - Blazor architecture overview
-- **[MULTI_TENANCY.md](MULTI_TENANCY.md)** - Tenant configuration
-- **[ADMIN_HIERARCHY.md](ADMIN_HIERARCHY.md)** - Policy authority
-
-## Implementation Reference
-
-For code patterns:
-- **`blazor-bff-patterns`** skill - BFF and rendering
-- **`blazor-ui-conventions`** skill - Component patterns
+- `docs/BLAZOR.md`
+- `docs/ARCHITECTURE.md`
+- `docs/ADMIN_HIERARCHY.md`
+- `dev/active/runtime-render-policy-governance/runtime-render-policy-governance-plan.md`
+- `dev/active/runtime-render-policy-governance/runtime-render-policy-governance-context.md`
+- `dev/active/runtime-render-policy-governance/runtime-render-policy-governance-tasks.md`

@@ -1,0 +1,46 @@
+/* ABOUTME: Scoped styles for render-policy preset cards and advanced controls in InstanceGovernanceSection. */
+/* ABOUTME: Highlights the recommended preset and selected state while preserving admin settings visual language. */
+
+.instance-governance__preset-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem;
+}
+
+.instance-governance__preset-card {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--mud-default-border-radius);
+    padding: 0.95rem;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    background: var(--mud-palette-surface);
+}
+
+.instance-governance__preset-card:hover {
+    border-color: var(--mud-palette-primary);
+    box-shadow: var(--mud-shadow-2);
+    transform: translateY(-1px);
+}
+
+.instance-governance__preset-card--recommended {
+    border-width: 2px;
+    border-color: color-mix(in srgb, var(--mud-palette-success) 64%, var(--mud-palette-lines-default));
+}
+
+.instance-governance__preset-card--selected {
+    border-color: var(--mud-palette-primary);
+    box-shadow: var(--mud-shadow-3);
+    background: color-mix(in srgb, var(--mud-palette-primary) 5%, var(--mud-palette-surface));
+}
+
+.instance-governance__advanced-panel {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--mud-default-border-radius);
+    background: color-mix(in srgb, var(--mud-palette-background) 65%, var(--mud-palette-surface));
+}
+
+@media (max-width: 960px) {
+    .instance-governance__preset-grid {
+        grid-template-columns: 1fr;
+    }
+}

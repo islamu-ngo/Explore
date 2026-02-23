@@ -71,15 +71,7 @@
                 }
             </MudSelect>
         </MudItem>
-        <MudItem xs="6" sm="4" md="3" lg="2">
-            <MudSelect T="Guid?" @bind-Value="SelectedTagId" Label="Tags" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true" SelectedValuesChanged="OnFilterChange">
-                <MudSelectItem T="Guid?" Value="@((Guid?)null)">All Tags</MudSelectItem>
-                @foreach (var tag in Tags)
-                {
-                    <MudSelectItem @key="tag.Id" T="Guid?" Value="@tag.Id">@tag.FullName</MudSelectItem>
-                }
-            </MudSelect>
-        </MudItem>
+        @* Tag filtering handled by TriStateTagFilterDropdown component (Phase 4) *@
 
         <!-- New Filters -->
         <MudItem xs="6" sm="4" md="3" lg="2">

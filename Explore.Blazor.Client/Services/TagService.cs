@@ -17,10 +17,7 @@ public interface ITagService
     Task<BaseCommandResponseOfGuid?> CreateTagAsync(CreateTagDto dto);
     Task<BaseCommandResponseOfGuid?> UpdateTagAsync(Guid id, UpdateTagDto dto);
     Task<bool> DeleteTagAsync(Guid tagId);
-    Task<ICollection<object>> GetTagsByEventAsync(Guid eventId); // Neutralized
-    Task<ICollection<object>> GetEventsByTagAsync(Guid tagId); // Neutralized
-    Task<BaseCommandResponseOfGuid?> AssignTagToEventAsync(object dto); // Neutralized
-    Task<bool> RemoveTagFromEventAsync(Guid eventTagId);
+    Task<ICollection<TagTypeWithTagsDto>> GetTagsGroupedByTagTypeAsync();
 }
 
 public class TagService : ITagService
@@ -123,40 +120,17 @@ public class TagService : ITagService
         }
     }
 
-    public Task<ICollection<object>> GetTagsByEventAsync(Guid eventId)
-    {
-        // TODO: Fix this when API client is regenerated.
-        _logger.LogWarning("[TAG SERVICE] GetTagsByEventAsync is not implemented.");
-        return Task.FromResult<ICollection<object>>(new List<object>());
-    }
-
-    public Task<ICollection<object>> GetEventsByTagAsync(Guid tagId)
-    {
-        // TODO: Fix this when API client is regenerated.
-        _logger.LogWarning("[TAG SERVICE] GetEventsByTagAsync is not implemented.");
-        return Task.FromResult<ICollection<object>>(new List<object>());
-    }
-
-    public Task<BaseCommandResponseOfGuid?> AssignTagToEventAsync(object dto)
-    {
-        // TODO: Fix this when API client is regenerated.
-        _logger.LogWarning("[TAG SERVICE] AssignTagToEventAsync is not implemented.");
-        return Task.FromResult<BaseCommandResponseOfGuid?>(null);
-    }
-
-    public async Task<bool> RemoveTagFromEventAsync(Guid eventTagId)
+    public async Task<ICollection<TagTypeWithTagsDto>> GetTagsGroupedByTagTypeAsync()
     {
         try
         {
-            // Note: This method may not exist in the regenerated client
-            // await _apiClient.EventTagsDELETEAsync(eventTagId);
-            _logger.LogWarning("[TAG SERVICE] RemoveTagFromEventAsync - endpoint may not exist");
-            return false;
+            return await _apiClient.WithTagsAsync() ?? new List<TagTypeWithTagsDto>();
         }
         catch (ApiException ex)
         {
-            _logger.LogError(ex, "[TAG SERVICE] API error removing tag from event: {StatusCode}", ex.StatusCode);
-            return false;
+            _logger.LogError(ex, "[TAG SERVICE] API error fetching grouped tags: {StatusCode}", ex.StatusCode);
+            return new List<TagTypeWithTagsDto>();
         }
     }
+
 }

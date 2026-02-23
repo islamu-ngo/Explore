@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "https://localhost:56399/"
+      "url": "https://localhost:58941/"
     }
   ],
   "paths": {
@@ -2012,11 +2012,39 @@
             }
           },
           {
-            "name": "tagId",
+            "name": "includedTagIds",
             "in": "query",
             "schema": {
-              "type": "string",
-              "format": "uuid"
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "excludedTagIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "inclusionMode",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "exclusionMode",
+            "in": "query",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -6142,6 +6170,186 @@
         }
       }
     },
+    "/api/instanceonboarding/smtp-settings": {
+      "get": {
+        "tags": [
+          "InstanceOnboarding"
+        ],
+        "summary": "Get Instance SMTP Settings",
+        "description": "Returns instance SMTP settings. Only instance admins can access this endpoint.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceSmtpSettingsDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceSmtpSettingsDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceSmtpSettingsDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "InstanceOnboarding"
+        ],
+        "summary": "Update Instance SMTP Settings",
+        "description": "Updates instance SMTP settings. Requires instance administrator membership.",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/InstanceSmtpSettingsDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/InstanceSmtpSettingsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/instanceonboarding/test-smtp": {
+      "post": {
+        "tags": [
+          "InstanceOnboarding"
+        ],
+        "summary": "Test SMTP Connection",
+        "description": "Tests the SMTP connection using current settings. Returns success or failure with message.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {}
+              },
+              "application/json; v=0.1": {
+                "schema": {}
+              },
+              "text/json; v=0.1": {
+                "schema": {}
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/instanceonboarding/validate-secret": {
       "post": {
         "tags": [
@@ -9899,6 +10107,46 @@
               "text/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/TagTypeDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tagtype/with-tags": {
+      "get": {
+        "tags": [
+          "TagType"
+        ],
+        "summary": "Get Tag Types with Tags",
+        "description": "Returns all tag types with their associated tags grouped. Used by the tri-state tag filter dropdown.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TagTypeWithTagsDto"
+                  }
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TagTypeWithTagsDto"
+                  }
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TagTypeWithTagsDto"
+                  }
                 }
               }
             }
@@ -18262,6 +18510,53 @@
           "defaultPublicHomePage": {
             "type": "string"
           },
+          "renderPolicyVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "renderPolicyPreset": {
+            "type": "string"
+          },
+          "enableAdvancedRenderPolicyOverrides": {
+            "type": "boolean"
+          },
+          "globalRenderMode": {
+            "type": "string"
+          },
+          "globalPrerenderEnabled": {
+            "type": "boolean"
+          },
+          "publicSeoRenderMode": {
+            "type": "string"
+          },
+          "publicSeoPrerenderEnabled": {
+            "type": "boolean"
+          },
+          "operationalRenderMode": {
+            "type": "string"
+          },
+          "operationalPrerenderEnabled": {
+            "type": "boolean"
+          },
+          "adminRenderMode": {
+            "type": "string"
+          },
+          "adminPrerenderEnabled": {
+            "type": "boolean"
+          },
+          "onboardingRenderMode": {
+            "type": "string"
+          },
+          "onboardingPrerenderEnabled": {
+            "type": "boolean"
+          },
+          "disallowInteractiveServerOnOnboarding": {
+            "type": "boolean"
+          },
           "enableIslamicModule": {
             "type": "boolean"
           },
@@ -18354,6 +18649,48 @@
               "string"
             ],
             "format": "date-time"
+          }
+        }
+      },
+      "InstanceSmtpSettingsDto": {
+        "type": "object",
+        "properties": {
+          "host": {
+            "type": "string"
+          },
+          "port": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "security": {
+            "type": "string"
+          },
+          "fromAddress": {
+            "type": "string"
+          },
+          "fromName": {
+            "type": "string"
+          },
+          "timeoutSeconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "skipCertificateValidation": {
+            "type": "boolean"
           }
         }
       },
@@ -19354,6 +19691,53 @@
           },
           "analyticsEndpointUrl": {
             "type": "string"
+          },
+          "renderPolicyVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "renderPolicyPreset": {
+            "type": "string"
+          },
+          "enableAdvancedRenderPolicyOverrides": {
+            "type": "boolean"
+          },
+          "globalRenderMode": {
+            "type": "string"
+          },
+          "globalPrerenderEnabled": {
+            "type": "boolean"
+          },
+          "publicSeoRenderMode": {
+            "type": "string"
+          },
+          "publicSeoPrerenderEnabled": {
+            "type": "boolean"
+          },
+          "operationalRenderMode": {
+            "type": "string"
+          },
+          "operationalPrerenderEnabled": {
+            "type": "boolean"
+          },
+          "adminRenderMode": {
+            "type": "string"
+          },
+          "adminPrerenderEnabled": {
+            "type": "boolean"
+          },
+          "onboardingRenderMode": {
+            "type": "string"
+          },
+          "onboardingPrerenderEnabled": {
+            "type": "boolean"
+          },
+          "disallowInteractiveServerOnOnboarding": {
+            "type": "boolean"
           }
         }
       },
@@ -19834,6 +20218,37 @@
           },
           "fullName": {
             "type": "string"
+          }
+        }
+      },
+      "TagTypeWithTagsDto": {
+        "required": [
+          "fullName"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TagListDto"
+            }
           }
         }
       },
