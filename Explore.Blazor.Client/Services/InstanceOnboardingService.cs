@@ -16,6 +16,9 @@ public interface IInstanceOnboardingService
     Task<InstanceStorageSettingsModel> GetStorageSettingsAsync();
     Task<InstanceCommandResponseModel> UpdateStorageSettingsAsync(InstanceStorageSettingsModel settings);
     Task<StorageConnectionTestResult> TestStorageConnectionAsync();
+    Task<InstanceSmtpSettingsModel> GetSmtpSettingsAsync();
+    Task<InstanceCommandResponseModel> UpdateSmtpSettingsAsync(InstanceSmtpSettingsModel settings);
+    Task<SmtpConnectionTestResult> TestSmtpConnectionAsync();
 }
 
 public class InstanceOnboardingService : IInstanceOnboardingService
@@ -163,6 +166,80 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         }
     }
 
+    public async Task<InstanceSmtpSettingsModel> GetSmtpSettingsAsync()
+    {
+        try
+        {
+            var client = _httpClientFactory.CreateClient("BffClient");
+            var result = await client.GetFromJsonAsync<InstanceSmtpSettingsModel>("api/InstanceOnboarding/smtp-settings");
+            return result ?? new InstanceSmtpSettingsModel();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fetch instance SMTP settings.");
+            return new InstanceSmtpSettingsModel();
+        }
+    }
+
+    public async Task<InstanceCommandResponseModel> UpdateSmtpSettingsAsync(InstanceSmtpSettingsModel settings)
+    {
+        try
+        {
+            var client = _httpClientFactory.CreateClient("BffClient");
+            using var request = new HttpRequestMessage(HttpMethod.Put, "api/InstanceOnboarding/smtp-settings")
+            {
+                Content = JsonContent.Create(settings)
+            };
+
+            await AddSetupSecretHeaderAsync(request);
+
+            var response = await client.SendAsync(request);
+            var payload = await response.Content.ReadFromJsonAsync<InstanceCommandResponseModel>();
+
+            if (payload != null)
+            {
+                return payload;
+            }
+
+            return new InstanceCommandResponseModel
+            {
+                Success = response.IsSuccessStatusCode,
+                Message = response.IsSuccessStatusCode
+                    ? "SMTP settings updated successfully."
+                    : $"Operation failed with status {(int)response.StatusCode}."
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update instance SMTP settings.");
+            return new InstanceCommandResponseModel
+            {
+                Success = false,
+                Message = "Request failed.",
+                Errors = new List<string> { ex.Message }
+            };
+        }
+    }
+
+    public async Task<SmtpConnectionTestResult> TestSmtpConnectionAsync()
+    {
+        try
+        {
+            var client = _httpClientFactory.CreateClient("BffClient");
+            using var request = new HttpRequestMessage(HttpMethod.Post, "api/InstanceOnboarding/test-smtp");
+            await AddSetupSecretHeaderAsync(request);
+
+            var response = await client.SendAsync(request);
+            var result = await response.Content.ReadFromJsonAsync<SmtpConnectionTestResult>();
+            return result ?? new SmtpConnectionTestResult { Success = false, Message = "Empty response." };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to test SMTP connection.");
+            return new SmtpConnectionTestResult { Success = false, Message = ex.Message };
+        }
+    }
+
     private async Task<InstanceCommandResponseModel> SendAsync(HttpMethod method, string url, InstanceGovernanceSettingsModel settings)
     {
         try
@@ -251,7 +328,9 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         return pathAndQuery.Contains("/api/InstanceOnboarding/complete", StringComparison.OrdinalIgnoreCase)
             || pathAndQuery.Contains("/api/InstanceOnboarding/settings", StringComparison.OrdinalIgnoreCase)
             || pathAndQuery.Contains("/api/InstanceOnboarding/storage-settings", StringComparison.OrdinalIgnoreCase)
-            || pathAndQuery.Contains("/api/InstanceOnboarding/test-storage", StringComparison.OrdinalIgnoreCase);
+            || pathAndQuery.Contains("/api/InstanceOnboarding/test-storage", StringComparison.OrdinalIgnoreCase)
+            || pathAndQuery.Contains("/api/InstanceOnboarding/smtp-settings", StringComparison.OrdinalIgnoreCase)
+            || pathAndQuery.Contains("/api/InstanceOnboarding/test-smtp", StringComparison.OrdinalIgnoreCase);
     }
 }
 
@@ -314,6 +393,25 @@ public class InstanceStorageSettingsModel
 }
 
 public class StorageConnectionTestResult
+{
+    public bool Success { get; set; }
+    public string Message { get; set; } = string.Empty;
+}
+
+public class InstanceSmtpSettingsModel
+{
+    public string Host { get; set; } = string.Empty;
+    public int Port { get; set; } = 587;
+    public string Username { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+    public string Security { get; set; } = "StartTls";
+    public string FromAddress { get; set; } = string.Empty;
+    public string FromName { get; set; } = string.Empty;
+    public int TimeoutSeconds { get; set; } = 30;
+    public bool SkipCertificateValidation { get; set; }
+}
+
+public class SmtpConnectionTestResult
 {
     public bool Success { get; set; }
     public string Message { get; set; } = string.Empty;

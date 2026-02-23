@@ -39,5 +39,14 @@
       "Bash(Out-File -FilePath C:/ISLAMU/GitHub/Explore/test-output.txt -Encoding utf8)",
       "Bash(Select-String -Pattern \"error CS\")"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "sequential-thinking",
+    "context7",
+    "tavily",
+    "playwriter",
+    "at-explore",
+    "chrome-devtools"
+  ],
+  "enableAllProjectMcpServers": true
 }

@@ -142,17 +142,9 @@
 
                                     @if (IsInstanceAdmin(context.User))
                                     {
-                                        <a href="/admin" class="navbar__dropdown-item" @onclick="CloseDropdown">
-                                            <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Size="Size.Small" />
-                                            Admin Dashboard
-                                        </a>
-                                    }
-
-                                    @if (IsInstanceAdmin(context.User))
-                                    {
                                         <a href="/admin/instance/settings" class="navbar__dropdown-item" @onclick="CloseDropdown">
                                             <MudIcon Icon="@Icons.Material.Filled.Dns" Size="Size.Small" />
-                                            Instance Settings
+                                            Instance Administration
                                         </a>
                                     }
 
@@ -160,7 +152,7 @@
                                     {
                                         <a href="/admin/tenant/settings" class="navbar__dropdown-item" @onclick="CloseDropdown">
                                             <MudIcon Icon="@Icons.Material.Filled.Domain" Size="Size.Small" />
-                                            Tenant Settings
+                                            Tenant Administration
                                         </a>
                                     }
 

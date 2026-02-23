@@ -1,0 +1,113 @@
+@* ABOUTME: Renders SMTP settings fields for Instance Admin Settings. *@
+@* ABOUTME: Includes host, auth, sender identity, TLS mode, timeout, and connection test action. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Services
+
+<div class="settings-section">
+    <div class="settings-section-header">
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">SMTP Configuration</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+            Configure SMTP credentials used for transactional emails and notifications.
+        </MudText>
+    </div>
+    <MudStack Spacing="3">
+        <MudTextField Label="SMTP Host"
+                      Variant="Variant.Outlined"
+                      @bind-Value="Model.Host"
+                      Placeholder="smtp.example.com" />
+
+        <MudNumericField T="int" Label="SMTP Port"
+                         Variant="Variant.Outlined"
+                         @bind-Value="Model.Port"
+                         Min="1"
+                         Max="65535" />
+
+        <MudTextField Label="Username"
+                      Variant="Variant.Outlined"
+                      @bind-Value="Model.Username" />
+
+        <MudTextField Label="Password"
+                      Variant="Variant.Outlined"
+                      @bind-Value="Model.Password"
+                      InputType="InputType.Password" />
+
+        <MudSelect T="string"
+                   Label="Security Mode"
+                   Variant="Variant.Outlined"
+                   @bind-Value="Model.Security">
+            <MudSelectItem Value="@("None")">None</MudSelectItem>
+            <MudSelectItem Value="@("StartTls")">Start TLS</MudSelectItem>
+            <MudSelectItem Value="@("SslOnConnect")">SSL on connect</MudSelectItem>
+            <MudSelectItem Value="@("Auto")">Auto</MudSelectItem>
+        </MudSelect>
+
+        <MudTextField Label="From Address"
+                      Variant="Variant.Outlined"
+                      @bind-Value="Model.FromAddress"
+                      Placeholder="noreply@example.com" />
+
+        <MudTextField Label="From Name"
+                      Variant="Variant.Outlined"
+                      @bind-Value="Model.FromName"
+                      Placeholder="ISLAMU Explore" />
+
+        <MudNumericField T="int" Label="Timeout (seconds)"
+                         Variant="Variant.Outlined"
+                         @bind-Value="Model.TimeoutSeconds"
+                         Min="1"
+                         Max="300" />
+
+        <MudSwitch T="bool" @bind-Value="Model.SkipCertificateValidation" Color="Color.Warning">
+            Skip certificate validation (development only)
+        </MudSwitch>
+
+        <MudDivider Class="my-2" />
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Info"
+                       OnClick="TestConnectionAsync"
+                       Disabled="_isTesting"
+                       StartIcon="@(_isTesting ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.NetworkCheck)">
+                @(_isTesting ? "Testing..." : "Test Connection")
+            </MudButton>
+
+            @if (_testResult != null)
+            {
+                <MudAlert Severity="@(_testResult.Success ? Severity.Success : Severity.Error)"
+                          Dense="true"
+                          NoIcon="false"
+                          Class="flex-grow-1">
+                    @_testResult.Message
+                </MudAlert>
+            }
+        </MudStack>
+    </MudStack>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public InstanceSmtpSettingsModel Model { get; set; } = null!;
+
+    [Parameter]
+    public IInstanceOnboardingService? OnboardingService { get; set; }
+
+    private bool _isTesting;
+    private SmtpConnectionTestResult? _testResult;
+
+    private async Task TestConnectionAsync()
+    {
+        if (OnboardingService == null)
+        {
+            return;
+        }
+
+        _isTesting = true;
+        _testResult = null;
+        StateHasChanged();
+
+        _testResult = await OnboardingService.TestSmtpConnectionAsync();
+        _isTesting = false;
+    }
+}

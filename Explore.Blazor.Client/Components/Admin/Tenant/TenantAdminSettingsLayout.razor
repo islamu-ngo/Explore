@@ -12,8 +12,8 @@
     <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
         <!-- Header -->
         <div class="settings-header mb-8">
-            <MudText Typo="Typo.h4" Style="font-weight: 800;">Tenant Settings</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">Manage tenant-level policy, domain, and branding settings</MudText>
+            <MudText Typo="Typo.h4" Style="font-weight: 800;">Tenant Administration</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">Manage tenant policies, domains, branding, organization approvals, and lookup tables</MudText>
         </div>
 
         @if (!string.IsNullOrWhiteSpace(_errorMessage))
@@ -54,6 +54,14 @@
                                          Text="Branding"
                                          Class="@GetNavItemClass("branding")"
                                          OnClick="@(() => SelectSection("branding"))" />
+                            <MudListItem Icon="@Icons.Material.Filled.Business"
+                                         Text="Organizations"
+                                         Class="@GetNavItemClass("organizations")"
+                                         OnClick="@(() => SelectSection("organizations"))" />
+                            <MudListItem Icon="@Icons.Material.Filled.TableChart"
+                                         Text="Lookup Tables"
+                                         Class="@GetNavItemClass("lookups")"
+                                         OnClick="@(() => SelectSection("lookups"))" />
                         </MudList>
                     </MudPaper>
                 </MudItem>
@@ -72,6 +80,14 @@
                         else if (_currentSection == "branding")
                         {
                             <TenantBrandingSection Model="_model" />
+                        }
+                        else if (_currentSection == "organizations")
+                        {
+                            <TenantOrganizationsSection />
+                        }
+                        else if (_currentSection == "lookups")
+                        {
+                            <TenantLookupTablesSection />
                         }
 
                         <MudDivider Class="my-4" />

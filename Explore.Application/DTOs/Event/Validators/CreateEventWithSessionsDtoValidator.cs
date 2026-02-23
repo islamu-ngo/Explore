@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Explore.Domain;
 using Explore.Application.Contracts.Persistence;
+using Explore.Domain;
 using FluentValidation;
 
 namespace Explore.Application.DTOs.Event.Validators;

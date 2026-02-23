@@ -228,6 +228,92 @@ public class InstanceOnboardingController : ControllerBase
         return Ok(new { success, message = success ? "Connection successful." : "Connection failed. Please verify your S3 settings." });
     }
 
+    [HttpGet("smtp-settings")]
+    [Authorize]
+    [EndpointSummary("Get Instance SMTP Settings")]
+    [EndpointDescription("Returns instance SMTP settings. Only instance admins can access this endpoint.")]
+    [ProducesResponseType(typeof(InstanceSmtpSettingsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<InstanceSmtpSettingsDto>> GetSmtpSettings(CancellationToken cancellationToken = default)
+    {
+        var status = await _mediator.Send(new GetInstanceOnboardingStatusQuery(), cancellationToken);
+        if (status.IsCompleted && !status.IsCurrentUserInstanceAdmin)
+        {
+            return Forbid();
+        }
+
+        var settings = await _mediator.Send(new GetInstanceSmtpSettingsQuery(), cancellationToken);
+        return Ok(settings);
+    }
+
+    [HttpPut("smtp-settings")]
+    [Authorize]
+    [SetupSecretRequired]
+    [EnableRateLimiting("SetupSecret")]
+    [EndpointSummary("Update Instance SMTP Settings")]
+    [EndpointDescription("Updates instance SMTP settings. Requires instance administrator membership.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateSmtpSettings([FromBody] InstanceSmtpSettingsDto settings, CancellationToken cancellationToken = default)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (!currentUserId.HasValue)
+        {
+            return BadRequest(new BaseCommandResponse<Guid>
+            {
+                Success = false,
+                Message = "Invalid user identity."
+            });
+        }
+
+        var command = new UpdateInstanceSmtpSettingsCommand
+        {
+            UserId = currentUserId.Value,
+            Settings = settings
+        };
+
+        var response = await _mediator.Send(command, cancellationToken);
+        if (!response.Success)
+        {
+            if (response.Message.Contains("Only instance administrators", StringComparison.OrdinalIgnoreCase))
+            {
+                return Forbid();
+            }
+
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
+    [HttpPost("test-smtp")]
+    [Authorize]
+    [SetupSecretRequired]
+    [EnableRateLimiting("SetupSecret")]
+    [EndpointSummary("Test SMTP Connection")]
+    [EndpointDescription("Tests the SMTP connection using current settings. Returns success or failure with message.")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult> TestSmtpConnection(CancellationToken cancellationToken = default)
+    {
+        var status = await _mediator.Send(new GetInstanceOnboardingStatusQuery(), cancellationToken);
+        if (status.IsCompleted && !status.IsCurrentUserInstanceAdmin)
+        {
+            return Forbid();
+        }
+
+        var emailService = HttpContext.RequestServices.GetRequiredService<Explore.Application.Contracts.Infrastructure.IEmailService>();
+        var result = await emailService.TestConnectionAsync(cancellationToken);
+
+        var message = result.Success
+            ? (string.IsNullOrWhiteSpace(result.Message) ? "Connection successful." : result.Message)
+            : (string.IsNullOrWhiteSpace(result.ErrorMessage) ? "Connection failed. Please verify your SMTP settings." : result.ErrorMessage);
+
+        return Ok(new { success = result.Success, message });
+    }
+
     [HttpPost("validate-secret")]
     [AllowAnonymous]
     [EnableRateLimiting("SetupSecret")]

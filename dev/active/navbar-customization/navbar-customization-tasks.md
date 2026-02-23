@@ -46,3 +46,39 @@ Last Updated: 2026-02-10
 - Status update: No task-state changes in this session for this track.
 - Priority update: Keep existing ordering; analytics work was handled in a separate track.
 - Next step: Resume from current in-progress or highest-priority unchecked item.
+
+## Context Reset Session Update (2026-02-23 18:12 Europe/Brussels)
+
+- Status update: Shifted active focus in this track to admin consolidation requested by user; implementation not started yet, planning and codebase analysis completed.
+- Priority update: Admin consolidation tasks are now highest priority for this track.
+
+## Phase 6: Admin Consolidation Into Panel Layouts 🟡 IN PROGRESS
+- [ ] **6.1 Tenant panel: move organization approval into section component**
+  - Create `Explore.Blazor.Client/Components/Admin/Tenant/TenantOrganizationsSection.razor`
+  - Reuse organization approval table/actions currently in `Explore.Blazor.Client/Pages/Admin/AdminList.razor`
+- [ ] **6.2 Tenant panel: move lookup tables into section component**
+  - Create `Explore.Blazor.Client/Components/Admin/Tenant/TenantLookupTablesSection.razor`
+  - Reuse lookup tab loading/presentation currently in `Explore.Blazor.Client/Pages/Admin/LookupTables.razor` and `.razor.cs`
+- [ ] **6.3 Wire tenant sections into tenant layout navigation**
+  - Update `Explore.Blazor.Client/Components/Admin/Tenant/TenantAdminSettingsLayout.razor`
+  - Add left-panel entries for Organizations and Lookup Tables
+- [ ] **6.4 Instance panel: add SMTP section with test connection**
+  - Create `Explore.Blazor.Client/Components/Admin/Instance/InstanceSmtpSection.razor`
+  - Follow same UX pattern as `InstanceStorageSection.razor`
+- [ ] **6.5 Extend instance onboarding API/client contracts for SMTP settings**
+  - Update `Explore.Blazor.Client/Services/InstanceOnboardingService.cs`
+  - Update `Explore.API/Controllers/InstanceOnboardingController.cs`
+  - Add/update application DTOs/handlers for SMTP get/update/test endpoints using `GovernanceSettingKeys.Email*`
+- [ ] **6.6 Wire SMTP section into instance layout navigation**
+  - Update `Explore.Blazor.Client/Components/Admin/Instance/InstanceAdminSettingsLayout.razor`
+  - Add left-panel SMTP entry and section render branch
+- [ ] **6.7 Update admin dropdown menu links/labels**
+  - Update `Explore.Blazor.Client/Layout/NavMenu.razor`
+  - Remove `/admin` dashboard entry; use tenant/instance administration links by role
+- [ ] **6.8 Remove legacy standalone admin pages and routes**
+  - Remove `Explore.Blazor.Client/Pages/Admin/AdminList.razor` usage/route
+  - Remove standalone lookup pages replaced by panel sections
+  - Ensure no dead links remain in UI routing
+- [ ] **6.9 Verification and hardening**
+  - Run diagnostics on changed files
+  - Run build and targeted tests for admin navigation and onboarding settings

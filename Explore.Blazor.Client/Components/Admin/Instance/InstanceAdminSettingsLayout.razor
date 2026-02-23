@@ -12,8 +12,8 @@
     <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
         <!-- Header -->
         <div class="settings-header mb-8">
-            <MudText Typo="Typo.h4" Style="font-weight: 800;">Instance Settings</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">Manage platform governance, domain, branding, modules, and storage settings</MudText>
+            <MudText Typo="Typo.h4" Style="font-weight: 800;">Instance Administration</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">Manage platform governance, domain, branding, modules, storage, and SMTP settings</MudText>
         </div>
 
         @if (!string.IsNullOrWhiteSpace(_errorMessage))
@@ -62,6 +62,10 @@
                                          Text="Object Storage"
                                          Class="@GetNavItemClass("storage")"
                                          OnClick="@(() => SelectSection("storage"))" />
+                            <MudListItem Icon="@Icons.Material.Filled.AlternateEmail"
+                                         Text="SMTP"
+                                         Class="@GetNavItemClass("smtp")"
+                                         OnClick="@(() => SelectSection("smtp"))" />
                         </MudList>
                     </MudPaper>
                 </MudItem>
@@ -89,6 +93,10 @@
                         {
                             <InstanceStorageSection Model="_storageModel" OnboardingService="InstanceOnboardingService" />
                         }
+                        else if (_currentSection == "smtp")
+                        {
+                            <InstanceSmtpSection Model="_smtpModel" OnboardingService="InstanceOnboardingService" />
+                        }
 
                         <MudDivider Class="my-4" />
 
@@ -111,6 +119,7 @@
 @code {
     private InstanceGovernanceSettingsModel _model = new();
     private InstanceStorageSettingsModel _storageModel = new();
+    private InstanceSmtpSettingsModel _smtpModel = new();
     private bool _isLoading = true;
     private bool _isSaving;
     private bool _canEdit;
@@ -130,6 +139,7 @@
 
         _model = await InstanceOnboardingService.GetSettingsAsync();
         _storageModel = await InstanceOnboardingService.GetStorageSettingsAsync();
+        _smtpModel = await InstanceOnboardingService.GetSmtpSettingsAsync();
         _isLoading = false;
     }
 
@@ -143,17 +153,26 @@
         if (response.Success)
         {
             var storageResponse = await InstanceOnboardingService.UpdateStorageSettingsAsync(_storageModel);
+            var smtpResponse = await InstanceOnboardingService.UpdateSmtpSettingsAsync(_smtpModel);
             _isSaving = false;
 
-            if (storageResponse.Success)
+            if (storageResponse.Success && smtpResponse.Success)
             {
                 Snackbar.Add("Instance settings saved.", Severity.Success);
                 return;
             }
 
-            _errorMessage = string.IsNullOrWhiteSpace(storageResponse.Message)
-                ? "Governance settings saved, but storage settings failed."
-                : storageResponse.Message;
+            if (!storageResponse.Success)
+            {
+                _errorMessage = string.IsNullOrWhiteSpace(storageResponse.Message)
+                    ? "Governance settings saved, but storage settings failed."
+                    : storageResponse.Message;
+                return;
+            }
+
+            _errorMessage = string.IsNullOrWhiteSpace(smtpResponse.Message)
+                ? "Governance and storage settings saved, but SMTP settings failed."
+                : smtpResponse.Message;
             return;
         }
 

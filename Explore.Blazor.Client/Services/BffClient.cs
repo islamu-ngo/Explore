@@ -1,6 +1,6 @@
+using System.Net.Http;
 using System.Net.Http.Json;
 using Microsoft.JSInterop;
-using System.Net.Http;
 
 namespace Explore.Blazor.Client.Services;
 

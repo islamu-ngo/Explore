@@ -16,6 +16,7 @@
 
 ## Failed Approaches
 - [2026-02-15 21:28 Europe/Brussels] Attempted to filter TUnit tests via standard `--filter` flow; this runner uses different option handling and rejected the argument. Use project runs and targeted suite partitioning instead.
+- [2026-02-23 18:12 Europe/Brussels] Tried using `rg --files dev/active` from shell for inventory, but local `rg` shim failed with permission error in this environment. Switched to `glob`/`grep` + Python file append script.
 
 ## Deferred Fixes
 - [2026-02-18 Europe/Brussels] Add `RateLimiting:*` and `Cors:AllowedOrigins` config sections to `appsettings.json` with explicit default values.
@@ -25,6 +26,14 @@
 - [2026-02-18 Europe/Brussels] BusinessMetrics counters defined but not yet wired into command handlers. Wire `events.created`, `registrations.created`, `organizations.created` counters into respective handlers.
 - [2026-02-15 21:28 Europe/Brussels] Add CSP documentation and validation for analytics script hosts (PostHog/Plausible/RudderStack) before production rollout.
 - [2026-02-15 21:28 Europe/Brussels] Add integration tests for runtime provider switch SLA (within 60s cache window) and UI-level graceful degradation checks.
+- [2026-02-23 18:12 Europe/Brussels] Implement admin consolidation code changes tracked in `dev/active/navbar-customization/*` (tenant panel Organizations/Lookup sections, instance panel SMTP section, NavMenu updates, remove `/admin` and standalone lookup pages), then run diagnostics/build/tests.
+
+## Key Decisions
+- [2026-02-23 18:12 Europe/Brussels] For context-reset safety, append a standardized session update block to every `dev/active/*-context.md` and `dev/active/*-tasks.md`, then add detailed track-specific handoff only in the active track (`navbar-customization`).
+- [2026-02-23 18:12 Europe/Brussels] Keep admin consolidation implementation plan in the existing `navbar-customization` track rather than creating a new active track folder to avoid split ownership before code changes begin.
+
+## Technical Insights
+- [2026-02-23 18:12 Europe/Brussels] Admin claims/UI integration in this codebase is claim-driven (`IsInstanceAdmin`, `IsTenantAdmin`, `HasAnyAdminAuthority` in `NavMenu.razor.cs`), so navbar/admin visibility changes should stay claim-based instead of introducing new role checks in UI components.
 
 ## Technical Insights
 - [2026-02-16 01:55 Europe/Brussels] In Blazor `InteractiveAuto`, components in client assembly can be instantiated during server prerender; any injected service must exist in server DI too. Added server no-op `IAnalyticsInterop` implementation to prevent prerender resolution failures.
