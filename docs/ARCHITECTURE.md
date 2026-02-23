@@ -4,7 +4,7 @@
 >
 > Placeholders use `{Placeholder}` syntax - see [TEMPLATE_GLOSSARY.md](TEMPLATE_GLOSSARY.md).
 
-**Last Updated**: January 2026
+**Last Updated**: February 2026
 
 ---
 
@@ -30,19 +30,19 @@
 
 | Layer | Technology | Purpose |
 |-------|------------|---------|
-| **Runtime** | .NET 10.0 | Primary framework |
+| **Runtime** | .NET 10.0 (preview) | Primary framework |
 | **Orchestration** | .NET Aspire | Service orchestration, observability |
-| **Web UI** | Blazor (Server + WebAssembly) | Hybrid rendering model |
+| **Web UI** | Blazor Web App (InteractiveAuto) | Interactive SSR + CSR |
 | **UI Components** | MudBlazor | Material Design components |
-| **Database** | PostgreSQL + PostGIS | Primary datastore with spatial queries |
-| **ORM** | Entity Framework Core | Data access layer |
-| **Authentication** | Keycloak | OIDC/JWT identity provider |
-| **Authorization** | ASP.NET Core Authorization | `[Authorize]` attributes and resource-based logic |
+| **Database** | PostgreSQL 18 + PostGIS | Primary datastore with spatial queries |
+| **ORM** | Entity Framework Core 10 | Data access layer |
+| **Authentication** | Keycloak | OIDC identity provider |
+| **Authorization** | Cerbos + Local fallback | Policy decision point + runtime switch |
 | **Secrets** | Infisical | Secrets management |
 | **Logging** | Serilog | Structured logging |
-| **Telemetry** | OpenTelemetry | Distributed tracing and metrics |
+| **Telemetry** | OpenTelemetry | Distributed tracing, metrics, and logs |
 | **API Docs** | Scalar + Swagger | OpenAPI documentation |
-| **Federation** | ATProto / ActivityPub (Planned) | Domain model exists; federation endpoints are not yet implemented. |
+| **Federation** | ATProto / ActivityPub (Planned) | Domain model + PDS sync worker; HTTP federation endpoints not implemented. |
 
 ## 2. Architectural Paradigm: Clean Architecture + CQRS
 
@@ -131,17 +131,17 @@ sequenceDiagram
 
 *For detailed implementation guidance, see the `cqrs-mediatr-guidelines` skill.*
 
-## 3. Frontend Architecture: Blazor Hybrid with BFF
+## 3. Frontend Architecture: Blazor Web App with BFF
 
-The frontend is a **Blazor Hybrid** application that uses the **Backend-for-Frontend (BFF)** pattern for security and performance.
+The frontend is a **Blazor Web App** that uses the **Backend-for-Frontend (BFF)** pattern for security and performance.
 
 ### Rendering Mode: InteractiveAuto
 
 The application uses the `InteractiveAuto` render mode by default.
 
-1.  **Fast Initial Load**: The first visit renders pages on the **server** via a SignalR connection, providing immediate content to the user.
-2.  **Background Download**: The Blazor **WebAssembly** runtime and application DLLs are downloaded in the background.
-3.  **Seamless Transition**: Once the WASM assets are cached, the application transitions to client-side rendering, offloading work from the server and enabling potential offline capabilities.
+1.  **Fast Initial Load**: The first visit renders pages with **interactive SSR** (server) via a SignalR connection.
+2.  **Background Download**: The Blazor **WebAssembly** runtime and app DLLs download in the background.
+3.  **CSR on Repeat Visits**: Once assets are cached, subsequent visits use **client-side rendering (CSR)**.
 
 ### BFF Security Model
 
@@ -166,8 +166,8 @@ graph LR
 
 ### Implementation Example: ISLAMU Event
 
-- **BFF**: `Explore.Blazor` (Blazor Server)
-- **WASM Client**: `Explore.Blazor.Client`
+- **BFF**: `Explore.Blazor` (Blazor Server host)
+- **Client**: `Explore.Blazor.Client` (WASM components + pages)
 - **Backend API**: `Explore.API`
 - **OIDC Provider**: Keycloak
 
@@ -181,13 +181,13 @@ The `{Project}.API` project is a standard ASP.NET Core REST API following Clean 
 
 -   **Stateless**: The API is stateless and relies solely on the provided JWT for authentication and authorization.
 -   **Thin Controllers**: Controllers are minimal. Their only job is to receive an HTTP request, send a command or query to MediatR, and return an appropriate HTTP response.
--   **Authorization**: Write endpoints (`POST`, `PUT`, `DELETE`) are protected with `[Authorize]`. Read endpoints (`GET`) are public with `[AllowAnonymous]`.
+-   **Authorization**: Write endpoints (`POST`, `PUT`, `DELETE`) are protected with `[Authorize]`. Read endpoints (`GET`) are public with `[AllowAnonymous]` unless gated by policy.
 -   **Documentation**: Endpoints are documented using `[EndpointSummary]`, `[EndpointDescription]`, and `[ProducesResponseType]` attributes for OpenAPI generation.
 
 ### Implementation Example: ISLAMU Event
 
 - **API Project**: `Explore.API`
-- **Base URL**: `https://localhost:7001/api/v1`
+- **Base URL**: `https://localhost:7039/api`
 
 *For detailed implementation guidance, see `cqrs-mediatr-guidelines` skill.*
 
@@ -208,6 +208,8 @@ The solution is organized into projects that directly map to the layers of Clean
 ├── {Project}.Blazor.Client/       # Presentation: Blazor WebAssembly (UI)
 ├── {Project}.AppHost/             # .NET Aspire Orchestrator
 └── {Project}.ServiceDefaults/     # Shared Aspire configuration (observability, resilience)
+├── {Project}.Diagnostic/          # Observability extensions
+└── {Project}.Secrets/             # Secret management library
 ├── tests/
 │   ├── {Project}.Application.UnitTests/
 │   ├── {Project}.Domain.UnitTests/

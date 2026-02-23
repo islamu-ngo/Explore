@@ -25,7 +25,10 @@
     "Authority": "https://your-keycloak-instance.com/realms/{realm}",
     "Realm": "your-realm",
     "ClientId": "{project}-api",
-    "ClientSecret": ""
+    "ClientSecret": "",
+    "MetadataAddress": "https://your-keycloak-instance.com/realms/{realm}/.well-known/openid-configuration",
+    "RequireHttpsMetadata": true,
+    "Audience": "{project}-api"
   },
   "ConnectionStrings": {
     "DefaultConnection": ""
@@ -60,7 +63,10 @@
     "Authority": "https://keycloak.openislamu.org/realms/islamu-dev",
     "Realm": "islamu-dev",
     "ClientId": "explore-api",
-    "ClientSecret": ""
+    "ClientSecret": "",
+    "MetadataAddress": "https://keycloak.openislamu.org/realms/islamu-dev/.well-known/openid-configuration",
+    "RequireHttpsMetadata": true,
+    "Audience": "explore-api"
   },
   "Federation": {
     "InstanceDomain": "events.islamu.org",
@@ -78,6 +84,9 @@
 | `ASPNETCORE_ENVIRONMENT` | Runtime environment | `Development`, `Staging`, `Production` |
 | `ConnectionStrings__DefaultConnection` | PostgreSQL connection | `Host=...;Database=...` |
 | `Keycloak__ClientSecret` | Keycloak client secret | `...` |
+| `Keycloak__MetadataAddress` | OIDC discovery URL (optional) | `https://keycloak/realms/realm/.well-known/openid-configuration` |
+| `Keycloak__RequireHttpsMetadata` | Enforce HTTPS metadata | `true`/`false` |
+| `Keycloak__Audience` | API audience (JWT) | `explore-api` |
 | `Infisical__ClientId` | Secrets manager client | `...` |
 | `Infisical__ClientSecret` | Secrets manager secret | `...` |
 
@@ -168,14 +177,28 @@ Secrets are automatically loaded from Infisical paths:
 - **Audit Logging**: All secret access is logged with redaction
 - **Graceful Fallback**: Falls back to environment variables if Infisical unavailable
 
-## Cerbos (Planned - Not Currently Integrated)
+## Cerbos (Authorization PDP)
 
-Some older docs/templates mention a `Cerbos` configuration section.
+Cerbos is integrated as a Policy Decision Point (PDP) and can be toggled at runtime.
 
-Cerbos is **not currently integrated** into `{Project}.API`. All authorization logic is currently implemented within the application code. There is no active Cerbos configuration required for the running system.
+### Configuration
 
-### Implementation Example: ISLAMU Event
-Cerbos is not currently integrated into `Explore.API`. Authorization is handled by MediatR handlers and endpoint-level `[Authorize]` attributes.
+```json
+{
+  "Cerbos": {
+    "Enabled": true,
+    "Endpoint": "http://localhost:3592"
+  }
+}
+```
+
+### Runtime Provider Switch
+
+The active provider is selected via the `authorization.provider` SystemSetting:
+- `cerbos` → Cerbos PDP (primary)
+- `local` → LocalAuthorizationProvider (fallback or Tier 1 deployments)
+
+When Cerbos is unreachable, the `RuntimeAuthorizationProvider` falls back to local automatically.
 
 ---
 

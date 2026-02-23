@@ -4,7 +4,7 @@
 >
 > Placeholders use `{Placeholder}` syntax - see [TEMPLATE_GLOSSARY.md](TEMPLATE_GLOSSARY.md).
 
-**Last Updated**: January 2026
+**Last Updated**: February 2026
 
 ---
 
@@ -44,16 +44,16 @@
 
 ## 1. Overview
 
-A **Blazor Hybrid** architecture combines:
+A **Blazor Web App** architecture combines:
 
-- **Blazor Server** (`{Project}.Blazor`): Acts as the Backend-for-Frontend (BFF)
-- **Blazor WebAssembly** (`{Project}.Blazor.Client`): Contains UI components and pages
+- **Blazor Server** (`{Project}.Blazor`): Acts as the Backend-for-Frontend (BFF) host
+- **Blazor WebAssembly** (`{Project}.Blazor.Client`): Contains UI components and pages (CSR)
 
 ### Key Architecture Decisions
 
 | Aspect | Decision | Rationale |
 |--------|----------|-----------|
-| Render Mode | `InteractiveAuto` | Fast initial load (server), then WASM for subsequent |
+| Render Mode | `InteractiveAuto` | Interactive SSR first, then CSR on subsequent visits |
 | UI Library | MudBlazor | Material Design, comprehensive components |
 | API Communication | NSwag-generated client | Type-safe, auto-generated from OpenAPI |
 | Authentication | BFF + Cookie | No tokens exposed to browser |
@@ -65,7 +65,7 @@ A **Blazor Hybrid** architecture combines:
 ┌─────────────────────────────────────────────────────────────────────┐
 │                           Browser                                   │
 │  ┌───────────────────────────────────────────────────────────────┐  │
-│  │          {Project}.Blazor.Client (WASM/Server)                │  │
+│  │          {Project}.Blazor.Client (CSR / Interactive SSR)      │  │
 │  │  • Pages ({Entity}List, {Entity}Detail, etc.)                 │  │
 │  │  • Components ({Entity}Manager, Dialogs, etc.)                │  │
 │  │  • Services (I{Entity}Service, I{RelatedEntity}Service, etc.) │  │
@@ -99,7 +99,7 @@ A **Blazor Hybrid** architecture combines:
 ┌─────────────────────────────────────────────────────────────────────┐
 │                           Browser                                   │
 │  ┌───────────────────────────────────────────────────────────────┐  │
-│  │              Explore.Blazor.Client (WASM/Server)              │  │
+│  │              Explore.Blazor.Client (CSR / Interactive SSR)    │  │
 │  │  • Pages (EventList, EventDetail, etc.)                       │  │
 │  │  • Components (EventSessionManager, Dialogs, etc.)            │  │
 │  │  • Services (IEventService, IOrganizationService, etc.)       │  │
@@ -291,9 +291,9 @@ app.MapRazorComponents<App>()
 ```
 
 **Why InteractiveAuto?**
-1.  **Instant Load**: First visit renders HTML immediately on the server (SSR).
-2.  **Seamless Transition**: The browser connects via SignalR (InteractiveServer) while the WASM bundle downloads in the background.
-3.  **Offline Capability**: Subsequent visits (or once loaded) switch to WebAssembly for client-side interactivity, reducing server load.
+1.  **Interactive SSR**: First visit renders with interactive server-side rendering.
+2.  **Background Download**: The WASM bundle downloads in the background while the SignalR circuit is active.
+3.  **CSR on Repeat Visits**: Once cached, subsequent visits use client-side rendering (CSR).
 
 ### Decision Matrix
 
@@ -1160,8 +1160,7 @@ if (confirmed == true)
 The `AuthStateService` uses a fallback chain:
 
 ```csharp
-var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
-             ?? user.FindFirst("sub")?.Value
+var userId = user.FindFirst("sub")?.Value
              ?? user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
              ?? user.FindFirst("sid")?.Value;
 ```

@@ -7,8 +7,12 @@
         <MudText Typo="Typo.body2" Color="Color.Secondary">Manage how and when you receive notifications</MudText>
     </div>
 
+    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Construction" Class="mb-6">
+        Notification preferences are coming soon. Email notifications, push notifications, and quiet hours will be available in a future update.
+    </MudAlert>
+
     <!-- Email Notifications Section -->
-    <div class="settings-form-section mb-8">
+    <div class="settings-form-section mb-8" style="opacity: 0.5; pointer-events: none;">
         <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-4">Email Notifications</MudText>
         <MudStack Spacing="3">
             <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
@@ -17,7 +21,7 @@
                         <MudText Typo="Typo.body1" Style="font-weight: 500;">Event Reminders</MudText>
                         <MudText Typo="Typo.body2" Color="Color.Secondary">Get reminders before events you're registered for</MudText>
                     </div>
-                    <MudSwitch T="bool" @bind-Checked="_eventReminders" Color="Color.Primary" />
+                    <MudSwitch T="bool" Checked="true" Color="Color.Primary" Disabled="true" />
                 </div>
             </MudPaper>
 
@@ -27,7 +31,7 @@
                         <MudText Typo="Typo.body1" Style="font-weight: 500;">New Event Recommendations</MudText>
                         <MudText Typo="Typo.body2" Color="Color.Secondary">Receive suggestions for events based on your interests</MudText>
                     </div>
-                    <MudSwitch T="bool" @bind-Checked="_eventRecommendations" Color="Color.Primary" />
+                    <MudSwitch T="bool" Checked="true" Color="Color.Primary" Disabled="true" />
                 </div>
             </MudPaper>
 
@@ -37,17 +41,7 @@
                         <MudText Typo="Typo.body1" Style="font-weight: 500;">Organization Updates</MudText>
                         <MudText Typo="Typo.body2" Color="Color.Secondary">Get updates from organizations you follow</MudText>
                     </div>
-                    <MudSwitch T="bool" @bind-Checked="_organizationUpdates" Color="Color.Primary" />
-                </div>
-            </MudPaper>
-
-            <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
-                <div class="d-flex justify-space-between align-center">
-                    <div>
-                        <MudText Typo="Typo.body1" Style="font-weight: 500;">Review Requests</MudText>
-                        <MudText Typo="Typo.body2" Color="Color.Secondary">Be notified when asked to review an event</MudText>
-                    </div>
-                    <MudSwitch T="bool" @bind-Checked="_reviewRequests" Color="Color.Primary" />
+                    <MudSwitch T="bool" Checked="true" Color="Color.Primary" Disabled="true" />
                 </div>
             </MudPaper>
         </MudStack>
@@ -56,33 +50,8 @@
     <!-- Divider -->
     <MudDivider Class="my-6" />
 
-    <!-- Notification Frequency Section -->
-    <div class="settings-form-section mb-8">
-        <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-4">Notification Frequency</MudText>
-        <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
-            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">How often would you like to receive email digests?</MudText>
-            <MudRadioGroup T="string" @bind-SelectedOption="_notificationFrequency">
-                <MudRadio T="string" Option="@("instant")" Color="Color.Primary">
-                    <MudText Typo="Typo.body2">Instantly</MudText>
-                </MudRadio>
-                <MudRadio T="string" Option="@("daily")" Color="Color.Primary">
-                    <MudText Typo="Typo.body2">Daily Digest</MudText>
-                </MudRadio>
-                <MudRadio T="string" Option="@("weekly")" Color="Color.Primary">
-                    <MudText Typo="Typo.body2">Weekly Digest</MudText>
-                </MudRadio>
-                <MudRadio T="string" Option="@("never")" Color="Color.Primary">
-                    <MudText Typo="Typo.body2">Never</MudText>
-                </MudRadio>
-            </MudRadioGroup>
-        </MudPaper>
-    </div>
-
-    <!-- Divider -->
-    <MudDivider Class="my-6" />
-
     <!-- Push Notifications Section -->
-    <div class="settings-form-section mb-8">
+    <div class="settings-form-section" style="opacity: 0.5; pointer-events: none;">
         <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-4">Push Notifications</MudText>
         <MudStack Spacing="3">
             <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
@@ -91,7 +60,7 @@
                         <MudText Typo="Typo.body1" Style="font-weight: 500;">Browser Notifications</MudText>
                         <MudText Typo="Typo.body2" Color="Color.Secondary">Receive notifications in your browser</MudText>
                     </div>
-                    <MudSwitch T="bool" @bind-Checked="_browserNotifications" Color="Color.Primary" />
+                    <MudSwitch T="bool" Checked="true" Color="Color.Primary" Disabled="true" />
                 </div>
             </MudPaper>
 
@@ -101,61 +70,12 @@
                         <MudText Typo="Typo.body1" Style="font-weight: 500;">Mobile App Notifications</MudText>
                         <MudText Typo="Typo.body2" Color="Color.Secondary">Receive notifications on your mobile device</MudText>
                     </div>
-                    <MudSwitch T="bool" @bind-Checked="_mobileNotifications" Color="Color.Primary" />
+                    <MudSwitch T="bool" Checked="false" Color="Color.Primary" Disabled="true" />
                 </div>
             </MudPaper>
         </MudStack>
     </div>
-
-    <!-- Divider -->
-    <MudDivider Class="my-6" />
-
-    <!-- Notification Quiet Hours Section -->
-    <div class="settings-form-section">
-        <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-4">Quiet Hours</MudText>
-        <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
-            <div class="d-flex justify-space-between align-center mb-4">
-                <div>
-                    <MudText Typo="Typo.body1" Style="font-weight: 500;">Enable Quiet Hours</MudText>
-                    <MudText Typo="Typo.body2" Color="Color.Secondary">Don't send notifications during these hours</MudText>
-                </div>
-                <MudSwitch T="bool" @bind-Checked="_quietHoursEnabled" Color="Color.Primary" />
-            </div>
-
-            @if (_quietHoursEnabled)
-            {
-                <MudGrid Spacing="2">
-                    <MudItem xs="12" sm="6">
-                        <MudTimePicker @bind-Time="_quietHoursStart" Label="Start Time" />
-                    </MudItem>
-                    <MudItem xs="12" sm="6">
-                        <MudTimePicker @bind-Time="_quietHoursEnd" Label="End Time" />
-                    </MudItem>
-                </MudGrid>
-            }
-        </MudPaper>
-    </div>
-
-    <!-- Save Button -->
-    <div class="d-flex justify-end gap-3 mt-8">
-        <MudButton Variant="Variant.Outlined" Color="Color.Default" Class="rounded-pill px-6">
-            Cancel
-        </MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" Class="rounded-pill px-6">
-            Save Preferences
-        </MudButton>
-    </div>
 </div>
 
 @code {
-    private bool _eventReminders = true;
-    private bool _eventRecommendations = true;
-    private bool _organizationUpdates = true;
-    private bool _reviewRequests = true;
-    private bool _browserNotifications = true;
-    private bool _mobileNotifications = false;
-    private bool _quietHoursEnabled = false;
-    private string _notificationFrequency = "daily";
-    private TimeSpan? _quietHoursStart = new TimeSpan(22, 0, 0);
-    private TimeSpan? _quietHoursEnd = new TimeSpan(8, 0, 0);
 }

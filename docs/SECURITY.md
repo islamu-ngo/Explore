@@ -88,7 +88,7 @@ public class UpdateEventCommand : IRequest<BaseCommandResponse>
 3.  **Pipeline Enforcement**: The `AuthorizationBehavior` pipeline detects this attribute:
     *   Extracts the User (Principal) from `IUserContext`.
     *   Constructs the Resource (Kind: "event", ID: `command.Id`).
-    *   Calls Cerbos: `Check(principal, resource, "update")`.
+    *   Calls Cerbos: `CheckResources(principal, resources[], actions[])`.
     *   If denied, throws `ForbiddenException`.
 
 ### 3.2. Policy Structure
@@ -132,7 +132,7 @@ The system supports two multi-tenancy models in Keycloak:
 We use **Infisical** to manage secrets (DB connection strings, API keys, Client Secrets) at runtime.
 
 *   **No Hardcoded Secrets**: `appsettings.json` contains only placeholders or non-sensitive config.
-*   **Runtime Injection**: `AddInfisicalBlazorCompatibility()` loads secrets into the `.NET Configuration` provider at startup.
+*   **Runtime Injection**: `AddInfisicalBlazorCompatibility()` and `AddInfisicalCompatibility()` load secrets into the .NET Configuration provider at startup.
 *   **Rotation**: Secrets can be rotated in Infisical without code changes (requires app restart).
 
 ---

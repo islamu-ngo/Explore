@@ -4,7 +4,7 @@
 >
 > Placeholders use `{Placeholder}` syntax - see [TEMPLATE_GLOSSARY.md](TEMPLATE_GLOSSARY.md).
 
-**Last Updated**: January 2026
+**Last Updated**: February 2026
 
 ---
 
@@ -56,7 +56,7 @@ The `{Project}.API` is a stateless REST API built on ASP.NET Core, following Cle
 | Architecture | Clean Architecture + CQRS |
 | Authentication | JWT Bearer (Keycloak) |
 | Documentation | OpenAPI 3.0 (Scalar + Swagger) |
-| Versioning | URL path (`/api/`) |
+| Versioning | Media type (`Accept: application/json;v=1.0`) |
 | Serialization | System.Text.Json |
 
 ### Request Flow
@@ -73,10 +73,21 @@ HTTP Request → Controller → MediatR → Handler → Repository → Entity �
 
 | Service | URL |
 |---------|-----|
-| API | `https://localhost:7001` |
-| Scalar Docs | `https://localhost:7001/scalar/v1` |
-| Swagger UI | `https://localhost:7001/swagger` |
-| OpenAPI JSON | `https://localhost:7001/openapi/v1.json` |
+| API | `https://localhost:7039` |
+| Scalar Docs | `https://localhost:7039/scalar/v1` |
+| Swagger UI | `https://localhost:7039/swagger` |
+| OpenAPI JSON | `https://localhost:7039/openapi/event-api.json` |
+
+### Media Type Versioning
+
+The API uses **media type versioning** via the `Accept` header:
+
+```http
+GET /api/event HTTP/1.1
+Accept: application/json;v=1.0
+```
+
+When no version is specified, the API defaults to version `1.0`.
 
 ### URL Structure
 
@@ -220,8 +231,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.Authority = builder.Configuration["Keycloak:Authority"];
-        options.Audience = builder.Configuration["Keycloak:Audience"];
-        options.RequireHttpsMetadata = false; // Dev only
+        options.MetadataAddress = builder.Configuration["Keycloak:MetadataAddress"];
+        options.RequireHttpsMetadata = builder.Configuration["Keycloak:RequireHttpsMetadata"] == "true";
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateAudience = true,
+            NameClaimType = "preferred_username"
+        };
     });
 ```
 
@@ -878,8 +894,9 @@ The API implements a **Dual-Layer Caching Strategy** to maximize performance whi
 
 **Configuration**:
 Policies are defined in `Program.cs`:
-- `ListData`: Expire 5m, Vary by Query keys (page, size, search).
-- `DetailData`: Expire 10m, Vary by Route Value (id).
+- `LookupData`: Expire 1h, tagged `lookup-data`.
+- `ListData`: Expire 30s, vary by query (pageNumber, pageSize).
+- `DetailData`: Expire 60s, vary by route value (id).
 
 **Usage in Controllers**:
 ```csharp
@@ -989,7 +1006,7 @@ public async Task<BaseCommandResponse> Handle(UpdateEventCommand request, Cancel
 
 ### Tenant Header
 
-All requests must include the tenant ID header:
+Requests can include the tenant ID header to explicitly select a tenant:
 
 ```
 X-Tenant-Id: 018e4e5c-7f00-7000-8000-000000000001
@@ -1025,16 +1042,7 @@ public interface ITenantContext
 
 public class TenantContext : ITenantContext
 {
-    public const string DefaultTenantIdString = "018e4e5c-7f00-7000-8000-000000000001";
-    public static readonly Guid DefaultTenantId = Guid.Parse(DefaultTenantIdString);
-
-    public Guid TenantId { get; }
-
-    public TenantContext(IHttpContextAccessor httpContextAccessor)
-    {
-        var header = httpContextAccessor.HttpContext?.Request.Headers["X-Tenant-Id"].FirstOrDefault();
-        TenantId = Guid.TryParse(header, out var tenantId) ? tenantId : DefaultTenantId;
-    }
+    public Guid TenantId => ResolveTenantFromRequest();
 }
 ```
 
