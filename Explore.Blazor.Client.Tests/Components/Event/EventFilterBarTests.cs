@@ -67,8 +67,8 @@ public class EventFilterBarTests : IDisposable
         var cut = _ctx.RenderMudComponent<EventFilterBarComponent>(parameters => parameters
             .Add(x => x.OnSearchRequested, EventCallback.Factory.Create(this, () => callbackCount++)));
 
-        cut.Instance.SelectedDate = "thisweek";
-        cut.Instance.SelectedEventTypeId = 2;
+        cut.Instance.SelectedDateRange = new MudBlazor.DateRange(DateTime.Today, DateTime.Today.AddDays(7));
+        cut.Instance.SelectedEventTypeIds = new HashSet<int> { 2 };
 
         var clearAllMethod = typeof(EventFilterBarComponent).GetMethod("ClearAllFilters", BindingFlags.Instance | BindingFlags.NonPublic);
         await Assert.That(clearAllMethod is not null).IsTrue();
@@ -79,8 +79,8 @@ public class EventFilterBarTests : IDisposable
         await task!;
 
         // Assert
-        await Assert.That(cut.Instance.SelectedDate).IsEqualTo(string.Empty);
-        await Assert.That(cut.Instance.SelectedEventTypeId).IsNull();
+        await Assert.That(cut.Instance.SelectedDateRange).IsNull();
+        await Assert.That(cut.Instance.SelectedEventTypeIds.Any()).IsFalse();
         await Assert.That(callbackCount).IsEqualTo(1);
     }
 
@@ -91,9 +91,9 @@ public class EventFilterBarTests : IDisposable
         var cut = _ctx.RenderMudComponent<EventFilterBarComponent>();
 
         // Act — set some filters
-        cut.Instance.SelectedDate = "today";
-        cut.Instance.SelectedFormatId = 1;
-        cut.Instance.SelectedLanguageId = 2;
+        cut.Instance.SelectedDateRange = new MudBlazor.DateRange(DateTime.Today, DateTime.Today.AddDays(1));
+        cut.Instance.SelectedFormatIds = new HashSet<int> { 1 };
+        cut.Instance.SelectedLanguageIds = new HashSet<int> { 2 };
 
         // Assert
         var count = cut.Instance.GetActiveFilterCount();

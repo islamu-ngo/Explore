@@ -11,6 +11,7 @@
     --announcement-bar-height: 0px;
     --nav-height: 64px;
     --content-max-width: 1280px;
+    --mud-appbar-height: 0px;
 }
 
 /* Element: main-layout__header
@@ -50,10 +51,10 @@
     flex-direction: column;
 }
 
-/* Element: main-layout__content
-   The main content area
+/* Element: main-layout__main
+   The main content area — MudMainContent with pt-0 to override default appbar padding
    -------------------------------------------------------------------------- */
-::deep .mud-main-content {
+::deep .main-layout__main {
     flex: 1;
     display: flex;
     flex-direction: column;

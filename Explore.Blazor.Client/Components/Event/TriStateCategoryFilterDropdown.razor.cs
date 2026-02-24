@@ -44,7 +44,7 @@ public partial class TriStateCategoryFilterDropdown
     /// <summary>
     /// Global Reset: clears ALL categories back to neutral regardless of search visibility.
     /// </summary>
-    private void ResetAll()
+    public void ResetAll()
     {
         _categoryStates.Clear();
         _searchTerm = string.Empty;

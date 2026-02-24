@@ -38,6 +38,12 @@ public sealed class IslamicAspectFilter : IFilterSpecification<Event>
         new(e => e.IslamicAspect != null && e.IslamicAspect.GenderMode == genderMode);
 
     /// <summary>
+    /// Filters events by any of the specified gender segregation modes (OR logic).
+    /// </summary>
+    public static IslamicAspectFilter GenderModes(List<int> genderModeIds) =>
+        new(e => e.IslamicAspect != null && genderModeIds.Contains((int)e.IslamicAspect.GenderMode));
+
+    /// <summary>
     /// Filters events that include Quran recitation.
     /// </summary>
     public static IslamicAspectFilter IncludesQuranRecitation() =>
@@ -50,8 +56,24 @@ public sealed class IslamicAspectFilter : IFilterSpecification<Event>
         new(e => e.IslamicAspect != null && e.IslamicAspect.ReferencePrayer == prayerTime);
 
     /// <summary>
+    /// Filters events by any of the specified reference prayer times (OR logic).
+    /// </summary>
+    public static IslamicAspectFilter ReferencePrayers(List<int> prayerTimeIds) =>
+        new(e => e.IslamicAspect != null &&
+                 e.IslamicAspect.ReferencePrayer != null &&
+                 prayerTimeIds.Contains((int)e.IslamicAspect.ReferencePrayer));
+
+    /// <summary>
     /// Filters events by primary language of Islamic content.
     /// </summary>
     public static IslamicAspectFilter PrimaryLanguage(int languageId) =>
         new(e => e.IslamicAspect != null && e.IslamicAspect.PrimaryLanguageId == languageId);
+
+    /// <summary>
+    /// Filters events by any of the specified Islamic primary languages (OR logic).
+    /// </summary>
+    public static IslamicAspectFilter PrimaryLanguages(List<int> languageIds) =>
+        new(e => e.IslamicAspect != null &&
+                 e.IslamicAspect.PrimaryLanguageId != null &&
+                 languageIds.Contains(e.IslamicAspect.PrimaryLanguageId.Value));
 }

@@ -6,7 +6,7 @@
 <MudSnackbarProvider />
 <AnalyticsInitializer />
 
-<MudLayout class="main-layout">
+<MudLayout class="main-layout" Style="--mud-appbar-height: 0px;">
     @if (!_hideChrome)
     {
         <div class="main-layout__header">
@@ -15,7 +15,7 @@
         </div>
     }
 
-    <MudMainContent>
+    <MudMainContent Class="main-layout__main" Style="padding-top: 0 !important;">
         <div class="main-layout__content-wrapper">
             @Body
         </div>

@@ -13,6 +13,8 @@ public partial class EventFilterBar
     [Parameter] public bool IsIslamicModuleEnabled { get; set; }
     [Parameter] public bool IsTechModuleEnabled { get; set; }
     [Parameter] public EventCallback OnSearchRequested { get; set; }
+    [Parameter] public LayoutMode CurrentLayout { get; set; } = LayoutMode.DetailedList;
+    [Parameter] public EventCallback<LayoutMode> CurrentLayoutChanged { get; set; }
 
     // Data Sources
     [Parameter] public ICollection<EventTypeListDto> EventTypes { get; set; } = new List<EventTypeListDto>();
@@ -33,25 +35,25 @@ public partial class EventFilterBar
     private bool _filtersExpanded;
 
     // Filter State
-    public string SelectedDate { get; set; } = "";
+    public DateRange? SelectedDateRange { get; set; }
     public string? SearchTerm { get; set; }
-    public Guid? SelectedLocationId { get; set; }
-    public int? SelectedFormatId { get; set; }
-    public int? SelectedMadhabId { get; set; }
-    public int? SelectedRegistrationModeId { get; set; }
-    public int? SelectedLanguageId { get; set; }
+    public IEnumerable<Guid> SelectedLocationIds { get; set; } = new HashSet<Guid>();
+    public IEnumerable<int> SelectedFormatIds { get; set; } = new HashSet<int>();
+    public IEnumerable<int> SelectedMadhabIds { get; set; } = new HashSet<int>();
+    public IEnumerable<int> SelectedRegistrationModeIds { get; set; } = new HashSet<int>();
+    public IEnumerable<int> SelectedLanguageIds { get; set; } = new HashSet<int>();
 
     // Core Filters
-    public int? SelectedEventTypeId { get; set; }
-    public int? SelectedAudienceGenderId { get; set; }
-    public int? SelectedAudienceAgeId { get; set; }
-    public int? SelectedEventStatusId { get; set; }
+    public IEnumerable<int> SelectedEventTypeIds { get; set; } = new HashSet<int>();
+    public IEnumerable<int> SelectedAudienceGenderIds { get; set; } = new HashSet<int>();
+    public IEnumerable<int> SelectedAudienceAgeIds { get; set; } = new HashSet<int>();
+    public IEnumerable<int> SelectedEventStatusIds { get; set; } = new HashSet<int>();
     public string SelectedSortBy { get; set; } = "date";
     public bool SortDescending { get; set; } = true;
 
     // Islamic Filters
-    public GenderSegregationMode? SelectedGenderMode { get; set; }
-    public PrayerTime? SelectedReferencePrayer { get; set; }
+    public IEnumerable<int> SelectedGenderModeIds { get; set; } = new HashSet<int>();
+    public IEnumerable<int> SelectedReferencePrayerIds { get; set; } = new HashSet<int>();
 
     // Tech Filters
     public SkillLevel? SelectedSkillLevel { get; set; }
@@ -61,6 +63,12 @@ public partial class EventFilterBar
     private TriStateCategoryFilterDropdown? _categoryFilterDropdown;
 
     private void ToggleFilters() => _filtersExpanded = !_filtersExpanded;
+
+    private async Task OnLayoutChanged(LayoutMode mode)
+    {
+        CurrentLayout = mode;
+        await CurrentLayoutChanged.InvokeAsync(mode);
+    }
 
     private async Task SearchAsync()
     {
@@ -79,25 +87,28 @@ public partial class EventFilterBar
 
     private async Task ClearAllFilters()
     {
-        SelectedDate = "";
+        SelectedDateRange = null;
         SearchTerm = null;
-        SelectedLocationId = null;
-        SelectedFormatId = null;
-        SelectedMadhabId = null;
-        SelectedRegistrationModeId = null;
-        SelectedLanguageId = null;
-        SelectedEventTypeId = null;
-        SelectedAudienceGenderId = null;
-        SelectedAudienceAgeId = null;
-        SelectedEventStatusId = null;
+        SelectedLocationIds = new HashSet<Guid>();
+        SelectedFormatIds = new HashSet<int>();
+        SelectedMadhabIds = new HashSet<int>();
+        SelectedRegistrationModeIds = new HashSet<int>();
+        SelectedLanguageIds = new HashSet<int>();
+        SelectedEventTypeIds = new HashSet<int>();
+        SelectedAudienceGenderIds = new HashSet<int>();
+        SelectedAudienceAgeIds = new HashSet<int>();
+        SelectedEventStatusIds = new HashSet<int>();
         SelectedSortBy = "date";
         SortDescending = true;
 
-        SelectedGenderMode = null;
-        SelectedReferencePrayer = null;
+        SelectedGenderModeIds = new HashSet<int>();
+        SelectedReferencePrayerIds = new HashSet<int>();
 
         SelectedSkillLevel = null;
         TechStackTag = null;
+
+        _tagFilterDropdown?.ResetAll();
+        _categoryFilterDropdown?.ResetAll();
 
         await OnSearchRequested.InvokeAsync();
     }
@@ -105,20 +116,20 @@ public partial class EventFilterBar
     public int GetActiveFilterCount()
     {
         int count = 0;
-        if (!string.IsNullOrEmpty(SelectedDate)) count++;
+        if (SelectedDateRange?.Start != null || SelectedDateRange?.End != null) count++;
         if (!string.IsNullOrEmpty(SearchTerm)) count++;
-        if (SelectedLocationId.HasValue) count++;
-        if (SelectedFormatId.HasValue) count++;
-        if (SelectedMadhabId.HasValue) count++;
-        if (SelectedRegistrationModeId.HasValue) count++;
-        if (SelectedLanguageId.HasValue) count++;
-        if (SelectedEventTypeId.HasValue) count++;
-        if (SelectedAudienceGenderId.HasValue) count++;
-        if (SelectedAudienceAgeId.HasValue) count++;
-        if (SelectedEventStatusId.HasValue) count++;
+        if (SelectedLocationIds.Any()) count++;
+        if (SelectedFormatIds.Any()) count++;
+        if (SelectedMadhabIds.Any()) count++;
+        if (SelectedRegistrationModeIds.Any()) count++;
+        if (SelectedLanguageIds.Any()) count++;
+        if (SelectedEventTypeIds.Any()) count++;
+        if (SelectedAudienceGenderIds.Any()) count++;
+        if (SelectedAudienceAgeIds.Any()) count++;
+        if (SelectedEventStatusIds.Any()) count++;
 
-        if (SelectedGenderMode.HasValue) count++;
-        if (SelectedReferencePrayer.HasValue) count++;
+        if (SelectedGenderModeIds.Any()) count++;
+        if (SelectedReferencePrayerIds.Any()) count++;
 
         if (SelectedSkillLevel.HasValue) count++;
         if (!string.IsNullOrEmpty(TechStackTag)) count++;

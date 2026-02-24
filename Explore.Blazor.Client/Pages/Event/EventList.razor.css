@@ -1,107 +1,299 @@
-/* ABOUTME: Event list page layout with CSS flexbox sidebar.
- * ABOUTME: Desktop: toggleable sticky sidebar. Mobile: fixed overlay with backdrop. */
+/* ABOUTME: Scoped styles for EventList page with triple-mode grid layout. */
+/* ABOUTME: Covers drawers, card modes (CompactGrid, DetailedList, SingleRow), and responsive breakpoints. */
 
-/* ── Page-level flex layout ── */
+/* ══════════════════════════════════════════════
+   Page Layout — Drawers + Main Content
+   ══════════════════════════════════════════════ */
+
 .event-list__layout {
-    display: flex;
-    position: relative;
-    width: calc(100% + 32px);
     min-height: calc(100vh - var(--nav-height, 64px));
-    overflow-x: hidden;
-    margin-inline: -16px;
+    position: relative;
+    margin-left: calc(-50vw + 50%);
+    margin-right: calc(-50vw + 50%);
+    width: 100vw;
 }
 
-/* ── Sidebar (desktop: sticky flex item, toggleable) ── */
-.event-list__sidebar {
-    width: 0;
-    flex-shrink: 0;
-    background: var(--mud-palette-surface);
+::deep .event-list__drawer-container {
+    min-height: calc(100vh - var(--nav-height, 64px));
+}
+
+::deep .event-list__left-drawer {
     border-right: 1px solid var(--mud-palette-lines-default);
-    overflow: hidden;
-    position: sticky;
-    top: 0;
-    height: calc(100vh - var(--nav-height, 64px));
-    z-index: 10;
-    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.event-list__sidebar--open {
-    width: 260px;
+::deep .event-list__detail-drawer {
+    border-left: 1px solid var(--mud-palette-lines-default);
+    max-width: min(560px, 90vw);
+}
+
+::deep .event-list__detail-drawer .mud-drawer-content {
+    position: sticky;
+    top: var(--nav-height, 64px);
+    max-height: calc(100vh - var(--nav-height, 64px));
     overflow-y: auto;
 }
 
-.event-list__sidebar-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px;
-    border-bottom: 1px solid var(--mud-palette-lines-default);
-    min-width: 260px;
-}
-
-/* Close button always visible (works on all screen sizes) */
-.event-list__sidebar-close {
-    display: inline-flex;
-}
-
-/* ── Main content area ── */
 .event-list__main {
-    flex: 1 1 0%;
+    flex: 1;
     min-width: 0;
-    overflow-x: hidden;
+    padding: 0 16px;
 }
 
-::deep .event-list-container {
-    padding-top: 16px;
-    padding-inline: 16px;
+/* ══════════════════════════════════════════════
+   Event Grid — Shared MudGrid normalization
+   ══════════════════════════════════════════════ */
+
+::deep .event-grid.mud-grid {
+    margin: -8px !important;
+    width: calc(100% + 16px) !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
 }
 
-/* ── Backdrop (hidden by default, mobile only) ── */
-.event-list__backdrop {
-    display: none;
+::deep .event-grid > .mud-grid-item {
+    padding: 8px !important;
+    display: flex !important;
+    flex-direction: column;
 }
 
-/* ── Mobile: below 960px ── */
-@media (max-width: 959.98px) {
-    .event-list__layout {
-        width: calc(100% + 24px);
-        margin-inline: -12px;
-    }
+/* ══════════════════════════════════════════════
+   Event Card — Base styles (all modes)
+   ══════════════════════════════════════════════ */
 
-    .event-list__sidebar {
-        position: fixed;
-        top: 0;
-        left: 0;
-        bottom: 0;
-        width: 260px;
-        height: 100vh;
-        z-index: 1300;
-        transform: translateX(-100%);
-        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: none;
-        overflow-y: auto;
-    }
+::deep .event-card {
+    width: 100% !important;
+    transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+    background-color: var(--mud-palette-surface);
+}
 
-    .event-list__sidebar--open {
-        transform: translateX(0);
-        box-shadow: 0 8px 10px -5px rgba(0, 0, 0, 0.2),
-                    0 16px 24px 2px rgba(0, 0, 0, 0.14),
-                    0 6px 30px 5px rgba(0, 0, 0, 0.12);
-    }
+::deep .event-card:hover {
+    border-color: var(--mud-palette-primary) !important;
+    box-shadow: 0 0 0 2px var(--mud-palette-primary);
+}
 
-    .event-list__backdrop--visible {
-        display: block;
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 1299;
-        cursor: pointer;
+::deep .event-card--selected {
+    border-color: var(--mud-palette-primary) !important;
+    box-shadow: 0 0 0 2px var(--mud-palette-primary);
+}
+
+/* ══════════════════════════════════════════════
+   Mode 1: Compact Grid — Image-dominant overlay cards
+   ══════════════════════════════════════════════ */
+
+::deep .event-card--CompactGrid {
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column;
+    position: relative;
+    aspect-ratio: 2 / 3;
+    overflow: hidden;
+}
+
+::deep .event-card__image-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    flex: 1;
+}
+
+::deep .event-card__image {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover;
+    display: block;
+}
+
+::deep .event-card__overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 12px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.4) 60%, transparent 100%);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+::deep .event-card__overlay-chip {
+    align-self: flex-start;
+}
+
+::deep .event-card__overlay-title {
+    color: #fff !important;
+    font-weight: 700;
+    line-height: 1.3;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+::deep .event-card__overlay-meta {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+::deep .event-card__overlay-meta .mud-typography {
+    color: rgba(255, 255, 255, 0.7) !important;
+}
+
+::deep .event-card__skeleton-fill {
+    position: absolute;
+    inset: 0;
+}
+
+/* Compact Grid responsive columns */
+
+@media (max-width: 599.98px) {
+    ::deep .event-grid--CompactGrid > .mud-grid-item {
+        flex-basis: 33.333% !important;
+        max-width: 33.333% !important;
+        padding: 4px !important;
     }
 }
 
-@media (max-width: 480px) {
-    .event-list__layout {
-        width: calc(100% + 16px);
-        margin-inline: -8px;
+@media (min-width: 600px) and (max-width: 959.98px) {
+    ::deep .event-grid--CompactGrid > .mud-grid-item {
+        flex-basis: 25% !important;
+        max-width: 25% !important;
+        padding: 6px !important;
+    }
+}
+
+@media (min-width: 960px) and (max-width: 1279.98px) {
+    ::deep .event-grid--CompactGrid > .mud-grid-item {
+        flex-basis: 20% !important;
+        max-width: 20% !important;
+    }
+}
+
+@media (min-width: 1280px) {
+    ::deep .event-grid--CompactGrid > .mud-grid-item {
+        flex-basis: 16.666% !important;
+        max-width: 16.666% !important;
+    }
+}
+
+/* ══════════════════════════════════════════════
+   Mode 2: Detailed List — Horizontal card layout
+   ══════════════════════════════════════════════ */
+
+::deep .event-card--DetailedList {
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column;
+}
+
+::deep .event-card__horizontal {
+    display: flex;
+    flex-direction: row;
+    height: 100%;
+    min-height: 160px;
+}
+
+::deep .event-card__horizontal-image {
+    flex: 0 0 140px;
+    min-height: 160px;
+    overflow: hidden;
+}
+
+::deep .event-card__horizontal-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 12px 16px;
+}
+
+/* Detailed List responsive columns */
+
+@media (max-width: 599.98px) {
+    ::deep .event-grid--DetailedList > .mud-grid-item {
+        flex-basis: 100% !important;
+        max-width: 100% !important;
+    }
+
+    ::deep .event-card__horizontal-image {
+        flex: 0 0 100px;
+        min-height: 120px;
+    }
+}
+
+@media (min-width: 600px) and (max-width: 959.98px) {
+    ::deep .event-grid--DetailedList > .mud-grid-item {
+        flex-basis: 100% !important;
+        max-width: 100% !important;
+    }
+}
+
+@media (min-width: 960px) and (max-width: 1279.98px) {
+    ::deep .event-grid--DetailedList > .mud-grid-item {
+        flex-basis: 50% !important;
+        max-width: 50% !important;
+    }
+}
+
+@media (min-width: 1280px) {
+    ::deep .event-grid--DetailedList > .mud-grid-item {
+        flex-basis: 33.333% !important;
+        max-width: 33.333% !important;
+    }
+}
+
+/* ══════════════════════════════════════════════
+   Mode 3: Single Row — Full-width horizontal card
+   ══════════════════════════════════════════════ */
+
+::deep .event-card--SingleRow {
+    height: auto !important;
+    display: flex !important;
+    flex-direction: column;
+}
+
+::deep .event-card__full-row {
+    display: flex;
+    flex-direction: row;
+    min-height: 200px;
+}
+
+::deep .event-card__full-row-image {
+    flex: 0 0 280px;
+    min-height: 200px;
+    overflow: hidden;
+}
+
+::deep .event-card__full-row-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 16px 24px;
+}
+
+/* Single Row: always full width */
+::deep .event-grid--SingleRow > .mud-grid-item {
+    flex-basis: 100% !important;
+    max-width: 100% !important;
+}
+
+@media (max-width: 599.98px) {
+    ::deep .event-card__full-row {
+        flex-direction: column;
+    }
+
+    ::deep .event-card__full-row-image {
+        flex: 0 0 auto;
+        height: 180px;
+        min-height: auto;
+    }
+
+    ::deep .event-card__full-row-content {
+        padding: 12px 16px;
+    }
+}
+
+@media (min-width: 600px) and (max-width: 959.98px) {
+    ::deep .event-card__full-row-image {
+        flex: 0 0 200px;
     }
 }

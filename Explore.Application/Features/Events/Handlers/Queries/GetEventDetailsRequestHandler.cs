@@ -4,7 +4,9 @@ using System.Text;
 using AutoMapper;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.Category;
 using Explore.Application.DTOs.Event;
+using Explore.Application.DTOs.Tag;
 using Explore.Application.Features.Events.Requests.Queries;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -15,6 +17,8 @@ namespace Explore.Application.Features.Events.Handlers.Queries;
 public class GetEventDetailsRequestHandler : IRequestHandler<GetEventDetailsRequest, EventDto>
 {
     private readonly IEventRepository _eventRepository;
+    private readonly IEventTagsRepository _eventTagsRepository;
+    private readonly IEventCategoriesRepository _eventCategoriesRepository;
     private readonly IMapper _mapper;
     private readonly IObjectStorageService _objectStorageService;
     private readonly ILogger<GetEventDetailsRequestHandler> _logger;
@@ -22,12 +26,16 @@ public class GetEventDetailsRequestHandler : IRequestHandler<GetEventDetailsRequ
 
     public GetEventDetailsRequestHandler(
         IEventRepository eventRepository,
+        IEventTagsRepository eventTagsRepository,
+        IEventCategoriesRepository eventCategoriesRepository,
         IMapper mapper,
         IObjectStorageService objectStorageService,
         ILogger<GetEventDetailsRequestHandler> logger,
         HybridCache cache)
     {
         _eventRepository = eventRepository;
+        _eventTagsRepository = eventTagsRepository;
+        _eventCategoriesRepository = eventCategoriesRepository;
         _mapper = mapper;
         _objectStorageService = objectStorageService;
         _logger = logger;
@@ -43,7 +51,19 @@ public class GetEventDetailsRequestHandler : IRequestHandler<GetEventDetailsRequ
             async _ =>
             {
                 var @event = await _eventRepository.GetEventWithDetails(request.Id);
-                return _mapper.Map<EventDto>(@event);
+                var dto = _mapper.Map<EventDto>(@event);
+
+                if (dto != null)
+                {
+                    var tagsTask = _eventTagsRepository.GetTagsByEvent(request.Id);
+                    var categoriesTask = _eventCategoriesRepository.GetCategoriesByEvent(request.Id);
+                    await Task.WhenAll(tagsTask, categoriesTask);
+
+                    dto.Tags = _mapper.Map<List<TagListDto>>(await tagsTask);
+                    dto.Categories = _mapper.Map<List<CategoryListDto>>(await categoriesTask);
+                }
+
+                return dto;
             },
             new HybridCacheEntryOptions
             {

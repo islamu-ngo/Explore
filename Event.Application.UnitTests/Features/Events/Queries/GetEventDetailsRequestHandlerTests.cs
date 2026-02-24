@@ -15,6 +15,8 @@ namespace Event.Application.UnitTests.Features.Events.Queries;
 public class GetEventDetailsRequestHandlerTests
 {
     private readonly IEventRepository _eventRepository;
+    private readonly IEventTagsRepository _eventTagsRepository;
+    private readonly IEventCategoriesRepository _eventCategoriesRepository;
     private readonly IMapper _mapper;
     private readonly IObjectStorageService _objectStorageService;
     private readonly ILogger<GetEventDetailsRequestHandler> _logger;
@@ -24,11 +26,13 @@ public class GetEventDetailsRequestHandlerTests
     public GetEventDetailsRequestHandlerTests()
     {
         _eventRepository = Substitute.For<IEventRepository>();
+        _eventTagsRepository = Substitute.For<IEventTagsRepository>();
+        _eventCategoriesRepository = Substitute.For<IEventCategoriesRepository>();
         _mapper = Substitute.For<IMapper>();
         _objectStorageService = Substitute.For<IObjectStorageService>();
         _logger = Substitute.For<ILogger<GetEventDetailsRequestHandler>>();
         _cache = new TestHybridCache();
-        _handler = new GetEventDetailsRequestHandler(_eventRepository, _mapper, _objectStorageService, _logger, _cache);
+        _handler = new GetEventDetailsRequestHandler(_eventRepository, _eventTagsRepository, _eventCategoriesRepository, _mapper, _objectStorageService, _logger, _cache);
     }
 
     private sealed class TestHybridCache : HybridCache

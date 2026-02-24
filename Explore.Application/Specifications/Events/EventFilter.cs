@@ -29,10 +29,22 @@ public sealed class EventFilter : IFilterSpecification<Event>
         new(e => e.EventTypeId == eventTypeId);
 
     /// <summary>
+    /// Filters events by any of the specified event types (OR logic).
+    /// </summary>
+    public static EventFilter EventTypes(List<int> eventTypeIds) =>
+        new(e => e.EventTypeId != null && eventTypeIds.Contains(e.EventTypeId.Value));
+
+    /// <summary>
     /// Filters events by event format (online, in-person, hybrid).
     /// </summary>
     public static EventFilter Format(int formatId) =>
         new(e => e.EventFormatId == formatId);
+
+    /// <summary>
+    /// Filters events by any of the specified formats (OR logic).
+    /// </summary>
+    public static EventFilter Formats(List<int> formatIds) =>
+        new(e => formatIds.Contains(e.EventFormatId));
 
     /// <summary>
     /// Filters events by madhab.
@@ -41,10 +53,22 @@ public sealed class EventFilter : IFilterSpecification<Event>
         new(e => e.MadhabId == madhabId);
 
     /// <summary>
+    /// Filters events by any of the specified madhabs (OR logic).
+    /// </summary>
+    public static EventFilter Madhabs(List<int> madhabIds) =>
+        new(e => e.MadhabId != null && madhabIds.Contains(e.MadhabId.Value));
+
+    /// <summary>
     /// Filters events by audience gender.
     /// </summary>
     public static EventFilter AudienceGender(int audienceGenderId) =>
         new(e => e.AudienceGenderId == audienceGenderId);
+
+    /// <summary>
+    /// Filters events by any of the specified audience genders (OR logic).
+    /// </summary>
+    public static EventFilter AudienceGenders(List<int> audienceGenderIds) =>
+        new(e => e.AudienceGenderId != null && audienceGenderIds.Contains(e.AudienceGenderId.Value));
 
     /// <summary>
     /// Filters events by audience age.
@@ -53,10 +77,22 @@ public sealed class EventFilter : IFilterSpecification<Event>
         new(e => e.AudienceAgeId == audienceAgeId);
 
     /// <summary>
+    /// Filters events by any of the specified audience ages (OR logic).
+    /// </summary>
+    public static EventFilter AudienceAges(List<int> audienceAgeIds) =>
+        new(e => e.AudienceAgeId != null && audienceAgeIds.Contains(e.AudienceAgeId.Value));
+
+    /// <summary>
     /// Filters events by event status.
     /// </summary>
     public static EventFilter Status(int statusId) =>
         new(e => e.EventStatusId == statusId);
+
+    /// <summary>
+    /// Filters events by any of the specified statuses (OR logic).
+    /// </summary>
+    public static EventFilter Statuses(List<int> statusIds) =>
+        new(e => statusIds.Contains(e.EventStatusId));
 
     /// <summary>
     /// Filters events by visibility type.

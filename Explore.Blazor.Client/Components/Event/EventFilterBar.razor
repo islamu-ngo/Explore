@@ -3,9 +3,9 @@
 @using Explore.Blazor.Client.Models
 @using Explore.Blazor.Client.Components.Event
 
-<MudPaper Class="filter-bar sticky-header mb-4 rounded-lg mud-elevation-2" Style="z-index: 10; position: sticky; top: calc(var(--nav-height, 64px) + var(--announcement-bar-height, 0px)); backdrop-filter: blur(10px); background-color: color-mix(in srgb, var(--mud-palette-background) 95%, transparent);">
+<MudPaper Class="filter-bar sticky-header rounded-b-lg" Elevation="1" Style="z-index: 10; position: sticky; top: calc(var(--nav-height, 64px) + var(--announcement-bar-height, 0px)); backdrop-filter: blur(10px); background-color: color-mix(in srgb, var(--mud-palette-background) 95%, transparent);">
 
-    @* ── Primary Action Row: Search + Show Filters + Search Button ── *@
+    @* ── Primary Action Row: Search + Show Filters + Layout Switcher + Search Button ── *@
     <div class="filter-bar__primary-row">
         <MudTextField @bind-Value="SearchTerm"
                       Placeholder="Search events..."
@@ -34,6 +34,20 @@
             }
         </MudButton>
 
+        <MudToggleGroup T="LayoutMode" Value="CurrentLayout" ValueChanged="OnLayoutChanged"
+                        Size="Size.Small" Color="Color.Primary"
+                        Class="filter-bar__layout-switcher">
+            <MudToggleItem Value="@LayoutMode.CompactGrid" Title="Compact Grid">
+                <MudIcon Icon="@Icons.Material.Filled.GridView" Size="Size.Small" />
+            </MudToggleItem>
+            <MudToggleItem Value="@LayoutMode.DetailedList" Title="Detailed List">
+                <MudIcon Icon="@Icons.Material.Filled.ViewModule" Size="Size.Small" />
+            </MudToggleItem>
+            <MudToggleItem Value="@LayoutMode.SingleRow" Title="Single Row">
+                <MudIcon Icon="@Icons.Material.Filled.ViewList" Size="Size.Small" />
+            </MudToggleItem>
+        </MudToggleGroup>
+
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
                    StartIcon="@Icons.Material.Filled.Search"
@@ -51,14 +65,14 @@
 
                 @* ── Core Filters ── *@
                 <div class="filter-bar__filter-item">
-                    <div class="filter-bar__label">Date</div>
-                    <MudSelect T="string" @bind-Value="SelectedDate" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
-                        <MudSelectItem Value="@("")">Any Time</MudSelectItem>
-                        <MudSelectItem Value="@("today")">Today</MudSelectItem>
-                        <MudSelectItem Value="@("tomorrow")">Tomorrow</MudSelectItem>
-                        <MudSelectItem Value="@("thisweek")">This Week</MudSelectItem>
-                        <MudSelectItem Value="@("thismonth")">This Month</MudSelectItem>
-                    </MudSelect>
+                    <div class="filter-bar__label">Date Range</div>
+                    <MudDateRangePicker @bind-DateRange="SelectedDateRange"
+                                        Variant="Variant.Outlined"
+                                        Margin="Margin.Dense"
+                                        Placeholder="Any Time"
+                                        Clearable="true"
+                                        AutoClose="true"
+                                        Dense="true" />
                 </div>
 
                 <div class="filter-bar__filter-item">
@@ -68,99 +82,90 @@
 
                 <div class="filter-bar__filter-item">
                     <div class="filter-bar__label">Location</div>
-                    <MudSelect T="Guid?" @bind-Value="SelectedLocationId" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
-                        <MudSelectItem T="Guid?" Value="@((Guid?)null)">All Locations</MudSelectItem>
+                    <MudSelect T="Guid" MultiSelection="true" @bind-SelectedValues="SelectedLocationIds" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
                         @foreach (var location in Locations)
                         {
-                            <MudSelectItem @key="location.Id" T="Guid?" Value="@location.Id">@location.FullName</MudSelectItem>
+                            <MudSelectItem T="Guid" Value="@(location.Id.GetValueOrDefault())">@location.FullName</MudSelectItem>
                         }
                     </MudSelect>
                 </div>
 
                 <div class="filter-bar__filter-item">
                     <div class="filter-bar__label">Format</div>
-                    <MudSelect T="int?" @bind-Value="SelectedFormatId" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
-                        <MudSelectItem T="int?" Value="@((int?)null)">All Formats</MudSelectItem>
+                    <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedFormatIds" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
                         @foreach (var format in EventFormats)
                         {
-                            <MudSelectItem @key="format.Id" T="int?" Value="@format.Id">@format.FullName</MudSelectItem>
+                            <MudSelectItem T="int" Value="@(format.Id.GetValueOrDefault())">@format.FullName</MudSelectItem>
                         }
                     </MudSelect>
                 </div>
 
                 <div class="filter-bar__filter-item">
                     <div class="filter-bar__label">Type</div>
-                    <MudSelect T="int?" @bind-Value="SelectedEventTypeId" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
-                        <MudSelectItem T="int?" Value="@((int?)null)">All Types</MudSelectItem>
+                    <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedEventTypeIds" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
                         @foreach (var type in EventTypes)
                         {
-                            <MudSelectItem @key="type.Id" T="int?" Value="@type.Id">@type.FullName</MudSelectItem>
+                            <MudSelectItem T="int" Value="@(type.Id.GetValueOrDefault())">@type.FullName</MudSelectItem>
                         }
                     </MudSelect>
                 </div>
 
                 <div class="filter-bar__filter-item">
                     <div class="filter-bar__label">Madhab</div>
-                    <MudSelect T="int?" @bind-Value="SelectedMadhabId" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
-                        <MudSelectItem T="int?" Value="@((int?)null)">All Madhabs</MudSelectItem>
+                    <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedMadhabIds" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
                         @foreach (var madhab in Madhabs)
                         {
-                            <MudSelectItem @key="madhab.Id" T="int?" Value="@madhab.Id">@madhab.FullName</MudSelectItem>
+                            <MudSelectItem T="int" Value="@(madhab.Id.GetValueOrDefault())">@madhab.FullName</MudSelectItem>
                         }
                     </MudSelect>
                 </div>
 
                 <div class="filter-bar__filter-item">
                     <div class="filter-bar__label">Registration</div>
-                    <MudSelect T="int?" @bind-Value="SelectedRegistrationModeId" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
-                        <MudSelectItem T="int?" Value="@((int?)null)">All Modes</MudSelectItem>
+                    <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedRegistrationModeIds" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
                         @foreach (var mode in RegistrationModes)
                         {
-                            <MudSelectItem @key="mode.Id" T="int?" Value="@mode.Id">@mode.FullName</MudSelectItem>
+                            <MudSelectItem T="int" Value="@(mode.Id.GetValueOrDefault())">@mode.FullName</MudSelectItem>
                         }
                     </MudSelect>
                 </div>
 
                 <div class="filter-bar__filter-item">
                     <div class="filter-bar__label">Language</div>
-                    <MudSelect T="int?" @bind-Value="SelectedLanguageId" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
-                        <MudSelectItem T="int?" Value="@((int?)null)">All Languages</MudSelectItem>
+                    <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedLanguageIds" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
                         @foreach (var language in Languages)
                         {
-                            <MudSelectItem @key="language.Id" T="int?" Value="@language.Id">@language.FullName</MudSelectItem>
+                            <MudSelectItem T="int" Value="@(language.Id.GetValueOrDefault())">@language.FullName</MudSelectItem>
                         }
                     </MudSelect>
                 </div>
 
                 <div class="filter-bar__filter-item">
                     <div class="filter-bar__label">Gender</div>
-                    <MudSelect T="int?" @bind-Value="SelectedAudienceGenderId" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
-                        <MudSelectItem T="int?" Value="@((int?)null)">All Genders</MudSelectItem>
+                    <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedAudienceGenderIds" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
                         @foreach (var gender in AudienceGenders)
                         {
-                            <MudSelectItem @key="gender.Id" T="int?" Value="@gender.Id">@gender.FullName</MudSelectItem>
+                            <MudSelectItem T="int" Value="@(gender.Id.GetValueOrDefault())">@gender.FullName</MudSelectItem>
                         }
                     </MudSelect>
                 </div>
 
                 <div class="filter-bar__filter-item">
                     <div class="filter-bar__label">Age</div>
-                    <MudSelect T="int?" @bind-Value="SelectedAudienceAgeId" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
-                        <MudSelectItem T="int?" Value="@((int?)null)">All Ages</MudSelectItem>
+                    <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedAudienceAgeIds" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
                         @foreach (var age in AudienceAges)
                         {
-                            <MudSelectItem @key="age.Id" T="int?" Value="@age.Id">@age.FullName</MudSelectItem>
+                            <MudSelectItem T="int" Value="@(age.Id.GetValueOrDefault())">@age.FullName</MudSelectItem>
                         }
                     </MudSelect>
                 </div>
 
                 <div class="filter-bar__filter-item">
                     <div class="filter-bar__label">Status</div>
-                    <MudSelect T="int?" @bind-Value="SelectedEventStatusId" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
-                        <MudSelectItem T="int?" Value="@((int?)null)">All Statuses</MudSelectItem>
+                    <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedEventStatusIds" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
                         @foreach (var status in EventStatuses)
                         {
-                            <MudSelectItem @key="status.Id" T="int?" Value="@status.Id">@status.FullName</MudSelectItem>
+                            <MudSelectItem T="int" Value="@(status.Id.GetValueOrDefault())">@status.FullName</MudSelectItem>
                         }
                     </MudSelect>
                 </div>
@@ -185,22 +190,20 @@
                 {
                     <div class="filter-bar__filter-item">
                         <div class="filter-bar__label">Gender Mode</div>
-                        <MudSelect T="GenderSegregationMode?" @bind-Value="SelectedGenderMode" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
-                            <MudSelectItem T="GenderSegregationMode?" Value="@((GenderSegregationMode?)null)">Any</MudSelectItem>
+                        <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedGenderModeIds" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
                             @foreach (GenderSegregationMode item in Enum.GetValues(typeof(GenderSegregationMode)))
                             {
-                                <MudSelectItem Value="@((GenderSegregationMode?)item)">@item.ToString()</MudSelectItem>
+                                <MudSelectItem T="int" Value="@((int)item)">@item.ToString()</MudSelectItem>
                             }
                         </MudSelect>
                     </div>
 
                     <div class="filter-bar__filter-item">
                         <div class="filter-bar__label">Prayer Time</div>
-                        <MudSelect T="PrayerTime?" @bind-Value="SelectedReferencePrayer" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
-                            <MudSelectItem T="PrayerTime?" Value="@((PrayerTime?)null)">Any</MudSelectItem>
+                        <MudSelect T="int" MultiSelection="true" @bind-SelectedValues="SelectedReferencePrayerIds" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
                             @foreach (PrayerTime item in Enum.GetValues(typeof(PrayerTime)))
                             {
-                                <MudSelectItem Value="@((PrayerTime?)item)">@item.ToString()</MudSelectItem>
+                                <MudSelectItem T="int" Value="@((int)item)">@item.ToString()</MudSelectItem>
                             }
                         </MudSelect>
                     </div>

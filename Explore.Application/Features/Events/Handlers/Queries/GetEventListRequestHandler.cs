@@ -86,23 +86,23 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
         if (!string.IsNullOrWhiteSpace(request.SearchTerm))
             spec = spec.And(EventFilter.SearchTerm(request.SearchTerm.Trim()));
 
-        if (request.FormatId.HasValue)
-            spec = spec.And(EventFilter.Format(request.FormatId.Value));
+        if (request.FormatIds is { Count: > 0 })
+            spec = spec.And(EventFilter.Formats(request.FormatIds));
 
-        if (request.MadhabId.HasValue)
-            spec = spec.And(EventFilter.Madhab(request.MadhabId.Value));
+        if (request.MadhabIds is { Count: > 0 })
+            spec = spec.And(EventFilter.Madhabs(request.MadhabIds));
 
-        if (request.EventTypeId.HasValue)
-            spec = spec.And(EventFilter.EventType(request.EventTypeId.Value));
+        if (request.EventTypeIds is { Count: > 0 })
+            spec = spec.And(EventFilter.EventTypes(request.EventTypeIds));
 
-        if (request.AudienceGenderId.HasValue)
-            spec = spec.And(EventFilter.AudienceGender(request.AudienceGenderId.Value));
+        if (request.AudienceGenderIds is { Count: > 0 })
+            spec = spec.And(EventFilter.AudienceGenders(request.AudienceGenderIds));
 
-        if (request.AudienceAgeId.HasValue)
-            spec = spec.And(EventFilter.AudienceAge(request.AudienceAgeId.Value));
+        if (request.AudienceAgeIds is { Count: > 0 })
+            spec = spec.And(EventFilter.AudienceAges(request.AudienceAgeIds));
 
-        if (request.EventStatusId.HasValue)
-            spec = spec.And(EventFilter.Status(request.EventStatusId.Value));
+        if (request.EventStatusIds is { Count: > 0 })
+            spec = spec.And(EventFilter.Statuses(request.EventStatusIds));
 
         if (request.DateFrom.HasValue)
             spec = spec.And(EventFilter.DateFrom(request.DateFrom.Value));
@@ -143,14 +143,14 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
                 : spec.And(EventSubqueryFilter.TagsExcludedAll(request.ExcludedTagIds));
         }
 
-        if (request.LocationId.HasValue)
-            spec = spec.And(EventSubqueryFilter.Location(request.LocationId.Value));
+        if (request.LocationIds is { Count: > 0 })
+            spec = spec.And(EventSubqueryFilter.Locations(request.LocationIds));
 
-        if (request.LanguageId.HasValue)
-            spec = spec.And(EventSubqueryFilter.Language(request.LanguageId.Value));
+        if (request.LanguageIds is { Count: > 0 })
+            spec = spec.And(EventSubqueryFilter.Languages(request.LanguageIds));
 
-        if (request.RegistrationModeId.HasValue)
-            spec = spec.And(EventSubqueryFilter.RegistrationMode(request.RegistrationModeId.Value));
+        if (request.RegistrationModeIds is { Count: > 0 })
+            spec = spec.And(EventSubqueryFilter.RegistrationModes(request.RegistrationModeIds));
 
         // ===== JSONB metadata filters (always available) =====
 
@@ -163,10 +163,10 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
         // ===== Islamic aspect filters (module-conditional) =====
 
         var tenantId = _tenantContext.TenantId;
-        var hasIslamicAspectFilters = request.GenderModeId.HasValue
+        var hasIslamicAspectFilters = request.GenderModeIds is { Count: > 0 }
             || request.IncludesQuranRecitation is true
-            || request.ReferencePrayerId.HasValue
-            || request.IslamicPrimaryLanguageId.HasValue
+            || request.ReferencePrayerIds is { Count: > 0 }
+            || request.IslamicPrimaryLanguageIds is { Count: > 0 }
             || request.HasIslamicAspect is true;
 
         if (hasIslamicAspectFilters &&
@@ -175,17 +175,17 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
             if (request.HasIslamicAspect is true)
                 spec = spec.And(AspectPresenceFilter.HasIslamicAspect());
 
-            if (request.GenderModeId.HasValue)
-                spec = spec.And(IslamicAspectFilter.GenderMode((GenderSegregationMode)request.GenderModeId.Value));
+            if (request.GenderModeIds is { Count: > 0 })
+                spec = spec.And(IslamicAspectFilter.GenderModes(request.GenderModeIds));
 
             if (request.IncludesQuranRecitation is true)
                 spec = spec.And(IslamicAspectFilter.IncludesQuranRecitation());
 
-            if (request.ReferencePrayerId.HasValue)
-                spec = spec.And(IslamicAspectFilter.ReferencePrayer((PrayerTime)request.ReferencePrayerId.Value));
+            if (request.ReferencePrayerIds is { Count: > 0 })
+                spec = spec.And(IslamicAspectFilter.ReferencePrayers(request.ReferencePrayerIds));
 
-            if (request.IslamicPrimaryLanguageId.HasValue)
-                spec = spec.And(IslamicAspectFilter.PrimaryLanguage(request.IslamicPrimaryLanguageId.Value));
+            if (request.IslamicPrimaryLanguageIds is { Count: > 0 })
+                spec = spec.And(IslamicAspectFilter.PrimaryLanguages(request.IslamicPrimaryLanguageIds));
         }
 
         // ===== Tech aspect filters (module-conditional) =====

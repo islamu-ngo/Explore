@@ -391,7 +391,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<HalCollectionResourceOfEventListDto> GetEventsAsync(int? pageNumber = null, int? pageSize = null, string? searchTerm = null, System.Guid? categoryId = null, System.Collections.Generic.IEnumerable<System.Guid>? includedCategoryIds = null, System.Collections.Generic.IEnumerable<System.Guid>? excludedCategoryIds = null, string? categoryInclusionMode = null, string? categoryExclusionMode = null, System.Collections.Generic.IEnumerable<System.Guid>? includedTagIds = null, System.Collections.Generic.IEnumerable<System.Guid>? excludedTagIds = null, string? inclusionMode = null, string? exclusionMode = null, int? formatId = null, int? madhabId = null, System.Guid? locationId = null, int? registrationModeId = null, int? languageId = null, System.DateTimeOffset? dateFrom = null, System.DateTimeOffset? dateTo = null, int? eventTypeId = null, int? audienceGenderId = null, int? audienceAgeId = null, int? eventStatusId = null, int? genderModeId = null, bool? includesQuranRecitation = null, int? referencePrayerId = null, int? islamicPrimaryLanguageId = null, bool? hasIslamicAspect = null, int? skillLevelId = null, bool? isCodingCompetition = null, bool? isHackathon = null, bool? requiresLaptop = null, string? techStackTag = null, bool? hasTechAspect = null, string? metadataJsonContains = null, string? metadataJsonKeyExists = null, string? sortBy = null, bool? sortDescending = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<HalCollectionResourceOfEventListDto> GetEventsAsync(int? pageNumber = null, int? pageSize = null, string? searchTerm = null, System.Guid? categoryId = null, System.Collections.Generic.IEnumerable<System.Guid>? includedCategoryIds = null, System.Collections.Generic.IEnumerable<System.Guid>? excludedCategoryIds = null, string? categoryInclusionMode = null, string? categoryExclusionMode = null, System.Collections.Generic.IEnumerable<System.Guid>? includedTagIds = null, System.Collections.Generic.IEnumerable<System.Guid>? excludedTagIds = null, string? inclusionMode = null, string? exclusionMode = null, System.Collections.Generic.IEnumerable<int>? formatIds = null, System.Collections.Generic.IEnumerable<int>? madhabIds = null, System.Collections.Generic.IEnumerable<System.Guid>? locationIds = null, System.Collections.Generic.IEnumerable<int>? registrationModeIds = null, System.Collections.Generic.IEnumerable<int>? languageIds = null, System.DateTimeOffset? dateFrom = null, System.DateTimeOffset? dateTo = null, System.Collections.Generic.IEnumerable<int>? eventTypeIds = null, System.Collections.Generic.IEnumerable<int>? audienceGenderIds = null, System.Collections.Generic.IEnumerable<int>? audienceAgeIds = null, System.Collections.Generic.IEnumerable<int>? eventStatusIds = null, System.Collections.Generic.IEnumerable<int>? genderModeIds = null, bool? includesQuranRecitation = null, System.Collections.Generic.IEnumerable<int>? referencePrayerIds = null, System.Collections.Generic.IEnumerable<int>? islamicPrimaryLanguageIds = null, bool? hasIslamicAspect = null, int? skillLevelId = null, bool? isCodingCompetition = null, bool? isHackathon = null, bool? requiresLaptop = null, string? techStackTag = null, bool? hasTechAspect = null, string? metadataJsonContains = null, string? metadataJsonKeyExists = null, string? sortBy = null, bool? sortDescending = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -5430,7 +5430,7 @@ namespace Explore.Blazor.Client.Clients
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<HalCollectionResourceOfEventListDto> GetEventsAsync(int? pageNumber = null, int? pageSize = null, string? searchTerm = null, System.Guid? categoryId = null, System.Collections.Generic.IEnumerable<System.Guid>? includedCategoryIds = null, System.Collections.Generic.IEnumerable<System.Guid>? excludedCategoryIds = null, string? categoryInclusionMode = null, string? categoryExclusionMode = null, System.Collections.Generic.IEnumerable<System.Guid>? includedTagIds = null, System.Collections.Generic.IEnumerable<System.Guid>? excludedTagIds = null, string? inclusionMode = null, string? exclusionMode = null, int? formatId = null, int? madhabId = null, System.Guid? locationId = null, int? registrationModeId = null, int? languageId = null, System.DateTimeOffset? dateFrom = null, System.DateTimeOffset? dateTo = null, int? eventTypeId = null, int? audienceGenderId = null, int? audienceAgeId = null, int? eventStatusId = null, int? genderModeId = null, bool? includesQuranRecitation = null, int? referencePrayerId = null, int? islamicPrimaryLanguageId = null, bool? hasIslamicAspect = null, int? skillLevelId = null, bool? isCodingCompetition = null, bool? isHackathon = null, bool? requiresLaptop = null, string? techStackTag = null, bool? hasTechAspect = null, string? metadataJsonContains = null, string? metadataJsonKeyExists = null, string? sortBy = null, bool? sortDescending = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<HalCollectionResourceOfEventListDto> GetEventsAsync(int? pageNumber = null, int? pageSize = null, string? searchTerm = null, System.Guid? categoryId = null, System.Collections.Generic.IEnumerable<System.Guid>? includedCategoryIds = null, System.Collections.Generic.IEnumerable<System.Guid>? excludedCategoryIds = null, string? categoryInclusionMode = null, string? categoryExclusionMode = null, System.Collections.Generic.IEnumerable<System.Guid>? includedTagIds = null, System.Collections.Generic.IEnumerable<System.Guid>? excludedTagIds = null, string? inclusionMode = null, string? exclusionMode = null, System.Collections.Generic.IEnumerable<int>? formatIds = null, System.Collections.Generic.IEnumerable<int>? madhabIds = null, System.Collections.Generic.IEnumerable<System.Guid>? locationIds = null, System.Collections.Generic.IEnumerable<int>? registrationModeIds = null, System.Collections.Generic.IEnumerable<int>? languageIds = null, System.DateTimeOffset? dateFrom = null, System.DateTimeOffset? dateTo = null, System.Collections.Generic.IEnumerable<int>? eventTypeIds = null, System.Collections.Generic.IEnumerable<int>? audienceGenderIds = null, System.Collections.Generic.IEnumerable<int>? audienceAgeIds = null, System.Collections.Generic.IEnumerable<int>? eventStatusIds = null, System.Collections.Generic.IEnumerable<int>? genderModeIds = null, bool? includesQuranRecitation = null, System.Collections.Generic.IEnumerable<int>? referencePrayerIds = null, System.Collections.Generic.IEnumerable<int>? islamicPrimaryLanguageIds = null, bool? hasIslamicAspect = null, int? skillLevelId = null, bool? isCodingCompetition = null, bool? isHackathon = null, bool? requiresLaptop = null, string? techStackTag = null, bool? hasTechAspect = null, string? metadataJsonContains = null, string? metadataJsonKeyExists = null, string? sortBy = null, bool? sortDescending = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -5518,25 +5518,55 @@ namespace Explore.Blazor.Client.Clients
                     {
                         urlBuilder_.Append(System.Uri.EscapeDataString("exclusionMode")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(exclusionMode, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
-                    if (formatId != null)
+                    if (formatIds != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("formatId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(formatId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("formatIds") + "=");
+                        foreach (var item_ in formatIds)
+                        {
+                            urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append(",");
+                        }
+                        urlBuilder_.Length--;
+                        urlBuilder_.Append("&");
                     }
-                    if (madhabId != null)
+                    if (madhabIds != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("madhabId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(madhabId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("madhabIds") + "=");
+                        foreach (var item_ in madhabIds)
+                        {
+                            urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append(",");
+                        }
+                        urlBuilder_.Length--;
+                        urlBuilder_.Append("&");
                     }
-                    if (locationId != null)
+                    if (locationIds != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("locationId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(locationId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("locationIds") + "=");
+                        foreach (var item_ in locationIds)
+                        {
+                            urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append(",");
+                        }
+                        urlBuilder_.Length--;
+                        urlBuilder_.Append("&");
                     }
-                    if (registrationModeId != null)
+                    if (registrationModeIds != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("registrationModeId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(registrationModeId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("registrationModeIds") + "=");
+                        foreach (var item_ in registrationModeIds)
+                        {
+                            urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append(",");
+                        }
+                        urlBuilder_.Length--;
+                        urlBuilder_.Append("&");
                     }
-                    if (languageId != null)
+                    if (languageIds != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("languageId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(languageId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("languageIds") + "=");
+                        foreach (var item_ in languageIds)
+                        {
+                            urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append(",");
+                        }
+                        urlBuilder_.Length--;
+                        urlBuilder_.Append("&");
                     }
                     if (dateFrom != null)
                     {
@@ -5546,37 +5576,79 @@ namespace Explore.Blazor.Client.Clients
                     {
                         urlBuilder_.Append(System.Uri.EscapeDataString("dateTo")).Append('=').Append(System.Uri.EscapeDataString(dateTo.Value.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
-                    if (eventTypeId != null)
+                    if (eventTypeIds != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("eventTypeId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(eventTypeId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("eventTypeIds") + "=");
+                        foreach (var item_ in eventTypeIds)
+                        {
+                            urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append(",");
+                        }
+                        urlBuilder_.Length--;
+                        urlBuilder_.Append("&");
                     }
-                    if (audienceGenderId != null)
+                    if (audienceGenderIds != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("audienceGenderId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(audienceGenderId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("audienceGenderIds") + "=");
+                        foreach (var item_ in audienceGenderIds)
+                        {
+                            urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append(",");
+                        }
+                        urlBuilder_.Length--;
+                        urlBuilder_.Append("&");
                     }
-                    if (audienceAgeId != null)
+                    if (audienceAgeIds != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("audienceAgeId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(audienceAgeId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("audienceAgeIds") + "=");
+                        foreach (var item_ in audienceAgeIds)
+                        {
+                            urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append(",");
+                        }
+                        urlBuilder_.Length--;
+                        urlBuilder_.Append("&");
                     }
-                    if (eventStatusId != null)
+                    if (eventStatusIds != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("eventStatusId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(eventStatusId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("eventStatusIds") + "=");
+                        foreach (var item_ in eventStatusIds)
+                        {
+                            urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append(",");
+                        }
+                        urlBuilder_.Length--;
+                        urlBuilder_.Append("&");
                     }
-                    if (genderModeId != null)
+                    if (genderModeIds != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("genderModeId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(genderModeId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("genderModeIds") + "=");
+                        foreach (var item_ in genderModeIds)
+                        {
+                            urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append(",");
+                        }
+                        urlBuilder_.Length--;
+                        urlBuilder_.Append("&");
                     }
                     if (includesQuranRecitation != null)
                     {
                         urlBuilder_.Append(System.Uri.EscapeDataString("includesQuranRecitation")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(includesQuranRecitation, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
-                    if (referencePrayerId != null)
+                    if (referencePrayerIds != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("referencePrayerId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(referencePrayerId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("referencePrayerIds") + "=");
+                        foreach (var item_ in referencePrayerIds)
+                        {
+                            urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append(",");
+                        }
+                        urlBuilder_.Length--;
+                        urlBuilder_.Append("&");
                     }
-                    if (islamicPrimaryLanguageId != null)
+                    if (islamicPrimaryLanguageIds != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("islamicPrimaryLanguageId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(islamicPrimaryLanguageId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("islamicPrimaryLanguageIds") + "=");
+                        foreach (var item_ in islamicPrimaryLanguageIds)
+                        {
+                            urlBuilder_.Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append(",");
+                        }
+                        urlBuilder_.Length--;
+                        urlBuilder_.Append("&");
                     }
                     if (hasIslamicAspect != null)
                     {

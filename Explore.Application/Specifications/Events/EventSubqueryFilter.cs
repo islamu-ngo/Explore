@@ -99,16 +99,34 @@ public sealed class EventSubqueryFilter
         new(EventSubqueryFilterType.Location, locationId);
 
     /// <summary>
+    /// Filters events that have at least one session at any of the specified locations (OR logic).
+    /// </summary>
+    public static EventSubqueryFilter Locations(List<Guid> locationIds) =>
+        new(EventSubqueryFilterType.Locations, locationIds);
+
+    /// <summary>
     /// Filters events that have at least one session in the specified language.
     /// </summary>
     public static EventSubqueryFilter Language(int languageId) =>
         new(EventSubqueryFilterType.Language, languageId);
 
     /// <summary>
+    /// Filters events that have at least one session in any of the specified languages (OR logic).
+    /// </summary>
+    public static EventSubqueryFilter Languages(List<int> languageIds) =>
+        new(EventSubqueryFilterType.Languages, languageIds);
+
+    /// <summary>
     /// Filters events that have at least one session with the specified registration mode.
     /// </summary>
     public static EventSubqueryFilter RegistrationMode(int registrationModeId) =>
         new(EventSubqueryFilterType.RegistrationMode, registrationModeId);
+
+    /// <summary>
+    /// Filters events that have at least one session with any of the specified registration modes (OR logic).
+    /// </summary>
+    public static EventSubqueryFilter RegistrationModes(List<int> registrationModeIds) =>
+        new(EventSubqueryFilterType.RegistrationModes, registrationModeIds);
 
     /// <summary>
     /// Filters events whose MetadataJson JSONB column contains the specified JSON fragment.
@@ -165,11 +183,20 @@ public enum EventSubqueryFilterType
     /// <summary>Location filter via EventSessions table.</summary>
     Location,
 
+    /// <summary>Location multi-value filter via EventSessions table (OR logic).</summary>
+    Locations,
+
     /// <summary>Language filter via EventSessions → EventSessionLanguages tables.</summary>
     Language,
 
+    /// <summary>Language multi-value filter via EventSessions → EventSessionLanguages tables (OR logic).</summary>
+    Languages,
+
     /// <summary>Registration mode filter via EventSessions table.</summary>
     RegistrationMode,
+
+    /// <summary>Registration mode multi-value filter via EventSessions table (OR logic).</summary>
+    RegistrationModes,
 
     /// <summary>JSONB containment filter on MetadataJson using @&gt; operator.</summary>
     JsonContains,

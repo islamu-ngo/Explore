@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Explore.Application.DTOs.Category;
 using Explore.Application.DTOs.EventAspects;
+using Explore.Application.DTOs.Tag;
 
 namespace Explore.Application.DTOs.Event;
 
@@ -96,6 +98,10 @@ public class EventDto
 
     // Dynamic metadata JSON
     public string? MetadataJson { get; set; }
+
+    // Tags & Categories (populated via junction tables)
+    public List<TagListDto> Tags { get; set; } = new();
+    public List<CategoryListDto> Categories { get; set; } = new();
 
     // Tenant
     public Guid TenantId { get; set; }

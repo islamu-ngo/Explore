@@ -101,23 +101,23 @@ public class EventListTests : IDisposable
             Arg.Any<List<Guid>?>(),            // excludedTagIds
             Arg.Any<string?>(),                // inclusionMode
             Arg.Any<string?>(),                // exclusionMode
-            Arg.Any<int?>(),                   // formatId
-            Arg.Any<int?>(),                   // madhabId
-            Arg.Any<Guid?>(),                  // locationId
-            Arg.Any<int?>(),                   // registrationModeId
-            Arg.Any<int?>(),                   // languageId
+            Arg.Any<List<int>?>(),             // formatIds
+            Arg.Any<List<int>?>(),             // madhabIds
+            Arg.Any<List<Guid>?>(),            // locationIds
+            Arg.Any<List<int>?>(),             // registrationModeIds
+            Arg.Any<List<int>?>(),             // languageIds
             Arg.Any<DateTimeOffset?>(),        // dateFrom
             Arg.Any<DateTimeOffset?>(),        // dateTo
             Arg.Any<string?>(),                // sortBy
             Arg.Any<bool?>(),                  // sortDescending
-            Arg.Any<int?>(),                   // eventTypeId
-            Arg.Any<int?>(),                   // audienceGenderId
-            Arg.Any<int?>(),                   // audienceAgeId
-            Arg.Any<int?>(),                   // eventStatusId
-            Arg.Any<int?>(),                   // genderModeId
+            Arg.Any<List<int>?>(),             // eventTypeIds
+            Arg.Any<List<int>?>(),             // audienceGenderIds
+            Arg.Any<List<int>?>(),             // audienceAgeIds
+            Arg.Any<List<int>?>(),             // eventStatusIds
+            Arg.Any<List<int>?>(),             // genderModeIds
             Arg.Any<bool?>(),                  // includesQuranRecitation
-            Arg.Any<int?>(),                   // referencePrayerId
-            Arg.Any<int?>(),                   // islamicPrimaryLanguageId
+            Arg.Any<List<int>?>(),             // referencePrayerIds
+            Arg.Any<List<int>?>(),             // islamicPrimaryLanguageIds
             Arg.Any<bool?>(),                  // hasIslamicAspect
             Arg.Any<int?>(),                   // skillLevelId
             Arg.Any<bool?>(),                  // isCodingCompetition

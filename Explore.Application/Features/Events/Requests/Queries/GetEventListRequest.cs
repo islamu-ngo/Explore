@@ -82,28 +82,33 @@ public class GetEventListRequest : IRequest<PaginatedResult<EventListDto>>
 
     /// <summary>
     /// Filter by event format (online, in-person, hybrid).
+    /// Supports multiple values — events matching any of the specified formats are returned.
     /// </summary>
-    public int? FormatId { get; set; }
+    public List<int>? FormatIds { get; set; }
 
     /// <summary>
     /// Filter by madhab.
+    /// Supports multiple values — events matching any of the specified madhabs are returned.
     /// </summary>
-    public int? MadhabId { get; set; }
+    public List<int>? MadhabIds { get; set; }
 
     /// <summary>
     /// Filter by location (via EventSessions junction).
+    /// Supports multiple values — events at any of the specified locations are returned.
     /// </summary>
-    public Guid? LocationId { get; set; }
+    public List<Guid>? LocationIds { get; set; }
 
     /// <summary>
     /// Filter by registration mode (via EventSessions junction).
+    /// Supports multiple values — events with any of the specified modes are returned.
     /// </summary>
-    public int? RegistrationModeId { get; set; }
+    public List<int>? RegistrationModeIds { get; set; }
 
     /// <summary>
     /// Filter by language (via EventSessions → EventSessionLanguages junction).
+    /// Supports multiple values — events in any of the specified languages are returned.
     /// </summary>
-    public int? LanguageId { get; set; }
+    public List<int>? LanguageIds { get; set; }
 
     /// <summary>
     /// Filter events with first session date on or after this date.
@@ -117,32 +122,37 @@ public class GetEventListRequest : IRequest<PaginatedResult<EventListDto>>
 
     /// <summary>
     /// Filter by event type.
+    /// Supports multiple values — events matching any of the specified types are returned.
     /// </summary>
-    public int? EventTypeId { get; set; }
+    public List<int>? EventTypeIds { get; set; }
 
     /// <summary>
     /// Filter by audience gender.
+    /// Supports multiple values — events matching any of the specified genders are returned.
     /// </summary>
-    public int? AudienceGenderId { get; set; }
+    public List<int>? AudienceGenderIds { get; set; }
 
     /// <summary>
     /// Filter by audience age group.
+    /// Supports multiple values — events matching any of the specified ages are returned.
     /// </summary>
-    public int? AudienceAgeId { get; set; }
+    public List<int>? AudienceAgeIds { get; set; }
 
     /// <summary>
     /// Filter by event status.
+    /// Supports multiple values — events matching any of the specified statuses are returned.
     /// </summary>
-    public int? EventStatusId { get; set; }
+    public List<int>? EventStatusIds { get; set; }
 
     // ===== Islamic Aspect Filter Parameters =====
     // These are only applied when the Islamic module is enabled for the tenant.
 
     /// <summary>
     /// Filter by Islamic aspect gender segregation mode.
+    /// Supports multiple values — events matching any of the specified modes are returned.
     /// Only applied when the Islamic module ("Mod_Islamic") is enabled.
     /// </summary>
-    public int? GenderModeId { get; set; }
+    public List<int>? GenderModeIds { get; set; }
 
     /// <summary>
     /// Filter events that include Quran recitation (Islamic aspect).
@@ -152,15 +162,17 @@ public class GetEventListRequest : IRequest<PaginatedResult<EventListDto>>
 
     /// <summary>
     /// Filter by reference prayer time for scheduling (Islamic aspect).
+    /// Supports multiple values — events matching any of the specified prayers are returned.
     /// Only applied when the Islamic module ("Mod_Islamic") is enabled.
     /// </summary>
-    public int? ReferencePrayerId { get; set; }
+    public List<int>? ReferencePrayerIds { get; set; }
 
     /// <summary>
     /// Filter by Islamic content primary language (Islamic aspect).
+    /// Supports multiple values — events matching any of the specified languages are returned.
     /// Only applied when the Islamic module ("Mod_Islamic") is enabled.
     /// </summary>
-    public int? IslamicPrimaryLanguageId { get; set; }
+    public List<int>? IslamicPrimaryLanguageIds { get; set; }
 
     /// <summary>
     /// Filter to only show events with an Islamic aspect configured.

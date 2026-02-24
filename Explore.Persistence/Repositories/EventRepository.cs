@@ -249,15 +249,32 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
                     _dbContext.EventSessions.Any(es =>
                         es.EventId == e.Id && es.LocationId == (Guid)subFilter.Value)),
 
+                EventSubqueryFilterType.Locations => query.Where(e =>
+                    _dbContext.EventSessions.Any(es =>
+                        es.EventId == e.Id && es.LocationId != null &&
+                        ((List<Guid>)subFilter.Value).Contains(es.LocationId.Value))),
+
                 EventSubqueryFilterType.RegistrationMode => query.Where(e =>
                     _dbContext.EventSessions.Any(es =>
                         es.EventId == e.Id && es.RegistrationModeId == (int)subFilter.Value)),
+
+                EventSubqueryFilterType.RegistrationModes => query.Where(e =>
+                    _dbContext.EventSessions.Any(es =>
+                        es.EventId == e.Id && es.RegistrationModeId != null &&
+                        ((List<int>)subFilter.Value).Contains(es.RegistrationModeId.Value))),
 
                 EventSubqueryFilterType.Language => query.Where(e =>
                     _dbContext.EventSessions.Any(es =>
                         es.EventId == e.Id &&
                         _dbContext.EventSessionLanguages.Any(esl =>
                             esl.EventSessionId == es.Id && esl.LanguageId == (int)subFilter.Value))),
+
+                EventSubqueryFilterType.Languages => query.Where(e =>
+                    _dbContext.EventSessions.Any(es =>
+                        es.EventId == e.Id &&
+                        _dbContext.EventSessionLanguages.Any(esl =>
+                            esl.EventSessionId == es.Id &&
+                            ((List<int>)subFilter.Value).Contains(esl.LanguageId)))),
 
                 // JSONB containment: MetadataJson @> '{"key": "value"}'
                 EventSubqueryFilterType.JsonContains => query.Where(e =>

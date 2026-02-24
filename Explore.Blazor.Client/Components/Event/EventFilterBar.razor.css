@@ -27,6 +27,19 @@
     white-space: nowrap;
 }
 
+/* ── Layout switcher toggle group ── */
+::deep .filter-bar__layout-switcher {
+    flex-shrink: 0;
+}
+
+@media (max-width: 600px) {
+    ::deep .filter-bar__layout-switcher {
+        order: 10;
+        flex: 1 1 100%;
+        justify-content: center;
+    }
+}
+
 /* ── Collapsible filter panel ── */
 .filter-bar__panel {
     padding: 8px 16px 12px;

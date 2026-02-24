@@ -25,25 +25,24 @@ public interface IEventService
         List<Guid>? excludedTagIds = null,
         string? inclusionMode = null,
         string? exclusionMode = null,
-        int? formatId = null,
-        int? madhabId = null,
-        Guid? locationId = null,
-        int? registrationModeId = null,
-        int? languageId = null,
+        List<int>? formatIds = null,
+        List<int>? madhabIds = null,
+        List<Guid>? locationIds = null,
+        List<int>? registrationModeIds = null,
+        List<int>? languageIds = null,
         DateTimeOffset? dateFrom = null,
         DateTimeOffset? dateTo = null,
         string? sortBy = null,
         bool? sortDescending = null,
-        // New filters
-        int? eventTypeId = null,
-        int? audienceGenderId = null,
-        int? audienceAgeId = null,
-        int? eventStatusId = null,
+        List<int>? eventTypeIds = null,
+        List<int>? audienceGenderIds = null,
+        List<int>? audienceAgeIds = null,
+        List<int>? eventStatusIds = null,
         // Islamic filters
-        int? genderModeId = null,
+        List<int>? genderModeIds = null,
         bool? includesQuranRecitation = null,
-        int? referencePrayerId = null,
-        int? islamicPrimaryLanguageId = null,
+        List<int>? referencePrayerIds = null,
+        List<int>? islamicPrimaryLanguageIds = null,
         bool? hasIslamicAspect = null,
         // Tech filters
         int? skillLevelId = null,
@@ -146,25 +145,24 @@ public partial class EventService : IEventService
         List<Guid>? excludedTagIds = null,
         string? inclusionMode = null,
         string? exclusionMode = null,
-        int? formatId = null,
-        int? madhabId = null,
-        Guid? locationId = null,
-        int? registrationModeId = null,
-        int? languageId = null,
+        List<int>? formatIds = null,
+        List<int>? madhabIds = null,
+        List<Guid>? locationIds = null,
+        List<int>? registrationModeIds = null,
+        List<int>? languageIds = null,
         DateTimeOffset? dateFrom = null,
         DateTimeOffset? dateTo = null,
         string? sortBy = null,
         bool? sortDescending = null,
-        // New filters
-        int? eventTypeId = null,
-        int? audienceGenderId = null,
-        int? audienceAgeId = null,
-        int? eventStatusId = null,
+        List<int>? eventTypeIds = null,
+        List<int>? audienceGenderIds = null,
+        List<int>? audienceAgeIds = null,
+        List<int>? eventStatusIds = null,
         // Islamic filters
-        int? genderModeId = null,
+        List<int>? genderModeIds = null,
         bool? includesQuranRecitation = null,
-        int? referencePrayerId = null,
-        int? islamicPrimaryLanguageId = null,
+        List<int>? referencePrayerIds = null,
+        List<int>? islamicPrimaryLanguageIds = null,
         bool? hasIslamicAspect = null,
         // Tech filters
         int? skillLevelId = null,
@@ -178,13 +176,22 @@ public partial class EventService : IEventService
         try
         {
             // Sanitize empty lists to null to prevent NSwag URL builder corruption.
-            // NSwag's generated code does urlBuilder_.Length-- after an empty foreach,
-            // which strips the '=' from "paramName=" creating a bare query key that
-            // causes ASP.NET Core model binding to fail with 400 Bad Request.
             var safeIncludedCatIds = includedCategoryIds is { Count: > 0 } ? includedCategoryIds : null;
             var safeExcludedCatIds = excludedCategoryIds is { Count: > 0 } ? excludedCategoryIds : null;
             var safeIncludedTagIds = includedTagIds is { Count: > 0 } ? includedTagIds : null;
             var safeExcludedTagIds = excludedTagIds is { Count: > 0 } ? excludedTagIds : null;
+            var safeFormatIds = formatIds is { Count: > 0 } ? formatIds : null;
+            var safeMadhabIds = madhabIds is { Count: > 0 } ? madhabIds : null;
+            var safeLocationIds = locationIds is { Count: > 0 } ? locationIds : null;
+            var safeRegistrationModeIds = registrationModeIds is { Count: > 0 } ? registrationModeIds : null;
+            var safeLanguageIds = languageIds is { Count: > 0 } ? languageIds : null;
+            var safeEventTypeIds = eventTypeIds is { Count: > 0 } ? eventTypeIds : null;
+            var safeAudienceGenderIds = audienceGenderIds is { Count: > 0 } ? audienceGenderIds : null;
+            var safeAudienceAgeIds = audienceAgeIds is { Count: > 0 } ? audienceAgeIds : null;
+            var safeEventStatusIds = eventStatusIds is { Count: > 0 } ? eventStatusIds : null;
+            var safeGenderModeIds = genderModeIds is { Count: > 0 } ? genderModeIds : null;
+            var safeReferencePrayerIds = referencePrayerIds is { Count: > 0 } ? referencePrayerIds : null;
+            var safeIslamicPrimaryLanguageIds = islamicPrimaryLanguageIds is { Count: > 0 } ? islamicPrimaryLanguageIds : null;
 
             // Only send mode strings when the corresponding ID list is non-empty
             var safeCatIncMode = safeIncludedCatIds != null ? categoryInclusionMode : null;
@@ -205,23 +212,23 @@ public partial class EventService : IEventService
                 excludedTagIds: safeExcludedTagIds,
                 inclusionMode: safeTagIncMode,
                 exclusionMode: safeTagExcMode,
-                formatId: formatId,
-                madhabId: madhabId,
-                locationId: locationId,
-                registrationModeId: registrationModeId,
-                languageId: languageId,
+                formatIds: safeFormatIds,
+                madhabIds: safeMadhabIds,
+                locationIds: safeLocationIds,
+                registrationModeIds: safeRegistrationModeIds,
+                languageIds: safeLanguageIds,
                 dateFrom: dateFrom,
                 dateTo: dateTo,
                 sortBy: sortBy,
                 sortDescending: sortDescending,
-                eventTypeId: eventTypeId,
-                audienceGenderId: audienceGenderId,
-                audienceAgeId: audienceAgeId,
-                eventStatusId: eventStatusId,
-                genderModeId: genderModeId,
+                eventTypeIds: safeEventTypeIds,
+                audienceGenderIds: safeAudienceGenderIds,
+                audienceAgeIds: safeAudienceAgeIds,
+                eventStatusIds: safeEventStatusIds,
+                genderModeIds: safeGenderModeIds,
                 includesQuranRecitation: includesQuranRecitation,
-                referencePrayerId: referencePrayerId,
-                islamicPrimaryLanguageId: islamicPrimaryLanguageId,
+                referencePrayerIds: safeReferencePrayerIds,
+                islamicPrimaryLanguageIds: safeIslamicPrimaryLanguageIds,
                 hasIslamicAspect: hasIslamicAspect,
                 skillLevelId: skillLevelId,
                 isCodingCompetition: isCodingCompetition,
