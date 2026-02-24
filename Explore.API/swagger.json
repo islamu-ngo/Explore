@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "https://localhost:58941/"
+      "url": "https://localhost:58306/"
     }
   ],
   "paths": {
@@ -12191,6 +12191,37 @@
         }
       }
     },
+    "/api/user/admin-authority": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Get current user\u0027s admin authority",
+        "description": "Returns instance, tenant, and organization admin status for the authenticated user. Consumed by BFF claims transformation.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAuthorityDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAuthorityDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAuthorityDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/user/{userId}/organizations": {
       "get": {
         "tags": [
@@ -13072,6 +13103,31 @@
           },
           "role": {
             "$ref": "#/components/schemas/RoleEnum"
+          }
+        }
+      },
+      "AdminAuthorityDto": {
+        "type": "object",
+        "properties": {
+          "isInstanceAdmin": {
+            "type": "boolean"
+          },
+          "adminTenantIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "adminOrganizationIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "hasAnyAuthority": {
+            "type": "boolean"
           }
         }
       },

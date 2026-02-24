@@ -1,0 +1,68 @@
+/* ABOUTME: Scoped styles for EventFilterBar — MangaDex-style compact filter layout. */
+/* Uses ::deep to override MudBlazor internals for dense, label-above-dropdown pattern. */
+
+/* ── Section titles (dividers between Core / Islamic / Tech) ── */
+.filter-bar__section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--mud-palette-text-secondary);
+}
+
+/* ── Label above each filter control ── */
+.filter-bar__label {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.7rem;
+    line-height: 1;
+    color: var(--mud-palette-text-secondary);
+    margin-bottom: 4px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Compact MudSelect / MudTextField inputs ── */
+::deep .mud-input-control {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+::deep .mud-select .mud-input-slot {
+    font-size: 0.875rem;
+}
+
+/* ── Checkbox items — vertically centered in grid cell ── */
+.filter-bar__checkbox-item {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    padding-top: 18px;
+}
+
+/* ── Bottom action bar ── */
+.filter-bar__actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding-top: 4px;
+}
+
+.filter-bar__actions-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+}
+
+/* ── Tag filter dropdown — fill grid cell width ── */
+.filter-bar__tag-trigger {
+    width: 100%;
+    padding-top: 18px;
+}

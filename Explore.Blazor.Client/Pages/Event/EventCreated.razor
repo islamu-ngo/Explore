@@ -3,7 +3,7 @@
 @using Blazouter.Services
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
-@rendermode @(new InteractiveAutoRenderMode(prerender: false))
+@rendermode InteractiveServer
 @inject IEventService EventService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar

@@ -31,10 +31,12 @@ public class InstanceOnboardingTests : IDisposable
         _ctx.Services.AddSingleton(_groupService);
         _ctx.Services.AddSingleton(Substitute.For<ILogger<InstanceOnboarding>>());
 
-        _ctx.Services.AddSingleton(new HttpClient(new OkHttpHandler())
+        var httpClientFactory = Substitute.For<IHttpClientFactory>();
+        httpClientFactory.CreateClient(Arg.Any<string>()).Returns(_ => new HttpClient(new OkHttpHandler())
         {
             BaseAddress = new Uri("https://localhost/")
         });
+        _ctx.Services.AddSingleton(httpClientFactory);
 
         _nav = _ctx.Services.GetRequiredService<FakeNavigationManager>();
 

@@ -1,5 +1,5 @@
 {
-  "runtime": "Net100",
+  "runtime": "Net90",
   "documentGenerator": {
     "fromDocument": {
       "json": "../Explore.API/swagger.json",

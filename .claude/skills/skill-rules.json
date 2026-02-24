@@ -3,7 +3,7 @@
   "version": "2.0",
   "description": "Skill activation triggers for .NET Clean Architecture solutions (API, Application, Persistence, Blazor).",
   "customizationNote": "Patterns are project-agnostic by default. If your solution uses non-standard naming, adjust path patterns to your folder structure.",
-  "lastUpdated": "2026-01-19",
+  "lastUpdated": "2026-02-23",
   "skills": {
     "clean-architecture-rules": {
       "type": "guardrail",

@@ -1,3 +1,6 @@
+ABOUTME: Named query filter pattern for EF Core in this project.
+ABOUTME: Highlights multi-filter usage and safe disabling.
+
 # Named Query Filters (EF Core 10+)
 
 Named filters allow multiple global filters on the same entity and selective disabling in specific queries.

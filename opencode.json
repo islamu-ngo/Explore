@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "anthropic/claude-sonnet-4-5",
+  "instructions": [
+    "CLAUDE.md",
+    "docs/QUICK_REFERENCE.md"
+  ],
+  "permission": "allow"
+}

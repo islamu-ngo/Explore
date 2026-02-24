@@ -15,11 +15,12 @@ namespace Explore.Infrastructure.Services;
 /// <summary>
 /// Authorization service that delegates decisions to an external Cerbos PDP via HTTP API.
 /// Uses the Cerbos REST API (/api/check/resources) for compatibility without gRPC SDK dependency.
-/// Falls back to the <see cref="FallbackAuthorizationService"/> pattern if Cerbos is unreachable.
+/// Supports both the instance PDP and per-tenant BYO (Bring Your Own) Cerbos endpoints.
 /// </summary>
 public class CerbosAuthorizationService : IAuthorizationProvider
 {
     private readonly HttpClient _httpClient;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly CerbosPrincipalBuilder _principalBuilder;
     private readonly IAdminContext _adminContext;
     private readonly ISettingsResolver _settingsResolver;
@@ -42,6 +43,7 @@ public class CerbosAuthorizationService : IAuthorizationProvider
         IOptions<CerbosSettings> settings,
         ILogger<CerbosAuthorizationService> logger)
     {
+        _httpClientFactory = httpClientFactory;
         _httpClient = httpClientFactory.CreateClient("CerbosClient");
         _principalBuilder = principalBuilder;
         _adminContext = adminContext;
@@ -122,6 +124,58 @@ public class CerbosAuthorizationService : IAuthorizationProvider
                 correlationId);
             return DenyAll(checks.Count);
         }
+    }
+
+    /// <summary>
+    /// Checks permissions against a specific Cerbos PDP endpoint (for BYO tenants).
+    /// Creates a temporary HttpClient targeting the given endpoint.
+    /// </summary>
+    /// <param name="endpointUrl">The BYO Cerbos PDP HTTP URL.</param>
+    /// <param name="checks">The authorization checks to evaluate.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Decision results matching check order.</returns>
+    public async Task<IReadOnlyList<bool>> IsAllowedBatchWithEndpointAsync(
+        string endpointUrl,
+        IReadOnlyList<AuthorizationCheck> checks,
+        CancellationToken cancellationToken = default)
+    {
+        if (checks.Count == 0)
+            return [];
+
+        var userId = _adminContext.UserId;
+        if (userId == null)
+        {
+            _logger.LogWarning("Cerbos auth denied (BYO): no user id in admin context.");
+            return DenyAll(checks.Count);
+        }
+
+        var requestId = Guid.NewGuid().ToString();
+        var correlationId = Activity.Current?.Id ?? string.Empty;
+        var principal = await _principalBuilder.BuildAsync(userId.Value, cancellationToken);
+        var resources = BuildResources(checks);
+
+        var client = _httpClientFactory.CreateClient("CerbosByoClient");
+        client.BaseAddress = new Uri(endpointUrl.TrimEnd('/'));
+
+        var response = await client.PostAsJsonAsync(
+            "/api/check/resources",
+            new { requestId, principal, resources },
+            JsonOptions,
+            cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning(
+                "BYO Cerbos auth denied batch: endpoint={Endpoint} status={StatusCode} requestId={RequestId} correlationId={CorrelationId}",
+                endpointUrl,
+                response.StatusCode,
+                requestId,
+                correlationId);
+            return DenyAll(checks.Count);
+        }
+
+        var result = await response.Content.ReadFromJsonAsync<CerbosCheckResponse>(JsonOptions, cancellationToken);
+        return BuildDecisionResults(checks, result, requestId, correlationId);
     }
 
     private CerbosResourceAction[] BuildResources(IReadOnlyList<AuthorizationCheck> checks)

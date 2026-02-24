@@ -160,5 +160,3 @@ Export formats supported:
 - **CSV**: Attendee lists, organizations, bulk data
 - **ActivityPub-native** (planned): Federation-compatible JSON-LD
 - **Full database dump**: Complete data export for self-hosters
-
----

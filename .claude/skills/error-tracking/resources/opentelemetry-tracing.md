@@ -1,3 +1,6 @@
+ABOUTME: Minimal tracing rules for OpenTelemetry usage.
+ABOUTME: Defines spans, tagging, and error semantics.
+
 # OpenTelemetry Tracing Patterns
 
 Use traces to connect HTTP, application, and data-layer behavior.

@@ -2,7 +2,7 @@
 @using MudBlazor
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
-@rendermode @(new InteractiveAutoRenderMode(prerender: false))
+@rendermode InteractiveServer
 @inject IInstanceOnboardingService InstanceOnboardingService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation

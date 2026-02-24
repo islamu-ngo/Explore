@@ -1,3 +1,6 @@
+ABOUTME: Troubleshooting checklist for Blazor CSS isolation.
+ABOUTME: Focuses on scope attributes and stylesheet generation.
+
 # Debugging Scoped CSS
 
 When isolated CSS does not apply, verify build output and scope attributes.

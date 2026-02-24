@@ -7,6 +7,7 @@
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Explore.Blazor.Services;
@@ -24,6 +25,7 @@ public sealed class BffAdminClaimsTransformation : IClaimsTransformation
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IAuthenticationHandlerProvider _handlerProvider;
     private readonly IMemoryCache _cache;
     private readonly ILogger<BffAdminClaimsTransformation> _logger;
 
@@ -42,11 +44,13 @@ public sealed class BffAdminClaimsTransformation : IClaimsTransformation
     public BffAdminClaimsTransformation(
         IHttpClientFactory httpClientFactory,
         IHttpContextAccessor httpContextAccessor,
+        IAuthenticationHandlerProvider handlerProvider,
         IMemoryCache cache,
         ILogger<BffAdminClaimsTransformation> logger)
     {
         _httpClientFactory = httpClientFactory;
         _httpContextAccessor = httpContextAccessor;
+        _handlerProvider = handlerProvider;
         _cache = cache;
         _logger = logger;
     }
@@ -105,7 +109,20 @@ public sealed class BffAdminClaimsTransformation : IClaimsTransformation
                 return null;
             }
 
-            var token = await httpContext.GetTokenAsync("access_token");
+            // Call the underlying cookie handler directly to get the access token.
+            // Do NOT use httpContext.GetTokenAsync() — it triggers AuthenticateAsync
+            // which re-invokes this IClaimsTransformation, causing infinite recursion
+            // and a stack overflow.
+            string? token = null;
+            var handler = await _handlerProvider.GetHandlerAsync(
+                httpContext, CookieAuthenticationDefaults.AuthenticationScheme);
+
+            if (handler is IAuthenticationHandler authHandler)
+            {
+                var authResult = await authHandler.AuthenticateAsync();
+                token = authResult?.Properties?.GetTokenValue("access_token");
+            }
+
             if (string.IsNullOrWhiteSpace(token))
             {
                 _logger.LogDebug("BffAdminClaimsTransformation: No access token available for user {UserId}", userId);

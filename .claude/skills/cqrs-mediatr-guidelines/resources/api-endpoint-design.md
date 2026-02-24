@@ -1,3 +1,6 @@
+ABOUTME: HTTP-to-MediatR endpoint rules for this codebase.
+ABOUTME: Covers status mapping, DTO boundaries, and auth placement.
+
 # API Endpoint Design for CQRS
 
 Use this guide when wiring HTTP endpoints to MediatR commands/queries.
@@ -14,7 +17,7 @@ Use this guide when wiring HTTP endpoints to MediatR commands/queries.
 - Item read: `GET /api/{entities}/{id}` -> query request -> item DTO or `404`.
 - Create: `POST /api/{entities}` -> command -> `BaseCommandResponse<Guid>` and `201 Created`.
 - Update: `PUT /api/{entities}/{id}` -> command -> `BaseCommandResponse<Guid>` and `200 OK`.
-- Delete: `DELETE /api/{entities}/{id}` -> command -> `bool` and `204`/`404`.
+- Delete: `DELETE /api/{entities}/{id}` -> command -> `bool` or `BaseCommandResponse<Guid>` and `204`/`404` (match feature pattern).
 
 Use route constraints for clarity (`{id:guid}`) where applicable.
 

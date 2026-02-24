@@ -91,7 +91,7 @@ public sealed class RuntimeRenderPolicyService : IRuntimeRenderPolicyService
         return new RuntimeRenderPolicyDecision(renderMode, prerenderEnabled, routeGroup);
     }
 
-    internal static RuntimeRouteGroup ClassifyRouteGroup(string normalizedPath)
+    public static RuntimeRouteGroup ClassifyRouteGroup(string normalizedPath)
     {
         if (normalizedPath.StartsWith("/onboarding/", StringComparison.Ordinal) ||
             normalizedPath.Equals("/setup", StringComparison.Ordinal) ||
@@ -117,7 +117,7 @@ public sealed class RuntimeRenderPolicyService : IRuntimeRenderPolicyService
         return RuntimeRouteGroup.Operational;
     }
 
-    internal static string NormalizePath(string? rawPath)
+    public static string NormalizePath(string? rawPath)
     {
         if (string.IsNullOrWhiteSpace(rawPath))
         {
@@ -140,16 +140,19 @@ public sealed class RuntimeRenderPolicyService : IRuntimeRenderPolicyService
 
     private static RuntimeRenderPolicyDecision BuildDefaultDecision(RuntimeRouteGroup routeGroup)
     {
+        // Default to InteractiveServer for all route groups.
+        // InteractiveServer connects via SignalR in <1s with no WASM download.
+        // Tenant settings can override this to InteractiveAuto or WebAssembly at runtime.
         return routeGroup == RuntimeRouteGroup.PublicSeo
-            ? new RuntimeRenderPolicyDecision(InteractiveAutoMode, PrerenderEnabled: true, routeGroup)
-            : new RuntimeRenderPolicyDecision(InteractiveAutoMode, PrerenderEnabled: false, routeGroup);
+            ? new RuntimeRenderPolicyDecision(InteractiveServerMode, PrerenderEnabled: true, routeGroup)
+            : new RuntimeRenderPolicyDecision(InteractiveServerMode, PrerenderEnabled: false, routeGroup);
     }
 
     private static string NormalizeRenderMode(string? renderMode)
     {
         if (string.IsNullOrWhiteSpace(renderMode))
         {
-            return InteractiveAutoMode;
+            return InteractiveServerMode;
         }
 
         if (renderMode.Equals(InteractiveWebAssemblyMode, StringComparison.OrdinalIgnoreCase))
@@ -157,12 +160,12 @@ public sealed class RuntimeRenderPolicyService : IRuntimeRenderPolicyService
             return InteractiveWebAssemblyMode;
         }
 
-        if (renderMode.Equals(InteractiveServerMode, StringComparison.OrdinalIgnoreCase))
+        if (renderMode.Equals(InteractiveAutoMode, StringComparison.OrdinalIgnoreCase))
         {
-            return InteractiveServerMode;
+            return InteractiveAutoMode;
         }
 
-        return InteractiveAutoMode;
+        return InteractiveServerMode;
     }
 }
 

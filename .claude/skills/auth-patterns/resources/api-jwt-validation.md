@@ -1,53 +1,28 @@
+ABOUTME: JWT validation and middleware order for API.
+ABOUTME: Minimal guardrails for Keycloak multi-client tokens.
+
 # API JWT Validation Patterns
 
-Use this pattern for API projects that accept bearer tokens from an external OIDC provider.
+## Required Validation Rules
+- Validate **issuer** and **audience**.
+- For Keycloak multi-client tokens, accept if **aud** OR **azp** matches allowed clients.
+- Validate lifetime; apply small clock skew.
 
-## Registration Pattern
-
-```csharp
-builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.Authority = configuration["Auth:Authority"];
-        options.Audience = configuration["Auth:Audience"];
-        options.MapInboundClaims = false;
-
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ClockSkew = TimeSpan.FromMinutes(5)
-        };
-    });
-```
-
-## Middleware Order
-
-Use the request pipeline in this order:
-
+## Middleware Order (Required)
 1. Exception handling
-2. Routing and CORS
+2. Routing + CORS
 3. Authentication
 4. Authorization
 5. Endpoint mapping
 
-Incorrect ordering is a common cause of false `401`/`403` responses.
-
 ## Claim Extraction
+- Centralize user-id parsing; use fallback order: `sub → nameidentifier → sid`.
 
-Normalize user ID extraction with one shared helper/service and fallback order:
-
-1. `sub`
-2. `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier`
-3. `sid`
-
-Avoid duplicating claim parsing logic across controllers.
+## Tenant Resolution (If Multi-Tenant)
+Priority order: `X-Tenant-Id` → custom domain → subdomain → default tenant.
 
 ## Logging Guardrails
+- Log auth failures with context.
+- **Never** log raw JWTs.
 
-- Log auth failures with context (issuer, audience mismatch, claim shape).
-- Never log raw JWT values.
-- Include correlation and trace identifiers for incident triage.
+**Related**: `auth-patterns` skill.

@@ -16,4 +16,10 @@ public static class InfrastructureSecretSettingKeys
         public const string AccessKeyId = "s3.access_key_id";
         public const string SecretAccessKey = "s3.secret_access_key";
     }
+
+    public static class Cerbos
+    {
+        public const string CustomAdminUsername = "cerbos.custom_admin_username";
+        public const string CustomAdminPassword = "cerbos.custom_admin_password";
+    }
 }

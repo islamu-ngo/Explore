@@ -12,7 +12,7 @@
 @inject ISnackbar Snackbar
 @inject ILogger<InstanceOnboarding> Logger
 @inject IJSRuntime JSRuntime
-@inject HttpClient Http
+@inject IHttpClientFactory HttpClientFactory
 
 <MudContainer MaxWidth="MaxWidth.Medium" Class="py-8">
     <MudPaper Class="pa-6">
@@ -362,7 +362,8 @@
 
         // /bff/setup-secret/sync validates the secret internally — no separate ValidateSecretAsync
         // call needed, which would otherwise consume an extra rate-limit token before complete.
-        var syncResponse = await Http.PostAsJsonAsync("/bff/setup-secret/sync", new { Secret = secret });
+        var bffClient = CreateBffSelfClient();
+        var syncResponse = await bffClient.PostAsJsonAsync("/bff/setup-secret/sync", new { Secret = secret });
         if (syncResponse.IsSuccessStatusCode)
         {
             _setupSecretSynced = true;
@@ -373,7 +374,7 @@
         if (syncResponse.StatusCode == System.Net.HttpStatusCode.BadRequest ||
             syncResponse.StatusCode == System.Net.HttpStatusCode.Gone)
         {
-            await Http.DeleteAsync("/bff/setup-secret");
+            await bffClient.DeleteAsync("/bff/setup-secret");
             await JSRuntime.InvokeVoidAsync("sessionStorage.removeItem", "setup-secret");
             _errorMessage = "Setup secret expired or is invalid. Please enter the current setup secret again.";
             StateHasChanged();
@@ -563,5 +564,12 @@
         }
 
         return "My Group";
+    }
+
+    private HttpClient CreateBffSelfClient()
+    {
+        var client = HttpClientFactory.CreateClient("BffSelfClient");
+        client.BaseAddress = new Uri(Navigation.BaseUri);
+        return client;
     }
 }

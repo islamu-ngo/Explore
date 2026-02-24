@@ -131,6 +131,15 @@ public static class GovernanceSettingKeys
         public const string AuthorizationProvider = "authorization.provider";
     }
 
+    public static class Cerbos
+    {
+        public const string TenantCustomizationEnabled = "cerbos.tenant_customization_enabled";
+        public const string Mode = "cerbos.mode";
+        public const string CustomEndpoint = "cerbos.custom_endpoint";
+        public const string FailureMode = "cerbos.failure_mode";
+        public const string CustomAdminEndpoint = "cerbos.custom_admin_endpoint";
+    }
+
     public static class Analytics
     {
         public const string Provider = "analytics.provider";
@@ -193,6 +202,12 @@ public static class GovernanceSettingKeys
     public const string S3UploadUrlExpirationMinutes = Storage.UploadUrlExpirationMinutes;
 
     public const string AuthorizationProvider = Security.AuthorizationProvider;
+
+    public const string CerbosTenantCustomizationEnabled = Cerbos.TenantCustomizationEnabled;
+    public const string CerbosMode = Cerbos.Mode;
+    public const string CerbosCustomEndpoint = Cerbos.CustomEndpoint;
+    public const string CerbosFailureMode = Cerbos.FailureMode;
+    public const string CerbosCustomAdminEndpoint = Cerbos.CustomAdminEndpoint;
 
     public const string AnalyticsProvider = Analytics.Provider;
     public const string AnalyticsEnabled = Analytics.Enabled;

@@ -30,8 +30,7 @@ public class TenantOnboardingService : ITenantOnboardingService
     {
         try
         {
-            var client = _httpClientFactory.CreateClient("BffClient");
-            return await client.GetFromJsonAsync<TenantOnboardingStatusModel>("api/TenantOnboarding/status");
+            return await CreateClient().GetFromJsonAsync<TenantOnboardingStatusModel>("api/TenantOnboarding/status");
         }
         catch (Exception ex)
         {
@@ -44,8 +43,7 @@ public class TenantOnboardingService : ITenantOnboardingService
     {
         try
         {
-            var client = _httpClientFactory.CreateClient("BffClient");
-            var result = await client.GetFromJsonAsync<TenantPolicySettingsModel>("api/TenantOnboarding/settings");
+            var result = await CreateClient().GetFromJsonAsync<TenantPolicySettingsModel>("api/TenantOnboarding/settings");
             return result ?? new TenantPolicySettingsModel();
         }
         catch (Exception ex)
@@ -55,29 +53,27 @@ public class TenantOnboardingService : ITenantOnboardingService
         }
     }
 
-    public async Task<InstanceCommandResponseModel> CompleteAsync(TenantPolicySettingsModel settings)
-    {
-        return await SendAsync(HttpMethod.Post, "api/TenantOnboarding/complete", settings);
-    }
+    public Task<InstanceCommandResponseModel> CompleteAsync(TenantPolicySettingsModel settings) =>
+        SendCommandAsync(HttpMethod.Post, "api/TenantOnboarding/complete", settings);
 
-    public async Task<InstanceCommandResponseModel> UpdateSettingsAsync(TenantPolicySettingsModel settings)
-    {
-        return await SendAsync(HttpMethod.Put, "api/TenantOnboarding/settings", settings);
-    }
+    public Task<InstanceCommandResponseModel> UpdateSettingsAsync(TenantPolicySettingsModel settings) =>
+        SendCommandAsync(HttpMethod.Put, "api/TenantOnboarding/settings", settings);
 
-    private async Task<InstanceCommandResponseModel> SendAsync(HttpMethod method, string url, TenantPolicySettingsModel settings)
+    private HttpClient CreateClient() => _httpClientFactory.CreateClient("BffClient");
+
+    private async Task<InstanceCommandResponseModel> SendCommandAsync(
+        HttpMethod method, string path, TenantPolicySettingsModel settings)
     {
         try
         {
-            var client = _httpClientFactory.CreateClient("BffClient");
-            using var request = new HttpRequestMessage(method, url)
+            using var request = new HttpRequestMessage(method, path)
             {
                 Content = JsonContent.Create(settings)
             };
 
-            var response = await client.SendAsync(request);
+            var response = await CreateClient().SendAsync(request);
             var payload = await response.Content.ReadFromJsonAsync<InstanceCommandResponseModel>();
-            if (payload != null)
+            if (payload is not null)
             {
                 return payload;
             }
@@ -92,12 +88,12 @@ public class TenantOnboardingService : ITenantOnboardingService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to call tenant onboarding endpoint {Url}.", url);
+            _logger.LogError(ex, "Failed to call tenant onboarding endpoint {Path}.", path);
             return new InstanceCommandResponseModel
             {
                 Success = false,
                 Message = "Request failed.",
-                Errors = new List<string> { ex.Message }
+                Errors = [ex.Message]
             };
         }
     }

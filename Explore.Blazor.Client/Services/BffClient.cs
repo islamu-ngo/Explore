@@ -20,78 +20,30 @@ public sealed class BffClient
         _js = js;
     }
 
-    private async Task<string> GetXsrfAsync()
-    {
-        _mod ??= await _js.InvokeAsync<IJSObjectReference>("import", "/js/bff.js");
-        return await _mod.InvokeAsync<string>("getCookie", "XSRF-TOKEN");
-    }
-
     // ── GET ──────────────────────────────────────────────────────────────
 
     public Task<T?> GetAsync<T>(string path, CancellationToken ct = default) =>
         _http.GetFromJsonAsync<T>(path, ct);
 
-    // ── POST ─────────────────────────────────────────────────────────────
+    // ── Mutating verbs ───────────────────────────────────────────────────
 
-    public async Task<HttpResponseMessage> PostAsync<T>(string path, T body, CancellationToken ct = default)
-    {
-        var token = await GetXsrfAsync();
-        using var req = new HttpRequestMessage(HttpMethod.Post, path)
-        {
-            Content = JsonContent.Create(body)
-        };
-        req.Headers.Add("X-CSRF-TOKEN", token);
-        return await _http.SendAsync(req, ct);
-    }
+    public Task<HttpResponseMessage> PostAsync<T>(string path, T body, CancellationToken ct = default) =>
+        SendMutatingAsync(HttpMethod.Post, path, JsonContent.Create(body), ct);
 
-    public async Task<HttpResponseMessage> PostMultipartAsync(string path, MultipartFormDataContent content, CancellationToken ct = default)
-    {
-        var token = await GetXsrfAsync();
-        using var req = new HttpRequestMessage(HttpMethod.Post, path)
-        {
-            Content = content
-        };
-        req.Headers.Add("X-CSRF-TOKEN", token);
-        return await _http.SendAsync(req, ct);
-    }
+    public Task<HttpResponseMessage> PutAsync<T>(string path, T body, CancellationToken ct = default) =>
+        SendMutatingAsync(HttpMethod.Put, path, JsonContent.Create(body), ct);
 
-    // ── PUT ──────────────────────────────────────────────────────────────
+    public Task<HttpResponseMessage> PatchAsync<T>(string path, T body, CancellationToken ct = default) =>
+        SendMutatingAsync(HttpMethod.Patch, path, JsonContent.Create(body), ct);
 
-    public async Task<HttpResponseMessage> PutAsync<T>(string path, T body, CancellationToken ct = default)
-    {
-        var token = await GetXsrfAsync();
-        using var req = new HttpRequestMessage(HttpMethod.Put, path)
-        {
-            Content = JsonContent.Create(body)
-        };
-        req.Headers.Add("X-CSRF-TOKEN", token);
-        return await _http.SendAsync(req, ct);
-    }
+    public Task<HttpResponseMessage> DeleteAsync(string path, CancellationToken ct = default) =>
+        SendMutatingAsync(HttpMethod.Delete, path, content: null, ct);
 
-    // ── DELETE ────────────────────────────────────────────────────────────
+    public Task<HttpResponseMessage> PostMultipartAsync(
+        string path, MultipartFormDataContent content, CancellationToken ct = default) =>
+        SendMutatingAsync(HttpMethod.Post, path, content, ct);
 
-    public async Task<HttpResponseMessage> DeleteAsync(string path, CancellationToken ct = default)
-    {
-        var token = await GetXsrfAsync();
-        using var req = new HttpRequestMessage(HttpMethod.Delete, path);
-        req.Headers.Add("X-CSRF-TOKEN", token);
-        return await _http.SendAsync(req, ct);
-    }
-
-    // ── PATCH ─────────────────────────────────────────────────────────────
-
-    public async Task<HttpResponseMessage> PatchAsync<T>(string path, T body, CancellationToken ct = default)
-    {
-        var token = await GetXsrfAsync();
-        using var req = new HttpRequestMessage(HttpMethod.Patch, path)
-        {
-            Content = JsonContent.Create(body)
-        };
-        req.Headers.Add("X-CSRF-TOKEN", token);
-        return await _http.SendAsync(req, ct);
-    }
-
-    // ── Typed response helpers ───────────────────────────────────────────
+    // ── Typed response helper ────────────────────────────────────────────
 
     /// <summary>
     /// Sends a mutating request and deserializes the JSON response body.
@@ -100,19 +52,29 @@ public sealed class BffClient
     public async Task<TResponse?> SendAsync<TBody, TResponse>(
         HttpMethod method, string path, TBody body, CancellationToken ct = default)
     {
-        var token = await GetXsrfAsync();
-        using var req = new HttpRequestMessage(method, path)
-        {
-            Content = JsonContent.Create(body)
-        };
-        req.Headers.Add("X-CSRF-TOKEN", token);
-
-        var response = await _http.SendAsync(req, ct);
+        using var response = await SendMutatingAsync(method, path, JsonContent.Create(body), ct);
         if (!response.IsSuccessStatusCode)
         {
             return default;
         }
 
         return await response.Content.ReadFromJsonAsync<TResponse>(ct);
+    }
+
+    // ── Core send ────────────────────────────────────────────────────────
+
+    private async Task<HttpResponseMessage> SendMutatingAsync(
+        HttpMethod method, string path, HttpContent? content, CancellationToken ct)
+    {
+        var token = await GetXsrfAsync();
+        using var req = new HttpRequestMessage(method, path) { Content = content };
+        req.Headers.Add("X-CSRF-TOKEN", token);
+        return await _http.SendAsync(req, ct);
+    }
+
+    private async Task<string> GetXsrfAsync()
+    {
+        _mod ??= await _js.InvokeAsync<IJSObjectReference>("import", "/js/bff.js");
+        return await _mod.InvokeAsync<string>("getCookie", "XSRF-TOKEN");
     }
 }

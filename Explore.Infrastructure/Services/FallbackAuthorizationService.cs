@@ -20,6 +20,13 @@ public class FallbackAuthorizationService : IAuthorizationProvider
     private readonly ITenantContext _tenantContext;
     private readonly ILogger<FallbackAuthorizationService> _logger;
 
+    /// <summary>
+    /// When true, only instance admin emergency access is allowed — all other requests are denied.
+    /// Activated when a BYO-Cerbos tenant's PDP is unreachable and failure_mode is "closed".
+    /// This prevents bypassing the tenant's potentially stricter policies via a more permissive fallback.
+    /// </summary>
+    public bool SafeMode { get; set; }
+
     public FallbackAuthorizationService(
         IAdminContext adminContext,
         ISettingsResolver settingsResolver,
@@ -44,6 +51,14 @@ public class FallbackAuthorizationService : IAuthorizationProvider
         {
             LogDecision("allow", "instance_admin", resourceKind, resourceId, action);
             return true;
+        }
+
+        // Safe-Mode: only instance admin allowed (bypassed above) — deny everything else.
+        // Activated when a BYO-Cerbos tenant's PDP is unreachable with failure_mode=closed.
+        if (SafeMode)
+        {
+            LogDecision("deny", "safe_mode_active", resourceKind, resourceId, action);
+            return false;
         }
 
         var decision = resourceKind switch
@@ -123,6 +138,10 @@ public class FallbackAuthorizationService : IAuthorizationProvider
         // Instance admins bypass all lock checks
         if (await _adminContext.IsInstanceAdminAsync(cancellationToken))
             return true;
+
+        // Safe-Mode: only instance admin allowed (bypassed above)
+        if (SafeMode)
+            return false;
 
         // Determine resource kind from scope
         string resourceKind;

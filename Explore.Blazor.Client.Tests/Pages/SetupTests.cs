@@ -16,10 +16,13 @@ public class SetupTests : IDisposable
         _instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
 
         _ctx.Services.AddSingleton(_instanceOnboardingService);
-        _ctx.Services.AddSingleton(new HttpClient(new OkHttpHandler())
+
+        var httpClientFactory = Substitute.For<IHttpClientFactory>();
+        httpClientFactory.CreateClient(Arg.Any<string>()).Returns(_ => new HttpClient(new OkHttpHandler())
         {
             BaseAddress = new Uri("https://localhost/")
         });
+        _ctx.Services.AddSingleton(httpClientFactory);
     }
 
     public void Dispose()

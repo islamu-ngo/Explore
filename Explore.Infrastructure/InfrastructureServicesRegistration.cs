@@ -89,9 +89,23 @@ public static class InfrastructureServicesRegistration
             });
         });
         services.AddHttpClient("CerbosAdminClient");
+        services.AddHttpClient("CerbosByoClient")
+            .AddHttpMessageHandler<CorrelationIdDelegatingHandler>()
+            .AddResilienceHandler("cerbos-byo-resilience", pipeline =>
+            {
+                pipeline.AddTimeout(TimeSpan.FromSeconds(3));
+                pipeline.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
+                {
+                    FailureRatio = 0.5,
+                    SamplingDuration = TimeSpan.FromSeconds(30),
+                    MinimumThroughput = 5,
+                    BreakDuration = TimeSpan.FromSeconds(15)
+                });
+            });
         services.AddScoped<CerbosPrincipalBuilder>();
         services.AddScoped<CerbosAuthorizationService>();
         services.AddScoped<FallbackAuthorizationService>();
+        services.AddScoped<ICerbosConfigResolver, CerbosConfigResolver>();
         services.AddScoped<IAuthorizationProvider, RuntimeAuthorizationProvider>();
         services.AddScoped<IPolicySyncService, PolicySyncService>();
 

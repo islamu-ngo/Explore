@@ -37,40 +37,30 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         _logger = logger;
     }
 
-    public async Task<InstanceOnboardingStatusModel?> GetStatusAsync()
-    {
-        try
-        {
-            var client = _httpClientFactory.CreateClient("BffClient");
-            return await client.GetFromJsonAsync<InstanceOnboardingStatusModel>("api/InstanceOnboarding/status");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to fetch instance onboarding status.");
-            return null;
-        }
-    }
+    // ── Read operations ──────────────────────────────────────────────────
 
-    public async Task<InstanceGovernanceSettingsModel> GetSettingsAsync()
-    {
-        try
-        {
-            var client = _httpClientFactory.CreateClient("BffClient");
-            var result = await client.GetFromJsonAsync<InstanceGovernanceSettingsModel>("api/InstanceOnboarding/settings");
-            return result ?? new InstanceGovernanceSettingsModel();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to fetch instance governance settings.");
-            return new InstanceGovernanceSettingsModel();
-        }
-    }
+    public async Task<InstanceOnboardingStatusModel?> GetStatusAsync() =>
+        await GetAsync<InstanceOnboardingStatusModel>("api/InstanceOnboarding/status");
+
+    public async Task<InstanceGovernanceSettingsModel> GetSettingsAsync() =>
+        await GetAsync<InstanceGovernanceSettingsModel>("api/InstanceOnboarding/settings")
+        ?? new InstanceGovernanceSettingsModel();
+
+    public async Task<InstanceStorageSettingsModel> GetStorageSettingsAsync() =>
+        await GetAsync<InstanceStorageSettingsModel>("api/InstanceOnboarding/storage-settings")
+        ?? new InstanceStorageSettingsModel();
+
+    public async Task<InstanceSmtpSettingsModel> GetSmtpSettingsAsync() =>
+        await GetAsync<InstanceSmtpSettingsModel>("api/InstanceOnboarding/smtp-settings")
+        ?? new InstanceSmtpSettingsModel();
+
+    // ── Validation ───────────────────────────────────────────────────────
 
     public async Task<SetupSecretValidationResult> ValidateSecretAsync(string secret)
     {
         try
         {
-            var client = _httpClientFactory.CreateClient("BffClient");
+            var client = CreateClient();
             var response = await client.PostAsJsonAsync("api/InstanceOnboarding/validate-secret", new { secret });
             var result = await response.Content.ReadFromJsonAsync<SetupSecretValidationResult>();
             return result ?? new SetupSecretValidationResult { Valid = false };
@@ -82,203 +72,113 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         }
     }
 
-    public async Task<InstanceCommandResponseModel> CompleteAsync(InstanceGovernanceSettingsModel settings)
-    {
-        return await SendAsync(HttpMethod.Post, "api/InstanceOnboarding/complete", settings);
-    }
+    // ── Write operations ─────────────────────────────────────────────────
 
-    public async Task<InstanceCommandResponseModel> UpdateSettingsAsync(InstanceGovernanceSettingsModel settings)
-    {
-        return await SendAsync(HttpMethod.Put, "api/InstanceOnboarding/settings", settings);
-    }
+    public Task<InstanceCommandResponseModel> CompleteAsync(InstanceGovernanceSettingsModel settings) =>
+        SendCommandAsync(HttpMethod.Post, "api/InstanceOnboarding/complete", settings);
 
-    public async Task<InstanceStorageSettingsModel> GetStorageSettingsAsync()
+    public Task<InstanceCommandResponseModel> UpdateSettingsAsync(InstanceGovernanceSettingsModel settings) =>
+        SendCommandAsync(HttpMethod.Put, "api/InstanceOnboarding/settings", settings);
+
+    public Task<InstanceCommandResponseModel> UpdateStorageSettingsAsync(InstanceStorageSettingsModel settings) =>
+        SendCommandAsync(HttpMethod.Put, "api/InstanceOnboarding/storage-settings", settings);
+
+    public Task<InstanceCommandResponseModel> UpdateSmtpSettingsAsync(InstanceSmtpSettingsModel settings) =>
+        SendCommandAsync(HttpMethod.Put, "api/InstanceOnboarding/smtp-settings", settings);
+
+    // ── Test operations ──────────────────────────────────────────────────
+
+    public Task<StorageConnectionTestResult> TestStorageConnectionAsync() =>
+        SendTestAsync<StorageConnectionTestResult>("api/InstanceOnboarding/test-storage");
+
+    public Task<SmtpConnectionTestResult> TestSmtpConnectionAsync() =>
+        SendTestAsync<SmtpConnectionTestResult>("api/InstanceOnboarding/test-smtp");
+
+    // ── Shared helpers ───────────────────────────────────────────────────
+
+    private HttpClient CreateClient() => _httpClientFactory.CreateClient("BffClient");
+
+    private async Task<T?> GetAsync<T>(string path) where T : class
     {
         try
         {
-            var client = _httpClientFactory.CreateClient("BffClient");
-            var result = await client.GetFromJsonAsync<InstanceStorageSettingsModel>("api/InstanceOnboarding/storage-settings");
-            return result ?? new InstanceStorageSettingsModel();
+            return await CreateClient().GetFromJsonAsync<T>(path);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to fetch instance storage settings.");
-            return new InstanceStorageSettingsModel();
+            _logger.LogError(ex, "Failed to fetch {Path}.", path);
+            return null;
         }
     }
 
-    public async Task<InstanceCommandResponseModel> UpdateStorageSettingsAsync(InstanceStorageSettingsModel settings)
+    private async Task<InstanceCommandResponseModel> SendCommandAsync<T>(
+        HttpMethod method, string path, T body)
     {
         try
         {
-            var client = _httpClientFactory.CreateClient("BffClient");
-            using var request = new HttpRequestMessage(HttpMethod.Put, "api/InstanceOnboarding/storage-settings")
+            var client = CreateClient();
+            using var request = new HttpRequestMessage(method, path)
             {
-                Content = JsonContent.Create(settings)
+                Content = JsonContent.Create(body)
             };
 
             await AddSetupSecretHeaderAsync(request);
-
             var response = await client.SendAsync(request);
-            var payload = await response.Content.ReadFromJsonAsync<InstanceCommandResponseModel>();
 
-            if (payload != null)
-            {
-                return payload;
-            }
-
-            return new InstanceCommandResponseModel
-            {
-                Success = response.IsSuccessStatusCode,
-                Message = response.IsSuccessStatusCode
-                    ? "Storage settings updated successfully."
-                    : $"Operation failed with status {(int)response.StatusCode}."
-            };
+            return await ReadCommandResponseAsync(response, path);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to update instance storage settings.");
-            return new InstanceCommandResponseModel
-            {
-                Success = false,
-                Message = "Request failed.",
-                Errors = new List<string> { ex.Message }
-            };
+            _logger.LogError(ex, "Failed to call instance onboarding endpoint {Path}.", path);
+            return FailedCommandResponse(ex.Message);
         }
     }
 
-    public async Task<StorageConnectionTestResult> TestStorageConnectionAsync()
+    private async Task<TResult> SendTestAsync<TResult>(string path)
+        where TResult : class, new()
     {
         try
         {
-            var client = _httpClientFactory.CreateClient("BffClient");
-            using var request = new HttpRequestMessage(HttpMethod.Post, "api/InstanceOnboarding/test-storage");
+            var client = CreateClient();
+            using var request = new HttpRequestMessage(HttpMethod.Post, path);
             await AddSetupSecretHeaderAsync(request);
 
             var response = await client.SendAsync(request);
-            var result = await response.Content.ReadFromJsonAsync<StorageConnectionTestResult>();
-            return result ?? new StorageConnectionTestResult { Success = false, Message = "Empty response." };
+            var result = await response.Content.ReadFromJsonAsync<TResult>();
+            return result ?? Activator.CreateInstance<TResult>();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to test storage connection.");
-            return new StorageConnectionTestResult { Success = false, Message = ex.Message };
+            _logger.LogError(ex, "Failed to test connection via {Path}.", path);
+            return Activator.CreateInstance<TResult>();
         }
     }
 
-    public async Task<InstanceSmtpSettingsModel> GetSmtpSettingsAsync()
+    private static async Task<InstanceCommandResponseModel> ReadCommandResponseAsync(
+        HttpResponseMessage response, string path)
     {
-        try
+        var payload = await response.Content.ReadFromJsonAsync<InstanceCommandResponseModel>();
+        if (payload is not null)
         {
-            var client = _httpClientFactory.CreateClient("BffClient");
-            var result = await client.GetFromJsonAsync<InstanceSmtpSettingsModel>("api/InstanceOnboarding/smtp-settings");
-            return result ?? new InstanceSmtpSettingsModel();
+            return payload;
         }
-        catch (Exception ex)
+
+        return new InstanceCommandResponseModel
         {
-            _logger.LogError(ex, "Failed to fetch instance SMTP settings.");
-            return new InstanceSmtpSettingsModel();
-        }
+            Success = response.IsSuccessStatusCode,
+            Message = response.IsSuccessStatusCode
+                ? "Operation completed successfully."
+                : $"Operation failed with status {(int)response.StatusCode}."
+        };
     }
 
-    public async Task<InstanceCommandResponseModel> UpdateSmtpSettingsAsync(InstanceSmtpSettingsModel settings)
-    {
-        try
+    private static InstanceCommandResponseModel FailedCommandResponse(string error) =>
+        new()
         {
-            var client = _httpClientFactory.CreateClient("BffClient");
-            using var request = new HttpRequestMessage(HttpMethod.Put, "api/InstanceOnboarding/smtp-settings")
-            {
-                Content = JsonContent.Create(settings)
-            };
-
-            await AddSetupSecretHeaderAsync(request);
-
-            var response = await client.SendAsync(request);
-            var payload = await response.Content.ReadFromJsonAsync<InstanceCommandResponseModel>();
-
-            if (payload != null)
-            {
-                return payload;
-            }
-
-            return new InstanceCommandResponseModel
-            {
-                Success = response.IsSuccessStatusCode,
-                Message = response.IsSuccessStatusCode
-                    ? "SMTP settings updated successfully."
-                    : $"Operation failed with status {(int)response.StatusCode}."
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to update instance SMTP settings.");
-            return new InstanceCommandResponseModel
-            {
-                Success = false,
-                Message = "Request failed.",
-                Errors = new List<string> { ex.Message }
-            };
-        }
-    }
-
-    public async Task<SmtpConnectionTestResult> TestSmtpConnectionAsync()
-    {
-        try
-        {
-            var client = _httpClientFactory.CreateClient("BffClient");
-            using var request = new HttpRequestMessage(HttpMethod.Post, "api/InstanceOnboarding/test-smtp");
-            await AddSetupSecretHeaderAsync(request);
-
-            var response = await client.SendAsync(request);
-            var result = await response.Content.ReadFromJsonAsync<SmtpConnectionTestResult>();
-            return result ?? new SmtpConnectionTestResult { Success = false, Message = "Empty response." };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to test SMTP connection.");
-            return new SmtpConnectionTestResult { Success = false, Message = ex.Message };
-        }
-    }
-
-    private async Task<InstanceCommandResponseModel> SendAsync(HttpMethod method, string url, InstanceGovernanceSettingsModel settings)
-    {
-        try
-        {
-            var client = _httpClientFactory.CreateClient("BffClient");
-            using var request = new HttpRequestMessage(method, url)
-            {
-                Content = JsonContent.Create(settings)
-            };
-
-            await AddSetupSecretHeaderAsync(request);
-
-            var response = await client.SendAsync(request);
-            var payload = await response.Content.ReadFromJsonAsync<InstanceCommandResponseModel>();
-
-            if (payload != null)
-            {
-                return payload;
-            }
-
-            return new InstanceCommandResponseModel
-            {
-                Success = response.IsSuccessStatusCode,
-                Message = response.IsSuccessStatusCode
-                    ? "Operation completed successfully."
-                    : $"Operation failed with status {(int)response.StatusCode}."
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to call instance onboarding endpoint {Url}.", url);
-            return new InstanceCommandResponseModel
-            {
-                Success = false,
-                Message = "Request failed.",
-                Errors = new List<string> { ex.Message }
-            };
-        }
-    }
+            Success = false,
+            Message = "Request failed.",
+            Errors = [error]
+        };
 
     private async Task AddSetupSecretHeaderAsync(HttpRequestMessage request)
     {

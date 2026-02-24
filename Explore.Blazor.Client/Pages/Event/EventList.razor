@@ -1,4 +1,5 @@
 @page "/events"
+@rendermode InteractiveServer
 @using MudBlazor
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services
@@ -27,7 +28,7 @@
     <EventFilterBar @ref="_filterBar"
                     IsIslamicModuleEnabled="@_isIslamicModuleEnabled"
                     IsTechModuleEnabled="@_isTechModuleEnabled"
-                    OnFilterChanged="@RefreshList"
+                    OnSearchRequested="@RefreshList"
                     EventTypes="@eventTypes"
                     Categories="@categories"
                     Locations="@locations"
@@ -38,13 +39,8 @@
                     Tags="@tags"
                     AudienceGenders="@audienceGenders"
                     AudienceAges="@audienceAges"
-                    EventStatuses="@eventStatuses" />
-
-    <!-- Tri-State Tag Filter -->
-    <div class="mb-4">
-        <TriStateTagFilterDropdown @ref="_tagFilterDropdown"
-                                   TagGroups="@tagGroups" />
-    </div>
+                    EventStatuses="@eventStatuses"
+                    TagGroups="@tagGroups" />
 
     <MudGrid Spacing="4">
         @if (isLoading && !_dataLoaded)

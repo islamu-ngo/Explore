@@ -9,7 +9,7 @@ public partial class EventFilterBar
 {
     [Parameter] public bool IsIslamicModuleEnabled { get; set; }
     [Parameter] public bool IsTechModuleEnabled { get; set; }
-    [Parameter] public EventCallback OnFilterChanged { get; set; }
+    [Parameter] public EventCallback OnSearchRequested { get; set; }
 
     // Data Sources
     [Parameter] public ICollection<EventTypeListDto> EventTypes { get; set; } = new List<EventTypeListDto>();
@@ -23,6 +23,7 @@ public partial class EventFilterBar
     [Parameter] public ICollection<AudienceGenderListDto> AudienceGenders { get; set; } = new List<AudienceGenderListDto>();
     [Parameter] public ICollection<AudienceAgeListDto> AudienceAges { get; set; } = new List<AudienceAgeListDto>();
     [Parameter] public ICollection<EventStatusListDto> EventStatuses { get; set; } = new List<EventStatusListDto>();
+    [Parameter] public ICollection<TagTypeWithTagsDto> TagGroups { get; set; } = new List<TagTypeWithTagsDto>();
 
     // Filter State
     public string SelectedDate { get; set; } = "";
@@ -33,9 +34,8 @@ public partial class EventFilterBar
     public int? SelectedMadhabId { get; set; }
     public int? SelectedRegistrationModeId { get; set; }
     public int? SelectedLanguageId { get; set; }
-    // Tag filtering is handled by TriStateTagFilterDropdown (Phase 4)
 
-    // New Core Filters
+    // Core Filters
     public int? SelectedEventTypeId { get; set; }
     public int? SelectedAudienceGenderId { get; set; }
     public int? SelectedAudienceAgeId { get; set; }
@@ -58,12 +58,16 @@ public partial class EventFilterBar
     public string? TechStackTag { get; set; }
     public bool? HasTechAspect { get; set; }
 
-    private bool _isIslamicExpanded;
-    private bool _isTechExpanded;
+    private TriStateTagFilterDropdown? _tagFilterDropdown;
 
-    private async Task OnFilterChange()
+    private async Task SearchAsync()
     {
-        await OnFilterChanged.InvokeAsync();
+        await OnSearchRequested.InvokeAsync();
+    }
+
+    public TagFilterChangedEventArgs GetTagFilter()
+    {
+        return _tagFilterDropdown?.GetCurrentFilter() ?? new TagFilterChangedEventArgs();
     }
 
     private async Task ClearAllFilters()
@@ -96,10 +100,10 @@ public partial class EventFilterBar
         TechStackTag = null;
         HasTechAspect = null;
 
-        await OnFilterChanged.InvokeAsync();
+        await OnSearchRequested.InvokeAsync();
     }
 
-    private int GetActiveFilterCount()
+    public int GetActiveFilterCount()
     {
         int count = 0;
         if (!string.IsNullOrEmpty(SelectedDate)) count++;
@@ -110,7 +114,6 @@ public partial class EventFilterBar
         if (SelectedMadhabId.HasValue) count++;
         if (SelectedRegistrationModeId.HasValue) count++;
         if (SelectedLanguageId.HasValue) count++;
-        // Tag filter count handled by TriStateTagFilterDropdown
         if (SelectedEventTypeId.HasValue) count++;
         if (SelectedAudienceGenderId.HasValue) count++;
         if (SelectedAudienceAgeId.HasValue) count++;
@@ -128,6 +131,9 @@ public partial class EventFilterBar
         if (RequiresLaptop.HasValue) count++;
         if (!string.IsNullOrEmpty(TechStackTag)) count++;
         if (HasTechAspect.HasValue) count++;
+
+        var tagFilter = GetTagFilter();
+        count += tagFilter.IncludedTagIds.Count + tagFilter.ExcludedTagIds.Count;
 
         return count;
     }

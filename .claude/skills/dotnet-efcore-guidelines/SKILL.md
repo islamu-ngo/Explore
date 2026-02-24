@@ -6,6 +6,9 @@ enforcement: suggest
 priority: high
 ---
 
+ABOUTME: EF Core rules aligned with Clean Architecture.
+ABOUTME: Read referenced resources before applying.
+
 # .NET + Entity Framework Core Guidelines
 
 > **Project-Agnostic EF Core Patterns**
@@ -13,230 +16,28 @@ priority: high
 > Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../docs/TEMPLATE_GLOSSARY.md).
 
 ## Purpose
-
-This skill provides comprehensive best practices for using Entity Framework Core with PostgreSQL in Clean Architecture projects. It details conventions for DbContext, entity configurations, repository patterns, migrations, and PostgreSQL-specific features.
+EF Core conventions aligned with Clean Architecture + PostgreSQL.
 
 ## When This Skill Activates
+- Keywords: ef core, dbcontext, repository, migration, postgres
+- File patterns: `**/Persistence/**/*.cs`, `**/*DbContext.cs`, `**/Configurations/**/*.cs`
 
-**Triggered by**:
-- Keywords: "ef core", "entity framework", "dbcontext", "repository", "migration", "database", "postgres", "postgresql"
-- File patterns: `**/Persistence/**/*.cs`, `**/Repositories/**/*.cs`, `**/*DbContext.cs`, `**/Configurations/**/*.cs`
+## Non‑Inferable Rules (Must Follow)
+- Repositories return **entities**, not DTOs.
+- Default values **not** in domain entities (use handlers or EF config).
+- Lookup IDs use `int`, main entities use `Guid`.
+- Link table nav props are **readonly**; writes via repository.
+- EF Core **named query filters** for soft delete/tenancy.
 
-## EF Core Architecture
+## Resources (Read Before Applying)
+- [dbcontext-patterns.md](resources/dbcontext-patterns.md)
+- [entity-configuration.md](resources/entity-configuration.md)
+- [repository-pattern.md](resources/repository-pattern.md)
+- [querying-patterns.md](resources/querying-patterns.md)
+- [migrations.md](resources/migrations.md)
+- [named-query-filters.md](resources/named-query-filters.md)
 
-The persistence layer (`{Project}.Persistence`) is responsible for data access and storage. It implements interfaces defined in the Application layer, adhering to Clean Architecture principles.
-
-```mermaid
-graph TD
-    subgraph Application Layer
-        A[I{Entity}Repository] --> B[{Entity}]
-        B[{Entity}] --> C[Domain Layer]
-    end
-
-    subgraph Persistence Layer
-        D[{DbContext}] --> B
-        E[{Entity}Repository] --> D
-        E --> A
-    end
-
-    A -- Implemented by --> E
-    C -- Used by --> B
-    D -- Configures --> B
-```
-
-## Resources
-
-*For more detailed examples, refer to the `resources/` folder within this skill.*
-
-| Resource | Description |
-|----------|-------------|
-| [dbcontext-patterns.md](resources/dbcontext-patterns.md) | DbContext configuration, `SaveChangesAsync` override |
-| [entity-configuration.md](resources/entity-configuration.md) | `IEntityTypeConfiguration`, TPT, PostgreSQL functions |
-| [repository-pattern.md](resources/repository-pattern.md) | `GenericRepository`, custom repositories |
-| [querying-patterns.md](resources/querying-patterns.md) | `Include`, `Select`, projections, performance |
-| [migrations.md](resources/migrations.md) | Creating and applying migrations |
-| [named-query-filters.md](resources/named-query-filters.md) | EF Core 10 named global query filters for soft delete and tenancy |
-
-## Quick Reference
-
-### 1. DbContext Pattern (with Pooling)
-
-**EF Core 10+ Pattern**: Use DbContext pooling with property injection for scoped dependencies (e.g., TenantContext).
-
-#### DbContext Configuration
-
-```csharp
-// File: {Project}.Persistence/{DbContext}.cs
-public class {DbContext} : DbContext
-{
-    // Property injection for pooled DbContext (set by DI after pool retrieval)
-    public ITenantContext? TenantContext { get; set; }
-
-    public {DbContext}(DbContextOptions<{DbContext}> options) : base(options) { }
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        base.OnModelCreating(modelBuilder);
-
-        // Apply all IEntityTypeConfiguration<T> from assembly
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof({DbContext}).Assembly);
-    }
-
-    // Override SaveChangesAsync for auditing/soft delete logic
-    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
-    {
-        foreach (var entry in ChangeTracker.Entries())
-        {
-            // Set CreatedAt, UpdatedAt, CreatedBy, UpdatedBy
-            // Use TenantContext?.UserId for audit fields
-        }
-        return base.SaveChangesAsync(cancellationToken);
-    }
-
-    public DbSet<{Entity}> {Entities} { get; set; } = null!;
-}
-```
-
-#### Registration with Pooling
-
-```csharp
-// File: {Project}.Persistence/DependencyInjection.cs
-builder.Services.AddDbContextPool<{DbContext}>((provider, options) =>
-{
-    options.UseNpgsql(connectionString)
-        .UseSnakeCaseNamingConvention()
-        .EnableSensitiveDataLogging(isDevelopment);
-});
-```
-
-**Key Benefits**: Pooling reuses DbContext instances for up to 10x performance improvement on high-throughput workloads.
-
-*For more details, see [dbcontext-patterns.md](resources/dbcontext-patterns.md).*
-
-### 2. Entity Configuration
-
-All entity-specific configurations are done using `IEntityTypeConfiguration<T>` in separate classes.
-
-```csharp
-// File: {Project}.Persistence/Configurations/Entities/{Entity}Configuration.cs
-public class {Entity}Configuration : IEntityTypeConfiguration<{Entity}>
-{
-    public void Configure(EntityTypeBuilder<{Entity}> builder)
-    {
-        // Project Standard: Table Per Type (TPT) inheritance strategy
-        builder.UseTptMappingStrategy();
-
-        // Project Standard: UUIDv7 primary keys for main entities
-        builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
-
-        // Database-level defaults are acceptable here, not in domain entities
-        builder.Property(e => e.ViewCount).HasDefaultValue(0);
-
-        builder.Property(e => e.Title).HasMaxLength(200).IsRequired();
-        builder.Property(e => e.Description).HasMaxLength(5000);
-
-        // Example relationship configuration
-        builder.HasOne(e => e.{ParentEntity})
-            .WithMany()
-            .HasForeignKey(e => e.{ParentEntity}Id)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        // EF Core 10+: named query filters (can be toggled selectively)
-        builder.HasQueryFilter(name: "SoftDelete", predicate: e => !e.IsDeleted);
-        builder.HasQueryFilter(name: "TenantFilter", predicate: e => e.TenantId == tenantId);
-    }
-}
-```
-
-*For more details, see [entity-configuration.md](resources/entity-configuration.md).*
-
-### 3. Repository Pattern
-
-Repositories abstract data access. Interfaces reside in the Application layer, and implementations are in the Persistence layer.
-
-**CRITICAL RULE**: Repositories **MUST** return **DOMAIN ENTITIES**, not DTOs. DTO mapping always happens in the Application layer handlers via AutoMapper.
-
-```csharp
-// File: {Project}.Application/Contracts/Persistence/I{Entity}Repository.cs (Application Layer)
-public interface I{Entity}Repository : IGenericRepository<{Entity}, {IdType}>
-{
-    Task<List<{Entity}>> Get{Entities}WithDetails(); // Returns List<{Entity}>
-    Task<{Entity}?> Get{Entity}WithDetails({IdType} id); // Returns {Entity}?
-}
-
-// File: {Project}.Persistence/Repositories/{Entity}Repository.cs (Persistence Layer)
-public class {Entity}Repository : GenericRepository<{Entity}, {IdType}>, I{Entity}Repository
-{
-    private readonly {DbContext} _dbContext;
-
-    public {Entity}Repository({DbContext} dbContext) : base(dbContext) => _dbContext = dbContext;
-
-    public async Task<List<{Entity}>> Get{Entities}WithDetails()
-    {
-        return await _dbContext.{Entities}
-            .Include(e => e.{LookupEntity})
-            .Include(e => e.{RelatedEntity1})
-            .Include(e => e.{RelatedEntity2})
-            .ToListAsync(); // Returns entities
-    }
-}
-```
-
-*For more details, see [repository-pattern.md](resources/repository-pattern.md).*
-
-### 4. Querying Patterns
-
-Efficient querying is crucial for performance. Avoid N+1 issues by using eager loading (`Include`) and projections (`Select`).
-
-```csharp
-// Example: Query with eager loading and projection to DTO (in Application Layer Handler)
-public async Task<List<{Entity}ListDto>> Handle(Get{Entity}ListRequest request, CancellationToken cancellationToken)
-{
-    var {entities} = await _{entity}Repository.Get{Entities}WithDetails(); // Repository returns entities
-    return _mapper.Map<List<{Entity}ListDto>>({entities}); // Handler maps to DTOs
-}
-
-// Example: Using AsNoTracking for read-only queries (in Repository)
-public async Task<List<{Entity}>> Get{Entities}ReadOnly()
-{
-    return await _dbContext.{Entities}
-        .AsNoTracking() // Disables change tracking for performance
-        .Include(e => e.{ParentEntity})
-        .ToListAsync();
-}
-```
-
-*For more details, see [querying-patterns.md](resources/querying-patterns.md).*
-
-### 5. Migrations
-
-Database schema changes are managed through EF Core migrations.
-
-```powershell
-# Create a new migration for schema changes
-dotnet ef migrations add AddNewFieldTo{Entity} --project {Project}.Persistence
-
-# Apply pending migrations to the database
-dotnet ef database update --project {Project}.Persistence
-
-# Generate SQL script for production deployment
-dotnet ef migrations script --idempotent --output migrations/release.sql --project {Project}.Persistence
-```
-
-*For more details, see [migrations.md](resources/migrations.md).*
-
-## Key Principles & Conventions
-
-*   **IDs**: All primary keys are `Guid` (or `{IdType}`), except for lookup tables which use `int` (or `{LookupIdType}`).
-*   **Numeric Types**: Use `int` instead of `long` unless explicitly required for large values (e.g., file sizes, pagination cursors).
-*   **Default Values**: **DO NOT** add default values in domain entity property initializers (e.g., `public int ViewCount { get; set; } = 0;`). Set defaults in application handlers or use database-level defaults via `IEntityTypeConfiguration`.
-*   **Link Tables**: Navigation properties on link/mapping tables are **readonly for queries only**. Writes must go through the link table's repository directly.
-*   **PostgreSQL Features**: Leverage PostgreSQL-specific features like `UUIDv7` for primary keys and PostGIS for spatial data handling.
-*   **Named Query Filters (EF Core 10+)**: Prefer named filters over combined predicates so specific filters can be disabled when needed.
-
----
-
-**Related Documentation**:
-- [`docs/DOMAIN.md`](../../../docs/DOMAIN.md) - Conceptual domain model.
-- [`docs/ARCHITECTURE.md`](../../../docs/ARCHITECTURE.md) - Overall system architecture.
-- [`clean-architecture-rules`](../clean-architecture-rules/SKILL.md) - Dependency enforcement.
+## Related Documentation
+- [`docs/DOMAIN.md`](../../../docs/DOMAIN.md)
+- [`docs/ARCHITECTURE.md`](../../../docs/ARCHITECTURE.md)
+- [`clean-architecture-rules`](../clean-architecture-rules/SKILL.md)

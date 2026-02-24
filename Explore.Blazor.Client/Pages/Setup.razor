@@ -8,7 +8,7 @@
 @inject IInstanceOnboardingService InstanceOnboardingService
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
-@inject HttpClient Http
+@inject IHttpClientFactory HttpClientFactory
 
 <MudContainer MaxWidth="MaxWidth.Small" Class="py-8">
     <MudPaper Class="pa-6">
@@ -183,7 +183,8 @@
             return;
         }
 
-        var persistResponse = await Http.PostAsJsonAsync("/bff/setup-secret", new { Secret = _secret.Trim() });
+        var bffClient = CreateBffSelfClient();
+        var persistResponse = await bffClient.PostAsJsonAsync("/bff/setup-secret", new { Secret = _secret.Trim() });
         if (!persistResponse.IsSuccessStatusCode)
         {
             _validationSucceeded = false;
@@ -233,7 +234,8 @@
 
     private async Task ClearStoredSecretAsync()
     {
-        await Http.DeleteAsync("/bff/setup-secret");
+        var bffClient = CreateBffSelfClient();
+        await bffClient.DeleteAsync("/bff/setup-secret");
         await JSRuntime.InvokeVoidAsync("sessionStorage.removeItem", "setup-secret");
         _hasStoredSecret = false;
         _validationSucceeded = false;
@@ -246,7 +248,8 @@
         var secret = _secret.Trim();
         if (!string.IsNullOrWhiteSpace(secret))
         {
-            var syncResponse = await Http.PostAsJsonAsync("/bff/setup-secret/sync", new { Secret = secret });
+            var bffClient = CreateBffSelfClient();
+            var syncResponse = await bffClient.PostAsJsonAsync("/bff/setup-secret/sync", new { Secret = secret });
             if (syncResponse.IsSuccessStatusCode)
             {
                 _isSecretSyncedForAuthenticatedSession = true;
@@ -278,7 +281,8 @@
         _isSyncingSecret = true;
         try
         {
-            var response = await Http.PostAsJsonAsync("/bff/setup-secret/sync", new { Secret = secret });
+            var bffClient = CreateBffSelfClient();
+            var response = await bffClient.PostAsJsonAsync("/bff/setup-secret/sync", new { Secret = secret });
             if (response.IsSuccessStatusCode)
             {
                 _isSecretSyncedForAuthenticatedSession = true;
@@ -330,5 +334,16 @@
     public void Dispose()
     {
         _countdownTimer?.Dispose();
+    }
+
+    /// <summary>
+    /// Creates an HttpClient targeting the Blazor BFF server itself (for /bff/* endpoints).
+    /// Uses "BffSelfClient" which has dev cert bypass configured on the server side.
+    /// </summary>
+    private HttpClient CreateBffSelfClient()
+    {
+        var client = HttpClientFactory.CreateClient("BffSelfClient");
+        client.BaseAddress = new Uri(Navigation.BaseUri);
+        return client;
     }
 }

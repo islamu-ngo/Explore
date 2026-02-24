@@ -1,7 +1,8 @@
-// ABOUTME: Centralizes all scoped service registrations shared between Server and WASM.
-// ABOUTME: Server-only services (CircuitAccessTokenService, etc.) are registered separately.
+// ABOUTME: Registers server-specific services on top of the shared application services.
+// ABOUTME: Shared services live in Explore.Blazor.Client.Extensions.ServiceCollectionExtensions.
 
 using Explore.Blazor.Client.Configuration;
+using Explore.Blazor.Client.Extensions;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Contracts;
 using Explore.Blazor.Services;
@@ -12,41 +13,14 @@ namespace Explore.Blazor.Extensions;
 public static class ServiceRegistrationExtensions
 {
     /// <summary>
-    /// Registers all application-level scoped services that are shared between Server and WASM modes.
-    /// These services use the NSwag-generated IEventApiClient or named HttpClient "BffClient".
+    /// Registers all application-level services by calling the shared registrations
+    /// from the Client project, then adding server-specific overrides.
+    /// On the server, IGroupService and ITenantNavigationService are typed HttpClients
+    /// (registered in HttpClientExtensions), so they are NOT included here.
     /// </summary>
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
-        services.AddScoped<IEventService, EventService>();
-        services.AddScoped<IOrganizationService, OrganizationService>();
-        services.AddScoped<IOrganizationMemberService, OrganizationMemberService>();
-        services.AddScoped<IAdminService, AdminService>();
-        services.AddScoped<ILandingPageService, LandingPageService>();
-        services.AddScoped<IUserService, UserService>();
-        services.AddScoped<IOrganizationReviewService, OrganizationReviewService>();
-        services.AddScoped<IMapsService, MapsService>();
-        services.AddScoped<IImageStorageService, ImageStorageService>();
-        services.AddScoped<ICategoryService, CategoryService>();
-        services.AddScoped<ITagService, TagService>();
-        services.AddScoped<IEventRegistrationService, EventRegistrationService>();
-        services.AddScoped<ILocationService, LocationService>();
-        services.AddScoped<IEventAspectService, EventAspectService>();
-        services.AddScoped<IAudienceAgeService, AudienceAgeService>();
-        services.AddScoped<IAudienceGenderService, AudienceGenderService>();
-        services.AddScoped<IEventFormatService, EventFormatService>();
-        services.AddScoped<IEventStatusService, EventStatusService>();
-        services.AddScoped<IEventTypeService, EventTypeService>();
-        services.AddScoped<ILanguageService, LanguageService>();
-        services.AddScoped<IMadhabService, MadhabService>();
-        services.AddScoped<IEventSessionSpeakerService, EventSessionSpeakerService>();
-        services.AddScoped<IActorService, ActorService>();
-        services.AddScoped<ILookupCacheService, LookupCacheService>();
-        services.AddScoped<IInstanceOnboardingService, InstanceOnboardingService>();
-        services.AddScoped<ITenantOnboardingService, TenantOnboardingService>();
-        services.AddScoped<IPublicExperienceService, PublicExperienceService>();
-        services.AddScoped<IRuntimeRenderPolicyService, RuntimeRenderPolicyService>();
-        services.AddScoped<IStartupRoutingService, StartupRoutingService>();
-        services.AddScoped<IEventCreationEligibilityService, EventCreationEligibilityService>();
+        services.AddSharedApplicationServices();
 
         return services;
     }
@@ -59,14 +33,14 @@ public static class ServiceRegistrationExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        // Server-specific IAnalyticsInterop (no-op, replaces shared registration)
         services.AddScoped<IAnalyticsInterop, ServerAnalyticsInterop>();
         services.AddScoped<ICircuitAccessTokenService, CircuitAccessTokenService>();
         services.AddSingleton<ISetupSecretSessionService, SetupSecretSessionService>();
-        services.AddScoped<IAuthStateService, AuthStateService>();
 
         // BFF admin claims transformation — calls the API to resolve admin authority
-        services.AddSingleton<BffAdminClaimsTransformation>();
-        services.AddSingleton<IClaimsTransformation>(
+        services.AddScoped<BffAdminClaimsTransformation>();
+        services.AddScoped<IClaimsTransformation>(
             sp => sp.GetRequiredService<BffAdminClaimsTransformation>());
 
         // Multi-tenancy configuration

@@ -1,3 +1,6 @@
+ABOUTME: Prometheus metrics guidance for API services.
+ABOUTME: Emphasizes low-cardinality labels and key signals.
+
 # Prometheus Metrics for API Services
 
 Expose metrics for API behavior and latency.

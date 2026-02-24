@@ -1,12 +1,16 @@
+ABOUTME: BFF security rules for InteractiveAuto + YARP.
+ABOUTME: Focuses on middleware order, token handling, and antiforgery.
+
 # InteractiveAuto + YARP Security Patterns
 
-Production guidance for Blazor Hybrid apps using InteractiveAuto and YARP/BFF.
+Production guidance for Blazor Web Apps using InteractiveAuto and YARP/BFF.
 
 ## Middleware and Endpoint Order
 
 - Configure forwarded headers before auth middleware when behind reverse proxy.
 - Use routing, then authentication, then authorization, then antiforgery and endpoints.
 - Map Blazor routes before proxy catch-all routes when both coexist.
+- Distribute XSRF tokens via `XSRF-TOKEN` cookie and require `X-CSRF-TOKEN` header on mutating requests.
 
 ## Token Forwarding
 

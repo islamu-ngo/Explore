@@ -1,13 +1,11 @@
-using System.Net.Http;
 using Blazouter.Extensions;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Configuration;
+using Explore.Blazor.Client.Extensions;
 using Explore.Blazor.Client.Routing.Guards;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Contracts;
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using Microsoft.AspNetCore.Components.WebAssembly.Http;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
 
@@ -63,41 +61,15 @@ builder.Services.Configure<TenantConfiguration>(
 // Register lazy assembly loader for WASM lazy loading
 builder.Services.AddScoped<ILazyAssemblyLoader, LazyAssemblyLoaderService>();
 
-builder.Services.AddScoped<IEventService, EventService>();
-builder.Services.AddScoped<IOrganizationService, OrganizationService>();
-builder.Services.AddScoped<IGroupService, GroupService>();
-builder.Services.AddScoped<IOrganizationMemberService, OrganizationMemberService>();
-builder.Services.AddScoped<IAdminService, AdminService>();
-builder.Services.AddScoped<ILandingPageService, LandingPageService>();
-builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddScoped<IOrganizationReviewService, OrganizationReviewService>();
-builder.Services.AddScoped<IMapsService, MapsService>();
-builder.Services.AddScoped<IImageStorageService, ImageStorageService>();
-builder.Services.AddScoped<ICategoryService, CategoryService>();
-builder.Services.AddScoped<ITagService, TagService>();
-builder.Services.AddScoped<IEventRegistrationService, EventRegistrationService>();
-builder.Services.AddScoped<ILocationService, LocationService>();
-builder.Services.AddScoped<IAudienceAgeService, AudienceAgeService>();
-builder.Services.AddScoped<IAudienceGenderService, AudienceGenderService>();
-builder.Services.AddScoped<IEventFormatService, EventFormatService>();
-builder.Services.AddScoped<IEventStatusService, EventStatusService>();
-builder.Services.AddScoped<IEventTypeService, EventTypeService>();
-builder.Services.AddScoped<ILanguageService, LanguageService>();
-builder.Services.AddScoped<IMadhabService, MadhabService>();
-builder.Services.AddScoped<IEventSessionSpeakerService, EventSessionSpeakerService>();
-builder.Services.AddScoped<IActorService, ActorService>();
-builder.Services.AddScoped<IEventAspectService, EventAspectService>();
-builder.Services.AddScoped<ILookupCacheService, LookupCacheService>();
-builder.Services.AddScoped<IInstanceOnboardingService, InstanceOnboardingService>();
-builder.Services.AddScoped<ITenantOnboardingService, TenantOnboardingService>();
-builder.Services.AddScoped<IPublicExperienceService, PublicExperienceService>();
-builder.Services.AddScoped<IStartupRoutingService, StartupRoutingService>();
-builder.Services.AddScoped<IAnalyticsInterop, AnalyticsInterop>();
-builder.Services.AddScoped<ITenantNavigationService, TenantNavigationService>();
-builder.Services.AddScoped<IEventCreationEligibilityService, EventCreationEligibilityService>();
+// ──────────────────────────────────────────────
+// Shared application services (Server + WASM)
+// ──────────────────────────────────────────────
+builder.Services.AddSharedApplicationServices();
 
-// Register AuthStateService for centralized auth context
-builder.Services.AddScoped<IAuthStateService, AuthStateService>();
+// WASM-specific services (different from server-side registrations)
+builder.Services.AddScoped<IGroupService, GroupService>();
+builder.Services.AddScoped<ITenantNavigationService, TenantNavigationService>();
+builder.Services.AddScoped<IAnalyticsInterop, AnalyticsInterop>();
 
 // Register message handler for S3 cross-origin uploads
 builder.Services.AddTransient<S3UploadMessageHandler>();

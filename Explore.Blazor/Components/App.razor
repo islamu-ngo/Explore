@@ -36,7 +36,7 @@
 	<link rel="stylesheet" href="_content/Blazouter/blazouter.min.css" />
 	<ImportMap nonce="@cspNonce" />
 	<link rel="icon" type="image/ico" href="favicon.ico" />
-	<HeadOutlet @rendermode="@_appRenderMode" />
+	<HeadOutlet @rendermode="@_effectiveRenderMode" />
 </head>
 
 <body>
@@ -45,22 +45,11 @@
         var isDark = theme == "dark";
     }
 
-    @if (_showStartupLoader)
-    {
-        <div id="isl-startup-loader" class="isl-startup-loader" role="status" aria-live="polite" aria-label="Preparing interactive page">
-            <div class="isl-startup-loader__panel">
-                <div class="isl-startup-loader__spinner" aria-hidden="true"></div>
-                <p class="isl-startup-loader__title">Preparing interactive page...</p>
-                <p class="isl-startup-loader__subtitle">This screen unlocks as soon as WebAssembly is ready.</p>
-            </div>
-        </div>
-    }
-
 	<CascadingAuthenticationState>
         <CascadingValue Value="isDark" Name="InitialTheme">
             <ErrorBoundary>
                 <ChildContent>
-		            <Routes @rendermode="@_appRenderMode" />
+		            <Routes @rendermode="@_effectiveRenderMode" />
                 </ChildContent>
                 <ErrorContent Context="ex">
                     <MudContainer MaxWidth="MaxWidth.Small" Class="mt-16">
@@ -79,38 +68,6 @@
             </ErrorBoundary>
         </CascadingValue>
 	</CascadingAuthenticationState>
-	<script nonce="@cspNonce">
-        window.ExploreBootstrap = window.ExploreBootstrap || {};
-        window.ExploreBootstrap.markLoaderAsSlow = function () {
-            var loader = document.getElementById("isl-startup-loader");
-            if (!loader || loader.classList.contains("isl-startup-loader--hidden")) {
-                return;
-            }
-
-            var subtitle = loader.querySelector(".isl-startup-loader__subtitle");
-            if (subtitle) {
-                subtitle.textContent = "Still loading. If this takes too long, refresh once.";
-            }
-        };
-
-        window.ExploreBootstrap.hideLoader = function () {
-            var loader = document.getElementById("isl-startup-loader");
-            if (!loader) {
-                return;
-            }
-
-            loader.classList.add("isl-startup-loader--hidden");
-            window.setTimeout(function () {
-                if (loader && loader.parentNode) {
-                    loader.parentNode.removeChild(loader);
-                }
-            }, 260);
-        };
-
-        window.setTimeout(function () {
-            window.ExploreBootstrap.markLoaderAsSlow();
-        }, 10000);
-    </script>
 	<script src="_framework/blazor.web.js"></script>
 	<script src=@Assets["_content/MudBlazor/MudBlazor.min.js"]></script>
 </body>
@@ -118,30 +75,64 @@
 </html>
 
 @code {
-    private IComponentRenderMode _appRenderMode = new InteractiveAutoRenderMode(prerender: true);
-    private bool _showStartupLoader;
+    // Resolved asynchronously from governance settings for non-onboarding paths.
+    private IComponentRenderMode? _asyncResolvedMode;
+
+    // Effective render mode used by Routes and HeadOutlet.
+    // Onboarding paths are resolved synchronously from the request path — no async dependency.
+    // Non-onboarding paths use the async-resolved governance settings with a safe default.
+    private IComponentRenderMode _effectiveRenderMode
+    {
+        get
+        {
+            var path = HttpContextAccessor.HttpContext?.Request.Path.Value;
+            if (IsOnboardingPath(path))
+            {
+                return new InteractiveServerRenderMode(prerender: true);
+            }
+
+            return _asyncResolvedMode ?? new InteractiveServerRenderMode(prerender: true);
+        }
+    }
 
     protected override async Task OnParametersSetAsync()
     {
         var requestPath = HttpContextAccessor.HttpContext?.Request.Path.Value;
 
+        // Onboarding paths don't need async resolution — handled synchronously in _effectiveRenderMode.
+        if (IsOnboardingPath(requestPath))
+        {
+            return;
+        }
+
         try
         {
             var decision = await RuntimeRenderPolicyService.ResolveForPathAsync(requestPath);
-            _appRenderMode = CreateRenderMode(decision.RenderMode, decision.PrerenderEnabled);
-
-            // InteractiveServer connects via SignalR in <1s — no WASM download,
-            // so the full-page startup loader is never needed. Only show it for
-            // InteractiveAuto/WebAssembly without prerender (blank screen while WASM downloads).
-            _showStartupLoader = !decision.PrerenderEnabled &&
-                !decision.RenderMode.Equals("InteractiveServer", StringComparison.OrdinalIgnoreCase);
+            _asyncResolvedMode = CreateRenderMode(decision.RenderMode, decision.PrerenderEnabled);
         }
         catch (Exception ex)
         {
             Logger.LogWarning(ex, "Falling back to default render policy for path {Path}", requestPath);
-            _appRenderMode = new InteractiveAutoRenderMode(prerender: false);
-            _showStartupLoader = true;
+            _asyncResolvedMode = new InteractiveServerRenderMode(prerender: true);
         }
+    }
+
+    private static bool IsOnboardingPath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return false;
+        }
+
+        var normalized = path.Trim().TrimEnd('/').ToLowerInvariant();
+        if (!normalized.StartsWith('/'))
+        {
+            normalized = "/" + normalized;
+        }
+
+        return normalized.StartsWith("/onboarding/", StringComparison.Ordinal) ||
+               normalized.Equals("/setup", StringComparison.Ordinal) ||
+               normalized.Equals("/startup", StringComparison.Ordinal);
     }
 
     private static IComponentRenderMode CreateRenderMode(string renderMode, bool prerenderEnabled)

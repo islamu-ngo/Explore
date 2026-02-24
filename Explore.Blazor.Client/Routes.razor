@@ -18,8 +18,6 @@
 @using Explore.Blazor.Client.Providers
 @using Explore.Blazor.Client.Routing.Guards
 @using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.JSInterop
-@inject IJSRuntime JSRuntime
 
 <TenantContextProvider>
     <Blazouter.Components.Router Routes="@_routes" DefaultLayout="typeof(MainLayout)">
@@ -106,15 +104,5 @@
             new RouteConfig { Path = "/admin/organization/:OrganizationId/settings", Component = typeof(OrganizationAdminSettings), Transition = RouteTransition.Fade, Guards = RequireOrgAdmin() },
             new RouteConfig { Path = "/admin/group/:GroupId/settings", Component = typeof(GroupAdminSettings), Transition = RouteTransition.Fade, Guards = RequireGroupAdmin() },
     };
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!firstRender)
-        {
-            return;
-        }
-
-        await JSRuntime.InvokeVoidAsync("ExploreBootstrap.hideLoader");
     }
 }

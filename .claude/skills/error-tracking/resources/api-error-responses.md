@@ -1,3 +1,6 @@
+ABOUTME: Standard error response envelope for API failures.
+ABOUTME: Uses ProblemDetails with trace/correlation identifiers.
+
 # API Error Response Contract
 
 Define one consistent error contract for all API failures.

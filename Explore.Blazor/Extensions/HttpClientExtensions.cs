@@ -27,6 +27,11 @@ public static class HttpClientExtensions
         // Named "BffClient" — used by raw HTTP services (InstanceOnboarding, TenantOnboarding, etc.)
         services.AddApiClient("BffClient", apiBaseUrl, environment);
 
+        // Named "BffSelfClient" — used by InteractiveServer components calling BFF endpoints on this server.
+        // No BaseAddress here; components set it from NavigationManager.BaseUri at runtime.
+        services.AddHttpClient("BffSelfClient")
+            .ConfigureDevCertBypass(environment);
+
         // Named "S3Upload" — used by ImageStorageService for presigned URL uploads
         services.AddHttpClient("S3Upload", client =>
         {

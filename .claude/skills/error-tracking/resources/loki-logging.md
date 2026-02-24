@@ -1,3 +1,6 @@
+ABOUTME: Structured logging rules for Loki in this project.
+ABOUTME: Focuses on fields, labels, and sensitive data.
+
 # Loki Structured Logging
 
 Use structured logs so queries remain reliable and cheap.
