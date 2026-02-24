@@ -81,6 +81,11 @@ public class HalDtoSchemaTransformer : IOpenApiDocumentTransformer
 
         // Also populate the empty HAL wrapper schemas with flattened DTO properties + HAL links
         await PopulateHalResourceSchemas(document, context, cancellationToken);
+
+        // Fix inline array item schemas that should be $ref references to component schemas.
+        // GetOrCreateSchemaAsync inlines nested DTO types (e.g., EventDto.Tags = List<TagListDto>)
+        // which causes NSwag to generate duplicate types with conflicting names.
+        ReplaceInlineArrayItemsWithReferences(document);
     }
 
     private async Task PopulateHalResourceSchemas(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
@@ -145,6 +150,51 @@ public class HalDtoSchemaTransformer : IOpenApiDocumentTransformer
                     Description = "Embedded related resources",
                     AdditionalPropertiesAllowed = true
                 };
+            }
+        }
+    }
+
+    /// <summary>
+    /// Replaces inline array item schemas with $ref references to registered component schemas.
+    /// When GetOrCreateSchemaAsync generates a schema for a DTO with List&lt;T&gt; properties
+    /// (e.g., EventDto.Tags = List&lt;TagListDto&gt;), the inner T schema is inlined.
+    /// This causes NSwag to generate duplicate types with conflicting names (Tags/tags).
+    /// This method uses reflection to find such properties and replaces inline schemas
+    /// with proper $ref references to the component schemas registered above.
+    /// </summary>
+    private void ReplaceInlineArrayItemsWithReferences(OpenApiDocument document)
+    {
+        var registeredDtoNames = new HashSet<string>(DtoTypes.Select(t => t.Name));
+
+        foreach (var dtoType in DtoTypes)
+        {
+            foreach (var prop in dtoType.GetProperties())
+            {
+                if (!prop.PropertyType.IsGenericType)
+                    continue;
+                if (prop.PropertyType.GetGenericTypeDefinition() != typeof(List<>))
+                    continue;
+
+                var itemType = prop.PropertyType.GetGenericArguments()[0];
+                if (!registeredDtoNames.Contains(itemType.Name))
+                    continue;
+
+                // Found a List<KnownDto> property — fix all schemas containing this property
+                var camelCase = char.ToLowerInvariant(prop.Name[0]) + prop.Name[1..];
+
+                foreach (var (_, schemaI) in document.Components.Schemas)
+                {
+                    if (schemaI is not OpenApiSchema schema || schema.Properties == null)
+                        continue;
+                    if (!schema.Properties.TryGetValue(camelCase, out var arraySchemaI))
+                        continue;
+                    if (arraySchemaI is OpenApiSchema arraySchema
+                        && arraySchema.Items != null
+                        && arraySchema.Items is not OpenApiSchemaReference)
+                    {
+                        arraySchema.Items = new OpenApiSchemaReference(itemType.Name, document);
+                    }
+                }
             }
         }
     }
