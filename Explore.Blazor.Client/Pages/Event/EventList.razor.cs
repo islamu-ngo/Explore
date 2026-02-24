@@ -248,6 +248,27 @@ public partial class EventList : ComponentBase, IBrowserViewportObserver, IAsync
             tagGroups = await tagGroupsTask ?? new List<TagTypeWithTagsDto>();
             categoryGroups = await categoryGroupsTask ?? new List<CategoryTypeWithCategoriesDto>();
 
+            // When junction tables (CategoryTypeCategories / TagTypeTags) are empty,
+            // the grouped endpoints return nothing even though categories/tags exist.
+            // Fall back to a single "All" group so the TriState filter dropdowns still work.
+            if (!categoryGroups.Any() && categories.Any())
+            {
+                categoryGroups = new List<CategoryTypeWithCategoriesDto>
+                {
+                    new() { Id = 0, FullName = "All Categories", Categories = categories.ToList() }
+                };
+                Logger.LogDebug("CategoryGroups empty; created fallback group with {Count} categories", categories.Count);
+            }
+
+            if (!tagGroups.Any() && tags.Any())
+            {
+                tagGroups = new List<TagTypeWithTagsDto>
+                {
+                    new() { Id = 0, FullName = "All Tags", Tags = tags.ToList() }
+                };
+                Logger.LogDebug("TagGroups empty; created fallback group with {Count} tags", tags.Count);
+            }
+
             BuildLookupMaps();
             _dataLoaded = true;
             // Don't set isLoading = false here. Wait for the first batch of events.
@@ -272,44 +293,40 @@ public partial class EventList : ComponentBase, IBrowserViewportObserver, IAsync
         var pageNumber = (request.StartIndex / pageSize) + 1;
 
         // Get filter values from _filterBar or defaults
-        var dateFilter = _filterBar?.SelectedDate ?? "";
         var searchTerm = _filterBar?.SearchTerm ?? SearchQuery;
-        // Category filter state is managed by the TriStateCategoryFilterDropdown inside EventFilterBar
-        // Tag filter state is managed by the TriStateTagFilterDropdown inside EventFilterBar
-        var formatId = _filterBar?.SelectedFormatId;
-        var madhabId = _filterBar?.SelectedMadhabId;
-        var locationId = _filterBar?.SelectedLocationId;
-        var registrationModeId = _filterBar?.SelectedRegistrationModeId;
-        var languageId = _filterBar?.SelectedLanguageId;
 
-        var eventTypeId = _filterBar?.SelectedEventTypeId;
-        var audienceGenderId = _filterBar?.SelectedAudienceGenderId;
-        var audienceAgeId = _filterBar?.SelectedAudienceAgeId;
-        var eventStatusId = _filterBar?.SelectedEventStatusId;
+        // Multi-select filter values (pass first item for backward compat until NSwag client is regenerated)
+        var formatId = _filterBar?.SelectedFormatIds?.FirstOrDefault() is int fid and > 0 ? (int?)fid : null;
+        var madhabId = _filterBar?.SelectedMadhabIds?.FirstOrDefault() is int mid and > 0 ? (int?)mid : null;
+        var locationId = _filterBar?.SelectedLocationIds?.FirstOrDefault() is Guid lid && lid != Guid.Empty ? (Guid?)lid : null;
+        var registrationModeId = _filterBar?.SelectedRegistrationModeIds?.FirstOrDefault() is int rmid and > 0 ? (int?)rmid : null;
+        var languageId = _filterBar?.SelectedLanguageIds?.FirstOrDefault() is int langid and > 0 ? (int?)langid : null;
+
+        var eventTypeId = _filterBar?.SelectedEventTypeIds?.FirstOrDefault() is int etid and > 0 ? (int?)etid : null;
+        var audienceGenderId = _filterBar?.SelectedAudienceGenderIds?.FirstOrDefault() is int agid and > 0 ? (int?)agid : null;
+        var audienceAgeId = _filterBar?.SelectedAudienceAgeIds?.FirstOrDefault() is int aaid and > 0 ? (int?)aaid : null;
+        var eventStatusId = _filterBar?.SelectedEventStatusIds?.FirstOrDefault() is int esid and > 0 ? (int?)esid : null;
         var sortBy = _filterBar?.SelectedSortBy ?? "date";
         var sortDescending = _filterBar?.SortDescending ?? true;
 
         // Islamic
-        var genderModeId = _filterBar?.SelectedGenderMode != null ? (int?)_filterBar.SelectedGenderMode : null;
-        var prayerId = _filterBar?.SelectedReferencePrayer != null ? (int?)_filterBar.SelectedReferencePrayer : null;
+        var genderModeId = _filterBar?.SelectedGenderModeIds?.FirstOrDefault() is int gmid and > 0 ? (int?)gmid : null;
+        var prayerId = _filterBar?.SelectedReferencePrayerIds?.FirstOrDefault() is int pid and > 0 ? (int?)pid : null;
 
         // Tech
         var skillLevelId = _filterBar?.SelectedSkillLevel != null ? (int?)_filterBar.SelectedSkillLevel : null;
         var techStack = _filterBar?.TechStackTag;
 
+        // Date range from MudDateRangePicker
         DateTimeOffset? dateFrom = null;
         DateTimeOffset? dateTo = null;
-        if (!string.IsNullOrEmpty(dateFilter))
+        if (_filterBar?.SelectedDateRange?.Start != null)
         {
-            var today = DateTimeOffset.Now.Date;
-            (dateFrom, dateTo) = dateFilter switch
-            {
-                "today" => ((DateTimeOffset?)today, (DateTimeOffset?)today.AddDays(1).AddTicks(-1)),
-                "tomorrow" => ((DateTimeOffset?)today.AddDays(1), (DateTimeOffset?)today.AddDays(2).AddTicks(-1)),
-                "thisweek" => ((DateTimeOffset?)today, (DateTimeOffset?)today.AddDays(7)),
-                "thismonth" => ((DateTimeOffset?)today, (DateTimeOffset?)today.AddDays(30)),
-                _ => (null, null)
-            };
+            dateFrom = new DateTimeOffset(_filterBar.SelectedDateRange.Start.Value, TimeSpan.Zero);
+        }
+        if (_filterBar?.SelectedDateRange?.End != null)
+        {
+            dateTo = new DateTimeOffset(_filterBar.SelectedDateRange.End.Value.AddDays(1).AddTicks(-1), TimeSpan.Zero);
         }
 
         var result = await EventService.GetEventsPagedAsync(
