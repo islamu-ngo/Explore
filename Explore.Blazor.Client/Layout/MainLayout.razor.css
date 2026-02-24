@@ -11,7 +11,7 @@
     --announcement-bar-height: 0px;
     --nav-height: 64px;
     --content-max-width: 1280px;
-    --mud-appbar-height: 0px;
+    --mud-appbar-height: var(--nav-height, 64px);
 }
 
 /* Element: main-layout__header
@@ -28,6 +28,13 @@
     flex-direction: column;
     margin: 0;
     padding: 0;
+}
+
+/* Element: main-layout__drawer
+   The global navigation sidebar drawer
+   -------------------------------------------------------------------------- */
+::deep .main-layout__drawer {
+    border-right: 1px solid var(--mud-palette-lines-default);
 }
 
 /* Element: main-layout__content-wrapper

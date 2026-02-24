@@ -6,13 +6,26 @@
 <MudSnackbarProvider />
 <AnalyticsInitializer />
 
-<MudLayout class="main-layout" Style="--mud-appbar-height: 0px;">
+<MudLayout class="main-layout">
     @if (!_hideChrome)
     {
         <div class="main-layout__header">
             <AnnouncementBar />
             <NavMenu OnToggleTheme="DarkModeToggle" />
         </div>
+
+        <MudDrawer Open="@SidebarState.IsOpen"
+                   OpenChanged="@OnDrawerOpenChanged"
+                   Anchor="Anchor.Start"
+                   Variant="DrawerVariant.Responsive"
+                   Breakpoint="Breakpoint.Md"
+                   ClipMode="DrawerClipMode.Always"
+                   Elevation="0"
+                   Class="main-layout__drawer">
+            <MudDrawerHeader Class="d-flex align-center">
+                <MudText Typo="Typo.h6">Navigation</MudText>
+            </MudDrawerHeader>
+        </MudDrawer>
     }
 
     <MudMainContent Class="main-layout__main" Style="padding-top: 0 !important;">

@@ -34,6 +34,9 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     [Inject]
     protected NavigationManager NavigationManager { get; set; } = null!;
 
+    [Inject]
+    protected SidebarState SidebarState { get; set; } = null!;
+
     [CascadingParameter(Name = "InitialTheme")]
     public bool? InitialTheme { get; set; }
 
@@ -62,6 +65,7 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
 
         UpdateChromeVisibility();
         NavigationManager.LocationChanged += OnLocationChanged;
+        SidebarState.OnChange += StateHasChanged;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -204,10 +208,15 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
         _hideChrome = path.Equals("/setup", StringComparison.OrdinalIgnoreCase)
             || path.StartsWith("/onboarding/", StringComparison.OrdinalIgnoreCase)
             || path.Equals("/startup", StringComparison.OrdinalIgnoreCase);
+
+        SidebarState.SetHasSidebar(!_hideChrome);
     }
+
+    private void OnDrawerOpenChanged(bool open) => SidebarState.SetOpen(open);
 
     public void Dispose()
     {
         NavigationManager.LocationChanged -= OnLocationChanged;
+        SidebarState.OnChange -= StateHasChanged;
     }
 }

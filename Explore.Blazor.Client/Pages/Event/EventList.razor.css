@@ -5,20 +5,8 @@
    Page Layout — Drawers + Main Content
    ══════════════════════════════════════════════ */
 
-.event-list__layout {
-    min-height: calc(100vh - var(--nav-height, 64px));
-    position: relative;
-    margin-left: calc(-50vw + 50%);
-    margin-right: calc(-50vw + 50%);
-    width: 100vw;
-}
-
 ::deep .event-list__drawer-container {
     min-height: calc(100vh - var(--nav-height, 64px));
-}
-
-::deep .event-list__left-drawer {
-    border-right: 1px solid var(--mud-palette-lines-default);
 }
 
 ::deep .event-list__detail-drawer {

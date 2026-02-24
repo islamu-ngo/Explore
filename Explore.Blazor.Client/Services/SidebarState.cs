@@ -11,8 +11,16 @@ public sealed class SidebarState
 
     public void SetHasSidebar(bool value)
     {
+        var changed = HasSidebar != value;
         HasSidebar = value;
-        if (!value) IsOpen = false;
+        if (!value)
+        {
+            IsOpen = false;
+        }
+        else if (changed)
+        {
+            IsOpen = true;
+        }
         OnChange?.Invoke();
     }
 

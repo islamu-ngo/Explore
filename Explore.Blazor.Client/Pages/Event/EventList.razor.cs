@@ -14,7 +14,7 @@ using MudBlazor;
 
 namespace Explore.Blazor.Client.Pages.Event;
 
-public partial class EventList : ComponentBase, IDisposable
+public partial class EventList : ComponentBase
 {
     [Inject] protected NavigationManager Navigation { get; set; } = null!;
     [Inject] protected IEventService EventService { get; set; } = null!;
@@ -89,10 +89,6 @@ public partial class EventList : ComponentBase, IDisposable
     protected override async Task OnInitializedAsync()
     {
         Logger.LogDebug("OnInitializedAsync starting");
-
-        SidebarState.OnChange += StateHasChanged;
-        SidebarState.SetHasSidebar(true);
-        SidebarState.SetOpen(true);
 
         if (!string.IsNullOrEmpty(SearchQuery))
         {
@@ -412,10 +408,6 @@ public partial class EventList : ComponentBase, IDisposable
         }
     }
 
-    private void ToggleSidebar() => SidebarState.Toggle();
-
-    private void OnLeftDrawerOpenChanged(bool open) => SidebarState.SetOpen(open);
-
     private async Task SelectEvent(EventListDto evt)
     {
         _selectedEvent = evt;
@@ -663,12 +655,6 @@ public partial class EventList : ComponentBase, IDisposable
                      : null;
             if (!string.IsNullOrEmpty(name)) yield return name;
         }
-    }
-
-    public void Dispose()
-    {
-        SidebarState.OnChange -= StateHasChanged;
-        SidebarState.SetHasSidebar(false);
     }
 
     public sealed class EventListState
