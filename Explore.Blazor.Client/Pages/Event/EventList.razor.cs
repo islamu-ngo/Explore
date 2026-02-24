@@ -147,6 +147,8 @@ public partial class EventList : ComponentBase, IBrowserViewportObserver, IAsync
         locations = PersistedState.Locations;
         registrationModes = PersistedState.RegistrationModes;
         languages = PersistedState.Languages;
+        tagGroups = PersistedState.TagGroups;
+        categoryGroups = PersistedState.CategoryGroups;
 
         BuildLookupMaps();
         _dataLoaded = true;
@@ -376,7 +378,9 @@ public partial class EventList : ComponentBase, IBrowserViewportObserver, IAsync
                 Madhabs = madhabs.ToList(),
                 Locations = locations.ToList(),
                 RegistrationModes = registrationModes.ToList(),
-                Languages = languages.ToList()
+                Languages = languages.ToList(),
+                TagGroups = tagGroups.ToList(),
+                CategoryGroups = categoryGroups.ToList()
             };
         }
 
@@ -592,5 +596,7 @@ public partial class EventList : ComponentBase, IBrowserViewportObserver, IAsync
         public List<LocationListDto> Locations { get; init; } = new();
         public List<RegistrationModeListDto> RegistrationModes { get; init; } = new();
         public List<LanguageListDto> Languages { get; init; } = new();
+        public List<TagTypeWithTagsDto> TagGroups { get; init; } = new();
+        public List<CategoryTypeWithCategoriesDto> CategoryGroups { get; init; } = new();
     }
 }
