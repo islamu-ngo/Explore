@@ -27,7 +27,6 @@ public partial class EventList : ComponentBase
     [Inject] protected IDialogService DialogService { get; set; } = null!;
     [Inject] protected IPublicExperienceService PublicExperienceService { get; set; } = null!;
     [Inject] protected ILogger<EventList> Logger { get; set; } = null!;
-    [Inject] protected SidebarState SidebarState { get; set; } = null!;
     [Inject] protected IJSRuntime JsRuntime { get; set; } = null!;
     [Inject] protected ISnackbar Snackbar { get; set; } = null!;
 
@@ -495,7 +494,6 @@ public partial class EventList : ComponentBase
         {
             _filterBar.SearchTerm = category.FullName;
         }
-        SidebarState.SetOpen(false);
         await RefreshList();
     }
 

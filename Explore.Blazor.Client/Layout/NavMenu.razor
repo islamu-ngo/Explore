@@ -51,10 +51,6 @@
 
         <!-- Center Navigation -->
         <div class="navbar__links">
-            <NavLink href="/events" class="navbar__link" Match="NavLinkMatch.Prefix" ActiveClass="navbar__link--active">
-                Events
-            </NavLink>
-
             @* Dynamic tenant navigation links *@
             @foreach (var link in _navigationLinks.OrderBy(l => l.Order))
             {

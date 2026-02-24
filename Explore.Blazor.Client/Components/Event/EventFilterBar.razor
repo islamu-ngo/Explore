@@ -5,7 +5,7 @@
 
 <MudPaper Class="filter-bar sticky-header rounded-b-lg" Elevation="1" Style="z-index: 10; position: sticky; top: calc(var(--nav-height, 64px) + var(--announcement-bar-height, 0px)); backdrop-filter: blur(10px); background-color: color-mix(in srgb, var(--mud-palette-background) 95%, transparent);">
 
-    @* ── Primary Action Row: Search + Show Filters + Layout Switcher + Search Button ── *@
+    @* ── Primary Action Row: Search + Show Filters + Search Button ── *@
     <div class="filter-bar__primary-row">
         <MudTextField @bind-Value="SearchTerm"
                       Placeholder="Search events..."
@@ -33,20 +33,6 @@
                 <span>Filters</span>
             }
         </MudButton>
-
-        <MudToggleGroup T="LayoutMode" Value="CurrentLayout" ValueChanged="OnLayoutChanged"
-                        Size="Size.Small" Color="Color.Primary"
-                        Class="filter-bar__layout-switcher">
-            <MudToggleItem Value="@LayoutMode.CompactGrid" Title="Compact Grid">
-                <MudIcon Icon="@Icons.Material.Filled.GridView" Size="Size.Small" />
-            </MudToggleItem>
-            <MudToggleItem Value="@LayoutMode.DetailedList" Title="Detailed List">
-                <MudIcon Icon="@Icons.Material.Filled.ViewModule" Size="Size.Small" />
-            </MudToggleItem>
-            <MudToggleItem Value="@LayoutMode.SingleRow" Title="Single Row">
-                <MudIcon Icon="@Icons.Material.Filled.ViewList" Size="Size.Small" />
-            </MudToggleItem>
-        </MudToggleGroup>
 
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
@@ -245,5 +231,22 @@
             }
         </div>
     </MudCollapse>
+
+    @* ── Layout Switcher Row: always visible, always at the bottom, right-aligned ── *@
+    <div class="filter-bar__layout-row">
+        <MudToggleGroup T="LayoutMode" Value="CurrentLayout" ValueChanged="OnLayoutChanged"
+                        Size="Size.Medium" Color="Color.Primary"
+                        Class="filter-bar__layout-switcher">
+            <MudToggleItem Value="@LayoutMode.SingleRow" Title="Single Row">
+                <MudIcon Icon="@Icons.Material.Filled.ViewList" Size="Size.Medium" />
+            </MudToggleItem>
+            <MudToggleItem Value="@LayoutMode.DetailedList" Title="Detailed List">
+                <MudIcon Icon="@Icons.Material.Filled.ViewModule" Size="Size.Medium" />
+            </MudToggleItem>
+            <MudToggleItem Value="@LayoutMode.CompactGrid" Title="Compact Grid">
+                <MudIcon Icon="@Icons.Material.Filled.GridView" Size="Size.Medium" />
+            </MudToggleItem>
+        </MudToggleGroup>
+    </div>
 
 </MudPaper>

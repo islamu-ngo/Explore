@@ -41,23 +41,24 @@
             @if (_selectedEvent != null)
             {
                 <MudDrawerHeader Class="d-flex align-center gap-2 pa-2">
-                    <MudIconButton Icon="@Icons.Material.Filled.Close"
+                    <MudIconButton Icon="@Icons.Material.Filled.KeyboardDoubleArrowRight"
                                    Size="Size.Small"
                                    OnClick="@CloseDetailDrawer"
-                                   Title="Close" />
-                    <MudSpacer />
-                    <MudButton Variant="Variant.Text"
-                               Color="Color.Primary"
-                               Size="Size.Small"
-                               StartIcon="@Icons.Material.Filled.OpenInNew"
-                               OnClick="@(() => Navigation.NavigateTo($"/event/detail/{_selectedEvent!.Id}"))">
-                        Event Page
-                    </MudButton>
-                    <MudIconButton Icon="@Icons.Material.Outlined.ContentCopy"
-                                   Size="Size.Small"
+                                   aria-label="Close" />
+                    <div class="d-flex gap-2 mx-auto">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.OpenInNew"
+                                   OnClick="@(() => Navigation.NavigateTo($"/event/detail/{_selectedEvent!.Id}"))">
+                            Event Page
+                        </MudButton>
+                        <MudButton Variant="Variant.Filled"
                                    Color="Color.Default"
-                                   OnClick="@CopyEventLinkAsync"
-                                   Title="Copy link" />
+                                   StartIcon="@Icons.Material.Outlined.ContentCopy"
+                                   OnClick="@CopyEventLinkAsync">
+                            Copy Link
+                        </MudButton>
+                    </div>
                 </MudDrawerHeader>
 
                 <div class="pa-4" style="overflow-y: auto; max-height: calc(100vh - 64px);">

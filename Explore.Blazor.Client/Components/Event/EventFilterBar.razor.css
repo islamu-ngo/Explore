@@ -27,17 +27,17 @@
     white-space: nowrap;
 }
 
-/* ── Layout switcher toggle group ── */
-::deep .filter-bar__layout-switcher {
-    flex-shrink: 0;
+/* ── Layout switcher bottom row — always visible, always last, right-aligned ── */
+.filter-bar__layout-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 6px 16px;
+    border-top: 1px solid var(--mud-palette-lines-default);
 }
 
-@media (max-width: 600px) {
-    ::deep .filter-bar__layout-switcher {
-        order: 10;
-        flex: 1 1 100%;
-        justify-content: center;
-    }
+::deep .filter-bar__layout-switcher {
+    flex-shrink: 0;
 }
 
 /* ── Collapsible filter panel ── */

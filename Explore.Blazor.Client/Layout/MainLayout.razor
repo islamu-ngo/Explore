@@ -22,9 +22,30 @@
                    ClipMode="DrawerClipMode.Always"
                    Elevation="0"
                    Class="main-layout__drawer">
-            <MudDrawerHeader Class="d-flex align-center">
-                <MudText Typo="Typo.h6">Navigation</MudText>
-            </MudDrawerHeader>
+            <MudNavMenu Dense="true" Class="px-2 pt-2">
+                <MudButton Href="/events"
+                           Variant="Variant.Text"
+                           Color="Color.Inherit"
+                           StartIcon="@Icons.Material.Filled.Event"
+                           FullWidth="true"
+                           Class="justify-start text-transform-none"
+                           Style="font-weight: 700; font-size: 1.1rem; justify-content: flex-start;">
+                    Events
+                </MudButton>
+                <MudNavLink Href="/events"
+                            Icon="@Icons.Material.Filled.ManageSearch"
+                            Match="NavLinkMatch.All">
+                    Advanced Search
+                </MudNavLink>
+                <MudNavLink Href="/events?sort=recent"
+                            Icon="@Icons.Material.Filled.NewReleases">
+                    Recently Added
+                </MudNavLink>
+                <MudNavLink Href="/events?sort=random"
+                            Icon="@Icons.Material.Filled.Shuffle">
+                    Random
+                </MudNavLink>
+            </MudNavMenu>
         </MudDrawer>
     }
 
