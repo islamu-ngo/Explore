@@ -40,11 +40,24 @@
 
             @if (_selectedEvent != null)
             {
-                <MudDrawerHeader Class="d-flex align-center justify-space-between">
-                    <MudText Typo="Typo.subtitle1" Style="font-weight: 700;">Event Preview</MudText>
+                <MudDrawerHeader Class="d-flex align-center gap-2 pa-2">
                     <MudIconButton Icon="@Icons.Material.Filled.Close"
                                    Size="Size.Small"
-                                   OnClick="@CloseDetailDrawer" />
+                                   OnClick="@CloseDetailDrawer"
+                                   Title="Close" />
+                    <MudSpacer />
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Primary"
+                               Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.OpenInNew"
+                               OnClick="@(() => Navigation.NavigateTo($"/event/detail/{_selectedEvent!.Id}"))">
+                        Event Page
+                    </MudButton>
+                    <MudIconButton Icon="@Icons.Material.Outlined.ContentCopy"
+                                   Size="Size.Small"
+                                   Color="Color.Default"
+                                   OnClick="@CopyEventLinkAsync"
+                                   Title="Copy link" />
                 </MudDrawerHeader>
 
                 <div class="pa-4" style="overflow-y: auto; max-height: calc(100vh - 64px);">
@@ -468,16 +481,6 @@
                     <MudDivider Class="mb-4" />
 
                     @* ── Action Buttons ── *@
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               FullWidth="true"
-                               Size="Size.Large"
-                               Class="mb-3 rounded-lg"
-                               EndIcon="@Icons.Material.Filled.ArrowForward"
-                               OnClick="@(() => Navigation.NavigateTo($"/event/detail/{_selectedEvent.Id}"))">
-                        View Full Details
-                    </MudButton>
-
                     @if (IsUserRegistered(_selectedEvent.Id ?? Guid.Empty))
                     {
                         <MudButton Variant="Variant.Outlined"

@@ -10,6 +10,7 @@ using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web.Virtualization;
 using Microsoft.Extensions.Logging;
+using Microsoft.JSInterop;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Pages.Event;
@@ -27,6 +28,8 @@ public partial class EventList : ComponentBase
     [Inject] protected IPublicExperienceService PublicExperienceService { get; set; } = null!;
     [Inject] protected ILogger<EventList> Logger { get; set; } = null!;
     [Inject] protected SidebarState SidebarState { get; set; } = null!;
+    [Inject] protected IJSRuntime JsRuntime { get; set; } = null!;
+    [Inject] protected ISnackbar Snackbar { get; set; } = null!;
 
     [PersistentState]
     public EventListState? PersistedState { get; set; }
@@ -441,6 +444,14 @@ public partial class EventList : ComponentBase
         _detailDrawerOpen = false;
         _selectedEventDetail = null;
         _selectedEventSessions = null;
+    }
+
+    private async Task CopyEventLinkAsync()
+    {
+        if (_selectedEvent?.Id == null) return;
+        var url = Navigation.ToAbsoluteUri($"/event/detail/{_selectedEvent.Id}").ToString();
+        await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", url);
+        Snackbar.Add("Link copied to clipboard", Severity.Success, options => options.VisibleStateDuration = 2000);
     }
 
     private void OnLayoutModeChanged(LayoutMode mode)
