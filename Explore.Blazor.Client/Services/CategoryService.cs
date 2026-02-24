@@ -17,6 +17,7 @@ public interface ICategoryService
     Task<BaseCommandResponseOfGuid?> CreateCategoryAsync(CreateCategoryDto dto);
     Task<BaseCommandResponseOfGuid?> UpdateCategoryAsync(Guid id, UpdateCategoryDto dto);
     Task<bool> DeleteCategoryAsync(Guid categoryId);
+    Task<ICollection<CategoryTypeWithCategoriesDto>> GetCategoriesGroupedByCategoryTypeAsync();
 }
 
 public class CategoryService : ICategoryService
@@ -116,6 +117,19 @@ public class CategoryService : ICategoryService
         {
             _logger.LogError(ex, "API error deleting category: {StatusCode}", ex.StatusCode);
             return false;
+        }
+    }
+
+    public async Task<ICollection<CategoryTypeWithCategoriesDto>> GetCategoriesGroupedByCategoryTypeAsync()
+    {
+        try
+        {
+            return await _apiClient.WithCategoriesAsync() ?? new List<CategoryTypeWithCategoriesDto>();
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[CATEGORY SERVICE] API error fetching grouped categories: {StatusCode}", ex.StatusCode);
+            return new List<CategoryTypeWithCategoriesDto>();
         }
     }
 

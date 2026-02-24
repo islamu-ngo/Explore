@@ -11,6 +11,17 @@
 
 <div class="navbar">
     <div class="navbar__content">
+        <!-- Sidebar Toggle (shown only when a page registers a sidebar) -->
+        @if (SidebarState.HasSidebar)
+        {
+            <MudIconButton Icon="@Icons.Material.Filled.Menu"
+                           Color="Color.Inherit"
+                           OnClick="@(() => SidebarState.Toggle())"
+                           Title="Toggle sidebar"
+                           Class="navbar__sidebar-toggle"
+                           Edge="Edge.Start" />
+        }
+
         <!-- Brand -->
         <a href="/" class="navbar__brand" aria-label="Home">
             @if (!string.IsNullOrWhiteSpace(_brandLogoUrl))

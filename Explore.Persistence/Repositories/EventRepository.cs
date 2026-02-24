@@ -221,6 +221,18 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
                     _dbContext.EventCategories.Any(ec =>
                         ec.EventId == e.Id && ec.CategoryId == (Guid)subFilter.Value)),
 
+                EventSubqueryFilterType.CategoriesIncludedAny => query.Where(e =>
+                    _dbContext.EventCategories.Any(ec =>
+                        ec.EventId == e.Id && ((List<Guid>)subFilter.Value).Contains(ec.CategoryId))),
+
+                EventSubqueryFilterType.CategoriesExcludedAny => query.Where(e =>
+                    !_dbContext.EventCategories.Any(ec =>
+                        ec.EventId == e.Id && ((List<Guid>)subFilter.Value).Contains(ec.CategoryId))),
+
+                // CategoriesIncludedAll and CategoriesExcludedAll are handled below (require loops)
+                EventSubqueryFilterType.CategoriesIncludedAll => query,
+                EventSubqueryFilterType.CategoriesExcludedAll => query,
+
                 EventSubqueryFilterType.TagsIncludedAny => query.Where(e =>
                     _dbContext.EventTags.Any(et =>
                         et.EventId == e.Id && ((List<Guid>)subFilter.Value).Contains(et.TagId))),
@@ -276,6 +288,22 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
                 query = query.Where(e =>
                     !tagIds.All(tid =>
                         _dbContext.EventTags.Any(et => et.EventId == e.Id && et.TagId == tid)));
+            }
+            else if (subFilter.FilterType == EventSubqueryFilterType.CategoriesIncludedAll)
+            {
+                var categoryIds = (List<Guid>)subFilter.Value;
+                foreach (var categoryId in categoryIds)
+                {
+                    query = query.Where(e =>
+                        _dbContext.EventCategories.Any(ec => ec.EventId == e.Id && ec.CategoryId == categoryId));
+                }
+            }
+            else if (subFilter.FilterType == EventSubqueryFilterType.CategoriesExcludedAll)
+            {
+                var categoryIds = (List<Guid>)subFilter.Value;
+                query = query.Where(e =>
+                    !categoryIds.All(cid =>
+                        _dbContext.EventCategories.Any(ec => ec.EventId == e.Id && ec.CategoryId == cid)));
             }
         }
 

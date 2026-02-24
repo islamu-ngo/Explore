@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Explore.Persistence.Migrations
 {
     [DbContext(typeof(ExploreDbContext))]
-    [Migration("20260223210046_init")]
+    [Migration("20260224112132_init")]
     partial class init
     {
         /// <inheritdoc />
@@ -553,6 +553,69 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_categories_tenant_id");
 
                     b.ToTable("categories", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.CategoryType", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_category_types");
+
+                    b.ToTable("category_types", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.CategoryTypeCategories", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("category_id");
+
+                    b.Property<int>("CategoryTypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("category_type_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_category_type_categories");
+
+                    b.HasIndex("CategoryId")
+                        .HasDatabaseName("ix_category_type_categories_category_id");
+
+                    b.HasIndex("CategoryTypeId")
+                        .HasDatabaseName("ix_category_type_categories_category_type_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_category_type_categories_tenant_id");
+
+                    b.ToTable("category_type_categories", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.ConfigurationChangeLog", b =>
@@ -3975,6 +4038,36 @@ namespace Explore.Persistence.Migrations
                         .HasConstraintName("fk_categories_tenants_tenant_id");
 
                     b.Navigation("Parent");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.CategoryTypeCategories", b =>
+                {
+                    b.HasOne("Explore.Domain.Category", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_category_type_categories_categories_category_id");
+
+                    b.HasOne("Explore.Domain.CategoryType", "CategoryType")
+                        .WithMany()
+                        .HasForeignKey("CategoryTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_category_type_categories_category_types_category_type_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_category_type_categories_tenants_tenant_id");
+
+                    b.Navigation("Category");
+
+                    b.Navigation("CategoryType");
 
                     b.Navigation("Tenant");
                 });

@@ -529,6 +529,8 @@ public class AuthenticationFlowTests
         var eligibilityService = Substitute.For<IEventCreationEligibilityService>();
         eligibilityService.GetEligibilityAsync().Returns(EventCreationEligibility.NotEligible);
         ctx.Services.AddSingleton(eligibilityService);
+
+        ctx.Services.AddSingleton(new Explore.Blazor.Client.Services.SidebarState());
     }
 
     private static void RegisterOrganizationServices(BlazorTestContext ctx)

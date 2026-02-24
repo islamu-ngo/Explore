@@ -1,3 +1,6 @@
+// ABOUTME: Code-behind for the MangaDex-style advanced search filter bar component.
+// ABOUTME: Manages filter state, collapse toggle, and search invocation for the event list.
+
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Models;
 using Microsoft.AspNetCore.Components;
@@ -14,6 +17,7 @@ public partial class EventFilterBar
     // Data Sources
     [Parameter] public ICollection<EventTypeListDto> EventTypes { get; set; } = new List<EventTypeListDto>();
     [Parameter] public ICollection<CategoryListDto> Categories { get; set; } = new List<CategoryListDto>();
+    [Parameter] public ICollection<CategoryTypeWithCategoriesDto> CategoryGroups { get; set; } = new List<CategoryTypeWithCategoriesDto>();
     [Parameter] public ICollection<LocationListDto> Locations { get; set; } = new List<LocationListDto>();
     [Parameter] public ICollection<EventFormatListDto> EventFormats { get; set; } = new List<EventFormatListDto>();
     [Parameter] public ICollection<MadhabListDto> Madhabs { get; set; } = new List<MadhabListDto>();
@@ -25,10 +29,12 @@ public partial class EventFilterBar
     [Parameter] public ICollection<EventStatusListDto> EventStatuses { get; set; } = new List<EventStatusListDto>();
     [Parameter] public ICollection<TagTypeWithTagsDto> TagGroups { get; set; } = new List<TagTypeWithTagsDto>();
 
+    // Collapse State
+    private bool _filtersExpanded;
+
     // Filter State
     public string SelectedDate { get; set; } = "";
     public string? SearchTerm { get; set; }
-    public Guid? SelectedCategoryId { get; set; }
     public Guid? SelectedLocationId { get; set; }
     public int? SelectedFormatId { get; set; }
     public int? SelectedMadhabId { get; set; }
@@ -45,20 +51,16 @@ public partial class EventFilterBar
 
     // Islamic Filters
     public GenderSegregationMode? SelectedGenderMode { get; set; }
-    public bool? IncludesQuranRecitation { get; set; }
     public PrayerTime? SelectedReferencePrayer { get; set; }
-    public int? SelectedIslamicPrimaryLanguageId { get; set; }
-    public bool? HasIslamicAspect { get; set; }
 
     // Tech Filters
     public SkillLevel? SelectedSkillLevel { get; set; }
-    public bool? IsCodingCompetition { get; set; }
-    public bool? IsHackathon { get; set; }
-    public bool? RequiresLaptop { get; set; }
     public string? TechStackTag { get; set; }
-    public bool? HasTechAspect { get; set; }
 
     private TriStateTagFilterDropdown? _tagFilterDropdown;
+    private TriStateCategoryFilterDropdown? _categoryFilterDropdown;
+
+    private void ToggleFilters() => _filtersExpanded = !_filtersExpanded;
 
     private async Task SearchAsync()
     {
@@ -70,11 +72,15 @@ public partial class EventFilterBar
         return _tagFilterDropdown?.GetCurrentFilter() ?? new TagFilterChangedEventArgs();
     }
 
+    public CategoryFilterChangedEventArgs GetCategoryFilter()
+    {
+        return _categoryFilterDropdown?.GetCurrentFilter() ?? new CategoryFilterChangedEventArgs();
+    }
+
     private async Task ClearAllFilters()
     {
         SelectedDate = "";
         SearchTerm = null;
-        SelectedCategoryId = null;
         SelectedLocationId = null;
         SelectedFormatId = null;
         SelectedMadhabId = null;
@@ -88,17 +94,10 @@ public partial class EventFilterBar
         SortDescending = true;
 
         SelectedGenderMode = null;
-        IncludesQuranRecitation = null;
         SelectedReferencePrayer = null;
-        SelectedIslamicPrimaryLanguageId = null;
-        HasIslamicAspect = null;
 
         SelectedSkillLevel = null;
-        IsCodingCompetition = null;
-        IsHackathon = null;
-        RequiresLaptop = null;
         TechStackTag = null;
-        HasTechAspect = null;
 
         await OnSearchRequested.InvokeAsync();
     }
@@ -108,7 +107,6 @@ public partial class EventFilterBar
         int count = 0;
         if (!string.IsNullOrEmpty(SelectedDate)) count++;
         if (!string.IsNullOrEmpty(SearchTerm)) count++;
-        if (SelectedCategoryId.HasValue) count++;
         if (SelectedLocationId.HasValue) count++;
         if (SelectedFormatId.HasValue) count++;
         if (SelectedMadhabId.HasValue) count++;
@@ -120,20 +118,16 @@ public partial class EventFilterBar
         if (SelectedEventStatusId.HasValue) count++;
 
         if (SelectedGenderMode.HasValue) count++;
-        if (IncludesQuranRecitation.HasValue) count++;
         if (SelectedReferencePrayer.HasValue) count++;
-        if (SelectedIslamicPrimaryLanguageId.HasValue) count++;
-        if (HasIslamicAspect.HasValue) count++;
 
         if (SelectedSkillLevel.HasValue) count++;
-        if (IsCodingCompetition.HasValue) count++;
-        if (IsHackathon.HasValue) count++;
-        if (RequiresLaptop.HasValue) count++;
         if (!string.IsNullOrEmpty(TechStackTag)) count++;
-        if (HasTechAspect.HasValue) count++;
 
         var tagFilter = GetTagFilter();
         count += tagFilter.IncludedTagIds.Count + tagFilter.ExcludedTagIds.Count;
+
+        var categoryFilter = GetCategoryFilter();
+        count += categoryFilter.IncludedCategoryIds.Count + categoryFilter.ExcludedCategoryIds.Count;
 
         return count;
     }

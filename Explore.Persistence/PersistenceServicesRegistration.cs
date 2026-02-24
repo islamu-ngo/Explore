@@ -147,6 +147,8 @@ public static class PersistenceServicesRegistration
         services.AddScoped<ITagTypeRepository, TagTypeRepository>();
         services.AddScoped<ITagTypeTagsRepository, TagTypeTagsRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
+        services.AddScoped<ICategoryTypeRepository, CategoryTypeRepository>();
+        services.AddScoped<ICategoryTypeCategoriesRepository, CategoryTypeCategoriesRepository>();
         services.AddScoped<IEventTagsRepository, EventTagsRepository>();
         services.AddScoped<IEventCategoriesRepository, EventCategoriesRepository>();
 

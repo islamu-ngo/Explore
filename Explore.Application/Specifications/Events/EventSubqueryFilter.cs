@@ -37,6 +37,34 @@ public sealed class EventSubqueryFilter
         new(EventSubqueryFilterType.Category, categoryId);
 
     /// <summary>
+    /// Filters events that have ALL specified categories assigned (AND logic).
+    /// Each category generates a correlated EXISTS subquery against EventCategories.
+    /// </summary>
+    public static EventSubqueryFilter CategoriesIncludedAll(List<Guid> categoryIds) =>
+        new(EventSubqueryFilterType.CategoriesIncludedAll, categoryIds);
+
+    /// <summary>
+    /// Filters events that have at least one of the specified categories assigned (OR logic).
+    /// Uses a single IN clause against EventCategories.
+    /// </summary>
+    public static EventSubqueryFilter CategoriesIncludedAny(List<Guid> categoryIds) =>
+        new(EventSubqueryFilterType.CategoriesIncludedAny, categoryIds);
+
+    /// <summary>
+    /// Excludes events that have ANY of the specified categories (OR logic).
+    /// Events with any excluded category are filtered out.
+    /// </summary>
+    public static EventSubqueryFilter CategoriesExcludedAny(List<Guid> categoryIds) =>
+        new(EventSubqueryFilterType.CategoriesExcludedAny, categoryIds);
+
+    /// <summary>
+    /// Excludes events only if they have ALL of the specified categories simultaneously (AND logic).
+    /// Events are excluded only when every excluded category is present.
+    /// </summary>
+    public static EventSubqueryFilter CategoriesExcludedAll(List<Guid> categoryIds) =>
+        new(EventSubqueryFilterType.CategoriesExcludedAll, categoryIds);
+
+    /// <summary>
     /// Filters events that have ALL specified tags assigned (AND logic).
     /// Each tag generates a correlated EXISTS subquery against EventTags.
     /// </summary>
@@ -109,6 +137,18 @@ public enum EventSubqueryFilterType
 {
     /// <summary>Category filter via EventCategories junction table.</summary>
     Category,
+
+    /// <summary>Include events that have ALL specified categories (AND).</summary>
+    CategoriesIncludedAll,
+
+    /// <summary>Include events that have at least one specified category (OR).</summary>
+    CategoriesIncludedAny,
+
+    /// <summary>Exclude events that have ANY specified category (OR).</summary>
+    CategoriesExcludedAny,
+
+    /// <summary>Exclude events only if they have ALL specified categories (AND).</summary>
+    CategoriesExcludedAll,
 
     /// <summary>Include events that have ALL specified tags (AND).</summary>
     TagsIncludedAll,

@@ -1,16 +1,49 @@
-/* ABOUTME: Scoped styles for EventFilterBar — MangaDex-style compact filter layout. */
-/* Uses ::deep to override MudBlazor internals for dense, label-above-dropdown pattern. */
+/* ABOUTME: Scoped styles for the MangaDex-style advanced search filter bar. */
+/* Uses BEM naming and ::deep for MudBlazor internal overrides. */
 
-/* ── Section titles (dividers between Core / Islamic / Tech) ── */
-.filter-bar__section-title {
+/* ── Primary action row: search + toggle + search button ── */
+.filter-bar__primary-row {
     display: flex;
     align-items: center;
     gap: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--mud-palette-text-secondary);
+    padding: 12px 16px;
+    flex-wrap: wrap;
+}
+
+.filter-bar__search-field {
+    flex: 1 1 200px;
+    min-width: 200px;
+}
+
+.filter-bar__toggle-btn {
+    text-transform: none;
+    font-weight: 500;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.filter-bar__search-btn {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+/* ── Collapsible filter panel ── */
+.filter-bar__panel {
+    padding: 8px 16px 12px;
+    background-color: color-mix(in srgb, var(--mud-palette-surface) 60%, var(--mud-palette-background-grey) 40%);
+    border-top: 1px solid var(--mud-palette-lines-default);
+}
+
+/* ── Filter items: flex-wrap layout, no separators ── */
+.filter-bar__filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.filter-bar__filter-item {
+    flex: 0 1 180px;
+    min-width: 140px;
 }
 
 /* ── Label above each filter control ── */
@@ -27,7 +60,17 @@
     text-overflow: ellipsis;
 }
 
-/* ── Compact MudSelect / MudTextField inputs ── */
+/* ── Active filter summary bar ── */
+.filter-bar__active-summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--mud-palette-lines-default);
+}
+
+/* ── Compact MudSelect / MudTextField inputs via ::deep ── */
 ::deep .mud-input-control {
     margin-top: 0;
     margin-bottom: 0;
@@ -37,32 +80,23 @@
     font-size: 0.875rem;
 }
 
-/* ── Checkbox items — vertically centered in grid cell ── */
-.filter-bar__checkbox-item {
-    display: flex;
-    align-items: center;
-    height: 100%;
-    padding-top: 18px;
+::deep .filter-bar__search-field .mud-input-control {
+    margin-top: 0;
+    margin-bottom: 0;
 }
 
-/* ── Bottom action bar ── */
-.filter-bar__actions {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
-    padding-top: 4px;
-}
+/* ── Responsive: stack on small screens ── */
+@media (max-width: 600px) {
+    .filter-bar__primary-row {
+        flex-wrap: wrap;
+    }
 
-.filter-bar__actions-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-left: auto;
-}
+    .filter-bar__search-field {
+        flex: 1 1 100%;
+    }
 
-/* ── Tag filter dropdown — fill grid cell width ── */
-.filter-bar__tag-trigger {
-    width: 100%;
-    padding-top: 18px;
+    .filter-bar__filter-item {
+        flex: 1 1 calc(50% - 6px);
+        min-width: 120px;
+    }
 }

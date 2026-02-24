@@ -1,13 +1,107 @@
-/* ABOUTME: Event list page scoped layout adjustments for header-flush filter presentation.
- * ABOUTME: Keeps the filter bar directly under navbar/announcement stack without extra top gap. */
+/* ABOUTME: Event list page layout with CSS flexbox sidebar.
+ * ABOUTME: Desktop: toggleable sticky sidebar. Mobile: fixed overlay with backdrop. */
 
-.event-list-container {
-    padding-top: 0;
-    margin-top: 0;
+/* ── Page-level flex layout ── */
+.event-list__layout {
+    display: flex;
+    position: relative;
+    width: calc(100% + 32px);
+    min-height: calc(100vh - var(--nav-height, 64px));
+    overflow-x: hidden;
+    margin-inline: -16px;
 }
 
-@media (max-width: 768px) {
-    .event-list-container {
-        margin-top: 0;
+/* ── Sidebar (desktop: sticky flex item, toggleable) ── */
+.event-list__sidebar {
+    width: 0;
+    flex-shrink: 0;
+    background: var(--mud-palette-surface);
+    border-right: 1px solid var(--mud-palette-lines-default);
+    overflow: hidden;
+    position: sticky;
+    top: 0;
+    height: calc(100vh - var(--nav-height, 64px));
+    z-index: 10;
+    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.event-list__sidebar--open {
+    width: 260px;
+    overflow-y: auto;
+}
+
+.event-list__sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+    min-width: 260px;
+}
+
+/* Close button always visible (works on all screen sizes) */
+.event-list__sidebar-close {
+    display: inline-flex;
+}
+
+/* ── Main content area ── */
+.event-list__main {
+    flex: 1 1 0%;
+    min-width: 0;
+    overflow-x: hidden;
+}
+
+::deep .event-list-container {
+    padding-top: 16px;
+    padding-inline: 16px;
+}
+
+/* ── Backdrop (hidden by default, mobile only) ── */
+.event-list__backdrop {
+    display: none;
+}
+
+/* ── Mobile: below 960px ── */
+@media (max-width: 959.98px) {
+    .event-list__layout {
+        width: calc(100% + 24px);
+        margin-inline: -12px;
+    }
+
+    .event-list__sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 260px;
+        height: 100vh;
+        z-index: 1300;
+        transform: translateX(-100%);
+        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: none;
+        overflow-y: auto;
+    }
+
+    .event-list__sidebar--open {
+        transform: translateX(0);
+        box-shadow: 0 8px 10px -5px rgba(0, 0, 0, 0.2),
+                    0 16px 24px 2px rgba(0, 0, 0, 0.14),
+                    0 6px 30px 5px rgba(0, 0, 0, 0.12);
+    }
+
+    .event-list__backdrop--visible {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1299;
+        cursor: pointer;
+    }
+}
+
+@media (max-width: 480px) {
+    .event-list__layout {
+        width: calc(100% + 16px);
+        margin-inline: -8px;
     }
 }

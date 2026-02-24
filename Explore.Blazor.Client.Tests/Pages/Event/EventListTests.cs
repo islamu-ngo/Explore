@@ -44,6 +44,7 @@ public class EventListTests : IDisposable
         _ctx.Services.AddSingleton(Substitute.For<ISnackbar>());
         _ctx.Services.AddSingleton(Substitute.For<ILogger<EventList>>());
         _ctx.Services.AddSingleton(Substitute.For<IAuthStateService>());
+        _ctx.Services.AddSingleton(new Explore.Blazor.Client.Services.SidebarState());
 
         SetupDefaultLookupResponses();
         _publicExperienceService.GetSettingsAsync().Returns(new PublicExperienceSettingsModel
@@ -92,6 +93,10 @@ public class EventListTests : IDisposable
             Arg.Any<int>(),                    // pageSize
             Arg.Any<string?>(),                // searchTerm
             Arg.Any<Guid?>(),                  // categoryId
+            Arg.Any<List<Guid>?>(),            // includedCategoryIds
+            Arg.Any<List<Guid>?>(),            // excludedCategoryIds
+            Arg.Any<string?>(),                // categoryInclusionMode
+            Arg.Any<string?>(),                // categoryExclusionMode
             Arg.Any<List<Guid>?>(),            // includedTagIds
             Arg.Any<List<Guid>?>(),            // excludedTagIds
             Arg.Any<string?>(),                // inclusionMode

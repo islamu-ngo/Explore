@@ -1,0 +1,111 @@
+@using MudBlazor
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Models
+
+<div class="tri-state-category-filter" style="position: relative;">
+    @* Trigger Button with live badge *@
+    <MudButton Variant="Variant.Outlined"
+               Color="@(HasActiveFilters() ? MudBlazor.Color.Primary : MudBlazor.Color.Default)"
+               StartIcon="@Icons.Material.Filled.Category"
+               EndIcon="@(_isOpen ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+               OnClick="TogglePopover"
+               Size="Size.Small"
+               FullWidth="true"
+               Class="tri-state-category-filter__trigger">
+        @GetBadgeText()
+    </MudButton>
+
+    @* Overlay for click-outside-to-close *@
+    <MudOverlay Visible="_isOpen" OnClick="ClosePopover" LockScroll="false" />
+
+    @* Popover content *@
+    <MudPopover Open="_isOpen"
+                AnchorOrigin="Origin.BottomLeft"
+                TransformOrigin="Origin.TopLeft"
+                Class="tri-state-category-filter__popover">
+        <MudPaper Class="pa-4" Style="min-width: 400px; max-width: 600px; max-height: 60vh; overflow-y: auto;" Elevation="8">
+
+            @* Search + Reset controls *@
+            <div class="d-flex align-center gap-2 mb-2">
+                <MudTextField @bind-Value="_searchTerm"
+                              Placeholder="Search categories..."
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Immediate="true"
+                              Class="flex-grow-1" />
+                <MudButton Variant="Variant.Text"
+                           Color="MudBlazor.Color.Warning"
+                           Size="Size.Small"
+                           OnClick="ClearVisible"
+                           Disabled="@(!HasActiveFilters())">
+                    Clear Visible
+                </MudButton>
+                <MudButton Variant="Variant.Text"
+                           Color="MudBlazor.Color.Error"
+                           Size="Size.Small"
+                           OnClick="ResetAll"
+                           Disabled="@(!HasActiveFilters())">
+                    Reset All
+                </MudButton>
+            </div>
+
+            <MudText Typo="Typo.caption" Class="mb-3" Style="opacity: 0.6;">
+                Click: include → exclude → clear
+            </MudText>
+
+            @* AND/OR mode toggles *@
+            <div class="d-flex gap-4 mb-3">
+                <div class="d-flex align-center gap-1">
+                    <MudText Typo="Typo.caption">Include:</MudText>
+                    <MudToggleGroup T="string" @bind-Value="_inclusionMode" Color="MudBlazor.Color.Success" Dense="true" Rounded="true" CheckMark="true" FixedContent="true" SelectionMode="SelectionMode.SingleSelection">
+                        <MudToggleItem T="string" Value="@("and")" Text="AND" />
+                        <MudToggleItem T="string" Value="@("or")" Text="OR" />
+                    </MudToggleGroup>
+                </div>
+                <div class="d-flex align-center gap-1">
+                    <MudText Typo="Typo.caption">Exclude:</MudText>
+                    <MudToggleGroup T="string" @bind-Value="_exclusionMode" Color="MudBlazor.Color.Error" Dense="true" Rounded="true" CheckMark="true" FixedContent="true" SelectionMode="SelectionMode.SingleSelection">
+                        <MudToggleItem T="string" Value="@("or")" Text="OR" />
+                        <MudToggleItem T="string" Value="@("and")" Text="AND" />
+                    </MudToggleGroup>
+                </div>
+            </div>
+
+            <MudDivider Class="mb-3" />
+
+            @* Category groups *@
+            @foreach (var group in GetFilteredGroups())
+            {
+                <MudText Typo="Typo.subtitle2" Class="mb-1 mt-2">@group.FullName</MudText>
+                <MudDivider Class="mb-2" Light="true" />
+                <div class="d-flex flex-wrap gap-1 mb-2">
+                    @foreach (var category in group.Categories)
+                    {
+                        if (category.Id.HasValue)
+                        {
+                            var categoryId = category.Id.Value;
+                            var state = GetCategoryState(categoryId);
+                            <MudChip T="string"
+                                     Color="@GetChipColor(state)"
+                                     Variant="@GetChipVariant(state)"
+                                     Icon="@GetChipIcon(state)"
+                                     Size="Size.Small"
+                                     OnClick="@(() => ToggleCategoryState(categoryId))">
+                                @category.FullName
+                            </MudChip>
+                        }
+                    }
+                </div>
+            }
+
+            @if (!GetFilteredGroups().Any())
+            {
+                <MudText Typo="Typo.body2" Class="pa-4" Align="Align.Center" Style="opacity: 0.5;">
+                    No categories match your search.
+                </MudText>
+            }
+        </MudPaper>
+    </MudPopover>
+</div>

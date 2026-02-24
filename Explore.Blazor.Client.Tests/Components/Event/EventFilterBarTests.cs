@@ -18,48 +18,45 @@ public class EventFilterBarTests : IDisposable
     }
 
     [Test]
-    public async Task EventFilterBar_RendersCoreFilters_WhenModulesDisabled()
+    public async Task EventFilterBar_RendersPrimaryRow_Always()
     {
         // Act
         var cut = _ctx.RenderMudComponent<EventFilterBarComponent>(parameters => parameters
             .Add(x => x.IsIslamicModuleEnabled, false)
             .Add(x => x.IsTechModuleEnabled, false));
 
-        // Assert
-        await Assert.That(cut.Markup).Contains("Date");
-        await Assert.That(cut.Markup).Contains("Category");
-        await Assert.That(cut.Markup).Contains("Location");
-        await Assert.That(cut.Markup).Contains("Format");
-        await Assert.That(cut.Markup).Contains("Status");
-        await Assert.That(cut.Markup).DoesNotContain("Islamic Aspects");
-        await Assert.That(cut.Markup).DoesNotContain("Tech Aspects");
+        // Assert — primary row elements are always visible
+        await Assert.That(cut.Markup).Contains("Search events...");
+        await Assert.That(cut.Markup).Contains("Filters");
+        await Assert.That(cut.Markup).Contains("Search");
     }
 
     [Test]
-    public async Task EventFilterBar_RendersModuleSections_WhenEnabled()
+    public async Task EventFilterBar_FiltersCollapsed_ByDefault()
+    {
+        // Act
+        var cut = _ctx.RenderMudComponent<EventFilterBarComponent>(parameters => parameters
+            .Add(x => x.IsIslamicModuleEnabled, false)
+            .Add(x => x.IsTechModuleEnabled, false));
+
+        // Assert — filter panel content should not be visible when collapsed
+        // The MudCollapse renders but is not expanded
+        await Assert.That(cut.Markup).Contains("mud-collapse-container");
+    }
+
+    [Test]
+    public async Task EventFilterBar_DoesNotRenderRemovedIslamicFilters()
     {
         // Act
         var cut = _ctx.RenderMudComponent<EventFilterBarComponent>(parameters => parameters
             .Add(x => x.IsIslamicModuleEnabled, true)
-            .Add(x => x.IsTechModuleEnabled, true));
+            .Add(x => x.IsTechModuleEnabled, false));
 
-        // Assert
-        await Assert.That(cut.Markup).Contains("Islamic Aspects");
-        await Assert.That(cut.Markup).Contains("Tech Aspects");
-    }
-
-    [Test]
-    public async Task EventFilterBar_ShowsClearAllChip_WhenAtLeastOneFilterIsActive()
-    {
-        // Arrange
-        var cut = _ctx.RenderMudComponent<EventFilterBarComponent>();
-
-        // Act
-        cut.Instance.SelectedDate = "today";
-        cut.Render();
-
-        // Assert
-        await Assert.That(cut.Markup).Contains("Clear All");
+        // Assert — removed Islamic filters should not appear
+        await Assert.That(cut.Markup).DoesNotContain("Islamic Language");
+        await Assert.That(cut.Markup).DoesNotContain("Quran Recitation");
+        await Assert.That(cut.Markup).DoesNotContain("Islamic Events Only");
+        await Assert.That(cut.Markup).DoesNotContain("Islamic Aspects");
     }
 
     [Test]
@@ -68,12 +65,10 @@ public class EventFilterBarTests : IDisposable
         // Arrange
         var callbackCount = 0;
         var cut = _ctx.RenderMudComponent<EventFilterBarComponent>(parameters => parameters
-            .Add(x => x.OnFilterChanged, EventCallback.Factory.Create(this, () => callbackCount++)));
+            .Add(x => x.OnSearchRequested, EventCallback.Factory.Create(this, () => callbackCount++)));
 
         cut.Instance.SelectedDate = "thisweek";
-        cut.Instance.SelectedCategoryId = Guid.NewGuid();
         cut.Instance.SelectedEventTypeId = 2;
-        cut.Instance.HasTechAspect = true;
 
         var clearAllMethod = typeof(EventFilterBarComponent).GetMethod("ClearAllFilters", BindingFlags.Instance | BindingFlags.NonPublic);
         await Assert.That(clearAllMethod is not null).IsTrue();
@@ -85,9 +80,23 @@ public class EventFilterBarTests : IDisposable
 
         // Assert
         await Assert.That(cut.Instance.SelectedDate).IsEqualTo(string.Empty);
-        await Assert.That(cut.Instance.SelectedCategoryId).IsNull();
         await Assert.That(cut.Instance.SelectedEventTypeId).IsNull();
-        await Assert.That(cut.Instance.HasTechAspect).IsNull();
         await Assert.That(callbackCount).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task EventFilterBar_GetActiveFilterCount_CountsCorrectly()
+    {
+        // Arrange
+        var cut = _ctx.RenderMudComponent<EventFilterBarComponent>();
+
+        // Act — set some filters
+        cut.Instance.SelectedDate = "today";
+        cut.Instance.SelectedFormatId = 1;
+        cut.Instance.SelectedLanguageId = 2;
+
+        // Assert
+        var count = cut.Instance.GetActiveFilterCount();
+        await Assert.That(count).IsEqualTo(3);
     }
 }

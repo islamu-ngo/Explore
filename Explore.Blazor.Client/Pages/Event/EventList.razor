@@ -10,157 +10,199 @@
 
 <PageTitle>Explore Events</PageTitle>
 
-<MudContainer Class="event-list-container pb-8">
-    @if (!string.IsNullOrEmpty(_errorMessage))
-    {
-        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-6 rounded-lg" ShowCloseIcon="true" CloseIconClicked="@(() => _errorMessage = null)">
-            @_errorMessage
-        </MudAlert>
-    }
-    @if (!string.IsNullOrEmpty(_successMessage))
-    {
-        <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Class="mb-6 rounded-lg" ShowCloseIcon="true" CloseIconClicked="@(() => _successMessage = null)">
-            @_successMessage
-        </MudAlert>
-    }
+<div class="event-list__layout">
 
-    <!-- Filter Bar Component -->
-    <EventFilterBar @ref="_filterBar"
-                    IsIslamicModuleEnabled="@_isIslamicModuleEnabled"
-                    IsTechModuleEnabled="@_isTechModuleEnabled"
-                    OnSearchRequested="@RefreshList"
-                    EventTypes="@eventTypes"
-                    Categories="@categories"
-                    Locations="@locations"
-                    EventFormats="@eventFormats"
-                    Madhabs="@madhabs"
-                    RegistrationModes="@registrationModes"
-                    Languages="@languages"
-                    Tags="@tags"
-                    AudienceGenders="@audienceGenders"
-                    AudienceAges="@audienceAges"
-                    EventStatuses="@eventStatuses"
-                    TagGroups="@tagGroups" />
+    @* ── Mobile backdrop overlay ── *@
+    <div class="event-list__backdrop @(SidebarState.IsOpen ? "event-list__backdrop--visible" : "")" @onclick="ToggleSidebar"></div>
 
-    <MudGrid Spacing="4">
-        @if (isLoading && !_dataLoaded)
-        {
-            <!-- Skeleton Loading State -->
-            @for (int i = 0; i < 8; i++)
-            {
-                <MudItem xs="12" sm="6" md="4" lg="3">
-                    <MudCard Class="h-100 d-flex flex-column rounded-xl border-solid border-1 mud-border-lines-default" Elevation="0">
-                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
-                        <MudCardContent>
-                            <MudSkeleton Width="30%" Height="20px" Class="mb-2" />
-                            <MudSkeleton Width="80%" Height="30px" Class="mb-4" />
-                            <MudSkeleton Width="100%" Height="20px" />
-                            <MudSkeleton Width="100%" Height="20px" />
-                        </MudCardContent>
-                    </MudCard>
-                </MudItem>
-            }
-        }
-        else
-        {
-            <Virtualize @ref="_virtualize" ItemsProvider="LoadEventsAsync" OverscanCount="4" Context="evt">
-                <ItemContent>
-                    <MudItem @key="evt.Id" xs="12" sm="6" md="4" lg="3">
-                        <MudCard Class="h-100 d-flex flex-column rounded-xl hover:mud-elevation-0 transition-all event-card" Outlined="true" Elevation="0" Style="overflow: hidden; background-color: var(--mud-palette-surface);">
-                            <MudCardMedia Image="@(string.IsNullOrEmpty(evt.FeaturedImageUri) ? GetEventImage(evt) : evt.FeaturedImageUri)" Height="200" />
-
-                            <MudCardContent Class="d-flex flex-column flex-grow-1 pt-4 pb-2 px-4">
-                                <div class="d-flex justify-space-between align-center mb-2">
-                                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="ml-n1 font-weight-bold">@GetEventTypeName(evt)</MudChip>
-                                    @if (evt.IsUserReported == true)
-                                    {
-                                        <MudTooltip Text="Community Reported">
-                                            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Color="Color.Info" />
-                                        </MudTooltip>
-                                    }
-                                </div>
-
-                                <MudText Typo="Typo.h6" Style="font-weight: 700; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; min-height: 2.4em;" Class="mb-1">
-                                    @evt.Title
-                                </MudText>
-
-                                @if (!string.IsNullOrEmpty(evt.Subtitle))
-                                {
-                                    <MudText Typo="Typo.subtitle2" Color="Color.Primary" Style="font-weight: 500; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;" Class="mb-2">
-                                        @evt.Subtitle
-                                    </MudText>
-                                }
-                                else
-                                {
-                                    <div style="height: 1.25rem;" class="mb-2"></div> <!-- Spacer to keep alignment -->
-                                }
-
-                                <MudText Typo="Typo.body2" Color="Color.Secondary" Style="overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; min-height: 4.5em;">
-                                    @GetTruncatedDescription(evt.Description)
-                                </MudText>
-
-                                <MudDivider Class="mt-auto mb-2" />
-
-                                <div class="d-flex justify-space-between align-center">
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                        @(evt.FirstSessionDate?.ToString("MMM dd") ?? "TBD")
-                                    </MudText>
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                        @GetLocationText(evt)
-                                    </MudText>
-                                </div>
-                            </MudCardContent>
-
-                            <MudCardActions Class="px-2 pb-2">
-                                <MudButton Variant="Variant.Text" Color="Color.Primary" FullWidth="true" EndIcon="@Icons.Material.Filled.ArrowForward" OnClick="@(() => Navigation.NavigateTo($"/event/detail/{evt.Id}"))">
-                                    Details
-                                </MudButton>
-
-                                @if (IsUserRegistered(evt.Id ?? Guid.Empty))
-                                {
-                                    <MudIconButton Icon="@Icons.Material.Filled.EventAvailable" Color="Color.Success" Title="Registered" Disabled="true" />
-                                }
-                                else
-                                {
-                                    <MudIconButton Icon="@Icons.Material.Outlined.AddCircleOutline" Color="Color.Secondary" OnClick="@(() => OpenQuickRegisterDialog(evt))" Title="Quick Register" />
-                                }
-                            </MudCardActions>
-                        </MudCard>
-                    </MudItem>
-                </ItemContent>
-                <Placeholder>
-                    <MudItem xs="12" sm="6" md="4" lg="3">
-                        <MudCard Class="h-100 d-flex flex-column rounded-xl border-solid border-1 mud-border-lines-default" Elevation="0">
-                            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
-                            <MudCardContent>
-                                <MudSkeleton Width="30%" Height="20px" Class="mb-2" />
-                                <MudSkeleton Width="80%" Height="30px" Class="mb-4" />
-                                <MudSkeleton Width="100%" Height="20px" />
-                                <MudSkeleton Width="100%" Height="20px" />
-                            </MudCardContent>
-                        </MudCard>
-                    </MudItem>
-                </Placeholder>
-            </Virtualize>
-        }
-    </MudGrid>
-
-    @if (_eventsLoaded && _totalCount == 0)
-    {
-        <div class="d-flex flex-column align-center justify-center py-16">
-            <MudIcon Icon="@Icons.Material.Filled.EventBusy" Size="Size.Large" Color="Color.Secondary" Class="mb-4" />
-            <MudText Typo="Typo.h5" Color="Color.Secondary" Align="Align.Center">No events found</MudText>
-            <MudText Typo="Typo.body1" Color="Color.Secondary" Align="Align.Center" Class="mt-2">
-                Try adjusting your filters or search query
-            </MudText>
+    @* ── Left Sidebar: Category Navigation ── *@
+    <aside class="event-list__sidebar @(SidebarState.IsOpen ? "event-list__sidebar--open" : "")">
+        <div class="event-list__sidebar-header">
+            <MudText Typo="Typo.h6">Categories</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Close"
+                           OnClick="ToggleSidebar"
+                           Size="Size.Small"
+                           Class="event-list__sidebar-close" />
         </div>
-    }
+        <MudNavMenu Dense="true" Class="px-2">
+            @foreach (var group in categoryGroups)
+            {
+                <MudNavGroup Title="@group.FullName" Expanded="true" Icon="@Icons.Material.Filled.Folder">
+                    @if (group.Categories != null)
+                    {
+                        @foreach (var category in group.Categories)
+                        {
+                            <MudNavLink OnClick="@(() => ApplyCategoryFilter(category))"
+                                        Icon="@Icons.Material.Filled.ChevronRight">
+                                @category.FullName
+                            </MudNavLink>
+                        }
+                    }
+                </MudNavGroup>
+            }
+            @if (!categoryGroups.Any())
+            {
+                <MudText Typo="Typo.body2" Class="pa-4" Style="opacity: 0.5;">No categories available</MudText>
+            }
+        </MudNavMenu>
+    </aside>
 
-    @if (_totalCount > 0)
-    {
-        <MudText Typo="Typo.caption" Align="Align.Center" Color="Color.Secondary" Class="d-block mb-8">
-            @_totalCount events found
-        </MudText>
-    }
+    @* ── Main Content Area ── *@
+    <main class="event-list__main">
+        <MudContainer Class="event-list-container pb-8" MaxWidth="MaxWidth.False">
 
-</MudContainer>
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-6 rounded-lg" ShowCloseIcon="true" CloseIconClicked="@(() => _errorMessage = null)">
+                    @_errorMessage
+                </MudAlert>
+            }
+            @if (!string.IsNullOrEmpty(_successMessage))
+            {
+                <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Class="mb-6 rounded-lg" ShowCloseIcon="true" CloseIconClicked="@(() => _successMessage = null)">
+                    @_successMessage
+                </MudAlert>
+            }
+
+            <EventFilterBar @ref="_filterBar"
+                            IsIslamicModuleEnabled="@_isIslamicModuleEnabled"
+                            IsTechModuleEnabled="@_isTechModuleEnabled"
+                            OnSearchRequested="@RefreshList"
+                            EventTypes="@eventTypes"
+                            Categories="@categories"
+                            CategoryGroups="@categoryGroups"
+                            Locations="@locations"
+                            EventFormats="@eventFormats"
+                            Madhabs="@madhabs"
+                            RegistrationModes="@registrationModes"
+                            Languages="@languages"
+                            Tags="@tags"
+                            AudienceGenders="@audienceGenders"
+                            AudienceAges="@audienceAges"
+                            EventStatuses="@eventStatuses"
+                            TagGroups="@tagGroups" />
+
+            <MudGrid Spacing="4">
+                @if (isLoading && !_dataLoaded)
+                {
+                    @for (int i = 0; i < 8; i++)
+                    {
+                        <MudItem xs="12" sm="6" md="6" lg="3">
+                            <MudCard Class="h-100 d-flex flex-column rounded-xl border-solid border-1 mud-border-lines-default" Elevation="0">
+                                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
+                                <MudCardContent>
+                                    <MudSkeleton Width="30%" Height="20px" Class="mb-2" />
+                                    <MudSkeleton Width="80%" Height="30px" Class="mb-4" />
+                                    <MudSkeleton Width="100%" Height="20px" />
+                                    <MudSkeleton Width="100%" Height="20px" />
+                                </MudCardContent>
+                            </MudCard>
+                        </MudItem>
+                    }
+                }
+                else
+                {
+                    <Virtualize @ref="_virtualize" ItemsProvider="LoadEventsAsync" OverscanCount="4" Context="evt">
+                        <ItemContent>
+                            <MudItem @key="evt.Id" xs="12" sm="6" md="6" lg="3">
+                                <MudCard Class="h-100 d-flex flex-column rounded-xl hover:mud-elevation-0 transition-all event-card" Outlined="true" Elevation="0" Style="overflow: hidden; background-color: var(--mud-palette-surface);">
+                                    <MudCardMedia Image="@(string.IsNullOrEmpty(evt.FeaturedImageUri) ? GetEventImage(evt) : evt.FeaturedImageUri)" Height="200" />
+
+                                    <MudCardContent Class="d-flex flex-column flex-grow-1 pt-4 pb-2 px-4">
+                                        <div class="d-flex justify-space-between align-center mb-2">
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="ml-n1 font-weight-bold">@GetEventTypeName(evt)</MudChip>
+                                            @if (evt.IsUserReported == true)
+                                            {
+                                                <MudTooltip Text="Community Reported">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Color="Color.Info" />
+                                                </MudTooltip>
+                                            }
+                                        </div>
+
+                                        <MudText Typo="Typo.h6" Style="font-weight: 700; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; min-height: 2.4em;" Class="mb-1">
+                                            @evt.Title
+                                        </MudText>
+
+                                        @if (!string.IsNullOrEmpty(evt.Subtitle))
+                                        {
+                                            <MudText Typo="Typo.subtitle2" Color="Color.Primary" Style="font-weight: 500; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;" Class="mb-2">
+                                                @evt.Subtitle
+                                            </MudText>
+                                        }
+                                        else
+                                        {
+                                            <div style="height: 1.25rem;" class="mb-2"></div>
+                                        }
+
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary" Style="overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; min-height: 4.5em;">
+                                            @GetTruncatedDescription(evt.Description)
+                                        </MudText>
+
+                                        <MudDivider Class="mt-auto mb-2" />
+
+                                        <div class="d-flex justify-space-between align-center">
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                @(evt.FirstSessionDate?.ToString("MMM dd") ?? "TBD")
+                                            </MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                @GetLocationText(evt)
+                                            </MudText>
+                                        </div>
+                                    </MudCardContent>
+
+                                    <MudCardActions Class="px-2 pb-2">
+                                        <MudButton Variant="Variant.Text" Color="Color.Primary" FullWidth="true" EndIcon="@Icons.Material.Filled.ArrowForward" OnClick="@(() => Navigation.NavigateTo($"/event/detail/{evt.Id}"))">
+                                            Details
+                                        </MudButton>
+
+                                        @if (IsUserRegistered(evt.Id ?? Guid.Empty))
+                                        {
+                                            <MudIconButton Icon="@Icons.Material.Filled.EventAvailable" Color="Color.Success" Title="Registered" Disabled="true" />
+                                        }
+                                        else
+                                        {
+                                            <MudIconButton Icon="@Icons.Material.Outlined.AddCircleOutline" Color="Color.Secondary" OnClick="@(() => OpenQuickRegisterDialog(evt))" Title="Quick Register" />
+                                        }
+                                    </MudCardActions>
+                                </MudCard>
+                            </MudItem>
+                        </ItemContent>
+                        <Placeholder>
+                            <MudItem xs="12" sm="6" md="6" lg="3">
+                                <MudCard Class="h-100 d-flex flex-column rounded-xl border-solid border-1 mud-border-lines-default" Elevation="0">
+                                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
+                                    <MudCardContent>
+                                        <MudSkeleton Width="30%" Height="20px" Class="mb-2" />
+                                        <MudSkeleton Width="80%" Height="30px" Class="mb-4" />
+                                        <MudSkeleton Width="100%" Height="20px" />
+                                        <MudSkeleton Width="100%" Height="20px" />
+                                    </MudCardContent>
+                                </MudCard>
+                            </MudItem>
+                        </Placeholder>
+                    </Virtualize>
+                }
+            </MudGrid>
+
+            @if (_eventsLoaded && _totalCount == 0)
+            {
+                <div class="d-flex flex-column align-center justify-center py-16">
+                    <MudIcon Icon="@Icons.Material.Filled.EventBusy" Size="Size.Large" Color="Color.Secondary" Class="mb-4" />
+                    <MudText Typo="Typo.h5" Color="Color.Secondary" Align="Align.Center">No events found</MudText>
+                    <MudText Typo="Typo.body1" Color="Color.Secondary" Align="Align.Center" Class="mt-2">
+                        Try adjusting your filters or search query
+                    </MudText>
+                </div>
+            }
+
+            @if (_totalCount > 0)
+            {
+                <MudText Typo="Typo.caption" Align="Align.Center" Color="Color.Secondary" Class="d-block mb-8">
+                    @_totalCount events found
+                </MudText>
+            }
+
+        </MudContainer>
+    </main>
+
+</div>

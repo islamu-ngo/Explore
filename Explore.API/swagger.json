@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "https://localhost:58306/"
+      "url": "https://localhost:63969/"
     }
   ],
   "paths": {
@@ -1855,6 +1855,128 @@
         }
       }
     },
+    "/api/categorytype": {
+      "get": {
+        "tags": [
+          "CategoryType"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CategoryTypeListDto"
+                  }
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CategoryTypeListDto"
+                  }
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CategoryTypeListDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/categorytype/{id}": {
+      "get": {
+        "tags": [
+          "CategoryType"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryTypeDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryTypeDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryTypeDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/categorytype/with-categories": {
+      "get": {
+        "tags": [
+          "CategoryType"
+        ],
+        "summary": "Get Category Types with Categories",
+        "description": "Returns all category types with their associated categories grouped. Used by the tri-state category filter dropdown.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CategoryTypeWithCategoriesDto"
+                  }
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CategoryTypeWithCategoriesDto"
+                  }
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CategoryTypeWithCategoriesDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/didcustodytype": {
       "get": {
         "tags": [
@@ -2009,6 +2131,42 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "includedCategoryIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "excludedCategoryIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "categoryInclusionMode",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoryExclusionMode",
+            "in": "query",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -13536,6 +13694,90 @@
           }
         }
       },
+      "CategoryTypeDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "masterCode": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "CategoryTypeListDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "masterCode": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          }
+        }
+      },
+      "CategoryTypeWithCategoriesDto": {
+        "required": [
+          "fullName"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategoryListDto"
+            }
+          }
+        }
+      },
       "CreateActorDto": {
         "type": "object",
         "properties": {
@@ -22113,6 +22355,9 @@
     },
     {
       "name": "Category"
+    },
+    {
+      "name": "CategoryType"
     },
     {
       "name": "DidCustodyType"

@@ -1,218 +1,246 @@
 @using MudBlazor
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Models
+@using Explore.Blazor.Client.Components.Event
 
-<MudPaper Class="sticky-header mb-8 py-4 px-4 rounded-lg mud-elevation-2" Style="background-color: var(--mud-palette-surface); z-index: 10; position: sticky; top: calc(var(--nav-height, 64px) + var(--announcement-bar-height, 0px)); backdrop-filter: blur(10px); background-color: color-mix(in srgb, var(--mud-palette-background) 95%, transparent);">
-    
-    <!-- Core Filters -->
-    <MudGrid Spacing="2">
-        <MudItem xs="6" sm="4" md="3" lg="2">
-            <MudSelect T="string" @bind-Value="SelectedDate" Label="Date" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" SelectedValuesChanged="OnFilterChange">
-                <MudSelectItem Value="@("")">Any Time</MudSelectItem>
-                <MudSelectItem Value="@("today")">Today</MudSelectItem>
-                <MudSelectItem Value="@("tomorrow")">Tomorrow</MudSelectItem>
-                <MudSelectItem Value="@("thisweek")">This Week</MudSelectItem>
-                <MudSelectItem Value="@("thismonth")">This Month</MudSelectItem>
-            </MudSelect>
-        </MudItem>
-        <MudItem xs="6" sm="4" md="3" lg="2">
-            <MudSelect T="Guid?" @bind-Value="SelectedCategoryId" Label="Category" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true" SelectedValuesChanged="OnFilterChange">
-                <MudSelectItem T="Guid?" Value="@((Guid?)null)">All Categories</MudSelectItem>
-                @foreach (var category in Categories)
-                {
-                    <MudSelectItem @key="category.Id" T="Guid?" Value="@category.Id">@category.FullName</MudSelectItem>
-                }
-            </MudSelect>
-        </MudItem>
-        <MudItem xs="6" sm="4" md="3" lg="2">
-            <MudSelect T="Guid?" @bind-Value="SelectedLocationId" Label="Location" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true" SelectedValuesChanged="OnFilterChange">
-                <MudSelectItem T="Guid?" Value="@((Guid?)null)">All Locations</MudSelectItem>
-                @foreach (var location in Locations)
-                {
-                    <MudSelectItem @key="location.Id" T="Guid?" Value="@location.Id">@location.FullName</MudSelectItem>
-                }
-            </MudSelect>
-        </MudItem>
-        <MudItem xs="6" sm="4" md="3" lg="2">
-            <MudSelect T="int?" @bind-Value="SelectedFormatId" Label="Format" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true" SelectedValuesChanged="OnFilterChange">
-                <MudSelectItem T="int?" Value="@((int?)null)">All Formats</MudSelectItem>
-                @foreach (var format in EventFormats)
-                {
-                    <MudSelectItem @key="format.Id" T="int?" Value="@format.Id">@format.FullName</MudSelectItem>
-                }
-            </MudSelect>
-        </MudItem>
-        
-        <!-- Row 2 -->
-        <MudItem xs="6" sm="4" md="3" lg="2">
-            <MudSelect T="int?" @bind-Value="SelectedMadhabId" Label="Madhab" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true" SelectedValuesChanged="OnFilterChange">
-                <MudSelectItem T="int?" Value="@((int?)null)">All Madhabs</MudSelectItem>
-                @foreach (var madhab in Madhabs)
-                {
-                    <MudSelectItem @key="madhab.Id" T="int?" Value="@madhab.Id">@madhab.FullName</MudSelectItem>
-                }
-            </MudSelect>
-        </MudItem>
-        <MudItem xs="6" sm="4" md="3" lg="2">
-            <MudSelect T="int?" @bind-Value="SelectedRegistrationModeId" Label="Registration" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true" SelectedValuesChanged="OnFilterChange">
-                <MudSelectItem T="int?" Value="@((int?)null)">All Modes</MudSelectItem>
-                @foreach (var mode in RegistrationModes)
-                {
-                    <MudSelectItem @key="mode.Id" T="int?" Value="@mode.Id">@mode.FullName</MudSelectItem>
-                }
-            </MudSelect>
-        </MudItem>
-        <MudItem xs="6" sm="4" md="3" lg="2">
-            <MudSelect T="int?" @bind-Value="SelectedLanguageId" Label="Language" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true" SelectedValuesChanged="OnFilterChange">
-                <MudSelectItem T="int?" Value="@((int?)null)">All Languages</MudSelectItem>
-                @foreach (var language in Languages)
-                {
-                    <MudSelectItem @key="language.Id" T="int?" Value="@language.Id">@language.FullName</MudSelectItem>
-                }
-            </MudSelect>
-        </MudItem>
-        @* Tag filtering handled by TriStateTagFilterDropdown component (Phase 4) *@
+<MudPaper Class="filter-bar sticky-header mb-4 rounded-lg mud-elevation-2" Style="z-index: 10; position: sticky; top: calc(var(--nav-height, 64px) + var(--announcement-bar-height, 0px)); backdrop-filter: blur(10px); background-color: color-mix(in srgb, var(--mud-palette-background) 95%, transparent);">
 
-        <!-- New Filters -->
-        <MudItem xs="6" sm="4" md="3" lg="2">
-            <MudSelect T="int?" @bind-Value="SelectedEventTypeId" Label="Type" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true" SelectedValuesChanged="OnFilterChange">
-                <MudSelectItem T="int?" Value="@((int?)null)">All Types</MudSelectItem>
-                @foreach (var type in EventTypes)
-                {
-                    <MudSelectItem @key="type.Id" T="int?" Value="@type.Id">@type.FullName</MudSelectItem>
-                }
-            </MudSelect>
-        </MudItem>
-        <MudItem xs="6" sm="4" md="3" lg="2">
-            <MudSelect T="int?" @bind-Value="SelectedAudienceGenderId" Label="Gender" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true" SelectedValuesChanged="OnFilterChange">
-                <MudSelectItem T="int?" Value="@((int?)null)">All Genders</MudSelectItem>
-                @foreach (var gender in AudienceGenders)
-                {
-                    <MudSelectItem @key="gender.Id" T="int?" Value="@gender.Id">@gender.FullName</MudSelectItem>
-                }
-            </MudSelect>
-        </MudItem>
-        <MudItem xs="6" sm="4" md="3" lg="2">
-            <MudSelect T="int?" @bind-Value="SelectedAudienceAgeId" Label="Age" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true" SelectedValuesChanged="OnFilterChange">
-                <MudSelectItem T="int?" Value="@((int?)null)">All Ages</MudSelectItem>
-                @foreach (var age in AudienceAges)
-                {
-                    <MudSelectItem @key="age.Id" T="int?" Value="@age.Id">@age.FullName</MudSelectItem>
-                }
-            </MudSelect>
-        </MudItem>
-        <MudItem xs="6" sm="4" md="3" lg="2">
-            <MudSelect T="int?" @bind-Value="SelectedEventStatusId" Label="Status" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true" SelectedValuesChanged="OnFilterChange">
-                <MudSelectItem T="int?" Value="@((int?)null)">All Statuses</MudSelectItem>
-                @foreach (var status in EventStatuses)
-                {
-                    <MudSelectItem @key="status.Id" T="int?" Value="@status.Id">@status.FullName</MudSelectItem>
-                }
-            </MudSelect>
-        </MudItem>
-    </MudGrid>
+    @* ── Primary Action Row: Search + Show Filters + Search Button ── *@
+    <div class="filter-bar__primary-row">
+        <MudTextField @bind-Value="SearchTerm"
+                      Placeholder="Search events..."
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Immediate="true"
+                      Class="filter-bar__search-field" />
 
-    <MudDivider Class="my-4" />
+        <MudButton Variant="Variant.Outlined"
+                   Color="@(_filtersExpanded ? Color.Primary : Color.Default)"
+                   EndIcon="@(_filtersExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                   OnClick="ToggleFilters"
+                   Size="Size.Medium"
+                   Class="filter-bar__toggle-btn">
+            @if (GetActiveFilterCount() > 0)
+            {
+                <MudBadge Content="@GetActiveFilterCount()" Color="Color.Primary" Overlap="true" Bordered="true">
+                    <span>Filters</span>
+                </MudBadge>
+            }
+            else
+            {
+                <span>Filters</span>
+            }
+        </MudButton>
 
-    <!-- Module Sections -->
-    <MudGrid>
-        @if (IsIslamicModuleEnabled)
-        {
-            <MudItem xs="12" md="6">
-                <MudExpansionPanel @bind-IsExpanded="_isIslamicExpanded" Text="Islamic Aspects" Dense="true">
-                    <TitleContent>
-                        <div class="d-flex align-center">
-                            <MudIcon Icon="@Icons.Material.Filled.Mosque" Class="mr-3" Color="Color.Primary" />
-                            <MudText>Islamic Aspects</MudText>
-                        </div>
-                    </TitleContent>
-                    <ChildContent>
-                        <MudGrid Spacing="2">
-                            <MudItem xs="6">
-                                <MudSelect T="GenderSegregationMode?" @bind-Value="SelectedGenderMode" Label="Gender Mode" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Clearable="true" SelectedValuesChanged="OnFilterChange">
-                                    @foreach (GenderSegregationMode item in Enum.GetValues(typeof(GenderSegregationMode)))
-                                    {
-                                        <MudSelectItem Value="@((GenderSegregationMode?)item)">@item.ToString()</MudSelectItem>
-                                    }
-                                </MudSelect>
-                            </MudItem>
-                            <MudItem xs="6">
-                                <MudSelect T="PrayerTime?" @bind-Value="SelectedReferencePrayer" Label="Reference Prayer" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Clearable="true" SelectedValuesChanged="OnFilterChange">
-                                    @foreach (PrayerTime item in Enum.GetValues(typeof(PrayerTime)))
-                                    {
-                                        <MudSelectItem Value="@((PrayerTime?)item)">@item.ToString()</MudSelectItem>
-                                    }
-                                </MudSelect>
-                            </MudItem>
-                            <MudItem xs="6">
-                                <MudSelect T="int?" @bind-Value="SelectedIslamicPrimaryLanguageId" Label="Islamic Language" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Clearable="true" SelectedValuesChanged="OnFilterChange">
-                                    @foreach (var lang in Languages)
-                                    {
-                                        <MudSelectItem @key="lang.Id" T="int?" Value="@lang.Id">@lang.FullName</MudSelectItem>
-                                    }
-                                </MudSelect>
-                            </MudItem>
-                            <MudItem xs="6" Class="d-flex align-center">
-                                <MudCheckBox T="bool?" @bind-Value="IncludesQuranRecitation" Label="Quran Recitation" Dense="true" Color="Color.Primary" UnCheckedColor="Color.Default" CheckedChanged="OnFilterChange" />
-                            </MudItem>
-                            <MudItem xs="12">
-                                <MudCheckBox T="bool?" @bind-Value="HasIslamicAspect" Label="Show Islamic Events Only" Dense="true" Color="Color.Primary" UnCheckedColor="Color.Default" CheckedChanged="OnFilterChange" />
-                            </MudItem>
-                        </MudGrid>
-                    </ChildContent>
-                </MudExpansionPanel>
-            </MudItem>
-        }
-
-        @if (IsTechModuleEnabled)
-        {
-            <MudItem xs="12" md="6">
-                <MudExpansionPanel @bind-IsExpanded="_isTechExpanded" Text="Tech Aspects" Dense="true">
-                    <TitleContent>
-                        <div class="d-flex align-center">
-                            <MudIcon Icon="@Icons.Material.Filled.Computer" Class="mr-3" Color="Color.Info" />
-                            <MudText>Tech Aspects</MudText>
-                        </div>
-                    </TitleContent>
-                    <ChildContent>
-                        <MudGrid Spacing="2">
-                            <MudItem xs="6">
-                                <MudSelect T="SkillLevel?" @bind-Value="SelectedSkillLevel" Label="Skill Level" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Clearable="true" SelectedValuesChanged="OnFilterChange">
-                                    @foreach (SkillLevel item in Enum.GetValues(typeof(SkillLevel)))
-                                    {
-                                        <MudSelectItem Value="@((SkillLevel?)item)">@item.ToString()</MudSelectItem>
-                                    }
-                                </MudSelect>
-                            </MudItem>
-                            <MudItem xs="6">
-                                <MudTextField @bind-Value="TechStackTag" Label="Tech Stack" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" TextChanged="OnFilterChange" DebounceInterval="500" />
-                            </MudItem>
-                            <MudItem xs="4">
-                                <MudCheckBox T="bool?" @bind-Value="IsCodingCompetition" Label="Coding Comp" Dense="true" Color="Color.Info" CheckedChanged="OnFilterChange" />
-                            </MudItem>
-                            <MudItem xs="4">
-                                <MudCheckBox T="bool?" @bind-Value="IsHackathon" Label="Hackathon" Dense="true" Color="Color.Info" CheckedChanged="OnFilterChange" />
-                            </MudItem>
-                            <MudItem xs="4">
-                                <MudCheckBox T="bool?" @bind-Value="RequiresLaptop" Label="Laptop Req." Dense="true" Color="Color.Info" CheckedChanged="OnFilterChange" />
-                            </MudItem>
-                            <MudItem xs="12">
-                                <MudCheckBox T="bool?" @bind-Value="HasTechAspect" Label="Show Tech Events Only" Dense="true" Color="Color.Info" CheckedChanged="OnFilterChange" />
-                            </MudItem>
-                        </MudGrid>
-                    </ChildContent>
-                </MudExpansionPanel>
-            </MudItem>
-        }
-    </MudGrid>
-
-    <!-- Active Filters -->
-    <div class="d-flex flex-wrap gap-2 mt-2">
-        @if (GetActiveFilterCount() > 0)
-        {
-            <MudChip T="string" Color="Color.Error" Size="Size.Small" OnClose="ClearAllFilters" Variant="Variant.Outlined">Clear All</MudChip>
-        }
-        <!-- Chips would go here, implemented simply via count for now -->
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Search"
+                   OnClick="SearchAsync"
+                   Size="Size.Medium"
+                   Class="filter-bar__search-btn">
+            Search
+        </MudButton>
     </div>
+
+    @* ── Collapsible Filter Panel ── *@
+    <MudCollapse Expanded="_filtersExpanded">
+        <div class="filter-bar__panel">
+            <div class="filter-bar__filters">
+
+                @* ── Core Filters ── *@
+                <div class="filter-bar__filter-item">
+                    <div class="filter-bar__label">Date</div>
+                    <MudSelect T="string" @bind-Value="SelectedDate" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
+                        <MudSelectItem Value="@("")">Any Time</MudSelectItem>
+                        <MudSelectItem Value="@("today")">Today</MudSelectItem>
+                        <MudSelectItem Value="@("tomorrow")">Tomorrow</MudSelectItem>
+                        <MudSelectItem Value="@("thisweek")">This Week</MudSelectItem>
+                        <MudSelectItem Value="@("thismonth")">This Month</MudSelectItem>
+                    </MudSelect>
+                </div>
+
+                <div class="filter-bar__filter-item">
+                    <div class="filter-bar__label">Category</div>
+                    <TriStateCategoryFilterDropdown @ref="_categoryFilterDropdown" CategoryGroups="@CategoryGroups" />
+                </div>
+
+                <div class="filter-bar__filter-item">
+                    <div class="filter-bar__label">Location</div>
+                    <MudSelect T="Guid?" @bind-Value="SelectedLocationId" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
+                        <MudSelectItem T="Guid?" Value="@((Guid?)null)">All Locations</MudSelectItem>
+                        @foreach (var location in Locations)
+                        {
+                            <MudSelectItem @key="location.Id" T="Guid?" Value="@location.Id">@location.FullName</MudSelectItem>
+                        }
+                    </MudSelect>
+                </div>
+
+                <div class="filter-bar__filter-item">
+                    <div class="filter-bar__label">Format</div>
+                    <MudSelect T="int?" @bind-Value="SelectedFormatId" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
+                        <MudSelectItem T="int?" Value="@((int?)null)">All Formats</MudSelectItem>
+                        @foreach (var format in EventFormats)
+                        {
+                            <MudSelectItem @key="format.Id" T="int?" Value="@format.Id">@format.FullName</MudSelectItem>
+                        }
+                    </MudSelect>
+                </div>
+
+                <div class="filter-bar__filter-item">
+                    <div class="filter-bar__label">Type</div>
+                    <MudSelect T="int?" @bind-Value="SelectedEventTypeId" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
+                        <MudSelectItem T="int?" Value="@((int?)null)">All Types</MudSelectItem>
+                        @foreach (var type in EventTypes)
+                        {
+                            <MudSelectItem @key="type.Id" T="int?" Value="@type.Id">@type.FullName</MudSelectItem>
+                        }
+                    </MudSelect>
+                </div>
+
+                <div class="filter-bar__filter-item">
+                    <div class="filter-bar__label">Madhab</div>
+                    <MudSelect T="int?" @bind-Value="SelectedMadhabId" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
+                        <MudSelectItem T="int?" Value="@((int?)null)">All Madhabs</MudSelectItem>
+                        @foreach (var madhab in Madhabs)
+                        {
+                            <MudSelectItem @key="madhab.Id" T="int?" Value="@madhab.Id">@madhab.FullName</MudSelectItem>
+                        }
+                    </MudSelect>
+                </div>
+
+                <div class="filter-bar__filter-item">
+                    <div class="filter-bar__label">Registration</div>
+                    <MudSelect T="int?" @bind-Value="SelectedRegistrationModeId" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
+                        <MudSelectItem T="int?" Value="@((int?)null)">All Modes</MudSelectItem>
+                        @foreach (var mode in RegistrationModes)
+                        {
+                            <MudSelectItem @key="mode.Id" T="int?" Value="@mode.Id">@mode.FullName</MudSelectItem>
+                        }
+                    </MudSelect>
+                </div>
+
+                <div class="filter-bar__filter-item">
+                    <div class="filter-bar__label">Language</div>
+                    <MudSelect T="int?" @bind-Value="SelectedLanguageId" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
+                        <MudSelectItem T="int?" Value="@((int?)null)">All Languages</MudSelectItem>
+                        @foreach (var language in Languages)
+                        {
+                            <MudSelectItem @key="language.Id" T="int?" Value="@language.Id">@language.FullName</MudSelectItem>
+                        }
+                    </MudSelect>
+                </div>
+
+                <div class="filter-bar__filter-item">
+                    <div class="filter-bar__label">Gender</div>
+                    <MudSelect T="int?" @bind-Value="SelectedAudienceGenderId" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
+                        <MudSelectItem T="int?" Value="@((int?)null)">All Genders</MudSelectItem>
+                        @foreach (var gender in AudienceGenders)
+                        {
+                            <MudSelectItem @key="gender.Id" T="int?" Value="@gender.Id">@gender.FullName</MudSelectItem>
+                        }
+                    </MudSelect>
+                </div>
+
+                <div class="filter-bar__filter-item">
+                    <div class="filter-bar__label">Age</div>
+                    <MudSelect T="int?" @bind-Value="SelectedAudienceAgeId" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
+                        <MudSelectItem T="int?" Value="@((int?)null)">All Ages</MudSelectItem>
+                        @foreach (var age in AudienceAges)
+                        {
+                            <MudSelectItem @key="age.Id" T="int?" Value="@age.Id">@age.FullName</MudSelectItem>
+                        }
+                    </MudSelect>
+                </div>
+
+                <div class="filter-bar__filter-item">
+                    <div class="filter-bar__label">Status</div>
+                    <MudSelect T="int?" @bind-Value="SelectedEventStatusId" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
+                        <MudSelectItem T="int?" Value="@((int?)null)">All Statuses</MudSelectItem>
+                        @foreach (var status in EventStatuses)
+                        {
+                            <MudSelectItem @key="status.Id" T="int?" Value="@status.Id">@status.FullName</MudSelectItem>
+                        }
+                    </MudSelect>
+                </div>
+
+                <div class="filter-bar__filter-item">
+                    <div class="filter-bar__label">Sort By</div>
+                    <MudSelect T="string" @bind-Value="SelectedSortBy" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
+                        <MudSelectItem Value="@("date")">Date</MudSelectItem>
+                        <MudSelectItem Value="@("title")">Title</MudSelectItem>
+                        <MudSelectItem Value="@("popularity")">Popularity</MudSelectItem>
+                        <MudSelectItem Value="@("created")">Recently Added</MudSelectItem>
+                    </MudSelect>
+                </div>
+
+                <div class="filter-bar__filter-item">
+                    <div class="filter-bar__label">Tags</div>
+                    <TriStateTagFilterDropdown @ref="_tagFilterDropdown" TagGroups="@TagGroups" />
+                </div>
+
+                @* ── Islamic Aspect Filters (conditional) ── *@
+                @if (IsIslamicModuleEnabled)
+                {
+                    <div class="filter-bar__filter-item">
+                        <div class="filter-bar__label">Gender Mode</div>
+                        <MudSelect T="GenderSegregationMode?" @bind-Value="SelectedGenderMode" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
+                            <MudSelectItem T="GenderSegregationMode?" Value="@((GenderSegregationMode?)null)">Any</MudSelectItem>
+                            @foreach (GenderSegregationMode item in Enum.GetValues(typeof(GenderSegregationMode)))
+                            {
+                                <MudSelectItem Value="@((GenderSegregationMode?)item)">@item.ToString()</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </div>
+
+                    <div class="filter-bar__filter-item">
+                        <div class="filter-bar__label">Prayer Time</div>
+                        <MudSelect T="PrayerTime?" @bind-Value="SelectedReferencePrayer" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
+                            <MudSelectItem T="PrayerTime?" Value="@((PrayerTime?)null)">Any</MudSelectItem>
+                            @foreach (PrayerTime item in Enum.GetValues(typeof(PrayerTime)))
+                            {
+                                <MudSelectItem Value="@((PrayerTime?)item)">@item.ToString()</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </div>
+                }
+
+                @* ── Tech Aspect Filters (conditional) ── *@
+                @if (IsTechModuleEnabled)
+                {
+                    <div class="filter-bar__filter-item">
+                        <div class="filter-bar__label">Skill Level</div>
+                        <MudSelect T="SkillLevel?" @bind-Value="SelectedSkillLevel" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter" Clearable="true">
+                            <MudSelectItem T="SkillLevel?" Value="@((SkillLevel?)null)">Any</MudSelectItem>
+                            @foreach (SkillLevel item in Enum.GetValues(typeof(SkillLevel)))
+                            {
+                                <MudSelectItem Value="@((SkillLevel?)item)">@item.ToString()</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </div>
+
+                    <div class="filter-bar__filter-item">
+                        <div class="filter-bar__label">Tech Stack</div>
+                        <MudTextField @bind-Value="TechStackTag" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Placeholder="e.g. React, .NET" DebounceInterval="500" />
+                    </div>
+                }
+            </div>
+
+            @* ── Active Filters Summary ── *@
+            @{ var activeCount = GetActiveFilterCount(); }
+            @if (activeCount > 0)
+            {
+                <div class="filter-bar__active-summary">
+                    <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Text">
+                        @activeCount active @(activeCount == 1 ? "filter" : "filters")
+                    </MudChip>
+                    <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small" StartIcon="@Icons.Material.Filled.ClearAll" OnClick="ClearAllFilters">
+                        Clear All
+                    </MudButton>
+                </div>
+            }
+        </div>
+    </MudCollapse>
 
 </MudPaper>

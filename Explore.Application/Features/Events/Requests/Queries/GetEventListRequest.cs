@@ -28,8 +28,33 @@ public class GetEventListRequest : IRequest<PaginatedResult<EventListDto>>
 
     /// <summary>
     /// Filter by category (via EventCategories junction table).
+    /// When IncludedCategoryIds is also provided, this is ignored.
     /// </summary>
     public Guid? CategoryId { get; set; }
+
+    /// <summary>
+    /// Category IDs to include (events must match these categories).
+    /// Combined using <see cref="CategoryInclusionMode"/> (AND = all categories, OR = any category).
+    /// </summary>
+    public List<Guid>? IncludedCategoryIds { get; set; }
+
+    /// <summary>
+    /// Category IDs to exclude (events matching these categories are filtered out).
+    /// Combined using <see cref="CategoryExclusionMode"/> (AND = all categories, OR = any category).
+    /// </summary>
+    public List<Guid>? ExcludedCategoryIds { get; set; }
+
+    /// <summary>
+    /// How included categories are combined. AND = event must have all categories. OR = event must have at least one.
+    /// Defaults to AND.
+    /// </summary>
+    public TagFilterMode CategoryInclusionMode { get; set; } = TagFilterMode.And;
+
+    /// <summary>
+    /// How excluded categories are combined. OR = exclude if event has any category. AND = exclude only if event has all categories.
+    /// Defaults to OR.
+    /// </summary>
+    public TagFilterMode CategoryExclusionMode { get; set; } = TagFilterMode.Or;
 
     /// <summary>
     /// Tag IDs to include (events must match these tags).

@@ -6,6 +6,8 @@ using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.DTOs.AudienceAge;
 using Explore.Application.DTOs.AudienceGender;
 using Explore.Application.DTOs.Category;
+using Explore.Application.DTOs.CategoryType;
+using Explore.Application.DTOs.CategoryTypeCategories;
 using Explore.Application.DTOs.DidCustodyType;
 using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventAspects;
@@ -360,6 +362,28 @@ public class MappingProfile : Profile
         CreateMap<EventSessionLanguage, EventSessionLanguageListDto>();
         CreateMap<CreateEventSessionLanguageDto, EventSessionLanguage>();
         CreateMap<UpdateEventSessionLanguageDto, EventSessionLanguage>();
+
+        // ============================================
+        // CATEGORY TYPE MAPPINGS (Readonly Lookup)
+        // ============================================
+        CreateMap<CategoryType, CategoryTypeDto>().ReverseMap();
+        CreateMap<CategoryType, CategoryTypeListDto>().ReverseMap();
+
+        // ============================================
+        // CATEGORY TYPE CATEGORIES MAPPINGS (Link Table)
+        // ============================================
+        CreateMap<Domain.CategoryTypeCategories, CategoryTypeCategoriesDto>()
+            .ForMember(dest => dest.CategoryFullName, opt => opt.MapFrom(src => src.Category != null ? src.Category.FullName : null))
+            .ForMember(dest => dest.CategoryMasterCode, opt => opt.MapFrom(src => src.Category != null ? src.Category.MasterCode : null))
+            .ForMember(dest => dest.CategoryTypeFullName, opt => opt.MapFrom(src => src.CategoryType != null ? src.CategoryType.FullName : null))
+            .ForMember(dest => dest.CategoryTypeMasterCode, opt => opt.MapFrom(src => src.CategoryType != null ? src.CategoryType.MasterCode : null));
+        CreateMap<Domain.CategoryTypeCategories, CategoryTypeCategoriesListDto>()
+            .ForMember(dest => dest.CategoryFullName, opt => opt.MapFrom(src => src.Category != null ? src.Category.FullName : null))
+            .ForMember(dest => dest.CategoryMasterCode, opt => opt.MapFrom(src => src.Category != null ? src.Category.MasterCode : null))
+            .ForMember(dest => dest.CategoryTypeFullName, opt => opt.MapFrom(src => src.CategoryType != null ? src.CategoryType.FullName : null))
+            .ForMember(dest => dest.CategoryTypeMasterCode, opt => opt.MapFrom(src => src.CategoryType != null ? src.CategoryType.MasterCode : null));
+        CreateMap<CreateCategoryTypeCategoriesDto, Domain.CategoryTypeCategories>();
+        CreateMap<UpdateCategoryTypeCategoriesDto, Domain.CategoryTypeCategories>();
 
         // ============================================
         // TAG TYPE MAPPINGS (Readonly Lookup)

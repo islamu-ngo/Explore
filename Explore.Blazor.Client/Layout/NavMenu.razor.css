@@ -61,6 +61,15 @@
 }
 
 /* ========================================
+   Element: navbar__sidebar-toggle
+   Hamburger menu for toggling page sidebars
+   ======================================== */
+::deep .navbar__sidebar-toggle {
+    flex-shrink: 0;
+    margin-right: 4px;
+}
+
+/* ========================================
    Element: navbar__brand
    Logo and brand name
    ======================================== */

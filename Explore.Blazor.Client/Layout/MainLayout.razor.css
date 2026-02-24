@@ -25,6 +25,8 @@
     width: 100%;
     display: flex;
     flex-direction: column;
+    margin: 0;
+    padding: 0;
 }
 
 /* Element: main-layout__content-wrapper
@@ -35,7 +37,8 @@
     margin: 0 auto;
     width: 100%;
     padding-inline: 16px;
-    padding-block: 24px;
+    padding-block-start: 0;
+    padding-block-end: 24px;
 }
 
 /* Element: main-layout__container
@@ -54,8 +57,9 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    padding-top: 0; /* Sticky header handles spacing */
-    background-color: var(--mud-palette-background-grey); /* Ensure distinct background from surface (cards) */
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+    background-color: var(--mud-palette-background-grey);
 }
 
 /* Element: main-layout__footer

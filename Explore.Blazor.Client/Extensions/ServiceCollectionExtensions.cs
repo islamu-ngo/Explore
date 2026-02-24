@@ -59,6 +59,9 @@ public static class ServiceCollectionExtensions
         // Auth state
         services.AddScoped<IAuthStateService, AuthStateService>();
 
+        // UI state
+        services.AddScoped<SidebarState>();
+
         return services;
     }
 }

@@ -153,6 +153,8 @@ public class ExploreDbContext : DbContext
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
         modelBuilder.Entity<TagTypeTags>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+        modelBuilder.Entity<CategoryTypeCategories>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
 
         // ===== User-Related Tenant Entities =====
         modelBuilder.Entity<UserAuthenticationToken>()
@@ -315,6 +317,8 @@ public class ExploreDbContext : DbContext
     public DbSet<AnalyticsProvider> AnalyticsProviders { get; set; }
     // ===== Categories & Tags =====
     public DbSet<Category> Categories { get; set; }
+    public DbSet<CategoryType> CategoryTypes { get; set; }
+    public DbSet<CategoryTypeCategories> CategoryTypeCategories { get; set; }
     public DbSet<Tag> Tags { get; set; }
     public DbSet<TagType> TagTypes { get; set; }
     public DbSet<TagTypeTags> TagTypeTags { get; set; }

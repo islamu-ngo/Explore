@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -124,6 +124,20 @@ namespace Explore.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_audience_genders", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "category_types",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_category_types", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -802,6 +816,38 @@ namespace Explore.Persistence.Migrations
                         principalTable: "tenants",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "category_type_categories",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    category_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    category_type_id = table.Column<int>(type: "integer", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_category_type_categories", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_category_type_categories_categories_category_id",
+                        column: x => x.category_id,
+                        principalTable: "categories",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_category_type_categories_category_types_category_type_id",
+                        column: x => x.category_type_id,
+                        principalTable: "category_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_category_type_categories_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -2059,6 +2105,21 @@ namespace Explore.Persistence.Migrations
                 column: "tenant_id");
 
             migrationBuilder.CreateIndex(
+                name: "ix_category_type_categories_category_id",
+                table: "category_type_categories",
+                column: "category_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_category_type_categories_category_type_id",
+                table: "category_type_categories",
+                column: "category_type_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_category_type_categories_tenant_id",
+                table: "category_type_categories",
+                column: "tenant_id");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_configuration_change_logs_scope_scope_id",
                 table: "configuration_change_logs",
                 columns: new[] { "scope", "scope_id" });
@@ -2795,6 +2856,9 @@ namespace Explore.Persistence.Migrations
                 name: "app_settings");
 
             migrationBuilder.DropTable(
+                name: "category_type_categories");
+
+            migrationBuilder.DropTable(
                 name: "configuration_change_logs");
 
             migrationBuilder.DropTable(
@@ -2901,6 +2965,9 @@ namespace Explore.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "user_pii");
+
+            migrationBuilder.DropTable(
+                name: "category_types");
 
             migrationBuilder.DropTable(
                 name: "categories");

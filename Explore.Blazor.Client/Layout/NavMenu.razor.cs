@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Components.Routing;
 
 namespace Explore.Blazor.Client.Layout;
 
-public partial class NavMenu
+public partial class NavMenu : IDisposable
 {
     [Inject]
     protected NavigationManager Nav { get; set; } = null!;
@@ -29,6 +29,9 @@ public partial class NavMenu
     [Inject]
     protected IEventCreationEligibilityService EventCreationEligibilityService { get; set; } = null!;
 
+    [Inject]
+    protected SidebarState SidebarState { get; set; } = null!;
+
     [Parameter]
     public EventCallback OnToggleTheme { get; set; }
 
@@ -43,6 +46,7 @@ public partial class NavMenu
 
     protected override async Task OnInitializedAsync()
     {
+        SidebarState.OnChange += StateHasChanged;
         await LoadPublicExperienceAsync();
         await LoadCurrentUserAsync();
         await LoadNavigationLinksAsync();
@@ -179,5 +183,10 @@ public partial class NavMenu
         {
             // Silently fail - button simply won't appear
         }
+    }
+
+    public void Dispose()
+    {
+        SidebarState.OnChange -= StateHasChanged;
     }
 }
