@@ -17,6 +17,10 @@ public interface IEventService
         int pageSize,
         string? searchTerm = null,
         Guid? categoryId = null,
+        List<Guid>? includedCategoryIds = null,
+        List<Guid>? excludedCategoryIds = null,
+        string? categoryInclusionMode = null,
+        string? categoryExclusionMode = null,
         List<Guid>? includedTagIds = null,
         List<Guid>? excludedTagIds = null,
         string? inclusionMode = null,
@@ -134,6 +138,10 @@ public partial class EventService : IEventService
         int pageSize,
         string? searchTerm = null,
         Guid? categoryId = null,
+        List<Guid>? includedCategoryIds = null,
+        List<Guid>? excludedCategoryIds = null,
+        string? categoryInclusionMode = null,
+        string? categoryExclusionMode = null,
         List<Guid>? includedTagIds = null,
         List<Guid>? excludedTagIds = null,
         string? inclusionMode = null,
@@ -169,15 +177,34 @@ public partial class EventService : IEventService
     {
         try
         {
+            // Sanitize empty lists to null to prevent NSwag URL builder corruption.
+            // NSwag's generated code does urlBuilder_.Length-- after an empty foreach,
+            // which strips the '=' from "paramName=" creating a bare query key that
+            // causes ASP.NET Core model binding to fail with 400 Bad Request.
+            var safeIncludedCatIds = includedCategoryIds is { Count: > 0 } ? includedCategoryIds : null;
+            var safeExcludedCatIds = excludedCategoryIds is { Count: > 0 } ? excludedCategoryIds : null;
+            var safeIncludedTagIds = includedTagIds is { Count: > 0 } ? includedTagIds : null;
+            var safeExcludedTagIds = excludedTagIds is { Count: > 0 } ? excludedTagIds : null;
+
+            // Only send mode strings when the corresponding ID list is non-empty
+            var safeCatIncMode = safeIncludedCatIds != null ? categoryInclusionMode : null;
+            var safeCatExcMode = safeExcludedCatIds != null ? categoryExclusionMode : null;
+            var safeTagIncMode = safeIncludedTagIds != null ? inclusionMode : null;
+            var safeTagExcMode = safeExcludedTagIds != null ? exclusionMode : null;
+
             var result = await _apiClient.GetEventsAsync(
                 pageNumber: pageNumber,
                 pageSize: pageSize,
                 searchTerm: searchTerm,
                 categoryId: categoryId,
-                includedTagIds: includedTagIds,
-                excludedTagIds: excludedTagIds,
-                inclusionMode: inclusionMode,
-                exclusionMode: exclusionMode,
+                includedCategoryIds: safeIncludedCatIds,
+                excludedCategoryIds: safeExcludedCatIds,
+                categoryInclusionMode: safeCatIncMode,
+                categoryExclusionMode: safeCatExcMode,
+                includedTagIds: safeIncludedTagIds,
+                excludedTagIds: safeExcludedTagIds,
+                inclusionMode: safeTagIncMode,
+                exclusionMode: safeTagExcMode,
                 formatId: formatId,
                 madhabId: madhabId,
                 locationId: locationId,

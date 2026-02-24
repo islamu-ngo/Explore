@@ -10,10 +10,11 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web.Virtualization;
 using Microsoft.Extensions.Logging;
 using MudBlazor;
+using MudBlazor.Services;
 
 namespace Explore.Blazor.Client.Pages.Event;
 
-public partial class EventList : ComponentBase
+public partial class EventList : ComponentBase, IBrowserViewportObserver, IAsyncDisposable
 {
     [Inject] protected NavigationManager Navigation { get; set; } = null!;
     [Inject] protected IEventService EventService { get; set; } = null!;
@@ -25,12 +26,13 @@ public partial class EventList : ComponentBase
     [Inject] protected IDialogService DialogService { get; set; } = null!;
     [Inject] protected IPublicExperienceService PublicExperienceService { get; set; } = null!;
     [Inject] protected ILogger<EventList> Logger { get; set; } = null!;
+    [Inject] protected SidebarState SidebarState { get; set; } = null!;
+    [Inject] protected IBrowserViewportService BrowserViewportService { get; set; } = null!;
 
     [PersistentState]
     public EventListState? PersistedState { get; set; }
 
     private EventFilterBar? _filterBar;
-    private TriStateTagFilterDropdown? _tagFilterDropdown;
     private string? _errorMessage;
     private string? _successMessage;
 
@@ -38,10 +40,15 @@ public partial class EventList : ComponentBase
     private bool _isIslamicModuleEnabled;
     private bool _isTechModuleEnabled;
 
+    // Breakpoint tracking for responsive sidebar auto-close
+    private Breakpoint _currentBreakpoint = Breakpoint.Lg;
+    private static readonly Breakpoint MobileBreakpointThreshold = Breakpoint.Sm;
+
     private bool isLoading = true;
     private bool _eventsLoaded = false;
     private bool _dataLoaded = false;
     private bool _usePersistedEvents = false;
+    private bool _virtualizeRefreshed = false;
 
     private Virtualize<EventListDto>? _virtualize;
     private int _totalCount;
@@ -59,6 +66,7 @@ public partial class EventList : ComponentBase
     private ICollection<RegistrationModeListDto> registrationModes = new List<RegistrationModeListDto>();
     private ICollection<LanguageListDto> languages = new List<LanguageListDto>();
     private ICollection<TagTypeWithTagsDto> tagGroups = new List<TagTypeWithTagsDto>();
+    private ICollection<CategoryTypeWithCategoriesDto> categoryGroups = new List<CategoryTypeWithCategoriesDto>();
 
     private Dictionary<int, string> eventTypeMap = new();
     private Dictionary<int, string> eventFormatMap = new();
@@ -76,6 +84,10 @@ public partial class EventList : ComponentBase
     protected override async Task OnInitializedAsync()
     {
         Logger.LogDebug("OnInitializedAsync starting");
+
+        SidebarState.OnChange += StateHasChanged;
+        SidebarState.SetHasSidebar(true);
+        SidebarState.SetOpen(true);
 
         if (!string.IsNullOrEmpty(SearchQuery))
         {
@@ -96,6 +108,22 @@ public partial class EventList : ComponentBase
 
         await LoadDataAsync();
         await LoadUserRegistrationsAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await BrowserViewportService.SubscribeAsync(this, fireImmediately: true);
+        }
+
+        // Virtualize's IntersectionObserver may not fire when it first appears
+        // in a conditional render block inside MudGrid. Force the initial load.
+        if (_dataLoaded && _virtualize != null && !_virtualizeRefreshed)
+        {
+            _virtualizeRefreshed = true;
+            await _virtualize.RefreshDataAsync();
+        }
     }
 
     private bool TryRestoreState()
@@ -200,8 +228,9 @@ public partial class EventList : ComponentBase
             var registrationModesTask = AdminService.GetRegistrationModesAsync();
             var languagesTask = AdminService.GetLanguagesAsync();
             var tagGroupsTask = TagService.GetTagsGroupedByTagTypeAsync();
+            var categoryGroupsTask = CategoryService.GetCategoriesGroupedByCategoryTypeAsync();
 
-            await Task.WhenAll(eventTypesTask, audienceGendersTask, audienceAgesTask, eventStatusesTask, eventFormatsTask, categoriesTask, tagsTask, madhabsTask, locationsTask, registrationModesTask, languagesTask, tagGroupsTask);
+            await Task.WhenAll(eventTypesTask, audienceGendersTask, audienceAgesTask, eventStatusesTask, eventFormatsTask, categoriesTask, tagsTask, madhabsTask, locationsTask, registrationModesTask, languagesTask, tagGroupsTask, categoryGroupsTask);
 
             eventTypes = await eventTypesTask ?? new List<EventTypeListDto>();
             audienceGenders = await audienceGendersTask ?? new List<AudienceGenderListDto>();
@@ -215,6 +244,7 @@ public partial class EventList : ComponentBase
             registrationModes = await registrationModesTask ?? new List<RegistrationModeListDto>();
             languages = await languagesTask ?? new List<LanguageListDto>();
             tagGroups = await tagGroupsTask ?? new List<TagTypeWithTagsDto>();
+            categoryGroups = await categoryGroupsTask ?? new List<CategoryTypeWithCategoriesDto>();
 
             BuildLookupMaps();
             _dataLoaded = true;
@@ -242,9 +272,8 @@ public partial class EventList : ComponentBase
         // Get filter values from _filterBar or defaults
         var dateFilter = _filterBar?.SelectedDate ?? "";
         var searchTerm = _filterBar?.SearchTerm ?? SearchQuery;
-        var categoryId = _filterBar?.SelectedCategoryId;
-        // Tag filter state will be provided by TriStateTagFilterDropdown in Phase 4/5
-        // For now, pass null for multi-tag params
+        // Category filter state is managed by the TriStateCategoryFilterDropdown inside EventFilterBar
+        // Tag filter state is managed by the TriStateTagFilterDropdown inside EventFilterBar
         var formatId = _filterBar?.SelectedFormatId;
         var madhabId = _filterBar?.SelectedMadhabId;
         var locationId = _filterBar?.SelectedLocationId;
@@ -260,18 +289,11 @@ public partial class EventList : ComponentBase
 
         // Islamic
         var genderModeId = _filterBar?.SelectedGenderMode != null ? (int?)_filterBar.SelectedGenderMode : null;
-        var includesQuran = _filterBar?.IncludesQuranRecitation;
         var prayerId = _filterBar?.SelectedReferencePrayer != null ? (int?)_filterBar.SelectedReferencePrayer : null;
-        var islamicLangId = _filterBar?.SelectedIslamicPrimaryLanguageId;
-        var hasIslamic = _filterBar?.HasIslamicAspect;
 
         // Tech
         var skillLevelId = _filterBar?.SelectedSkillLevel != null ? (int?)_filterBar.SelectedSkillLevel : null;
-        var codingComp = _filterBar?.IsCodingCompetition;
-        var hackathon = _filterBar?.IsHackathon;
-        var laptop = _filterBar?.RequiresLaptop;
         var techStack = _filterBar?.TechStackTag;
-        var hasTech = _filterBar?.HasTechAspect;
 
         DateTimeOffset? dateFrom = null;
         DateTimeOffset? dateTo = null;
@@ -292,11 +314,14 @@ public partial class EventList : ComponentBase
             pageNumber,
             pageSize,
             searchTerm: searchTerm,
-            categoryId: categoryId,
-            includedTagIds: _tagFilterDropdown?.GetCurrentFilter().IncludedTagIds,
-            excludedTagIds: _tagFilterDropdown?.GetCurrentFilter().ExcludedTagIds,
-            inclusionMode: _tagFilterDropdown?.GetCurrentFilter().InclusionMode,
-            exclusionMode: _tagFilterDropdown?.GetCurrentFilter().ExclusionMode,
+            includedCategoryIds: _filterBar?.GetCategoryFilter().IncludedCategoryIds,
+            excludedCategoryIds: _filterBar?.GetCategoryFilter().ExcludedCategoryIds,
+            categoryInclusionMode: _filterBar?.GetCategoryFilter().InclusionMode,
+            categoryExclusionMode: _filterBar?.GetCategoryFilter().ExclusionMode,
+            includedTagIds: _filterBar?.GetTagFilter().IncludedTagIds,
+            excludedTagIds: _filterBar?.GetTagFilter().ExcludedTagIds,
+            inclusionMode: _filterBar?.GetTagFilter().InclusionMode,
+            exclusionMode: _filterBar?.GetTagFilter().ExclusionMode,
             formatId: formatId,
             madhabId: madhabId,
             locationId: locationId,
@@ -311,16 +336,16 @@ public partial class EventList : ComponentBase
             audienceAgeId: audienceAgeId,
             eventStatusId: eventStatusId,
             genderModeId: genderModeId,
-            includesQuranRecitation: includesQuran,
+            includesQuranRecitation: null,
             referencePrayerId: prayerId,
-            islamicPrimaryLanguageId: islamicLangId,
-            hasIslamicAspect: hasIslamic,
+            islamicPrimaryLanguageId: null,
+            hasIslamicAspect: null,
             skillLevelId: skillLevelId,
-            isCodingCompetition: codingComp,
-            isHackathon: hackathon,
-            requiresLaptop: laptop,
+            isCodingCompetition: null,
+            isHackathon: null,
+            requiresLaptop: null,
             techStackTag: techStack,
-            hasTechAspect: hasTech,
+            hasTechAspect: null,
             cancellationToken: request.CancellationToken);
 
         _totalCount = result.TotalCount;
@@ -364,6 +389,18 @@ public partial class EventList : ComponentBase
         {
             await _virtualize.RefreshDataAsync();
         }
+    }
+
+    private void ToggleSidebar() => SidebarState.Toggle();
+
+    private async Task ApplyCategoryFilter(CategoryListDto category)
+    {
+        if (_filterBar != null && category.FullName != null)
+        {
+            _filterBar.SearchTerm = category.FullName;
+        }
+        SidebarState.SetOpen(false);
+        await RefreshList();
     }
 
     // ... (helper methods like GetSelectedCategoryName can remain or be used for display)
@@ -484,6 +521,58 @@ public partial class EventList : ComponentBase
     {
         return DisplayHelper.GetInitials(displayName);
     }
+
+    public void Dispose()
+    {
+        // Synchronous cleanup for non-async resources
+        SidebarState.OnChange -= StateHasChanged;
+        SidebarState.SetHasSidebar(false);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Dispose();
+        await BrowserViewportService.UnsubscribeAsync(this);
+    }
+
+    // IBrowserViewportObserver implementation
+    Guid IBrowserViewportObserver.Id { get; } = Guid.NewGuid();
+
+    ResizeOptions IBrowserViewportObserver.ResizeOptions { get; } = new()
+    {
+        ReportRate = 250,
+        NotifyOnBreakpointOnly = true
+    };
+
+    Task IBrowserViewportObserver.NotifyBrowserViewportChangeAsync(BrowserViewportEventArgs args)
+    {
+        var previous = _currentBreakpoint;
+        _currentBreakpoint = args.Breakpoint;
+
+        if (args.IsImmediate)
+        {
+            // Initial size detection — don't auto-open on mobile
+            if (IsMobileBreakpoint(_currentBreakpoint))
+            {
+                SidebarState.SetOpen(false);
+            }
+            return InvokeAsync(StateHasChanged);
+        }
+
+        // Auto-close when crossing into mobile territory
+        var wasMobile = IsMobileBreakpoint(previous);
+        var isMobile = IsMobileBreakpoint(_currentBreakpoint);
+
+        if (!wasMobile && isMobile && SidebarState.IsOpen)
+        {
+            SidebarState.SetOpen(false);
+        }
+
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private static bool IsMobileBreakpoint(Breakpoint bp) =>
+        bp <= MobileBreakpointThreshold;
 
     public sealed class EventListState
     {
