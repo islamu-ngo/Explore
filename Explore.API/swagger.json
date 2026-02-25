@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "https://localhost:60463/"
+      "url": "https://localhost:59666/"
     }
   ],
   "paths": {
@@ -15641,6 +15641,18 @@
               "string"
             ]
           },
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TagListDto"
+            }
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategoryListDto"
+            }
+          },
           "tenantId": {
             "type": "string",
             "format": "uuid"
@@ -18333,6 +18345,18 @@
               "null",
               "string"
             ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TagListDto"
+            }
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategoryListDto"
+            }
           },
           "tenantId": {
             "type": "string",
