@@ -9,9 +9,9 @@
 <div class="site-footer-root @(_drawerOpenCss)">
 <footer class="site-footer">
     <MudContainer MaxWidth="MaxWidth.Large">
-        <MudGrid Spacing="4">
+        <div class="site-footer__grid">
             <!-- Brand Column -->
-            <MudItem xs="12" md="4">
+            <div class="site-footer__col site-footer__col--brand">
                 <div class="site-footer__brand">
                     @if (!string.IsNullOrWhiteSpace(_brandLogoUrl))
                     {
@@ -26,40 +26,36 @@
                 <MudText Class="site-footer__description">
                     Connecting Muslims through meaningful events, gatherings, and community building initiatives across the globe.
                 </MudText>
-            </MudItem>
+            </div>
 
-            <!-- Links -->
-            <MudItem xs="12" md="8">
-                <MudGrid>
-                    <MudItem xs="6" sm="4">
-                        <div class="site-footer__section">
-                            <div class="site-footer__heading">Platform</div>
-                            <a href="/events" class="site-footer__link">Browse Events</a>
-                            <a href="/event/categories" class="site-footer__link">Categories</a>
-                            <a href="/organizations" class="site-footer__link">Organizations</a>
-                        </div>
-                    </MudItem>
+            <!-- Link Columns -->
+            <div class="site-footer__col site-footer__col--links">
+                <div class="site-footer__section">
+                    <div class="site-footer__heading">Platform</div>
+                    <a href="/events" class="site-footer__link">Browse Events</a>
+                    <a href="/event/categories" class="site-footer__link">Categories</a>
+                    <a href="/organizations" class="site-footer__link">Organizations</a>
+                </div>
+            </div>
 
-                    <MudItem xs="6" sm="4">
-                        <div class="site-footer__section">
-                            <div class="site-footer__heading">Company</div>
-                            <a href="/about" class="site-footer__link">About Us</a>
-                            <a href="/contact" class="site-footer__link">Contact</a>
-                            <a href="/careers" class="site-footer__link">Careers</a>
-                        </div>
-                    </MudItem>
+            <div class="site-footer__col site-footer__col--links">
+                <div class="site-footer__section">
+                    <div class="site-footer__heading">Company</div>
+                    <a href="/about" class="site-footer__link">About Us</a>
+                    <a href="/contact" class="site-footer__link">Contact</a>
+                    <a href="/careers" class="site-footer__link">Careers</a>
+                </div>
+            </div>
 
-                    <MudItem xs="6" sm="4">
-                        <div class="site-footer__section">
-                            <div class="site-footer__heading">Legal</div>
-                            <a href="/privacy" class="site-footer__link">Privacy Policy</a>
-                            <a href="/terms" class="site-footer__link">Terms of Service</a>
-                            <a href="/cookies" class="site-footer__link">Cookie Settings</a>
-                        </div>
-                    </MudItem>
-                </MudGrid>
-            </MudItem>
-        </MudGrid>
+            <div class="site-footer__col site-footer__col--links">
+                <div class="site-footer__section">
+                    <div class="site-footer__heading">Legal</div>
+                    <a href="/privacy" class="site-footer__link">Privacy Policy</a>
+                    <a href="/terms" class="site-footer__link">Terms of Service</a>
+                    <a href="/cookies" class="site-footer__link">Cookie Settings</a>
+                </div>
+            </div>
+        </div>
 
         <MudDivider Class="my-8" />
 

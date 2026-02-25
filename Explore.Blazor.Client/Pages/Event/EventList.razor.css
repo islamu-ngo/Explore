@@ -164,16 +164,20 @@
    fewer columns appear when the drawer shrinks available space. */
 ::deep .event-grid--CompactGrid > .mud-grid-item {
     flex: 0 0 auto !important;
-    width: 160px !important;
-    max-width: 160px !important;
+    width: 224px !important;
+    max-width: 224px !important;
     padding: 6px !important;
 }
 
-@media (max-width: 599.98px) {
+/* When only one card fits per row, enlarge and center */
+@media (max-width: 499.98px) {
+    ::deep .event-grid--CompactGrid.mud-grid {
+        justify-content: center !important;
+    }
+
     ::deep .event-grid--CompactGrid > .mud-grid-item {
-        width: 120px !important;
-        max-width: 120px !important;
-        padding: 4px !important;
+        width: 314px !important;
+        max-width: 314px !important;
     }
 }
 
@@ -195,8 +199,9 @@
 }
 
 ::deep .event-card__horizontal-image {
-    flex: 0 0 180px;
+    flex: 0 0 150px;
     height: 200px;
+    aspect-ratio: 3 / 4;
     overflow: hidden;
     position: relative;
 }
@@ -221,8 +226,8 @@
 
 @media (min-width: 600px) and (max-width: 959.98px) {
     ::deep .event-grid--DetailedList > .mud-grid-item {
-        flex-basis: 100% !important;
-        max-width: 100% !important;
+        flex-basis: 50% !important;
+        max-width: 50% !important;
     }
 }
 
@@ -258,8 +263,9 @@
 }
 
 ::deep .event-card__full-row-image {
-    flex: 0 0 260px;
+    flex: 0 0 150px;
     height: 200px;
+    aspect-ratio: 3 / 4;
     overflow: hidden;
     position: relative;
 }
@@ -331,43 +337,4 @@
     max-width: 100% !important;
 }
 
-@media (max-width: 599.98px) {
-    ::deep .event-card--SingleRow {
-        height: auto !important;
-    }
 
-    ::deep .event-card__full-row {
-        flex-direction: column;
-        height: auto;
-    }
-
-    ::deep .event-card__full-row-image {
-        flex: 0 0 auto;
-        height: 160px;
-    }
-
-    ::deep .event-card__full-row-content {
-        padding: 12px 16px;
-    }
-
-    /* DetailedList stacks vertically on mobile */
-    ::deep .event-card--DetailedList {
-        height: auto !important;
-    }
-
-    ::deep .event-card__horizontal {
-        flex-direction: column;
-        height: auto;
-    }
-
-    ::deep .event-card__horizontal-image {
-        flex: 0 0 auto;
-        height: 140px;
-    }
-}
-
-@media (min-width: 600px) and (max-width: 959.98px) {
-    ::deep .event-card__full-row-image {
-        flex: 0 0 200px;
-    }
-}

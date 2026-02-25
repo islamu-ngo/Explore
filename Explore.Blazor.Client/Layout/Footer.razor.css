@@ -23,6 +23,60 @@
    ======================================== */
 
 /* ========================================
+   Element: site-footer__grid
+   Responsive grid layout for footer columns
+   ======================================== */
+
+/* Desktop (>960px): 4-column layout — brand + 3 link columns */
+::deep .site-footer__grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr 1fr;
+    gap: 40px;
+}
+
+/* Tablet (600–960px): brand full-width, 3 link columns below, all centered */
+@media (max-width: 959.98px) {
+    ::deep .site-footer__grid {
+        grid-template-columns: auto auto auto;
+        gap: 32px 64px;
+        justify-content: center;
+    }
+
+    ::deep .site-footer__col--brand {
+        grid-column: 1 / -1;
+        text-align: center;
+    }
+
+    ::deep .site-footer__col--brand .site-footer__brand {
+        justify-content: center;
+    }
+
+    ::deep .site-footer__col--brand .site-footer__description {
+        margin-left: auto;
+        margin-right: auto;
+    }
+}
+
+/* Mobile (≤599px): single column, centered */
+@media (max-width: 599.98px) {
+    ::deep .site-footer__grid {
+        grid-template-columns: 1fr;
+        gap: 32px;
+        text-align: center;
+    }
+
+    ::deep .site-footer__col--links .site-footer__section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    ::deep .site-footer__col--links .site-footer__link {
+        width: auto;
+    }
+}
+
+/* ========================================
    Block: site-footer
    ======================================== */
 ::deep .site-footer {

@@ -350,33 +350,52 @@
 }
 
 /* ========================================
-   Responsive Styles
+   Responsive Styles — Tablet (601–768px)
+   Username visible, search constrained, nav links hidden
    ======================================== */
 @media (max-width: 768px) {
     .navbar {
         padding: 6px 12px;
-        min-height: 56px;
+        min-height: 52px;
     }
 
     .navbar__content {
-        gap: 8px;
+        gap: 6px;
     }
 
     .navbar__brand-text {
-        font-size: 0.95rem;
+        display: none;
     }
 
-    .navbar__link {
-        padding: 4px 10px;
-        font-size: 0.8rem;
+    .navbar__search {
+        flex: 1;
+        max-width: 280px;
+        margin: 0 6px;
+    }
+
+    .navbar__links {
+        display: none;
     }
 
     .navbar__actions {
         gap: 6px;
     }
 
-    .navbar__user-name {
-        display: none;
+    /* Add Event: icon only, no text */
+    ::deep .navbar__create-event-btn .mud-button-label {
+        font-size: 0;
+        gap: 0;
+    }
+
+    ::deep .navbar__create-event-btn .mud-button-icon-start {
+        margin: 0;
+        font-size: 1.25rem;
+    }
+
+    ::deep .navbar__create-event-btn {
+        min-width: 36px !important;
+        padding: 6px !important;
+        margin-right: 0;
     }
 
     .navbar__user-btn {
@@ -388,5 +407,55 @@
         width: 28px !important;
         height: 28px !important;
         font-size: 12px !important;
+    }
+
+    .navbar__user-name {
+        font-size: 0.8rem;
+    }
+}
+
+/* ========================================
+   Responsive Styles — Mobile (≤600px)
+   Most compact: icon-only, no username
+   ======================================== */
+@media (max-width: 600px) {
+    .navbar {
+        padding: 6px 10px;
+        min-height: 48px;
+    }
+
+    .navbar__content {
+        gap: 4px;
+    }
+
+    .navbar__search {
+        max-width: none;
+        margin: 0 4px;
+    }
+
+    .navbar__actions {
+        gap: 4px;
+    }
+
+    .navbar__user-name {
+        display: none;
+    }
+
+    ::deep .navbar__user-arrow {
+        display: none;
+    }
+
+    .navbar__user-btn {
+        padding: 4px;
+        gap: 0;
+    }
+
+    ::deep .navbar__theme-toggle {
+        padding: 6px !important;
+    }
+
+    ::deep .navbar__login-btn {
+        padding: 6px 12px !important;
+        font-size: 0.8rem !important;
     }
 }
