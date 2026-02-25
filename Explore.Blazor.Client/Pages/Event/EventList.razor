@@ -717,7 +717,7 @@
                 }
                 else
                 {
-                    <Virtualize @ref="_virtualize" ItemsProvider="LoadEventsAsync" OverscanCount="4" Context="evt">
+                    <Virtualize @ref="_virtualize" ItemsProvider="LoadEventsAsync" ItemSize="350" OverscanCount="4" Context="evt">
                         <ItemContent>
                             <MudItem @key="evt.Id" xs="@bp.Xs" sm="@bp.Sm" md="@bp.Md" lg="@bp.Lg">
 

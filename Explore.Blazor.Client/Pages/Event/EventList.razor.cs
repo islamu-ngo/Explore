@@ -119,6 +119,8 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        Logger.LogWarning("OnAfterRenderAsync: firstRender={First}, _dataLoaded={Data}, _virtualize={Virt}, _virtualizeRefreshed={Refreshed}, _eventsLoaded={Events}",
+            firstRender, _dataLoaded, _virtualize != null, _virtualizeRefreshed, _eventsLoaded);
         // Virtualize's IntersectionObserver may not fire when it first appears
         // in a conditional render block inside MudGrid. Force the initial load.
         if (_dataLoaded && _virtualize != null && !_virtualizeRefreshed)
@@ -330,6 +332,9 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
     private async ValueTask<ItemsProviderResult<EventListDto>> LoadEventsAsync(ItemsProviderRequest request)
     {
+        Logger.LogWarning("LoadEventsAsync called: StartIndex={Start}, Count={Count}, _usePersistedEvents={Persisted}, _useInitialBatch={Batch}",
+            request.StartIndex, request.Count, _usePersistedEvents, _useInitialBatch);
+
         if (_usePersistedEvents && PersistedState != null && request.StartIndex == PersistedState.InitialStartIndex)
         {
             _usePersistedEvents = false;

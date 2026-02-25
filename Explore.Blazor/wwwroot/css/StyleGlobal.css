@@ -63,6 +63,10 @@
     --isl-button-transition: all 0.2s ease-in-out;
 }
 
+html {
+    overflow-x: hidden;
+}
+
 body {
     font-family: var(--isl-font-family-primary);
 }
@@ -405,6 +409,30 @@ ul {
 
 .isl-popover-menu__option:hover {
     background: color-mix(in srgb, var(--mud-palette-primary) 10%, transparent);
+}
+
+/* ========================================
+   EventList Page — Drawer Container & Detail Drawer
+   These rules live here (not in EventList.razor.css) because
+   MudDrawerContainer renders <div> and <aside> elements outside
+   the Blazor component scope boundary. No ::deep needed in global CSS.
+   ======================================== */
+
+.event-list__drawer-container {
+    min-height: calc(100vh - var(--mud-appbar-height, 64px));
+    overflow-x: clip;
+}
+
+.event-list__detail-drawer {
+    border-left: 1px solid var(--mud-palette-lines-default);
+    max-width: min(560px, 90vw);
+}
+
+.event-list__detail-drawer .mud-drawer-content {
+    position: sticky;
+    top: var(--mud-appbar-height, 64px);
+    max-height: calc(100vh - var(--mud-appbar-height, 64px));
+    overflow-y: auto;
 }
 
 /* ========================================

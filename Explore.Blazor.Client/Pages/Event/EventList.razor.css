@@ -3,24 +3,10 @@
 
 /* ══════════════════════════════════════════════
    Page Layout — Drawers + Main Content
+   NOTE: Drawer container and detail drawer rules are in
+   StyleGlobal.css because MudDrawerContainer renders the
+   <aside> and <div> wrapper outside the component scope boundary.
    ══════════════════════════════════════════════ */
-
-::deep .event-list__drawer-container {
-    min-height: calc(100vh - var(--mud-appbar-height, 64px));
-    overflow-x: clip;
-}
-
-::deep .event-list__detail-drawer {
-    border-left: 1px solid var(--mud-palette-lines-default);
-    max-width: min(560px, 90vw);
-}
-
-::deep .event-list__detail-drawer .mud-drawer-content {
-    position: sticky;
-    top: var(--mud-appbar-height, 64px);
-    max-height: calc(100vh - var(--mud-appbar-height, 64px));
-    overflow-y: auto;
-}
 
 .event-list__main {
     flex: 1;
@@ -36,6 +22,14 @@
     width: calc(100% + 16px) !important;
     display: flex !important;
     flex-wrap: wrap !important;
+}
+
+/* Virtualize spacer divs collapse to 0×0 inside flex containers,
+   preventing IntersectionObserver from triggering item loading.
+   Give them full width so the observer can detect them. */
+::deep .event-grid > div[aria-hidden="true"] {
+    width: 100%;
+    flex-basis: 100%;
 }
 
 ::deep .event-grid > .mud-grid-item {

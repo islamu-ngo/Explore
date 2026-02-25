@@ -6,12 +6,13 @@
 /* Block: main-layout-root
    Outermost wrapper — flex column for sticky-footer behaviour.
    The footer lives OUTSIDE MudLayout so the drawer system cannot push it.
+   NOTE: overflow-x is NOT set here — it breaks Blazor Virtualize's
+   IntersectionObserver. Horizontal overflow is handled on <html> in StyleGlobal.css.
    -------------------------------------------------------------------------- */
 .main-layout-root {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    overflow-x: clip;
 }
 
 /* Block: main-layout
@@ -68,15 +69,14 @@
    The sidebar is the only element that can reduce this gutter space.
    MudMainContent auto-adjusts margins when MudDrawer opens/closes,
    so percentage padding here scales proportionally to available width.
-   overflow-x hidden prevents inline drawers inside pages (e.g. EventList
-   detail drawer) from creating a horizontal scrollbar.
+   NOTE: overflow-x is NOT set here — it breaks sticky positioning and
+   Blazor Virtualize. Horizontal overflow is handled on <html> in StyleGlobal.css.
    -------------------------------------------------------------------------- */
 .main-layout__content-wrapper {
     width: 100%;
     padding-inline: 8%;
     padding-block-start: 0;
     padding-block-end: 24px;
-    overflow-x: clip;
 }
 
 /* Neutralize MudContainer gutters inside content-wrapper to prevent
