@@ -22,17 +22,14 @@
    Block: site-footer
    ======================================== */
 ::deep .site-footer {
-    background-color: #b2ffb2;
+    background: color-mix(in srgb, var(--mud-palette-surface) 90%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border-top: 1px solid var(--mud-palette-lines-default);
     padding: 64px 0 64px;
     margin-top: auto;
     position: relative;
     overflow: hidden;
-}
-
-/* Dark mode footer background */
-:global(.mud-theme-dark) ::deep .site-footer {
-    background-color: #235315;
 }
 
 /* Decorative top gradient line */

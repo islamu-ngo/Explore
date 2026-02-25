@@ -3,7 +3,7 @@
 @using Explore.Blazor.Client.Models
 @using Explore.Blazor.Client.Components.Event
 
-<MudPaper Class="filter-bar sticky-header rounded-b-lg" Elevation="1" Style="z-index: 10; position: sticky; top: calc(var(--nav-height, 64px) + var(--announcement-bar-height, 0px)); backdrop-filter: blur(10px); background-color: color-mix(in srgb, var(--mud-palette-background) 95%, transparent);">
+<MudPaper Class="filter-bar sticky-header rounded-b-lg" Elevation="1" Style="z-index: 10; position: sticky; top: var(--mud-appbar-height, 64px); backdrop-filter: blur(10px); background-color: color-mix(in srgb, var(--mud-palette-background) 95%, transparent);">
 
     @* ── Primary Action Row: Search + Show Filters + Search Button ── *@
     <div class="filter-bar__primary-row">
@@ -232,8 +232,15 @@
         </div>
     </MudCollapse>
 
-    @* ── Layout Switcher Row: always visible, always at the bottom, right-aligned ── *@
+    @* ── Layout Switcher Row: result count (left) + layout icons (right) ── *@
     <div class="filter-bar__layout-row">
+        @if (ShowResultCount)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="filter-bar__result-count">
+                @ResultCount @(ResultCount == 1 ? "event" : "events") found
+            </MudText>
+        }
+        <MudSpacer />
         <MudToggleGroup T="LayoutMode" Value="CurrentLayout" ValueChanged="OnLayoutChanged"
                         Size="Size.Medium" Color="Color.Primary"
                         Class="filter-bar__layout-switcher">

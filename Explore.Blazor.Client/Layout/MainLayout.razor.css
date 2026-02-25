@@ -3,15 +3,30 @@
    Block: main-layout
    ========================================================================== */
 
+/* Block: main-layout-root
+   Outermost wrapper — flex column for sticky-footer behaviour.
+   The footer lives OUTSIDE MudLayout so the drawer system cannot push it.
+   -------------------------------------------------------------------------- */
+.main-layout-root {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    overflow-x: clip;
+}
+
 /* Block: main-layout
-   The root layout component with CSS custom properties
+   The root layout component
    -------------------------------------------------------------------------- */
 .main-layout {
     color: inherit;
-    --announcement-bar-height: 0px;
-    --nav-height: 64px;
-    --content-max-width: 1280px;
-    --mud-appbar-height: var(--nav-height, 64px);
+}
+
+/* Let MudLayout grow to fill available space, pushing footer to the bottom.
+   MudBlazor already applies its own internal flex layout — we only need
+   flex-grow here so the outer wrapper pushes the footer down.
+   -------------------------------------------------------------------------- */
+::deep .mud-layout {
+    flex: 1 0 auto;
 }
 
 /* Element: main-layout__header
@@ -31,38 +46,59 @@
 }
 
 /* Element: main-layout__drawer
-   The global navigation sidebar drawer
+   The global navigation sidebar drawer.
+   Background matches navbar glass effect for visual consistency.
+   Position and height are driven by --mud-appbar-height (set on :root by
+   MudThemeProvider). MainLayout updates LayoutProperties.AppbarHeight
+   dynamically when the announcement bar shows/hides, so MudBlazor's
+   ClipMode.Always CSS automatically positions the drawer correctly.
    -------------------------------------------------------------------------- */
 ::deep .main-layout__drawer {
     border-right: 1px solid var(--mud-palette-lines-default);
 }
 
-/* Element: main-layout__content-wrapper
-   Wrapper for main content with max-width constraint
-   -------------------------------------------------------------------------- */
-.main-layout__content-wrapper {
-    max-width: var(--content-max-width);
-    margin: 0 auto;
-    width: 100%;
-    padding-inline: 16px;
-    padding-block-start: 0;
-    padding-block-end: 24px;
+::deep .main-layout__drawer .mud-drawer-content {
+    background: color-mix(in srgb, var(--mud-palette-surface) 90%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 }
 
-/* Element: main-layout__container
-   The MudLayout container - full width
+/* Element: main-layout__content-wrapper
+   Wrapper for main content with percentage-based gutters.
+   The sidebar is the only element that can reduce this gutter space.
+   MudMainContent auto-adjusts margins when MudDrawer opens/closes,
+   so percentage padding here scales proportionally to available width.
+   overflow-x hidden prevents inline drawers inside pages (e.g. EventList
+   detail drawer) from creating a horizontal scrollbar.
    -------------------------------------------------------------------------- */
-::deep .mud-layout {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
+.main-layout__content-wrapper {
+    width: 100%;
+    padding-inline: 8%;
+    padding-block-start: 0;
+    padding-block-end: 24px;
+    overflow-x: clip;
+}
+
+/* Neutralize MudContainer gutters inside content-wrapper to prevent
+   double-padding — the content-wrapper already provides gutters.
+   MudContainer max-width is preserved for centering narrower forms. */
+::deep .mud-container--gutters {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+/* Modifier: main-layout__content-wrapper--drawer-open
+   Reduce gutter to 5% when sidebar is open so content fills more space */
+.main-layout__content-wrapper--drawer-open {
+    padding-inline: 2.5%;
 }
 
 /* Element: main-layout__main
-   The main content area — MudMainContent with pt-0 to override default appbar padding
+   The main content area — flex-grows to fill remaining space between
+   header and footer, pushing footer to the very bottom.
    -------------------------------------------------------------------------- */
 ::deep .main-layout__main {
-    flex: 1;
+    flex: 1 0 auto;
     display: flex;
     flex-direction: column;
     padding-top: 0 !important;
@@ -70,12 +106,16 @@
     background-color: var(--mud-palette-background-grey);
 }
 
-/* Element: main-layout__footer
-   The site footer
+/* Footer lives OUTSIDE MudLayout so the left drawer cannot push it.
+   position:relative + z-index above the fixed drawer (z-index 1100)
+   ensures the footer renders on top when the user scrolls to the
+   bottom of the page — the drawer appears to stop at the footer.
+   flex-shrink:0 prevents compression when content is short.
    -------------------------------------------------------------------------- */
-::deep .main-layout__footer {
-    margin-top: auto;
+::deep .site-footer-root {
     flex-shrink: 0;
+    position: relative;
+    z-index: 1101;
 }
 
 /* ==========================================================================
@@ -83,17 +123,13 @@
    ========================================================================== */
 
 @media (max-width: 768px) {
-    .main-layout {
-        --nav-height: 56px;
-    }
-
     .main-layout__content-wrapper {
-        padding-inline: 12px;
+        padding-inline: 4%;
     }
 }
 
 @media (max-width: 480px) {
     .main-layout__content-wrapper {
-        padding-inline: 8px;
+        padding-inline: 12px;
     }
 }

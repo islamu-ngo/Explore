@@ -15,6 +15,8 @@ public partial class EventFilterBar
     [Parameter] public EventCallback OnSearchRequested { get; set; }
     [Parameter] public LayoutMode CurrentLayout { get; set; } = LayoutMode.DetailedList;
     [Parameter] public EventCallback<LayoutMode> CurrentLayoutChanged { get; set; }
+    [Parameter] public int ResultCount { get; set; }
+    [Parameter] public bool ShowResultCount { get; set; }
 
     // Data Sources
     [Parameter] public ICollection<EventTypeListDto> EventTypes { get; set; } = new List<EventTypeListDto>();

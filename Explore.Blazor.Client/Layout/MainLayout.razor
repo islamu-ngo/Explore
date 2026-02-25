@@ -6,58 +6,54 @@
 <MudSnackbarProvider />
 <AnalyticsInitializer />
 
-<MudLayout class="main-layout">
-    @if (!_hideChrome)
-    {
-        <div class="main-layout__header">
-            <AnnouncementBar />
-            <NavMenu OnToggleTheme="DarkModeToggle" />
-        </div>
+<div class="main-layout-root">
+    <MudLayout class="main-layout">
+        @if (!_hideChrome)
+        {
+            <div class="main-layout__header">
+                <AnnouncementBar OnVisibilityChanged="OnAnnouncementVisibilityChanged" />
+                <NavMenu OnToggleTheme="DarkModeToggle" />
+            </div>
 
-        <MudDrawer Open="@SidebarState.IsOpen"
-                   OpenChanged="@OnDrawerOpenChanged"
-                   Anchor="Anchor.Start"
-                   Variant="DrawerVariant.Responsive"
-                   Breakpoint="Breakpoint.Md"
-                   ClipMode="DrawerClipMode.Always"
-                   Elevation="0"
-                   Class="main-layout__drawer">
-            <MudNavMenu Dense="true" Class="px-2 pt-2">
-                <MudButton Href="/events"
-                           Variant="Variant.Text"
-                           Color="Color.Inherit"
-                           StartIcon="@Icons.Material.Filled.Event"
-                           FullWidth="true"
-                           Class="justify-start text-transform-none"
-                           Style="font-weight: 700; font-size: 1.1rem; justify-content: flex-start;">
-                    Events
-                </MudButton>
-                <MudNavLink Href="/events"
-                            Icon="@Icons.Material.Filled.ManageSearch"
-                            Match="NavLinkMatch.All">
-                    Advanced Search
-                </MudNavLink>
-                <MudNavLink Href="/events?sort=recent"
-                            Icon="@Icons.Material.Filled.NewReleases">
-                    Recently Added
-                </MudNavLink>
-                <MudNavLink Href="/events?sort=random"
-                            Icon="@Icons.Material.Filled.Shuffle">
-                    Random
-                </MudNavLink>
-            </MudNavMenu>
-        </MudDrawer>
-    }
+            <MudDrawer Open="@SidebarState.IsOpen"
+                       OpenChanged="@OnDrawerOpenChanged"
+                       Anchor="Anchor.Start"
+                       Variant="DrawerVariant.Responsive"
+                       Breakpoint="Breakpoint.Md"
+                       ClipMode="DrawerClipMode.Always"
+                       Elevation="0"
+                       Class="main-layout__drawer">
+                <MudNavMenu Dense="true" Class="px-2 pt-2">
+                    <MudText Typo="Typo.h6" Class="px-4 pt-2 pb-1"
+                             Style="font-weight: 800; letter-spacing: -0.02em;">
+                        Events
+                    </MudText>
+                    <MudNavLink Href="/events"
+                                Icon="@Icons.Material.Filled.ManageSearch"
+                                Match="NavLinkMatch.All">
+                        Advanced Search
+                    </MudNavLink>
+                    <MudNavLink Href="/events?sort=recent"
+                                Icon="@Icons.Material.Filled.NewReleases">
+                        Recently Added
+                    </MudNavLink>
+                    <MudNavLink Href="/events?sort=random"
+                                Icon="@Icons.Material.Filled.Shuffle">
+                        Random
+                    </MudNavLink>
+                </MudNavMenu>
+            </MudDrawer>
+        }
 
-    <MudMainContent Class="main-layout__main" Style="padding-top: 0 !important;">
-        <div class="main-layout__content-wrapper">
-            @Body
-        </div>
-    </MudMainContent>
+        <MudMainContent Class="main-layout__main" Style="padding-top: 0 !important;">
+            <div class="main-layout__content-wrapper @(SidebarState.IsOpen ? "main-layout__content-wrapper--drawer-open" : "")">
+                @Body
+            </div>
+        </MudMainContent>
+    </MudLayout>
 
     @if (!_hideChrome)
     {
         <Footer />
     }
-
-</MudLayout>
+</div>

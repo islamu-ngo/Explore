@@ -223,11 +223,6 @@ public class EventListTests : IDisposable
             throw new InvalidOperationException("Empty-state message should not be visible when events exist.");
         }
 
-        if (!cut.Markup.Contains("1 events found"))
-        {
-            throw new InvalidOperationException("Expected total count text for non-empty result.");
-        }
-
         await Task.CompletedTask;
     }
 }

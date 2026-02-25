@@ -321,6 +321,19 @@ public partial class EventDetail : ComponentBase
     }
 
     /// <summary>
+    /// Maps the event status master code to a MudBlazor Color for chips.
+    /// </summary>
+    private Color GetStatusChipColor() => _eventDetails?.EventStatusMasterCode switch
+    {
+        "PUBLISHED" => Color.Success,
+        "DRAFT" => Color.Default,
+        "CANCELLED" => Color.Error,
+        "COMPLETED" => Color.Info,
+        "POSTPONED" => Color.Warning,
+        _ => Color.Default
+    };
+
+    /// <summary>
     /// Gets the formatted date display string.
     /// </summary>
     private string GetDateDisplay()

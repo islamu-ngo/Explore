@@ -13,8 +13,12 @@ namespace Explore.Blazor.Client.Layout;
 
 public partial class MainLayout : LayoutComponentBase, IDisposable
 {
+    private const int NavbarHeightPx = 64;
+    private const int AnnouncementBarHeightPx = 48;
+
     private bool _isDarkMode = false;
     private bool _isInitialized = false;
+    private bool _announcementVisible = true;
     private MudTheme? _theme;
     private MudThemeProvider _mudThemeProvider = null!;
     private bool _hideChrome;
@@ -60,7 +64,10 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
         {
             PaletteLight = _lightPalette,
             PaletteDark = _darkPalette,
-            LayoutProperties = new LayoutProperties()
+            LayoutProperties = new LayoutProperties
+            {
+                AppbarHeight = GetAppbarHeight()
+            }
         };
 
         UpdateChromeVisibility();
@@ -213,6 +220,37 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     }
 
     private void OnDrawerOpenChanged(bool open) => SidebarState.SetOpen(open);
+
+    /// <summary>
+    /// Called when the announcement bar is shown or dismissed.
+    /// Recreates the theme with an updated AppbarHeight so
+    /// --mud-appbar-height on :root reflects the true header height.
+    /// MudBlazor's ClipMode.Always drawer CSS and sticky components
+    /// automatically use the updated value.
+    /// </summary>
+    private void OnAnnouncementVisibilityChanged(bool isVisible)
+    {
+        _announcementVisible = isVisible;
+        if (_theme is not null)
+        {
+            _theme = new()
+            {
+                PaletteLight = _lightPalette,
+                PaletteDark = _darkPalette,
+                LayoutProperties = new LayoutProperties
+                {
+                    AppbarHeight = GetAppbarHeight()
+                }
+            };
+            StateHasChanged();
+        }
+    }
+
+    private string GetAppbarHeight()
+    {
+        var height = NavbarHeightPx + (_announcementVisible ? AnnouncementBarHeightPx : 0);
+        return $"{height}px";
+    }
 
     public void Dispose()
     {

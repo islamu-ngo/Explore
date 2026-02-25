@@ -15,7 +15,7 @@ using MudBlazor;
 
 namespace Explore.Blazor.Client.Pages.Event;
 
-public partial class EventList : ComponentBase
+public partial class EventList : ComponentBase, IAsyncDisposable
 {
     [Inject] protected NavigationManager Navigation { get; set; } = null!;
     [Inject] protected IEventService EventService { get; set; } = null!;
@@ -56,9 +56,12 @@ public partial class EventList : ComponentBase
     private bool _dataLoaded = false;
     private bool _usePersistedEvents = false;
     private bool _virtualizeRefreshed = false;
+    private bool _useInitialBatch = false;
+    private PaginatedResult<EventListDto>? _initialBatch;
 
     private Virtualize<EventListDto>? _virtualize;
     private int _totalCount;
+    private IJSObjectReference? _imagePreloaderModule;
 
     // API Data
     private ICollection<EventTypeListDto> eventTypes = new List<EventTypeListDto>();
@@ -110,6 +113,7 @@ public partial class EventList : ComponentBase
         }
 
         await LoadDataAsync();
+        await PreloadInitialEventsAsync();
         await LoadUserRegistrationsAsync();
     }
 
@@ -279,12 +283,66 @@ public partial class EventList : ComponentBase
         }
     }
 
+    private async Task PreloadInitialEventsAsync()
+    {
+        if (!_dataLoaded) return;
+
+        try
+        {
+            _initialBatch = await EventService.GetEventsPagedAsync(
+                pageNumber: 1,
+                pageSize: 20,
+                cancellationToken: CancellationToken.None);
+
+            _totalCount = _initialBatch.TotalCount;
+            _useInitialBatch = true;
+
+            // Preload images into the browser cache so cards appear with images ready
+            if (_initialBatch.Items.Any())
+            {
+                var imageUrls = _initialBatch.Items
+                    .Select(evt => string.IsNullOrEmpty(evt.FeaturedImageUri) ? GetEventImage(evt) : evt.FeaturedImageUri!)
+                    .ToArray();
+
+                try
+                {
+                    _imagePreloaderModule ??= await JsRuntime.InvokeAsync<IJSObjectReference>(
+                        "import", "./js/image-preloader.js");
+                    await _imagePreloaderModule.InvokeVoidAsync("preloadImages", (object)imageUrls);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogDebug(ex, "Image preloading failed, proceeding without it");
+                }
+            }
+
+            _eventsLoaded = true;
+            isLoading = false;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "PreloadInitialEventsAsync error");
+            // Still flip to loaded state so the page isn't stuck on skeleton
+            _eventsLoaded = true;
+            isLoading = false;
+        }
+    }
+
     private async ValueTask<ItemsProviderResult<EventListDto>> LoadEventsAsync(ItemsProviderRequest request)
     {
         if (_usePersistedEvents && PersistedState != null && request.StartIndex == PersistedState.InitialStartIndex)
         {
             _usePersistedEvents = false;
             return new ItemsProviderResult<EventListDto>(PersistedState.InitialItems, PersistedState.TotalCount);
+        }
+
+        // Reuse the initial batch that was already fetched and image-preloaded
+        if (_useInitialBatch && _initialBatch != null && request.StartIndex == 0)
+        {
+            _useInitialBatch = false;
+            var batch = _initialBatch;
+            _initialBatch = null;
+            return new ItemsProviderResult<EventListDto>(batch.Items, batch.TotalCount);
         }
 
         var pageSize = Math.Max(request.Count, 20);
@@ -367,10 +425,6 @@ public partial class EventList : ComponentBase
 
         _totalCount = result.TotalCount;
         _eventsLoaded = true;
-        // Do not set isLoading = false here, it's controlled by LoadDataAsync for the initial skeletons
-        // But if we want to hide skeletons AFTER first load of events, we need a separate flag?
-        // Actually, isLoading is used for Skeletons.
-        // Let's set isLoading = false here to ensure skeletons disappear if they were still showing.
         if (isLoading) isLoading = false;
         StateHasChanged();
 
@@ -456,6 +510,13 @@ public partial class EventList : ComponentBase
     private void OnLayoutModeChanged(LayoutMode mode)
     {
         _currentLayout = mode;
+    }
+
+    private bool HasActiveFilters()
+    {
+        if (!string.IsNullOrEmpty(SearchQuery)) return true;
+        if (_filterBar == null) return false;
+        return _filterBar.GetActiveFilterCount() > 0;
     }
 
     private string GetGridCssClass()
@@ -663,6 +724,14 @@ public partial class EventList : ComponentBase
                      : item.TryGetProperty("name", out var n) ? n.GetString()
                      : null;
             if (!string.IsNullOrEmpty(name)) yield return name;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_imagePreloaderModule is not null)
+        {
+            await _imagePreloaderModule.DisposeAsync();
         }
     }
 

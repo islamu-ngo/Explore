@@ -1,1 +1,9 @@
-/* Custom styles removed to favor MudBlazor components and utilities */
+/* ABOUTME: Scoped CSS for EventDetail page layout.
+   ABOUTME: Handles hero image sizing and responsive adjustments. */
+
+.event-detail__hero-image {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
