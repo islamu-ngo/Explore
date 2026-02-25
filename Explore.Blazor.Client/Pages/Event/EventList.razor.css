@@ -159,35 +159,21 @@
     inset: 0;
 }
 
-/* Compact Grid responsive columns */
+/* Compact Grid — container-responsive columns via fixed min-width.
+   Cards keep a stable size regardless of drawer state;
+   fewer columns appear when the drawer shrinks available space. */
+::deep .event-grid--CompactGrid > .mud-grid-item {
+    flex: 0 0 auto !important;
+    width: 160px !important;
+    max-width: 160px !important;
+    padding: 6px !important;
+}
 
 @media (max-width: 599.98px) {
     ::deep .event-grid--CompactGrid > .mud-grid-item {
-        flex-basis: 33.333% !important;
-        max-width: 33.333% !important;
+        width: 120px !important;
+        max-width: 120px !important;
         padding: 4px !important;
-    }
-}
-
-@media (min-width: 600px) and (max-width: 959.98px) {
-    ::deep .event-grid--CompactGrid > .mud-grid-item {
-        flex-basis: 25% !important;
-        max-width: 25% !important;
-        padding: 6px !important;
-    }
-}
-
-@media (min-width: 960px) and (max-width: 1279.98px) {
-    ::deep .event-grid--CompactGrid > .mud-grid-item {
-        flex-basis: 20% !important;
-        max-width: 20% !important;
-    }
-}
-
-@media (min-width: 1280px) {
-    ::deep .event-grid--CompactGrid > .mud-grid-item {
-        flex-basis: 16.666% !important;
-        max-width: 16.666% !important;
     }
 }
 
