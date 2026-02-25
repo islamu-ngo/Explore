@@ -418,21 +418,54 @@ ul {
    the Blazor component scope boundary. No ::deep needed in global CSS.
    ======================================== */
 
+/* MudDrawerContainer wraps event cards + right detail drawer.
+   position:relative constrains the absolute-positioned aside.
+   min-height ensures the drawer area fills at least the viewport. */
 .event-list__drawer-container {
+    position: relative;
     min-height: calc(100vh - var(--mud-appbar-height, 64px));
     overflow-x: clip;
 }
 
+/* When the event-list drawer container is present, remove the
+   content-wrapper's right gutter + bottom padding so the aside
+   sits flush against the viewport edge and touches the footer.
+   !important overrides the Blazor-scoped padding-inline rule. */
+.main-layout__content-wrapper:has(.event-list__drawer-container) {
+    padding-right: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+/* Right detail drawer: MudBlazor renders this as an absolute aside
+   (top:0, bottom:0) inside the container. We only override overflow
+   so the aside itself does not scroll — the body div handles that. */
 .event-list__detail-drawer {
+    overflow: hidden !important;
     border-left: 1px solid var(--mud-palette-lines-default);
     max-width: min(560px, 90vw);
 }
 
+/* Content fills the aside via flex; header stays pinned, body scrolls. */
 .event-list__detail-drawer .mud-drawer-content {
-    position: sticky;
-    top: var(--mud-appbar-height, 64px);
-    max-height: calc(100vh - var(--mud-appbar-height, 64px));
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Pin the drawer header (close/action buttons) at the top of the sidebar */
+.event-list__detail-drawer .mud-drawer-header {
+    flex-shrink: 0;
+    background: var(--mud-palette-surface);
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+    z-index: 1;
+}
+
+/* Scrollable body below the pinned header */
+.event-list__detail-body {
+    flex: 1;
     overflow-y: auto;
+    min-height: 0;
 }
 
 /* ========================================

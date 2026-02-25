@@ -49,11 +49,10 @@
             <div class="main-layout__content-wrapper @(SidebarState.IsOpen ? "main-layout__content-wrapper--drawer-open" : "")">
                 @Body
             </div>
+            @if (!_hideChrome)
+            {
+                <Footer DrawerOpen="@SidebarState.IsOpen" />
+            }
         </MudMainContent>
     </MudLayout>
-
-    @if (!_hideChrome)
-    {
-        <Footer />
-    }
 </div>

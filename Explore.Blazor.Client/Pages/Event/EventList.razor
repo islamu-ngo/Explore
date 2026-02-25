@@ -40,7 +40,7 @@
 
             @if (_selectedEvent != null)
             {
-                <MudDrawerHeader Class="d-flex align-center gap-2 pa-2">
+                <MudDrawerHeader Class="d-flex align-center gap-2 px-2 py-1">
                     <MudIconButton Icon="@Icons.Material.Filled.KeyboardDoubleArrowRight"
                                    Size="Size.Small"
                                    OnClick="@CloseDetailDrawer"
@@ -61,7 +61,7 @@
                     </div>
                 </MudDrawerHeader>
 
-                <div class="pa-4" style="overflow-y: auto; max-height: calc(100vh - 64px);">
+                <div class="event-list__detail-body pa-4">
 
                     @* ── Event Image (3:4 ratio, centered) ── *@
                     <div class="d-flex justify-center rounded-lg overflow-hidden mb-4" style="aspect-ratio: 3/4; max-height: 320px;">

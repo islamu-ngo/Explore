@@ -88,6 +88,41 @@ Notes:
 
 ---
 
+## 🖥️ Blazor UI Development Workflow (Required for UI Changes)
+
+When making Blazor UI/CSS changes that need visual verification, follow this
+**stop → build → run → wait → inspect** cycle every time:
+
+```bash
+# 1. Stop all running dotnet processes (DLLs are locked while running)
+Get-Process dotnet -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue }
+Start-Sleep -Seconds 2
+
+# 2. Build
+dotnet build --configuration Release --verbosity quiet
+
+# 3. Start the Aspire AppHost (launches all child services)
+Start-Process -FilePath "dotnet" -ArgumentList "run","--project","Explore.AppHost" -WorkingDirectory "C:\ISLAMU\GitHub\Event" -WindowStyle Hidden
+
+# 4. Wait for the site to be ready (~25-30 seconds)
+Start-Sleep -Seconds 30
+Invoke-WebRequest -Uri "https://localhost:7177" -UseBasicParsing -SkipCertificateCheck -TimeoutSec 10
+```
+
+**Then use Playwriter MCP** to visually inspect:
+- Reset connection first: call `playwriter-reset`
+- Get the page: `state.myPage = context.pages()[0]`
+- Navigate/reload, scroll, screenshot to verify changes
+- Keep Playwright commands **short and independent** — long chains timeout
+
+**Key notes:**
+- App URL: `https://localhost:7177`
+- Aspire AppHost spawns child `dotnet` processes — stop ALL `dotnet` processes before rebuild
+- Blazor enhanced navigation can interfere with `page.goto()` — use `page.reload()` instead
+- Scoped CSS changes require a full rebuild (not hot-reload)
+
+---
+
 ## 🧭 Proactiveness & Requirements
 
 - Implementation tasks: do complete work (including obvious follow‑ups).

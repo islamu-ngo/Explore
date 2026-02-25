@@ -25,9 +25,12 @@
 /* Let MudLayout grow to fill available space, pushing footer to the bottom.
    MudBlazor already applies its own internal flex layout — we only need
    flex-grow here so the outer wrapper pushes the footer down.
+   overflow-y: clip suppresses extra scroll-height that the sticky header
+   contributes (without creating a new scroll context like overflow:hidden).
    -------------------------------------------------------------------------- */
 ::deep .mud-layout {
     flex: 1 0 auto;
+    overflow-y: clip;
 }
 
 /* Element: main-layout__header
@@ -77,6 +80,7 @@
     padding-inline: 8%;
     padding-block-start: 0;
     padding-block-end: 24px;
+    flex: 1 0 auto;
 }
 
 /* Neutralize MudContainer gutters inside content-wrapper to prevent
@@ -106,16 +110,12 @@
     background-color: var(--mud-palette-background-grey);
 }
 
-/* Footer lives OUTSIDE MudLayout so the left drawer cannot push it.
-   position:relative + z-index above the fixed drawer (z-index 1100)
-   ensures the footer renders on top when the user scrolls to the
-   bottom of the page — the drawer appears to stop at the footer.
+/* Footer lives INSIDE MudMainContent so it automatically adapts
+   to the drawer open/close state — just like the main content does.
    flex-shrink:0 prevents compression when content is short.
    -------------------------------------------------------------------------- */
 ::deep .site-footer-root {
     flex-shrink: 0;
-    position: relative;
-    z-index: 1101;
 }
 
 /* ==========================================================================

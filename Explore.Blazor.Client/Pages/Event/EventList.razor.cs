@@ -121,6 +121,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     {
         Logger.LogWarning("OnAfterRenderAsync: firstRender={First}, _dataLoaded={Data}, _virtualize={Virt}, _virtualizeRefreshed={Refreshed}, _eventsLoaded={Events}",
             firstRender, _dataLoaded, _virtualize != null, _virtualizeRefreshed, _eventsLoaded);
+
         // Virtualize's IntersectionObserver may not fire when it first appears
         // in a conditional render block inside MudGrid. Force the initial load.
         if (_dataLoaded && _virtualize != null && !_virtualizeRefreshed)

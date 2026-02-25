@@ -6,7 +6,7 @@
 -->
 @inject IPublicExperienceService PublicExperienceService
 
-<div class="site-footer-root">
+<div class="site-footer-root @(_drawerOpenCss)">
 <footer class="site-footer">
     <MudContainer MaxWidth="MaxWidth.Large">
         <MudGrid Spacing="4">
@@ -82,6 +82,10 @@
 @code {
     private string _brandDisplayName = "ISLAMU Explore";
     private string _brandLogoUrl = string.Empty;
+
+    [Parameter] public bool DrawerOpen { get; set; }
+
+    private string _drawerOpenCss => DrawerOpen ? "site-footer-root--drawer-open" : "";
 
     protected override async Task OnInitializedAsync()
     {
