@@ -24,16 +24,25 @@
 
 
 
+@* ── Overlay for right sidebar: separate from MudDrawer so we can use LockScroll ── *@
+<MudOverlay Visible="_detailDrawerOpen"
+            DarkBackground="true"
+            LockScroll="true"
+            OnClick="@(() => CloseDetailDrawer())"
+            Class="event-list__overlay"
+            ZIndex="1399" />
+
 <MudDrawerContainer Class="event-list__drawer-container">
 
 
 
-        @* ── Right Sidebar (Event Detail Preview) — MudDrawer Persistent ── *@
+        @* ── Right Sidebar (Event Detail Preview) — MudDrawer Temporary ── *@
 
-        <MudDrawer @bind-Open="_detailDrawerOpen"
+        <MudDrawer Open="_detailDrawerOpen"
+                   OpenChanged="OnDetailDrawerOpenChanged"
                    Anchor="Anchor.End"
-                   Variant="DrawerVariant.Persistent"
-                   Fixed="false"
+                   Variant="DrawerVariant.Temporary"
+                   Overlay="false"
                    Elevation="1"
                    Width="560px"
                    Class="event-list__detail-drawer">

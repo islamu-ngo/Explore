@@ -284,40 +284,6 @@ ISLAMU Event is built on **Clean Architecture + CQRS** with a **BFF (Backend-for
 | **Orchestration** | .NET Aspire (dev), Docker (prod) | Service orchestration |
 | **Test Framework** | TUnit + bUnit | Unit + integration + component tests |
 
-### The Request Lifecycle (CQRS)
-We utilize **MediatR** for a decoupled command/query pipeline. This ensures that our business logic is isolated from transport layers (API/Blazor).
-
-```mermaid
-graph TD
-    subgraph Client_Layer [Presentation]
-        A[Blazor WASM / Mobile] -->|HTTPS/REST| B[ASP.NET Core API]
-    end
-
-    subgraph Application_Layer [Business Logic]
-        B -->|Command/Query| C[MediatR Pipeline]
-        C -->|Validation| D[FluentValidation]
-        D -->|Execution| E[Domain Handler]
-    end
-
-    subgraph Infrastructure_Layer [Data & Services]
-        E -->|EF Core| F[(PostgreSQL + PostGIS)]
-        E -->|OIDC| G[Keycloak]
-        E -->|Events| H[Svix Webhooks]
-    end
-
-    E -.->|Future| I[ATProto / ActivityPub Gateway]
-```
-
-```mermaid
-graph LR
-    A[Request] --> B[Controller]
-    B --> C[MediatR]
-    C --> D[Handler]
-    D --> E[Repository]
-    E --> F[(PostgreSQL)]
-    D --> G[Response]
-```
-
 ## 🛡️ Security
 
 If you discover a security vulnerability in ISLAMU Event, please report it responsibly instead of opening a public issue. We take all legitimate reports seriously and will investigate them promptly. See the [Security Policy][security-policy] for more info.

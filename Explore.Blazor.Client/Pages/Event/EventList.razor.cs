@@ -505,6 +505,16 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         _selectedEventSessions = null;
     }
 
+    private void OnDetailDrawerOpenChanged(bool open)
+    {
+        _detailDrawerOpen = open;
+        if (!open)
+        {
+            _selectedEventDetail = null;
+            _selectedEventSessions = null;
+        }
+    }
+
     private async Task CopyEventLinkAsync()
     {
         if (_selectedEvent?.Id == null) return;

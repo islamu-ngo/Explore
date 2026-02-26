@@ -104,8 +104,8 @@ dotnet build --configuration Release --verbosity quiet
 # 3. Start the Aspire AppHost (launches all child services)
 Start-Process -FilePath "dotnet" -ArgumentList "run","--project","Explore.AppHost" -WorkingDirectory "C:\ISLAMU\GitHub\Event" -WindowStyle Hidden
 
-# 4. Wait for the site to be ready (~25-30 seconds)
-Start-Sleep -Seconds 30
+# 4. Wait for the site to be ready (~15-20 seconds)
+Start-Sleep -Seconds 20
 Invoke-WebRequest -Uri "https://localhost:7177" -UseBasicParsing -SkipCertificateCheck -TimeoutSec 10
 ```
 

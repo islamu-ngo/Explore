@@ -67,6 +67,13 @@ html {
     overflow-x: hidden;
 }
 
+/* MudBlazor LockScroll adds .scroll-locked to <body>, but the scroll
+   container is <html> (due to overflow-x: hidden above). Propagate the
+   lock to <html> so the page scrollbar is truly removed. */
+html:has(body.scroll-locked) {
+    overflow-y: hidden !important;
+}
+
 body {
     font-family: var(--isl-font-family-primary);
 }
@@ -419,16 +426,14 @@ ul {
    ======================================== */
 
 /* MudDrawerContainer wraps event cards + right detail drawer.
-   position:relative constrains the absolute-positioned aside.
-   min-height ensures the drawer area fills at least the viewport. */
+   min-height ensures the content area fills at least the viewport. */
 .event-list__drawer-container {
     position: relative;
     min-height: calc(100vh - var(--mud-appbar-height, 64px));
-    overflow-x: clip;
 }
 
 /* When the event-list drawer container is present, remove the
-   content-wrapper's right gutter + bottom padding so the aside
+   content-wrapper's right gutter + bottom padding so the content
    sits flush against the viewport edge and touches the footer.
    !important overrides the Blazor-scoped padding-inline rule. */
 .main-layout__content-wrapper:has(.event-list__drawer-container) {
@@ -436,13 +441,37 @@ ul {
     padding-bottom: 0 !important;
 }
 
-/* Right detail drawer: MudBlazor renders this as an absolute aside
-   (top:0, bottom:0) inside the container. We only override overflow
-   so the aside itself does not scroll — the body div handles that. */
+/* ── Right detail drawer (Temporary/overlay mode) ──
+   MudBlazor renders a Temporary drawer inside MudDrawerContainer
+   as position:absolute. We override to position:fixed so it covers
+   the full viewport height and sits above every other layer
+   (navbar z-index 1300, left drawer 1100). */
 .event-list__detail-drawer {
+    position: fixed !important;
+    z-index: 1400 !important;
     overflow: hidden !important;
-    border-left: 1px solid var(--mud-palette-lines-default);
     max-width: min(560px, 90vw);
+}
+
+/* Gutter inset from top/right/bottom (Luma-style) — only when open.
+   When closed, MudBlazor slides the drawer off-screen with defaults. */
+.event-list__detail-drawer.mud-drawer--open {
+    top: 8px !important;
+    right: 8px !important;
+    height: calc(100vh - 16px) !important;
+    border-radius: 12px;
+}
+
+/* ── Standalone overlay for right drawer (LockScroll enabled) ──
+   Placed outside MudDrawerContainer so MudBlazor's LockScroll works.
+   Sits above navbar (1300) but below the drawer (1400). */
+.event-list__overlay {
+    z-index: 1399 !important;
+}
+
+/* Stronger dimming effect to draw focus to the drawer */
+.event-list__overlay .mud-overlay-scrim {
+    background-color: rgba(0, 0, 0, 0.6) !important;
 }
 
 /* Content fills the aside via flex; header stays pinned, body scrolls. */
