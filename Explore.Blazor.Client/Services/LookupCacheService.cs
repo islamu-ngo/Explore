@@ -2,7 +2,7 @@
 // ABOUTME: Prevents redundant API calls for data that rarely changes.
 
 using Explore.Blazor.Client.Clients;
-using Explore.Blazor.Client.Services.Contracts;
+using Explore.Blazor.Client.Contracts.Services.Lookup;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;

@@ -206,3 +206,16 @@ To continue work:
 - Files modified and why: None for this specific track in this session.
 - Blockers/issues discovered: None newly discovered for this track.
 - Next immediate steps: Continue from the highest-priority unchecked tasks in this track's tasks file.
+
+---
+
+## SESSION CHECKPOINT (2026-02-27 Europe/Brussels)
+
+### Status This Session
+- No implementation changes were made in this task during this session.
+- Task remains in its previously documented state.
+
+### Continuation Notes
+- Re-open this context file and matching *-tasks.md before resuming work.
+- Re-run project build/tests relevant to that task branch before new edits.
+

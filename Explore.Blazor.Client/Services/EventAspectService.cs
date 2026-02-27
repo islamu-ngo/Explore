@@ -2,7 +2,8 @@
 // Wraps NSwag-generated client methods with application-specific error handling.
 
 using Explore.Blazor.Client.Clients;
-using Explore.Blazor.Client.Services.Contracts;
+using Explore.Blazor.Client.Contracts.Services.Events;
+using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;

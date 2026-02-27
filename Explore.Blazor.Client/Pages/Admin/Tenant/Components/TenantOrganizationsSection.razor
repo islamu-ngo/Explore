@@ -1,0 +1,217 @@
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Pages.Admin.Components
+@using Explore.Blazor.Client.Services
+@using MudBlazor
+
+<div class="settings-section">
+    <div class="settings-section-header">
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Organization Approvals</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+            Review, approve, reject, or revert organization verification requests.
+        </MudText>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+    }
+
+    @if (_isLoading)
+    {
+        <MudStack AlignItems="AlignItems.Center" Class="py-8">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-4">Loading organization requests...</MudText>
+        </MudStack>
+    }
+    else
+    {
+        <MudStack Row="true" Spacing="2" Class="mb-4" AlignItems="AlignItems.Center">
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Refresh"
+                       OnClick="LoadOrganizationRequestsAsync">
+                Refresh
+            </MudButton>
+        </MudStack>
+
+        <MudTabs @bind-ActivePanelIndex="_activeTab" Elevation="0" Rounded="true" ApplyEffectsToContainer="true" Color="Color.Primary">
+            <MudTabPanel Text="@($"All ({_organizationRequests.Count})")">
+                <AdminOrganizationTable Items="GetByStatus(null)"
+                                        OnApprove="ApproveAsync"
+                                        OnReject="RejectAsync"
+                                        OnRevert="RevertToPendingAsync"
+                                        OnViewDetails="ViewDetails"
+                                        OnClearFilters="ClearFilters" />
+            </MudTabPanel>
+            <MudTabPanel Text="@($"Pending ({PendingCount})")">
+                <AdminOrganizationTable Items="GetByStatus(RequestStatus.Pending)"
+                                        OnApprove="ApproveAsync"
+                                        OnReject="RejectAsync"
+                                        OnRevert="RevertToPendingAsync"
+                                        OnViewDetails="ViewDetails"
+                                        OnClearFilters="ClearFilters" />
+            </MudTabPanel>
+            <MudTabPanel Text="@($"Approved ({ApprovedCount})")">
+                <AdminOrganizationTable Items="GetByStatus(RequestStatus.Approved)"
+                                        OnApprove="ApproveAsync"
+                                        OnReject="RejectAsync"
+                                        OnRevert="RevertToPendingAsync"
+                                        OnViewDetails="ViewDetails"
+                                        OnClearFilters="ClearFilters" />
+            </MudTabPanel>
+            <MudTabPanel Text="@($"Rejected ({RejectedCount})")">
+                <AdminOrganizationTable Items="GetByStatus(RequestStatus.Rejected)"
+                                        OnApprove="ApproveAsync"
+                                        OnReject="RejectAsync"
+                                        OnRevert="RevertToPendingAsync"
+                                        OnViewDetails="ViewDetails"
+                                        OnClearFilters="ClearFilters" />
+            </MudTabPanel>
+        </MudTabs>
+    }
+</div>
+
+@code {
+    [Inject] private IAdminService AdminService { get; set; } = null!;
+    [Inject] private IDialogService DialogService { get; set; } = null!;
+    [Inject] private NavigationManager NavigationManager { get; set; } = null!;
+
+    private enum RequestStatus
+    {
+        Pending = 1,
+        Approved = 2,
+        Rejected = 3
+    }
+
+    private ICollection<OrganizationListDto> _organizationRequests = new List<OrganizationListDto>();
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private int _activeTab;
+
+    private int PendingCount => _organizationRequests.Count(r => r.ApprovalStatusId == (int)RequestStatus.Pending);
+    private int ApprovedCount => _organizationRequests.Count(r => r.ApprovalStatusId == (int)RequestStatus.Approved);
+    private int RejectedCount => _organizationRequests.Count(r => r.ApprovalStatusId == (int)RequestStatus.Rejected);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOrganizationRequestsAsync();
+    }
+
+    private async Task LoadOrganizationRequestsAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            _organizationRequests = await AdminService.GetOrganizationRequestsAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load organizations: {ex.Message}";
+            _organizationRequests = new List<OrganizationListDto>();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private IEnumerable<OrganizationListDto> GetByStatus(RequestStatus? status)
+    {
+        if (!status.HasValue)
+        {
+            return _organizationRequests.OrderBy(r => r.CreatedAt);
+        }
+
+        return _organizationRequests
+            .Where(r => r.ApprovalStatusId == (int)status.Value)
+            .OrderBy(r => r.CreatedAt);
+    }
+
+    private async Task ApproveAsync(OrganizationListDto req)
+    {
+        if (!req.Id.HasValue)
+        {
+            return;
+        }
+
+        var ok = await DialogService.ShowMessageBox(
+            "Confirm approval",
+            $"Approve {req.FullName}?",
+            yesText: "Approve",
+            cancelText: "Cancel");
+
+        if (ok == true)
+        {
+            var success = await AdminService.ApproveOrganizationAsync(req.Id.Value);
+            if (success)
+            {
+                await LoadOrganizationRequestsAsync();
+            }
+            else
+            {
+                _errorMessage = $"Failed to approve {req.FullName}";
+            }
+        }
+    }
+
+    private async Task RejectAsync(OrganizationListDto req)
+    {
+        if (!req.Id.HasValue)
+        {
+            return;
+        }
+
+        var ok = await DialogService.ShowMessageBox(
+            "Confirm rejection",
+            $"Reject {req.FullName}?",
+            yesText: "Reject",
+            cancelText: "Cancel");
+
+        if (ok == true)
+        {
+            var success = await AdminService.RejectOrganizationAsync(req.Id.Value);
+            if (success)
+            {
+                await LoadOrganizationRequestsAsync();
+            }
+            else
+            {
+                _errorMessage = $"Failed to reject {req.FullName}";
+            }
+        }
+    }
+
+    private async Task RevertToPendingAsync(OrganizationListDto req)
+    {
+        if (!req.Id.HasValue)
+        {
+            return;
+        }
+
+        var success = await AdminService.RevertToPendingAsync(req.Id.Value);
+        if (success)
+        {
+            await LoadOrganizationRequestsAsync();
+        }
+        else
+        {
+            _errorMessage = $"Failed to revert {req.FullName} to pending";
+        }
+    }
+
+    private void ViewDetails(OrganizationListDto req)
+    {
+        if (req.Id.HasValue)
+        {
+            NavigationManager.NavigateTo($"/admin/organization/{req.Id.Value}");
+        }
+    }
+
+    private Task ClearFilters()
+    {
+        _activeTab = 0;
+        return Task.CompletedTask;
+    }
+}

@@ -266,3 +266,12 @@
 - Phase 4 (parallel with 1-3, pure UI work)
 - Phase 5 (after all phases complete)
 - Phase 6 (after Phase 5, but TDD tests for Phase 1 can be written first)
+
+---
+
+## Session Checkpoint (2026-02-27 Europe/Brussels)
+
+- [x] Reviewed task continuity status for context reset handoff.
+- [ ] Resume implementation work from this task latest documented in-progress section.
+- [ ] Re-validate with build/tests once implementation resumes.
+

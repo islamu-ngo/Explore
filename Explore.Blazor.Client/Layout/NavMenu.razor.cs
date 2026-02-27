@@ -1,8 +1,9 @@
 using System.Security.Claims;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Contracts.Services.Events;
+using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
-using Explore.Blazor.Client.Services.Contracts;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Routing;

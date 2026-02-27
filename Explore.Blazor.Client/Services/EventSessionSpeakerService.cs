@@ -2,7 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Explore.Blazor.Client.Clients;
-using Explore.Blazor.Client.Services.Contracts;
+using Explore.Blazor.Client.Contracts.Services.Events;
+using Explore.Blazor.Client.Contracts.Services.Organizations;
 
 namespace Explore.Blazor.Client.Services;
 

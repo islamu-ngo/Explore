@@ -3,8 +3,9 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Contracts.Services.Events;
+using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Models.Responses;
-using Explore.Blazor.Client.Services.Contracts;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;

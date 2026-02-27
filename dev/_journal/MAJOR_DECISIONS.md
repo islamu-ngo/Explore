@@ -1,6 +1,6 @@
 # Major Decisions
 
-Last Updated: 2026-02-23
+Last Updated: 2026-02-27
 
 ## 2026-02-23 18:12 Europe/Brussels - Admin Consolidation Handoff Scope
 
@@ -41,3 +41,28 @@ Last Updated: 2026-02-23
   - Build passed.
   - Blazor client tests passed (522).
   - Application unit tests passed (278).
+
+## 2026-02-27 Europe/Brussels - Blazor Folder Restructure Continuation Baseline
+
+- Decision: Treat `dev/active/blazor-folder-restructure` as implementation-complete with remaining work focused on checklist/doc synchronization and optional full-suite gate validation.
+- Why: Core migration, imports, dialog helper refactor, and targeted Blazor test loop are already green; unresolved items are primarily documentation fidelity and broader release assurance.
+- Verification anchor:
+  - `dotnet build --configuration Release --verbosity quiet` passes (warnings only).
+  - `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` passes (warnings only).
+
+## 2026-02-27 Europe/Brussels - Context Reset Handoff Policy (Active Docs)
+
+- Decision: Append explicit session checkpoint blocks to every `dev/active/*-context.md` and `dev/active/*-tasks.md` file during context-limit handoff.
+- Why: Ensures no active track is left without fresh continuity metadata, reducing reset-time archaeology and ambiguity.
+
+## 2026-02-27 Europe/Brussels - Blazor Client Contracts Boundary
+
+- Decision: Standardize on root `Explore.Blazor.Client/Contracts` for interface contracts and keep `Explore.Blazor.Client/Services` as implementation-only.
+- Structure adopted:
+  - `Contracts/Services/{Lookup,Events,Organizations}`
+  - `Contracts/Providers`
+  - `Contracts/Interop`
+- Why: Supports future non-service abstractions (providers/interop), improves testability, and avoids conflating API proxy interfaces with concrete service implementations.
+- Verification:
+  - `dotnet build --configuration Release --verbosity quiet` passed after namespace and Razor import updates.
+  - `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` passed (518 tests).

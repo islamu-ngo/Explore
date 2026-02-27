@@ -3,7 +3,7 @@
 > **Key files, decisions, and quick resume information**
 >
 > Created: 2026-01-31
-> **Last Updated: 2026-01-31 (Session Handoff)**
+> **Last Updated: 2026-02-27 (Session Handoff)**
 
 ---
 
@@ -330,3 +330,48 @@ EventDetail.razor
 - Files modified and why: None for this specific track in this session.
 - Blockers/issues discovered: None newly discovered for this track.
 - Next immediate steps: Continue from the highest-priority unchecked tasks in this track's tasks file.
+
+---
+
+## SESSION CHECKPOINT (2026-02-27 Europe/Brussels)
+
+### Status This Session
+- No implementation changes were made in this task during this session.
+- Task remains in its previously documented state.
+
+### Continuation Notes
+- Re-open this context file and matching *-tasks.md before resuming work.
+- Re-run project build/tests relevant to that task branch before new edits.
+
+## SESSION UPDATE (2026-02-27 Europe/Brussels - Contracts Layout Refactor)
+
+### Current implementation state
+- Completed contract hierarchy refactor in `Explore.Blazor.Client`:
+  - Added root `Contracts/` with `Services/Lookup`, `Services/Events`, `Services/Organizations`, `Providers`, and `Interop`.
+  - Moved existing contract files from `Services/Contracts` and `Services/Lookup/Contracts` to the new root structure.
+  - Extracted non-service interfaces from implementation files into contracts (`IAnalyticsInterop`, `IAuthStateService`, `IStartupRoutingService`, `IRuntimeRenderPolicyService`, `ILazyAssemblyLoader`).
+
+### Key decisions this session
+- Keep `Services/` as implementation-only and treat `Contracts/` as the client-side public API.
+- Preserve compatibility by adding contract global usings in client project and updating consuming namespaces/usings incrementally.
+- Keep runtime decision records (`StartupRouteDecision`, `RuntimeRenderPolicyDecision`) in existing service files for now; contract interfaces reference those types.
+
+### Files modified and why
+- `Explore.Blazor.Client/Contracts/**/*` - new contract root structure and moved interfaces.
+- `Explore.Blazor.Client/Services/*.cs` (selected files) - removed inline interface declarations and referenced contract namespaces.
+- `Explore.Blazor.Client/Extensions/ServiceCollectionExtensions.cs`, `Explore.Blazor.Client/Program.cs`, `Explore.Blazor/Extensions/*.cs` - updated DI registrations/imports to new contract namespaces.
+- `Explore.Blazor.Client/_Imports.razor` and selected Razor pages/dialogs - updated stale contract using directives.
+- `Explore.Blazor.Client.Tests/GlobalUsings.cs` - switched tests to new contract namespaces.
+
+### Blockers / issues discovered
+- No blocking issue after refactor; one transient build error wave came from stale Razor `@using Explore.Blazor.Client.Services.Contracts` references and was fixed.
+- Pre-existing analyzer/nullability warnings remain non-blocking.
+
+### Verification evidence
+- `dotnet build --configuration Release --verbosity quiet` passed after fixes.
+- `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` passed (518/518).
+
+### Next immediate steps
+1. Update any outdated task entries still referencing `Services/Contracts/*` paths.
+2. Optionally run full `CLAUDE.md` required multi-project test matrix before merge/release gate.
+3. Document the new `Contracts/*` convention in `docs/BLAZOR.md` / `docs/CODEBASE_STRUCTURE.md` if not already synchronized.

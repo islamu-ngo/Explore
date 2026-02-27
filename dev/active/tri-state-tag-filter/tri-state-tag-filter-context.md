@@ -210,3 +210,16 @@ To continue:
 2. Start with **Phase 1** (Application layer — remove old TagId, add multi-tag with AND/OR)
 3. Phase 4 (UI component) can be built in parallel
 4. Run tests at each phase boundary
+
+---
+
+## SESSION CHECKPOINT (2026-02-27 Europe/Brussels)
+
+### Status This Session
+- No implementation changes were made in this task during this session.
+- Task remains in its previously documented state.
+
+### Continuation Notes
+- Re-open this context file and matching *-tasks.md before resuming work.
+- Re-run project build/tests relevant to that task branch before new edits.
+

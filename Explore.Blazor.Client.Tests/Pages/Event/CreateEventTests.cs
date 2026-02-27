@@ -1,5 +1,5 @@
 using Blazouter.Services;
-using Explore.Blazor.Client.Pages.Event;
+using Explore.Blazor.Client.Pages.Events;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Pages.Event;

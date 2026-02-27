@@ -33,7 +33,7 @@ public class TagsTests : IDisposable
 
     private IRenderedComponent<DynamicComponent> RenderTags()
     {
-        var componentType = typeof(IAdminService).Assembly.GetType("Explore.Blazor.Client.Components.Admin.Tenant.TenantLookupTablesSection")
+        var componentType = typeof(IAdminService).Assembly.GetType("Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantLookupTablesSection")
                             ?? throw new InvalidOperationException("TenantLookupTablesSection component type not found");
 
         return _ctx.RenderMudComponent<DynamicComponent>(p => p.Add(x => x.Type, componentType));

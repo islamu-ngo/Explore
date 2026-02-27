@@ -1,8 +1,12 @@
 // ABOUTME: Shared service registrations used by both Blazor Server (BFF) and WASM host.
 // ABOUTME: Eliminates duplication between server Program.cs and client Program.cs (DRY).
 
+using Explore.Blazor.Client.Contracts.Providers;
+using Explore.Blazor.Client.Contracts.Services.Events;
+using Explore.Blazor.Client.Contracts.Services.Lookup;
+using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Services;
-using Explore.Blazor.Client.Services.Contracts;
+using Explore.Blazor.Client.Services.Lookup;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Explore.Blazor.Client.Extensions;

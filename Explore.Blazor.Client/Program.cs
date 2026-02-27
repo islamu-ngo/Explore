@@ -1,10 +1,14 @@
 using Blazouter.Extensions;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Configuration;
+using Explore.Blazor.Client.Contracts.Interop;
+using Explore.Blazor.Client.Contracts.Providers;
+using Explore.Blazor.Client.Contracts.Services.Events;
+using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Extensions;
 using Explore.Blazor.Client.Routing.Guards;
 using Explore.Blazor.Client.Services;
-using Explore.Blazor.Client.Services.Contracts;
+using Explore.Blazor.Client.Services.Http;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
@@ -82,7 +86,7 @@ builder.Services.AddHttpClient("S3Upload", client =>
 })
 .AddHttpMessageHandler<S3UploadMessageHandler>();
 
-builder.Services.AddScoped<BffClient>();
+builder.Services.AddScoped<Explore.Blazor.Client.Services.Http.BffClient>();
 
 builder.Services.AddAuthorizationCore();
 builder.Services.AddCascadingAuthenticationState();

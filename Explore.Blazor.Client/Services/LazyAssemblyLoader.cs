@@ -1,20 +1,7 @@
 using System.Reflection;
+using Explore.Blazor.Client.Contracts.Providers;
 
 namespace Explore.Blazor.Client.Services;
-
-/// <summary>
-/// Service for lazy-loading Blazor WASM assemblies on-demand.
-/// Reduces initial bundle size by deferring non-critical assemblies until needed.
-/// </summary>
-public interface ILazyAssemblyLoader
-{
-    /// <summary>
-    /// Loads assemblies dynamically at runtime.
-    /// </summary>
-    /// <param name="assemblyNames">Names of assemblies to load (e.g., "Explore.Blazor.Client.Pages.Admin.dll")</param>
-    /// <returns>List of loaded assemblies</returns>
-    Task<List<Assembly>> LoadAssembliesAsync(params string[] assemblyNames);
-}
 
 /// <summary>
 /// Default implementation of lazy assembly loading for Blazor WASM.

@@ -1,121 +1,59 @@
-# ADR-001: Authorization Provider Architecture — HTTP Transport with Graceful Fallback
+ABOUTME: ADR for authorization provider architecture in the current codebase.
+ABOUTME: Captures runtime provider routing, HTTP transport choice, and fallback semantics.
+
+# ADR-001: Authorization Provider Architecture
 
 **Status:** Accepted  
 **Date:** 2026-02-14  
 **Deciders:** ISLAMU Event Core Team
 
----
-
 ## Context
 
-The ISLAMU Event platform requires fine-grained, resource-level authorization across a multi-tenant hierarchy (Instance > Tenant > Organization). We evaluated several approaches for integrating Cerbos as the Policy Decision Point (PDP).
-
-### Key Questions
-
-1. **Transport protocol**: HTTP REST vs gRPC for Cerbos communication?
-2. **Failure mode**: What happens when Cerbos is unreachable?
-3. **Deployment flexibility**: How to support deployments without Cerbos (Tier 1 Humble)?
-
-### Constraints
-
-- The platform must start and function without Cerbos running (self-hoster friendly)
-- Authorization must never block application startup
-- Latency budget: <50ms per authorization check (p99)
-- Clean Architecture boundaries must be preserved (Application layer defines contracts, Infrastructure implements)
-
----
+The platform needs resource-level authorization that:
+- works with or without Cerbos running,
+- supports tenant-specific BYO Cerbos,
+- fails safely when PDP calls fail.
 
 ## Decision
 
-### Dual-Provider Architecture with Runtime Switching
+Use one runtime wrapper (`RuntimeAuthorizationProvider`) that delegates to:
+- `CerbosAuthorizationService` (HTTP PDP checks),
+- `FallbackAuthorizationService` (local DB-backed authorization).
 
-```
-RuntimeAuthorizationProvider (IAuthorizationProvider)
-    ├── CerbosAuthorizationProvider  ← HTTP REST to Cerbos PDP
-    └── LocalAuthorizationProvider   ← In-process RBAC fallback
-```
+Provider resolution order:
+1. tenant BYO Cerbos config (if present),
+2. otherwise instance-level `AuthorizationProvider` setting (`"cerbos"` or local default),
+3. fallback to local provider on Cerbos failure.
 
-**`RuntimeAuthorizationProvider`** reads the `authorization.provider` SystemSetting at runtime and delegates to the appropriate concrete provider. This is NOT a code-level switch — it's a database-driven configuration that can be changed by instance admins without redeployment.
+## HTTP Transport And Resilience
 
-### HTTP Transport (not gRPC)
+Cerbos communication uses HTTP clients:
+- instance PDP client: `CerbosClient`
+- tenant BYO client: `CerbosByoClient`
 
-Cerbos communication uses the HTTP REST API (`/api/check/resources`) via a named `HttpClient` with Polly resilience policies.
+Configured resilience:
+- instance: timeout 2s, circuit-breaker 50% failure ratio, 30s sampling, min throughput 10, break 15s.
+- BYO: timeout 3s, circuit-breaker 50% failure ratio, 30s sampling, min throughput 5, break 15s.
+- no retry policy is configured for authorization checks.
 
-### Resilience Configuration
+## Failure Mode Contract
 
-- **Timeout**: 2 seconds (hard limit)
-- **Circuit breaker**: trips after 50% failure rate over 30s sampling window, breaks for 15s
-- **No retry**: fail-fast to LocalAuthorizationProvider is safer than retrying authorization checks
+When BYO Cerbos fails:
+- `failure_mode=closed` -> local provider enters `SafeMode` (deny except explicit safe paths like instance-admin checks).
+- `failure_mode=open` -> local provider runs normal fallback authorization.
 
----
-
-## Rationale
-
-### Why HTTP over gRPC
-
-| Factor | HTTP | gRPC |
-|--------|------|------|
-| Deployment complexity | Standard reverse proxy | Requires HTTP/2 + TLS termination |
-| Debugging | `curl` friendly, standard tooling | Requires `grpcurl` or specialized tooling |
-| Load balancer compatibility | Any L7 LB | Requires gRPC-aware LB (not all support it) |
-| Cerbos API parity | First-class REST API | First-class, but no advantage for our use case |
-| Latency | ~5ms per check (HTTP/1.1) | ~2ms per check (multiplexed) |
-| Docker Compose simplicity | Port 3592, standard health check | Port 3593, requires TLS |
-
-**Decision**: The 3ms latency difference is negligible for our use case. HTTP's operational simplicity (debugging, proxying, health checks) outweighs gRPC's raw performance advantage.
-
-### Why Dual-Provider (not Cerbos-only)
-
-1. **Tier 1 Humble deployments** run without Cerbos. LocalAuthorizationProvider handles basic RBAC: role hierarchy checks, permission lookups from the RolePermission table.
-2. **Graceful degradation**: If Cerbos becomes unreachable in Tier 2/3, the circuit breaker trips and authorization falls back to Local rather than failing all requests.
-3. **LocalAuthorizationProvider covers ~95% of decisions** for simple deployments — it checks role-based permissions from the database. Cerbos adds contextual policies (resource attributes, conditions, derived roles) that Local cannot evaluate.
-
-### Why No Retry on Authorization
-
-Authorization checks are idempotent but time-sensitive. Retrying a failed auth check:
-- Doubles latency for the user's request
-- Masks Cerbos availability issues (circuit breaker needs accurate failure counts)
-- Is unnecessary because LocalAuthorizationProvider provides a safe fallback
-
-Fail-fast + fallback is safer than retry + hope.
-
----
+When instance Cerbos fails:
+- runtime provider logs and falls back to local authorization.
 
 ## Consequences
 
-### Positive
-
-- Platform works at every deployment tier (Humble through Ummah-Scale)
-- Instance admins can switch authorization providers without code changes
-- Circuit breaker prevents cascading failures during Cerbos outages
-- Simple Docker deployment — no gRPC infrastructure requirements
-
-### Negative
-
-- HTTP is ~3ms slower per check than gRPC (acceptable for our p99 budget)
-- LocalAuthorizationProvider cannot evaluate Cerbos-specific conditions (derived roles, resource attributes) — it only does flat RBAC
-- Two authorization codepaths to maintain (mitigated by shared `IAuthorizationProvider` interface)
-
-### Neutral
-
-- PolicySyncService pushes to Cerbos Admin API via a separate `CerbosAdminClient` HttpClient (no resilience needed — sync is background, not request-critical)
-
----
-
-## Deployment Tier Mapping
-
-| Tier | Provider Setting | Behavior |
-|------|-----------------|----------|
-| 1 (Humble) | `local` | LocalAuthorizationProvider only, no Cerbos |
-| 2 (Community) | `cerbos` | CerbosAuthorizationProvider primary, Local fallback |
-| 3 (Ummah-Scale) | `cerbos` | Cerbos HA cluster, Local fallback |
-
-See [DEPLOYMENT_TIERS.md](../DEPLOYMENT_TIERS.md) for infrastructure details.
-
----
+1. Deployment can run in local-only mode (no Cerbos dependency at startup).
+2. Instance admins can switch provider mode via settings without code changes.
+3. Two authorization paths must be maintained and tested.
+4. Local fallback cannot evaluate all advanced Cerbos policy semantics.
 
 ## Related
 
-- [AUTHORIZATION_PATTERNS.md](../AUTHORIZATION_PATTERNS.md) — When to use each authorization pattern
-- [SECURITY.md](../SECURITY.md) — Security architecture overview
-- [DEPLOYMENT_TIERS.md](../DEPLOYMENT_TIERS.md) — Infrastructure scaling guide
+- [AUTHORIZATION_PATTERNS.md](../AUTHORIZATION_PATTERNS.md)
+- [SECURITY.md](../SECURITY.md)
+- [DEPLOYMENT_TIERS.md](../DEPLOYMENT_TIERS.md)

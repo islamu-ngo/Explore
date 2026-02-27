@@ -1,73 +1,55 @@
-# Tutorial: Getting Started with ISLAMU Event
+ABOUTME: Minimal getting-started path for running the stack locally with Docker or Aspire.
+ABOUTME: Uses current repository paths, service names, ports, and seed/dev auth details.
 
-This guide will walk you through setting up a local development environment for the ISLAMU Event platform.
+# Tutorial: Getting Started
 
 ## Prerequisites
 
-*   **Docker Desktop** (latest version)
-*   **.NET 10 SDK** (if running outside Docker)
-*   **Git**
+- Docker Desktop
+- .NET 10 SDK (preview, aligned with `global.json`)
+- Git
 
-## Option 1: Quick Start (Docker Compose)
+## Option 1: Docker Compose
 
-The easiest way to run the full stack (API, Blazor, Database, Keycloak, Cerbos) is via Docker Compose.
+1. Clone and enter the repo:
+   `git clone https://github.com/islamu-ngo/Event.git && cd Event`
+2. Start core services:
+   `docker compose up -d`
+3. Open:
+   - Blazor UI: `http://localhost:7002`
+   - API: `http://localhost:7039`
+   - Swagger: `http://localhost:7039/swagger`
+   - Keycloak: `http://localhost:8080` (admin: `admin` / `admin`)
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/islamu-ngo/Explore.git
-    cd Explore
-    ```
+First run note:
+- if instance onboarding is incomplete, `/` redirects to `/setup`.
+- when `SETUP_SECRET` is not provided, API generates one at startup, prints it in API logs, and keeps it valid for 60 minutes.
 
-2.  **Start the services:**
-    ```bash
-    docker-compose up -d
-    ```
-    *This pulls images for PostgreSQL, Keycloak, Cerbos, and builds the API/Blazor apps.*
+Optional profiles:
+- Storage: `docker compose --profile storage up -d`
+- Cerbos: `docker compose --profile authz up -d`
 
-3.  **Wait for startup:**
-    The `migration-service` container will automatically apply database migrations and seed default data. Wait for it to complete (check logs with `docker-compose logs -f migration-service`).
+## Option 2: Local Aspire Orchestration
 
-4.  **Access the application:**
-*   **Main UI:** [https://localhost:7002](https://localhost:7002)
-    *   **Keycloak Admin:** [http://localhost:8080](http://localhost:8080) (user: `admin`, pass: `admin`)
-    *   **Mailpit (Email):** [http://localhost:8025](http://localhost:8025)
+Run:
+- `dotnet run --project Explore.AppHost`
 
-## Option 2: Local Development (.NET Aspire)
+This starts migration, API, and Blazor with local development wiring.
 
-For active development, use the .NET Aspire orchestration project.
+Expected local URLs:
+- Blazor: `https://localhost:7177`
+- API: `https://localhost:7039`
 
-1.  **Open the solution:**
-    Open `Explore.sln` in Visual Studio 2022+ or VS Code.
+## Development Test User (Keycloak Realm Import)
 
-2.  **Set Startup Project:**
-    Set `Explore.AppHost` as the startup project.
+- Username: `demo`
+- Password: `demo1234`
 
-3.  **Run (F5):**
-    Aspire will spin up the necessary containers (Postgres, Keycloak) and run the .NET apps (API, Blazor) locally for debugging.
+## Common Startup Issues
 
-4.  **Aspire Dashboard:**
-    A dashboard will open showing all running services, logs, and traces.
-
-## Default Credentials
-
-### System Admin
-*   **Email:** `admin@example.com`
-*   **Password:** `Password123!`
-
-### Demo Tenant Admin
-*   **Email:** `tenant-admin@example.com`
-*   **Password:** `Password123!`
-
-## Troubleshooting Common Issues
-
-### Database Connection Failed
-If the API crashes with connection errors, ensure the `postgres` container is healthy.
-```bash
-docker-compose restart postgres
-```
-
-### Keycloak Redirect Loop
-Ensure you are accessing via `https://localhost:7002`. The OIDC configuration requires HTTPS.
-
-### "Tenant Not Found"
-Ensure you are using the correct header or domain. In local dev, the default tenant is automatically resolved for `localhost`.
+1. API contract/client mismatch after DTO change:
+   start API in Development and rebuild `Explore.Blazor.Client` to regenerate NSwag client.
+2. Auth redirect problems behind proxy:
+   verify `X-Forwarded-Proto`/`X-Forwarded-Host` forwarding.
+3. Tenant mismatch:
+   confirm `deployment.mode` and `X-Tenant-Id` behavior.

@@ -1,5 +1,5 @@
 using Bunit.TestDoubles;
-using Explore.Blazor.Client.Pages.Event;
+using Explore.Blazor.Client.Pages.Events;
 using Explore.Blazor.Client.Tests.Common;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;

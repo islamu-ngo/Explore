@@ -2,8 +2,9 @@
 // ABOUTME: Eliminates repeated ConfigurePrimaryHttpMessageHandler blocks for dev cert bypass.
 
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Contracts.Services.Events;
+using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Services;
-using Explore.Blazor.Client.Services.Contracts;
 using Explore.Blazor.Services;
 
 namespace Explore.Blazor.Extensions;

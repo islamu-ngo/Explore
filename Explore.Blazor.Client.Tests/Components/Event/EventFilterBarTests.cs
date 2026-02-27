@@ -1,5 +1,5 @@
 using System.Reflection;
-using EventFilterBarComponent = Explore.Blazor.Client.Components.Event.EventFilterBar;
+using EventFilterBarComponent = Explore.Blazor.Client.Pages.Events.Components.EventFilterBar;
 
 namespace Explore.Blazor.Client.Tests.Components.Event;
 

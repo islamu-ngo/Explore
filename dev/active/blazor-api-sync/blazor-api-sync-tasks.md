@@ -6,6 +6,14 @@
 
 ---
 
+## Session Update (2026-02-27 Europe/Brussels - Contracts Layout)
+
+- [x] Created root `Explore.Blazor.Client/Contracts/` hierarchy (`Services/Lookup`, `Services/Events`, `Services/Organizations`, `Providers`, `Interop`).
+- [x] Moved existing contract interfaces out of `Services/Contracts` and `Services/Lookup/Contracts`.
+- [x] Updated client/server/test namespace imports and Razor `@using` directives to new contract namespaces.
+- [x] Verified build and Blazor client tests after refactor.
+- [ ] Normalize remaining historical task paths below that still point to old `Services/Contracts/*` locations.
+
 ## Phase 1: HATEOAS Foundation (Optional - Can Defer)
 
 - [ ] Task 1.1: Create `HateoasLink.cs` model
@@ -33,7 +41,7 @@
 ## Phase 2: Event Aspects Service Layer (HIGH PRIORITY)
 
 - [ ] Task 2.1: Create `IEventAspectService.cs` interface
-  - File: `Explore.Blazor.Client/Services/Contracts/IEventAspectService.cs`
+  - File: `Explore.Blazor.Client/Contracts/Services/Events/IEventAspectService.cs`
   - Methods:
     - `GetIslamicAspectAsync(Guid eventId)`
     - `GetTechAspectAsync(Guid eventId)`
@@ -259,3 +267,11 @@ After implementation, verify:
 - Files modified and why: None for this specific track in this session.
 - Blockers/issues discovered: None newly discovered for this track.
 - Next immediate steps: Continue from the highest-priority unchecked tasks in this track's tasks file.
+
+---
+
+## Session Checkpoint (2026-02-27 Europe/Brussels)
+
+- [x] Reviewed task continuity status for context reset handoff.
+- [ ] Resume implementation work from this task latest documented in-progress section.
+- [ ] Re-validate with build/tests once implementation resumes.

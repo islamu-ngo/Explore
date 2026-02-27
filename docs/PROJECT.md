@@ -1,162 +1,50 @@
-## 1. Project Overview
+ABOUTME: Product context and scope statement for the current implementation state.
+ABOUTME: Separates implemented capabilities from roadmap items to reduce ambiguity.
 
-## What is ISLAMU Event?
+# Project Context
 
-**ISLAMU Event** (also known as ISLAMU Explore or Event Explorer) is an **open-source event discovery platform**.
+## What ISLAMU Event Is
+ISLAMU Event (solution: `Explore`) is an open-source event discovery and management platform designed for multi-tenant deployments, with a public ISLAMU-hosted instance and support for self-hosting.
 
-The long-term vision includes **ATProto-first federation** with an **ActivityPub gateway**, but HTTP federation endpoints are **not currently implemented** in `Explore.API`.
+## Organization And Repository
+- Organization: ISLAMU NGO
+- Repository: `https://github.com/islamu-ngo/Event`
+- License: AGPL-3.0
+- Public instance: `https://event.openislamu.org`
 
-**Last Updated**: February 2026
+## Current Scope (Implemented)
+1. Event and session lifecycle management (create, update, delete, discover).
+2. Organization and membership management.
+3. Lookup-driven filtering (type, status, format, audience, language, etc.).
+4. Multi-tenant runtime support with tenant-aware data filters.
+5. Blazor BFF architecture with OIDC-based authentication.
+6. Runtime-selectable authorization provider (Cerbos or local).
+7. HAL/HATEOAS API responses and OpenAPI export for client generation.
+8. Modular event aspects (Islamic and Tech aspect models).
+9. Background PDS sync worker for federation-related outbox processing.
 
-## Core Value Proposition
+## Platform Positioning
+1. General-purpose software platform: can be adapted beyond Islamic use-cases.
+2. ISLAMU-hosted instance: curated for Islamic community events and policies.
+3. White-label use is supported via tenant and governance settings.
 
-| Component | Value |
-|-----------|-------|
-| **Software** | Multi-tenant federated event platform (AGPL) |
-| **Primary Instance** | Trusted Islamic event directory with verification |
-| **Filtering System** | Culturally-appropriate discovery (age, gender, madhab) |
+## Federation Status
+Implemented foundation:
+- Federation-related entities and API resources exist (e.g., indexed DIDs, ATProto records).
+- Outbox-based sync processing exists.
 
-## Organizational Context
+Not fully implemented as protocol surface:
+- Full ActivityPub gateway endpoint set and interoperability endpoints.
 
-- **Organization**: ISLAMU Non Profit Organization (Islamic Software Lighthouse Alliance of the Muslim Ummah)
-- **Legal Entity**: Belgian non-profit organization ASBL (Association sans but lucratif)
-- **GitHub Organization**: `islamu-ngo`
-- **Repository**: `https://github.com/islamu-ngo/explore`
-- **License**: AGPL-3.0
+## Non-Inferable Product Notes
+1. Deployment mode (`SingleTenant` / `MultiTenant`) is runtime-governed, not compile-time.
+2. Instance and tenant governance settings can lock or delegate behavior.
+3. Authorization behavior can change by configuration without changing controller code.
 
----
-
-# Strategic Context
-
-## Ecosystem Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                      ISLAMU Event Ecosystem                         │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │           ISLAMU-Hosted Instance (Primary Focus)            │   │
-│  │  ─────────────────────────────────────────────────────────  │   │
-│  │  • Islamic events globally                                  │   │
-│  │  • Verified actors (fact-checked)                           │   │
-│  │  • User-submitted events (flagged as unverified)            │   │
-│  │  • Strike/ban system for policy violations                  │   │
-│  │  • Advanced filtering (age, gender, location, language, and more)│   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│                              │                                      │
-│                    ActivityPub Federation                           │
-│                              │                                      │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐              │
-│  │ Community A  │  │ Community B  │  │ Organization │  ...         │
-│  │ Instance     │  │ Instance     │  │ Instance     │              │
-│  │ (3rd party)  │  │ (3rd party)  │  │ (3rd party)  │              │
-│  └──────────────┘  └──────────────┘  └──────────────┘              │
-│         │                  │                  │                     │
-│         └──────────────────┴──────────────────┘                     │
-│                    Managed Hosting Partners                         │
-│                    (Revenue share with ISLAMU)                      │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-## Architecture Philosophy
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           ISLAMU Event Architecture                          │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│   ┌─────────────┐     ┌─────────────┐     ┌─────────────────────────────┐   │
-│   │   Users     │────▶│    PDS      │────▶│    ATProto Network          │   │
-│   │  (DIDs)     │     │  (Hosting)  │     │  (Relay/Firehose/AppView)   │   │
-│   └─────────────┘     └─────────────┘     └─────────────────────────────┘   │
-│         │                                              │                    │
-│         │                                              │                    │
-│         ▼                                              ▼                    │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                    ISLAMU Event AppView                              │   │
-│   │  • Indexes ngo.islamu.event.* records                               │   │
-│   │  • Provides search/discovery APIs                                    │   │
-│   │  • Manages cultural/audience filtering                               │   │
-│   │  • Hosts ActivityPub Gateway (planned)                                │   │
-│   └─────────────────────────────────────────────────────────────────────┘   │
-│                                        │                                    │
-│                                        ▼                                    │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │               ActivityPub Gateway (Bridge, planned)                  │   │
-│   │  • Exposes ATProto events as ActivityPub Event objects              │   │
-│   │  • Translates ActivityPub Follow → ATProto follow records           │   │
-│   │  • Translates ActivityPub RSVP → ATProto participation records      │   │
-│   │  • Would provide WebFinger, Actor endpoints, Inbox/Outbox (planned) │   │
-│   └─────────────────────────────────────────────────────────────────────┘   │
-│                                        │                                    │
-│                                        ▼                                    │
-│   ┌─────────────────────────────────────────────────────────────────────┐   │
-│   │                      Fediverse                                       │   │
-│   │              (Mastodon, Mobilizon, Pleroma, etc.)                   │   │
-│   └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-# Core Features
-
-## Two-Tier Verification System
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    VERIFICATION SYSTEM                              │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  TIER 1: User-Submitted Events                                      │
-│  ├── Anyone can create account                                      │
-│  ├── Can post events immediately                                    │
-│  ├── Events marked as "User Reported"                               │
-│  ├── Subject to community moderation                                │
-│  └── Strike/ban system for violations                               │
-│                                                                     │
-│  TIER 2: Verified Organizations                                     │
-│  ├── Application required                                           │
-│  └── Fact-checking process:                                         │
-│      └── Organization exists? (registration check)                  │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-## Advanced Filtering System
-
-| Filter | Options | Description |
-|--------|---------|-------------|
-| **Audience Age** | Children, Youth, Adults, Seniors, All Ages | Target demographic |
-| **Gender** | Men-only, Women-only, Mixed, Family | Audience type |
-| **Location** | Venue, online, or hybrid | Session location filters |
-| **Language** | Arabic, English, French, etc. | Event language |
-| **Event Type** | Webinar, Conference | Event Type |
-| **Madhab** | Hanafi, Maliki, Shafi'i, Hanbali | Islamic jurisprudence school |
-| **Category** | Aqidah, Fiqh, Tafsir, Hadith, etc. | Event classification |
-| **Tag** | Sheikh, workshop, community | Event tags |
-| **TagType** | Person, Channel, oeuvres | Tag classification |
-| **TagTypeTags** | Specific tags within TagType | e.g., Person → Mohammed Hijab |
-| **Event Format** | In-person, Online, Hybrid | Event format |
-| **Date/Time** | Upcoming, This Week, This Month, Custom | Temporal filtering |
-| **Verification** | Verified only, All | Trust level |
-
-## Liturgical Temporal Engine
-
-**Dynamic Prayer-Relative Scheduling**:
-
-- Events can be scheduled relative to prayer times (e.g., "15 minutes after Maghrib")
-- Exact times can be resolved using prayer-time providers when configured
-
-## Moderation System
-
-Still todo
-
-## Data Portability
-
-Export formats supported:
-- **iCal/ICS**: Standard calendar format for events
-- **CSV**: Attendee lists, organizations, bulk data
-- **ActivityPub-native** (planned): Federation-compatible JSON-LD
-- **Full database dump**: Complete data export for self-hosters
+## Near-Term Documentation Contract
+Use the following docs as source of truth while implementing:
+- `docs/QUICK_REFERENCE.md`
+- `docs/ARCHITECTURE.md`
+- `docs/API.md`
+- `docs/SECURITY.md`
+- `docs/MULTI_TENANCY.md`

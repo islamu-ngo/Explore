@@ -1,17 +1,10 @@
 // ABOUTME: Blazor JS interop wrapper for provider-agnostic analytics bridge functions.
 // ABOUTME: Initializes provider adapter from public settings payload and safely no-ops on JS failures.
 
+using Explore.Blazor.Client.Contracts.Interop;
 using Microsoft.JSInterop;
 
 namespace Explore.Blazor.Client.Services;
-
-public interface IAnalyticsInterop
-{
-    Task InitAsync(string analyticsProvider, bool analyticsEnabled, string? apiKey, string? endpointUrl);
-    Task TrackAsync(string eventName, IDictionary<string, object>? properties = null);
-    Task IdentifyAsync(string distinctId, IDictionary<string, object>? traits = null);
-    Task PageViewAsync(string pagePath, IDictionary<string, object>? properties = null);
-}
 
 public class AnalyticsInterop : IAnalyticsInterop, IAsyncDisposable
 {

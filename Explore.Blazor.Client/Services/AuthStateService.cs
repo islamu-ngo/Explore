@@ -1,33 +1,10 @@
 using System.Security.Claims;
 using Explore.Blazor.Client.Configuration;
+using Explore.Blazor.Client.Contracts.Providers;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Options;
 
 namespace Explore.Blazor.Client.Services;
-
-/// <summary>
-/// Centralized service for authentication state management.
-/// Provides secure access to current user ID and tenant ID from JWT claims.
-/// </summary>
-public interface IAuthStateService
-{
-    /// <summary>
-    /// Gets the current authenticated user's ID from JWT claims.
-    /// Throws UnauthorizedAccessException if user is not authenticated.
-    /// </summary>
-    Task<string> GetCurrentUserIdAsync();
-
-    /// <summary>
-    /// Gets the current tenant ID for the authenticated user.
-    /// Throws UnauthorizedAccessException if tenant context is not available.
-    /// </summary>
-    Task<Guid> GetCurrentTenantIdAsync();
-
-    /// <summary>
-    /// Checks if the current user is authenticated.
-    /// </summary>
-    Task<bool> IsAuthenticatedAsync();
-}
 
 public class AuthStateService : IAuthStateService
 {

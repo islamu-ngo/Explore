@@ -30,7 +30,7 @@ public class AdminListTests : IDisposable
 
     private IRenderedComponent<DynamicComponent> RenderOrganizationsSection()
     {
-        var componentType = typeof(IAdminService).Assembly.GetType("Explore.Blazor.Client.Components.Admin.Tenant.TenantOrganizationsSection")
+        var componentType = typeof(IAdminService).Assembly.GetType("Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantOrganizationsSection")
                             ?? throw new InvalidOperationException("TenantOrganizationsSection component type not found");
 
         return _ctx.RenderMudComponent<DynamicComponent>(p => p.Add(x => x.Type, componentType));

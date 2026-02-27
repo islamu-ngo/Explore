@@ -1,0 +1,220 @@
+@* ABOUTME: Dialog for creating or editing the Islamic aspect of an event. *@
+@* Allows setting Madhab, prayer timing, gender mode, Quran recitation, and language. *@
+
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Contracts.Services.Events
+@using Explore.Blazor.Client.Contracts.Services.Lookup
+@using MudBlazor
+
+@inject IEventAspectService EventAspectService
+@inject IMadhabService MadhabService
+@inject ILanguageService LanguageService
+@inject ISnackbar Snackbar
+@inject ILogger<IslamicAspectEditDialog> Logger
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Mosque" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">@(IsNew ? "Add Islamic Characteristics" : "Edit Islamic Characteristics")</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        @if (_isLoading)
+        {
+            <div class="d-flex justify-center pa-4">
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            </div>
+        }
+        else
+        {
+            <MudForm @ref="_form" @bind-IsValid="_isValid">
+                <MudGrid Spacing="3">
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="int?"
+                                   Label="Madhab (School of Jurisprudence)"
+                                   @bind-Value="_model.MadhabId"
+                                   Clearable="true"
+                                   Variant="Variant.Outlined">
+                            @foreach (var madhab in _madhabs)
+                            {
+                                <MudSelectItem T="int?" Value="@madhab.Id">@madhab.FullName</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="int?"
+                                   Label="Gender Mode"
+                                   @bind-Value="_model.GenderMode"
+                                   Variant="Variant.Outlined">
+                            <MudSelectItem T="int?" Value="(int)GenderSegregationMode.Mixed">Mixed</MudSelectItem>
+                            <MudSelectItem T="int?" Value="(int)GenderSegregationMode.MenOnly">Men Only</MudSelectItem>
+                            <MudSelectItem T="int?" Value="(int)GenderSegregationMode.WomenOnly">Women Only</MudSelectItem>
+                            <MudSelectItem T="int?" Value="(int)GenderSegregationMode.Segregated">Segregated</MudSelectItem>
+                            <MudSelectItem T="int?" Value="(int)GenderSegregationMode.Family">Family</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="int?"
+                                   Label="Reference Prayer Time"
+                                   @bind-Value="_model.ReferencePrayer"
+                                   Clearable="true"
+                                   HelperText="Schedule event relative to a prayer time"
+                                   Variant="Variant.Outlined">
+                            <MudSelectItem T="int?" Value="(int)PrayerTime.Fajr">Fajr</MudSelectItem>
+                            <MudSelectItem T="int?" Value="(int)PrayerTime.Sunrise">Sunrise</MudSelectItem>
+                            <MudSelectItem T="int?" Value="(int)PrayerTime.Dhuhr">Dhuhr</MudSelectItem>
+                            <MudSelectItem T="int?" Value="(int)PrayerTime.Asr">Asr</MudSelectItem>
+                            <MudSelectItem T="int?" Value="(int)PrayerTime.Maghrib">Maghrib</MudSelectItem>
+                            <MudSelectItem T="int?" Value="(int)PrayerTime.Isha">Isha</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudNumericField T="int?"
+                                         Label="Prayer Time Offset (minutes)"
+                                         @bind-Value="_model.PrayerTimeOffset"
+                                         Disabled="@(_model.ReferencePrayer == null)"
+                                         HelperText="Minutes before (-) or after (+) prayer"
+                                         Variant="Variant.Outlined" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="int?"
+                                   Label="Primary Language"
+                                   @bind-Value="_model.PrimaryLanguageId"
+                                   Clearable="true"
+                                   Variant="Variant.Outlined">
+                            @foreach (var language in _languages)
+                            {
+                                <MudSelectItem T="int?" Value="@language.Id">@language.FullName</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudCheckBox T="bool?"
+                                     @bind-Value="_model.IncludesQuranRecitation"
+                                     Label="Includes Quran Recitation"
+                                     Color="Color.Primary" />
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Variant="Variant.Text">Cancel</MudButton>
+        <MudButton OnClick="SaveAsync"
+                   Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Disabled="@(_isSaving || _isLoading)">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                <span>Saving...</span>
+            }
+            else
+            {
+                <span>Save</span>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public Guid EventId { get; set; }
+
+    [Parameter]
+    public EventIslamicAspectDto? ExistingAspect { get; set; }
+
+    private bool IsNew => ExistingAspect == null;
+
+    private MudForm _form = null!;
+    private bool _isValid;
+    private bool _isLoading = true;
+    private bool _isSaving;
+
+    private CreateUpdateIslamicAspectDto _model = new();
+    private ICollection<MadhabListDto> _madhabs = new List<MadhabListDto>();
+    private ICollection<LanguageListDto> _languages = new List<LanguageListDto>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLookupsAsync();
+
+        if (ExistingAspect != null)
+        {
+            _model = new CreateUpdateIslamicAspectDto
+            {
+                MadhabId = ExistingAspect.MadhabId,
+                ReferencePrayer = ExistingAspect.ReferencePrayer,
+                PrayerTimeOffset = ExistingAspect.PrayerTimeOffset,
+                GenderMode = ExistingAspect.GenderMode,
+                IncludesQuranRecitation = ExistingAspect.IncludesQuranRecitation,
+                PrimaryLanguageId = ExistingAspect.PrimaryLanguageId
+            };
+        }
+
+        _isLoading = false;
+    }
+
+    private async Task LoadLookupsAsync()
+    {
+        try
+        {
+            var madhabsTask = MadhabService.GetMadhabsAsync();
+            var languagesTask = LanguageService.GetLanguagesAsync();
+
+            await Task.WhenAll(madhabsTask, languagesTask);
+
+            _madhabs = await madhabsTask;
+            _languages = await languagesTask;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load lookups for Islamic aspect dialog");
+            Snackbar.Add("Failed to load form data", Severity.Error);
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_isSaving) return;
+
+        _isSaving = true;
+
+        try
+        {
+            var response = await EventAspectService.UpsertIslamicAspectAsync(EventId, _model);
+
+            if (response?.Success == true)
+            {
+                Snackbar.Add(IsNew ? "Islamic characteristics added" : "Islamic characteristics updated", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                var errorMessage = response?.Errors?.FirstOrDefault() ?? "Failed to save Islamic characteristics";
+                Snackbar.Add(errorMessage, Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving Islamic aspect for event {EventId}", EventId);
+            Snackbar.Add("An error occurred while saving", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

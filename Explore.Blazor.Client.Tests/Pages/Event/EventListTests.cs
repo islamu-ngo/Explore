@@ -2,7 +2,7 @@
 // ABOUTME: Verifies stable UX state transitions with Virtualize-backed API paging.
 
 using Explore.Blazor.Client.Models;
-using Explore.Blazor.Client.Pages.Event;
+using Explore.Blazor.Client.Pages.Events;
 using Microsoft.AspNetCore.Components.Web.Virtualization;
 using MudBlazor;
 

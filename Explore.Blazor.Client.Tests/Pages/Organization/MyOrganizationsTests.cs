@@ -1,7 +1,7 @@
 // ABOUTME: Component tests for MyOrganizations auth-sensitive loading/error/empty/data states.
 // ABOUTME: Verifies resilient rendering when organization fetch succeeds, fails, or is empty.
 
-using Explore.Blazor.Client.Pages.Organization;
+using Explore.Blazor.Client.Pages.Organizations;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Pages.Organization;

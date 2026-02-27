@@ -1,7 +1,7 @@
 // ABOUTME: Component tests for MyEvents auth-sensitive loading/error/empty/success states.
 // ABOUTME: Verifies resilient rendering for parallel data load and event list presentation.
 
-using Explore.Blazor.Client.Pages.Event;
+using Explore.Blazor.Client.Pages.Events;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Pages.Event;

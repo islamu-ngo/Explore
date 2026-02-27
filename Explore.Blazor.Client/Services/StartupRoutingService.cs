@@ -1,11 +1,8 @@
 // ABOUTME: Centralizes root/startup routing decisions using instance onboarding and public experience settings.
 
-namespace Explore.Blazor.Client.Services;
+using Explore.Blazor.Client.Contracts.Providers;
 
-public interface IStartupRoutingService
-{
-    Task<StartupRouteDecision> GetRootDecisionAsync();
-}
+namespace Explore.Blazor.Client.Services;
 
 public sealed class StartupRoutingService : IStartupRoutingService
 {

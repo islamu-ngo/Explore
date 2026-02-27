@@ -77,7 +77,7 @@ public class InstanceGovernanceSectionTests : IDisposable
 
     private IRenderedComponent<DynamicComponent> RenderGovernanceSection(InstanceGovernanceSettingsModel model)
     {
-        var componentType = typeof(IInstanceOnboardingService).Assembly.GetType("Explore.Blazor.Client.Components.Admin.Instance.InstanceGovernanceSection")
+        var componentType = typeof(IInstanceOnboardingService).Assembly.GetType("Explore.Blazor.Client.Pages.Admin.Instance.Components.InstanceGovernanceSection")
                             ?? throw new InvalidOperationException("InstanceGovernanceSection component type not found");
 
         return _ctx.RenderMudComponent<DynamicComponent>(p =>

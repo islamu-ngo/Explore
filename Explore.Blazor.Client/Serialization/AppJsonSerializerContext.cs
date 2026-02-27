@@ -6,7 +6,7 @@ using System.Text.Json.Serialization;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Models.Responses;
-using Explore.Blazor.Client.Pages.Event;
+using Explore.Blazor.Client.Pages.Events;
 
 namespace Explore.Blazor.Client.Serialization;
 

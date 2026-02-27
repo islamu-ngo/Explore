@@ -19,6 +19,7 @@
 - [2026-02-15 21:28 Europe/Brussels] Attempted to filter TUnit tests via standard `--filter` flow; this runner uses different option handling and rejected the argument. Use project runs and targeted suite partitioning instead.
 - [2026-02-23 18:12 Europe/Brussels] Tried using `rg --files dev/active` from shell for inventory, but local `rg` shim failed with permission error in this environment. Switched to `glob`/`grep` + Python file append script.
 - [2026-02-23 18:47 Europe/Brussels] Initial category edit dialog wiring used `CategoryDto` from API details fetch, but dialog parameter expects `CategoryListDto`; this caused compile errors and was corrected by passing the list DTO directly.
+- [2026-02-27 Europe/Brussels] Attempted PowerShell-style orphan CSS check in Bash shell; command failed due to shell syntax mismatch. Switched to POSIX loop over `git ls-files` and completed orphan check successfully.
 
 ## Deferred Fixes
 - [2026-02-18 Europe/Brussels] Add `RateLimiting:*` and `Cors:AllowedOrigins` config sections to `appsettings.json` with explicit default values.
@@ -31,12 +32,21 @@
 - [2026-02-23 18:12 Europe/Brussels] Implement admin consolidation code changes tracked in `dev/active/navbar-customization/*` (tenant panel Organizations/Lookup sections, instance panel SMTP section, NavMenu updates, remove `/admin` and standalone lookup pages), then run diagnostics/build/tests.
 - [2026-02-23 18:47 Europe/Brussels] Perform manual browser smoke verification for tenant/instance admin pages (organizations actions, lookup CRUD dialogs, SMTP save/test flow, role-based navbar entries).
 - [2026-02-23 18:47 Europe/Brussels] Address pre-existing MudBlazor analyzer/nullability warnings repository-wide in a separate quality pass.
+- [2026-02-27 Europe/Brussels] Update every checkbox in `dev/active/blazor-folder-restructure/blazor-folder-restructure-tasks.md` to exactly mirror completed migration actions (currently summarized in execution-status section).
+- [2026-02-27 Europe/Brussels] Run the full mandatory multi-project test matrix from `CLAUDE.md` before final release/merge gate for this large restructure.
 
 ## Key Decisions
 - [2026-02-23 18:12 Europe/Brussels] For context-reset safety, append a standardized session update block to every `dev/active/*-context.md` and `dev/active/*-tasks.md`, then add detailed track-specific handoff only in the active track (`navbar-customization`).
 - [2026-02-23 18:12 Europe/Brussels] Keep admin consolidation implementation plan in the existing `navbar-customization` track rather than creating a new active track folder to avoid split ownership before code changes begin.
 - [2026-02-23 18:47 Europe/Brussels] Keep SMTP settings persistence in instance governance `SystemSetting` keys (`GovernanceSettingKeys.Email*`) with explicit CQRS handlers and service abstraction, mirroring storage settings architecture.
 - [2026-02-23 18:47 Europe/Brussels] Remove legacy standalone admin pages/routes now that their functionality is consolidated into panel sections to avoid duplicate admin surfaces.
+- [2026-02-27 Europe/Brussels] For Blazor dialog migrations, enforce static `ShowAsync(...)` in `.razor.cs` partials and keep `.razor` markup-only where possible; this prevents call-site drift and preserves testable invocation patterns.
+- [2026-02-27 Europe/Brussels] For context-limit handoff, update every active task folder with an explicit session checkpoint entry, then maintain deep implementation state in the actually active track file.
+- [2026-02-27 Europe/Brussels] Adopt root `Explore.Blazor.Client/Contracts` as the client public API boundary; keep `Services/` for implementations only and split contracts by `Services`, `Providers`, and `Interop`.
+
+## Technical Insights
+- [2026-02-27 Europe/Brussels] Bulk namespace refactors in C# must include Razor `@using` directives (`_Imports.razor` + feature dialogs/pages); otherwise builds fail with repetitive `Services.Contracts` resolution errors despite C# files being updated.
+- [2026-02-27 Europe/Brussels] Adding a dedicated `Explore.Blazor.Client/GlobalUsings.Contracts.cs` significantly reduces churn during contract namespace migrations and avoids per-file import drift.
 
 ## Technical Insights
 - [2026-02-23 18:12 Europe/Brussels] Admin claims/UI integration in this codebase is claim-driven (`IsInstanceAdmin`, `IsTenantAdmin`, `HasAnyAdminAuthority` in `NavMenu.razor.cs`), so navbar/admin visibility changes should stay claim-based instead of introducing new role checks in UI components.

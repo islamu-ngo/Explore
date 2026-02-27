@@ -1,0 +1,649 @@
+// ABOUTME: Code-behind for the Create Event page.
+// Allows users to create events as themselves (user-reported), an organization, or a group they can publish for.
+
+using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Helpers;
+using Explore.Blazor.Client.Pages.Events.Components;
+using Explore.Blazor.Client.Services;
+using Explore.Blazor.Client.Shared;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.Extensions.Logging;
+using MudBlazor;
+using static Explore.Blazor.Client.Pages.Events.Components.EventSessionEditor;
+
+namespace Explore.Blazor.Client.Pages.Events;
+
+public partial class CreateEvent
+{
+    [Inject] protected IEventService EventService { get; set; } = null!;
+    [Inject] protected IOrganizationService OrganizationService { get; set; } = null!;
+    [Inject] protected IGroupService GroupService { get; set; } = null!;
+    [Inject] protected IUserService UserService { get; set; } = null!;
+    [Inject] protected IAdminService AdminService { get; set; } = null!;
+    [Inject] protected IImageStorageService ImageStorageService { get; set; } = null!;
+    [Inject] protected ICategoryService CategoryService { get; set; } = null!;
+    [Inject] protected ITagService TagService { get; set; } = null!;
+    [Inject] protected ILocationService LocationService { get; set; } = null!;
+    [Inject] protected NavigationManager Navigation { get; set; } = null!;
+    [Inject] protected IDialogService DialogService { get; set; } = null!;
+    [Inject] protected ILogger<CreateEvent> Logger { get; set; } = null!;
+
+    // Publisher selection state
+    private string _publisherMode = "personal";
+    private Guid? _selectedOrganizationId;
+    private ICollection<OrganizationListDto>? _myOrganizations;
+    private string _organizationRoleError = string.Empty;
+    private Guid? _selectedGroupId;
+    private ICollection<GroupPublisherListDto>? _myGroups;
+    private string _groupRoleError = string.Empty;
+
+    private const int GroupCreatorRoleId = 30;
+    private const int GroupAdminRoleId = 31;
+
+    private Guid? _currentUserId;
+    private CreateEventDto createDto = new();
+    private ICollection<EventTypeListDto>? eventTypes;
+    private ICollection<AudienceGenderListDto>? audienceGenders;
+    private ICollection<AudienceAgeListDto>? audienceAges;
+    private ICollection<EventFormatListDto>? eventFormats;
+    private ICollection<VisibilityTypeListDto>? visibilityTypes;
+    private ICollection<MadhabListDto>? madhabs;
+    private ICollection<CategoryListDto>? allCategories;
+    private ICollection<TagListDto>? allTags;
+    private ICollection<LocationListDto>? locations;
+    private ICollection<RegistrationModeListDto>? registrationModes;
+    private ICollection<LanguageListDto>? languages;
+    private bool isLoading = true;
+    private bool _isRetrying = false;
+    private bool _dataLoaded = false;
+    private int? selectedMadhabId = null;
+    private string errorMessage = string.Empty;
+
+    // Image upload state
+    private FileUploadData? _selectedFileData;
+    private string? imagePreviewUrl;
+    private bool _isUploadingImage = false;
+    private Guid? _uploadedImageStorageObjectId = null;
+    private ImageUpload? _imageUploadComponent;
+    private string? _uploadError;
+
+    // Categories and Tags selection
+    private IEnumerable<Guid> selectedCategoryIds = new HashSet<Guid>();
+    private IEnumerable<Guid> selectedTagIds = new HashSet<Guid>();
+
+    // Sessions
+    private List<SessionEditorModel> sessions = new();
+    private EventAppearanceSettings _appearance = new();
+    private int _activeStepIndex = 0;
+    private const int LastWizardStepIndex = 4;
+
+    private bool isProcessing = false;
+    private Guid createdEventId = Guid.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Logger.LogInformation("OnInitializedAsync starting");
+        await LoadFormData();
+
+        if (!sessions.Any())
+        {
+            AddSession();
+        }
+    }
+
+    /// <summary>
+    /// Handles organization selection change. Validates user role for the selected organization.
+    /// </summary>
+    private void OnOrganizationSelected(Guid? orgId)
+    {
+        _selectedOrganizationId = orgId;
+        _organizationRoleError = string.Empty;
+
+        if (orgId.HasValue && _myOrganizations != null)
+        {
+            var org = _myOrganizations.FirstOrDefault(o => o.Id == orgId.Value);
+            if (org?.CurrentUserRole != null)
+            {
+                if (!RoleHelper.CanManage(org.CurrentUserRole))
+                {
+                    _organizationRoleError = "You don't have the authority to perform that action. Only Creator, Co-Owner, or Admin roles can publish events.";
+                }
+            }
+        }
+    }
+
+    private void OnGroupSelected(Guid? groupId)
+    {
+        _selectedGroupId = groupId;
+        _groupRoleError = string.Empty;
+
+        if (groupId.HasValue && _myGroups != null)
+        {
+            var group = _myGroups.FirstOrDefault(g => g.Id == groupId.Value);
+            if (group?.CurrentUserRole != null)
+            {
+                if (!CanPublishAsGroup(group.CurrentUserRole))
+                {
+                    _groupRoleError = "You don't have the authority to publish events for this group. Only Creator or Admin roles can publish events.";
+                }
+            }
+        }
+    }
+
+    private Guid? SelectedOrganizationId
+    {
+        get => _selectedOrganizationId;
+        set
+        {
+            if (_selectedOrganizationId == value)
+            {
+                return;
+            }
+
+            OnOrganizationSelected(value);
+        }
+    }
+
+    private Guid? SelectedGroupId
+    {
+        get => _selectedGroupId;
+        set
+        {
+            if (_selectedGroupId == value)
+            {
+                return;
+            }
+
+            OnGroupSelected(value);
+        }
+    }
+
+    /// <summary>
+    /// Handles file selection with FileUploadData (bytes already in memory).
+    /// This is the preferred method for reliable uploads in Blazor WASM.
+    /// </summary>
+    private async Task OnImageFileDataSelected(FileUploadData? fileData)
+    {
+        Logger.LogInformation("[CreateEvent] OnImageFileDataSelected called with fileData={HasData}", fileData != null);
+
+        _selectedFileData = fileData;
+        _uploadError = null;
+
+        if (fileData == null)
+        {
+            _uploadedImageStorageObjectId = null;
+            Logger.LogInformation("[CreateEvent] Image selection cleared");
+            return;
+        }
+
+        _isUploadingImage = true;
+        Logger.LogInformation("[CreateEvent] Setting _isUploadingImage=true, calling StateHasChanged...");
+        // Required: non-UI thread callback
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            Logger.LogInformation("[CreateEvent] Starting upload for {FileName} ({Size} bytes)", fileData.FileName, fileData.Size);
+
+            Logger.LogInformation("[CreateEvent] Calling ImageStorageService.UploadAndCreateRecordFromBytesAsync...");
+            var uploadResult = await ImageStorageService.UploadAndCreateRecordFromBytesAsync(fileData);
+            Logger.LogInformation("[CreateEvent] Upload result: Success={Success}, StorageObjectId={Id}, Error={Error}",
+                uploadResult?.Success, uploadResult?.StorageObjectId, uploadResult?.ErrorMessage);
+
+            if (uploadResult?.Success == true)
+            {
+                _uploadedImageStorageObjectId = uploadResult.StorageObjectId;
+                _uploadError = null;
+                Logger.LogInformation("[CreateEvent] Featured image uploaded successfully. StorageObjectId: {StorageObjectId}", uploadResult.StorageObjectId);
+            }
+            else
+            {
+                var errorMsg = uploadResult?.ErrorMessage ?? "Failed to upload image. Please try again.";
+                Logger.LogWarning("[CreateEvent] Image upload failed: {ErrorMessage}", errorMsg);
+                _uploadError = errorMsg;
+
+                await ClearUploadState();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Exception during image upload for {FileName}", fileData.FileName);
+            _uploadError = $"Upload error: {ex.Message}";
+
+            await ClearUploadState();
+        }
+        finally
+        {
+            _isUploadingImage = false;
+            // Required: non-UI thread callback
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    /// <summary>
+    /// Clears the upload state on error or cancellation.
+    /// </summary>
+    private async Task ClearUploadState()
+    {
+        try
+        {
+            if (_imageUploadComponent != null)
+            {
+                await _imageUploadComponent.RemoveImage();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error clearing image upload component");
+        }
+
+        _selectedFileData = null;
+        _uploadedImageStorageObjectId = null;
+        imagePreviewUrl = null;
+    }
+
+    private void SetDefaultValues()
+    {
+        // EventTypeId, AudienceGenderId, AudienceAgeId are now optional (nullable)
+        // We do NOT want to auto-select the first item.
+
+        if (eventFormats?.Any() == true && createDto.EventFormatId is null or <= 0)
+        {
+            createDto.EventFormatId = eventFormats.First().Id;
+        }
+        if (visibilityTypes?.Any() == true && createDto.VisibilityTypeId is null or <= 0)
+        {
+            createDto.VisibilityTypeId = visibilityTypes.First().Id;
+        }
+        if (createDto.EventStatusId is null or <= 0)
+        {
+            createDto.EventStatusId = 1;
+        }
+
+        if (!createDto.IsRegistrationRequired.HasValue)
+        {
+            createDto.IsRegistrationRequired = true;
+        }
+    }
+
+    private void GoToNextStep()
+    {
+        if (_activeStepIndex < LastWizardStepIndex)
+        {
+            _activeStepIndex++;
+        }
+    }
+
+    private void GoToPreviousStep()
+    {
+        if (_activeStepIndex > 0)
+        {
+            _activeStepIndex--;
+        }
+    }
+
+    private async Task RetryLoad()
+    {
+        _isRetrying = true;
+        _dataLoaded = false;
+
+        await Task.Delay(100);
+        await LoadFormData();
+
+        _isRetrying = false;
+    }
+
+    private async Task LoadFormData()
+    {
+        if (_dataLoaded) return;
+
+        try
+        {
+            isLoading = true;
+
+            Logger.LogInformation("Loading form data for create event page");
+
+            // Get current user ID
+            if (!_currentUserId.HasValue)
+            {
+                try
+                {
+                    var currentUser = await UserService.GetCurrentUserAsync();
+                    if (currentUser != null)
+                    {
+                        _currentUserId = currentUser.Id;
+                        Logger.LogInformation("Current user ID: {UserId}", _currentUserId);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error getting current user");
+                }
+            }
+
+            // Load user's organizations for the publisher selector
+            try
+            {
+                _myOrganizations = await OrganizationService.GetMyOrganizationsAsync();
+                Logger.LogInformation("Loaded {Count} organizations for publisher selector", _myOrganizations?.Count ?? 0);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error loading user organizations");
+                _myOrganizations = new List<OrganizationListDto>();
+            }
+
+            try
+            {
+                _myGroups = await GroupService.GetMyGroupsAsync();
+                Logger.LogInformation("Loaded {Count} groups for publisher selector", _myGroups?.Count ?? 0);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error loading user groups");
+                _myGroups = new List<GroupPublisherListDto>();
+            }
+
+            // Load dropdown data in parallel
+            var eventTypesTask = AdminService.GetEventTypesAsync();
+            var audienceGendersTask = AdminService.GetAudienceGendersAsync();
+            var audienceAgesTask = AdminService.GetAudienceAgesAsync();
+            var eventFormatsTask = AdminService.GetEventFormatsAsync();
+            var visibilityTypesTask = AdminService.GetVisibilityTypesAsync();
+            var madhabsTask = AdminService.GetMadhabsAsync();
+            var categoriesTask = CategoryService.GetAllCategoriesAsync();
+            var tagsTask = TagService.GetAllTagsAsync();
+            var locationsTask = LocationService.GetAllLocationsAsync();
+            var registrationModesTask = AdminService.GetRegistrationModesAsync();
+            var languagesTask = AdminService.GetLanguagesAsync();
+
+            await Task.WhenAll(eventTypesTask, audienceGendersTask, audienceAgesTask, eventFormatsTask, visibilityTypesTask, madhabsTask, categoriesTask, tagsTask, locationsTask, registrationModesTask, languagesTask);
+
+            eventTypes = await eventTypesTask;
+            audienceGenders = await audienceGendersTask;
+            audienceAges = await audienceAgesTask;
+            eventFormats = await eventFormatsTask;
+            visibilityTypes = await visibilityTypesTask;
+            madhabs = await madhabsTask;
+            allCategories = await categoriesTask;
+            allTags = await tagsTask;
+            locations = await locationsTask;
+            registrationModes = await registrationModesTask;
+            languages = await languagesTask;
+
+            SetDefaultValues();
+            _dataLoaded = true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading form data");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private bool ValidateForm()
+    {
+        errorMessage = string.Empty;
+
+        // Validate publisher selection (business logic - not covered by FluentValidation)
+        if (_publisherMode == "organization")
+        {
+            if (!_selectedOrganizationId.HasValue)
+            {
+                errorMessage = "Please select an organization.";
+                return false;
+            }
+            if (!string.IsNullOrEmpty(_organizationRoleError))
+            {
+                errorMessage = _organizationRoleError;
+                return false;
+            }
+        }
+
+        if (_publisherMode == "group")
+        {
+            if (!_selectedGroupId.HasValue)
+            {
+                errorMessage = "Please select a group.";
+                return false;
+            }
+            if (!string.IsNullOrEmpty(_groupRoleError))
+            {
+                errorMessage = _groupRoleError;
+                return false;
+            }
+        }
+
+        // DTO field validation (Title, EventTypeId, etc.) is handled by CreateEventDtoValidator via FluentValidation
+
+        if (sessions == null || !sessions.Any())
+        {
+            errorMessage = "You must add at least one session.";
+            return false;
+        }
+
+        return true;
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (_activeStepIndex != LastWizardStepIndex)
+        {
+            return;
+        }
+
+        if (!ValidateForm())
+        {
+            return;
+        }
+
+        // Don't allow submit while image is uploading
+        if (_isUploadingImage)
+        {
+            errorMessage = "Please wait for the image upload to complete.";
+            return;
+        }
+
+        if (isProcessing) return;
+        isProcessing = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            // Image was already uploaded when selected - use the stored ID
+            Guid? featuredImageId = _uploadedImageStorageObjectId;
+
+            if (featuredImageId.HasValue)
+            {
+                Logger.LogInformation("Using pre-uploaded image. StorageObjectId: {StorageObjectId}", featuredImageId);
+            }
+
+            // Set publisher context: null = personal (user-reported), Guid = organization
+            createDto.OrganizationId = _publisherMode == "organization" ? _selectedOrganizationId : null;
+            createDto.GroupId = _publisherMode == "group" ? _selectedGroupId : null;
+            createDto.FeaturedImageId = featuredImageId;
+            createDto.MadhabId = selectedMadhabId;
+            createDto.IsRegistrationRequired = sessions.Any(s => s.RegistrationModeId is > 0);
+            createDto.EventStatusId ??= 1;
+            createDto.VisibilityTypeId ??= 1;
+            createDto.EventFormatId ??= 1;
+            createDto.MetadataJson = EventAppearanceMetadataHelper.Upsert(createDto.MetadataJson, _appearance);
+
+            // Calculate Event Start/End dates from Sessions
+            var earliestStart = sessions.Min(s => DateTimeHelper.ConvertLocalToUtc(s.StartTime));
+            var latestEnd = sessions.Max(s => DateTimeHelper.ConvertLocalToUtc(s.EndTime));
+
+            createDto.FirstSessionDate = earliestStart;
+            createDto.LastSessionDate = latestEnd;
+
+            // Create Event
+            Logger.LogInformation(
+                "Creating event record (publisherMode={Mode}, organizationId={OrgId}, groupId={GroupId})",
+                _publisherMode,
+                createDto.OrganizationId,
+                createDto.GroupId);
+            var response = await EventService.CreateEventAsync(createDto);
+
+            if (response?.Success == true && response.Id.HasValue && response.Id != Guid.Empty)
+            {
+                createdEventId = response.Id.Value;
+                Logger.LogInformation("Event created with ID: {EventId}", createdEventId);
+
+                if (selectedCategoryIds.Any() || selectedTagIds.Any())
+                {
+                    Logger.LogWarning(
+                        "Selected categories/tags are currently not persisted because the Event API does not expose event-category/event-tag assignment endpoints.");
+                }
+
+                var tenantId = Constants.TenantConstants.DefaultTenantId;
+
+                // Handle Sessions
+                var existingSessions = await EventService.GetSessionsByEventAsync(createdEventId);
+                var defaultSession = existingSessions?.FirstOrDefault();
+
+                // Process first session (Update default)
+                if (defaultSession != null && sessions.Count > 0)
+                {
+                    var firstSessionModel = sessions[0];
+                    firstSessionModel.Id = defaultSession.Id;
+
+                    var updateDto = firstSessionModel.ToUpdateDto(createdEventId);
+                    await EventService.UpdateSessionAsync(updateDto);
+
+                }
+
+                // Process additional sessions (Create)
+                for (int i = 1; i < sessions.Count; i++)
+                {
+                    var sessionModel = sessions[i];
+                    var createSessionDto = sessionModel.ToCreateDto(createdEventId, tenantId);
+                    var createResponse = await EventService.CreateSessionAsync(createSessionDto);
+
+                }
+
+                Navigation.NavigateTo($"/event/detail/{createdEventId}");
+            }
+            else
+            {
+                var errorMsg = response?.Message ?? "Failed to create event.";
+                if (response?.Errors != null && response.Errors.Any())
+                {
+                    errorMsg += " Errors: " + string.Join(", ", response.Errors);
+                }
+                errorMessage = errorMsg;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Exception during event creation");
+            errorMessage = $"Error creating event: {ex.Message}";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    // Session management
+    private void AddSession()
+    {
+        var defaultStart = DateTime.Today.AddDays(1).AddHours(9);
+        var defaultEnd = DateTime.Today.AddDays(1).AddHours(17);
+
+        if (sessions.Any())
+        {
+            var last = sessions.Last();
+            defaultStart = last.StartTime.AddDays(1);
+            defaultEnd = last.EndTime.AddDays(1);
+        }
+
+        sessions.Add(new SessionEditorModel
+        {
+            StartTime = defaultStart,
+            EndTime = defaultEnd,
+            RegistrationModeId = sessions.FirstOrDefault()?.RegistrationModeId ?? 1
+        });
+    }
+
+    private async void RemoveSession(int index)
+    {
+        if (index >= 0 && index < sessions.Count)
+        {
+            if (sessions.Count <= 1)
+            {
+                errorMessage = "You must have at least one session.";
+                return;
+            }
+
+            var session = sessions[index];
+
+            if (session.Id.HasValue && session.Id != Guid.Empty)
+            {
+                bool? confirm = await DialogService.ShowMessageBox(
+                    "Delete Session",
+                    "This session already exists. Deleting it here will remove it permanently. Continue?",
+                    yesText: "Delete", cancelText: "Cancel");
+
+                if (confirm == true)
+                {
+                    try
+                    {
+                        await EventService.DeleteSessionAsync(session.Id.Value);
+                        sessions.RemoveAt(index);
+                    }
+                    catch (Exception ex)
+                    {
+                        errorMessage = $"Failed to delete session: {ex.Message}";
+                    }
+                }
+            }
+            else
+            {
+                sessions.RemoveAt(index);
+            }
+        }
+    }
+
+    private void OnSessionChanged(int index, SessionEditorModel session)
+    {
+        if (index >= 0 && index < sessions.Count)
+        {
+            sessions[index] = session;
+        }
+    }
+
+    private string GetPublisherDescription()
+    {
+        if (_publisherMode == "personal")
+            return "Publishing as yourself (User Reported)";
+
+        if (_selectedOrganizationId.HasValue && _myOrganizations != null)
+        {
+            var org = _myOrganizations.FirstOrDefault(o => o.Id == _selectedOrganizationId.Value);
+            if (org != null) return $"Publishing for {org.FullName}";
+        }
+
+        if (_publisherMode == "group" && _selectedGroupId.HasValue && _myGroups != null)
+        {
+            var group = _myGroups.FirstOrDefault(g => g.Id == _selectedGroupId.Value);
+            if (group != null) return $"Publishing for {group.FullName}";
+        }
+
+        return "Select who is publishing this event";
+    }
+
+    private static string GetRoleName(int roleId) => roleId switch
+    {
+        GroupCreatorRoleId => "Group Creator",
+        GroupAdminRoleId => "Group Admin",
+        32 => "Group Moderator",
+        33 => "Group Member",
+        _ => RoleHelper.GetRoleName(roleId)
+    };
+
+    private static bool CanPublishAsGroup(int? roleId) => roleId is GroupCreatorRoleId or GroupAdminRoleId;
+}

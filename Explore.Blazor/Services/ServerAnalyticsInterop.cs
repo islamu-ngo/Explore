@@ -1,4 +1,4 @@
-using Explore.Blazor.Client.Services;
+using Explore.Blazor.Client.Contracts.Interop;
 
 namespace Explore.Blazor.Services;
 

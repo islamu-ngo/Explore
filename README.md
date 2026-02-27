@@ -31,7 +31,7 @@ The ISLAMU organization hosts a public instance focused on Islamic events, but t
 
 ISLAMU Event is a **self-hostable event discovery and management platform** that helps communities find, organize, and promote events. Built with advanced filtering, verification workflows, and cultural intelligence to serve diverse communities worldwide.
 
-> **v0.1.0 Beta** — First public release ready for beta testing. [See what's included →](docs/semantic_versioning/v0.1.0.md)
+> **v0.1.0 Beta** — Historical note: [v0.1.0 release file](docs/semantic_versioning/v0.1.0.md).
 
 > Give us a Star ⭐️
 
@@ -47,7 +47,7 @@ ISLAMU Event is a **self-hostable event discovery and management platform** that
 
 ### Key Differentiators
 
-- **🔐 Security-First:** BFF pattern (no tokens in browser), Cerbos fine-grained authorization, Infisical secrets management
+- **🔐 Security-First:** BFF pattern (no browser token storage), runtime authorization provider (Cerbos or local), secret provider abstraction
 - **🛡️ Verified Organizations:** Two-tier verification system for trust and quality
 - **⚡ Multi-Tenancy:** Runtime mode switching (Single-tenant ↔ Multi-tenant) without code changes
 - **🔧 Modular Events:** Plugin-style aspects (Islamic, Tech) with per-tenant enablement
@@ -63,7 +63,7 @@ ISLAMU Event is a **self-hostable event discovery and management platform** that
 
 ### For Event Seekers
 
-- **🔍 Advanced Discovery:** 33 query parameters including title search, date range, location radius, categories, tags, and more
+- **🔍 Advanced Discovery:** Event search with title, dates, location, categories, tags, and paging filters
 - **👨‍👩‍👧‍👦 Culturally-Aware Filters:** Age ranges, gender segregation modes, madhab targeting, prayer-relative timing (for instances that enable these modules)
 - **🌐 Multi-Language Support:** Event sessions with multiple language options
 - **📱 Responsive Design:** Mobile-friendly Blazor UI with MudBlazor components
@@ -80,7 +80,7 @@ ISLAMU Event is a **self-hostable event discovery and management platform** that
 
 ### For Platform Owners
 
-- **🐳 Docker-Ready:** One-command deployment with `docker-compose up -d`
+- **🐳 Docker-Ready:** One-command deployment with `docker compose up -d`
 - **💼 Multi-Tenancy:** Switch between single-tenant and SaaS modes at runtime without code changes
 - **🛠️ White-Label Control:** Custom branding, domains, logos, navigation links, policies per tenant
 - **🔧 Admin Hierarchy:** Instance admins, tenant admins, and organization admins with cascading settings
@@ -112,18 +112,18 @@ See [Configuration Guide][configuration-doc] for full customization options.
 
 We treat security as a first-class citizen, not an afterthought.
 
-* **Identity & Access:** Managed via **Keycloak**, supporting MFA, Social Login, and SAML/LDAP integration.
-* **Authorization:** Fine-grained access control (FGAC) powered by **Cerbos**: Policy Decision Point that coordinates unified policy-based authorization, allowing for complex "Who can do what" logic with human readable yaml for non technical users.
+* **Identity & Access:** OAuth2/OIDC via **Keycloak**.
+* **Authorization:** Runtime provider switching via system setting (Cerbos PDP or local DB-backed provider), with optional tenant BYO Cerbos.
 * **Data Integrity:** All database interactions use **Parameterized EF Core queries** to eliminate SQL injection.
-* **Secret Management:** Zero hardcoded credentials; all secrets are injected at runtime via **Infisical**.
-* **Observability:** Integrated **OpenTelemetry** for distributed tracing and real-time security monitoring.
+* **Secret Management:** Secret provider abstraction supports environment variables and Infisical-compatible loading.
+* **Observability:** **OpenTelemetry** + structured logging (Serilog).
 
 ### Security Features
 
 - **🔒 HTTPS Enforcement:** All traffic encrypted with HSTS
 - **🔐 Modern Authentication:** OAuth 2.0/OIDC via Keycloak
-- **🗝️ Secret Management:** Infisical vault for credentials
-- **🛡️ Authorization:** Policy-based access control via Cerbos
+- **🗝️ Secret Management:** Environment-first secret loading with optional Infisical compatibility
+- **🛡️ Authorization:** Runtime provider: Cerbos PDP or local authorization service
 - **🔍 Input Validation:** FluentValidation + ASP.NET Core model binding
 - **🚫 SQL Injection Prevention:** Parameterized queries (EF Core)
 - **🌐 CORS:** Configurable origin whitelist
@@ -132,13 +132,7 @@ We treat security as a first-class citizen, not an afterthought.
 ### Extensibility Model
 
 Events use **composition over inheritance**:
-
-```
-Event (Core)
-  ├── IslamicDetails (optional aspect)
-  ├── TechDetails (optional aspect)
-  └── EducationalDetails (optional aspect)
-```
+`Event` can optionally have `EventIslamicAspect` and/or `EventTechAspect` records (1:1 shared-key extensions).
 
 A "Ramadan Tech Workshop" has both Islamic and Tech aspects. No class explosion.
 
@@ -158,30 +152,32 @@ Visit **[event.openislamu.org](https://event.openislamu.org)** to:
 
 **Prerequisites:**
 - Docker
-- .NET 10 SDK (for development)
-- PostgreSQL 16+ with PostGIS (or use Docker)
+- .NET 10 SDK (solution targets `net10.0`; preview SDK pinned in `global.json`)
 
 **Quick Deploy:**
 ```bash
 # Clone the repository
-git clone https://github.com/islamu-ngo/Explore.git && cd Explore
+git clone https://github.com/islamu-ngo/Event.git && cd Event
 
 # Option 1: Start core services (API, DB, Auth, UI)
-docker-compose up -d
+docker compose up -d
 
 # Option 2: Start with object storage (S3/MinIO)
-docker-compose up --profile storage -d
+docker compose up --profile storage -d
 
 # Access the application
-# Blazor UI: https://localhost:7001
-# API: https://localhost:5001
-# Scalar API Docs: https://localhost:5001/scalar/v1
+# Blazor UI (Docker): http://localhost:7002
+# API (Docker): http://localhost:7039
+# Swagger UI (Docker): http://localhost:7039/swagger
+# Local dev (dotnet run): Blazor https://localhost:7177, API https://localhost:7039
 ```
+
+If onboarding is not completed yet, the Blazor root route redirects to `/setup`.  
+When `SETUP_SECRET` is not set, API startup logs print an auto-generated setup secret (valid for 60 minutes).
 
 **For detailed deployment instructions**, see:
 - [Operations Guide](docs/OPERATIONS.md) — Production deployment
 - [Configuration Guide](docs/CONFIGURATION.md) — Environment variables and settings
-- [Quick Start (v0.1.0)](docs/semantic_versioning/v0.1.0.md#-getting-started) — Full setup walkthrough
 
 ## Roadmap
 
@@ -224,9 +220,9 @@ Before contributing code, please review:
 
 ### How to Contribute
 
-1. Fork the repoisory
+1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/foobar`)
-3. Commit your changes (`git commit -am 'Add some foobar'`)
+3. Commit your changes (`git commit -m "Add feature"`)
 4. Push to the branch (`git push origin feature/foobar`)
 5. Create a new Pull Request
 
@@ -267,22 +263,20 @@ ISLAMU Event is built on **Clean Architecture + CQRS** with a **BFF (Backend-for
 
 ### Technology Stack (v0.1.0)
 
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| **Runtime** | .NET 10.0 | Latest LTS framework |
-| **Architecture** | Clean Architecture + CQRS | Layer separation with MediatR |
-| **Frontend** | Blazor Server + WASM | Hybrid rendering (InteractiveAuto) |
-| **UI Components** | MudBlazor | Material Design components |
-| **Database** | PostgreSQL + PostGIS | Relational + spatial queries |
-| **ORM** | Entity Framework Core 10 | Data access with named query filters |
-| **Authentication** | Keycloak (OIDC/OAuth 2.0) | Identity provider with BFF pattern |
-| **Authorization** | Cerbos | Policy Decision Point (PDP) for FGAC |
-| **Secrets** | Infisical | Vault with auto-refresh + health checks |
-| **API Docs** | Scalar + Swagger/NSwag | OpenAPI 3.0 with HAL+JSON |
-| **Logging** | Serilog | Structured logging to Loki |
-| **Telemetry** | OpenTelemetry | Distributed tracing + Prometheus metrics |
-| **Orchestration** | .NET Aspire (dev), Docker (prod) | Service orchestration |
-| **Test Framework** | TUnit + bUnit | Unit + integration + component tests |
+- Runtime: .NET 10 (`net10.0`).
+- Architecture: Clean Architecture + CQRS (MediatR).
+- Frontend: Blazor Server + WASM (InteractiveAuto).
+- UI components: MudBlazor.
+- Database: PostgreSQL.
+- ORM: Entity Framework Core 10.
+- Authentication: Keycloak (OIDC/OAuth 2.0).
+- Authorization: Cerbos or local provider (runtime-selected).
+- Secrets: environment variables + Infisical compatibility layer.
+- API docs: OpenAPI + Swagger + Scalar.
+- Logging: Serilog (structured logs).
+- Telemetry: OpenTelemetry (traces + metrics).
+- Orchestration: .NET Aspire (dev), Docker (deployment).
+- Testing: TUnit + bUnit + integration test projects.
 
 ## 🛡️ Security
 
@@ -375,30 +369,30 @@ Banner from: [support-palestine-banner repository][support-palestine-banner-sour
 [license-link]: LICENSE
 [contact-email]: mailto:contact@openislamu.org
 
-[github-repo-link]: https://github.com/islamu-ngo/Explore
-[github-issues-link]: https://github.com/islamu-ngo/Explore/issues/new
-[github-discussions-link]: https://github.com/islamu-ngo/Explore/discussions
-[github-contributors-link]: https://github.com/islamu-ngo/Explore/graphs/contributors
+[github-repo-link]: https://github.com/islamu-ngo/Event
+[github-issues-link]: https://github.com/islamu-ngo/Event/issues/new
+[github-discussions-link]: https://github.com/islamu-ngo/Event/discussions
+[github-contributors-link]: https://github.com/islamu-ngo/Event/graphs/contributors
 
 [sonarcloud-shield]: https://sonarcloud.io/api/project_badges/measure?project=islamu-ngo_Explore&metric=alert_status
 [sonarcloud-link]: https://sonarcloud.io/summary/overall?id=islamu-ngo_Explore
-[github-workflow-status-shield]: https://img.shields.io/github/actions/workflow/status/islamu-ngo/Explore/build.yml?branch=main&logo=github&style=flat-square
-[codecov-shield]: https://img.shields.io/codecov/c/github/islamu-ngo/Explore
-[codecov-link]: https://app.codecov.io/github/islamu-ngo/Explore
-[github-stars-shield]: https://img.shields.io/github/stars/islamu-ngo/Explore?color=594ae2&style=flat-square&logo=github
-[github-stars-link]: https://github.com/islamu-ngo/Explore/stargazers
-[github-license-shield]: https://img.shields.io/github/license/islamu-ngo/Explore?color=594ae2&logo=github&style=flat-square
-[github-license-link]: https://github.com/islamu-ngo/Explore/blob/main/LICENSE
-[github-last-commit-shield]: https://img.shields.io/github/last-commit/islamu-ngo/Explore?color=594ae2&style=flat-square&logo=github
-[github-last-commit-link]: https://github.com/islamu-ngo/Explore
-[github-contributors-shield]: https://img.shields.io/github/contributors/islamu-ngo/Explore?color=594ae2&style=flat-square&logo=github
-[github-discussions-shield]: https://img.shields.io/github/discussions/islamu-ngo/Explore?color=594ae2&logo=github&style=flat-square
+[github-workflow-status-shield]: https://img.shields.io/github/actions/workflow/status/islamu-ngo/Event/build.yml?branch=main&logo=github&style=flat-square
+[codecov-shield]: https://img.shields.io/codecov/c/github/islamu-ngo/Event
+[codecov-link]: https://app.codecov.io/github/islamu-ngo/Event
+[github-stars-shield]: https://img.shields.io/github/stars/islamu-ngo/Event?color=594ae2&style=flat-square&logo=github
+[github-stars-link]: https://github.com/islamu-ngo/Event/stargazers
+[github-license-shield]: https://img.shields.io/github/license/islamu-ngo/Event?color=594ae2&logo=github&style=flat-square
+[github-license-link]: https://github.com/islamu-ngo/Event/blob/main/LICENSE
+[github-last-commit-shield]: https://img.shields.io/github/last-commit/islamu-ngo/Event?color=594ae2&style=flat-square&logo=github
+[github-last-commit-link]: https://github.com/islamu-ngo/Event
+[github-contributors-shield]: https://img.shields.io/github/contributors/islamu-ngo/Event?color=594ae2&style=flat-square&logo=github
+[github-discussions-shield]: https://img.shields.io/github/discussions/islamu-ngo/Event?color=594ae2&logo=github&style=flat-square
 [discord-shield]: https://img.shields.io/discord/1357505436479131668?color=%237289da&label=Discord&logo=discord&logoColor=%237289da&style=flat-square
 [discord-link]: https://discord.gg/wrkY824Yv5
 
 [repobeats-image]: https://repobeats.axiom.co/api/embed/a0f11a3d9b80342b5f5965127c2c45871c9d3397.svg
-[contributors-image]: https://contrib.rocks/image?repo=islamu-ngo/explore
-[contributors-link]: https://github.com/islamu-ngo/explore/graphs/contributors
+[contributors-image]: https://contrib.rocks/image?repo=islamu-ngo/Event
+[contributors-link]: https://github.com/islamu-ngo/Event/graphs/contributors
 
 [keycloak-link]: https://www.keycloak.org/
 [cerbos-link]: https://www.cerbos.dev/
@@ -414,4 +408,4 @@ Banner from: [support-palestine-banner repository][support-palestine-banner-sour
 [support-palestine-banner]: https://github.com/Safouene1/support-palestine-banner/blob/master/banner-support.svg
 [support-palestine-banner-source]: https://github.com/Safouene1/support-palestine-banner/
 
-[contribution-guidelines]: https://sites.plane.so/pages/b957e6c5278845feac5557d22bd54756
+[contribution-guidelines]: docs/CONTRIBUTING.md

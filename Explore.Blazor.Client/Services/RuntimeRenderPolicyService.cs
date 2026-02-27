@@ -1,12 +1,9 @@
 // ABOUTME: Resolves runtime Blazor render policy for the current request path using governance settings.
 // ABOUTME: Applies route-group classification, global fallback, and onboarding InteractiveServer guardrail.
 
-namespace Explore.Blazor.Client.Services;
+using Explore.Blazor.Client.Contracts.Providers;
 
-public interface IRuntimeRenderPolicyService
-{
-    Task<RuntimeRenderPolicyDecision> ResolveForPathAsync(string? rawPath, CancellationToken cancellationToken = default);
-}
+namespace Explore.Blazor.Client.Services;
 
 public sealed class RuntimeRenderPolicyService : IRuntimeRenderPolicyService
 {

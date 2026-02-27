@@ -51,3 +51,12 @@ This file provides a checklist for tracking the implementation of the Admin Impe
 - Files modified and why: None for this specific track in this session.
 - Blockers/issues discovered: None newly discovered for this track.
 - Next immediate steps: Continue from the highest-priority unchecked tasks in this track's tasks file.
+
+---
+
+## Session Checkpoint (2026-02-27 Europe/Brussels)
+
+- [x] Reviewed task continuity status for context reset handoff.
+- [ ] Resume implementation work from this task latest documented in-progress section.
+- [ ] Re-validate with build/tests once implementation resumes.
+

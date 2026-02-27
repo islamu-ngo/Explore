@@ -2,9 +2,11 @@
 // ABOUTME: Shared services live in Explore.Blazor.Client.Extensions.ServiceCollectionExtensions.
 
 using Explore.Blazor.Client.Configuration;
+using Explore.Blazor.Client.Contracts.Interop;
+using Explore.Blazor.Client.Contracts.Services.Events;
+using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Extensions;
 using Explore.Blazor.Client.Services;
-using Explore.Blazor.Client.Services.Contracts;
 using Explore.Blazor.Services;
 using Microsoft.AspNetCore.Authentication;
 

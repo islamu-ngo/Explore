@@ -96,3 +96,16 @@
   1. Manual UI smoke pass for tenant/instance admin panel flows in browser.
   2. Optional cleanup pass for pre-existing analyzer warnings unrelated to this feature.
   3. Prepare commit when requested by user.
+
+---
+
+## SESSION CHECKPOINT (2026-02-27 Europe/Brussels)
+
+### Status This Session
+- No implementation changes were made in this task during this session.
+- Task remains in its previously documented state.
+
+### Continuation Notes
+- Re-open this context file and matching *-tasks.md before resuming work.
+- Re-run project build/tests relevant to that task branch before new edits.
+

@@ -31,11 +31,11 @@ temp/
 
 # MCP config
 .mcp.json
-    
+
 # contains mcp secrets
 .gemini/settings.json
 .copilot/mcp-config.json
-    
+
 # Mono auto generated files
 mono_crash.*
 
@@ -45,7 +45,11 @@ publish-output
 # csharp-ls
 csharp-ls.exe
 
+# Repomix
+.repomix/*.md
 
+# sisyphus
+.sisyphus/
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/

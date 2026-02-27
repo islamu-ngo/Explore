@@ -1,249 +1,109 @@
+ABOUTME: Practical troubleshooting guide for this repository's API, BFF, and tenant-aware runtime.
+ABOUTME: Prioritizes repeat incidents and non-obvious checks over generic .NET advice.
+
 # Troubleshooting
 
-> **Project-Agnostic .NET Backend Troubleshooting Guide**
->
-> Placeholders use `{Placeholder}` syntax - see [TEMPLATE_GLOSSARY.md](TEMPLATE_GLOSSARY.md).
+## Quick Triage Order
 
-**Last Updated**: January 2026
+1. Check `https://localhost:7039/health` and `/alive`.
+2. Check API startup logs for migration/seed failures.
+3. Verify deployment mode and tenant resolution behavior.
+4. Verify auth session (`/auth/status`) and token forwarding through BFF.
+5. Check rate limiting (`429`) and request timeout (`504`) before deeper debugging.
 
----
+## Build And Test Failures
 
-## Placeholder Substitutions
-
-| Placeholder | Replace With | Example (ISLAMU Event) |
-|-------------|--------------|------------------------|
-| `{Project}` | Your solution name | `Explore` |
-| `{Project}.API` | API project | `Explore.API` |
-| `{Project}.Application` | Application project | `Explore.Application` |
-| `{Project}.Domain` | Domain project | `Explore.Domain` |
-| `{Project}.Persistence` | Persistence project | `Explore.Persistence` |
-| `{Project}.Infrastructure` | Infrastructure project | `Explore.Infrastructure` |
-
----
-
-This guide focuses on common issues when working on the **backend** projects:
-
-- `{Project}.API`
-- `{Project}.Application`
-- `{Project}.Domain`
-- `{Project}.Persistence`
-- `{Project}.Infrastructure`
-- Migration/worker services (if applicable)
-
-### Implementation Example: ISLAMU Event
-
-```
-- Explore.API
-- Explore.Application
-- Explore.Domain
-- Explore.Persistence
-- Explore.Infrastructure
-- Event.MigrationService
-```
-
-## Build & Restore
-
-### Effective Commands for Error Visibility
-
-Basic `dotnet build` and `dotnet test` hide important error details. Use these commands instead:
-
-#### Building
+Run from solution root:
 
 ```bash
-# Clean summary with error/warning counts
 dotnet build --configuration Release --verbosity quiet
-
-# Full error details when you need them
-dotnet build --configuration Release --verbosity normal
-```
-
-#### Running Tests
-
-**Always run test projects individually** — solution-level `dotnet test` fails if any project has MSBuild issues (e.g., placeholder projects without a test framework).
-
-```bash
-# Clean pass/fail summary per project
-dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet
-
-# Inline error details
 dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity normal
 ```
 
-**Important:** Always use `--project` flag. Positional project path (e.g., `dotnet test path.csproj`) does not work reliably — use `dotnet test --project path.csproj`.
+Important:
+- run tests with `--project` (not solution-level `dotnet test`).
+- if failures are unclear, generate TRX:
+  `dotnet test --project <project.csproj> --configuration Release -- --report-trx --report-trx-filename results.trx`
 
-#### Debugging Test Failures with TRX Reports
+## OpenAPI / NSwag Drift
 
-When you need detailed failure analysis (failed test names, error messages, stack traces), generate a TRX report:
+Symptoms:
+- Blazor compile errors after DTO changes.
+- Missing/old generated client types.
 
-```bash
-# Generate TRX report
-dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release -- --report-trx --report-trx-filename results.trx
-```
+Checks:
+1. Ensure API starts in `Development` so `OpenApiExportService` refreshes `Explore.API/swagger.json`.
+2. Rebuild `Explore.Blazor.Client`; its `GenerateApiClient` target regenerates `Clients/EventApiClient.g.cs`.
+3. Confirm `swagger.json` timestamp changed.
 
-**TRX file location:** `<ProjectDir>/bin/Release/net10.0/TestResults/results.trx`
+## Auth And BFF Issues
 
-**Analyzing the TRX file** (use Grep tool, not bash grep):
+### 401 on write endpoints
 
-```
-# Find all failed tests
-Grep pattern: outcome="Failed"
+Checks:
+- user is authenticated in BFF (`GET /auth/status`).
+- YARP is forwarding bearer token to `/api/*`.
+- API token contains expected audience (`explore-api` or `explore-blazor-server`) and valid issuer.
 
-# Get full class.method names for failed tests
-Grep pattern: className=
-# Correlate testId from failed entries to className entries
+### OIDC redirect URI errors behind proxy
 
-# Read error messages and stack traces
-Grep pattern: <Message>
-Grep pattern: <StackTrace>
-```
+Cause:
+- forwarded proto/host not propagated, so app computes wrong callback URL.
 
-**TRX workflow summary:**
-1. Generate TRX with `-- --report-trx --report-trx-filename results.trx`
-2. Grep for `outcome="Failed"` to find failed test entries and their `testId`
-3. Grep for `className=` with the `testId` to get the full `Namespace.Class.Method`
-4. Read the `<Message>` and `<StackTrace>` elements for error details
+Check:
+- proxy sends `X-Forwarded-Proto` and `X-Forwarded-Host`.
+- forwarded headers middleware is active in Blazor server pipeline.
 
-#### Test Projects (Run Individually)
+## Setup Secret Failures
 
-```bash
-dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release
-dotnet test --project Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release
-dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release
-dotnet test --project Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release
-dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release
-dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release
-dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release
-```
+Symptoms:
+- onboarding blocked at `/setup`.
+- setup calls return `410`, `400`, or `502/503`.
 
-#### Known Pitfalls
+Checks:
+1. API logs: setup mode active vs completed.
+2. BFF endpoints:
+   - `POST /bff/setup-secret`
+   - `POST /bff/setup-secret/sync`
+3. ensure secret is not being injected directly by client headers; proxy strips and re-resolves trusted value.
+4. auto-generated setup secrets expire after 60 minutes from API startup.
 
-| Pitfall | Solution |
-|---------|----------|
-| `dotnet test` at solution level fails | Run each test project individually |
-| Positional project path doesn't work | Use `--project` flag: `dotnet test --project path.csproj` |
-| `findstr /i` fails on French-locale Windows | Use exact case patterns instead of `/i` flag |
-| `--treenode-filter` for TUnit filtering | Does not work reliably — use TRX reports instead |
-| Running test DLL directly | Causes MSBuild errors — always test via `.csproj` |
-| Basic `dotnet test` hides failures | Use `--verbosity normal` or TRX reports |
-| Basic `dotnet build` hides errors | Use `--verbosity quiet` for summary or `normal` for details |
+## Tenant Resolution Problems
 
-### Common issues
+Symptoms:
+- wrong tenant branding/data.
+- tenant-scoped data appears empty.
 
-#### Target framework / SDK mismatch
+Resolution order in API:
+1. `X-Tenant-Id` header
+2. custom domain
+3. subdomain
+4. default tenant fallback (`018e4e5c-7f00-7000-8000-000000000001`)
 
-All backend projects target `net10.0`. If your SDK is older, install the .NET 10 SDK.
+Checks:
+- host headers (`X-Forwarded-Host` / host).
+- `deployment.mode` value (`SingleTenant` vs `MultiTenant`).
 
-#### "The type or namespace name 'X' could not be found"
+## Missing HAL Links
 
-Typical causes:
+If `_links` are missing:
+- confirm request did not include `Prefer: return=minimal`.
+- link pruning can be authorization-driven (user lacks action permission).
 
-- Missing `using` (do not remove existing usings)
-- Missing project reference (check `.csproj`)
-- Wrong layer dependency (see `docs/ARCHITECTURE.md` and `docs/QUICK_REFERENCE.md`)
+## 429 / 504 Responses
 
-## OpenAPI / Swagger / Scalar
+`429`:
+- triggered by API rate limiting policies (`Global`, `Authenticated`, `Write`, `SetupSecret`).
+- inspect `Retry-After` header and caller behavior.
 
-### Swagger UI loads but endpoints are missing metadata
+`504`:
+- request timeout policy exceeded (`Default`, `Lookup`, `Complex`).
+- verify endpoint timeout category and long-running query behavior.
 
-Controllers should annotate actions with:
+## Local URLs
 
-- `[EndpointSummary]`
-- `[EndpointDescription]`
-- `[ProducesResponseType]`
-
-See `docs/API.md`.
-
-### swagger.json file is stale
-
-In Development, `{Project}.API` runs `OpenApiExportService` which exports a `swagger.json` file at startup.
-
-If it doesn't update:
-
-- Ensure `{Project}.API` starts successfully in Development.
-- Check startup logs for the hosted service.
-- Confirm the file is not locked by another process.
-
-**Example (ISLAMU Event)**: `Explore.API` exports `swagger.json` to `Explore.API/swagger.json`
-
-## Authentication / Authorization
-
-### 401 Unauthorized on write endpoints
-
-- Ensure you are sending `Authorization: Bearer <token>`.
-- Confirm Keycloak settings in configuration match your environment.
-
-### UserId missing in token
-
-Controllers that require a user id MUST use the fallback claim extraction:
-
-`sub` → `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier` → `sid`
-
-If all are missing, return `401`.
-
-## Database / EF Core / Migrations
-
-### Apply migrations (Development)
-
-`{Project}.API` exposes a Development-only endpoint:
-
-```http
-POST /admin/migrate
-```
-
-It is protected with `.RequireAuthorization()`.
-
-**Example (ISLAMU Event)**: `Explore.API` provides `POST /admin/migrate`
-
-### Migration worker (if applicable)
-
-If your project has a dedicated migration service, it's responsible for background migration/maintenance tasks.
-
-**Example (ISLAMU Event)**: `Event.MigrationService` handles background migrations (see `Event.MigrationService/Program.cs`)
-
-### Duplicate key violations
-
-`GenericRepository.Create` catches PostgreSQL unique constraint violations (`SqlState == "23505"`) and rethrows with more context.
-
-If you see duplicate key errors:
-
-- Check unique constraints in EF configurations/migrations.
-- Verify seed data and id generation.
-
-
-### Development URLs (Default)
-
-| Service | URL |
-|---------|-----|
-| Aspire Dashboard | `https://localhost:17225` |
-| API | `https://localhost:7039` |
-| Blazor | `https://localhost:7002` |
-| Scalar API Docs | `https://localhost:7039/scalar/v1` |
-| Swagger UI | `https://localhost:7039/swagger` |
-
----
-
-## 6. HATEOAS & Links
-
-### Links missing from API response
-If the `_links` section is missing or incomplete:
-1.  Check if `Prefer: return=minimal` header was sent.
-2.  **Cerbos Permissions**: Links are filtered by `HateoasAuthorizationEvaluator`. If the user lacks permission for an action (e.g., `update`), the link is hidden. Check Cerbos logs or policies.
-
-## 7. Caching Issues
-
-### Data not updating (Stale Cache)
-1.  **Output Cache**: Wait 5 minutes or restart the API. Public GET endpoints are output cached.
-2.  **Hybrid Cache**: If entity updates aren't reflected in authenticated views, check if the Command Handler calls `_hybridCache.RemoveAsync()`.
-
-## 8. Blazor UI Issues
-
-### Infinite Loading / White Screen
-If the app hangs on startup:
-1.  **SignalR Connection**: Check browser console for WebSocket errors. `InteractiveServer` mode requires a stable SignalR connection.
-2.  **WASM Download**: Check network tab. If WASM download fails (e.g., firewall), the app should fallback to Server, but hybrid transition can stall if configured incorrectly.
-
-### OIDC "Invalid parameter: redirect_uri"
-Common in Docker/Coolify deployments behind Nginx.
-*   **Cause**: The app thinks it's running on `http://` but Keycloak expects `https://`.
-*   **Fix**: Ensure `ForwardedHeaders` middleware is active (it is in `Program.cs`) and your proxy sends `X-Forwarded-Proto: https`.
-
+- API: `https://localhost:7039`
+- Swagger: `https://localhost:7039/swagger`
+- Scalar: `https://localhost:7039/scalar/v1`
+- Blazor (dotnet): `https://localhost:7177`
+- Blazor (docker compose): `http://localhost:7002`
