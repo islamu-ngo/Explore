@@ -1,15 +1,22 @@
 // ABOUTME: Code-behind for the MangaDex-style advanced search filter bar component.
-// ABOUTME: Manages filter state, collapse toggle, and search invocation for the event list.
+// ABOUTME: Manages filter state, collapse/drawer toggle, and search invocation for the event list.
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Models;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
+using MudBlazor.Services;
 
 namespace Explore.Blazor.Client.Pages.Events.Components;
 
-public partial class EventFilterBar
+public partial class EventFilterBar : IBrowserViewportObserver, IAsyncDisposable
 {
+    [Inject] private IBrowserViewportService BrowserViewportService { get; set; } = null!;
+
+    // Mobile responsive state
+    private bool _isMobile;
+    private bool _mobileDrawerOpen;
+    private bool _viewportSubscribed;
     [Parameter] public bool IsIslamicModuleEnabled { get; set; }
     [Parameter] public bool IsTechModuleEnabled { get; set; }
     [Parameter] public EventCallback OnSearchRequested { get; set; }
@@ -64,7 +71,7 @@ public partial class EventFilterBar
     private TriStateTagFilterDropdown? _tagFilterDropdown;
     private TriStateCategoryFilterDropdown? _categoryFilterDropdown;
 
-    private void ToggleFilters() => _filtersExpanded = !_filtersExpanded;
+    private void ToggleFilters() => ToggleFilterDrawerOrPanel();
 
     private async Task OnLayoutChanged(LayoutMode mode)
     {
@@ -143,5 +150,68 @@ public partial class EventFilterBar
         count += categoryFilter.IncludedCategoryIds.Count + categoryFilter.ExcludedCategoryIds.Count;
 
         return count;
+    }
+
+    // ── IBrowserViewportObserver ──
+
+    Guid IBrowserViewportObserver.Id { get; } = Guid.NewGuid();
+
+    ResizeOptions IBrowserViewportObserver.ResizeOptions { get; } = new()
+    {
+        ReportRate = 250,
+        NotifyOnBreakpointOnly = true
+    };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_viewportSubscribed)
+        {
+            _viewportSubscribed = true;
+            await BrowserViewportService.SubscribeAsync(this, fireImmediately: true);
+        }
+    }
+
+    Task IBrowserViewportObserver.NotifyBrowserViewportChangeAsync(BrowserViewportEventArgs args)
+    {
+        var wasMobile = _isMobile;
+        _isMobile = args.Breakpoint is Breakpoint.Xs or Breakpoint.Sm;
+
+        // Close mobile drawer if switching to desktop
+        if (wasMobile && !_isMobile)
+        {
+            _mobileDrawerOpen = false;
+        }
+
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private void ToggleFilterDrawerOrPanel()
+    {
+        if (_isMobile)
+        {
+            _mobileDrawerOpen = !_mobileDrawerOpen;
+        }
+        else
+        {
+            _filtersExpanded = !_filtersExpanded;
+        }
+    }
+
+    private void CloseMobileDrawer() => _mobileDrawerOpen = false;
+
+    private void OnMobileDrawerOpenChanged(bool open) => _mobileDrawerOpen = open;
+
+    private async Task ApplyMobileFilters()
+    {
+        _mobileDrawerOpen = false;
+        await OnSearchRequested.InvokeAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_viewportSubscribed)
+        {
+            await BrowserViewportService.UnsubscribeAsync(this);
+        }
     }
 }

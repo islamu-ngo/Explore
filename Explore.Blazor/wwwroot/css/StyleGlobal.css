@@ -1,11 +1,46 @@
 :root {
-    --isl-card-border-radius: 16px;
+    /* ── Spacing Scale (4px grid) ── */
+    --isl-space-1: 0.25rem;    /* 4px */
+    --isl-space-2: 0.5rem;     /* 8px */
+    --isl-space-3: 0.75rem;    /* 12px */
+    --isl-space-4: 1rem;       /* 16px */
+    --isl-space-5: 1.25rem;    /* 20px */
+    --isl-space-6: 1.5rem;     /* 24px */
+    --isl-space-8: 2rem;       /* 32px */
+    --isl-space-10: 2.5rem;    /* 40px */
+    --isl-space-16: 4rem;      /* 64px */
+
+    /* ── Border Radii ── */
+    --isl-radius-sm: 0.5rem;   /* 8px */
+    --isl-radius-md: 0.75rem;  /* 12px */
+    --isl-radius-lg: 1rem;     /* 16px */
+    --isl-radius-full: 999px;  /* pill shape — px is intentional */
+
+    /* ── Overlay / Scrim Colors ── */
+    --isl-overlay-text: #fff;
+    --isl-overlay-text-muted: rgba(255, 255, 255, 0.7);
+    --isl-overlay-gradient: linear-gradient(
+        to top,
+        rgba(0, 0, 0, 0.85) 0%,
+        rgba(0, 0, 0, 0.4) 60%,
+        transparent 100%
+    );
+    --isl-overlay-scrim: rgba(0, 0, 0, 0.6);
+
+    /* ── Shadow Scale ── */
+    --isl-shadow-xs: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.05);
+    --isl-shadow-sm: 0 0.25rem 1.25rem rgba(0, 0, 0, 0.08);
+    --isl-shadow-md: 0 0.625rem 2.5rem -0.625rem rgba(0, 0, 0, 0.2);
+    --isl-shadow-lg: 0 1rem 2.25rem rgba(0, 0, 0, 0.16);
+
+    /* ── Card Variables ── */
+    --isl-card-border-radius: var(--isl-radius-lg);
     --isl-card-border: 1px solid color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
     --isl-card-transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
-    --isl-card-hover-shadow: 0 16px 36px rgba(0, 0, 0, 0.16);
+    --isl-card-hover-shadow: var(--isl-shadow-lg);
     --isl-card-hover-border-color: color-mix(in srgb, var(--mud-palette-primary) 40%, var(--mud-palette-lines-default));
 
-    /* Typography Variables */
+    /* ── Typography Variables ── */
     --isl-font-family-primary: "Roboto", sans-serif;
     --isl-font-family-secondary: "Open Sans", sans-serif;
 
@@ -21,44 +56,44 @@
     --isl-typography-h3-weight: 400;
     --isl-typography-h3-line-height: 1.3;
 
-    --isl-typography-h4-size: 2.25rem; /* Increased from 2.125rem */
-    --isl-typography-h4-weight: 600; /* Increased weight */
+    --isl-typography-h4-size: 2.25rem;
+    --isl-typography-h4-weight: 600;
     --isl-typography-h4-line-height: 1.4;
 
-    --isl-typography-h5-size: 1.75rem; /* Increased from 1.5rem */
-    --isl-typography-h5-weight: 600; /* Increased weight */
+    --isl-typography-h5-size: 1.75rem;
+    --isl-typography-h5-weight: 600;
     --isl-typography-h5-line-height: 1.5;
 
-    --isl-typography-h6-size: 1.35rem; /* Increased from 1.25rem */
-    --isl-typography-h6-weight: 600; /* Increased weight */
+    --isl-typography-h6-size: 1.35rem;
+    --isl-typography-h6-weight: 600;
     --isl-typography-h6-line-height: 1.6;
 
-    --isl-typography-body1-size: 1.1rem; /* Increased from 1rem */
+    --isl-typography-body1-size: 1.1rem;
     --isl-typography-body1-weight: 400;
     --isl-typography-body1-line-height: 1.75;
 
-    --isl-typography-body2-size: 1rem; /* Increased from 0.875rem */
+    --isl-typography-body2-size: 1rem;
     --isl-typography-body2-weight: 400;
     --isl-typography-body2-line-height: 1.6;
 
-    --isl-typography-button-size: 1rem; /* Increased from 0.875rem */
+    --isl-typography-button-size: 1rem;
     --isl-typography-button-weight: 600;
     --isl-typography-button-line-height: 1.75;
-    --isl-typography-button-text-transform: none; /* Removed uppercase for better readability */
+    --isl-typography-button-text-transform: none;
 
-    --isl-typography-caption-size: 0.85rem; /* Increased from 0.75rem */
+    --isl-typography-caption-size: 0.85rem;
     --isl-typography-caption-weight: 400;
     --isl-typography-caption-line-height: 1.66;
 
-    --isl-typography-overline-size: 0.85rem; /* Increased from 0.75rem */
+    --isl-typography-overline-size: 0.85rem;
     --isl-typography-overline-weight: 500;
     --isl-typography-overline-line-height: 2.66;
     --isl-typography-overline-text-transform: uppercase;
 
-    /* Button Variables */
-    --isl-button-border-radius: 8px;
-    --isl-button-padding-x: 16px;
-    --isl-button-padding-y: 8px;
+    /* ── Button Variables ── */
+    --isl-button-border-radius: var(--isl-radius-sm);
+    --isl-button-padding-x: var(--isl-space-4);
+    --isl-button-padding-y: var(--isl-space-2);
     --isl-button-font-size: 0.875rem;
     --isl-button-transition: all 0.2s ease-in-out;
 }
@@ -121,8 +156,8 @@ ul {
 /* Footer Block */
 
 .footer {
-    background: #f8f9fa;
-    flex-shrink: 0; /* Prevent footer from shrinking */
+    background: var(--mud-palette-background-grey);
+    flex-shrink: 0;
     padding: 3rem 0 1rem;
     margin-top: auto;
     bottom: 0;
@@ -137,9 +172,9 @@ ul {
 .footer__top {
     display: flex;
     justify-content: space-between;
-    gap: 20px; /* Space between columns */
-    margin-bottom: 0px;
-    flex-wrap: wrap; /* Allow wrapping */
+    gap: var(--isl-space-5);
+    margin-bottom: 0;
+    flex-wrap: wrap;
 }
 
 
@@ -152,7 +187,7 @@ ul {
 
 .link-group__title {
     font-weight: bold;
-    color: #333;
+    color: var(--mud-palette-text-primary);
 }
 
 .link-group__list {
@@ -162,13 +197,13 @@ ul {
 }
 
 .link-group__link {
-    color: #666;
+    color: var(--mud-palette-text-secondary);
     font-size: 0.875rem;
     transition: color 0.2s;
 }
 
     .link-group__link:hover {
-        color: #ff6b6b;
+        color: var(--mud-palette-primary);
     }
 
 /* ========================================
@@ -253,7 +288,7 @@ ul {
 .separator__line {
     flex: 1;
     height: 1px;
-    background: #ddd;
+    background: var(--mud-palette-lines-default);
 }
 
 
@@ -269,7 +304,7 @@ ul {
 /* Copyright Block */
 .footer__copyright {
     font-size: 0.875rem;
-    color: #666;
+    color: var(--mud-palette-text-secondary);
 }
 
 /* ========================================
@@ -286,7 +321,7 @@ ul {
 .isl-button-pill {
     background-color: var(--mud-palette-surface);
     border: 1px solid var(--mud-palette-lines-default);
-    border-radius: 999px;
+    border-radius: var(--isl-radius-full);
     cursor: pointer;
     transition:
         transform 0.12s ease,
@@ -294,7 +329,7 @@ ul {
         border-color 0.12s ease,
         background 0.12s ease;
     color: var(--mud-palette-text-primary);
-    padding-inline: 12px;
+    padding-inline: var(--isl-space-3);
 }
 
 .isl-button-pill:hover {
@@ -305,7 +340,7 @@ ul {
         var(--mud-palette-surface)
     );
     border-color: var(--mud-palette-primary);
-    box-shadow: 0 0 0 3px var(--isl-button-ring);
+    box-shadow: 0 0 0 0.1875rem var(--isl-button-ring);
 }
 
 /* ========================================
@@ -342,9 +377,9 @@ ul {
 }
 
 /* Responsive Design */
-@media (max-width: 768px) {
+@media (max-width: 48em) {
     html {
-        font-size: 16px;
+        font-size: 1rem;
     }
 
     .header__content {
@@ -373,9 +408,9 @@ ul {
     }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 30em) {
     .wrapper {
-        padding: 0 15px;
+        padding: 0 0.9375rem;
     }
 
     .brand__name {
@@ -398,7 +433,7 @@ ul {
     background-color: var(--mud-palette-surface) !important;
     border: 1px solid var(--mud-palette-lines-default) !important;
     box-shadow: var(--mud-elevation-8) !important;
-    border-radius: 12px !important;
+    border-radius: var(--isl-radius-md) !important;
 }
 
 .isl-popover-menu .mud-text {
@@ -406,8 +441,8 @@ ul {
 }
 
 .isl-popover-menu__option {
-    padding: 6px 10px;
-    border-radius: 8px;
+    padding: var(--isl-space-1) 0.625rem;
+    border-radius: var(--isl-radius-sm);
     transition:
         background 0.12s ease,
         color 0.12s ease;
@@ -429,7 +464,7 @@ ul {
    min-height ensures the content area fills at least the viewport. */
 .event-list__drawer-container {
     position: relative;
-    min-height: calc(100vh - var(--mud-appbar-height, 64px));
+    min-height: calc(100vh - var(--mud-appbar-height, 4rem));
 }
 
 /* When the event-list drawer container is present, remove the
@@ -450,16 +485,16 @@ ul {
     position: fixed !important;
     z-index: 1400 !important;
     overflow: hidden !important;
-    max-width: min(560px, 90vw);
+    max-width: min(35rem, 90vw);
 }
 
 /* Gutter inset from top/right/bottom (Luma-style) — only when open.
    When closed, MudBlazor slides the drawer off-screen with defaults. */
 .event-list__detail-drawer.mud-drawer--open {
-    top: 8px !important;
-    right: 8px !important;
-    height: calc(100vh - 16px) !important;
-    border-radius: 12px;
+    top: var(--isl-space-2) !important;
+    right: var(--isl-space-2) !important;
+    height: calc(100vh - var(--isl-space-4)) !important;
+    border-radius: var(--isl-radius-md);
 }
 
 /* ── Standalone overlay for right drawer (LockScroll enabled) ──
@@ -471,7 +506,7 @@ ul {
 
 /* Stronger dimming effect to draw focus to the drawer */
 .event-list__overlay .mud-overlay-scrim {
-    background-color: rgba(0, 0, 0, 0.6) !important;
+    background-color: var(--isl-overlay-scrim) !important;
 }
 
 /* Content fills the aside via flex; header stays pinned, body scrolls. */
@@ -497,16 +532,60 @@ ul {
     min-height: 0;
 }
 
+/* ── Left filter drawer (mobile-only, MangaDex-style) ──
+   Same fixed-position pattern as the right detail drawer.
+   Renders inside EventFilterBar but MudBlazor places <aside>
+   outside the scoped CSS boundary → rules must be global.
+   Overrides only applied when open to not interfere with
+   MudBlazor's default closed/hidden behaviour. */
+.filter-bar__mobile-drawer:not(.mud-drawer--open) {
+    visibility: hidden !important;
+    pointer-events: none;
+}
+
+.filter-bar__mobile-drawer.mud-drawer--open {
+    position: fixed !important;
+    z-index: 1400 !important;
+    top: 0 !important;
+    left: 0 !important;
+    height: 100dvh !important;
+    width: 100vw !important;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden !important;
+    visibility: visible !important;
+    pointer-events: auto;
+}
+
+.filter-bar__mobile-drawer .mud-drawer-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.filter-bar__mobile-drawer .mud-drawer-header {
+    flex-shrink: 0;
+    background: var(--mud-palette-surface);
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+    z-index: 1;
+}
+
+/* Overlay for mobile filter drawer — above navbar, below drawer */
+.filter-bar__drawer-overlay {
+    z-index: 1399 !important;
+}
+
+.filter-bar__drawer-overlay .mud-overlay-scrim {
+    background-color: var(--isl-overlay-scrim) !important;
+}
+
 /* ========================================
    Component: isl-form-card
    Inherits from isl-card and adds padding/background
    ======================================== */
 .isl-form-card {
-    /* Inherit base card styles */
-    /* .isl-card */
-
-    /* Add form-specific styles */
-    padding: 20px;
+    padding: var(--isl-space-5);
     background: var(--mud-palette-background-paper);
 }
 
@@ -515,10 +594,10 @@ ul {
    Consistent styling for form sections
    ======================================== */
 .isl-form-section {
-    padding: 16px;
-    margin-bottom: 16px;
+    padding: var(--isl-space-4);
+    margin-bottom: var(--isl-space-4);
     background-color: var(--mud-palette-background-grey);
-    border-radius: 8px;
+    border-radius: var(--isl-radius-sm);
 }
 
 /* ========================================
@@ -528,8 +607,8 @@ ul {
 .isl-form-actions {
     display: flex;
     justify-content: space-between;
-    margin-top: 24px;
-    gap: 16px;
+    margin-top: var(--isl-space-6);
+    gap: var(--isl-space-4);
 }
 
 /* ========================================
@@ -537,7 +616,7 @@ ul {
    Consistent styling for main form titles
    ======================================== */
 .isl-form__title {
-    margin: 4px 0 16px;
+    margin: var(--isl-space-1) 0 var(--isl-space-4);
     font-weight: 600; /* Assuming a bold title */
     font-size: var(--isl-typography-h4-size); /* Example, adjust as needed */
     line-height: var(--isl-typography-h4-line-height);
@@ -549,7 +628,7 @@ ul {
    Consistent styling for section headings within forms
    ======================================== */
 .isl-form__section-title {
-    margin-bottom: 12px;
+    margin-bottom: var(--isl-space-3);
     font-weight: 500; /* Assuming semi-bold */
     font-size: var(--isl-typography-h6-size); /* Example, adjust as needed */
     line-height: var(--isl-typography-h6-line-height);
@@ -561,9 +640,8 @@ ul {
    Consistent styling for error/warning/info status cards
    ======================================== */
 .isl-status-card {
-    padding: 20px;
-    border-radius: 12px;
+    padding: var(--isl-space-5);
+    border-radius: var(--isl-radius-md);
     background: var(--mud-palette-background-paper);
-    /* Add any other common card-like styling here */
     border: 1px solid var(--mud-palette-lines-default);
 }

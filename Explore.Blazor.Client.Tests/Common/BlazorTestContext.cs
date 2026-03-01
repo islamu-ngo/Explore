@@ -50,6 +50,12 @@ public class BlazorTestContext : Bunit.TestContext
         // Configure JSInterop to loose mode (allows unmocked JS calls to pass)
         JSInterop.Mode = JSRuntimeMode.Loose;
 
+        // Mock IBrowserViewportService to prevent viewport detection issues in tests.
+        // MudBlazor's real service uses JS interop to detect viewport size, which defaults
+        // to 0x0 in bUnit (triggering mobile mode). This mock keeps desktop mode in tests.
+        var viewportService = Substitute.For<IBrowserViewportService>();
+        Services.AddSingleton(viewportService);
+
         // Setup common MudBlazor JSInterop handlers
         SetupMudBlazorJsInterop();
 
