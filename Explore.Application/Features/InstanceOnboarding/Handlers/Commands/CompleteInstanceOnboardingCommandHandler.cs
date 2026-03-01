@@ -94,13 +94,24 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
 
         request.Settings.DeploymentMode = normalizedDeploymentMode;
 
-        var defaultTenant = await EnsureDefaultTenantAsync();
-        await EnsureDefaultTenantSettingsAsync(defaultTenant.Id);
+        var isSingleTenant = normalizedDeploymentMode.Equals("SingleTenant", StringComparison.OrdinalIgnoreCase);
+        Guid? defaultTenantId = null;
 
-        await _governanceSettingService.ApplySettingsAsync(defaultTenant.Id, request.Settings, request.UserId);
+        if (isSingleTenant)
+        {
+            var defaultTenant = await EnsureDefaultTenantAsync();
+            await EnsureDefaultTenantSettingsAsync(defaultTenant.Id);
+            defaultTenantId = defaultTenant.Id;
+        }
+
+        await _governanceSettingService.ApplySettingsAsync(defaultTenantId, request.Settings, request.UserId);
 
         await EnsurePlatformAdministratorRoleAsync(request.UserId);
-        await EnsureDefaultTenantAdministratorAsync(defaultTenant.Id, request.UserId);
+
+        if (isSingleTenant && defaultTenantId.HasValue)
+        {
+            await EnsureDefaultTenantAdministratorAsync(defaultTenantId.Value, request.UserId);
+        }
 
         // Invalidate cached admin status so the new roles are recognized immediately
         // without waiting for the 5-minute sliding cache expiration.

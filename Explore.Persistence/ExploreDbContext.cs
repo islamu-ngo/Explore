@@ -337,6 +337,9 @@ public class ExploreDbContext : DbContext
     // ===== Settings =====
     public DbSet<SystemSetting> SystemSettings { get; set; }
     public DbSet<TenantSetting> TenantSettingOverrides { get; set; }
+    public DbSet<OrganizationSetting> OrganizationSettingOverrides { get; set; }
+    public DbSet<GroupSetting> GroupSettingOverrides { get; set; }
+    public DbSet<UserPreference> UserPreferences { get; set; }
     public DbSet<AppSetting> AppSettings { get; set; }
     public DbSet<ConfigurationChangeLog> ConfigurationChangeLogs { get; set; }
 

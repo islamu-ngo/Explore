@@ -16,6 +16,33 @@
             Allow users to submit events
         </MudSwitch>
 
+        <MudSwitch T="bool" @bind-Value="Model.AllowOrganizationSubmittedEvents" Color="Color.Primary">
+            Allow organizations to submit events
+        </MudSwitch>
+
+        <MudSwitch T="bool" @bind-Value="Model.AllowGroupSubmittedEvents" Color="Color.Primary">
+            Allow groups to submit events
+        </MudSwitch>
+
+        @if (!Model.AllowUserSubmittedEvents && !Model.AllowOrganizationSubmittedEvents && !Model.AllowGroupSubmittedEvents)
+        {
+            <MudAlert Severity="Severity.Info" Dense="true">
+                No entity types are allowed to submit events. Only administrators will be able to create events through entities they manage.
+            </MudAlert>
+        }
+
+        <MudDivider />
+
+        <MudSwitch T="bool" @bind-Value="Model.AllowOrganizationSelfRegistration" Color="Color.Primary">
+            Allow organization self-registration
+        </MudSwitch>
+
+        <MudSwitch T="bool" @bind-Value="Model.AllowGroupSelfRegistration" Color="Color.Primary">
+            Allow group self-registration
+        </MudSwitch>
+
+        <MudDivider />
+
         <MudSwitch T="bool" @bind-Value="Model.RequireEventApproval" Color="Color.Primary">
             Require approval before publication
         </MudSwitch>

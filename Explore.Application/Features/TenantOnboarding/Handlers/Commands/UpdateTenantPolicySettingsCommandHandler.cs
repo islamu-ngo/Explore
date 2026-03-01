@@ -134,6 +134,54 @@ public class UpdateTenantPolicySettingsCommandHandler : IRequestHandler<UpdateTe
             requestSettings.BrandCustomCssUrl,
             "Tenant brand custom CSS URL is locked by instance policy.");
 
+        AddLockedValueChangeFailure(
+            failures,
+            nameof(requestSettings.EventCardClickOpensDetailPage),
+            effectiveSettings.CanOverrideEventCardClickBehavior,
+            effectiveSettings.EventCardClickOpensDetailPage,
+            requestSettings.EventCardClickOpensDetailPage,
+            "Event card click behavior is locked by instance policy.");
+
+        AddLockedValueChangeFailure(
+            failures,
+            nameof(requestSettings.RenderPolicyPreset),
+            effectiveSettings.CanOverrideRenderPolicy,
+            effectiveSettings.RenderPolicyPreset,
+            requestSettings.RenderPolicyPreset,
+            "Render policy preset is locked by instance policy.");
+
+        AddLockedValueChangeFailure(
+            failures,
+            nameof(requestSettings.GlobalRenderMode),
+            effectiveSettings.CanOverrideRenderPolicy,
+            effectiveSettings.GlobalRenderMode,
+            requestSettings.GlobalRenderMode,
+            "Global render mode is locked by instance policy.");
+
+        AddLockedValueChangeFailure(
+            failures,
+            nameof(requestSettings.PublicSeoRenderMode),
+            effectiveSettings.CanOverridePublicSeoRenderPolicy,
+            effectiveSettings.PublicSeoRenderMode,
+            requestSettings.PublicSeoRenderMode,
+            "Public/SEO render policy is locked by instance policy.");
+
+        AddLockedValueChangeFailure(
+            failures,
+            nameof(requestSettings.OperationalRenderMode),
+            effectiveSettings.CanOverrideOperationalRenderPolicy,
+            effectiveSettings.OperationalRenderMode,
+            requestSettings.OperationalRenderMode,
+            "Operational render policy is locked by instance policy.");
+
+        AddLockedValueChangeFailure(
+            failures,
+            nameof(requestSettings.AdminRenderMode),
+            effectiveSettings.CanOverrideAdminRenderPolicy,
+            effectiveSettings.AdminRenderMode,
+            requestSettings.AdminRenderMode,
+            "Admin render policy is locked by instance policy.");
+
         if (failures.Count > 0)
         {
             throw new ValidationException(new ValidationResult(failures));

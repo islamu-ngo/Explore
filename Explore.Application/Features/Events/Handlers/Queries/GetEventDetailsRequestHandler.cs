@@ -55,12 +55,11 @@ public class GetEventDetailsRequestHandler : IRequestHandler<GetEventDetailsRequ
 
                 if (dto != null)
                 {
-                    var tagsTask = _eventTagsRepository.GetTagsByEvent(request.Id);
-                    var categoriesTask = _eventCategoriesRepository.GetCategoriesByEvent(request.Id);
-                    await Task.WhenAll(tagsTask, categoriesTask);
+                    var tags = await _eventTagsRepository.GetTagsByEvent(request.Id);
+                    var categories = await _eventCategoriesRepository.GetCategoriesByEvent(request.Id);
 
-                    dto.Tags = _mapper.Map<List<TagListDto>>(await tagsTask);
-                    dto.Categories = _mapper.Map<List<CategoryListDto>>(await categoriesTask);
+                    dto.Tags = _mapper.Map<List<TagListDto>>(tags);
+                    dto.Categories = _mapper.Map<List<CategoryListDto>>(categories);
                 }
 
                 return dto;

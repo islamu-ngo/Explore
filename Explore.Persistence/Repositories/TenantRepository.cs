@@ -19,4 +19,11 @@ public class TenantRepository : GenericRepository<Tenant, Guid>, ITenantReposito
             .AsNoTracking()
             .FirstOrDefaultAsync(t => t.Slug == slug);
     }
+
+    public async Task<int> GetActiveTenantCountAsync()
+    {
+        return await _dbContext.Tenants
+            .AsNoTracking()
+            .CountAsync();
+    }
 }

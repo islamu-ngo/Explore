@@ -1,0 +1,149 @@
+@* ABOUTME: Displays tenant members in a searchable, filterable table with role badges. *@
+@* ABOUTME: UI-only placeholder for single-tenant admin; backend integration pending. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Helpers
+
+<div class="settings-section">
+    <div class="settings-section-header">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="flex-wrap gap-4">
+            <MudText Typo="Typo.h5" Style="font-weight: 700;">Members</MudText>
+
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="flex-wrap">
+                <MudTextField @bind-Value="_searchString"
+                              Placeholder="Search members..."
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Immediate="true"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Style="min-width: 220px;" />
+
+                <MudSelect T="int"
+                           MultiSelection="true"
+                           @bind-SelectedValues="_selectedRoleIds"
+                           Label="Role"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           AnchorOrigin="Origin.BottomCenter"
+                           Style="min-width: 180px;"
+                           Dense="true">
+                    @foreach (var role in TenantRoles)
+                    {
+                        <MudSelectItem T="int" Value="@role.Id">@role.Name</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.PersonAdd"
+                           Disabled="true">
+                    Add Member
+                </MudButton>
+            </MudStack>
+        </MudStack>
+    </div>
+
+    <MudTable Items="@FilteredMembers" Hover="true" Striped="true" Elevation="0" Breakpoint="Breakpoint.Sm" Class="mt-4 border-solid border-1 mud-border-lines-default rounded-lg">
+        <HeaderContent>
+            <MudTh>Full Name</MudTh>
+            <MudTh>Display Name</MudTh>
+            <MudTh>Email</MudTh>
+            <MudTh>Role</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Full Name">
+                <div class="d-flex align-center gap-3">
+                    <MudAvatar Color="Color.Secondary" Size="Size.Small" Variant="Variant.Filled">
+                        @GetInitial(context.FullName)
+                    </MudAvatar>
+                    <MudText Typo="Typo.body2" Style="font-weight: 600;">@context.FullName</MudText>
+                </div>
+            </MudTd>
+            <MudTd DataLabel="Display Name">
+                <MudText Typo="Typo.body2">@context.DisplayName</MudText>
+            </MudTd>
+            <MudTd DataLabel="Email">
+                <MudText Typo="Typo.body2">@context.Email</MudText>
+            </MudTd>
+            <MudTd DataLabel="Role">
+                <MudChip T="string" Color="@GetTenantRoleColor(context.RoleId)" Size="Size.Small" Variant="Variant.Filled">
+                    @GetTenantRoleName(context.RoleId)
+                </MudChip>
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <div class="d-flex flex-column align-center justify-center pa-8">
+                <MudIcon Icon="@Icons.Material.Filled.PersonSearch" Size="Size.Large" Color="Color.Default" />
+                <MudText Typo="Typo.h6" Class="mt-2" Style="font-weight: 700;">No members found</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+                    @if (HasActiveFilters)
+                    {
+                        @:Try adjusting the search or role filter.
+                    }
+                    else
+                    {
+                        @:Members will appear here once the backend is connected.
+                    }
+                </MudText>
+            </div>
+        </NoRecordsContent>
+    </MudTable>
+</div>
+
+@code {
+    private string _searchString = "";
+    private IEnumerable<int> _selectedRoleIds = [];
+
+    // Tenant-scope role definitions matching RoleEnum (10-19)
+    private static readonly IReadOnlyList<(int Id, string Name)> TenantRoles =
+    [
+        (10, "Owner"),
+        (11, "Admin"),
+        (12, "Moderator"),
+        (13, "Member")
+    ];
+
+    // Placeholder data — will be replaced by API call
+    private static readonly List<TenantMemberRow> _mockMembers =
+    [
+        new("Ibrahim Al-Rashid", "ibrahim.r", "ibrahim@example.com", 10),
+        new("Fatima Zahra", "fatima.z", "fatima@example.com", 11),
+        new("Omar Benali", "omar.b", "omar@example.com", 12),
+        new("Aisha Khalid", "aisha.k", "aisha@example.com", 13),
+        new("Yusuf Amin", "yusuf.a", "yusuf@example.com", 13)
+    ];
+
+    private bool HasActiveFilters => !string.IsNullOrWhiteSpace(_searchString) || _selectedRoleIds.Any();
+
+    private IEnumerable<TenantMemberRow> FilteredMembers =>
+        _mockMembers
+            .Where(m => string.IsNullOrWhiteSpace(_searchString)
+                || m.FullName.Contains(_searchString, StringComparison.OrdinalIgnoreCase)
+                || m.DisplayName.Contains(_searchString, StringComparison.OrdinalIgnoreCase)
+                || m.Email.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            .Where(m => !_selectedRoleIds.Any() || _selectedRoleIds.Contains(m.RoleId));
+
+    private static string GetInitial(string name) =>
+        string.IsNullOrWhiteSpace(name) ? "?" : name[..1].ToUpperInvariant();
+
+    private static string GetTenantRoleName(int roleId) => roleId switch
+    {
+        10 => "Owner",
+        11 => "Admin",
+        12 => "Moderator",
+        13 => "Member",
+        _ => "Unknown"
+    };
+
+    private static Color GetTenantRoleColor(int roleId) => roleId switch
+    {
+        10 => Color.Primary,
+        11 => Color.Info,
+        12 => Color.Warning,
+        13 => Color.Success,
+        _ => Color.Default
+    };
+
+    private sealed record TenantMemberRow(string FullName, string DisplayName, string Email, int RoleId);
+}

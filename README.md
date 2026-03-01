@@ -172,7 +172,7 @@ docker compose up --profile storage -d
 # Local dev (dotnet run): Blazor https://localhost:7177, API https://localhost:7039
 ```
 
-If onboarding is not completed yet, the Blazor root route redirects to `/setup`.  
+If onboarding is not completed yet, the Blazor root route redirects to `/setup`.
 When `SETUP_SECRET` is not set, API startup logs print an auto-generated setup secret (valid for 60 minutes).
 
 **For detailed deployment instructions**, see:
@@ -306,6 +306,12 @@ I am deeply grateful to all our amazing contributors.
 - [Coolify][coolify-link]: An Open Source Platform as a Service, alternative to Vercel, Heroku, Netlify, and Railway for easy deploying to your own servers.
 - [Kener][kener-link]: An Open Source Status Page.
 
+## Inspiration (UI/...)
+
+- [Luma][luma-link]: A Modern Event Management & Discovery Platform
+- [Smoke Signals][smoke-signals-link]: An Event & RSVP Management and Discovery Web Application built on top of ATProtocol.
+- [Mangadex][mangadex-link]: A Manga Discovery Platform with advanced filtering and multi-language support.
+
 ## ISLAMU Solutions
 
 - [ISLAMU Event][github-repo-link]: Event Platform & Management System.
@@ -403,6 +409,9 @@ Banner from: [support-palestine-banner repository][support-palestine-banner-sour
 [plane-link]: https://plane.so/
 [coolify-link]: https://coolify.io/
 [kener-link]: https://kener.ing/
+[luma-link]: https://luma.com/
+[smoke-signals-link]: https://smokesignal.events/
+[mangadex-link]: https://mangadex.org/
 
 [palestinian-red-crescent]: https://www.palestinercs.org/en/Donation
 [support-palestine-banner]: https://github.com/Safouene1/support-palestine-banner/blob/master/banner-support.svg

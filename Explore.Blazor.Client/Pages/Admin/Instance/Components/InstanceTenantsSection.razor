@@ -1,0 +1,265 @@
+@* ABOUTME: Tenant management section for multi-tenant mode within Instance Administration. *@
+@* Provides listing, creation, and deletion of tenants using the generated API client. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Clients
+
+<div class="settings-section">
+    <div class="settings-section-header">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+            <div>
+                <MudText Typo="Typo.h5" Style="font-weight: 700;">Tenant Management</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+                    Create, view, and manage tenants on this platform.
+                </MudText>
+            </div>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="OpenCreateDialog">
+                Create Tenant
+            </MudButton>
+        </MudStack>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4" CloseIconClicked="() => _errorMessage = null" ShowCloseIcon="true">
+            @_errorMessage
+        </MudAlert>
+    }
+
+    @if (_isLoading)
+    {
+        <MudStack AlignItems="AlignItems.Center" Class="py-8">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-4">Loading tenants...</MudText>
+        </MudStack>
+    }
+    else if (_tenants.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Class="my-4">
+            No tenants exist yet. Create your first tenant to get started.
+        </MudAlert>
+    }
+    else
+    {
+        <MudTable Items="_tenants" Hover="true" Striped="true" Dense="true" Elevation="0"
+                  Class="border-solid border-1 mud-border-lines-default rounded-lg">
+            <HeaderContent>
+                <MudTh>Name</MudTh>
+                <MudTh>Slug</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh Style="width: 120px;">Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Name">@context.FullName</MudTd>
+                <MudTd DataLabel="Slug">
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@context.Slug</MudChip>
+                </MudTd>
+                <MudTd DataLabel="Status">
+                    @if (context.IsActive == true)
+                    {
+                        <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Outlined">Active</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Color="Color.Default" Size="Size.Small" Variant="Variant.Outlined">Inactive</MudChip>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Actions">
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                   Color="Color.Error"
+                                   Size="Size.Small"
+                                   OnClick="@(() => ConfirmDeleteTenant(context))"
+                                   Title="Delete tenant" />
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
+            @_tenants.Count tenant(s) total
+        </MudText>
+    }
+
+    @* ── Create Tenant Dialog ────────────────────────────────────── *@
+    <MudDialog @bind-Visible="_showCreateDialog">
+        <TitleContent>
+            <MudText Typo="Typo.h6">Create New Tenant</MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudStack Spacing="3">
+                <MudTextField @bind-Value="_newTenantName"
+                              Label="Tenant Name"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="Tenant name is required" />
+                <MudTextField @bind-Value="_newTenantSlug"
+                              Label="Slug (URL identifier)"
+                              Variant="Variant.Outlined"
+                              HelperText="Lowercase, alphanumeric with hyphens"
+                              Required="true"
+                              RequiredError="Slug is required" />
+            </MudStack>
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="@(() => _showCreateDialog = false)">Cancel</MudButton>
+            <MudButton Color="Color.Primary"
+                       Variant="Variant.Filled"
+                       OnClick="CreateTenantAsync"
+                       Disabled="_isCreating || string.IsNullOrWhiteSpace(_newTenantName) || string.IsNullOrWhiteSpace(_newTenantSlug)">
+                @(_isCreating ? "Creating..." : "Create")
+            </MudButton>
+        </DialogActions>
+    </MudDialog>
+
+    @* ── Delete Confirmation Dialog ──────────────────────────────── *@
+    <MudDialog @bind-Visible="_showDeleteDialog">
+        <TitleContent>
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Error" />
+                <MudText Typo="Typo.h6">Delete Tenant?</MudText>
+            </MudStack>
+        </TitleContent>
+        <DialogContent>
+            <MudText Typo="Typo.body1">
+                Are you sure you want to delete <strong>@_tenantToDelete?.FullName</strong>?
+            </MudText>
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">
+                This action is destructive and cannot be undone. All data associated with this tenant will be permanently removed.
+            </MudAlert>
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="@(() => _showDeleteDialog = false)">Cancel</MudButton>
+            <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="DeleteTenantAsync" Disabled="_isDeleting">
+                @(_isDeleting ? "Deleting..." : "Delete Permanently")
+            </MudButton>
+        </DialogActions>
+    </MudDialog>
+</div>
+
+@code {
+    [Inject] private IEventApiClient ApiClient { get; set; } = null!;
+    [Inject] private ISnackbar Snackbar { get; set; } = null!;
+
+    [Parameter]
+    public int TenantCount { get; set; }
+
+    [Parameter]
+    public EventCallback<int> TenantCountChanged { get; set; }
+
+    private ICollection<TenantListDto> _tenants = new List<TenantListDto>();
+    private bool _isLoading = true;
+    private string? _errorMessage;
+
+    private bool _showCreateDialog;
+    private string _newTenantName = string.Empty;
+    private string _newTenantSlug = string.Empty;
+    private bool _isCreating;
+
+    private bool _showDeleteDialog;
+    private TenantListDto? _tenantToDelete;
+    private bool _isDeleting;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTenantsAsync();
+    }
+
+    private async Task LoadTenantsAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            _tenants = await ApiClient.TenantAllAsync();
+            await TenantCountChanged.InvokeAsync(_tenants.Count);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load tenants: {ex.Message}";
+            _tenants = new List<TenantListDto>();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OpenCreateDialog()
+    {
+        _newTenantName = string.Empty;
+        _newTenantSlug = string.Empty;
+        _showCreateDialog = true;
+    }
+
+    private async Task CreateTenantAsync()
+    {
+        _isCreating = true;
+
+        try
+        {
+            var dto = new CreateTenantDto
+            {
+                FullName = _newTenantName.Trim(),
+                Slug = _newTenantSlug.Trim().ToLowerInvariant()
+            };
+
+            var response = await ApiClient.TenantPOSTAsync(dto);
+            if (response.Success == true)
+            {
+                _showCreateDialog = false;
+                Snackbar.Add($"Tenant '{dto.FullName}' created.", Severity.Success);
+                await LoadTenantsAsync();
+            }
+            else
+            {
+                _errorMessage = string.IsNullOrWhiteSpace(response.Message)
+                    ? "Failed to create tenant."
+                    : response.Message;
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to create tenant: {ex.Message}";
+        }
+        finally
+        {
+            _isCreating = false;
+        }
+    }
+
+    private void ConfirmDeleteTenant(TenantListDto tenant)
+    {
+        _tenantToDelete = tenant;
+        _showDeleteDialog = true;
+    }
+
+    private async Task DeleteTenantAsync()
+    {
+        if (_tenantToDelete?.Id == null)
+        {
+            return;
+        }
+
+        _isDeleting = true;
+
+        try
+        {
+            await ApiClient.TenantDELETEAsync(_tenantToDelete.Id.Value);
+            _showDeleteDialog = false;
+            Snackbar.Add($"Tenant '{_tenantToDelete.FullName}' deleted.", Severity.Success);
+            _tenantToDelete = null;
+            await LoadTenantsAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to delete tenant: {ex.Message}";
+        }
+        finally
+        {
+            _isDeleting = false;
+        }
+    }
+}

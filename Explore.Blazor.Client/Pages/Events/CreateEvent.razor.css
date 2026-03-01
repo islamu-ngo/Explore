@@ -1,1 +1,265 @@
-/* Custom styles removed to favor MudBlazor components and utilities */
+/* ABOUTME: Scoped CSS for the Luma-inspired single-page CreateEvent layout. */
+/* ABOUTME: Uses BEM methodology. ::deep used only for MudBlazor internal element overrides. */
+
+/* ===== Block: create-event ===== */
+
+/* --- Image Area --- */
+.create-event__image-area {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    border-radius: 16px;
+    overflow: hidden;
+    background: var(--mud-palette-surface);
+    border: 1px solid var(--mud-palette-lines-default);
+}
+
+.create-event__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.create-event__image-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: var(--mud-palette-background-gray);
+}
+
+::deep .create-event__upload-trigger {
+    position: absolute !important;
+    bottom: 12px;
+    right: 12px;
+    z-index: 1;
+}
+
+.create-event__upload-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 2;
+    border-radius: 16px;
+}
+
+/* --- Publisher Row --- */
+.create-event__publisher-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: nowrap;
+}
+
+::deep .create-event__publisher-btn {
+    text-transform: none !important;
+    white-space: nowrap;
+    flex: 1 1 0;
+    border-radius: 8px !important;
+}
+
+::deep .create-event__publisher-dropdown {
+    margin-bottom: 12px;
+}
+
+/* --- Title Input (large heading like Luma) --- */
+::deep .create-event__title-input .mud-input-slot {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+}
+
+::deep .create-event__title-input .mud-input-slot::placeholder {
+    color: var(--mud-palette-text-disabled);
+    opacity: 0.5;
+}
+
+/* --- Date/Time Block (Luma-style timeline) --- */
+.create-event__datetime-block {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    position: relative;
+}
+
+.create-event__datetime-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+}
+
+.create-event__datetime-indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 16px;
+    flex-shrink: 0;
+}
+
+.create-event__datetime-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.create-event__datetime-dot--start {
+    background: var(--mud-palette-primary);
+}
+
+.create-event__datetime-dot--end {
+    border: 2px solid var(--mud-palette-text-secondary);
+    background: transparent;
+    box-sizing: border-box;
+}
+
+.create-event__datetime-line {
+    width: 0;
+    height: 20px;
+    border-left: 2px dotted var(--mud-palette-lines-default);
+}
+
+.create-event__datetime-label {
+    width: 36px;
+    font-weight: 600;
+    color: var(--mud-palette-text-secondary);
+    flex-shrink: 0;
+    font-size: 0.85rem;
+}
+
+::deep .create-event__datetime-picker {
+    flex: 1;
+    max-width: 160px;
+}
+
+::deep .create-event__datetime-picker .mud-input-slot {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+::deep .create-event__timezone-btn {
+    position: absolute !important;
+    top: 8px;
+    right: 8px;
+    text-transform: none !important;
+    font-size: 0.75rem !important;
+    padding: 2px 8px !important;
+    min-width: unset !important;
+    border: 1px solid var(--mud-palette-lines-default) !important;
+    border-radius: 8px !important;
+    color: var(--mud-palette-text-secondary) !important;
+    white-space: nowrap;
+}
+
+::deep .create-event__timezone-autocomplete {
+    margin-top: 8px;
+}
+
+/* --- Action Buttons (Add Description, Add Location) --- */
+::deep .create-event__action-button {
+    text-transform: none !important;
+    border: 1px solid var(--mud-palette-lines-default) !important;
+    border-radius: 12px !important;
+    padding: 12px 16px !important;
+    margin-bottom: 8px !important;
+    color: var(--mud-palette-text-secondary) !important;
+}
+
+::deep .create-event__action-button:hover {
+    background-color: var(--mud-palette-action-default-hover) !important;
+}
+
+/* --- Event Options (Luma-style rows) --- */
+.create-event__options {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.create-event__option-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px;
+    min-height: 44px;
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+}
+
+.create-event__option-row:last-child {
+    border-bottom: none;
+}
+
+::deep .create-event__option-select {
+    max-width: 180px;
+    text-align: right;
+}
+
+::deep .create-event__option-select .mud-input-slot {
+    font-size: 0.875rem;
+    text-align: right;
+}
+
+/* --- Submit Button --- */
+::deep .create-event__submit-button {
+    font-size: 1.1rem !important;
+    font-weight: 600 !important;
+    padding: 14px 0 !important;
+    border-radius: 12px !important;
+}
+
+/* ===== Responsive: Mobile (single column) ===== */
+@media (max-width: 599px) {
+    ::deep .create-event__col-left {
+        order: 2;
+    }
+
+    ::deep .create-event__col-right {
+        order: 1;
+    }
+
+    ::deep .create-event__title-input .mud-input-slot {
+        font-size: 1.5rem;
+    }
+
+    .create-event__image-area {
+        border-radius: 12px;
+    }
+
+    ::deep .create-event__timezone-btn {
+        position: static !important;
+        margin-top: 8px;
+        width: fit-content;
+    }
+
+    .create-event__datetime-row {
+        flex-wrap: wrap;
+    }
+
+    ::deep .create-event__datetime-picker {
+        max-width: 130px;
+    }
+
+    .create-event__option-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+        padding: 10px 16px;
+    }
+
+    ::deep .create-event__option-select {
+        max-width: unset;
+        width: 100%;
+        text-align: left;
+    }
+}

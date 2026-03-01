@@ -1,47 +1,188 @@
 @* ABOUTME: Renders instance governance controls including deployment, home-page, and runtime render policy presets. *@
-@* ABOUTME: Provides preset-first render policy UX with recommended highlighting, help tooltips, and advanced overrides. *@
+@* Provides preset-first render policy UX with recommended highlighting, help tooltips, and advanced overrides. *@
 
 @using MudBlazor
 @using Explore.Blazor.Client.Services
 
 <div class="settings-section">
     <div class="settings-section-header">
-        <MudText Typo="Typo.h5" Style="font-weight: 700;">Platform Governance</MudText>
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">@SectionTitle</MudText>
         <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
-            Control deployment mode, tenant registration, and default home page behavior.
+            @SectionDescription
         </MudText>
     </div>
     <MudStack Spacing="3">
-        <MudSelect T="string"
-                   Label="Deployment Mode"
-                   @bind-Value="Model.DeploymentMode"
-                   Variant="Variant.Outlined">
-            <MudSelectItem Value="@("SingleTenant")">Single Tenant</MudSelectItem>
-            <MudSelectItem Value="@("MultiTenant")">Multi Tenant</MudSelectItem>
-        </MudSelect>
 
+        @if (ShowDeploymentMode)
+        {
+        @* ── Deployment Mode ──────────────────────────────────────────── *@
+        <MudPaper Class="pa-4" Elevation="0" Style="border: 1px solid var(--mud-palette-lines-default);">
+            <MudStack Spacing="2">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Deployment Mode</MudText>
+                    <MudTooltip Text="Single-Tenant runs one organization per instance. Multi-Tenant enables multiple isolated tenants.">
+                        <MudIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
+                    </MudTooltip>
+                </MudStack>
+
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Current mode: <strong>@(IsSingleTenant ? "Single-Tenant" : "Multi-Tenant")</strong>
+                </MudText>
+
+                @if (IsSingleTenant)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true" Class="mt-1">
+                        Enabling Multi-Tenancy allows creating multiple isolated tenants.
+                        You can revert to Single-Tenant mode as long as only one tenant exists.
+                    </MudAlert>
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Warning"
+                               StartIcon="@Icons.Material.Filled.SwapHoriz"
+                               OnClick="OnEnableMultiTenantClicked">
+                        Enable Multi-Tenant Mode
+                    </MudButton>
+                }
+                else
+                {
+                    @if (_tenantCount > 1)
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-1">
+                            You currently have <strong>@_tenantCount</strong> tenants.
+                            Please delete @(_tenantCount - 1) tenant(s) before reverting to Single-Tenant mode.
+                        </MudAlert>
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Default"
+                                   StartIcon="@Icons.Material.Filled.SwapHoriz"
+                                   Disabled="true">
+                            Revert to Single-Tenant (delete extra tenants first)
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Info" Dense="true" Class="mt-1">
+                            Only @_tenantCount tenant exists. You can safely revert to Single-Tenant mode.
+                        </MudAlert>
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Warning"
+                                   StartIcon="@Icons.Material.Filled.SwapHoriz"
+                                   OnClick="OnRevertToSingleTenantClicked">
+                            Revert to Single-Tenant Mode
+                        </MudButton>
+                    }
+                }
+            </MudStack>
+        </MudPaper>
+
+        @* ── Confirm Multi-Tenant Dialog ─────────────────────────────── *@
+        <MudDialog @bind-Visible="_showMultiTenantDialog">
+            <TitleContent>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                    <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Warning" />
+                    <MudText Typo="Typo.h6">Enable Multi-Tenant Mode?</MudText>
+                </MudStack>
+            </TitleContent>
+            <DialogContent>
+                <MudText Typo="Typo.body1" Class="mb-3">
+                    Switching to Multi-Tenant mode allows creating multiple isolated tenants,
+                    each with their own settings, organizations, and users.
+                </MudText>
+                <MudAlert Severity="Severity.Info" Dense="true">
+                    You can revert to Single-Tenant mode later, as long as no more than one tenant exists.
+                    If multiple tenants are created, you must delete the extras before reverting.
+                </MudAlert>
+            </DialogContent>
+            <DialogActions>
+                <MudButton OnClick="@(() => _showMultiTenantDialog = false)">Cancel</MudButton>
+                <MudButton Color="Color.Warning" Variant="Variant.Filled" OnClick="ConfirmMultiTenant">
+                    Confirm — Enable Multi-Tenant
+                </MudButton>
+            </DialogActions>
+        </MudDialog>
+
+        @* ── Confirm Single-Tenant Revert Dialog ─────────────────────── *@
+        <MudDialog @bind-Visible="_showSingleTenantDialog">
+            <TitleContent>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                    <MudIcon Icon="@Icons.Material.Filled.Info" Color="Color.Info" />
+                    <MudText Typo="Typo.h6">Revert to Single-Tenant Mode?</MudText>
+                </MudStack>
+            </TitleContent>
+            <DialogContent>
+                <MudText Typo="Typo.body1">
+                    This will switch the platform back to Single-Tenant mode. Instance and tenant
+                    settings will be merged into a single administration page.
+                </MudText>
+            </DialogContent>
+            <DialogActions>
+                <MudButton OnClick="@(() => _showSingleTenantDialog = false)">Cancel</MudButton>
+                <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="ConfirmSingleTenant">
+                    Confirm — Revert to Single-Tenant
+                </MudButton>
+            </DialogActions>
+        </MudDialog>
+        }
+
+        @if (ShowGeneralGovernance)
+        {
         <MudSwitch T="bool" @bind-Value="Model.AllowTenantSelfServiceRegistration" Color="Color.Primary">
             Allow tenant self-service registration
         </MudSwitch>
 
-        <MudSelect T="string"
-                   Label="Default Public Home Page"
-                   @bind-Value="Model.DefaultPublicHomePage"
-                   Variant="Variant.Outlined">
-            <MudSelectItem Value="@("EventList")">Event List</MudSelectItem>
-            <MudSelectItem Value="@("LandingPage")">Landing Page</MudSelectItem>
-        </MudSelect>
-
-        <MudSwitch T="bool" @bind-Value="Model.LockTenantHomePagePreference" Color="Color.Primary">
-            Lock tenant home page preference
+        <MudDivider Class="my-2" />
+        <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Event Submission Policies</MudText>
+        <MudSwitch T="bool" @bind-Value="Model.AllowUserSubmittedEvents" Color="Color.Primary">
+            Allow user-submitted events
+        </MudSwitch>
+        <MudSwitch T="bool" @bind-Value="Model.AllowOrganizationSubmittedEvents" Color="Color.Primary">
+            Allow organization-submitted events
+        </MudSwitch>
+        <MudSwitch T="bool" @bind-Value="Model.AllowGroupSubmittedEvents" Color="Color.Primary">
+            Allow group-submitted events
         </MudSwitch>
 
+        @if (!Model.AllowUserSubmittedEvents && !Model.AllowOrganizationSubmittedEvents && !Model.AllowGroupSubmittedEvents)
+        {
+            <MudAlert Severity="Severity.Info" Dense="true">
+                No entity types are allowed to submit events. Only administrators will be able to create events through entities they manage.
+            </MudAlert>
+        }
+
         <MudDivider Class="my-2" />
+        <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Self-Registration Controls</MudText>
+        <MudSwitch T="bool" @bind-Value="Model.AllowOrganizationSelfRegistration" Color="Color.Primary">
+            Allow organization self-registration
+        </MudSwitch>
+        <MudSwitch T="bool" @bind-Value="Model.AllowGroupSelfRegistration" Color="Color.Primary">
+            Allow group self-registration
+        </MudSwitch>
+
+        @if (ShowHomePage)
+        {
+            <MudSelect T="string"
+                       Label="Default Public Home Page"
+                       @bind-Value="Model.DefaultPublicHomePage"
+                       Variant="Variant.Outlined">
+                <MudSelectItem Value="@("EventList")">Event List</MudSelectItem>
+                <MudSelectItem Value="@("LandingPage")">Landing Page</MudSelectItem>
+            </MudSelect>
+
+            <MudSwitch T="bool" @bind-Value="Model.LockTenantHomePagePreference" Color="Color.Primary">
+                Lock tenant home page preference
+            </MudSwitch>
+        }
+        }
+
+        @if (ShowRenderPolicies)
+        {
+        @if (ShowGeneralGovernance)
+        {
+            <MudDivider Class="my-2" />
+        }
 
         <MudStack Spacing="2">
             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
                 <MudText Typo="Typo.h6" Style="font-weight:600;">Runtime Render Policy</MudText>
-                <MudTooltip Text="Choose a preset strategy for route rendering. SEO Balanced is recommended for most deployments.">
+                <MudTooltip Text="Choose a preset strategy for route rendering. All Interactive Server is recommended for most deployments.">
                     <MudIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
                 </MudTooltip>
             </MudStack>
@@ -147,16 +288,62 @@
                     </MudStack>
                 </MudPaper>
             }
+
+            @* ── Tenant Render Policy Delegation ──────────────────────────────── *@
+            <MudDivider Class="my-2" />
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Tenant Render Policy Delegation</MudText>
+                <MudTooltip Text="When enabled, tenants can override render policy settings. Use per-route-group locks to restrict specific areas.">
+                    <MudIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
+                </MudTooltip>
+            </MudStack>
+
+            <MudSwitch T="bool"
+                       @bind-Value="Model.AllowTenantRenderPolicyOverride"
+                       Color="Color.Primary">
+                Allow tenants to override render policy
+            </MudSwitch>
+
+            @if (Model.AllowTenantRenderPolicyOverride)
+            {
+                <MudPaper Class="pa-4" Elevation="0" Style="border: 1px solid var(--mud-palette-lines-default);">
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            Lock specific route groups to prevent tenant overrides. Locked groups use the instance-level setting.
+                        </MudText>
+                        <MudSwitch T="bool"
+                                   @bind-Value="Model.LockTenantPublicSeoRenderPolicy"
+                                   Color="Color.Warning">
+                            Lock Public/SEO render policy
+                        </MudSwitch>
+                        <MudSwitch T="bool"
+                                   @bind-Value="Model.LockTenantOperationalRenderPolicy"
+                                   Color="Color.Warning">
+                            Lock Operational render policy
+                        </MudSwitch>
+                        <MudSwitch T="bool"
+                                   @bind-Value="Model.LockTenantAdminRenderPolicy"
+                                   Color="Color.Warning">
+                            Lock Admin render policy
+                        </MudSwitch>
+                        <MudAlert Severity="Severity.Info" Dense="true">
+                            Onboarding render policy is always controlled at the instance level.
+                        </MudAlert>
+                    </MudStack>
+                </MudPaper>
+            }
         </MudStack>
+        }
     </MudStack>
 </div>
 
 @code {
-    private const string RecommendedPreset = "SeoBalanced";
+    private const string RecommendedPreset = "AllInteractiveServer";
 
     private static readonly IReadOnlyList<PresetOption> PresetOptions =
     [
-        new("SeoBalanced", "SEO Balanced", "Best default for most instances", "Prioritizes prerendering for SEO-sensitive public pages while keeping operational flows interactive."),
+        new("AllInteractiveServer", "All Interactive Server", "Best default — fast SignalR interactivity for all routes", "Uses InteractiveServer for all route groups with no prerendering. Fastest time-to-interactive via SignalR."),
+        new("SeoBalanced", "SEO Balanced", "Prerendering for SEO-sensitive public pages", "Prioritizes prerendering for SEO-sensitive public pages while keeping operational flows interactive."),
         new("AllPrerendered", "All Prerendered", "Maximum first paint and crawler readiness", "Forces prerendering across route groups for predictable initial HTML output."),
         new("AllInteractiveAutoNoPrerender", "All Interactive Auto", "Fast interactivity startup without prerender", "Disables prerender globally and uses InteractiveAuto for all route groups."),
         new("CustomAdvanced", "Custom Advanced", "Fine-grained per route-group control", "Enables explicit overrides for Public SEO, Operational, Admin, and Onboarding route groups.")
@@ -180,9 +367,73 @@
     [Parameter, EditorRequired]
     public InstanceGovernanceSettingsModel Model { get; set; } = null!;
 
+    [Parameter]
+    public int TenantCount { get; set; }
+
+    [Parameter]
+    public EventCallback<string> DeploymentModeChanged { get; set; }
+
+    /// <summary>
+    /// Controls which subsections are visible: "full" (default), "general", "render-policies", or "multi-tenancy".
+    /// </summary>
+    [Parameter]
+    public string DisplayMode { get; set; } = "full";
+
+    private bool ShowDeploymentMode => DisplayMode is "full" or "multi-tenancy";
+    private bool ShowGeneralGovernance => DisplayMode is "full" or "general";
+    private bool ShowRenderPolicies => DisplayMode is "full" or "render-policies";
+    private bool ShowHomePage => DisplayMode is "full";
+
+    private string SectionTitle => DisplayMode switch
+    {
+        "general" => "General",
+        "render-policies" => "Render Policies",
+        "multi-tenancy" => "Multi-Tenancy",
+        _ => "Platform Governance"
+    };
+
+    private string SectionDescription => DisplayMode switch
+    {
+        "general" => "Configure tenant registration and general platform behavior.",
+        "render-policies" => "Choose a preset strategy for route rendering or configure per-route-group overrides.",
+        "multi-tenancy" => "Switch between single-tenant and multi-tenant deployment modes.",
+        _ => "Control deployment mode, tenant registration, and default home page behavior."
+    };
+
+    private int _tenantCount;
+    private bool _showMultiTenantDialog;
+    private bool _showSingleTenantDialog;
+    private bool IsSingleTenant => string.Equals(Model.DeploymentMode, "SingleTenant", StringComparison.OrdinalIgnoreCase)
+                                   || string.IsNullOrWhiteSpace(Model.DeploymentMode);
+
     protected override void OnParametersSet()
     {
+        _tenantCount = TenantCount;
         EnsurePresetDefaults();
+    }
+
+    private void OnEnableMultiTenantClicked()
+    {
+        _showMultiTenantDialog = true;
+    }
+
+    private async Task ConfirmMultiTenant()
+    {
+        _showMultiTenantDialog = false;
+        Model.DeploymentMode = "MultiTenant";
+        await DeploymentModeChanged.InvokeAsync("MultiTenant");
+    }
+
+    private void OnRevertToSingleTenantClicked()
+    {
+        _showSingleTenantDialog = true;
+    }
+
+    private async Task ConfirmSingleTenant()
+    {
+        _showSingleTenantDialog = false;
+        Model.DeploymentMode = "SingleTenant";
+        await DeploymentModeChanged.InvokeAsync("SingleTenant");
     }
 
     private void EnsurePresetDefaults()
@@ -231,6 +482,11 @@
 
         switch (preset)
         {
+            case "AllInteractiveServer":
+                Model.EnableAdvancedRenderPolicyOverrides = false;
+                Model.GlobalRenderMode = "InteractiveServer";
+                Model.GlobalPrerenderEnabled = false;
+                break;
             case "AllPrerendered":
                 Model.EnableAdvancedRenderPolicyOverrides = false;
                 Model.GlobalRenderMode = "InteractiveAuto";
@@ -247,7 +503,7 @@
                 break;
             default:
                 Model.EnableAdvancedRenderPolicyOverrides = false;
-                Model.GlobalRenderMode = "InteractiveAuto";
+                Model.GlobalRenderMode = "InteractiveServer";
                 Model.GlobalPrerenderEnabled = false;
                 break;
         }

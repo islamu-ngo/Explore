@@ -22,9 +22,13 @@ internal static class TenantPolicySettingHelpers
         Guid tenantId)
     {
         var systemUserSubmission = await systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsUserSubmissionEnabled);
+        var systemOrgSubmission = await systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsOrganizationSubmissionEnabled);
+        var systemGroupSubmission = await systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsGroupSubmissionEnabled);
         var systemRequireApproval = await systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsRequireApproval);
         var systemRequireVerification = await systemSettingRepository.GetByKey(GovernanceSettingKeys.OrganizationsVerificationRequired);
         var systemTenantCanOmitVerification = await systemSettingRepository.GetByKey(GovernanceSettingKeys.OrganizationsTenantCanOmitVerification);
+        var systemOrgSelfRegistration = await systemSettingRepository.GetByKey(GovernanceSettingKeys.OrganizationsSelfRegistrationEnabled);
+        var systemGroupSelfRegistration = await systemSettingRepository.GetByKey(GovernanceSettingKeys.GroupsSelfRegistrationEnabled);
         var systemHomePage = await systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingDefaultPublicHomePage);
         var systemInstanceBaseDomain = await systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsInstanceBaseDomain);
         var systemAllowCustomDomain = await systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsAllowTenantCustomDomain);
@@ -36,8 +40,12 @@ internal static class TenantPolicySettingHelpers
         var systemBrandCustomCssUrl = await systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingCustomCssUrl);
 
         var tenantUserSubmission = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.EventsUserSubmissionEnabled);
+        var tenantOrgSubmission = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.EventsOrganizationSubmissionEnabled);
+        var tenantGroupSubmission = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.EventsGroupSubmissionEnabled);
         var tenantRequireApproval = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.EventsRequireApproval);
         var tenantRequireVerification = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.OrganizationsVerificationRequired);
+        var tenantOrgSelfRegistration = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.OrganizationsSelfRegistrationEnabled);
+        var tenantGroupSelfRegistration = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.GroupsSelfRegistrationEnabled);
         var tenantHomePage = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.RoutingDefaultPublicHomePage);
         var tenantSubdomain = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.DomainsTenantSubdomain);
         var tenantCustomDomain = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.DomainsTenantCustomDomain);
@@ -67,6 +75,26 @@ internal static class TenantPolicySettingHelpers
                 systemUserSubmission?.Value,
                 true,
                 systemUserSubmission?.IsLocked != true),
+            AllowOrganizationSubmittedEvents = ResolveBoolean(
+                tenantOrgSubmission?.Value,
+                systemOrgSubmission?.Value,
+                true,
+                systemOrgSubmission?.IsLocked != true),
+            AllowGroupSubmittedEvents = ResolveBoolean(
+                tenantGroupSubmission?.Value,
+                systemGroupSubmission?.Value,
+                true,
+                systemGroupSubmission?.IsLocked != true),
+            AllowOrganizationSelfRegistration = ResolveBoolean(
+                tenantOrgSelfRegistration?.Value,
+                systemOrgSelfRegistration?.Value,
+                true,
+                systemOrgSelfRegistration?.IsLocked != true),
+            AllowGroupSelfRegistration = ResolveBoolean(
+                tenantGroupSelfRegistration?.Value,
+                systemGroupSelfRegistration?.Value,
+                true,
+                systemGroupSelfRegistration?.IsLocked != true),
             RequireEventApproval = ResolveBoolean(
                 tenantRequireApproval?.Value,
                 systemRequireApproval?.Value,
@@ -129,9 +157,13 @@ internal static class TenantPolicySettingHelpers
         TenantPolicySettingsDto settings)
     {
         var userSubmissionSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsUserSubmissionEnabled);
+        var orgSubmissionSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsOrganizationSubmissionEnabled);
+        var groupSubmissionSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsGroupSubmissionEnabled);
         var requireApprovalSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsRequireApproval);
         var requireVerificationSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.OrganizationsVerificationRequired);
         var canOmitVerificationSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.OrganizationsTenantCanOmitVerification);
+        var orgSelfRegSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.OrganizationsSelfRegistrationEnabled);
+        var groupSelfRegSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.GroupsSelfRegistrationEnabled);
         var homePageSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingDefaultPublicHomePage);
         var allowCustomDomainSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsAllowTenantCustomDomain);
         var subdomainSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsTenantSubdomain);
@@ -149,6 +181,38 @@ internal static class TenantPolicySettingHelpers
             GovernanceSettingKeys.EventsUserSubmissionEnabled,
             settings.AllowUserSubmittedEvents,
             userSubmissionSetting?.IsLocked != true,
+            actorUserId);
+
+        await SetBooleanTenantOverrideAsync(
+            tenantSettingRepository,
+            tenantId,
+            GovernanceSettingKeys.EventsOrganizationSubmissionEnabled,
+            settings.AllowOrganizationSubmittedEvents,
+            orgSubmissionSetting?.IsLocked != true,
+            actorUserId);
+
+        await SetBooleanTenantOverrideAsync(
+            tenantSettingRepository,
+            tenantId,
+            GovernanceSettingKeys.EventsGroupSubmissionEnabled,
+            settings.AllowGroupSubmittedEvents,
+            groupSubmissionSetting?.IsLocked != true,
+            actorUserId);
+
+        await SetBooleanTenantOverrideAsync(
+            tenantSettingRepository,
+            tenantId,
+            GovernanceSettingKeys.OrganizationsSelfRegistrationEnabled,
+            settings.AllowOrganizationSelfRegistration,
+            orgSelfRegSetting?.IsLocked != true,
+            actorUserId);
+
+        await SetBooleanTenantOverrideAsync(
+            tenantSettingRepository,
+            tenantId,
+            GovernanceSettingKeys.GroupsSelfRegistrationEnabled,
+            settings.AllowGroupSelfRegistration,
+            groupSelfRegSetting?.IsLocked != true,
             actorUserId);
 
         await SetBooleanTenantOverrideAsync(

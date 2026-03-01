@@ -1,0 +1,7 @@
+{
+  "scripts": {
+    "setup": null,
+    "teardown": "Get-Process dotnet -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue }",
+    "run": "dotnet run --project Explore.AppHost --launch-profile \"https\""
+  }
+}

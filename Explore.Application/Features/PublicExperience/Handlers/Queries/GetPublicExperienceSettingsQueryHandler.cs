@@ -43,7 +43,7 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
         var effectiveTenantSettings = await _policySettingService.ReadEffectiveTenantSettingsAsync(tenantId);
         var enabledModulesInfo = await _moduleService.GetEnabledModulesAsync(tenantId, cancellationToken);
         var enabledModuleKeys = enabledModulesInfo.Select(m => m.ModuleKey).ToList();
-        var governanceSettings = await _instanceGovernanceSettingService.ReadSettingsAsync();
+        var governanceSettings = await _instanceGovernanceSettingService.ReadEffectiveSettingsForTenantAsync(tenantId);
 
         var deploymentModeSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DeploymentMode);
         var deploymentMode = DeserializeString(deploymentModeSetting?.Value, "SingleTenant");
@@ -67,6 +67,11 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
             Subdomain = effectiveTenantSettings.Subdomain,
             CustomDomain = effectiveTenantSettings.CustomDomain,
             AllowUserSubmittedEvents = effectiveTenantSettings.AllowUserSubmittedEvents,
+            AllowOrganizationSubmittedEvents = effectiveTenantSettings.AllowOrganizationSubmittedEvents,
+            AllowGroupSubmittedEvents = effectiveTenantSettings.AllowGroupSubmittedEvents,
+            AllowOrganizationSelfRegistration = effectiveTenantSettings.AllowOrganizationSelfRegistration,
+            AllowGroupSelfRegistration = effectiveTenantSettings.AllowGroupSelfRegistration,
+            EventCardClickOpensDetailPage = effectiveTenantSettings.EventCardClickOpensDetailPage,
             IsIslamicModuleEnabled = enabledModuleKeys.Contains("Mod_Islamic"),
             IsTechModuleEnabled = enabledModuleKeys.Contains("Mod_Tech"),
             EnabledModules = enabledModuleKeys,

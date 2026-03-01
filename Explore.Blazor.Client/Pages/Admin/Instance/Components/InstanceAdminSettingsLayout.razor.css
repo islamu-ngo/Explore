@@ -47,6 +47,18 @@
     margin-right: 1rem;
 }
 
+/* Section Separator (Developer label) */
+.settings-nav-separator {
+    padding: 0.75rem 1rem 0.25rem;
+    border-top: 1px solid var(--mud-palette-lines-default);
+    margin-top: 0.25rem;
+}
+
+.settings-nav-separator__label {
+    font-weight: 600;
+    letter-spacing: 0.08em;
+}
+
 /* Content Area */
 .settings-content {
     min-height: 500px;
@@ -113,6 +125,15 @@
     .settings-sidebar ::deep .mud-list-item.settings-nav-active {
         border-left: none;
         border-bottom-color: var(--mud-palette-primary);
+    }
+
+    .settings-nav-separator {
+        width: 100%;
+        flex-basis: 100%;
+        border-top: none;
+        border-bottom: 1px solid var(--mud-palette-lines-default);
+        padding: 0.5rem 0.75rem 0.25rem;
+        margin-top: 0;
     }
 
     .settings-sidebar ::deep .mud-list-item-icon {

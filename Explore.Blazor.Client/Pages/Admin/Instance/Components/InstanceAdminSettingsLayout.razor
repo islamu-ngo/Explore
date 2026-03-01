@@ -1,19 +1,28 @@
-@* ABOUTME: Sidebar layout component for Instance Admin Settings with four sections. *@
-@* ABOUTME: Loads instance settings via IInstanceOnboardingService and delegates to section components. *@
+@* ABOUTME: Sidebar layout component for Instance Admin Settings with context-aware sections. *@
+@* In single-tenant mode shows unified settings; in multi-tenant mode shows tenant management. *@
 
 @using MudBlazor
 @using Microsoft.AspNetCore.Components
 @using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Clients
 
 @inject IInstanceOnboardingService InstanceOnboardingService
+@inject ITenantOnboardingService TenantOnboardingService
+@inject IPublicExperienceService PublicExperienceService
 @inject ISnackbar Snackbar
 
 <div class="settings-layout">
     <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
         <!-- Header -->
         <div class="settings-header mb-8">
-            <MudText Typo="Typo.h4" Style="font-weight: 800;">Instance Administration</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">Manage platform governance, domain, branding, modules, storage, and SMTP settings</MudText>
+            <MudText Typo="Typo.h4" Style="font-weight: 800;">
+                @(IsSingleTenantMode ? "Administration" : "Instance Administration")
+            </MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">
+                @(IsSingleTenantMode
+                    ? "Manage platform settings, organizations, modules, storage, and SMTP"
+                    : "Manage platform governance, tenants, domain, branding, modules, storage, and SMTP settings")
+            </MudText>
         </div>
 
         @if (!string.IsNullOrWhiteSpace(_errorMessage))
@@ -25,7 +34,7 @@
         {
             <MudStack AlignItems="AlignItems.Center" Class="py-12">
                 <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
-                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-4">Loading instance settings...</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-4">Loading settings...</MudText>
             </MudStack>
         }
         else if (!_canEdit)
@@ -42,30 +51,106 @@
                 <MudItem xs="12" sm="12" md="3">
                     <MudPaper Elevation="0" Class="settings-sidebar pa-0 rounded-lg border-solid border-1 mud-border-lines-default">
                         <MudList T="string" Dense="false" DisablePadding="true">
-                            <MudListItem Icon="@Icons.Material.Filled.Gavel"
-                                         Text="Governance"
-                                         Class="@GetNavItemClass("governance")"
-                                         OnClick="@(() => SelectSection("governance"))" />
-                            <MudListItem Icon="@Icons.Material.Filled.Language"
-                                         Text="Domain"
-                                         Class="@GetNavItemClass("domain")"
-                                         OnClick="@(() => SelectSection("domain"))" />
-                            <MudListItem Icon="@Icons.Material.Filled.Palette"
-                                         Text="Branding"
-                                         Class="@GetNavItemClass("branding")"
-                                         OnClick="@(() => SelectSection("branding"))" />
-                            <MudListItem Icon="@Icons.Material.Filled.Extension"
-                                         Text="Modules"
-                                         Class="@GetNavItemClass("modules")"
-                                         OnClick="@(() => SelectSection("modules"))" />
-                            <MudListItem Icon="@Icons.Material.Filled.Cloud"
-                                         Text="Object Storage"
-                                         Class="@GetNavItemClass("storage")"
-                                         OnClick="@(() => SelectSection("storage"))" />
-                            <MudListItem Icon="@Icons.Material.Filled.AlternateEmail"
-                                         Text="SMTP"
-                                         Class="@GetNavItemClass("smtp")"
-                                         OnClick="@(() => SelectSection("smtp"))" />
+                            @if (IsSingleTenantMode)
+                            {
+                                <MudListItem Icon="@Icons.Material.Filled.Settings"
+                                             Text="General"
+                                             Class="@GetNavItemClass("governance")"
+                                             OnClick="@(() => SelectSection("governance"))" />
+                                <MudListItem Icon="@Icons.Material.Filled.People"
+                                             Text="Members"
+                                             Class="@GetNavItemClass("members")"
+                                             OnClick="@(() => SelectSection("members"))" />
+                                <MudListItem Icon="@Icons.Material.Filled.Business"
+                                             Text="Organizations"
+                                             Class="@GetNavItemClass("organizations")"
+                                             OnClick="@(() => SelectSection("organizations"))" />
+                                <MudListItem Icon="@Icons.Material.Filled.TableChart"
+                                             Text="Lookup Tables"
+                                             Class="@GetNavItemClass("lookups")"
+                                             OnClick="@(() => SelectSection("lookups"))" />
+                                <MudListItem Icon="@Icons.Material.Filled.Policy"
+                                             Text="Policies"
+                                             Class="@GetNavItemClass("policies")"
+                                             OnClick="@(() => SelectSection("policies"))" />
+                                <MudListItem Icon="@Icons.Material.Filled.Visibility"
+                                             Text="Appearance"
+                                             Class="@GetNavItemClass("appearance")"
+                                             OnClick="@(() => SelectSection("appearance"))" />
+                                <MudListItem Icon="@Icons.Material.Filled.Extension"
+                                             Text="Modules"
+                                             Class="@GetNavItemClass("modules")"
+                                             OnClick="@(() => SelectSection("modules"))" />
+                                <MudListItem Icon="@Icons.Material.Filled.Language"
+                                             Text="Domain"
+                                             Class="@GetNavItemClass("domain")"
+                                             OnClick="@(() => SelectSection("domain"))" />
+                                <MudListItem Icon="@Icons.Material.Filled.Cloud"
+                                             Text="Object Storage"
+                                             Class="@GetNavItemClass("storage")"
+                                             OnClick="@(() => SelectSection("storage"))" />
+                                <MudListItem Icon="@Icons.Material.Filled.AlternateEmail"
+                                             Text="SMTP"
+                                             Class="@GetNavItemClass("smtp")"
+                                             OnClick="@(() => SelectSection("smtp"))" />
+
+                                <!-- Advanced Section -->
+                                <div class="settings-nav-separator">
+                                    <MudText Typo="Typo.overline" Color="Color.Secondary" Class="settings-nav-separator__label">Advanced</MudText>
+                                </div>
+                                <MudListItem Icon="@Icons.Material.Filled.DisplaySettings"
+                                             Text="Render Policies"
+                                             Class="@GetNavItemClass("render-policies")"
+                                             OnClick="@(() => SelectSection("render-policies"))" />
+                                <MudListItem Icon="@Icons.Material.Filled.SwapHoriz"
+                                             Text="Multi-Tenancy"
+                                             Class="@GetNavItemClass("multi-tenancy")"
+                                             OnClick="@(() => SelectSection("multi-tenancy"))" />
+
+                                <!-- Developer Section -->
+                                <div class="settings-nav-separator">
+                                    <MudText Typo="Typo.overline" Color="Color.Secondary" Class="settings-nav-separator__label">Developer</MudText>
+                                </div>
+                                <MudListItem Icon="@Icons.Material.Filled.Key"
+                                             Text="Access Tokens"
+                                             Class="@GetNavItemClass("access-tokens")"
+                                             OnClick="@(() => SelectSection("access-tokens"))" />
+                                <MudListItem Icon="@Icons.Material.Filled.Webhook"
+                                             Text="Webhooks"
+                                             Class="@GetNavItemClass("webhooks")"
+                                             OnClick="@(() => SelectSection("webhooks"))" />
+                            }
+                            else
+                            {
+                                <MudListItem Icon="@Icons.Material.Filled.Gavel"
+                                             Text="Governance"
+                                             Class="@GetNavItemClass("governance")"
+                                             OnClick="@(() => SelectSection("governance"))" />
+                                <MudListItem Icon="@Icons.Material.Filled.Language"
+                                             Text="Domain"
+                                             Class="@GetNavItemClass("domain")"
+                                             OnClick="@(() => SelectSection("domain"))" />
+                                <MudListItem Icon="@Icons.Material.Filled.Palette"
+                                             Text="Branding"
+                                             Class="@GetNavItemClass("branding")"
+                                             OnClick="@(() => SelectSection("branding"))" />
+                                <MudListItem Icon="@Icons.Material.Filled.Extension"
+                                             Text="Modules"
+                                             Class="@GetNavItemClass("modules")"
+                                             OnClick="@(() => SelectSection("modules"))" />
+                                <MudListItem Icon="@Icons.Material.Filled.Cloud"
+                                             Text="Object Storage"
+                                             Class="@GetNavItemClass("storage")"
+                                             OnClick="@(() => SelectSection("storage"))" />
+                                <MudListItem Icon="@Icons.Material.Filled.AlternateEmail"
+                                             Text="SMTP"
+                                             Class="@GetNavItemClass("smtp")"
+                                             OnClick="@(() => SelectSection("smtp"))" />
+                                <MudListItem Icon="@Icons.Material.Filled.DomainAdd"
+                                             Text="Tenants"
+                                             Class="@GetNavItemClass("tenants")"
+                                             OnClick="@(() => SelectSection("tenants"))" />
+                            }
                         </MudList>
                     </MudPaper>
                 </MudItem>
@@ -75,15 +160,24 @@
                     <MudPaper Elevation="0" Class="settings-content pa-6 rounded-lg border-solid border-1 mud-border-lines-default">
                         @if (_currentSection == "governance")
                         {
-                            <InstanceGovernanceSection Model="_model" />
+                            <InstanceGovernanceSection Model="_model" TenantCount="_tenantCount" DeploymentModeChanged="OnDeploymentModeChanged" DisplayMode="@(IsSingleTenantMode ? "general" : "full")" />
+                            @if (IsSingleTenantMode)
+                            {
+                                <MudDivider Class="my-6" />
+                                <InstanceBrandingSection Model="_model" />
+                            }
                         }
                         else if (_currentSection == "domain")
                         {
                             <InstanceDomainSection Model="_model" />
                         }
-                        else if (_currentSection == "branding")
+                        else if (_currentSection == "branding" && !IsSingleTenantMode)
                         {
                             <InstanceBrandingSection Model="_model" />
+                        }
+                        else if (_currentSection == "appearance" && IsSingleTenantMode)
+                        {
+                            <InstanceAppearanceSection Model="_model" />
                         }
                         else if (_currentSection == "modules")
                         {
@@ -97,18 +191,98 @@
                         {
                             <InstanceSmtpSection Model="_smtpModel" OnboardingService="InstanceOnboardingService" />
                         }
+                        else if (_currentSection == "members" && IsSingleTenantMode)
+                        {
+                            <TenantMembersSection />
+                        }
+                        else if (_currentSection == "policies" && IsSingleTenantMode)
+                        {
+                            <Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantPoliciesSection Model="_tenantModel" />
+                        }
+                        else if (_currentSection == "organizations" && IsSingleTenantMode)
+                        {
+                            <Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantOrganizationsSection />
+                        }
+                        else if (_currentSection == "lookups" && IsSingleTenantMode)
+                        {
+                            <Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantLookupTablesSection />
+                        }
+                        else if (_currentSection == "render-policies" && IsSingleTenantMode)
+                        {
+                            <InstanceGovernanceSection Model="_model" TenantCount="_tenantCount" DeploymentModeChanged="OnDeploymentModeChanged" DisplayMode="render-policies" />
+                        }
+                        else if (_currentSection == "multi-tenancy" && IsSingleTenantMode)
+                        {
+                            <InstanceGovernanceSection Model="_model" TenantCount="_tenantCount" DeploymentModeChanged="OnDeploymentModeChanged" DisplayMode="multi-tenancy" />
+                        }
+                        else if (_currentSection == "access-tokens" && IsSingleTenantMode)
+                        {
+                            <div class="settings-section">
+                                <div class="settings-section-header">
+                                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                        <div>
+                                            <MudText Typo="Typo.h5" Style="font-weight: 700;">Access Tokens</MudText>
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+                                                Create and manage API access tokens for programmatic access.
+                                            </MudText>
+                                        </div>
+                                        <MudButton Variant="Variant.Filled"
+                                                   Color="Color.Primary"
+                                                   StartIcon="@Icons.Material.Filled.Add"
+                                                   Disabled="true">
+                                            Add Access Token
+                                        </MudButton>
+                                    </MudStack>
+                                </div>
+                                <MudAlert Severity="Severity.Info" Class="mt-4">
+                                    Access token management is coming soon.
+                                </MudAlert>
+                            </div>
+                        }
+                        else if (_currentSection == "webhooks" && IsSingleTenantMode)
+                        {
+                            <div class="settings-section">
+                                <div class="settings-section-header">
+                                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                        <div>
+                                            <MudText Typo="Typo.h5" Style="font-weight: 700;">Webhooks</MudText>
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+                                                Configure webhook endpoints to receive event notifications.
+                                            </MudText>
+                                        </div>
+                                        <MudButton Variant="Variant.Filled"
+                                                   Color="Color.Primary"
+                                                   StartIcon="@Icons.Material.Filled.Add"
+                                                   Disabled="true">
+                                            Add Webhook
+                                        </MudButton>
+                                    </MudStack>
+                                </div>
+                                <MudAlert Severity="Severity.Info" Class="mt-4">
+                                    Webhook management is coming soon.
+                                </MudAlert>
+                            </div>
+                        }
+                        else if (_currentSection == "tenants" && !IsSingleTenantMode)
+                        {
+                            <InstanceTenantsSection TenantCount="_tenantCount" TenantCountChanged="OnTenantCountChanged" />
+                        }
 
-                        <MudDivider Class="my-4" />
+                        @* Only show Save button for settings sections, not for org/lookup/tenants which have their own actions *@
+                        @if (IsSettingsSection(_currentSection))
+                        {
+                            <MudDivider Class="my-4" />
 
-                        <MudStack Row="true" Justify="Justify.FlexEnd">
-                            <MudButton Variant="Variant.Filled"
-                                       Color="Color.Primary"
-                                       OnClick="SaveAsync"
-                                       Disabled="_isSaving"
-                                       StartIcon="@(_isSaving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
-                                @(_isSaving ? "Saving..." : "Save Instance Settings")
-                            </MudButton>
-                        </MudStack>
+                            <MudStack Row="true" Justify="Justify.FlexEnd">
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           OnClick="SaveAsync"
+                                           Disabled="_isSaving"
+                                           StartIcon="@(_isSaving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
+                                    @(_isSaving ? "Saving..." : "Save Settings")
+                                </MudButton>
+                            </MudStack>
+                        }
                     </MudPaper>
                 </MudItem>
             </MudGrid>
@@ -120,11 +294,19 @@
     private InstanceGovernanceSettingsModel _model = new();
     private InstanceStorageSettingsModel _storageModel = new();
     private InstanceSmtpSettingsModel _smtpModel = new();
+    private TenantPolicySettingsModel _tenantModel = new();
+    private int _tenantCount;
     private bool _isLoading = true;
     private bool _isSaving;
     private bool _canEdit;
     private string? _errorMessage;
     private string _currentSection = "governance";
+
+    private bool IsSingleTenantMode => string.Equals(_model.DeploymentMode, "SingleTenant", StringComparison.OrdinalIgnoreCase)
+                                       || string.IsNullOrWhiteSpace(_model.DeploymentMode);
+
+    private static bool IsSettingsSection(string section) =>
+        section is "governance" or "domain" or "branding" or "modules" or "storage" or "smtp" or "policies" or "render-policies" or "multi-tenancy" or "appearance";
 
     protected override async Task OnInitializedAsync()
     {
@@ -140,7 +322,41 @@
         _model = await InstanceOnboardingService.GetSettingsAsync();
         _storageModel = await InstanceOnboardingService.GetStorageSettingsAsync();
         _smtpModel = await InstanceOnboardingService.GetSmtpSettingsAsync();
+        _tenantCount = await InstanceOnboardingService.GetActiveTenantCountAsync();
+
+        if (IsSingleTenantMode)
+        {
+            _tenantModel = await TenantOnboardingService.GetSettingsAsync();
+        }
+
         _isLoading = false;
+    }
+
+    private async Task OnDeploymentModeChanged(string newMode)
+    {
+        if (string.Equals(newMode, "SingleTenant", StringComparison.OrdinalIgnoreCase))
+        {
+            _tenantModel = await TenantOnboardingService.GetSettingsAsync();
+            if (_currentSection is "tenants")
+            {
+                _currentSection = "governance";
+            }
+        }
+        else
+        {
+            if (_currentSection is "policies" or "organizations" or "lookups" or "members" or "access-tokens" or "webhooks" or "render-policies" or "multi-tenancy" or "appearance")
+            {
+                _currentSection = "governance";
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    private void OnTenantCountChanged(int newCount)
+    {
+        _tenantCount = newCount;
+        StateHasChanged();
     }
 
     private async Task SaveAsync()
@@ -150,36 +366,51 @@
 
         var response = await InstanceOnboardingService.UpdateSettingsAsync(_model);
 
-        if (response.Success)
+        if (!response.Success)
         {
-            var storageResponse = await InstanceOnboardingService.UpdateStorageSettingsAsync(_storageModel);
-            var smtpResponse = await InstanceOnboardingService.UpdateSmtpSettingsAsync(_smtpModel);
             _isSaving = false;
-
-            if (storageResponse.Success && smtpResponse.Success)
-            {
-                Snackbar.Add("Instance settings saved.", Severity.Success);
-                return;
-            }
-
-            if (!storageResponse.Success)
-            {
-                _errorMessage = string.IsNullOrWhiteSpace(storageResponse.Message)
-                    ? "Governance settings saved, but storage settings failed."
-                    : storageResponse.Message;
-                return;
-            }
-
-            _errorMessage = string.IsNullOrWhiteSpace(smtpResponse.Message)
-                ? "Governance and storage settings saved, but SMTP settings failed."
-                : smtpResponse.Message;
+            _errorMessage = string.IsNullOrWhiteSpace(response.Message)
+                ? "Failed to save settings."
+                : response.Message;
             return;
         }
 
+        var storageResponse = await InstanceOnboardingService.UpdateStorageSettingsAsync(_storageModel);
+        var smtpResponse = await InstanceOnboardingService.UpdateSmtpSettingsAsync(_smtpModel);
+
+        if (IsSingleTenantMode && _currentSection == "policies")
+        {
+            var tenantResponse = await TenantOnboardingService.UpdateSettingsAsync(_tenantModel);
+            if (!tenantResponse.Success)
+            {
+                _isSaving = false;
+                _errorMessage = string.IsNullOrWhiteSpace(tenantResponse.Message)
+                    ? "Settings saved, but policy settings failed."
+                    : tenantResponse.Message;
+                return;
+            }
+        }
+
         _isSaving = false;
-        _errorMessage = string.IsNullOrWhiteSpace(response.Message)
-            ? "Failed to save instance settings."
-            : response.Message;
+
+        if (storageResponse.Success && smtpResponse.Success)
+        {
+            PublicExperienceService.ResetCache();
+            Snackbar.Add("Settings saved.", Severity.Success);
+            return;
+        }
+
+        if (!storageResponse.Success)
+        {
+            _errorMessage = string.IsNullOrWhiteSpace(storageResponse.Message)
+                ? "Governance settings saved, but storage settings failed."
+                : storageResponse.Message;
+            return;
+        }
+
+        _errorMessage = string.IsNullOrWhiteSpace(smtpResponse.Message)
+            ? "Governance and storage settings saved, but SMTP settings failed."
+            : smtpResponse.Message;
     }
 
     private void SelectSection(string section)

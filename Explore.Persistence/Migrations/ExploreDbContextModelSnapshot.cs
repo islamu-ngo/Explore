@@ -1877,6 +1877,63 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("group_members", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.GroupSetting", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("group_id");
+
+                    b.Property<string>("SettingKey")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("setting_key");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("value");
+
+                    b.HasKey("Id")
+                        .HasName("pk_group_setting_overrides");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_group_setting_overrides_tenant_id");
+
+                    b.HasIndex("GroupId", "SettingKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_group_setting_overrides_group_id_setting_key");
+
+                    b.ToTable("group_setting_overrides", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.IndexedDid", b =>
                 {
                     b.Property<string>("Did")
@@ -2535,6 +2592,63 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_organization_reviews_user_id");
 
                     b.ToTable("organization_reviews", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.OrganizationSetting", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("SettingKey")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("setting_key");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("value");
+
+                    b.HasKey("Id")
+                        .HasName("pk_organization_setting_overrides");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_organization_setting_overrides_tenant_id");
+
+                    b.HasIndex("OrganizationId", "SettingKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_organization_setting_overrides_organization_id_setting_key");
+
+                    b.ToTable("organization_setting_overrides", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.OwnerType", b =>
@@ -3896,6 +4010,60 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("user_pii", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.UserPreference", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("SettingKey")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("setting_key");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("value");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_preferences");
+
+                    b.HasIndex("TenantId", "UserId", "SettingKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_user_preferences_tenant_id_user_id_setting_key");
+
+                    b.ToTable("user_preferences", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.VisibilityType", b =>
                 {
                     b.Property<int>("Id")
@@ -4533,6 +4701,27 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Explore.Domain.GroupSetting", b =>
+                {
+                    b.HasOne("Explore.Domain.Group", "Group")
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_group_setting_overrides_groups_group_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_group_setting_overrides_tenants_tenant_id");
+
+                    b.Navigation("Group");
+
+                    b.Navigation("Tenant");
+                });
+
             modelBuilder.Entity("Explore.Domain.Location", b =>
                 {
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
@@ -4703,6 +4892,27 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Tenant");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Explore.Domain.OrganizationSetting", b =>
+                {
+                    b.HasOne("Explore.Domain.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_organization_setting_overrides_organizations_organization_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_organization_setting_overrides_tenants_tenant_id");
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("Tenant");
                 });
 
             modelBuilder.Entity("Explore.Domain.PlatformUserRole", b =>
@@ -5065,6 +5275,18 @@ namespace Explore.Persistence.Migrations
                         .HasConstraintName("fk_user_pii_users_user_id");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Explore.Domain.UserPreference", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_preferences_tenants_tenant_id");
+
+                    b.Navigation("Tenant");
                 });
 
             modelBuilder.Entity("Explore.Domain.Actor", b =>

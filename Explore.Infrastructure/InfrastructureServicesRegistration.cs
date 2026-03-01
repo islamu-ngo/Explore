@@ -47,6 +47,7 @@ public static class InfrastructureServicesRegistration
 
         // Settings and Module Governance services
         services.AddScoped<ISettingsResolver, SettingsResolver>();
+        services.AddScoped<IHierarchicalSettingsResolver, HierarchicalSettingsResolver>();
         services.AddScoped<IModuleService, ModuleService>();
 
         // Admin context (hybrid JWT + database identity resolution)

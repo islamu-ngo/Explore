@@ -134,11 +134,37 @@
                         <MudSwitch T="bool" @bind-Value="_model.AllowUserSubmittedEvents" Color="Color.Primary">
                             Allow user-submitted events
                         </MudSwitch>
+                        <MudSwitch T="bool" @bind-Value="_model.AllowOrganizationSubmittedEvents" Color="Color.Primary">
+                            Allow organization-submitted events
+                        </MudSwitch>
+                        <MudSwitch T="bool" @bind-Value="_model.AllowGroupSubmittedEvents" Color="Color.Primary">
+                            Allow group-submitted events
+                        </MudSwitch>
+
+                        @if (!_model.AllowUserSubmittedEvents && !_model.AllowOrganizationSubmittedEvents && !_model.AllowGroupSubmittedEvents)
+                        {
+                            <MudAlert Severity="Severity.Info" Dense="true">
+                                No entity types are allowed to submit events. Only administrators will be able to create events through entities they manage.
+                            </MudAlert>
+                        }
+
+                        <MudSwitch T="bool" @bind-Value="_model.AllowOrganizationSelfRegistration" Color="Color.Primary">
+                            Allow organization self-registration
+                        </MudSwitch>
+                        <MudSwitch T="bool" @bind-Value="_model.AllowGroupSelfRegistration" Color="Color.Primary">
+                            Allow group self-registration
+                        </MudSwitch>
                         <MudSwitch T="bool" @bind-Value="_model.RequireOrganizationVerification" Color="Color.Primary">
                             Require organization verification
                         </MudSwitch>
                         <MudSwitch T="bool" @bind-Value="_model.AllowTenantToOmitVerification" Color="Color.Primary">
                             Allow tenant admins to omit organization verification
+                        </MudSwitch>
+                        <MudSwitch T="bool" @bind-Value="_model.EventCardClickOpensDetailPage" Color="Color.Primary">
+                            Event card click opens detail page (instead of sidebar)
+                        </MudSwitch>
+                        <MudSwitch T="bool" @bind-Value="_model.LockTenantEventCardClickBehavior" Color="Color.Primary">
+                            Lock tenant event card click behavior
                         </MudSwitch>
 
                         <MudDivider />
@@ -245,6 +271,7 @@
                         @if (IsSingleTenantMode)
                         {
                             <MudText Typo="Typo.body2"><strong>First Host Choice:</strong> @GetFirstHostChoiceLabel()</MudText>
+                            <MudText Typo="Typo.body2"><strong>Event Card Click Opens Detail Page:</strong> @(_model.EventCardClickOpensDetailPage ? "Yes" : "No")</MudText>
                         }
 
                         <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">

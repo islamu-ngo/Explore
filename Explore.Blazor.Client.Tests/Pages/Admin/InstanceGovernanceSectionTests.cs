@@ -29,10 +29,10 @@ public class InstanceGovernanceSectionTests : IDisposable
 
         var cut = RenderGovernanceSection(model);
 
-        await Assert.That(model.RenderPolicyPreset).IsEqualTo("SeoBalanced");
+        await Assert.That(model.RenderPolicyPreset).IsEqualTo("AllInteractiveServer");
 
         var selectedCard = cut.FindAll(".instance-governance__preset-card--selected")
-            .Single(x => x.TextContent.Contains("SEO Balanced", StringComparison.OrdinalIgnoreCase));
+            .Single(x => x.TextContent.Contains("All Interactive Server", StringComparison.OrdinalIgnoreCase));
 
         await Assert.That(selectedCard.ClassList.Contains("instance-governance__preset-card--recommended")).IsTrue();
         await Assert.That(cut.Markup).Contains("Recommended");
@@ -70,7 +70,7 @@ public class InstanceGovernanceSectionTests : IDisposable
 
         var cut = RenderGovernanceSection(model);
 
-        await Assert.That(cut.FindAll(".instance-governance__preset-card .mud-tooltip-root").Count).IsEqualTo(4);
+        await Assert.That(cut.FindAll(".instance-governance__preset-card .mud-tooltip-root").Count).IsEqualTo(5);
         await Assert.That(cut.FindAll(".mud-tooltip-root").Count).IsGreaterThanOrEqualTo(5);
         await Assert.That(cut.Markup).Contains("Runtime Render Policy");
     }

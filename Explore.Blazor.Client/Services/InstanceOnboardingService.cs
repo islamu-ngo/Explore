@@ -19,6 +19,7 @@ public interface IInstanceOnboardingService
     Task<InstanceSmtpSettingsModel> GetSmtpSettingsAsync();
     Task<InstanceCommandResponseModel> UpdateSmtpSettingsAsync(InstanceSmtpSettingsModel settings);
     Task<SmtpConnectionTestResult> TestSmtpConnectionAsync();
+    Task<int> GetActiveTenantCountAsync();
 }
 
 public class InstanceOnboardingService : IInstanceOnboardingService
@@ -53,6 +54,23 @@ public class InstanceOnboardingService : IInstanceOnboardingService
     public async Task<InstanceSmtpSettingsModel> GetSmtpSettingsAsync() =>
         await GetAsync<InstanceSmtpSettingsModel>("api/InstanceOnboarding/smtp-settings")
         ?? new InstanceSmtpSettingsModel();
+
+    public async Task<int> GetActiveTenantCountAsync()
+    {
+        try
+        {
+            var client = CreateClient();
+            var response = await client.GetAsync("api/Tenant/count");
+            response.EnsureSuccessStatusCode();
+            var content = await response.Content.ReadAsStringAsync();
+            return int.TryParse(content, out var count) ? count : 0;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to retrieve active tenant count.");
+            return 0;
+        }
+    }
 
     // ── Validation ───────────────────────────────────────────────────────
 
@@ -249,22 +267,31 @@ public class InstanceGovernanceSettingsModel
     public bool AllowTenantWhiteLabeling { get; set; }
     public string DefaultPublicHomePage { get; set; } = "EventList";
     public int RenderPolicyVersion { get; set; } = 1;
-    public string RenderPolicyPreset { get; set; } = "SeoBalanced";
+    public string RenderPolicyPreset { get; set; } = "AllInteractiveServer";
     public bool EnableAdvancedRenderPolicyOverrides { get; set; }
-    public string GlobalRenderMode { get; set; } = "InteractiveAuto";
+    public string GlobalRenderMode { get; set; } = "InteractiveServer";
     public bool GlobalPrerenderEnabled { get; set; }
-    public string PublicSeoRenderMode { get; set; } = "InteractiveAuto";
-    public bool PublicSeoPrerenderEnabled { get; set; } = true;
-    public string OperationalRenderMode { get; set; } = "InteractiveAuto";
+    public string PublicSeoRenderMode { get; set; } = "InteractiveServer";
+    public bool PublicSeoPrerenderEnabled { get; set; }
+    public string OperationalRenderMode { get; set; } = "InteractiveServer";
     public bool OperationalPrerenderEnabled { get; set; }
-    public string AdminRenderMode { get; set; } = "InteractiveAuto";
+    public string AdminRenderMode { get; set; } = "InteractiveServer";
     public bool AdminPrerenderEnabled { get; set; }
-    public string OnboardingRenderMode { get; set; } = "InteractiveAuto";
+    public string OnboardingRenderMode { get; set; } = "InteractiveServer";
     public bool OnboardingPrerenderEnabled { get; set; }
     public bool DisallowInteractiveServerOnOnboarding { get; set; } = true;
+    public bool AllowTenantRenderPolicyOverride { get; set; }
+    public bool LockTenantPublicSeoRenderPolicy { get; set; }
+    public bool LockTenantOperationalRenderPolicy { get; set; }
+    public bool LockTenantAdminRenderPolicy { get; set; }
     public bool EnableIslamicModule { get; set; } = true;
     public bool EnableTechModule { get; set; } = true;
     public bool AllowUserSubmittedEvents { get; set; } = true;
+    public bool AllowOrganizationSubmittedEvents { get; set; } = true;
+    public bool AllowGroupSubmittedEvents { get; set; } = true;
+    public bool AllowOrganizationSelfRegistration { get; set; } = true;
+    public bool AllowGroupSelfRegistration { get; set; } = true;
+    public bool EventCardClickOpensDetailPage { get; set; }
     public bool RequireOrganizationVerification { get; set; } = true;
     public bool AllowTenantToOmitVerification { get; set; }
     public string InstanceBaseDomain { get; set; } = string.Empty;
@@ -280,6 +307,7 @@ public class InstanceGovernanceSettingsModel
     public bool LockTenantBrandLogoUrl { get; set; }
     public bool LockTenantBrandFaviconUrl { get; set; }
     public bool LockTenantBrandCustomCssUrl { get; set; }
+    public bool LockTenantEventCardClickBehavior { get; set; }
 }
 
 public class InstanceCommandResponseModel

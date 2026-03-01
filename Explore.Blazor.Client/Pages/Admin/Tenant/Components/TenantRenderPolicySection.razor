@@ -1,0 +1,164 @@
+@* ABOUTME: Renders tenant-level render policy override controls with instance-level lock awareness. *@
+@* ABOUTME: Shows preset selector and per-route-group overrides, disabling locked sections. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Services
+
+<div class="settings-section">
+    <div class="settings-section-header">
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Render Policy</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+            Configure how pages are rendered for this tenant. Locked settings are controlled by the instance administrator.
+        </MudText>
+    </div>
+
+    @if (!Model.CanOverrideRenderPolicy)
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Class="my-2">
+            Render policy overrides are not enabled by the instance administrator. All tenants use the instance-level render policy.
+        </MudAlert>
+    }
+    else
+    {
+        <MudStack Spacing="3">
+            @* ── Preset Selector ──────────────────────────────────────────── *@
+            <MudSelect T="string"
+                       Label="Render Policy Preset"
+                       @bind-Value="Model.RenderPolicyPreset"
+                       Variant="Variant.Outlined"
+                       HelperText="Choose a preset to apply default render modes for all route groups.">
+                @foreach (var preset in PresetOptions)
+                {
+                    <MudSelectItem Value="@preset.Value">@preset.Label</MudSelectItem>
+                }
+            </MudSelect>
+
+            @* ── Public/SEO Route Group ──────────────────────────────────── *@
+            <MudPaper Class="pa-4" Elevation="0" Style="border: 1px solid var(--mud-palette-lines-default);">
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Public / SEO Routes</MudText>
+                    @if (!Model.CanOverridePublicSeoRenderPolicy)
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true">
+                            Public/SEO render policy is locked by instance administrator.
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <MudGrid>
+                            <MudItem xs="12" md="6">
+                                <MudSelect T="string"
+                                           Label="Render Mode"
+                                           @bind-Value="Model.PublicSeoRenderMode"
+                                           Variant="Variant.Outlined">
+                                    @foreach (var mode in RenderModeOptions)
+                                    {
+                                        <MudSelectItem Value="@mode.Value">@mode.Label</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudSwitch T="bool" @bind-Value="Model.PublicSeoPrerenderEnabled" Color="Color.Primary">
+                                    Prerender Enabled
+                                </MudSwitch>
+                            </MudItem>
+                        </MudGrid>
+                    }
+                </MudStack>
+            </MudPaper>
+
+            @* ── Operational Route Group ──────────────────────────────────── *@
+            <MudPaper Class="pa-4" Elevation="0" Style="border: 1px solid var(--mud-palette-lines-default);">
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Operational Routes</MudText>
+                    @if (!Model.CanOverrideOperationalRenderPolicy)
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true">
+                            Operational render policy is locked by instance administrator.
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <MudGrid>
+                            <MudItem xs="12" md="6">
+                                <MudSelect T="string"
+                                           Label="Render Mode"
+                                           @bind-Value="Model.OperationalRenderMode"
+                                           Variant="Variant.Outlined">
+                                    @foreach (var mode in RenderModeOptions)
+                                    {
+                                        <MudSelectItem Value="@mode.Value">@mode.Label</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudSwitch T="bool" @bind-Value="Model.OperationalPrerenderEnabled" Color="Color.Primary">
+                                    Prerender Enabled
+                                </MudSwitch>
+                            </MudItem>
+                        </MudGrid>
+                    }
+                </MudStack>
+            </MudPaper>
+
+            @* ── Admin Route Group ──────────────────────────────────────── *@
+            <MudPaper Class="pa-4" Elevation="0" Style="border: 1px solid var(--mud-palette-lines-default);">
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Admin Routes</MudText>
+                    @if (!Model.CanOverrideAdminRenderPolicy)
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true">
+                            Admin render policy is locked by instance administrator.
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <MudGrid>
+                            <MudItem xs="12" md="6">
+                                <MudSelect T="string"
+                                           Label="Render Mode"
+                                           @bind-Value="Model.AdminRenderMode"
+                                           Variant="Variant.Outlined">
+                                    @foreach (var mode in RenderModeOptions)
+                                    {
+                                        <MudSelectItem Value="@mode.Value">@mode.Label</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudSwitch T="bool" @bind-Value="Model.AdminPrerenderEnabled" Color="Color.Primary">
+                                    Prerender Enabled
+                                </MudSwitch>
+                            </MudItem>
+                        </MudGrid>
+                    }
+                </MudStack>
+            </MudPaper>
+
+            <MudAlert Severity="Severity.Info" Dense="true">
+                Onboarding render policy is always controlled at the instance level and cannot be overridden.
+            </MudAlert>
+        </MudStack>
+    }
+</div>
+
+@code {
+    private static readonly (string Value, string Label)[] PresetOptions =
+    [
+        ("AllInteractiveServer", "All Interactive Server"),
+        ("SeoBalanced", "SEO Balanced"),
+        ("AllPrerendered", "All Prerendered"),
+        ("AllInteractiveAutoNoPrerender", "All Interactive Auto"),
+        ("CustomAdvanced", "Custom Advanced")
+    ];
+
+    private static readonly (string Value, string Label)[] RenderModeOptions =
+    [
+        ("InteractiveAuto", "Interactive Auto"),
+        ("InteractiveWebAssembly", "Interactive WebAssembly"),
+        ("InteractiveServer", "Interactive Server")
+    ];
+
+    [Parameter, EditorRequired]
+    public TenantPolicySettingsModel Model { get; set; } = null!;
+}

@@ -4,9 +4,11 @@ using Explore.Blazor.Client.Contracts.Services.Events;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
+using Explore.Blazor.Client.Shared;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Routing;
+using MudBlazor;
 
 namespace Explore.Blazor.Client.Layout;
 
@@ -25,10 +27,16 @@ public partial class NavMenu : IDisposable
     protected IPublicExperienceService PublicExperienceService { get; set; } = null!;
 
     [Inject]
+    protected IInstanceOnboardingService InstanceOnboardingService { get; set; } = null!;
+
+    [Inject]
     protected ITenantNavigationService TenantNavigationService { get; set; } = null!;
 
     [Inject]
     protected IEventCreationEligibilityService EventCreationEligibilityService { get; set; } = null!;
+
+    [Inject]
+    protected IDialogService DialogService { get; set; } = null!;
 
     [Inject]
     protected SidebarState SidebarState { get; set; } = null!;
@@ -44,6 +52,8 @@ public partial class NavMenu : IDisposable
     public string SearchQuery { get; set; } = "";
     private ICollection<TenantNavigationLinkDto> _navigationLinks = new List<TenantNavigationLinkDto>();
     private EventCreationEligibility _eventCreationEligibility = EventCreationEligibility.NotEligible;
+    private bool _isSingleTenantMode = true;
+    private bool _showAddEventForAnonymous;
 
     protected override async Task OnInitializedAsync()
     {
@@ -52,6 +62,7 @@ public partial class NavMenu : IDisposable
         await LoadCurrentUserAsync();
         await LoadNavigationLinksAsync();
         await LoadEventCreationEligibilityAsync();
+        await LoadDeploymentModeAsync();
     }
 
     private void HandleSearchKeyPress(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
@@ -83,6 +94,12 @@ public partial class NavMenu : IDisposable
         }
 
         _brandLogoUrl = settings.BrandLogoUrl ?? string.Empty;
+
+        // Show "Add Event" button to anonymous visitors when at least one
+        // submission type is enabled, prompting them to log in on click.
+        _showAddEventForAnonymous = settings.AllowUserSubmittedEvents
+            || settings.AllowOrganizationSubmittedEvents
+            || settings.AllowGroupSubmittedEvents;
     }
 
     private async Task LoadCurrentUserAsync()
@@ -184,6 +201,27 @@ public partial class NavMenu : IDisposable
         {
             // Silently fail - button simply won't appear
         }
+    }
+
+    private async Task LoadDeploymentModeAsync()
+    {
+        try
+        {
+            var status = await InstanceOnboardingService.GetStatusAsync();
+            _isSingleTenantMode = status == null
+                || string.IsNullOrWhiteSpace(status.SelectedDeploymentMode)
+                || string.Equals(status.SelectedDeploymentMode, "SingleTenant", StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            _isSingleTenantMode = true;
+        }
+    }
+
+    private async Task OpenLoginPrompt(string? returnUrl)
+    {
+        returnUrl ??= new Uri(Nav.Uri).PathAndQuery;
+        await LoginPromptDialog.ShowAsync(DialogService, returnUrl);
     }
 
     public void Dispose()

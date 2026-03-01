@@ -17,10 +17,17 @@ public interface IInstanceGovernanceSettingService
     Task<InstanceGovernanceSettingsDto> ReadSettingsAsync();
 
     /// <summary>
-    /// Applies instance governance settings and synchronizes tenant capabilities for default tenant.
+    /// Reads effective render policy settings for a specific tenant, cascading instance → tenant overrides.
     /// </summary>
-    /// <param name="defaultTenantId">The default tenant ID for capability synchronization.</param>
+    /// <param name="tenantId">The tenant ID to resolve settings for.</param>
+    /// <returns>Governance settings with tenant-specific render policy overrides applied.</returns>
+    Task<InstanceGovernanceSettingsDto> ReadEffectiveSettingsForTenantAsync(Guid tenantId);
+
+    /// <summary>
+    /// Applies instance governance settings and optionally synchronizes tenant capabilities.
+    /// </summary>
+    /// <param name="defaultTenantId">The default tenant ID for capability synchronization. Null in multi-tenant mode when no default tenant exists.</param>
     /// <param name="settings">The governance settings to apply.</param>
     /// <param name="actorUserId">The user ID performing the update (for audit trail).</param>
-    Task ApplySettingsAsync(Guid defaultTenantId, InstanceGovernanceSettingsDto settings, Guid? actorUserId);
+    Task ApplySettingsAsync(Guid? defaultTenantId, InstanceGovernanceSettingsDto settings, Guid? actorUserId);
 }

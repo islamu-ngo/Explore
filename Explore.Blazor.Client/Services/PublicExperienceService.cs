@@ -91,23 +91,28 @@ public class PublicExperienceSettingsModel
     public bool IsIslamicModuleEnabled { get; set; }
     public bool IsTechModuleEnabled { get; set; }
     public bool AllowUserSubmittedEvents { get; set; } = true;
+    public bool AllowOrganizationSubmittedEvents { get; set; } = true;
+    public bool AllowGroupSubmittedEvents { get; set; } = true;
+    public bool AllowOrganizationSelfRegistration { get; set; } = true;
+    public bool AllowGroupSelfRegistration { get; set; } = true;
+    public bool EventCardClickOpensDetailPage { get; set; }
     public List<string> EnabledModules { get; set; } = new();
     public string AnalyticsProvider { get; set; } = "none";
     public bool AnalyticsEnabled { get; set; }
     public string AnalyticsPublicApiKey { get; set; } = string.Empty;
     public string AnalyticsEndpointUrl { get; set; } = string.Empty;
     public int RenderPolicyVersion { get; set; } = 1;
-    public string RenderPolicyPreset { get; set; } = "SeoBalanced";
+    public string RenderPolicyPreset { get; set; } = "AllInteractiveServer";
     public bool EnableAdvancedRenderPolicyOverrides { get; set; }
-    public string GlobalRenderMode { get; set; } = "InteractiveAuto";
+    public string GlobalRenderMode { get; set; } = "InteractiveServer";
     public bool GlobalPrerenderEnabled { get; set; }
-    public string PublicSeoRenderMode { get; set; } = "InteractiveAuto";
-    public bool PublicSeoPrerenderEnabled { get; set; } = true;
-    public string OperationalRenderMode { get; set; } = "InteractiveAuto";
+    public string PublicSeoRenderMode { get; set; } = "InteractiveServer";
+    public bool PublicSeoPrerenderEnabled { get; set; }
+    public string OperationalRenderMode { get; set; } = "InteractiveServer";
     public bool OperationalPrerenderEnabled { get; set; }
-    public string AdminRenderMode { get; set; } = "InteractiveAuto";
+    public string AdminRenderMode { get; set; } = "InteractiveServer";
     public bool AdminPrerenderEnabled { get; set; }
-    public string OnboardingRenderMode { get; set; } = "InteractiveAuto";
+    public string OnboardingRenderMode { get; set; } = "InteractiveServer";
     public bool OnboardingPrerenderEnabled { get; set; }
     public bool DisallowInteractiveServerOnOnboarding { get; set; } = false;
 }

@@ -46,6 +46,10 @@
                                          Text="Policies"
                                          Class="@GetNavItemClass("policies")"
                                          OnClick="@(() => SelectSection("policies"))" />
+                            <MudListItem Icon="@Icons.Material.Filled.Speed"
+                                         Text="Render Policy"
+                                         Class="@GetNavItemClass("render-policy")"
+                                         OnClick="@(() => SelectSection("render-policy"))" />
                             <MudListItem Icon="@Icons.Material.Filled.Language"
                                          Text="Domain"
                                          Class="@GetNavItemClass("domain")"
@@ -72,6 +76,10 @@
                         @if (_currentSection == "policies")
                         {
                             <TenantPoliciesSection Model="_model" />
+                        }
+                        else if (_currentSection == "render-policy")
+                        {
+                            <TenantRenderPolicySection Model="_model" />
                         }
                         else if (_currentSection == "domain")
                         {

@@ -20,21 +20,24 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
     private const string DefaultBrandDisplayName = "ISLAMU Explore";
     private const string DefaultPublicHomePage = "EventList";
     private const int DefaultRenderPolicyVersion = 1;
-    private const string DefaultRenderPolicyPreset = "SeoBalanced";
-    private const string DefaultRenderMode = "InteractiveAuto";
+    private const string DefaultRenderPolicyPreset = "AllInteractiveServer";
+    private const string DefaultRenderMode = "InteractiveServer";
 
     private readonly ISystemSettingRepository _systemSettingRepository;
     private readonly ITenantCapabilityRepository _tenantCapabilityRepository;
     private readonly IModuleDefinitionRepository _moduleDefinitionRepository;
+    private readonly ITenantSettingRepository _tenantSettingRepository;
 
     public InstanceGovernanceSettingService(
         ISystemSettingRepository systemSettingRepository,
         ITenantCapabilityRepository tenantCapabilityRepository,
-        IModuleDefinitionRepository moduleDefinitionRepository)
+        IModuleDefinitionRepository moduleDefinitionRepository,
+        ITenantSettingRepository tenantSettingRepository)
     {
         _systemSettingRepository = systemSettingRepository;
         _tenantCapabilityRepository = tenantCapabilityRepository;
         _moduleDefinitionRepository = moduleDefinitionRepository;
+        _tenantSettingRepository = tenantSettingRepository;
     }
 
     public async Task<InstanceGovernanceSettingsDto> ReadSettingsAsync()
@@ -57,11 +60,20 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         var onboardingRenderMode = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyOnboardingRenderMode);
         var onboardingPrerenderEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyOnboardingPrerenderEnabled);
         var disallowInteractiveServerOnOnboarding = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyDisallowInteractiveServerOnOnboarding);
+        var allowTenantRenderPolicyOverride = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyAllowTenantOverride);
+        var lockTenantPublicSeo = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyLockTenantPublicSeo);
+        var lockTenantOperational = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyLockTenantOperational);
+        var lockTenantAdmin = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyLockTenantAdmin);
         var islamicModule = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.ModulesIslamicEnabled);
         var techModule = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.ModulesTechEnabled);
         var userSubmittedEvents = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsUserSubmissionEnabled);
+        var orgSubmittedEvents = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsOrganizationSubmissionEnabled);
+        var groupSubmittedEvents = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsGroupSubmissionEnabled);
+        var eventCardClickOpensDetailPage = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsCardClickOpensDetailPage);
         var orgVerificationRequired = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.OrganizationsVerificationRequired);
         var tenantCanOmitVerification = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.OrganizationsTenantCanOmitVerification);
+        var orgSelfRegistration = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.OrganizationsSelfRegistrationEnabled);
+        var groupSelfRegistration = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.GroupsSelfRegistrationEnabled);
         var instanceBaseDomain = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsInstanceBaseDomain);
         var allowTenantCustomDomains = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsAllowTenantCustomDomain);
         var tenantSubdomain = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsTenantSubdomain);
@@ -94,9 +106,18 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             OnboardingRenderMode = NormalizeRenderMode(DeserializeString(onboardingRenderMode?.Value, string.Empty)),
             OnboardingPrerenderEnabled = DeserializeBoolean(onboardingPrerenderEnabled?.Value, false),
             DisallowInteractiveServerOnOnboarding = DeserializeBoolean(disallowInteractiveServerOnOnboarding?.Value, true),
+            AllowTenantRenderPolicyOverride = DeserializeBoolean(allowTenantRenderPolicyOverride?.Value, false),
+            LockTenantPublicSeoRenderPolicy = DeserializeBoolean(lockTenantPublicSeo?.Value, false),
+            LockTenantOperationalRenderPolicy = DeserializeBoolean(lockTenantOperational?.Value, false),
+            LockTenantAdminRenderPolicy = DeserializeBoolean(lockTenantAdmin?.Value, false),
             EnableIslamicModule = DeserializeBoolean(islamicModule?.Value, true),
             EnableTechModule = DeserializeBoolean(techModule?.Value, true),
             AllowUserSubmittedEvents = DeserializeBoolean(userSubmittedEvents?.Value, true),
+            AllowOrganizationSubmittedEvents = DeserializeBoolean(orgSubmittedEvents?.Value, true),
+            AllowGroupSubmittedEvents = DeserializeBoolean(groupSubmittedEvents?.Value, true),
+            AllowOrganizationSelfRegistration = DeserializeBoolean(orgSelfRegistration?.Value, true),
+            AllowGroupSelfRegistration = DeserializeBoolean(groupSelfRegistration?.Value, true),
+            EventCardClickOpensDetailPage = DeserializeBoolean(eventCardClickOpensDetailPage?.Value, false),
             RequireOrganizationVerification = DeserializeBoolean(orgVerificationRequired?.Value, true),
             AllowTenantToOmitVerification = DeserializeBoolean(tenantCanOmitVerification?.Value, false),
             InstanceBaseDomain = DeserializeString(instanceBaseDomain?.Value, string.Empty),
@@ -112,6 +133,7 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             LockTenantBrandLogoUrl = brandingLogoUrl?.IsLocked == true,
             LockTenantBrandFaviconUrl = brandingFaviconUrl?.IsLocked == true,
             LockTenantBrandCustomCssUrl = brandingCustomCssUrl?.IsLocked == true,
+            LockTenantEventCardClickBehavior = eventCardClickOpensDetailPage?.IsLocked == true,
             AuthorizationProvider = NormalizeAuthorizationProvider(DeserializeString(authorizationProvider?.Value, "local"))
         };
 
@@ -119,7 +141,76 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         return settings;
     }
 
-    public async Task ApplySettingsAsync(Guid defaultTenantId, InstanceGovernanceSettingsDto settings, Guid? actorUserId)
+    public async Task<InstanceGovernanceSettingsDto> ReadEffectiveSettingsForTenantAsync(Guid tenantId)
+    {
+        var settings = await ReadSettingsAsync();
+
+        if (!settings.AllowTenantRenderPolicyOverride)
+            return settings;
+
+        var tenantPreset = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.RoutingRenderPolicyPreset);
+        var tenantAdvancedEnabled = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.RoutingRenderPolicyAdvancedEnabled);
+        var tenantGlobalRenderMode = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.RoutingRenderPolicyGlobalRenderMode);
+        var tenantGlobalPrerender = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.RoutingRenderPolicyGlobalPrerenderEnabled);
+
+        if (tenantPreset?.Value is not null)
+        {
+            var normalizedPreset = NormalizeRenderPolicyPreset(DeserializeString(tenantPreset.Value, string.Empty));
+            if (!string.IsNullOrEmpty(normalizedPreset))
+                settings.RenderPolicyPreset = normalizedPreset;
+        }
+
+        if (tenantAdvancedEnabled?.Value is not null)
+            settings.EnableAdvancedRenderPolicyOverrides = DeserializeBoolean(tenantAdvancedEnabled.Value, false);
+
+        if (tenantGlobalRenderMode?.Value is not null)
+            settings.GlobalRenderMode = NormalizeRenderMode(DeserializeString(tenantGlobalRenderMode.Value, DefaultRenderMode));
+
+        if (tenantGlobalPrerender?.Value is not null)
+            settings.GlobalPrerenderEnabled = DeserializeBoolean(tenantGlobalPrerender.Value, false);
+
+        // Normalize after preset/global/advanced tenant overrides but BEFORE per-route-group
+        // overlays. This applies preset defaults and collapses non-advanced to global mode.
+        // Per-route-group overlays below happen after normalization so they aren't clobbered.
+        NormalizeRenderPolicySettings(settings);
+
+        if (!settings.LockTenantPublicSeoRenderPolicy)
+        {
+            var tenantPublicSeoMode = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.RoutingRenderPolicyPublicSeoRenderMode);
+            var tenantPublicSeoPrerender = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.RoutingRenderPolicyPublicSeoPrerenderEnabled);
+
+            if (tenantPublicSeoMode?.Value is not null)
+                settings.PublicSeoRenderMode = NormalizeRenderMode(DeserializeString(tenantPublicSeoMode.Value, string.Empty));
+            if (tenantPublicSeoPrerender?.Value is not null)
+                settings.PublicSeoPrerenderEnabled = DeserializeBoolean(tenantPublicSeoPrerender.Value, false);
+        }
+
+        if (!settings.LockTenantOperationalRenderPolicy)
+        {
+            var tenantOperationalMode = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.RoutingRenderPolicyOperationalRenderMode);
+            var tenantOperationalPrerender = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.RoutingRenderPolicyOperationalPrerenderEnabled);
+
+            if (tenantOperationalMode?.Value is not null)
+                settings.OperationalRenderMode = NormalizeRenderMode(DeserializeString(tenantOperationalMode.Value, string.Empty));
+            if (tenantOperationalPrerender?.Value is not null)
+                settings.OperationalPrerenderEnabled = DeserializeBoolean(tenantOperationalPrerender.Value, false);
+        }
+
+        if (!settings.LockTenantAdminRenderPolicy)
+        {
+            var tenantAdminMode = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.RoutingRenderPolicyAdminRenderMode);
+            var tenantAdminPrerender = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.RoutingRenderPolicyAdminPrerenderEnabled);
+
+            if (tenantAdminMode?.Value is not null)
+                settings.AdminRenderMode = NormalizeRenderMode(DeserializeString(tenantAdminMode.Value, string.Empty));
+            if (tenantAdminPrerender?.Value is not null)
+                settings.AdminPrerenderEnabled = DeserializeBoolean(tenantAdminPrerender.Value, false);
+        }
+
+        return settings;
+    }
+
+    public async Task ApplySettingsAsync(Guid? defaultTenantId, InstanceGovernanceSettingsDto settings, Guid? actorUserId)
     {
         settings.DefaultPublicHomePage = NormalizeHomePage(settings.DefaultPublicHomePage);
         settings.InstanceBaseDomain = NormalizeOptionalHost(settings.InstanceBaseDomain);
@@ -301,6 +392,42 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             "Guardrail that disallows InteractiveServer on onboarding routes.");
 
         await UpsertSystemSettingAsync(
+            GovernanceSettingKeys.RoutingRenderPolicyAllowTenantOverride,
+            JsonSerializer.Serialize(settings.AllowTenantRenderPolicyOverride),
+            SettingValueType.Boolean,
+            true,
+            "Routing",
+            16,
+            "Master gate: allows tenants to override render policy when enabled.");
+
+        await UpsertSystemSettingAsync(
+            GovernanceSettingKeys.RoutingRenderPolicyLockTenantPublicSeo,
+            JsonSerializer.Serialize(settings.LockTenantPublicSeoRenderPolicy),
+            SettingValueType.Boolean,
+            true,
+            "Routing",
+            17,
+            "Locks Public/SEO render policy at the instance level, preventing tenant override.");
+
+        await UpsertSystemSettingAsync(
+            GovernanceSettingKeys.RoutingRenderPolicyLockTenantOperational,
+            JsonSerializer.Serialize(settings.LockTenantOperationalRenderPolicy),
+            SettingValueType.Boolean,
+            true,
+            "Routing",
+            18,
+            "Locks Operational render policy at the instance level, preventing tenant override.");
+
+        await UpsertSystemSettingAsync(
+            GovernanceSettingKeys.RoutingRenderPolicyLockTenantAdmin,
+            JsonSerializer.Serialize(settings.LockTenantAdminRenderPolicy),
+            SettingValueType.Boolean,
+            true,
+            "Routing",
+            19,
+            "Locks Admin render policy at the instance level, preventing tenant override.");
+
+        await UpsertSystemSettingAsync(
             GovernanceSettingKeys.ModulesIslamicEnabled,
             JsonSerializer.Serialize(settings.EnableIslamicModule),
             SettingValueType.Boolean,
@@ -328,6 +455,33 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             "Whether tenant users are allowed to submit events");
 
         await UpsertSystemSettingAsync(
+            GovernanceSettingKeys.EventsOrganizationSubmissionEnabled,
+            JsonSerializer.Serialize(settings.AllowOrganizationSubmittedEvents),
+            SettingValueType.Boolean,
+            false,
+            "Events",
+            4,
+            "Whether organizations are allowed to submit events");
+
+        await UpsertSystemSettingAsync(
+            GovernanceSettingKeys.EventsGroupSubmissionEnabled,
+            JsonSerializer.Serialize(settings.AllowGroupSubmittedEvents),
+            SettingValueType.Boolean,
+            false,
+            "Events",
+            5,
+            "Whether groups are allowed to submit events");
+
+        await UpsertSystemSettingAsync(
+            GovernanceSettingKeys.EventsCardClickOpensDetailPage,
+            JsonSerializer.Serialize(settings.EventCardClickOpensDetailPage),
+            SettingValueType.Boolean,
+            settings.LockTenantEventCardClickBehavior,
+            "Events",
+            6,
+            "Whether clicking an event card navigates to the detail page instead of opening a sidebar");
+
+        await UpsertSystemSettingAsync(
             GovernanceSettingKeys.OrganizationsVerificationRequired,
             JsonSerializer.Serialize(settings.RequireOrganizationVerification),
             SettingValueType.Boolean,
@@ -344,6 +498,24 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             "Organizations",
             2,
             "Whether tenant administrators may omit organization verification requirements");
+
+        await UpsertSystemSettingAsync(
+            GovernanceSettingKeys.OrganizationsSelfRegistrationEnabled,
+            JsonSerializer.Serialize(settings.AllowOrganizationSelfRegistration),
+            SettingValueType.Boolean,
+            false,
+            "Organizations",
+            3,
+            "Whether users can self-register organizations");
+
+        await UpsertSystemSettingAsync(
+            GovernanceSettingKeys.GroupsSelfRegistrationEnabled,
+            JsonSerializer.Serialize(settings.AllowGroupSelfRegistration),
+            SettingValueType.Boolean,
+            false,
+            "Groups",
+            1,
+            "Whether users can self-register groups");
 
         await UpsertSystemSettingAsync(
             GovernanceSettingKeys.DomainsInstanceBaseDomain,
@@ -427,23 +599,34 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             "Authorization provider: 'local' for database-only RBAC, 'cerbos' for full PDP",
             "[\"local\", \"cerbos\"]");
 
-        await UpsertTenantCapabilityAsync(
-            defaultTenantId,
-            CoreModuleKey,
-            true,
-            actorUserId);
+        if (defaultTenantId.HasValue)
+        {
+            await UpsertTenantCapabilityAsync(
+                defaultTenantId.Value,
+                CoreModuleKey,
+                true,
+                actorUserId);
 
-        await UpsertTenantCapabilityAsync(
-            defaultTenantId,
-            IslamicModuleKey,
-            settings.EnableIslamicModule,
-            actorUserId);
+            await UpsertTenantCapabilityAsync(
+                defaultTenantId.Value,
+                IslamicModuleKey,
+                settings.EnableIslamicModule,
+                actorUserId);
 
-        await UpsertTenantCapabilityAsync(
-            defaultTenantId,
-            TechModuleKey,
-            settings.EnableTechModule,
-            actorUserId);
+            await UpsertTenantCapabilityAsync(
+                defaultTenantId.Value,
+                TechModuleKey,
+                settings.EnableTechModule,
+                actorUserId);
+
+            // In single-tenant mode, propagate home page to tenant settings
+            // so the effective setting cascade picks up the instance admin's choice.
+            await UpsertTenantSettingAsync(
+                defaultTenantId.Value,
+                GovernanceSettingKeys.RoutingDefaultPublicHomePage,
+                JsonSerializer.Serialize(settings.DefaultPublicHomePage),
+                actorUserId);
+        }
     }
 
     private static int DeserializeInt(string? rawValue, int defaultValue)
@@ -551,7 +734,7 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
 
         if (IsInteractiveServerRenderMode(settings.OnboardingRenderMode))
         {
-            settings.OnboardingRenderMode = DefaultRenderMode;
+            settings.OnboardingRenderMode = RenderModeOptionEnum.InteractiveAuto.ToString();
         }
 
         settings.DisallowInteractiveServerOnOnboarding = true;
@@ -600,6 +783,12 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             case RenderPolicyPresetEnum.AllInteractiveAutoNoPrerender:
                 settings.EnableAdvancedRenderPolicyOverrides = false;
                 settings.GlobalRenderMode = RenderModeOptionEnum.InteractiveAuto.ToString();
+                settings.GlobalPrerenderEnabled = false;
+                break;
+
+            case RenderPolicyPresetEnum.AllInteractiveServer:
+                settings.EnableAdvancedRenderPolicyOverrides = false;
+                settings.GlobalRenderMode = RenderModeOptionEnum.InteractiveServer.ToString();
                 settings.GlobalPrerenderEnabled = false;
                 break;
 
@@ -725,5 +914,33 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         }
 
         await _tenantCapabilityRepository.Update(existing);
+    }
+
+    private async Task UpsertTenantSettingAsync(
+        Guid tenantId,
+        string settingKey,
+        string value,
+        Guid? actorUserId)
+    {
+        var existing = await _tenantSettingRepository.GetByTenantAndKey(tenantId, settingKey);
+        if (existing == null)
+        {
+            await _tenantSettingRepository.Create(new TenantSetting
+            {
+                TenantId = tenantId,
+                Tenant = null!,
+                SettingKey = settingKey,
+                Value = value,
+                CreatedAt = DateTime.UtcNow,
+                CreatedBy = actorUserId
+            });
+
+            return;
+        }
+
+        existing.Value = value;
+        existing.UpdatedAt = DateTime.UtcNow;
+        existing.UpdatedBy = actorUserId;
+        await _tenantSettingRepository.Update(existing);
     }
 }

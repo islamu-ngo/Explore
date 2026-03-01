@@ -223,7 +223,7 @@ public class NavMenuAdminTests : IDisposable
         dropdownButton.Click();
     }
 
-    private void SetupNavMenuServices()
+    private void SetupNavMenuServices(string deploymentMode = "MultiTenant")
     {
         var userService = Substitute.For<IUserService>();
         userService.GetCurrentUserAsync().Returns((UserDto?)null);
@@ -232,6 +232,14 @@ public class NavMenuAdminTests : IDisposable
         var publicExperienceService = Substitute.For<IPublicExperienceService>();
         publicExperienceService.GetSettingsAsync().Returns((PublicExperienceSettingsModel?)null);
         _ctx.Services.AddSingleton(publicExperienceService);
+
+        var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
+        instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        {
+            IsCompleted = true,
+            SelectedDeploymentMode = deploymentMode
+        });
+        _ctx.Services.AddSingleton(instanceOnboardingService);
 
         var tenantNavigationService = Substitute.For<ITenantNavigationService>();
         tenantNavigationService.GetNavigationLinksAsync().Returns(new List<TenantNavigationLinkDto>());

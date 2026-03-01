@@ -111,6 +111,11 @@ public class TenantOnboardingStatusModel
 public class TenantPolicySettingsModel
 {
     public bool AllowUserSubmittedEvents { get; set; } = true;
+    public bool AllowOrganizationSubmittedEvents { get; set; } = true;
+    public bool AllowGroupSubmittedEvents { get; set; } = true;
+    public bool AllowOrganizationSelfRegistration { get; set; } = true;
+    public bool AllowGroupSelfRegistration { get; set; } = true;
+    public bool EventCardClickOpensDetailPage { get; set; }
     public bool RequireEventApproval { get; set; }
     public bool RequireOrganizationVerification { get; set; } = true;
     public bool CanTenantOmitVerification { get; set; }
@@ -130,4 +135,21 @@ public class TenantPolicySettingsModel
     public bool CanOverrideBrandLogoUrl { get; set; } = true;
     public bool CanOverrideBrandFaviconUrl { get; set; } = true;
     public bool CanOverrideBrandCustomCssUrl { get; set; } = true;
+    public bool CanOverrideEventCardClickBehavior { get; set; } = true;
+
+    // Render policy tenant overrides
+    public string RenderPolicyPreset { get; set; } = string.Empty;
+    public bool EnableAdvancedRenderPolicyOverrides { get; set; }
+    public string GlobalRenderMode { get; set; } = string.Empty;
+    public bool GlobalPrerenderEnabled { get; set; }
+    public string PublicSeoRenderMode { get; set; } = string.Empty;
+    public bool PublicSeoPrerenderEnabled { get; set; }
+    public string OperationalRenderMode { get; set; } = string.Empty;
+    public bool OperationalPrerenderEnabled { get; set; }
+    public string AdminRenderMode { get; set; } = string.Empty;
+    public bool AdminPrerenderEnabled { get; set; }
+    public bool CanOverrideRenderPolicy { get; set; }
+    public bool CanOverridePublicSeoRenderPolicy { get; set; }
+    public bool CanOverrideOperationalRenderPolicy { get; set; }
+    public bool CanOverrideAdminRenderPolicy { get; set; }
 }

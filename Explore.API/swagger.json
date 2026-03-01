@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "https://localhost:50335/"
+      "url": "https://localhost:55913/"
     }
   ],
   "paths": {
@@ -10457,6 +10457,52 @@
         }
       }
     },
+    "/api/tenant/count": {
+      "get": {
+        "tags": [
+          "Tenant"
+        ],
+        "summary": "Get Active Tenant Count",
+        "description": "Returns the number of active tenants. Used by deployment mode toggle safeguards.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "pattern": "^-?(?:0|[1-9]\\d*)$",
+                  "type": [
+                    "integer",
+                    "string"
+                  ],
+                  "format": "int32"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "pattern": "^-?(?:0|[1-9]\\d*)$",
+                  "type": [
+                    "integer",
+                    "string"
+                  ],
+                  "format": "int32"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "pattern": "^-?(?:0|[1-9]\\d*)$",
+                  "type": [
+                    "integer",
+                    "string"
+                  ],
+                  "format": "int32"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/tenant/{id}": {
       "get": {
         "tags": [
@@ -18915,6 +18961,18 @@
           "disallowInteractiveServerOnOnboarding": {
             "type": "boolean"
           },
+          "allowTenantRenderPolicyOverride": {
+            "type": "boolean"
+          },
+          "lockTenantPublicSeoRenderPolicy": {
+            "type": "boolean"
+          },
+          "lockTenantOperationalRenderPolicy": {
+            "type": "boolean"
+          },
+          "lockTenantAdminRenderPolicy": {
+            "type": "boolean"
+          },
           "enableIslamicModule": {
             "type": "boolean"
           },
@@ -18922,6 +18980,21 @@
             "type": "boolean"
           },
           "allowUserSubmittedEvents": {
+            "type": "boolean"
+          },
+          "allowOrganizationSubmittedEvents": {
+            "type": "boolean"
+          },
+          "allowGroupSubmittedEvents": {
+            "type": "boolean"
+          },
+          "allowOrganizationSelfRegistration": {
+            "type": "boolean"
+          },
+          "allowGroupSelfRegistration": {
+            "type": "boolean"
+          },
+          "eventCardClickOpensDetailPage": {
             "type": "boolean"
           },
           "requireOrganizationVerification": {
@@ -18967,6 +19040,9 @@
             "type": "boolean"
           },
           "lockTenantBrandCustomCssUrl": {
+            "type": "boolean"
+          },
+          "lockTenantEventCardClickBehavior": {
             "type": "boolean"
           },
           "authorizationProvider": {
@@ -20032,6 +20108,21 @@
           "allowUserSubmittedEvents": {
             "type": "boolean"
           },
+          "allowOrganizationSubmittedEvents": {
+            "type": "boolean"
+          },
+          "allowGroupSubmittedEvents": {
+            "type": "boolean"
+          },
+          "allowOrganizationSelfRegistration": {
+            "type": "boolean"
+          },
+          "allowGroupSelfRegistration": {
+            "type": "boolean"
+          },
+          "eventCardClickOpensDetailPage": {
+            "type": "boolean"
+          },
           "enabledModules": {
             "type": "array",
             "items": {
@@ -20743,6 +20834,21 @@
           "allowUserSubmittedEvents": {
             "type": "boolean"
           },
+          "allowOrganizationSubmittedEvents": {
+            "type": "boolean"
+          },
+          "allowGroupSubmittedEvents": {
+            "type": "boolean"
+          },
+          "allowOrganizationSelfRegistration": {
+            "type": "boolean"
+          },
+          "allowGroupSelfRegistration": {
+            "type": "boolean"
+          },
+          "eventCardClickOpensDetailPage": {
+            "type": "boolean"
+          },
           "requireEventApproval": {
             "type": "boolean"
           },
@@ -20798,6 +20904,51 @@
             "type": "boolean"
           },
           "canOverrideBrandCustomCssUrl": {
+            "type": "boolean"
+          },
+          "canOverrideEventCardClickBehavior": {
+            "type": "boolean"
+          },
+          "renderPolicyPreset": {
+            "type": "string"
+          },
+          "enableAdvancedRenderPolicyOverrides": {
+            "type": "boolean"
+          },
+          "globalRenderMode": {
+            "type": "string"
+          },
+          "globalPrerenderEnabled": {
+            "type": "boolean"
+          },
+          "publicSeoRenderMode": {
+            "type": "string"
+          },
+          "publicSeoPrerenderEnabled": {
+            "type": "boolean"
+          },
+          "operationalRenderMode": {
+            "type": "string"
+          },
+          "operationalPrerenderEnabled": {
+            "type": "boolean"
+          },
+          "adminRenderMode": {
+            "type": "string"
+          },
+          "adminPrerenderEnabled": {
+            "type": "boolean"
+          },
+          "canOverrideRenderPolicy": {
+            "type": "boolean"
+          },
+          "canOverridePublicSeoRenderPolicy": {
+            "type": "boolean"
+          },
+          "canOverrideOperationalRenderPolicy": {
+            "type": "boolean"
+          },
+          "canOverrideAdminRenderPolicy": {
             "type": "boolean"
           }
         }

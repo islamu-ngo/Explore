@@ -1,5 +1,5 @@
 // ABOUTME: Unit tests for InstanceGovernanceSettingsDtoValidator render-policy governance rules.
-// ABOUTME: Verifies allowed policy values and onboarding InteractiveServer guardrails.
+// ABOUTME: Verifies allowed policy values and preset/advanced-override constraints.
 
 using System.Linq;
 using Explore.Application.DTOs.Onboarding;
@@ -21,7 +21,7 @@ public class InstanceGovernanceSettingsDtoValidatorTests
     }
 
     [Test]
-    public async Task ValidateAsync_WithInteractiveServerOnOnboarding_ReturnsInvalid()
+    public async Task ValidateAsync_WithInteractiveServerOnOnboarding_IsValid()
     {
         var validator = new InstanceGovernanceSettingsDtoValidator();
         var dto = CreateValidDto();
@@ -30,9 +30,7 @@ public class InstanceGovernanceSettingsDtoValidatorTests
 
         var result = await validator.ValidateAsync(dto);
 
-        await Assert.That(result.IsValid).IsFalse();
-        await Assert.That(result.Errors.Select(x => x.ErrorMessage)).Contains("OnboardingRenderMode cannot be InteractiveServer.");
-        await Assert.That(result.Errors.Select(x => x.ErrorMessage)).Contains("DisallowInteractiveServerOnOnboarding must remain enabled.");
+        await Assert.That(result.IsValid).IsTrue();
     }
 
     [Test]
@@ -56,17 +54,19 @@ public class InstanceGovernanceSettingsDtoValidatorTests
         {
             DeploymentMode = "SingleTenant",
             RenderPolicyVersion = 1,
-            RenderPolicyPreset = "SeoBalanced",
+            RenderPolicyPreset = "AllInteractiveServer",
             EnableAdvancedRenderPolicyOverrides = false,
-            PublicSeoRenderMode = "InteractiveAuto",
-            PublicSeoPrerenderEnabled = true,
-            OperationalRenderMode = "InteractiveAuto",
+            GlobalRenderMode = "InteractiveServer",
+            GlobalPrerenderEnabled = false,
+            PublicSeoRenderMode = "InteractiveServer",
+            PublicSeoPrerenderEnabled = false,
+            OperationalRenderMode = "InteractiveServer",
             OperationalPrerenderEnabled = false,
-            AdminRenderMode = "InteractiveAuto",
+            AdminRenderMode = "InteractiveServer",
             AdminPrerenderEnabled = false,
-            OnboardingRenderMode = "InteractiveAuto",
+            OnboardingRenderMode = "InteractiveServer",
             OnboardingPrerenderEnabled = false,
-            DisallowInteractiveServerOnOnboarding = true
+            DisallowInteractiveServerOnOnboarding = false
         };
     }
 }

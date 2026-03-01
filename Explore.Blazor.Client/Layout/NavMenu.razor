@@ -151,11 +151,11 @@
                                     {
                                         <a href="/admin/instance/settings" class="navbar__dropdown-item" @onclick="CloseDropdown">
                                             <MudIcon Icon="@Icons.Material.Filled.Dns" Size="Size.Small" />
-                                            Instance Administration
+                                            @(_isSingleTenantMode ? "Administration" : "Instance Administration")
                                         </a>
                                     }
 
-                                    @if (IsTenantAdmin(context.User))
+                                    @if (IsTenantAdmin(context.User) && !_isSingleTenantMode)
                                     {
                                         <a href="/admin/tenant/settings" class="navbar__dropdown-item" @onclick="CloseDropdown">
                                             <MudIcon Icon="@Icons.Material.Filled.Domain" Size="Size.Small" />
@@ -187,14 +187,24 @@
                     </div>
                 </Authorized>
                 <NotAuthorized>
-                    <a href="/login" data-enhance-nav="false" style="text-decoration: none;">
+                    @if (_showAddEventForAnonymous)
+                    {
                         <MudButton Variant="Variant.Filled"
                                    Color="Color.Primary"
-                                   Class="navbar__login-btn"
-                                   StartIcon="@Icons.Material.Filled.Login">
-                            Login
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   Size="Size.Small"
+                                   Class="navbar__create-event-btn"
+                                   OnClick="@(() => OpenLoginPrompt("/create-event"))">
+                            Add Event
                         </MudButton>
-                    </a>
+                    }
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Class="navbar__login-btn"
+                               StartIcon="@Icons.Material.Filled.Login"
+                               OnClick="@(() => OpenLoginPrompt(null))">
+                        Login
+                    </MudButton>
                 </NotAuthorized>
             </AuthorizeView>
         </div>

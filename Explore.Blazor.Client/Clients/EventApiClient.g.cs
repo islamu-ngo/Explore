@@ -1683,6 +1683,17 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Get Active Tenant Count
+        /// </summary>
+        /// <remarks>
+        /// Returns the number of active tenants. Used by deployment mode toggle safeguards.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task<int> CountAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Get Tenant by ID
         /// </summary>
         /// <remarks>
@@ -17708,6 +17719,83 @@ namespace Explore.Blazor.Client.Clients
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
+        /// Get Active Tenant Count
+        /// </summary>
+        /// <remarks>
+        /// Returns the number of active tenants. Used by deployment mode toggle safeguards.
+        /// </remarks>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task<int> CountAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    request_.Method = new System.Net.Http.HttpMethod("GET");
+                    request_.Headers.Accept.Add(System.Net.Http.Headers.MediaTypeWithQualityHeaderValue.Parse("text/plain; v=0.1"));
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+                
+                    // Operation Path: "api/tenant/count"
+                    urlBuilder_.Append("api/tenant/count");
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            var objectResponse_ = await ReadObjectResponseAsync<int>(response_, headers_, cancellationToken).ConfigureAwait(false);
+                            if (objectResponse_.Object == null)
+                            {
+                                throw new ApiException("Response was null which was not expected.", status_, objectResponse_.Text, headers_, null);
+                            }
+                            return objectResponse_.Object;
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await response_.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <summary>
         /// Get Tenant by ID
         /// </summary>
         /// <remarks>
@@ -26117,6 +26205,18 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("disallowInteractiveServerOnOnboarding")]
         public bool? DisallowInteractiveServerOnOnboarding { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("allowTenantRenderPolicyOverride")]
+        public bool? AllowTenantRenderPolicyOverride { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lockTenantPublicSeoRenderPolicy")]
+        public bool? LockTenantPublicSeoRenderPolicy { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lockTenantOperationalRenderPolicy")]
+        public bool? LockTenantOperationalRenderPolicy { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lockTenantAdminRenderPolicy")]
+        public bool? LockTenantAdminRenderPolicy { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("enableIslamicModule")]
         public bool? EnableIslamicModule { get; set; } = default!;
 
@@ -26125,6 +26225,21 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("allowUserSubmittedEvents")]
         public bool? AllowUserSubmittedEvents { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("allowOrganizationSubmittedEvents")]
+        public bool? AllowOrganizationSubmittedEvents { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("allowGroupSubmittedEvents")]
+        public bool? AllowGroupSubmittedEvents { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("allowOrganizationSelfRegistration")]
+        public bool? AllowOrganizationSelfRegistration { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("allowGroupSelfRegistration")]
+        public bool? AllowGroupSelfRegistration { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventCardClickOpensDetailPage")]
+        public bool? EventCardClickOpensDetailPage { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("requireOrganizationVerification")]
         public bool? RequireOrganizationVerification { get; set; } = default!;
@@ -26170,6 +26285,9 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("lockTenantBrandCustomCssUrl")]
         public bool? LockTenantBrandCustomCssUrl { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("lockTenantEventCardClickBehavior")]
+        public bool? LockTenantEventCardClickBehavior { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("authorizationProvider")]
         public string? AuthorizationProvider { get; set; } = default!;
@@ -27177,6 +27295,21 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("allowUserSubmittedEvents")]
         public bool? AllowUserSubmittedEvents { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("allowOrganizationSubmittedEvents")]
+        public bool? AllowOrganizationSubmittedEvents { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("allowGroupSubmittedEvents")]
+        public bool? AllowGroupSubmittedEvents { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("allowOrganizationSelfRegistration")]
+        public bool? AllowOrganizationSelfRegistration { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("allowGroupSelfRegistration")]
+        public bool? AllowGroupSelfRegistration { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventCardClickOpensDetailPage")]
+        public bool? EventCardClickOpensDetailPage { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("enabledModules")]
         public System.Collections.Generic.ICollection<string>? EnabledModules { get; set; } = default!;
 
@@ -27882,6 +28015,21 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("allowUserSubmittedEvents")]
         public bool? AllowUserSubmittedEvents { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("allowOrganizationSubmittedEvents")]
+        public bool? AllowOrganizationSubmittedEvents { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("allowGroupSubmittedEvents")]
+        public bool? AllowGroupSubmittedEvents { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("allowOrganizationSelfRegistration")]
+        public bool? AllowOrganizationSelfRegistration { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("allowGroupSelfRegistration")]
+        public bool? AllowGroupSelfRegistration { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("eventCardClickOpensDetailPage")]
+        public bool? EventCardClickOpensDetailPage { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("requireEventApproval")]
         public bool? RequireEventApproval { get; set; } = default!;
 
@@ -27938,6 +28086,51 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("canOverrideBrandCustomCssUrl")]
         public bool? CanOverrideBrandCustomCssUrl { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("canOverrideEventCardClickBehavior")]
+        public bool? CanOverrideEventCardClickBehavior { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("renderPolicyPreset")]
+        public string? RenderPolicyPreset { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("enableAdvancedRenderPolicyOverrides")]
+        public bool? EnableAdvancedRenderPolicyOverrides { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("globalRenderMode")]
+        public string? GlobalRenderMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("globalPrerenderEnabled")]
+        public bool? GlobalPrerenderEnabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("publicSeoRenderMode")]
+        public string? PublicSeoRenderMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("publicSeoPrerenderEnabled")]
+        public bool? PublicSeoPrerenderEnabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("operationalRenderMode")]
+        public string? OperationalRenderMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("operationalPrerenderEnabled")]
+        public bool? OperationalPrerenderEnabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("adminRenderMode")]
+        public string? AdminRenderMode { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("adminPrerenderEnabled")]
+        public bool? AdminPrerenderEnabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("canOverrideRenderPolicy")]
+        public bool? CanOverrideRenderPolicy { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("canOverridePublicSeoRenderPolicy")]
+        public bool? CanOverridePublicSeoRenderPolicy { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("canOverrideOperationalRenderPolicy")]
+        public bool? CanOverrideOperationalRenderPolicy { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("canOverrideAdminRenderPolicy")]
+        public bool? CanOverrideAdminRenderPolicy { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 

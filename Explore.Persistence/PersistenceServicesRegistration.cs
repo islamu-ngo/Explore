@@ -160,6 +160,9 @@ public static class PersistenceServicesRegistration
         // Settings Repositories
         services.AddScoped<ISystemSettingRepository, SystemSettingRepository>();
         services.AddScoped<ITenantSettingRepository, TenantSettingRepository>();
+        services.AddScoped<IOrganizationSettingRepository, OrganizationSettingRepository>();
+        services.AddScoped<IGroupSettingRepository, GroupSettingRepository>();
+        services.AddScoped<IUserPreferenceRepository, UserPreferenceRepository>();
         services.AddScoped<IAppSettingRepository, AppSettingRepository>();
 
         // Module Governance Repositories

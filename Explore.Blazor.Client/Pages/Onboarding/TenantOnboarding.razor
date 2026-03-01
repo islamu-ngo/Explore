@@ -79,6 +79,16 @@
                     <MudText Typo="Typo.caption">Home page is locked by instance policy.</MudText>
                 }
 
+                <MudSwitch T="bool"
+                           @bind-Value="_model.EventCardClickOpensDetailPage"
+                           Label="Event card click opens detail page"
+                           Color="Color.Primary"
+                           Disabled="@(!_model.CanOverrideEventCardClickBehavior)" />
+                @if (!_model.CanOverrideEventCardClickBehavior)
+                {
+                    <MudText Typo="Typo.caption">Event card click behavior is locked by instance policy.</MudText>
+                }
+
                 <MudTextField Label="Subdomain (Optional)"
                               Variant="Variant.Outlined"
                               Placeholder="tenant-slug"

@@ -532,6 +532,14 @@ public class AuthenticationFlowTests
         ctx.Services.AddSingleton(eligibilityService);
 
         ctx.Services.AddSingleton(new Explore.Blazor.Client.Services.SidebarState());
+
+        var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
+        instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        {
+            IsCompleted = true,
+            SelectedDeploymentMode = "MultiTenant"
+        });
+        ctx.Services.AddSingleton(instanceOnboardingService);
     }
 
     private static void RegisterOrganizationServices(BlazorTestContext ctx)

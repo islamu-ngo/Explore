@@ -27,8 +27,12 @@ internal static class InstanceGovernanceSettingHelpers
         var islamicModule = await systemSettingRepository.GetByKey(GovernanceSettingKeys.ModulesIslamicEnabled);
         var techModule = await systemSettingRepository.GetByKey(GovernanceSettingKeys.ModulesTechEnabled);
         var userSubmittedEvents = await systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsUserSubmissionEnabled);
+        var orgSubmittedEvents = await systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsOrganizationSubmissionEnabled);
+        var groupSubmittedEvents = await systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsGroupSubmissionEnabled);
         var orgVerificationRequired = await systemSettingRepository.GetByKey(GovernanceSettingKeys.OrganizationsVerificationRequired);
         var tenantCanOmitVerification = await systemSettingRepository.GetByKey(GovernanceSettingKeys.OrganizationsTenantCanOmitVerification);
+        var orgSelfRegistration = await systemSettingRepository.GetByKey(GovernanceSettingKeys.OrganizationsSelfRegistrationEnabled);
+        var groupSelfRegistration = await systemSettingRepository.GetByKey(GovernanceSettingKeys.GroupsSelfRegistrationEnabled);
         var instanceBaseDomain = await systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsInstanceBaseDomain);
         var allowTenantCustomDomains = await systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsAllowTenantCustomDomain);
         var tenantSubdomain = await systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsTenantSubdomain);
@@ -49,6 +53,10 @@ internal static class InstanceGovernanceSettingHelpers
             EnableIslamicModule = DeserializeBoolean(islamicModule?.Value, true),
             EnableTechModule = DeserializeBoolean(techModule?.Value, true),
             AllowUserSubmittedEvents = DeserializeBoolean(userSubmittedEvents?.Value, true),
+            AllowOrganizationSubmittedEvents = DeserializeBoolean(orgSubmittedEvents?.Value, true),
+            AllowGroupSubmittedEvents = DeserializeBoolean(groupSubmittedEvents?.Value, true),
+            AllowOrganizationSelfRegistration = DeserializeBoolean(orgSelfRegistration?.Value, true),
+            AllowGroupSelfRegistration = DeserializeBoolean(groupSelfRegistration?.Value, true),
             RequireOrganizationVerification = DeserializeBoolean(orgVerificationRequired?.Value, true),
             AllowTenantToOmitVerification = DeserializeBoolean(tenantCanOmitVerification?.Value, false),
             InstanceBaseDomain = DeserializeString(instanceBaseDomain?.Value, string.Empty),
@@ -157,6 +165,26 @@ internal static class InstanceGovernanceSettingHelpers
 
         await UpsertSystemSettingAsync(
             systemSettingRepository,
+            GovernanceSettingKeys.EventsOrganizationSubmissionEnabled,
+            JsonSerializer.Serialize(settings.AllowOrganizationSubmittedEvents),
+            SettingValueType.Boolean,
+            false,
+            "Events",
+            4,
+            "Whether organizations are allowed to submit events");
+
+        await UpsertSystemSettingAsync(
+            systemSettingRepository,
+            GovernanceSettingKeys.EventsGroupSubmissionEnabled,
+            JsonSerializer.Serialize(settings.AllowGroupSubmittedEvents),
+            SettingValueType.Boolean,
+            false,
+            "Events",
+            5,
+            "Whether groups are allowed to submit events");
+
+        await UpsertSystemSettingAsync(
+            systemSettingRepository,
             GovernanceSettingKeys.OrganizationsVerificationRequired,
             JsonSerializer.Serialize(settings.RequireOrganizationVerification),
             SettingValueType.Boolean,
@@ -174,6 +202,26 @@ internal static class InstanceGovernanceSettingHelpers
             "Organizations",
             2,
             "Whether tenant administrators may omit organization verification requirements");
+
+        await UpsertSystemSettingAsync(
+            systemSettingRepository,
+            GovernanceSettingKeys.OrganizationsSelfRegistrationEnabled,
+            JsonSerializer.Serialize(settings.AllowOrganizationSelfRegistration),
+            SettingValueType.Boolean,
+            false,
+            "Organizations",
+            3,
+            "Whether users can self-register organizations");
+
+        await UpsertSystemSettingAsync(
+            systemSettingRepository,
+            GovernanceSettingKeys.GroupsSelfRegistrationEnabled,
+            JsonSerializer.Serialize(settings.AllowGroupSelfRegistration),
+            SettingValueType.Boolean,
+            false,
+            "Groups",
+            1,
+            "Whether users can self-register groups");
 
         await UpsertSystemSettingAsync(
             systemSettingRepository,

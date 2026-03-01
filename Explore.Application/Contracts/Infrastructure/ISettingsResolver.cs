@@ -138,5 +138,20 @@ public enum SettingSource
     /// <summary>
     /// Value comes from the system and is locked (cannot be overridden).
     /// </summary>
-    SystemLocked = 2
+    SystemLocked = 2,
+
+    /// <summary>
+    /// Value comes from an organization-specific override.
+    /// </summary>
+    OrganizationOverride = 3,
+
+    /// <summary>
+    /// Value comes from a group-specific override.
+    /// </summary>
+    GroupOverride = 4,
+
+    /// <summary>
+    /// Value comes from a user preference.
+    /// </summary>
+    UserPreference = 5
 }

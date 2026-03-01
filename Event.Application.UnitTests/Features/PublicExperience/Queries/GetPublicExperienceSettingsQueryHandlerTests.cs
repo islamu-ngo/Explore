@@ -28,7 +28,7 @@ public class GetPublicExperienceSettingsQueryHandlerTests
         _policySettingService = Substitute.For<ITenantPolicySettingService>();
         _moduleService = Substitute.For<IModuleService>();
         _instanceGovernanceSettingService = Substitute.For<IInstanceGovernanceSettingService>();
-        _instanceGovernanceSettingService.ReadSettingsAsync().Returns(new InstanceGovernanceSettingsDto());
+        _instanceGovernanceSettingService.ReadEffectiveSettingsForTenantAsync(Arg.Any<Guid>()).Returns(new InstanceGovernanceSettingsDto());
 
         _handler = new GetPublicExperienceSettingsQueryHandler(
             _tenantContext,
@@ -197,7 +197,7 @@ public class GetPublicExperienceSettingsQueryHandlerTests
         _moduleService.GetEnabledModulesAsync(tenantId, Arg.Any<CancellationToken>())
             .Returns(new List<ModuleInfo>());
 
-        _instanceGovernanceSettingService.ReadSettingsAsync().Returns(new InstanceGovernanceSettingsDto
+        _instanceGovernanceSettingService.ReadEffectiveSettingsForTenantAsync(tenantId).Returns(new InstanceGovernanceSettingsDto
         {
             RenderPolicyVersion = 4,
             RenderPolicyPreset = "CustomAdvanced",

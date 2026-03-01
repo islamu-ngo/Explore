@@ -28,6 +28,10 @@ public static class GovernanceSettingKeys
             public const string Preset = Base + ".preset";
             public const string AdvancedEnabled = Base + ".advanced_enabled";
             public const string DisallowInteractiveServerOnOnboarding = Base + ".onboarding.disallow_interactive_server";
+            public const string AllowTenantOverride = Base + ".allow_tenant_override";
+            public const string LockTenantPublicSeo = Base + ".lock_tenant_public_seo";
+            public const string LockTenantOperational = Base + ".lock_tenant_operational";
+            public const string LockTenantAdmin = Base + ".lock_tenant_admin";
 
             public static class Fallback
             {
@@ -74,13 +78,22 @@ public static class GovernanceSettingKeys
     public static class Events
     {
         public const string UserSubmissionEnabled = "events.user_submission_enabled";
+        public const string OrganizationSubmissionEnabled = "events.organization_submission_enabled";
+        public const string GroupSubmissionEnabled = "events.group_submission_enabled";
         public const string RequireApproval = "events.require_approval";
+        public const string CardClickOpensDetailPage = "events.card_click_opens_detail_page";
     }
 
     public static class Organizations
     {
         public const string VerificationRequired = "organizations.verification_required";
         public const string TenantCanOmitVerification = "organizations.tenant_can_omit_verification";
+        public const string SelfRegistrationEnabled = "organizations.self_registration_enabled";
+    }
+
+    public static class Groups
+    {
+        public const string SelfRegistrationEnabled = "groups.self_registration_enabled";
     }
 
     public static class Modules
@@ -167,10 +180,19 @@ public static class GovernanceSettingKeys
     public const string RoutingRenderPolicyOnboardingRenderMode = Routing.RenderPolicy.Onboarding.RenderMode;
     public const string RoutingRenderPolicyOnboardingPrerenderEnabled = Routing.RenderPolicy.Onboarding.PrerenderEnabled;
     public const string RoutingRenderPolicyDisallowInteractiveServerOnOnboarding = Routing.RenderPolicy.DisallowInteractiveServerOnOnboarding;
+    public const string RoutingRenderPolicyAllowTenantOverride = Routing.RenderPolicy.AllowTenantOverride;
+    public const string RoutingRenderPolicyLockTenantPublicSeo = Routing.RenderPolicy.LockTenantPublicSeo;
+    public const string RoutingRenderPolicyLockTenantOperational = Routing.RenderPolicy.LockTenantOperational;
+    public const string RoutingRenderPolicyLockTenantAdmin = Routing.RenderPolicy.LockTenantAdmin;
     public const string EventsUserSubmissionEnabled = Events.UserSubmissionEnabled;
     public const string EventsRequireApproval = Events.RequireApproval;
+    public const string EventsCardClickOpensDetailPage = Events.CardClickOpensDetailPage;
+    public const string EventsOrganizationSubmissionEnabled = Events.OrganizationSubmissionEnabled;
+    public const string EventsGroupSubmissionEnabled = Events.GroupSubmissionEnabled;
     public const string OrganizationsVerificationRequired = Organizations.VerificationRequired;
     public const string OrganizationsTenantCanOmitVerification = Organizations.TenantCanOmitVerification;
+    public const string OrganizationsSelfRegistrationEnabled = Organizations.SelfRegistrationEnabled;
+    public const string GroupsSelfRegistrationEnabled = Groups.SelfRegistrationEnabled;
     public const string ModulesIslamicEnabled = Modules.IslamicEnabled;
     public const string ModulesTechEnabled = Modules.TechEnabled;
     public const string BrandingDisplayName = Branding.DisplayName;

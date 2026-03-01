@@ -43,6 +43,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     // Module Flags
     private bool _isIslamicModuleEnabled;
     private bool _isTechModuleEnabled;
+    private bool _eventCardClickOpensDetailPage;
 
     // Detail drawer (right sidebar) state
     private bool _detailDrawerOpen;
@@ -110,6 +111,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         {
             _isIslamicModuleEnabled = settings.IsIslamicModuleEnabled;
             _isTechModuleEnabled = settings.IsTechModuleEnabled;
+            _eventCardClickOpensDetailPage = settings.EventCardClickOpensDetailPage;
         }
 
         await LoadDataAsync();
@@ -140,6 +142,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
         _isIslamicModuleEnabled = PersistedState.IsIslamicModuleEnabled;
         _isTechModuleEnabled = PersistedState.IsTechModuleEnabled;
+        _eventCardClickOpensDetailPage = PersistedState.EventCardClickOpensDetailPage;
 
         eventTypes = PersistedState.EventTypes;
         audienceGenders = PersistedState.AudienceGenders;
@@ -443,6 +446,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
                 InitialStartIndex = request.StartIndex,
                 IsIslamicModuleEnabled = _isIslamicModuleEnabled,
                 IsTechModuleEnabled = _isTechModuleEnabled,
+                EventCardClickOpensDetailPage = _eventCardClickOpensDetailPage,
                 EventTypes = eventTypes.ToList(),
                 AudienceGenders = audienceGenders.ToList(),
                 AudienceAges = audienceAges.ToList(),
@@ -472,6 +476,12 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
     private async Task SelectEvent(EventListDto evt)
     {
+        if (_eventCardClickOpensDetailPage)
+        {
+            Navigation.NavigateTo($"/event/detail/{evt.Id}");
+            return;
+        }
+
         _selectedEvent = evt;
         _selectedEventDetail = null;
         _selectedEventSessions = null;
@@ -758,6 +768,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         public int InitialStartIndex { get; init; }
         public bool IsIslamicModuleEnabled { get; init; }
         public bool IsTechModuleEnabled { get; init; }
+        public bool EventCardClickOpensDetailPage { get; init; }
         public List<EventTypeListDto> EventTypes { get; init; } = new();
         public List<AudienceGenderListDto> AudienceGenders { get; init; } = new();
         public List<AudienceAgeListDto> AudienceAges { get; init; } = new();

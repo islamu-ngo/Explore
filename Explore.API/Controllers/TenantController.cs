@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.Application.DTOs.Tenant;
+using Explore.Application.Features.InstanceOnboarding.Requests.Queries;
 using Explore.Application.Features.Tenants.Requests.Commands;
 using Explore.Application.Features.Tenants.Requests.Commands.CreateTenantNavLink;
 using Explore.Application.Features.Tenants.Requests.Commands.DeleteTenantNavLink;
@@ -41,6 +42,18 @@ public class TenantController : ControllerBase
     {
         var tenants = await _mediator.Send(new GetTenantListRequest(), cancellationToken);
         return Ok(tenants);
+    }
+
+    // GET: api/tenant/count
+    [HttpGet("count")]
+    [EndpointSummary("Get Active Tenant Count")]
+    [EndpointDescription("Returns the number of active tenants. Used by deployment mode toggle safeguards.")]
+    [Authorize]
+    [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
+    public async Task<ActionResult<int>> GetCount(CancellationToken cancellationToken = default)
+    {
+        var count = await _mediator.Send(new GetActiveTenantCountQuery(), cancellationToken);
+        return Ok(count);
     }
 
     // GET: api/tenant/{id}

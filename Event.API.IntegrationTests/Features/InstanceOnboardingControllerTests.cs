@@ -1,5 +1,5 @@
 // ABOUTME: Integration tests for instance onboarding governance endpoints and render-policy flows.
-// ABOUTME: Verifies save/retrieve/reject behavior with setup-secret gating and onboarding guardrail validation.
+// ABOUTME: Verifies save/retrieve behavior with setup-secret gating and preset validation rules.
 
 using System.Net;
 using System.Net.Http.Json;
@@ -76,7 +76,7 @@ public class InstanceOnboardingControllerTests
     }
 
     [Test]
-    public async Task Complete_WithInvalidOnboardingGuardrail_ShouldReturnBadRequest()
+    public async Task Complete_WithCustomAdvancedPresetAndOverridesDisabled_ShouldReturnBadRequest()
     {
         using var factory = CreateFactoryWithSetupSecret();
         using var client = factory.CreateClient();
@@ -86,9 +86,7 @@ public class InstanceOnboardingControllerTests
 
         var invalidPayload = CreateValidSettings();
         invalidPayload.RenderPolicyPreset = "CustomAdvanced";
-        invalidPayload.EnableAdvancedRenderPolicyOverrides = true;
-        invalidPayload.OnboardingRenderMode = "InteractiveServer";
-        invalidPayload.DisallowInteractiveServerOnOnboarding = false;
+        invalidPayload.EnableAdvancedRenderPolicyOverrides = false;
 
         using var completeRequest = CreateInstanceAdminRequest(HttpMethod.Post, $"{BaseUrl}/complete", userId, invalidPayload, includeSetupSecret: true);
         var completeResponse = await client.SendAsync(completeRequest);
@@ -99,7 +97,7 @@ public class InstanceOnboardingControllerTests
         await Assert.That(responseBody).IsNotNull();
         await Assert.That(responseBody!.Success).IsFalse();
         await Assert.That(responseBody.Message).IsEqualTo("Invalid instance governance settings.");
-        await Assert.That((responseBody.Errors ?? new List<string>()).Any(e => e.Contains("OnboardingRenderMode cannot be InteractiveServer", StringComparison.Ordinal))).IsTrue();
+        await Assert.That((responseBody.Errors ?? new List<string>()).Any(e => e.Contains("EnableAdvancedRenderPolicyOverrides must be true when RenderPolicyPreset is CustomAdvanced", StringComparison.Ordinal))).IsTrue();
     }
 
     private static async Task EnsureUserExistsAsync(AuthenticatedWebApplicationFactory factory, Guid userId)

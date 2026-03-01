@@ -1,5 +1,5 @@
 // ABOUTME: Unit tests for UpdateInstanceGovernanceSettingsCommandHandler render-policy validation and authorization behavior.
-// ABOUTME: Ensures invalid onboarding render policy is rejected before persistence.
+// ABOUTME: Verifies admin authorization, validation, and governance service delegation.
 
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
@@ -12,7 +12,6 @@ using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
-using NSubstitute.Core;
 
 namespace Event.Application.UnitTests.Features.InstanceOnboarding.Commands;
 
@@ -59,9 +58,24 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
     }
 
     [Test]
-    public async Task Handle_WhenOnboardingUsesInteractiveServer_ReturnsValidationFailure()
+    public async Task Handle_WhenOnboardingUsesInteractiveServer_AcceptsAndDelegates()
     {
         _adminContext.IsInstanceAdminAsync(TestUserId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var existingBootstrapId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000112");
+        _bootstrapStateRepository.GetCurrent().Returns(new InstanceBootstrapState
+        {
+            Id = existingBootstrapId,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        var tenant = CreateDefaultTenant();
+        _tenantRepository.GetById(PlatformDefaults.DefaultTenantId).Returns(tenant);
+        _tenantSettingsRepository.GetByTenant(PlatformDefaults.DefaultTenantId).Returns(new TenantSettings
+        {
+            TenantId = PlatformDefaults.DefaultTenantId,
+            Tenant = tenant
+        });
 
         var settings = CreateValidSettings();
         settings.OnboardingRenderMode = "InteractiveServer";
@@ -69,15 +83,8 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
 
         var result = await _handler.Handle(CreateCommand(settings), CancellationToken.None);
 
-        await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.Message).IsEqualTo("Invalid instance governance settings.");
-        await Assert.That(result.Errors).Contains("OnboardingRenderMode cannot be InteractiveServer.");
-        await Assert.That(HasWarningLogContaining(
-            _logger.ReceivedCalls(),
-            "onboarding render-policy guardrail violation",
-            "InteractiveServer",
-            "DisallowInteractiveServerOnOnboarding")).IsTrue();
-        await _governanceSettingService.DidNotReceive().ApplySettingsAsync(Arg.Any<Guid>(), Arg.Any<InstanceGovernanceSettingsDto>(), Arg.Any<Guid?>());
+        await Assert.That(result.Success).IsTrue();
+        await _governanceSettingService.Received(1).ApplySettingsAsync(PlatformDefaults.DefaultTenantId, Arg.Any<InstanceGovernanceSettingsDto>(), TestUserId);
     }
 
     [Test]
@@ -124,17 +131,19 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
         {
             DeploymentMode = "SingleTenant",
             RenderPolicyVersion = 1,
-            RenderPolicyPreset = "SeoBalanced",
+            RenderPolicyPreset = "AllInteractiveServer",
             EnableAdvancedRenderPolicyOverrides = false,
-            PublicSeoRenderMode = "InteractiveAuto",
-            PublicSeoPrerenderEnabled = true,
-            OperationalRenderMode = "InteractiveAuto",
+            GlobalRenderMode = "InteractiveServer",
+            GlobalPrerenderEnabled = false,
+            PublicSeoRenderMode = "InteractiveServer",
+            PublicSeoPrerenderEnabled = false,
+            OperationalRenderMode = "InteractiveServer",
             OperationalPrerenderEnabled = false,
-            AdminRenderMode = "InteractiveAuto",
+            AdminRenderMode = "InteractiveServer",
             AdminPrerenderEnabled = false,
-            OnboardingRenderMode = "InteractiveAuto",
+            OnboardingRenderMode = "InteractiveServer",
             OnboardingPrerenderEnabled = false,
-            DisallowInteractiveServerOnOnboarding = true,
+            DisallowInteractiveServerOnOnboarding = false,
             DefaultPublicHomePage = "EventList",
             EnableIslamicModule = true,
             EnableTechModule = true
@@ -159,23 +168,4 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
         };
     }
 
-    private static bool HasWarningLogContaining(IEnumerable<ICall> calls, params string[] fragments)
-    {
-        return calls.Any(call =>
-        {
-            if (!string.Equals(call.GetMethodInfo().Name, nameof(ILogger.Log), StringComparison.Ordinal))
-            {
-                return false;
-            }
-
-            var args = call.GetArguments();
-            if (args.Length < 3 || args[0] is not LogLevel logLevel || logLevel != LogLevel.Warning)
-            {
-                return false;
-            }
-
-            var message = args[2]?.ToString() ?? string.Empty;
-            return fragments.All(fragment => message.Contains(fragment, StringComparison.OrdinalIgnoreCase));
-        });
-    }
 }

@@ -91,8 +91,32 @@ Filters in `Explore.API.Filters.BlockInSingleTenantAttribute`:
 - `BlockInSingleTenant` -> returns `404` in single-tenant mode (hide endpoint),
 - `RequireMultiTenant` -> returns `403` with explicit multi-tenant required message.
 
+## Render Policy Delegation
+
+Render policies can be delegated to tenants via the governance cascade.
+
+Master gate: `routing.render_policy.allow_tenant_override` must be `true` in `SystemSetting`.
+
+Per-route-group locks (in `SystemSetting`):
+
+- `routing.render_policy.lock_tenant_public_seo`
+- `routing.render_policy.lock_tenant_operational`
+- `routing.render_policy.lock_tenant_admin`
+
+Onboarding render policy is always instance-controlled.
+
+Tenants store overrides in `TenantSetting` with the same `routing.render_policy.*` keys. Override cascade:
+
+1. Instance settings are read first.
+2. Tenant preset/global overrides are applied.
+3. Normalization runs (preset defaults, non-advanced collapse).
+4. Per-route-group tenant overrides are applied only for unlocked groups.
+
+See [RENDER_POLICIES.md](RENDER_POLICIES.md) for full delegation details.
+
 ## Related
 
 - [CONFIGURATION.md](CONFIGURATION.md)
 - [OPERATIONS.md](OPERATIONS.md)
 - [ADMIN_HIERARCHY.md](ADMIN_HIERARCHY.md)
+- [RENDER_POLICIES.md](RENDER_POLICIES.md)

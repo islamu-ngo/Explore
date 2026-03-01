@@ -1,5 +1,5 @@
 // ABOUTME: FluentValidation validator for instance governance settings, including runtime render-policy rules.
-// ABOUTME: Enforces allowed policy values and blocks InteractiveServer usage on onboarding routes.
+// ABOUTME: Enforces allowed policy values. Onboarding InteractiveServer guardrail is handled by governance service normalization.
 
 using Explore.Domain.Enums;
 using FluentValidation;
@@ -22,7 +22,7 @@ public class InstanceGovernanceSettingsDtoValidator : AbstractValidator<Instance
 
         RuleFor(x => x.RenderPolicyPreset)
             .Must(IsValidRenderPolicyPreset)
-            .WithMessage("RenderPolicyPreset must be SeoBalanced, AllPrerendered, AllInteractiveAutoNoPrerender, or CustomAdvanced.");
+            .WithMessage("RenderPolicyPreset must be SeoBalanced, AllPrerendered, AllInteractiveAutoNoPrerender, AllInteractiveServer, or CustomAdvanced.");
 
         RuleFor(x => x.GlobalRenderMode)
             .Must(IsValidRenderMode)
@@ -43,14 +43,6 @@ public class InstanceGovernanceSettingsDtoValidator : AbstractValidator<Instance
         RuleFor(x => x.OnboardingRenderMode)
             .Must(IsValidRenderMode)
             .WithMessage("OnboardingRenderMode must be InteractiveAuto, InteractiveWebAssembly, or InteractiveServer.");
-
-        RuleFor(x => x.DisallowInteractiveServerOnOnboarding)
-            .Equal(true)
-            .WithMessage("DisallowInteractiveServerOnOnboarding must remain enabled.");
-
-        RuleFor(x => x.OnboardingRenderMode)
-            .Must(mode => !TryParseRenderMode(mode, out var parsed) || parsed != RenderModeOptionEnum.InteractiveServer)
-            .WithMessage("OnboardingRenderMode cannot be InteractiveServer.");
 
         RuleFor(x => x.EnableAdvancedRenderPolicyOverrides)
             .Equal(true)

@@ -127,6 +127,12 @@ public static class SeedIds
     public static readonly Guid SystemSettingAnalyticsEndpointUrlId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000543");
     public static readonly Guid SystemSettingAnalyticsPersonalApiKeyId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000544");
 
+    // ===== System Settings — Entity Submission & Self-Registration =====
+    public static readonly Guid SystemSettingOrgSubmissionEnabledId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000550");
+    public static readonly Guid SystemSettingGroupSubmissionEnabledId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000551");
+    public static readonly Guid SystemSettingOrgSelfRegistrationEnabledId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000552");
+    public static readonly Guid SystemSettingGroupSelfRegistrationEnabledId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000553");
+
     // ===== Module Definitions =====
     public static readonly Guid ModuleCoreId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000600");
     public static readonly Guid ModuleIslamicId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000601");

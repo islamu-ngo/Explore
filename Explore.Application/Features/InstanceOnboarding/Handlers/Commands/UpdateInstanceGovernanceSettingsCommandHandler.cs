@@ -77,12 +77,37 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
 
         request.Settings.DeploymentMode = normalizedDeploymentMode;
 
-        var defaultTenant = await EnsureDefaultTenantAsync();
-        await EnsureDefaultTenantSettingsAsync(defaultTenant.Id);
-
-        await _governanceSettingService.ApplySettingsAsync(defaultTenant.Id, request.Settings, request.UserId);
-
         var bootstrap = await _instanceBootstrapStateRepository.GetCurrent();
+        var currentMode = bootstrap?.SelectedDeploymentMode;
+
+        if (string.Equals(currentMode, "MultiTenant", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(normalizedDeploymentMode, "SingleTenant", StringComparison.OrdinalIgnoreCase))
+        {
+            var tenantCount = await _tenantRepository.GetActiveTenantCountAsync();
+            if (tenantCount > 1)
+            {
+                response.Success = false;
+                response.Message = "Cannot revert to Single-Tenant mode.";
+                response.Errors = new List<string>
+                {
+                    $"You currently have {tenantCount} tenants. Please delete {tenantCount - 1} tenant(s) to enable Single-Tenant mode."
+                };
+                return response;
+            }
+        }
+
+        var isSingleTenant = normalizedDeploymentMode.Equals("SingleTenant", StringComparison.OrdinalIgnoreCase);
+        Guid? defaultTenantId = null;
+
+        if (isSingleTenant)
+        {
+            var defaultTenant = await EnsureDefaultTenantAsync();
+            await EnsureDefaultTenantSettingsAsync(defaultTenant.Id);
+            defaultTenantId = defaultTenant.Id;
+        }
+
+        await _governanceSettingService.ApplySettingsAsync(defaultTenantId, request.Settings, request.UserId);
+
         if (bootstrap != null)
         {
             bootstrap.SelectedDeploymentMode = request.Settings.DeploymentMode;

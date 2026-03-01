@@ -12,7 +12,7 @@ Client runtime resolver:
 Data source:
 
 - `PublicExperienceSettingsDto` from API (`GetPublicExperienceSettingsQueryHandler`)
-- values originate from `InstanceGovernanceSettingService.ReadSettingsAsync()`
+- values originate from `InstanceGovernanceSettingService.ReadEffectiveSettingsForTenantAsync(tenantId)`
 
 ## Route Groups
 
@@ -46,6 +46,11 @@ Stored in `SystemSetting` with `routing.render_policy.*` keys:
 
 `InstanceGovernanceSettingService` applies preset normalization:
 
+- `AllInteractiveServer` (**default**):
+  - advanced overrides disabled
+  - global mode = `InteractiveServer`
+  - global prerender = `false`
+  - all route groups inherit global (InteractiveServer, no prerender)
 - `SeoBalanced`:
   - advanced overrides disabled
   - global mode = `InteractiveAuto`
@@ -67,10 +72,10 @@ When advanced overrides are disabled, route-group mode/prerender values are alig
 
 Two enforcement behaviors exist:
 
-1. governance validation/normalization prevents storing `InteractiveServer` as onboarding configured mode,
-2. runtime resolver still forces onboarding routes to `InteractiveServer` for actual rendering.
+1. governance normalization converts onboarding mode to `InteractiveAuto` when `InteractiveServer` is submitted (prevents storing InteractiveServer as the configured onboarding mode),
+2. runtime resolver forces onboarding routes to `InteractiveServer` for actual rendering regardless of stored value.
 
-This means onboarding always runs `InteractiveServer` at runtime, regardless of stored onboarding render-mode value.
+The validator does **not** reject `InteractiveServer` for onboarding — normalization handles it silently. This means onboarding always runs `InteractiveServer` at runtime.
 
 ## Runtime Fallback Defaults
 
@@ -87,8 +92,52 @@ Enum-backed render modes:
 - `InteractiveWebAssembly`
 - `InteractiveServer`
 
+## Per-Tenant Render Policy Delegation
+
+Instance admins can delegate render policy control to tenants via governance settings.
+
+### Delegation Keys
+
+Stored in `SystemSetting` with `routing.render_policy.*` keys:
+
+- `routing.render_policy.allow_tenant_override` — master gate (must be `true` for any tenant override)
+- `routing.render_policy.lock_tenant_public_seo` — locks public/SEO route group
+- `routing.render_policy.lock_tenant_operational` — locks operational route group
+- `routing.render_policy.lock_tenant_admin` — locks admin route group
+
+Onboarding is always instance-controlled (no tenant override, hardcoded guardrail).
+
+### Cascade Resolution
+
+`ReadEffectiveSettingsForTenantAsync(tenantId)`:
+
+1. Reads instance settings via `ReadSettingsAsync()`.
+2. If `AllowTenantRenderPolicyOverride` is `false`, returns instance settings unchanged.
+3. Overlays tenant preset, advanced-enabled, global mode, and global prerender overrides.
+4. Runs `NormalizeRenderPolicySettings` (applies preset defaults, aligns non-advanced to global).
+5. Overlays per-route-group tenant overrides only for unlocked groups (after normalization so they aren't clobbered).
+
+### Lock Enforcement
+
+Two enforcement layers:
+
+1. **Service layer**: `TenantPolicySettingService` silently removes tenant overrides for locked groups during write.
+2. **Handler layer**: `UpdateTenantPolicySettingsCommandHandler.EnsureLockedSettingsAreNotModifiedAsync` returns explicit validation failure if locked fields are changed.
+
+### Tenant Admin UI
+
+`TenantRenderPolicySection.razor` shows:
+- Preset selector (all presets including CustomAdvanced)
+- Per-route-group override panels with lock awareness (disabled when locked)
+- `CanOverride*` flags computed from system lock keys
+
+### `GetPublicExperienceSettingsQueryHandler`
+
+Uses `ReadEffectiveSettingsForTenantAsync(tenantId)` — public experience always resolves tenant-specific render policy.
+
 ## Related
 
 - [BLAZOR.md](BLAZOR.md)
 - [CONFIGURATION.md](CONFIGURATION.md)
 - [OPERATIONS.md](OPERATIONS.md)
+- [MULTI_TENANCY.md](MULTI_TENANCY.md)
