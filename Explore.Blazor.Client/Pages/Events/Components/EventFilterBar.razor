@@ -48,14 +48,6 @@
             </div>
 
             <div class="filter-bar__filter-item filter-bar__filter-item--full">
-                <div class="filter-bar__label">Category</div>
-                @if (_isMobile)
-                {
-                    <TriStateCategoryFilterDropdown @ref="_categoryFilterDropdown" CategoryGroups="@CategoryGroups" />
-                }
-            </div>
-
-            <div class="filter-bar__filter-item filter-bar__filter-item--full">
                 <div class="filter-bar__label">Location</div>
                 <MudSelect T="Guid" MultiSelection="true" @bind-SelectedValues="SelectedLocationIds" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
                     @foreach (var location in Locations)
@@ -155,11 +147,29 @@
                 </MudSelect>
             </div>
 
-            <div class="filter-bar__filter-item filter-bar__filter-item--full">
-                <div class="filter-bar__label">Tags</div>
+            @* ── Inline Category Filter (MangaDex-style) ── *@
+            <div class="filter-bar__inline-section">
+                <div class="d-flex align-center gap-2 mb-2 mt-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Category" Size="Size.Small" />
+                    <MudText Typo="Typo.subtitle1" Style="white-space: nowrap; font-weight: 700;">Filter Categories</MudText>
+                    <MudDivider Class="flex-grow-1" />
+                </div>
                 @if (_isMobile)
                 {
-                    <TriStateTagFilterDropdown @ref="_tagFilterDropdown" TagGroups="@TagGroups" />
+                    <TriStateCategoryFilterDropdown @ref="_categoryFilterDropdown" CategoryGroups="@CategoryGroups" Inline="true" />
+                }
+            </div>
+
+            @* ── Inline Tag Filter (MangaDex-style) ── *@
+            <div class="filter-bar__inline-section">
+                <div class="d-flex align-center gap-2 mb-2 mt-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Label" Size="Size.Small" />
+                    <MudText Typo="Typo.subtitle1" Style="white-space: nowrap; font-weight: 700;">Filter Tags</MudText>
+                    <MudDivider Class="flex-grow-1" />
+                </div>
+                @if (_isMobile)
+                {
+                    <TriStateTagFilterDropdown @ref="_tagFilterDropdown" TagGroups="@TagGroups" Inline="true" />
                 }
             </div>
 
@@ -307,14 +317,6 @@
                     </div>
 
                     <div class="filter-bar__filter-item">
-                        <div class="filter-bar__label">Category</div>
-                        @if (!_isMobile)
-                        {
-                            <TriStateCategoryFilterDropdown @ref="_categoryFilterDropdown" CategoryGroups="@CategoryGroups" />
-                        }
-                    </div>
-
-                    <div class="filter-bar__filter-item">
                         <div class="filter-bar__label">Location</div>
                         <MudSelect T="Guid" MultiSelection="true" @bind-SelectedValues="SelectedLocationIds" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" AnchorOrigin="Origin.BottomCenter">
                             @foreach (var location in Locations)
@@ -414,14 +416,6 @@
                         </MudSelect>
                     </div>
 
-                    <div class="filter-bar__filter-item">
-                        <div class="filter-bar__label">Tags</div>
-                        @if (!_isMobile)
-                        {
-                            <TriStateTagFilterDropdown @ref="_tagFilterDropdown" TagGroups="@TagGroups" />
-                        }
-                    </div>
-
                     @* ── Islamic Aspect Filters (conditional) ── *@
                     @if (IsIslamicModuleEnabled)
                     {
@@ -464,6 +458,32 @@
                             <div class="filter-bar__label">Tech Stack</div>
                             <MudTextField @bind-Value="TechStackTag" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Placeholder="e.g. React, .NET" DebounceInterval="500" />
                         </div>
+                    }
+                </div>
+
+                @* ── Inline Category Filter (MangaDex-style) ── *@
+                <div class="filter-bar__inline-section">
+                    <div class="d-flex align-center gap-2 mb-2 mt-3">
+                        <MudIcon Icon="@Icons.Material.Filled.Category" Size="Size.Small" />
+                        <MudText Typo="Typo.subtitle1" Style="white-space: nowrap; font-weight: 700;">Filter Categories</MudText>
+                        <MudDivider Class="flex-grow-1" />
+                    </div>
+                    @if (!_isMobile)
+                    {
+                        <TriStateCategoryFilterDropdown @ref="_categoryFilterDropdown" CategoryGroups="@CategoryGroups" Inline="true" />
+                    }
+                </div>
+
+                @* ── Inline Tag Filter (MangaDex-style) ── *@
+                <div class="filter-bar__inline-section">
+                    <div class="d-flex align-center gap-2 mb-2 mt-3">
+                        <MudIcon Icon="@Icons.Material.Filled.Label" Size="Size.Small" />
+                        <MudText Typo="Typo.subtitle1" Style="white-space: nowrap; font-weight: 700;">Filter Tags</MudText>
+                        <MudDivider Class="flex-grow-1" />
+                    </div>
+                    @if (!_isMobile)
+                    {
+                        <TriStateTagFilterDropdown @ref="_tagFilterDropdown" TagGroups="@TagGroups" Inline="true" />
                     }
                 </div>
 

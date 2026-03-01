@@ -11,6 +11,7 @@ public partial class TriStateCategoryFilterDropdown
 {
     [Parameter] public ICollection<CategoryTypeWithCategoriesDto> CategoryGroups { get; set; } = [];
     [Parameter] public EventCallback<CategoryFilterChangedEventArgs> OnFilterChanged { get; set; }
+    [Parameter] public bool Inline { get; set; }
 
     private readonly Dictionary<Guid, TagFilterState> _categoryStates = new();
     private string _searchTerm = string.Empty;
@@ -123,7 +124,7 @@ public partial class TriStateCategoryFilterDropdown
     {
         TagFilterState.Include => MudBlazor.Variant.Filled,
         TagFilterState.Exclude => MudBlazor.Variant.Outlined,
-        _ => MudBlazor.Variant.Text
+        _ => MudBlazor.Variant.Outlined
     };
 
     private string GetChipIcon(TagFilterState state) => state switch
