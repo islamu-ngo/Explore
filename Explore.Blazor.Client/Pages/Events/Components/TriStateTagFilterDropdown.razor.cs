@@ -11,7 +11,6 @@ public partial class TriStateTagFilterDropdown
 {
     [Parameter] public ICollection<TagTypeWithTagsDto> TagGroups { get; set; } = [];
     [Parameter] public EventCallback<TagFilterChangedEventArgs> OnFilterChanged { get; set; }
-    [Parameter] public bool Inline { get; set; }
 
     private readonly Dictionary<Guid, TagFilterState> _tagStates = new();
     private string _searchTerm = string.Empty;

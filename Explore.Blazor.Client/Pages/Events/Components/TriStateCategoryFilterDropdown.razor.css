@@ -1,0 +1,16 @@
+/* ABOUTME: Scoped styles for the TriStateCategoryFilterDropdown component. */
+/* Layout, spacing, and responsive behavior for the tri-state category filter. */
+
+.tri-state-category-filter {
+    display: inline-block;
+}
+
+.tri-state-category-filter__trigger {
+    text-transform: none;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+::deep .tri-state-category-filter__popover {
+    z-index: 1300;
+}

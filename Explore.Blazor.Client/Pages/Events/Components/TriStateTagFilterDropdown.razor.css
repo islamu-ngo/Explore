@@ -5,13 +5,10 @@
     display: inline-block;
 }
 
-.tri-state-tag-filter--inline {
-    display: block;
-}
-
 .tri-state-tag-filter__trigger {
     text-transform: none;
     font-weight: 500;
+    white-space: nowrap;
 }
 
 ::deep .tri-state-tag-filter__popover {
