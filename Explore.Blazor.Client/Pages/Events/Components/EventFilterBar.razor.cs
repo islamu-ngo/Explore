@@ -176,10 +176,23 @@ public partial class EventFilterBar : IBrowserViewportObserver, IAsyncDisposable
         var wasMobile = _isMobile;
         _isMobile = args.Breakpoint is Breakpoint.Xs or Breakpoint.Sm;
 
-        // Close mobile drawer if switching to desktop
         if (wasMobile && !_isMobile)
         {
-            _mobileDrawerOpen = false;
+            // Switching to desktop: transfer drawer state to panel
+            if (_mobileDrawerOpen)
+            {
+                _filtersExpanded = true;
+                _mobileDrawerOpen = false;
+            }
+        }
+        else if (!wasMobile && _isMobile)
+        {
+            // Switching to mobile: transfer panel state to drawer
+            if (_filtersExpanded)
+            {
+                _mobileDrawerOpen = true;
+                _filtersExpanded = false;
+            }
         }
 
         return InvokeAsync(StateHasChanged);
