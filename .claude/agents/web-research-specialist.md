@@ -10,6 +10,7 @@ tools: Bash, GoogleWebSearch
 
 **Read these first (short files):**
 - `docs/ARCHITECTURE.md`
+- `docs/API.md`
 - `docs/SECURITY.md`
 - `.claude/skills/clean-architecture-rules/SKILL.md`
 - `.claude/skills/cqrs-mediatr-guidelines/SKILL.md`
@@ -21,7 +22,8 @@ Find official docs and vetted libraries compatible with .NET 10 and project patt
 ## Must Do
 
 - Prefer official docs first, then vendor docs.
-- Ensure suggestions respect repo patterns (entities in repos, manual validators).
+- Ensure suggestions respect repo patterns (entities in repos, manual validators, specification pattern, HybridCache, HATEOAS link policies).
+- Note: Rate limiting uses built-in ASP.NET Core (not Polly). Caching uses HybridCache. Specifications are custom (not a library).
 
 ## Output
 

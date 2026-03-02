@@ -92,7 +92,6 @@ public class GroupMemberRepository : GenericRepository<GroupMember, Guid>, IGrou
         {
             var adminRoles = new[]
             {
-                (int)RoleEnum.GroupCreator,
                 (int)RoleEnum.GroupAdmin
             };
             return adminRoles.Contains(roleId.Value);
@@ -121,7 +120,6 @@ public class GroupMemberRepository : GenericRepository<GroupMember, Guid>, IGrou
         {
             var adminRoles = new[]
             {
-                (int)RoleEnum.GroupCreator,
                 (int)RoleEnum.GroupAdmin
             };
 

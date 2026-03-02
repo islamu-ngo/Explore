@@ -1,45 +1,45 @@
 /* ===== CSS Custom Properties ===== */
 ::deep :root {
-    --event-session-manager-radius: 12px;
-    --event-session-manager-spacing: 24px;
+    --event-session-manager-radius: var(--isl-radius-md);
+    --event-session-manager-spacing: var(--isl-space-6);
 }
 
 /* ===== Block: event-session-manager ===== */
 ::deep .event-session-manager {
-    padding: 24px;
-    margin-top: 24px;
+    padding: var(--isl-space-6);
+    margin-top: var(--isl-space-6);
     border-radius: var(--event-session-manager-radius);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 0.5rem 1.25rem rgba(0, 0, 0, 0.12);
     border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 /* ===== Element: event-session-manager__title ===== */
 ::deep .event-session-manager__title {
-    margin-bottom: 20px;
+    margin-bottom: var(--isl-space-5);
     font-weight: 700;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.019rem;
 }
 
 /* ===== Element: event-session-manager__grid ===== */
 ::deep .event-session-manager__grid {
-    border-radius: calc(var(--event-session-manager-radius) - 4px);
+    border-radius: calc(var(--event-session-manager-radius) - var(--isl-space-1));
     overflow: hidden;
 }
 
 /* ===== Element: event-session-manager__create-btn ===== */
 ::deep .event-session-manager__create-btn {
     margin-top: var(--event-session-manager-spacing);
-    border-radius: 999px;
-    padding: 10px 24px;
+    border-radius: var(--isl-radius-full);
+    padding: 0.625rem var(--isl-space-6);
     font-weight: 600;
-    box-shadow: 0 6px 16px rgba(124, 58, 237, 0.3);
+    box-shadow: 0 0.375rem 1rem rgba(124, 58, 237, 0.3);
 }
 
 /* ===== Responsive: Mobile (600px) ===== */
-@media (max-width: 600px) {
+@media (max-width: 37.5em) {
     ::deep .event-session-manager {
-        padding: 18px;
-        margin-top: 18px;
+        padding: 1.125rem;
+        margin-top: 1.125rem;
     }
 
     ::deep .event-session-manager__title {

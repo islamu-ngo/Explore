@@ -292,7 +292,7 @@
             return;
         }
 
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             "Remove Member",
             $"Are you sure you want to remove {(member.UserEmail ?? member.UserFullName ?? "this member")} from the group?",
             yesText: "Remove",

@@ -564,14 +564,14 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         return baseClass;
     }
 
-    private (int Xs, int Sm, int Md, int Lg) GetGridBreakpoints()
+    private (int Xs, int Sm, int Md, int Lg, int Xl) GetGridBreakpoints()
     {
         return _currentLayout switch
         {
-            LayoutMode.CompactGrid => (4, 4, 3, 2),
-            LayoutMode.DetailedList => (12, 12, 6, 4),
-            LayoutMode.SingleRow => (12, 12, 12, 12),
-            _ => (6, 6, 4, 3)
+            LayoutMode.CompactGrid => (6, 4, 3, 2, 2),
+            LayoutMode.DetailedList => (12, 12, 6, 4, 4),
+            LayoutMode.SingleRow => (12, 12, 12, 12, 12),
+            _ => (6, 6, 4, 3, 3)
         };
     }
 
@@ -585,6 +585,12 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     }
 
     // ... (helper methods like GetSelectedCategoryName can remain or be used for display)
+
+    private void NavigateToEdit(EventListDto evt)
+    {
+        if (evt.Id.HasValue)
+            Navigation.NavigateTo($"/event/edit/{evt.Id.Value}");
+    }
 
     private async Task OpenDeleteDialog(EventListDto evt)
     {
@@ -630,7 +636,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
             return;
         }
 
-        var confirm = await DialogService.ShowMessageBox(
+        var confirm = await DialogService.ShowMessageBoxAsync(
             "Cancel Registration",
             $"Are you sure you want to cancel your registration for \"{evt.Title}\"?",
             yesText: "Cancel Registration",

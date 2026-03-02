@@ -1,1 +1,245 @@
-/* Custom styles removed to favor MudBlazor components and utilities */
+/* ABOUTME: Scoped CSS for the Luma-inspired EventEdit layout (mirrors CreateEvent styling). */
+/* ABOUTME: Uses BEM methodology with edit-event__ prefix. All selectors use ::deep for MudBlazor component tree. */
+
+/* ===== Block: edit-event ===== */
+
+/* --- Image Area --- */
+::deep .edit-event__image-area {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    border-radius: var(--isl-radius-lg);
+    overflow: hidden;
+    background: var(--mud-palette-surface);
+    border: 1px solid var(--mud-palette-lines-default);
+}
+
+::deep .edit-event__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+::deep .edit-event__image-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--isl-space-2);
+    background: var(--mud-palette-background-gray);
+}
+
+::deep .edit-event__upload-trigger {
+    position: absolute !important;
+    bottom: var(--isl-space-3);
+    right: var(--isl-space-3);
+    z-index: 1;
+}
+
+::deep .edit-event__upload-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 2;
+    border-radius: var(--isl-radius-lg);
+}
+
+/* --- Title Input (large heading like Luma) --- */
+::deep .edit-event__title-input .mud-input-slot {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+}
+
+::deep .edit-event__title-input .mud-input-slot::placeholder {
+    color: var(--mud-palette-text-disabled);
+    opacity: 0.5;
+}
+
+/* --- Date/Time Block (Luma-style timeline) --- */
+::deep .edit-event__datetime-block {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--isl-radius-md);
+    padding: var(--isl-space-3) var(--isl-space-4);
+    margin-bottom: var(--isl-space-3);
+    position: relative;
+}
+
+::deep .edit-event__datetime-row {
+    display: flex;
+    align-items: center;
+    gap: var(--isl-space-2);
+    min-height: var(--isl-space-10);
+}
+
+::deep .edit-event__datetime-indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: var(--isl-space-4);
+    flex-shrink: 0;
+}
+
+::deep .edit-event__datetime-dot {
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+::deep .edit-event__datetime-dot--start {
+    background: var(--mud-palette-primary);
+}
+
+::deep .edit-event__datetime-dot--end {
+    border: 0.125rem solid var(--mud-palette-text-secondary);
+    background: transparent;
+    box-sizing: border-box;
+}
+
+::deep .edit-event__datetime-line {
+    width: 0;
+    height: 1.25rem;
+    border-left: 0.125rem dotted var(--mud-palette-lines-default);
+}
+
+::deep .edit-event__datetime-label {
+    width: 2.25rem;
+    font-weight: 600;
+    color: var(--mud-palette-text-secondary);
+    flex-shrink: 0;
+    font-size: 0.85rem;
+}
+
+::deep .edit-event__datetime-picker {
+    flex: 1;
+    max-width: 10rem;
+}
+
+::deep .edit-event__datetime-picker .mud-input-slot {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+::deep .edit-event__timezone-btn {
+    position: absolute !important;
+    top: var(--isl-space-2);
+    right: var(--isl-space-2);
+    text-transform: none !important;
+    font-size: 0.75rem !important;
+    padding: 0.125rem var(--isl-space-2) !important;
+    min-width: unset !important;
+    border: 1px solid var(--mud-palette-lines-default) !important;
+    border-radius: var(--isl-radius-sm) !important;
+    color: var(--mud-palette-text-secondary) !important;
+    white-space: nowrap;
+}
+
+::deep .edit-event__timezone-autocomplete {
+    margin-top: var(--isl-space-2);
+}
+
+/* --- Action Buttons (Add Description, Add Location) --- */
+::deep .edit-event__action-button {
+    text-transform: none !important;
+    border: 1px solid var(--mud-palette-lines-default) !important;
+    border-radius: var(--isl-radius-md) !important;
+    padding: var(--isl-space-3) var(--isl-space-4) !important;
+    margin-bottom: var(--isl-space-2) !important;
+    color: var(--mud-palette-text-secondary) !important;
+}
+
+::deep .edit-event__action-button:hover {
+    background-color: var(--mud-palette-action-default-hover) !important;
+}
+
+/* --- Event Options (Luma-style rows) --- */
+::deep .edit-event__options {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--isl-radius-md);
+    overflow: hidden;
+}
+
+::deep .edit-event__option-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--isl-space-2) var(--isl-space-4);
+    min-height: 2.75rem;
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+}
+
+::deep .edit-event__option-row:last-child {
+    border-bottom: none;
+}
+
+::deep .edit-event__option-select {
+    max-width: 11.25rem;
+    text-align: right;
+}
+
+::deep .edit-event__option-select .mud-input-slot {
+    font-size: 0.875rem;
+    text-align: right;
+}
+
+/* --- Submit Button --- */
+::deep .edit-event__submit-button {
+    font-size: 1.1rem !important;
+    font-weight: 600 !important;
+    padding: 0.875rem 0 !important;
+    border-radius: var(--isl-radius-md) !important;
+}
+
+/* ===== Responsive: Mobile (single column) ===== */
+@media (max-width: 37.4375em) {
+    ::deep .edit-event__col-left {
+        order: 2;
+    }
+
+    ::deep .edit-event__col-right {
+        order: 1;
+    }
+
+    ::deep .edit-event__title-input .mud-input-slot {
+        font-size: 1.5rem;
+    }
+
+    ::deep .edit-event__image-area {
+        border-radius: var(--isl-radius-md);
+    }
+
+    ::deep .edit-event__timezone-btn {
+        position: static !important;
+        margin-top: var(--isl-space-2);
+        width: fit-content;
+    }
+
+    ::deep .edit-event__datetime-row {
+        flex-wrap: wrap;
+    }
+
+    ::deep .edit-event__datetime-picker {
+        max-width: 8.125rem;
+    }
+
+    ::deep .edit-event__option-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--isl-space-1);
+        padding: 0.625rem var(--isl-space-4);
+    }
+
+    ::deep .edit-event__option-select {
+        max-width: unset;
+        width: 100%;
+        text-align: left;
+    }
+}

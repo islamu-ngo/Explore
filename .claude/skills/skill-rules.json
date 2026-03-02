@@ -3,7 +3,7 @@
   "version": "2.0",
   "description": "Skill activation triggers for .NET Clean Architecture solutions (API, Application, Persistence, Blazor).",
   "customizationNote": "Patterns are project-agnostic by default. If your solution uses non-standard naming, adjust path patterns to your folder structure.",
-  "lastUpdated": "2026-02-23",
+  "lastUpdated": "2026-02-24",
   "skills": {
     "clean-architecture-rules": {
       "type": "guardrail",
@@ -20,7 +20,11 @@
           "domain logic",
           "ef core",
           "dbcontext",
-          "violation"
+          "violation",
+          "specification pattern",
+          "hateoas",
+          "middleware",
+          "pipeline behavior"
         ],
         "intentPatterns": [
           "(add|create|reference).*?(dependency|project|layer)",
@@ -76,14 +80,21 @@
           "**/*Application/**/*Command.cs",
           "**/*Application/**/*Query.cs",
           "**/*Application/**/*Validator.cs",
-          "**/*Application/**/*Request.cs"
+          "**/*Application/**/*Request.cs",
+          "**/*Application/**/*Specification.cs",
+          "**/*Application/**/*Filter.cs",
+          "**/*Application/**/*Behavior.cs"
         ],
         "contentPatterns": [
           "IRequest",
           "IRequestHandler",
           "AbstractValidator",
           "FluentValidation",
-          "BaseCommandResponse"
+          "BaseCommandResponse",
+          "IQuerySpecification",
+          "IPipelineBehavior",
+          "PaginatedResult",
+          "HybridCache"
         ]
       }
     },
@@ -182,7 +193,7 @@
       "type": "domain",
       "enforcement": "suggest",
       "priority": "high",
-      "description": "Authentication and authorization patterns for OIDC/JWT APIs, including claim extraction and endpoint authorization.",
+      "description": "Authentication and authorization patterns for OIDC/JWT APIs, including claim extraction, HATEOAS authorization, and security headers.",
       "promptTriggers": {
         "keywords": [
           "auth",
@@ -196,12 +207,18 @@
           "role",
           "policy",
           "cookies",
-          "user id"
+          "user id",
+          "hateoas auth",
+          "security headers",
+          "rate limiting",
+          "cors"
         ],
         "intentPatterns": [
           "(login|logout|auth).*?(issue|fail|error)",
           "(check|verify|debug|extract).*?(token|claim|role|user)",
-          "(configure).*?(keycloak|oidc|auth)"
+          "(configure).*?(keycloak|oidc|auth)",
+          "(hateoas|link).*?(auth|permission)",
+          "(security).*?(header|middleware)"
         ]
       },
       "fileTriggers": {
@@ -219,7 +236,11 @@
           "[AllowAnonymous]",
           "ClaimTypes",
           "JwtBearer",
-          "GetRequiredUserId"
+          "GetRequiredUserId",
+          "IAuthorizedRequest",
+          "AuthorizationBehavior",
+          "HateoasAuthorizationEvaluator",
+          "SecurityHeaders"
         ]
       }
     },
@@ -227,7 +248,7 @@
       "type": "domain",
       "enforcement": "suggest",
       "priority": "medium",
-      "description": "EF Core patterns for PostgreSQL including DbContext configuration, entity mappings, migrations, repository pattern, and querying best practices.",
+      "description": "EF Core patterns for PostgreSQL including DbContext configuration, entity mappings, migrations, repository pattern, specification pattern, and JSONB querying.",
       "promptTriggers": {
         "keywords": [
           "database",
@@ -242,7 +263,11 @@
           "seeding",
           "repository",
           "include",
-          "navigation"
+          "navigation",
+          "specification",
+          "jsonb",
+          "query filter",
+          "soft delete"
         ],
         "intentPatterns": [
           "(add|modify|create).*?(table|column|entity|migration)",
@@ -263,7 +288,11 @@
           "OnModelCreating",
           "UseNpgsql",
           "HasQueryFilter",
-          "Include("
+          "Include(",
+          "IQuerySpecification",
+          "JsonContains",
+          "JsonKeyExists",
+          "IgnoreQueryFilter"
         ]
       }
     },
@@ -271,21 +300,27 @@
       "type": "domain",
       "enforcement": "suggest",
       "priority": "medium",
-      "description": "Error tracking and observability patterns for API and application services including exception handling and performance monitoring.",
+      "description": "Error tracking and observability patterns including chained IExceptionHandler, correlation IDs, business metrics, and structured logging.",
       "promptTriggers": {
         "keywords": [
           "error",
           "exception",
-          "sentry",
           "logging",
           "monitoring",
           "error boundary",
-          "performance"
+          "performance",
+          "observability",
+          "metrics",
+          "correlation id",
+          "problem details",
+          "rate limit",
+          "429"
         ],
         "intentPatterns": [
           "(track|log|capture).*?(error|exception)",
-          "(add|configure).*?(sentry|error handling)",
-          "(monitor).*?(performance)"
+          "(add|configure).*?(error handling|metrics|observability)",
+          "(monitor).*?(performance)",
+          "(correlation|trace).*?(id|request)"
         ]
       },
       "fileTriggers": {
@@ -295,10 +330,14 @@
           "**/*Handler.cs"
         ],
         "contentPatterns": [
-          "SentrySdk",
           "try.*catch",
           "ILogger",
-          "ErrorBoundary"
+          "ErrorBoundary",
+          "IExceptionHandler",
+          "ProblemDetails",
+          "BusinessMetrics",
+          "CorrelationId",
+          "PerformanceBehavior"
         ]
       }
     }
@@ -311,7 +350,7 @@
     },
     "Application": {
       "project": "{Project}.Application",
-      "description": "Use cases, CQRS handlers, DTOs, interfaces, validation. Orchestrates domain logic.",
+      "description": "Use cases, CQRS handlers, DTOs, interfaces, validation, Specification Pattern (filters/sorts), MediatR pipeline behaviors. Orchestrates domain logic.",
       "allowedDependencies": ["Domain"]
     },
     "Infrastructure": {
@@ -321,7 +360,7 @@
     },
     "Presentation": {
       "projects": ["{Project}.API", "{Project}.Blazor", "{Project}.Blazor.Client"],
-      "description": "REST API controllers, Blazor UI components. Entry points to the application.",
+      "description": "REST API controllers, Blazor UI components, HATEOAS assemblers/policies, middleware, action filters. Entry points to the application.",
       "allowedDependencies": ["Application", "Infrastructure"]
     }
   }

@@ -129,7 +129,26 @@ Explore.Application/
 │   └── MappingProfile.cs         — Single file with ALL entity↔DTO mappings
 ├── Hateoas/                      — HAL resource models
 │   ├── HalResource.cs            — Base HAL envelope
-│   └── HalLink.cs                — Link representation
+│   ├── HalLink.cs                — Link representation
+│   └── LinkDefinition.cs         — Rich link definition with permission metadata
+├── Specifications/               — Query specification pattern
+│   ├── IQuerySpecification.cs    — Base specification interface (composes filters + sorts)
+│   ├── IFilterSpecification.cs   — Individual filter interface (Expression<Func<T,bool>>)
+│   ├── ISortSpecification.cs     — Sort specification interface
+│   ├── EventQuerySpecification.cs — Immutable fluent builder for event queries
+│   ├── EventFilter.cs            — Core event field filters
+│   ├── EventSort.cs              — Event sort specifications
+│   ├── EventSubqueryFilter.cs    — Junction table + JSONB filters
+│   ├── IslamicAspectFilter.cs    — Module-conditional Islamic filters
+│   ├── TechAspectFilter.cs       — Module-conditional Tech filters
+│   └── AspectPresenceFilter.cs   — HasIslamicAspect/HasTechAspect presence filters
+├── Behaviors/                    — MediatR pipeline behaviors
+│   ├── PerformanceBehavior.cs    — Logs requests >500ms as warnings
+│   └── AuthorizationBehavior.cs  — Resource-level auth via IAuthorizedRequest/[AuthorizeResource]
+├── Authorization/                — Authorization contracts and attributes
+│   ├── IAuthorizedRequest.cs     — Interface for commands requiring authorization
+│   ├── AuthorizeResourceAttribute.cs — Declarative resource-level auth attribute
+│   └── ISecureRequest.cs         — Dynamic resource context for permission checks
 ├── Models/                       — Infrastructure models
 │   ├── EmailMessage.cs           — Rich email message DTO (To, CC, BCC, HTML, attachments)
 │   ├── EmailAttachment.cs        — Email attachment with inline image support
@@ -177,14 +196,14 @@ Explore.Persistence/
 
 ### Explore.API/ — ASP.NET Core Web API
 
-API layer. Wires everything together via DI. Contains controllers, middleware, and configuration.
+API layer. Wires everything together via DI. Contains controllers, middleware, HATEOAS, and configuration.
 
 ```
 Explore.API/
-├── Program.cs                     — Application entry point, all DI registration
-├── appsettings.json               — Configuration (connection strings, auth, storage)
+├── Program.cs                     — Application entry point, all DI registration, middleware pipeline
+├── appsettings.json               — Configuration (connection strings, auth, storage, rate limiting, timeouts)
 ├── Controllers/                   — API controllers (one per entity/aggregate)
-│   ├── EventController.cs         — Event CRUD endpoints
+│   ├── EventController.cs         — Event CRUD with full specification pattern filtering
 │   ├── OrganizationController.cs  — Organization endpoints
 │   ├── InstanceOnboardingController.cs — Instance admin bootstrap
 │   ├── TenantOnboardingController.cs   — Tenant setup wizard
@@ -192,19 +211,38 @@ Explore.API/
 ├── Services/                      — API-layer services
 │   └── TenantContext.cs           — Multi-tenant resolution (header → custom domain → subdomain → default)
 ├── Middleware/                     — HTTP pipeline middleware
-│   ├── ExceptionMiddleware.cs     — Global exception handler (maps exceptions to HTTP status codes)
-│   └── PreferHeaderMiddleware.cs  — Content negotiation via Prefer header
+│   ├── SecurityHeadersMiddleware.cs   — X-Content-Type-Options, X-Frame-Options, CSP, etc.
+│   ├── CorrelationIdMiddleware.cs     — X-Correlation-ID / X-Request-ID propagation to Serilog
+│   ├── ETagMiddleware.cs              — SHA256-based weak ETags, 304 Not Modified
+│   ├── RequestLoggingMiddleware.cs    — Structured logging: method, path, status, duration, userId
+│   └── PreferHeaderMiddleware.cs      — RFC 7240 Prefer header (return=minimal strips _links)
 ├── Extensions/                    — DI and configuration extensions
-│   └── ServiceCollectionExtensions.cs — Service registration helpers
+│   ├── RateLimitingExtensions.cs      — 4-tier rate limiting (global, authenticated, write, setup_secret)
+│   ├── RequestTimeoutExtensions.cs    — 3-tier timeouts (default, lookup, complex)
+│   ├── ApiVersioningExtensions.cs     — Media-type versioning (Accept header v parameter)
+│   ├── HateoasServiceExtensions.cs    — HATEOAS DI registration (assemblers, policies, evaluator)
+│   ├── ExceptionHandlingExtensions.cs — Chained IExceptionHandler registration
+│   ├── ServiceCollectionExtensions.cs — Service registration helpers
+│   └── ConfigurationExtensions.cs     — Configuration binding helpers
+├── ExceptionHandling/             — Exception handler chain
+│   ├── ValidationExceptionHandler.cs  — FluentValidation → 400 with errors dict
+│   └── GlobalExceptionHandler.cs      — Maps known exceptions to HTTP status codes
 ├── Filters/                       — Action filters
-│   └── BlockInSingleTenantAttribute.cs — Blocks multi-tenant endpoints in single-tenant mode
-├── Hateoas/                       — HATEOAS link generation
-│   ├── HateoasLinkGenerator.cs    — Generates HAL _links for API responses
-│   └── RouteNames.cs              — Named route constants
+│   ├── BlockInSingleTenantAttribute.cs   — Returns 404 in single-tenant mode (hides endpoint)
+│   ├── RequireMultiTenantAttribute.cs    — Returns 403 in single-tenant mode (informs client)
+│   └── SetupSecretRequiredAttribute.cs   — Gates endpoints behind X-Setup-Secret header
+├── Hateoas/                       — HATEOAS link generation infrastructure
+│   ├── ResourceAssemblerBase.cs       — Base class with batch authorization evaluation
+│   ├── HateoasLinkGenerator.cs        — Resolves URLs from named routes
+│   ├── HateoasAuthorizationEvaluator.cs — Batch evaluates link permissions (fail-closed)
+│   ├── HateoasConstants.cs            — Link relation names, media types
+│   ├── RouteNames.cs                  — 100+ named route constants
+│   ├── Assemblers/                    — 19 entity-specific assemblers (EventAssembler, OrganizationAssembler, etc.)
+│   └── Policies/                      — 19 entity-specific link policies (EventLinkPolicy, etc.)
 ├── OpenApi/                       — Scalar/OpenAPI customization
 │   └── HalSchemaTransformer.cs    — Transforms OpenAPI schema for HAL format
 ├── BackgroundServices/            — Hosted background workers
-│   └── PdsSyncWorker.cs           — ATProto PDS synchronization worker
+│   └── PdsSyncWorker.cs           — ATProto PDS synchronization (outbox pattern, exponential backoff)
 ├── Static/                        — Static file serving configuration
 ├── swagger.json                   — Generated OpenAPI specification
 └── Properties/

@@ -18,6 +18,15 @@ The platform uses a BFF model:
 3. Calls to `/api/*` are proxied by YARP from BFF to API.
 4. BFF adds bearer token to proxied API requests (`YarpProxyExtensions.ForwardBearerTokenAsync`).
 
+## JWT Bearer Configuration (API)
+
+- Authority: Keycloak OIDC metadata endpoint.
+- Multi-client audience validation: `explore-api`, `explore-blazor-server`, `account`.
+- Custom `AudienceValidator`: checks both `aud` claim and `azp` (Keycloak authorized party) claim. Accepts if either contains a valid audience.
+- Clock skew tolerance: 5 minutes.
+- Dev mode: accepts self-signed certificates, suppresses HTTPS metadata requirement.
+- Detailed JWT event logging on: `OnAuthenticationFailed`, `OnTokenValidated`, `OnChallenge`, `OnMessageReceived`.
+
 ## Header and Secret Hardening
 
 In YARP transforms:
@@ -35,13 +44,16 @@ This prevents direct client injection of setup-secret into proxied API traffic.
 Server-side enforcement is layered:
 
 1. API endpoint-level attributes (`[AllowAnonymous]`, `[Authorize]`).
-2. Application MediatR pipeline `AuthorizationBehavior`.
+2. Application MediatR pipeline `AuthorizationBehavior`:
+   - Checks `IAuthorizedRequest` interface — commands/queries declare required permissions.
+   - Checks `[AuthorizeResource]` attribute — declarative resource-level authorization.
+   - Optionally enhanced by `ISecureRequest` — provides dynamic resource context for fine-grained permission evaluation.
 3. Runtime provider (`RuntimeAuthorizationProvider`) deciding Cerbos vs fallback.
 
 Hard deny behavior:
 
 - `AuthorizationBehavior` throws `AuthorizationException` on deny.
-- API global exception handler returns HTTP `403 Forbidden`.
+- API global exception handler returns HTTP `403 Forbidden` via RFC 7807 ProblemDetails.
 
 ## Runtime Authorization Providers
 
@@ -87,3 +99,39 @@ They are not security enforcement. Security enforcement remains server-side thro
 - caches positive results for 5 minutes and negative results for 30 seconds.
 
 If enrichment fails, authentication still continues and server-side authorization remains authoritative.
+
+## Security Headers (API)
+
+`SecurityHeadersMiddleware` adds defensive headers to every response:
+
+| Header | Value |
+|---|---|
+| `X-Content-Type-Options` | `nosniff` |
+| `X-Frame-Options` | `DENY` |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=(), payment=()` |
+| `Content-Security-Policy` | `default-src 'none'; frame-ancestors 'none'` |
+
+Non-GET responses additionally receive `Cache-Control: no-store` and `Pragma: no-cache` to prevent caching of mutation responses.
+
+## CORS Policies
+
+Five CORS policies are configured in `Program.cs`:
+
+| Policy | Origins | Methods | Credentials | Use Case |
+|---|---|---|---|---|
+| `InternalAppPolicy` | Configurable | All | Yes | Internal app communication (BFF ↔ API) |
+| `ExternalAppPolicy` | Configurable | Specific set | No | External API consumers |
+| `InternalWebsitePolicy` | `iloveibadah.app` only | All | Yes | Internal website |
+| `ExternalWebsitePolicy` | Configurable | `GET`, `OPTIONS` only | No | External read-only |
+| `DevPolicy` | All origins | All | Yes | Development only |
+
+## HATEOAS Authorization
+
+The HATEOAS link generation system is authorization-aware:
+
+1. **`HateoasAuthorizationEvaluator`** performs batch permission checks for all links in a response.
+2. Static checks (authentication, role requirements, condition lambdas) run first.
+3. Remaining links with `PermissionResourceKind` are batched into a single `IsAllowedBatchAsync()` call.
+4. On batch authorization failure, all permission-bound links are **denied** (fail-closed).
+5. This ensures clients never see links they cannot execute.

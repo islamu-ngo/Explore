@@ -194,15 +194,29 @@ All seed GUIDs use **UUIDv7** format (`018e4e5c-xxxx-7xxx-8xxx-xxxxxxxxxxxx`) fo
 
 ## 9. HATEOAS Implementation
 
-The API implements **HAL (Hypertext Application Language)** for hypermedia:
+The API implements **HAL (Hypertext Application Language)** for hypermedia with a layered architecture:
 
-- `HalResource<T>` wraps response DTOs with `_links` section
-- `HalCollectionResource<T>` wraps lists with pagination links
-- `ResourceAssemblerBase<T>` generates links per entity type
-- `HateoasLinkGenerator` resolves URLs from route names
-- OpenAPI schema is transformed by `HalSchemaTransformer` to show HAL structure
+### Core Components
+- `ResourceAssemblerBase<TDto, TListDto>` — Base class for assembling HAL responses. Handles both single-entity and collection assembly with **batch authorization evaluation**.
+- `ILinkPolicy<TDto>` / `ICollectionLinkPolicy<TDto>` — Per-entity link definitions using yield return pattern. Each entity has separate detail and collection link policies.
+- `LinkDefinition` — Rich record type with: `Rel`, `RouteName`, `RouteValues`, `Method`, `Title`, `RequiresAuth`, `RequiredRoles`, `Condition` lambda, and permission metadata (`PermissionResourceKind`, `PermissionAction`, `PermissionResourceId`, `PermissionResourceAttributes`).
+- `HateoasAuthorizationEvaluator` — Performs batch authorization: static checks (auth, roles, conditions) first, then remaining permission-bound links sent to `IAuthorizationProvider.IsAllowedBatchAsync()` in a single call. On failure, permission-bound links are denied (fail-closed).
+- `HateoasLinkGenerator` — Resolves URLs from named routes via ASP.NET Core `LinkGenerator`.
+- `RouteNames` — 100+ named route constants organized by resource type (events, organizations, actors, etc.).
 
-The `PreferHeaderMiddleware` handles content negotiation: clients can request HAL format via `Prefer: return=representation` header.
+### Content Negotiation
+- Default format: `application/hal+json` with `_links` and `_embedded`.
+- `PreferHeaderMiddleware` reads RFC 7240 `Prefer: return=minimal` header and sets a flag consumed by assemblers to strip `_links`.
+- Pagination links: `self`, `first`, `prev`, `next`, `last`.
+
+### Authorization-Aware Links
+Links declare requirements via `LinkDefinition`:
+- `RequiresAuth: true` — user must be authenticated.
+- `RequiredRoles` — user must have specific roles.
+- `Condition` — lambda evaluated at assembly time.
+- `.RequirePermission()` — fluent method adding `PermissionResourceKind`, `PermissionAction`, and optional resource attributes for Cerbos/RBAC check.
+
+HTTP method → action mapping: GET→read, POST→create, PUT/PATCH→update, DELETE→delete.
 
 ---
 
@@ -272,12 +286,19 @@ To regenerate: update `swagger.json` from the API, then run the NSwag generator.
 
 ## 14. Exception Handling Flow
 
-### API Side
-`ExceptionMiddleware` catches all unhandled exceptions and maps them to HTTP responses:
-- `NotFoundException` → 404
-- `BadRequestException` → 400
-- `ValidationException` → 400 with error details
-- Unhandled → 500
+### API Side — Chained IExceptionHandler Pattern
+Exception handling uses .NET 8+ **chained `IExceptionHandler`** (not middleware). Two handlers in chain order:
+
+1. **`ValidationExceptionHandler`** — Catches `FluentValidation.ValidationException` and `Application.Exceptions.ValidationException`. Returns `400 Bad Request` with structured errors dictionary.
+2. **`GlobalExceptionHandler`** — Catches everything else:
+   - `BadRequestException` → `400`
+   - `NotFoundException` → `404`
+   - `AuthorizationException` → `403`
+   - Unhandled → `500` (detail message hidden in production)
+
+All responses use **RFC 7807 ProblemDetails** with extensions:
+- `traceId` — from `Activity.Current` or `HttpContext.TraceIdentifier`
+- `timestamp` — UTC ISO 8601
 
 ### Command Response Pattern
 Commands don't throw for validation failures. They return `BaseCommandResponse<TKey>`:
@@ -470,4 +491,104 @@ public class CreateEventCommandHandler : IRequestHandler<...>
 ```
 
 This ensures the validator uses the same repository instances (and DbContext) as the handler transaction.
+
+---
+
+## 28. API Middleware Pipeline Order
+
+The middleware order in `Program.cs` is **critical** — changing it will break behavior. The exact order:
+
+1. `UseApiExceptionHandling()` — Must be first to catch all downstream errors.
+2. `UseSecurityHeaders()` — Adds defensive headers before any response.
+3. `UseCorrelationId()` — Generates/reads correlation ID for log context.
+4. `UseRequestLogging()` — Structured logging with correlation ID, user ID, tenant ID.
+5. `UseResponseCompression()` — Brotli + Gzip before response leaves.
+6. `UseHttpsRedirection()` — Redirects HTTP to HTTPS.
+7. `UseHateoas()` — RFC 7240 Prefer header processing.
+8. `UseRouting()` — Endpoint routing.
+9. `UseRequestTimeouts()` — 3-tier timeout enforcement (Default 30s, Lookup 10s, Complex 60s).
+10. `UseAuthentication()` — JWT Bearer auth.
+11. `UseRateLimiter()` — 4-tier rate limiting (after auth so user ID is available).
+12. `UseAuthorization()` — ASP.NET authorization.
+13. `UseOutputCache()` — HTTP response caching.
+14. `UseETag()` — SHA256 weak ETags, 304 Not Modified support.
+
+**Why order matters:** Rate limiting comes after authentication so it can use user ID for per-user limits. Output cache comes after authorization so cached responses respect auth boundaries. ETag is last because it needs the final response body.
+
+---
+
+## 29. Correlation ID Propagation
+
+`CorrelationIdMiddleware` provides distributed tracing context:
+
+1. Reads `X-Correlation-ID` or `X-Request-ID` from incoming request headers.
+2. If neither exists, generates a new UUID.
+3. Pushes the value into Serilog `LogContext` as `CorrelationId` property.
+4. All subsequent log entries in the request pipeline include this correlation ID.
+5. Enables tracing a single request across API → BFF → background services.
+
+---
+
+## 30. CORS Policy Architecture
+
+Five CORS policies handle different trust levels:
+
+| Policy | Use Case | Key Behavior |
+|---|---|---|
+| `InternalAppPolicy` | BFF ↔ API | Configurable origins, all methods, credentials allowed |
+| `ExternalAppPolicy` | External API consumers | Configurable origins, specific methods, no credentials |
+| `InternalWebsitePolicy` | `iloveibadah.app` | Single-origin, all methods, credentials |
+| `ExternalWebsitePolicy` | External read-only | Configurable origins, GET/OPTIONS only |
+| `DevPolicy` | Development only | All origins, all methods, credentials |
+
+---
+
+## 31. Business Metrics (OpenTelemetry)
+
+`BusinessMetrics` class exposes counters under the `Explore.Business` meter. All counters are tagged with `tenant_id` and `resource_type` dimensions.
+
+| Counter | Tracks |
+|---|---|
+| `events.created` | Event creation |
+| `events.published` | Event publication |
+| `registrations.created` | Event registrations |
+| `organizations.created` | Organization creation |
+| `authorization.decisions` | Authorization check outcomes |
+
+These integrate with Prometheus scraping via the `/metrics` endpoint.
+
+---
+
+## 32. Graceful Shutdown Mechanics
+
+API implements production-grade graceful shutdown:
+
+1. **SIGTERM** triggers a 25-second grace period.
+2. Health checks immediately return `503` (unhealthy) during shutdown for load balancer draining.
+3. **SIGINT** triggers immediate shutdown (development).
+4. `Kestrel.KeepAliveTimeout` and `Host.ShutdownTimeout` both set to 30 seconds.
+5. In-flight requests are given time to complete before process exit.
+
+---
+
+## 33. SetupSecret Filter Pattern
+
+The `SetupSecretRequiredAttribute` uses `TypeFilterAttribute` for DI-aware action filtering:
+
+1. It wraps `SetupSecretRequiredFilter` which receives `ISetupSecretProvider` via DI.
+2. If setup mode is inactive → returns `410 Gone` (setup already completed).
+3. If `X-Setup-Secret` header is missing or invalid → returns `403 Forbidden`.
+4. This pattern allows action filter attributes to use DI services without constructor injection.
+
+---
+
+## 34. API Versioning Strategy
+
+API versioning uses **media-type strategy** (not URL segments):
+
+- Version parameter: `v` in the `Accept` header.
+- Example: `Accept: application/json;v=0.1` or `application/hal+json;v=0.1`.
+- Default version: `0.1` when unspecified.
+- Clean URLs — no `/v1/` or `/v2/` path segments.
+- Reported in response headers via `Asp.Versioning` middleware.
 

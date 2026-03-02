@@ -26,6 +26,13 @@ Standardize error handling + observability with OpenTelemetry, Prometheus, Loki.
 - **Do not swallow exceptions.**
 - Use RFC 7807 ProblemDetails for API errors.
 - **Sentry is not used** — use OTEL + Prometheus + Loki.
+- **Chained IExceptionHandler** (not middleware): `ValidationExceptionHandler` (handles `ValidationException` → 422) → `GlobalExceptionHandler` (catch‑all → 500 in prod, full detail in dev). Each returns `true` to stop the chain once handled.
+- **RFC 7807 extensions**: All ProblemDetails include `traceId` (Activity.Current) and `timestamp` (ISO 8601). 500 errors hide `detail` in production.
+- **CorrelationIdMiddleware**: Reads `X-Correlation-ID` or `X-Request-ID` from inbound requests, generates GUID if absent, pushes to `Serilog.LogContext`. Added to response headers.
+- **RequestLoggingMiddleware**: Structured logging with method, path, status, duration, userId, tenantId, correlationId.
+- **BusinessMetrics** (OpenTelemetry): Meter `"Explore.Business"` with counters: `events.created`, `events.published`, `registrations.created`, `organizations.created`, `authorization.decisions`. All tagged with `tenant_id`, `resource_type`.
+- **PerformanceBehavior** (MediatR pipeline): Warning for >500ms, error for >3000ms. Includes handler name and elapsed time.
+- **Rate limiting 429**: Rejection response is RFC 6585 ProblemDetails with `Retry-After` and `X-RateLimit-*` headers.
 
 ## Resources (Read Before Applying)
 - [api-exception-handling.md](resources/api-exception-handling.md)
@@ -39,3 +46,5 @@ Standardize error handling + observability with OpenTelemetry, Prometheus, Loki.
 
 ## Related Documentation
 - [`docs/CONFIGURATION.md`](../../../docs/CONFIGURATION.md)
+- [`docs/API.md`](../../../docs/API.md) — Middleware pipeline, exception handling chain, rate limiting
+- [`docs/OPERATIONS.md`](../../../docs/OPERATIONS.md) — Business metrics, correlation ID, security headers

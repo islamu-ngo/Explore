@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "https://localhost:55913/"
+      "url": "https://localhost:49486/"
     }
   ],
   "paths": {
@@ -6617,6 +6617,157 @@
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/instanceonboarding/auth-provider-configuration": {
+      "get": {
+        "tags": [
+          "InstanceOnboarding"
+        ],
+        "summary": "Get Auth Provider Configuration",
+        "description": "Returns current auth provider configuration. Secrets are redacted. Accessible during setup (anonymous) and by instance admins after onboarding.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "InstanceOnboarding"
+        ],
+        "summary": "Save Auth Provider Configuration",
+        "description": "Saves auth provider configuration during instance setup. Protected by setup token. At least one provider must be enabled.",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/instanceonboarding/auth-provider-configuration/internal": {
+      "get": {
+        "tags": [
+          "InstanceOnboarding"
+        ],
+        "summary": "Get Auth Provider Configuration (Internal)",
+        "description": "Returns auth provider configuration including secrets. For BFF internal use only. Protected by setup token.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/instanceonboarding/auth-provider-configured": {
+      "get": {
+        "tags": [
+          "InstanceOnboarding"
+        ],
+        "summary": "Check Auth Provider Configuration Status",
+        "description": "Returns whether any auth provider has been configured. Used by the setup flow to determine if the auth provider configuration step should be shown.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {}
+              },
+              "application/json; v=0.1": {
+                "schema": {}
+              },
+              "text/json; v=0.1": {
+                "schema": {}
               }
             }
           }
@@ -13592,6 +13743,50 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "AuthProviderConfigurationDto": {
+        "type": "object",
+        "properties": {
+          "keycloakEnabled": {
+            "type": "boolean"
+          },
+          "keycloakAuthority": {
+            "type": "string"
+          },
+          "keycloakClientId": {
+            "type": "string"
+          },
+          "keycloakClientSecret": {
+            "type": "string"
+          },
+          "keycloakDetectedFromEnvironment": {
+            "type": "boolean"
+          },
+          "atprotoLoginEnabled": {
+            "type": "boolean"
+          },
+          "atprotoPublicUrl": {
+            "type": "string"
+          },
+          "googleSsoEnabled": {
+            "type": "boolean"
+          },
+          "googleClientId": {
+            "type": "string"
+          },
+          "googleClientSecret": {
+            "type": "string"
+          },
+          "lockKeycloakEnabled": {
+            "type": "boolean"
+          },
+          "lockAtprotoLoginEnabled": {
+            "type": "boolean"
+          },
+          "lockGoogleSsoEnabled": {
+            "type": "boolean"
           }
         }
       },

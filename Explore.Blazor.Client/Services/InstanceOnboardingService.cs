@@ -1,4 +1,5 @@
-// ABOUTME: Client service for instance onboarding status and governance settings endpoints.
+// ABOUTME: Client service for instance onboarding status, governance, and auth provider configuration endpoints.
+// ABOUTME: Powers first-run startup gating, auth provider setup, and runtime instance settings updates from Blazor pages.
 // ABOUTME: Powers first-run startup gating and runtime instance settings updates from Blazor pages.
 
 using System.Net.Http.Json;
@@ -20,6 +21,12 @@ public interface IInstanceOnboardingService
     Task<InstanceCommandResponseModel> UpdateSmtpSettingsAsync(InstanceSmtpSettingsModel settings);
     Task<SmtpConnectionTestResult> TestSmtpConnectionAsync();
     Task<int> GetActiveTenantCountAsync();
+
+    // Auth provider configuration
+    Task<AuthProviderConfigurationModel> GetAuthProviderConfigurationAsync();
+    Task<InstanceCommandResponseModel> SaveAuthProviderConfigurationAsync(AuthProviderConfigurationModel config);
+    Task<bool> IsAuthProviderConfiguredAsync();
+    Task RefreshAuthSchemesAsync();
 }
 
 public class InstanceOnboardingService : IInstanceOnboardingService
@@ -112,6 +119,48 @@ public class InstanceOnboardingService : IInstanceOnboardingService
     public Task<SmtpConnectionTestResult> TestSmtpConnectionAsync() =>
         SendTestAsync<SmtpConnectionTestResult>("api/InstanceOnboarding/test-smtp");
 
+    // ── Auth provider configuration ──────────────────────────────────
+
+    public async Task<AuthProviderConfigurationModel> GetAuthProviderConfigurationAsync() =>
+        await GetAsync<AuthProviderConfigurationModel>("api/InstanceOnboarding/auth-provider-configuration")
+        ?? new AuthProviderConfigurationModel();
+
+    public Task<InstanceCommandResponseModel> SaveAuthProviderConfigurationAsync(AuthProviderConfigurationModel config) =>
+        SendCommandAsync(HttpMethod.Put, "api/InstanceOnboarding/auth-provider-configuration", config);
+
+    public async Task<bool> IsAuthProviderConfiguredAsync()
+    {
+        try
+        {
+            var client = CreateClient();
+            var response = await client.GetAsync("api/InstanceOnboarding/auth-provider-configured");
+            response.EnsureSuccessStatusCode();
+            var result = await response.Content.ReadFromJsonAsync<AuthProviderConfiguredResult>();
+            return result?.Configured ?? false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to check auth provider configuration status.");
+            return false;
+        }
+    }
+
+    public async Task RefreshAuthSchemesAsync()
+    {
+        try
+        {
+            var client = _httpClientFactory.CreateClient("BffSelfClient");
+            var response = await client.PostAsync("/bff/auth/refresh-schemes", null);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Failed to refresh auth schemes. Status: {StatusCode}", (int)response.StatusCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to refresh auth schemes.");
+        }
+    }
     // ── Shared helpers ───────────────────────────────────────────────────
 
     private HttpClient CreateClient() => _httpClientFactory.CreateClient("BffClient");
@@ -244,7 +293,8 @@ public class InstanceOnboardingService : IInstanceOnboardingService
     private static bool RequiresSetupSecret(string pathAndQuery)
     {
         return pathAndQuery.Contains("/api/InstanceOnboarding/complete", StringComparison.OrdinalIgnoreCase)
-            || pathAndQuery.Contains("/api/InstanceOnboarding/validate-secret", StringComparison.OrdinalIgnoreCase);
+            || pathAndQuery.Contains("/api/InstanceOnboarding/validate-secret", StringComparison.OrdinalIgnoreCase)
+            || pathAndQuery.Contains("/api/InstanceOnboarding/auth-provider-configuration", StringComparison.OrdinalIgnoreCase);
     }
 }
 
@@ -359,4 +409,34 @@ public class SetupSecretValidationResult
 {
     public bool Valid { get; set; }
     public string? Error { get; set; }
+}
+
+
+public class AuthProviderConfigurationModel
+{
+    // Keycloak
+    public bool KeycloakEnabled { get; set; }
+    public string KeycloakAuthority { get; set; } = string.Empty;
+    public string KeycloakClientId { get; set; } = string.Empty;
+    public string KeycloakClientSecret { get; set; } = string.Empty;
+    public bool KeycloakDetectedFromEnvironment { get; set; }
+
+    // ATProto Login
+    public bool AtprotoLoginEnabled { get; set; }
+    public string AtprotoPublicUrl { get; set; } = string.Empty;
+
+    // Google SSO
+    public bool GoogleSsoEnabled { get; set; }
+    public string GoogleClientId { get; set; } = string.Empty;
+    public string GoogleClientSecret { get; set; } = string.Empty;
+
+    // Lock flags (for multi-tenant override control)
+    public bool LockKeycloakEnabled { get; set; }
+    public bool LockAtprotoLoginEnabled { get; set; }
+    public bool LockGoogleSsoEnabled { get; set; }
+}
+
+public class AuthProviderConfiguredResult
+{
+    public bool Configured { get; set; }
 }

@@ -63,8 +63,8 @@
 
 ::deep .main-layout__drawer .mud-drawer-content {
     background: color-mix(in srgb, var(--mud-palette-surface) 90%, transparent);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(0.75rem);
+    -webkit-backdrop-filter: blur(0.75rem);
 }
 
 /* Element: main-layout__content-wrapper
@@ -79,7 +79,7 @@
     width: 100%;
     padding-inline: 8%;
     padding-block-start: 0;
-    padding-block-end: 24px;
+    padding-block-end: var(--isl-space-6);
     flex: 1 0 auto;
 }
 
@@ -122,14 +122,14 @@
    Responsive Adjustments
    ========================================================================== */
 
-@media (max-width: 768px) {
+@media (max-width: 48em) {
     .main-layout__content-wrapper {
         padding-inline: 4%;
     }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 30em) {
     .main-layout__content-wrapper {
-        padding-inline: 12px;
+        padding-inline: var(--isl-space-3);
     }
 }

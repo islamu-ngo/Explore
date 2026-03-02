@@ -5,8 +5,12 @@
               __links, __link, __actions, __theme-toggle, __create-event-btn, __login-btn,
               __user-dropdown, __user-btn, __user-avatar, __user-name, __user-arrow,
               __dropdown-menu, __dropdown-header, __dropdown-divider, __dropdown-section-label,
-              __dropdown-item, __dropdown-overlay
-    Modifiers: __link--active, __dropdown-menu--open, __dropdown-item--danger
+              __dropdown-item, __dropdown-item-label, __dropdown-item-arrow,
+              __dropdown-submenu, __dropdown-submenu-item, __dropdown-submenu-name,
+              __dropdown-submenu-action, __dropdown-submenu-empty, __dropdown-submenu-divider,
+              __dropdown-submenu-create, __dropdown-overlay
+    Modifiers: __link--active, __dropdown-menu--open, __dropdown-item--danger,
+               __dropdown-item--expandable, __dropdown-submenu-name--text
 *@
 
 <div class="navbar">
@@ -35,10 +39,11 @@
             <div class="navbar__brand-text">@_brandDisplayName</div>
         </a>
 
-        <!-- Global Search -->
+        <!-- Global Search (Ctrl+K to focus) -->
         <div class="navbar__search">
-            <MudTextField T="string"
-                          Placeholder="Search events..."
+            <MudTextField @ref="_searchField"
+                          T="string"
+                          Placeholder="Search events…  ⌘K"
                           Adornment="Adornment.Start"
                           AdornmentIcon="@Icons.Material.Filled.Search"
                           IconSize="Size.Medium"
@@ -48,6 +53,10 @@
                           @bind-Value="SearchQuery"
                           @onkeyup="@HandleSearchKeyPress" />
         </div>
+
+        <MudHotkey Key="JsKey.KeyK"
+                   KeyModifiers="@(new[] { JsKeyModifier.ControlLeft })"
+                   OnHotkeyPressed="FocusSearchAsync" />
 
         <!-- Center Navigation -->
         <div class="navbar__links">
@@ -112,30 +121,119 @@
                                     @GetInitials(context.User.Identity?.Name)
                                 </MudAvatar>
                             }
-                            <span class="navbar__user-name">@context.User.Identity?.Name</span>
-                            <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" Size="Size.Small" Class="navbar__user-arrow" />
+
                         </div>
 
                         @if (_dropdownOpen)
                         {
                             <div class="navbar__dropdown-menu navbar__dropdown-menu--open" @onclick:stopPropagation>
                                 <div class="navbar__dropdown-header">
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Signed in as</MudText>
-                                    <MudText Typo="Typo.body2" Style="font-weight: 600;">@context.User.Identity?.Name</MudText>
+                                    @if (!string.IsNullOrEmpty(_currentUser?.ProfileImageUri))
+                                    {
+                                        <MudAvatar Size="Size.Small" Class="navbar__dropdown-header-avatar">
+                                            <MudImage Src="@_currentUser.ProfileImageUri" Alt="@($"{context.User.Identity?.Name}'s profile picture")" />
+                                        </MudAvatar>
+                                    }
+                                    else
+                                    {
+                                        <MudAvatar Color="Color.Primary" Size="Size.Small" Class="navbar__dropdown-header-avatar">
+                                            @GetInitials(context.User.Identity?.Name)
+                                        </MudAvatar>
+                                    }
+                                    <div class="navbar__dropdown-header-info">
+                                        <MudText Typo="Typo.body2" Style="font-weight: 600;">@context.User.Identity?.Name</MudText>
+                                    </div>
                                 </div>
                                 <div class="navbar__dropdown-divider"></div>
 
                                 <a href="/user/profile" class="navbar__dropdown-item" @onclick="CloseDropdown">
                                     <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
-                                    My Profile
+                                    Show Profile
                                 </a>
+
+                                @* Organizations expandable submenu *@
+                                <div class="navbar__dropdown-item navbar__dropdown-item--expandable" @onclick="ToggleOrgSubmenu" @onclick:stopPropagation
+                                     role="button" tabindex="0">
+                                    <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" />
+                                    <span class="navbar__dropdown-item-label">Organizations</span>
+                                    <MudIcon Icon="@(_orgSubmenuOpen ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                                             Size="Size.Small" Class="navbar__dropdown-item-arrow" />
+                                </div>
+                                @if (_orgSubmenuOpen)
+                                {
+                                    <div class="navbar__dropdown-submenu">
+                                        @if (_userOrganizations.Any())
+                                        {
+                                            @foreach (var org in _userOrganizations)
+                                            {
+                                                <div class="navbar__dropdown-submenu-item" @key="org.Id">
+                                                    <a href="@($"/organization/{org.Id}")" class="navbar__dropdown-submenu-name" @onclick="CloseDropdown">
+                                                        @org.FullName
+                                                    </a>
+                                                    <a href="@($"/admin/organization/{org.Id}/settings")" class="navbar__dropdown-submenu-action" @onclick="CloseDropdown">
+                                                        <MudIcon Icon="@Icons.Material.Filled.Settings" Size="Size.Small" />
+                                                        Settings
+                                                    </a>
+                                                </div>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <div class="navbar__dropdown-submenu-empty">
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">No organizations yet</MudText>
+                                            </div>
+                                        }
+                                        <div class="navbar__dropdown-submenu-divider"></div>
+                                        <a href="/organization/create" class="navbar__dropdown-submenu-create" @onclick="CloseDropdown">
+                                            <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />
+                                            Create Organization
+                                        </a>
+                                    </div>
+                                }
+
+                                @* Groups expandable submenu *@
+                                <div class="navbar__dropdown-item navbar__dropdown-item--expandable" @onclick="ToggleGroupSubmenu" @onclick:stopPropagation
+                                     role="button" tabindex="0">
+                                    <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Small" />
+                                    <span class="navbar__dropdown-item-label">Groups</span>
+                                    <MudIcon Icon="@(_groupSubmenuOpen ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                                             Size="Size.Small" Class="navbar__dropdown-item-arrow" />
+                                </div>
+                                @if (_groupSubmenuOpen)
+                                {
+                                    <div class="navbar__dropdown-submenu">
+                                        @if (_userGroups.Any())
+                                        {
+                                            @foreach (var group in _userGroups)
+                                            {
+                                                <div class="navbar__dropdown-submenu-item" @key="group.Id">
+                                                    <span class="navbar__dropdown-submenu-name navbar__dropdown-submenu-name--text">
+                                                        @group.FullName
+                                                    </span>
+                                                    <a href="@($"/admin/group/{group.Id}/settings")" class="navbar__dropdown-submenu-action" @onclick="CloseDropdown">
+                                                        <MudIcon Icon="@Icons.Material.Filled.Settings" Size="Size.Small" />
+                                                        Settings
+                                                    </a>
+                                                </div>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <div class="navbar__dropdown-submenu-empty">
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">No groups yet</MudText>
+                                            </div>
+                                        }
+                                        <div class="navbar__dropdown-submenu-divider"></div>
+                                        <a href="/group/create" class="navbar__dropdown-submenu-create" @onclick="CloseDropdown">
+                                            <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />
+                                            Create Group
+                                        </a>
+                                    </div>
+                                }
+
                                 <a href="/myevents" class="navbar__dropdown-item" @onclick="CloseDropdown">
                                     <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" />
                                     My Events
-                                </a>
-                                <a href="/organization/my" class="navbar__dropdown-item" @onclick="CloseDropdown">
-                                    <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" />
-                                    My Organizations
                                 </a>
                                 <a href="/my-registrations" class="navbar__dropdown-item" @onclick="CloseDropdown">
                                     <MudIcon Icon="@Icons.Material.Filled.Assignment" Size="Size.Small" />

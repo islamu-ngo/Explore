@@ -84,6 +84,10 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
+// Initialize dynamic auth schemes from DB + env vars (Keycloak, Google, ATProto).
+// Must run after Build() so that IAuthenticationSchemeProvider and DI are available.
+await app.InitializeDynamicAuthSchemesAsync();
+
 app.UseForwardedHeadersMiddleware();
 app.ConfigureGracefulShutdown(shutdownState);
 app.MapDefaultEndpoints();

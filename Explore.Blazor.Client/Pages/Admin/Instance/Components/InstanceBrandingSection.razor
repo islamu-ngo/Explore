@@ -1,14 +1,21 @@
-@* ABOUTME: Renders default branding fields for the Instance Admin Settings sidebar. *@
-@* ABOUTME: Includes brand name, logo, favicon, custom CSS URLs, and their tenant lock controls. *@
+@* ABOUTME: Renders branding fields for Instance Admin Settings. *@
+@* ABOUTME: In single-tenant mode lock toggles are hidden (no tenant override concept). *@
 
 @using MudBlazor
 @using Explore.Blazor.Client.Services
 
 <div class="settings-section">
     <div class="settings-section-header">
-        <MudText Typo="Typo.h5" Style="font-weight: 700;">Default Branding</MudText>
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Branding</MudText>
         <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
-            Set the default brand identity applied to new tenants. Lock individual fields to prevent tenant overrides.
+            @if (IsSingleTenant)
+            {
+                @:Customize your platform's brand identity — name, logo, favicon, and optional stylesheet.
+            }
+            else
+            {
+                @:Set the default brand identity applied to new tenants. Lock individual fields to prevent tenant overrides.
+            }
         </MudText>
     </div>
     <MudStack Spacing="3">
@@ -24,30 +31,40 @@
                       Variant="Variant.Outlined"
                       @bind-Value="Model.DefaultBrandFaviconUrl" />
 
-        <MudTextField Label="Advanced: Custom CSS URL (Optional)"
+        <MudTextField Label="Custom CSS URL (Optional)"
                       Variant="Variant.Outlined"
                       @bind-Value="Model.DefaultBrandCustomCssUrl"
-                      HelperText="Optional advanced override for platform-level custom stylesheet." />
+                      HelperText="Optional override for a platform-level custom stylesheet." />
 
-        <MudSwitch T="bool" @bind-Value="Model.LockTenantBrandDisplayName" Color="Color.Primary">
-            Lock tenant brand display name
-        </MudSwitch>
+        @if (!IsSingleTenant)
+        {
+            <MudDivider Class="my-1" />
+            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Tenant Lock Controls</MudText>
 
-        <MudSwitch T="bool" @bind-Value="Model.LockTenantBrandLogoUrl" Color="Color.Primary">
-            Lock tenant brand logo
-        </MudSwitch>
+            <MudSwitch T="bool" @bind-Value="Model.LockTenantBrandDisplayName" Color="Color.Primary">
+                Lock tenant brand display name
+            </MudSwitch>
 
-        <MudSwitch T="bool" @bind-Value="Model.LockTenantBrandFaviconUrl" Color="Color.Primary">
-            Lock tenant brand favicon
-        </MudSwitch>
+            <MudSwitch T="bool" @bind-Value="Model.LockTenantBrandLogoUrl" Color="Color.Primary">
+                Lock tenant brand logo
+            </MudSwitch>
 
-        <MudSwitch T="bool" @bind-Value="Model.LockTenantBrandCustomCssUrl" Color="Color.Primary">
-            Lock tenant custom CSS URL
-        </MudSwitch>
+            <MudSwitch T="bool" @bind-Value="Model.LockTenantBrandFaviconUrl" Color="Color.Primary">
+                Lock tenant brand favicon
+            </MudSwitch>
+
+            <MudSwitch T="bool" @bind-Value="Model.LockTenantBrandCustomCssUrl" Color="Color.Primary">
+                Lock tenant custom CSS URL
+            </MudSwitch>
+        }
     </MudStack>
 </div>
 
 @code {
     [Parameter, EditorRequired]
     public InstanceGovernanceSettingsModel Model { get; set; } = null!;
+
+    /// <summary>When true, hides lock toggles since there are no tenants to override.</summary>
+    [Parameter]
+    public bool IsSingleTenant { get; set; }
 }

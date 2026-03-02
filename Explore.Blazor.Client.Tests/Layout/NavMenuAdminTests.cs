@@ -249,6 +249,14 @@ public class NavMenuAdminTests : IDisposable
         eligibilityService.GetEligibilityAsync().Returns(EventCreationEligibility.NotEligible);
         _ctx.Services.AddSingleton(eligibilityService);
 
+        var organizationService = Substitute.For<IOrganizationService>();
+        organizationService.GetMyOrganizationsAsync().Returns(new List<OrganizationListDto>());
+        _ctx.Services.AddSingleton(organizationService);
+
+        var groupService = Substitute.For<IGroupService>();
+        groupService.GetMyGroupsAsync().Returns(new List<GroupPublisherListDto>());
+        _ctx.Services.AddSingleton(groupService);
+
         _ctx.Services.AddSingleton(new Explore.Blazor.Client.Services.SidebarState());
     }
 }

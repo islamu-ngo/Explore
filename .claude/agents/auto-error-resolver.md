@@ -11,10 +11,12 @@ tools: Read, Write, Edit, Bash
 
 **Read these first (short files):**
 - `docs/ARCHITECTURE.md`
+- `docs/API.md`
 - `docs/QUICK_REFERENCE.md`
 - `.claude/skills/clean-architecture-rules/SKILL.md`
 - `.claude/skills/cqrs-mediatr-guidelines/SKILL.md`
 - `.claude/skills/dotnet-efcore-guidelines/SKILL.md`
+- `.claude/skills/error-tracking/SKILL.md`
 
 ## Role
 
@@ -25,6 +27,9 @@ Resolve compilation/runtime errors with minimal changes while preserving Clean A
 - Repositories return entities; handlers map to DTOs.
 - Validators are manually instantiated (no DI).
 - Keep file-scoped namespaces for new files.
+- Understand chained IExceptionHandler: ValidationExceptionHandler → GlobalExceptionHandler.
+- Specification pattern errors: check IQuerySpecification/filter composition.
+- Rate limiting errors: check config keys (RateLimiting:Global:*, etc.).
 
 ## Output
 

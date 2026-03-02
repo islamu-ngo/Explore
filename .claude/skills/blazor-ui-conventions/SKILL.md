@@ -22,6 +22,14 @@ Lean rules for Blazor + MudBlazor + render modes + routing.
 - Keywords: blazor, razor, mudblazor, render mode, dialog, state, theme
 - File patterns: `**/*.razor`, `**/*.razor.cs`, `**/*.Client/**/*.cs`
 
+## MudBlazor Version
+- **Current: MudBlazor v9** (.NET 8/9/10). See `dev/active/mudblazor-migration-v9/` for migration context.
+
+## Aesthetic Direction
+- **Neo-minimal**: clean surfaces, generous whitespace, soft rounded corners (`12px`), subtle shadows (`Elevation 0-1`), purposeful color.
+- Inspired by modern design systems: flat components, outlined inputs, muted neutrals, accent color only for CTAs.
+- See `theming.md` for the full `MudTheme` config and `mudblazor-usage.md` for per-component defaults.
+
 ## Non‑Inferable Rules (Must Follow)
 - Default render mode: **InteractiveAuto** (use InteractiveServer only for server‑only needs).
 - Avoid `HttpContext` in InteractiveAuto/WASM.

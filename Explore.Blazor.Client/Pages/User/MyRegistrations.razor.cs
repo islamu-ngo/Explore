@@ -87,7 +87,7 @@ public partial class MyRegistrations
 
     private async Task CancelRegistration(Guid registrationId)
     {
-        var result = await DialogService.ShowMessageBox(
+        var result = await DialogService.ShowMessageBoxAsync(
             "Cancel Registration",
             "Are you sure you want to cancel your registration for this event?",
             yesText: "Yes, Cancel", cancelText: "No");

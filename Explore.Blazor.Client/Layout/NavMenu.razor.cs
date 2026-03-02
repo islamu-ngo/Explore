@@ -36,6 +36,12 @@ public partial class NavMenu : IDisposable
     protected IEventCreationEligibilityService EventCreationEligibilityService { get; set; } = null!;
 
     [Inject]
+    protected IOrganizationService OrganizationService { get; set; } = null!;
+
+    [Inject]
+    protected IGroupService GroupService { get; set; } = null!;
+
+    [Inject]
     protected IDialogService DialogService { get; set; } = null!;
 
     [Inject]
@@ -50,10 +56,15 @@ public partial class NavMenu : IDisposable
     private string _brandDisplayName = "ISLAMU Explore";
     private string _brandLogoUrl = string.Empty;
     public string SearchQuery { get; set; } = "";
+    private MudTextField<string> _searchField = null!;
     private ICollection<TenantNavigationLinkDto> _navigationLinks = new List<TenantNavigationLinkDto>();
     private EventCreationEligibility _eventCreationEligibility = EventCreationEligibility.NotEligible;
     private bool _isSingleTenantMode = true;
     private bool _showAddEventForAnonymous;
+    private ICollection<OrganizationListDto> _userOrganizations = new List<OrganizationListDto>();
+    private ICollection<GroupPublisherListDto> _userGroups = new List<GroupPublisherListDto>();
+    private bool _orgSubmenuOpen;
+    private bool _groupSubmenuOpen;
 
     protected override async Task OnInitializedAsync()
     {
@@ -63,6 +74,8 @@ public partial class NavMenu : IDisposable
         await LoadNavigationLinksAsync();
         await LoadEventCreationEligibilityAsync();
         await LoadDeploymentModeAsync();
+        await LoadUserOrganizationsAsync();
+        await LoadUserGroupsAsync();
     }
 
     private void HandleSearchKeyPress(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
@@ -124,11 +137,30 @@ public partial class NavMenu : IDisposable
     private void ToggleDropdown()
     {
         _dropdownOpen = !_dropdownOpen;
+        if (!_dropdownOpen)
+        {
+            _orgSubmenuOpen = false;
+            _groupSubmenuOpen = false;
+        }
     }
 
     private void CloseDropdown()
     {
         _dropdownOpen = false;
+        _orgSubmenuOpen = false;
+        _groupSubmenuOpen = false;
+    }
+
+    private void ToggleOrgSubmenu()
+    {
+        _orgSubmenuOpen = !_orgSubmenuOpen;
+        if (_orgSubmenuOpen) _groupSubmenuOpen = false;
+    }
+
+    private void ToggleGroupSubmenu()
+    {
+        _groupSubmenuOpen = !_groupSubmenuOpen;
+        if (_groupSubmenuOpen) _orgSubmenuOpen = false;
     }
 
     private string GetInitials(string? name)
@@ -218,10 +250,43 @@ public partial class NavMenu : IDisposable
         }
     }
 
+    private async Task LoadUserOrganizationsAsync()
+    {
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            if (authState.User.Identity?.IsAuthenticated != true) return;
+            _userOrganizations = await OrganizationService.GetMyOrganizationsAsync();
+        }
+        catch
+        {
+            _userOrganizations = new List<OrganizationListDto>();
+        }
+    }
+
+    private async Task LoadUserGroupsAsync()
+    {
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            if (authState.User.Identity?.IsAuthenticated != true) return;
+            _userGroups = await GroupService.GetMyGroupsAsync();
+        }
+        catch
+        {
+            _userGroups = new List<GroupPublisherListDto>();
+        }
+    }
+
     private async Task OpenLoginPrompt(string? returnUrl)
     {
         returnUrl ??= new Uri(Nav.Uri).PathAndQuery;
         await LoginPromptDialog.ShowAsync(DialogService, returnUrl);
+    }
+
+    private async Task FocusSearchAsync()
+    {
+        await _searchField.FocusAsync();
     }
 
     public void Dispose()

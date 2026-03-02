@@ -48,9 +48,9 @@
         {
             <MudStepper @key="_stepperKey"
                         @bind-ActiveIndex="_activeStep"
-                        Elevation="0"
                         NonLinear="false"
-                        ShowResetButton="false">
+                        ShowResetButton="false"
+                        OnPreviewInteraction="OnPreviewStepInteraction">
                 <ChildContent>
                     <MudStep Title="Deployment">
                     <MudStack Spacing="3">
@@ -294,8 +294,8 @@
                     {
                         <MudButton Variant="Variant.Filled"
                                    Color="Color.Primary"
-                                   OnClick="@(() => GoToNextStepAsync(stepper))"
-                                   Disabled="@(_isSaving || IsNextDisabled)">
+                                   OnClick="@(() => stepper.NextStepAsync())"
+                                   Disabled="@(_isSaving)">
                             Next
                         </MudButton>
                     }
@@ -340,7 +340,6 @@
     private bool IsMultiTenantMode => _model.DeploymentMode.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
     private int LastStepIndex => IsSingleTenantMode ? 3 : 2;
     private bool IsFirstHostSelectionMissing => IsSingleTenantMode && _firstHostSetupChoice == FirstHostSetupChoice.None;
-    private bool IsNextDisabled => _activeStep == FirstHostStepIndex && IsFirstHostSelectionMissing;
     private bool IsCompleteDisabled => IsFirstHostSelectionMissing;
 
     protected override async Task OnInitializedAsync()
@@ -437,17 +436,21 @@
         _errorMessage = null;
     }
 
-    private async Task GoToNextStepAsync(MudStepper stepper)
+    private Task OnPreviewStepInteraction(StepperInteractionEventArgs args)
     {
-        _errorMessage = null;
+        if (args.Action != StepAction.Complete)
+            return Task.CompletedTask;
 
-        if (IsNextDisabled)
+        // Validate "First Host Setup" step (index 2 in single-tenant mode)
+        if (IsSingleTenantMode && args.StepIndex == FirstHostStepIndex && IsFirstHostSelectionMissing)
         {
+            args.Cancel = true;
             _errorMessage = "Please choose how you want to set up your first host before continuing.";
-            return;
+            return Task.CompletedTask;
         }
 
-        await stepper.NextStepAsync();
+        _errorMessage = null;
+        return Task.CompletedTask;
     }
 
     private void SelectFirstHost(FirstHostSetupChoice choice)

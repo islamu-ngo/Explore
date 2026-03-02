@@ -17,3 +17,8 @@ When isolated CSS does not apply, verify build output and scope attributes.
 - Styles not applied: wrong file name or missing stylesheet link.
 - Unexpected overrides: global stylesheet or high-specificity MudBlazor selectors.
 - Broken after dependency update: `::deep` tied to third-party internal class changes.
+
+## v9 Migration Notes
+- MudTabs CSS class parameters were renamed (`TabPanelClass` → `TabButtonsClass`, `PanelClass` → `TabPanelsClass`). Update `::deep` selectors targeting these.
+- MudSwitch/MudCheckBox/MudRadio now render content inside a `<span>` — update `::deep` selectors if targeting child elements.
+- MudDrawer uses CSS `transition` instead of `animation` — custom animation overrides may need updating.

@@ -11,6 +11,7 @@ tools: All tools
 
 **Read these first (short files):**
 - `docs/ARCHITECTURE.md`
+- `docs/API.md`
 - `docs/SECURITY.md`
 - `docs/QUICK_REFERENCE.md`
 - `.claude/skills/clean-architecture-rules/SKILL.md`
@@ -23,6 +24,8 @@ Review plans before implementation for architecture, security, and testing gaps.
 
 - Enforce core rules (entities from repos, manual validators, auth rules).
 - Require a test strategy.
+- Check rate limiting, caching, and HATEOAS compliance for new API endpoints.
+- Verify specification pattern usage for complex query endpoints.
 
 ## Output
 

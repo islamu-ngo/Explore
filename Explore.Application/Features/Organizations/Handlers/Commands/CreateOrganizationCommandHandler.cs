@@ -113,7 +113,7 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
             Organization = null!,
             UserId = currentUserId,
             User = null!,
-            RoleId = (int)RoleEnum.OrgCreator,
+            RoleId = (int)RoleEnum.OrgAdmin,
             Role = null!,
             OrganizationPositionId = null, // No position assigned initially
             TenantId = _tenantContext.TenantId, // Required for multi-tenant isolation

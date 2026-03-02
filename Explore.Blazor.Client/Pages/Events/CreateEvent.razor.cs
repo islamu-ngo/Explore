@@ -72,8 +72,8 @@ public partial class CreateEvent
     private string? _uploadError;
 
     // Categories and Tags selection
-    private IEnumerable<Guid> selectedCategoryIds = new HashSet<Guid>();
-    private IEnumerable<Guid> selectedTagIds = new HashSet<Guid>();
+    private IReadOnlyCollection<Guid> selectedCategoryIds = new HashSet<Guid>();
+    private IReadOnlyCollection<Guid> selectedTagIds = new HashSet<Guid>();
 
     // Sessions
     private List<SessionEditorModel> sessions = new();
@@ -335,7 +335,7 @@ public partial class CreateEvent
 
             if (session.Id.HasValue && session.Id != Guid.Empty)
             {
-                bool? confirm = await DialogService.ShowMessageBox(
+                bool? confirm = await DialogService.ShowMessageBoxAsync(
                     "Delete Session",
                     "This session already exists. Deleting it here will remove it permanently. Continue?",
                     yesText: "Delete", cancelText: "Cancel");

@@ -51,8 +51,8 @@
             }
 
             <MudGrid Spacing="4">
-                <MudItem xs="12" sm="12" md="3">
-                    <MudPaper Elevation="0" Class="settings-sidebar pa-0 rounded-lg border-solid border-1 mud-border-lines-default">
+                <MudItem xs="3" sm="3" md="3">
+                    <MudPaper Elevation="0" Class="settings-sidebar pa-0">
                         <MudList T="string" Dense="false" DisablePadding="true">
                             <MudListItem Icon="@Icons.Material.Filled.Tune"
                                          Text="Profile & Branding"
@@ -66,8 +66,8 @@
                     </MudPaper>
                 </MudItem>
 
-                <MudItem xs="12" sm="12" md="9">
-                    <MudPaper Elevation="0" Class="settings-content pa-6 rounded-lg border-solid border-1 mud-border-lines-default">
+                <MudItem xs="9" sm="9" md="9">
+                    <MudPaper Elevation="0" Class="settings-content pa-6">
                         @if (_currentSection == "profile")
                         {
                             <GroupProfileSection Model="_model"

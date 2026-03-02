@@ -24,10 +24,12 @@ ABOUTME: Read referenced resources before applying.
 
 ## Non‑Inferable Rules (Must Follow)
 - Domain has **no dependencies** (pure C#).
-- Application references **Domain only**.
+- Application references **Domain only**. Contains: CQRS handlers, DTOs, validators, Specification Pattern (`IQuerySpecification`, filters, sorts), MediatR pipeline behaviors (`PerformanceBehavior`, `AuthorizationBehavior`), authorization interfaces (`IAuthorizedRequest`, `ISecureRequest`), and HATEOAS contracts (`LinkDefinition`, `ILinkPolicy`).
 - Persistence/Infrastructure reference **Application + Domain**.
-- API/Blazor is the composition root (can reference all).
+- API/Blazor is the composition root (can reference all). Contains: HATEOAS assemblers/policies (presentation concern), middleware, action filters, extension configurations.
 - **Manual validator instantiation** (no DI).
+- **Specification Pattern** lives in Application layer (not Persistence). Repository applies specifications via `IQueryable<T>`.
+- **HATEOAS link policies** and **resource assemblers** live in API layer (presentation concern — they reference route names and HTTP concepts).
 
 ## Resources (Read Before Applying)
 - [dependency-rules.md](resources/dependency-rules.md)

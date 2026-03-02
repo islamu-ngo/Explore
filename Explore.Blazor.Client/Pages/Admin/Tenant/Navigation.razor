@@ -222,7 +222,7 @@
 
     private async Task DeleteLink(TenantNavigationLinkDto link)
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             "Confirm Delete",
             $"Are you sure you want to delete '{link.Label}'?",
             yesText: "Delete",

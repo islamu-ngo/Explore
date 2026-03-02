@@ -1,573 +1,539 @@
+@* ABOUTME: Luma-inspired edit event page — mirrors CreateEvent layout with pre-filled data and Update button. *@
+@* ABOUTME: Two-column layout with image left, form right. Loads existing event data and sessions for editing. *@
 @using MudBlazor
-@using Explore.Blazor.Client.Models
-@using Explore.Blazor.Client.Clients
-@using Explore.Blazor.Client.Services
-@using Explore.Blazor.Client.Pages.Events.Components
-@using Microsoft.AspNetCore.Components.Forms
-@using Microsoft.AspNetCore.Components
-@using Microsoft.AspNetCore.Authorization
-@using System.IO
-@using Blazouter.Services
-@using static Explore.Blazor.Client.Pages.Events.Components.EventSessionEditor
-@using Explore.Blazor.Client.Helpers
 @using Explore.Blazor.Client.Shared
-@attribute [Authorize]
+@using Explore.Blazor.Client.Pages.Events.Components
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Authorization
 @rendermode InteractiveServer
-@inject IEventService EventService
-@inject IOrganizationService OrganizationService
-@inject IAdminService AdminService
-@inject ICategoryService CategoryService
-@inject ITagService TagService
-@inject IImageStorageService ImageStorageService
-@inject NavigationManager Navigation
-@inject RouterStateService RouterState
-@inject ILogger<EventEdit> Logger
+@attribute [Authorize]
 
 <PageTitle>Edit Event</PageTitle>
 
-@if (isLoading)
-{
-    <div class="d-flex flex-column align-center justify-center py-16">
-        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
-        <MudText Typo="Typo.body1" Class="mt-4" Color="Color.Secondary">Loading...</MudText>
-    </div>
-}
-else if (currentEvent != null && updateDto != null)
-{
-    <MudContainer MaxWidth="MaxWidth.Medium" Class="py-8">
-        <MudCard Elevation="0" Class="rounded-xl border-solid border-1 mud-border-lines-default">
-            <MudCardHeader Class="border-b-1 mud-border-lines-default pa-6">
-                <CardHeaderContent>
-                    <div class="d-flex align-center gap-4">
-                        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
-                                       Color="Color.Secondary"
-                                       OnClick="NavigateBack" />
-                        <div>
-                            <MudText Typo="Typo.h5" Style="font-weight: 700;">Edit Event</MudText>
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">Update event details</MudText>
-                        </div>
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-6">
+    @if (isLoading)
+    {
+        <div class="d-flex flex-column align-center justify-center py-16">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+            <MudText Typo="Typo.body1" Class="mt-4" Color="Color.Secondary">Loading event...</MudText>
+        </div>
+    }
+    else if (currentEvent == null || updateDto == null)
+    {
+        <MudContainer Class="py-8">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled">Event not found.</MudAlert>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/myevents" Class="mt-4">Back to My Events</MudButton>
+        </MudContainer>
+    }
+    else
+    {
+        <div class="edit-event">
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4 rounded-lg"
+                      ShowCloseIcon="true" CloseIconClicked="@(() => errorMessage = string.Empty)">
+                @errorMessage
+            </MudAlert>
+        }
+
+        <EditForm Model="updateDto" OnValidSubmit="@HandleSubmit">
+
+            <MudGrid Spacing="5">
+                @* ===== LEFT COLUMN: Event Image ===== *@
+                <MudItem xs="12" sm="5" Class="edit-event__col-left">
+                    <div class="edit-event__image-area">
+                        @if (!string.IsNullOrEmpty(imagePreviewUrl))
+                        {
+                            <img src="@imagePreviewUrl" alt="Event image" class="edit-event__image" />
+                        }
+                        else
+                        {
+                            <div class="edit-event__image-placeholder">
+                                <MudIcon Icon="@Icons.Material.Filled.Image" Size="Size.Large" Color="Color.Secondary" />
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">Event Image</MudText>
+                            </div>
+                        }
+
+                        <MudFileUpload T="IBrowserFile"
+                                       FilesChanged="OnImageFileSelected"
+                                       Accept=".jpg,.jpeg,.png,.gif,.webp"
+                                       MaximumFileCount="1"
+                                       Class="edit-event__upload-trigger">
+                            <CustomContent Context="fileUpload">
+                                <MudFab StartIcon="@Icons.Material.Filled.PhotoCamera"
+                                        Size="Size.Small"
+                                        Color="Color.Primary"
+                                        aria-label="Upload event image"
+                                        OnClick="@fileUpload.OpenFilePickerAsync" />
+                            </CustomContent>
+                        </MudFileUpload>
+
+                        @if (_isUploadingImage)
+                        {
+                            <div class="edit-event__upload-overlay">
+                                <MudProgressCircular Size="Size.Medium" Indeterminate="true" Color="Color.Primary" />
+                            </div>
+                        }
                     </div>
-                </CardHeaderContent>
-            </MudCardHeader>
-            <MudCardContent Class="pa-6">
-                @if (!string.IsNullOrEmpty(_errorMessage))
-                {
-                    <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-6 rounded-lg" ShowCloseIcon="true" CloseIconClicked="@(() => _errorMessage = null)">
-                        @_errorMessage
-                    </MudAlert>
-                }
 
-                <EditForm Model="updateDto" OnValidSubmit="HandleValidSubmit">
-                    <DataAnnotationsValidator />
+                    @if (_uploadError != null)
+                    {
+                        <MudAlert Severity="Severity.Error" Class="mt-2" Dense="true"
+                                  ShowCloseIcon="true" CloseIconClicked="@(() => _uploadError = null)">
+                            @_uploadError
+                        </MudAlert>
+                    }
 
-                    <MudStack Spacing="6">
-                        <!-- Image Display -->
-                        <div>
-                            <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight: 700;">Event Image</MudText>
-                            <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
-                                <ImageUpload @ref="_imageUploadComponent"
-                                             @bind-PreviewUrl="_previewImageUrl"
-                                             FileDataSelected="OnImageFileDataSelected"
-                                             IsProcessing="_isUploadingImage"
-                                             Width="100%"
-                                             Height="300px"
-                                             PlaceholderText="Update event image"
-                                             HintText="Upload a new image or keep the existing one (JPG, PNG, GIF, WebP - Max 5MB)" />
-                                @if (_isUploadingImage)
-                                {
-                                    <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.Center" Class="mt-4">
-                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Primary" />
-                                        <MudText Typo="Typo.caption" Color="Color.Secondary">Uploading image...</MudText>
-                                    </MudStack>
-                                }
-                                @if (_uploadError != null)
-                                {
-                                    <MudAlert Severity="Severity.Error" Class="mt-4" ShowCloseIcon="true" CloseIconClicked="@(() => _uploadError = null)">
-                                        @_uploadError
-                                    </MudAlert>
-                                }
-                            </MudPaper>
-                        </div>
-
-                        <!-- Basic Info -->
-                        <div>
-                            <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight: 700;">Basic Information</MudText>
-                            <MudGrid Spacing="3">
+                    @* --- Appearance (under image, left column) --- *@
+                    <MudExpansionPanels Class="mt-3" Elevation="0">
+                        <MudExpansionPanel Text="Event Appearance" MaxHeight="500"
+                                           Class="rounded-lg border-solid border-1 mud-border-lines-default">
+                            <MudGrid Spacing="2">
                                 <MudItem xs="12">
-                                    <MudTextField @bind-Value="updateDto.Title"
-                                                  Label="Event Title"
+                                    <MudTextField @bind-Value="_appearance.BackgroundColor"
+                                                  Label="Background Color"
                                                   Variant="Variant.Outlined"
-                                                  Required
-                                                  FullWidth />
-                                    <ValidationMessage For="@(() => updateDto.Title)" />
+                                                  Margin="Margin.Dense"
+                                                  Placeholder="#0f172a" />
                                 </MudItem>
                                 <MudItem xs="12">
-                                    <MudTextField @bind-Value="updateDto.Subtitle"
-                                                  Label="Event Subtitle (Short summary)"
+                                    <MudTextField @bind-Value="_appearance.BackgroundMediaUrl"
+                                                  Label="Background Media URL"
                                                   Variant="Variant.Outlined"
-                                                  FullWidth />
+                                                  Margin="Margin.Dense"
+                                                  Placeholder="https://..." />
                                 </MudItem>
                                 <MudItem xs="12">
-                                    <MudTextField @bind-Value="updateDto.Description"
-                                                  Label="Event Description"
-                                                  Variant="Variant.Outlined"
-                                                  Lines="4"
-                                                  FullWidth />
+                                    <MudSelect @bind-Value="_appearance.BackgroundEffect"
+                                               Label="Effect"
+                                               Variant="Variant.Outlined"
+                                               Margin="Margin.Dense"
+                                               AnchorOrigin="Origin.BottomCenter">
+                                        <MudSelectItem Value="@("None")">None</MudSelectItem>
+                                        <MudSelectItem Value="@("SoftOverlay")">Soft Overlay</MudSelectItem>
+                                        <MudSelectItem Value="@("StrongOverlay")">Strong Overlay</MudSelectItem>
+                                        <MudSelectItem Value="@("Blur")">Blur Overlay</MudSelectItem>
+                                    </MudSelect>
                                 </MudItem>
                             </MudGrid>
+                        </MudExpansionPanel>
+                    </MudExpansionPanels>
+                </MudItem>
+
+                @* ===== RIGHT COLUMN: Form ===== *@
+                <MudItem xs="12" sm="7" Class="edit-event__col-right">
+
+                    @* --- Event Title (large, Luma-style) --- *@
+                    <MudTextField @bind-Value="updateDto.Title"
+                                  Placeholder="Event Name"
+                                  Variant="Variant.Text"
+                                  FullWidth="true"
+                                  Immediate="true"
+                                  Class="edit-event__title-input mb-1" />
+
+                    @* --- First Session: Luma-style Date/Time Block --- *@
+                    @if (sessions.Count > 0)
+                    {
+                        <div class="edit-event__datetime-block">
+                            <div class="edit-event__datetime-row">
+                                <div class="edit-event__datetime-indicator">
+                                    <div class="edit-event__datetime-dot edit-event__datetime-dot--start"></div>
+                                    <div class="edit-event__datetime-line"></div>
+                                </div>
+                                <MudText Typo="Typo.body2" Class="edit-event__datetime-label">Start</MudText>
+                                <MudDatePicker Date="@sessions[0].StartTime.Date"
+                                               DateChanged="@(d => OnSessionStartDateChanged(0, d))"
+                                               Variant="Variant.Text"
+                                               Margin="Margin.Dense"
+                                               DisableToolbar="true"
+                                               Class="edit-event__datetime-picker" />
+                                <MudTimePicker Time="@sessions[0].StartTime.TimeOfDay"
+                                               TimeChanged="@(t => OnSessionStartTimeChanged(0, t))"
+                                               Variant="Variant.Text"
+                                               Margin="Margin.Dense"
+                                               Class="edit-event__datetime-picker" />
+                            </div>
+                            <div class="edit-event__datetime-row">
+                                <div class="edit-event__datetime-indicator">
+                                    <div class="edit-event__datetime-dot edit-event__datetime-dot--end"></div>
+                                </div>
+                                <MudText Typo="Typo.body2" Class="edit-event__datetime-label">End</MudText>
+                                <MudDatePicker Date="@sessions[0].EndTime.Date"
+                                               DateChanged="@(d => OnSessionEndDateChanged(0, d))"
+                                               Variant="Variant.Text"
+                                               Margin="Margin.Dense"
+                                               DisableToolbar="true"
+                                               Class="edit-event__datetime-picker" />
+                                <MudTimePicker Time="@sessions[0].EndTime.TimeOfDay"
+                                               TimeChanged="@(t => OnSessionEndTimeChanged(0, t))"
+                                               Variant="Variant.Text"
+                                               Margin="Margin.Dense"
+                                               Class="edit-event__datetime-picker" />
+                            </div>
+                            <MudButton Variant="Variant.Text"
+                                       Size="Size.Small"
+                                       Color="Color.Default"
+                                       OnClick="@(() => _showTimezoneSelector = !_showTimezoneSelector)"
+                                       Class="edit-event__timezone-btn">
+                                <MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Small" Class="mr-1" />
+                                @_selectedTimezoneDisplay
+                                <MudIcon Icon="@(_showTimezoneSelector ? Icons.Material.Filled.ArrowDropUp : Icons.Material.Filled.ArrowDropDown)" Size="Size.Small" />
+                            </MudButton>
+                            @if (_showTimezoneSelector)
+                            {
+                                <MudAutocomplete T="TimeZoneInfo"
+                                                 Value="_selectedTimezone"
+                                                 ValueChanged="OnTimezoneChanged"
+                                                 SearchFunc="SearchTimezones"
+                                                 ToStringFunc="@(tz => tz?.DisplayName ?? "")"
+                                                 Label="Search timezone"
+                                                 Variant="Variant.Outlined"
+                                                 Margin="Margin.Dense"
+                                                 Dense="true"
+                                                 Immediate="true"
+                                                 Class="edit-event__timezone-autocomplete" />
+                            }
                         </div>
 
-                        <!-- Date and Time -->
-                        <div>
-                            <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight: 700;">Date and Time</MudText>
-                            <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
-                                <MudGrid Spacing="3">
-                                    <MudItem xs="12" sm="6">
-                                        <MudDatePicker Label="Start Date" @bind-Date="_startDate" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" />
-                                    </MudItem>
-                                    <MudItem xs="12" sm="6">
-                                        <MudTimePicker Label="Start Time" @bind-Time="_startTime" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" />
-                                    </MudItem>
-                                    <MudItem xs="12" sm="6">
-                                        <MudDatePicker Label="End Date" @bind-Date="_endDate" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" />
-                                    </MudItem>
-                                    <MudItem xs="12" sm="6">
-                                        <MudTimePicker Label="End Time" @bind-Time="_endTime" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" />
-                                    </MudItem>
-                                </MudGrid>
-                            </MudPaper>
-                        </div>
+                        @* First session location *@
+                        <MudButton StartIcon="@Icons.Material.Filled.LocationOn"
+                                   Variant="Variant.Text"
+                                   Color="Color.Default"
+                                   FullWidth="true"
+                                   Class="edit-event__action-button justify-start"
+                                   OnClick="@(() => _showFirstSessionLocation = !_showFirstSessionLocation)">
+                            @if (sessions[0].LocationId.HasValue && locations != null)
+                            {
+                                var loc = locations.FirstOrDefault(l => (Guid?)l.Id == sessions[0].LocationId);
+                                <span>@(loc?.FullName ?? "Change location")</span>
+                            }
+                            else
+                            {
+                                <span>Add event location</span>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-2">Physical or virtual link</MudText>
+                            }
+                        </MudButton>
 
-                        <!-- Settings -->
-                        <div>
-                            <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight: 700;">Settings & Visibility</MudText>
-                            <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
-                                <MudGrid Spacing="3">
-                                    <MudItem xs="12" sm="6">
-                                        <MudSelect @bind-Value="updateDto.EventFormatId" Label="Event Format" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" Required>
-                                            @if (eventFormats != null)
-                                            {
-                                                @foreach (var format in eventFormats)
-                                                {
-                                                    <MudSelectItem Value="@format.Id">@format.FullName</MudSelectItem>
-                                                }
-                                            }
-                                        </MudSelect>
-                                    </MudItem>
-                                    <MudItem xs="12" sm="6">
-                                        <MudSelect @bind-Value="updateDto.VisibilityTypeId" Label="Visibility" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" Required>
-                                            @if (visibilityTypes != null)
-                                            {
-                                                @foreach (var visibility in visibilityTypes)
-                                                {
-                                                    <MudSelectItem Value="@visibility.Id">@visibility.FullName</MudSelectItem>
-                                                }
-                                            }
-                                        </MudSelect>
-                                    </MudItem>
-                                    <MudItem xs="12" sm="6">
-                                        <MudSelect T="int?" @bind-Value="selectedMadhabId" Label="Madhab (Optional)" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" Clearable="true">
-                                            @if (madhabs != null)
-                                            {
-                                                @foreach (var madhab in madhabs)
-                                                {
-                                                    <MudSelectItem T="int?" Value="@((int?)madhab.Id)">@madhab.FullName</MudSelectItem>
-                                                }
-                                            }
-                                        </MudSelect>
-                                    </MudItem>
-                                    <MudItem xs="12" sm="6">
-                                        <MudSelect @bind-Value="updateDto.EventStatusId" Label="Event Status" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" Required>
-                                            @if (eventStatuses != null)
-                                            {
-                                                @foreach (var status in eventStatuses)
-                                                {
-                                                    <MudSelectItem Value="@status.Id">@status.FullName</MudSelectItem>
-                                                }
-                                            }
-                                        </MudSelect>
-                                    </MudItem>
-                                </MudGrid>
-                            </MudPaper>
-                        </div>
+                        @if (_showFirstSessionLocation && locations != null)
+                        {
+                            <MudSelect T="Guid?"
+                                       @bind-Value="sessions[0].LocationId"
+                                       Label="Location"
+                                       Variant="Variant.Outlined"
+                                       FullWidth="true"
+                                       Clearable="true"
+                                       Margin="Margin.Dense"
+                                       Class="mb-3">
+                                @foreach (var location in locations)
+                                {
+                                    <MudSelectItem T="Guid?" Value="@((Guid?)location.Id)">
+                                        @location.FullName @(!string.IsNullOrEmpty(location.City) ? $" - {location.City}" : "")
+                                    </MudSelectItem>
+                                }
+                            </MudSelect>
+                        }
 
-                        <!-- Appearance -->
-                        <div>
-                            <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight: 700;">Event Appearance</MudText>
-                            <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
-                                <MudGrid Spacing="3">
-                                    <MudItem xs="12" sm="4">
-                                        <MudTextField @bind-Value="_appearance.BackgroundColor"
-                                                      Label="Background Color"
-                                                      Variant="Variant.Outlined"
-                                                      Placeholder="#0f172a" />
-                                    </MudItem>
-                                    <MudItem xs="12" sm="5">
-                                        <MudTextField @bind-Value="_appearance.BackgroundMediaUrl"
-                                                      Label="Background Media URL (Image/GIF)"
-                                                      Variant="Variant.Outlined"
-                                                      Placeholder="https://..." />
-                                    </MudItem>
-                                    <MudItem xs="12" sm="3">
-                                        <MudSelect @bind-Value="_appearance.BackgroundEffect"
-                                                   Label="Effect"
-                                                   Variant="Variant.Outlined"
-                                                   AnchorOrigin="Origin.BottomCenter">
-                                            <MudSelectItem Value="@("None")">None</MudSelectItem>
-                                            <MudSelectItem Value="@("SoftOverlay")">Soft Overlay</MudSelectItem>
-                                            <MudSelectItem Value="@("StrongOverlay")">Strong Overlay</MudSelectItem>
-                                            <MudSelectItem Value="@("Blur")">Blur Overlay</MudSelectItem>
-                                        </MudSelect>
-                                    </MudItem>
-                                </MudGrid>
-                            </MudPaper>
-                        </div>
-
-                        <!-- Categories & Tags -->
-                        <div>
-                            <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight: 700;">Categorization</MudText>
-                            <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
-                                <MudStack Spacing="4">
-                                    @if (allCategories != null && allCategories.Any())
+                        @* First session: compact registration & capacity row *@
+                        <MudGrid Spacing="2" Class="mb-2">
+                            <MudItem xs="6">
+                                <MudSelect T="int?"
+                                           @bind-Value="sessions[0].RegistrationModeId"
+                                           Label="Registration"
+                                           Variant="Variant.Outlined"
+                                           Margin="Margin.Dense"
+                                           FullWidth="true">
+                                    @if (registrationModes != null)
                                     {
-                                        <MudSelect T="Guid?" MultiSelection="true" @bind-SelectedValues="selectedCategoryIds" Label="Categories" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" MultiSelectionTextFunc="@(new Func<List<string>, string>(GetCategorySelectionText))">
-                                            @foreach (var category in allCategories)
-                                            {
-                                                <MudSelectItem T="Guid?" Value="@category.Id">@category.FullName</MudSelectItem>
-                                            }
-                                        </MudSelect>
+                                        @foreach (var mode in registrationModes)
+                                        {
+                                            <MudSelectItem T="int?" Value="@((int?)mode.Id)">@mode.FullName</MudSelectItem>
+                                        }
                                     }
-                                    @if (allTags != null && allTags.Any())
-                                    {
-                                        <MudSelect T="Guid?" MultiSelection="true" @bind-SelectedValues="selectedTagIds" Label="Tags" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" MultiSelectionTextFunc="@(new Func<List<string>, string>(GetTagSelectionText))">
-                                            @foreach (var tag in allTags)
-                                            {
-                                                <MudSelectItem T="Guid?" Value="@tag.Id">@tag.FullName</MudSelectItem>
-                                            }
-                                        </MudSelect>
-                                    }
-                                </MudStack>
+                                </MudSelect>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudNumericField T="int?"
+                                                 @bind-Value="sessions[0].MaxAudienceAttendees"
+                                                 Label="Capacity"
+                                                 Variant="Variant.Outlined"
+                                                 Margin="Margin.Dense"
+                                                 Placeholder="Unlimited"
+                                                 Min="0" />
+                            </MudItem>
+                        </MudGrid>
+                    }
+
+                    @* --- Add Description Button (Luma-style popup) --- *@
+                    <MudButton StartIcon="@Icons.Material.Filled.Notes"
+                               Variant="Variant.Text"
+                               Color="Color.Default"
+                               FullWidth="true"
+                               Class="edit-event__action-button justify-start"
+                               OnClick="OpenDescriptionDialog">
+                        @if (!string.IsNullOrEmpty(updateDto.Description))
+                        {
+                            <span class="text-truncate" style="max-width: 400px; text-align: left;">@updateDto.Description</span>
+                        }
+                        else
+                        {
+                            <span>Add a description</span>
+                        }
+                    </MudButton>
+
+                    @* --- Additional Sessions (2+) --- *@
+                    @if (sessions.Count > 1)
+                    {
+                        <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mt-4 mb-2">Additional Sessions</MudText>
+                        @for (int i = 1; i < sessions.Count; i++)
+                        {
+                            var idx = i;
+                            <MudPaper Elevation="0" Class="pa-4 mb-3 rounded-lg border-solid border-1 mud-border-lines-default">
+                                <div class="d-flex justify-space-between align-center mb-3">
+                                    <MudText Typo="Typo.subtitle2" Style="font-weight: 600;">Session @(idx + 1)</MudText>
+                                    <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                                   Size="Size.Small"
+                                                   Color="Color.Error"
+                                                   OnClick="@(() => RemoveSession(idx))" />
+                                </div>
+                                <EventSessionEditor Session="sessions[idx]"
+                                                    SessionChanged="@((s) => OnSessionChanged(idx, s))"
+                                                    Index="idx"
+                                                    ShowRemoveButton="false"
+                                                    ShowLocationSelector="true"
+                                                    Locations="locations"
+                                                    RegistrationModes="registrationModes"
+                                                    ShowLanguageSelector="true"
+                                                    Languages="languages" />
                             </MudPaper>
+                        }
+                    }
+
+                    <MudButton StartIcon="@Icons.Material.Filled.Add"
+                               Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               FullWidth="true"
+                               OnClick="AddSession"
+                               Class="mt-2 mb-4 rounded-lg">
+                        Add Session
+                    </MudButton>
+
+                    @* --- Event Options (Luma-style rows) --- *@
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">Event Options</MudText>
+                    <div class="edit-event__options">
+                        @* Event Type *@
+                        <div class="edit-event__option-row">
+                            <div class="d-flex align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Category" Size="Size.Small" Color="Color.Secondary" />
+                                <MudText Typo="Typo.body2">Event Type</MudText>
+                            </div>
+                            <MudSelect T="int?" @bind-Value="updateDto.EventTypeId"
+                                       Variant="Variant.Text" Margin="Margin.Dense"
+                                       AnchorOrigin="Origin.BottomCenter"
+                                       Class="edit-event__option-select">
+                                <MudSelectItem T="int?" Value="@((int?)null)">— Select —</MudSelectItem>
+                                @if (eventTypes != null)
+                                {
+                                    @foreach (var type in eventTypes)
+                                    {
+                                        <MudSelectItem T="int?" Value="@((int?)type.Id)">@type.FullName</MudSelectItem>
+                                    }
+                                }
+                            </MudSelect>
                         </div>
 
-                        <!-- Actions -->
-                        <div class="d-flex justify-end gap-3 pt-4 border-t-1 mud-border-lines-default">
-                            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="NavigateBack" Class="rounded-pill">Cancel</MudButton>
-                            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" Class="rounded-pill px-6">Save Changes</MudButton>
+                        @* Format *@
+                        <div class="edit-event__option-row">
+                            <div class="d-flex align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Videocam" Size="Size.Small" Color="Color.Secondary" />
+                                <MudText Typo="Typo.body2">Format</MudText>
+                            </div>
+                            <MudSelect T="int?" @bind-Value="updateDto.EventFormatId"
+                                       Variant="Variant.Text" Margin="Margin.Dense"
+                                       AnchorOrigin="Origin.BottomCenter"
+                                       Class="edit-event__option-select">
+                                @if (eventFormats != null)
+                                {
+                                    @foreach (var f in eventFormats)
+                                    {
+                                        <MudSelectItem T="int?" Value="@((int?)f.Id)">@f.FullName</MudSelectItem>
+                                    }
+                                }
+                            </MudSelect>
                         </div>
-                    </MudStack>
-                </EditForm>
-            </MudCardContent>
-        </MudCard>
-    </MudContainer>
-}
-else
-{
-    <MudContainer Class="py-8">
-        <MudAlert Severity="Severity.Error" Variant="Variant.Filled">Event not found.</MudAlert>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/myevents" Class="mt-4">Back to My Events</MudButton>
-    </MudContainer>
-}
 
-@code {
-    private Guid EventId { get; set; }
+                        @* Visibility *@
+                        <div class="edit-event__option-row">
+                            <div class="d-flex align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Color="Color.Secondary" />
+                                <MudText Typo="Typo.body2">Visibility</MudText>
+                            </div>
+                            <MudSelect T="int?" @bind-Value="updateDto.VisibilityTypeId"
+                                       Variant="Variant.Text" Margin="Margin.Dense"
+                                       AnchorOrigin="Origin.BottomCenter"
+                                       Class="edit-event__option-select">
+                                @if (visibilityTypes != null)
+                                {
+                                    @foreach (var v in visibilityTypes)
+                                    {
+                                        <MudSelectItem T="int?" Value="@((int?)v.Id)">@v.FullName</MudSelectItem>
+                                    }
+                                }
+                            </MudSelect>
+                        </div>
 
-    private EventDto? currentEvent;
-    private UpdateEventDto? updateDto;
-    private DateTime? _startDate;
-    private TimeSpan? _startTime;
-    private DateTime? _endDate;
-    private TimeSpan? _endTime;
-    private bool _isOnline = false;
-    private string selectedImageUrl = string.Empty;
-    private bool isLoading = true;
-    private ICollection<EventTypeListDto>? eventTypes;
-    private ICollection<EventFormatListDto>? eventFormats;
-    private ICollection<EventStatusListDto>? eventStatuses;
-    private ICollection<VisibilityTypeListDto>? visibilityTypes;
-    private ICollection<MadhabListDto>? madhabs;
-    private ICollection<CategoryListDto>? allCategories;
-    private ICollection<TagListDto>? allTags;
+                        @* Status *@
+                        <div class="edit-event__option-row">
+                            <div class="d-flex align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Flag" Size="Size.Small" Color="Color.Secondary" />
+                                <MudText Typo="Typo.body2">Status</MudText>
+                            </div>
+                            <MudSelect T="int?" @bind-Value="updateDto.EventStatusId"
+                                       Variant="Variant.Text" Margin="Margin.Dense"
+                                       AnchorOrigin="Origin.BottomCenter"
+                                       Class="edit-event__option-select">
+                                @if (eventStatuses != null)
+                                {
+                                    @foreach (var s in eventStatuses)
+                                    {
+                                        <MudSelectItem T="int?" Value="@((int?)s.Id)">@s.FullName</MudSelectItem>
+                                    }
+                                }
+                            </MudSelect>
+                        </div>
 
-    // Nullable Event properties
-    private int? selectedMadhabId;
-    private string? selectedTimezone;
+                        @* Audience Gender & Age *@
+                        <div class="edit-event__option-row">
+                            <div class="d-flex align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Small" Color="Color.Secondary" />
+                                <MudText Typo="Typo.body2">Audience</MudText>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <MudSelect T="int?" @bind-Value="updateDto.AudienceGenderId"
+                                           Variant="Variant.Text" Margin="Margin.Dense"
+                                           AnchorOrigin="Origin.BottomCenter"
+                                           Class="edit-event__option-select"
+                                           Placeholder="Gender">
+                                    <MudSelectItem T="int?" Value="@((int?)null)">Any Gender</MudSelectItem>
+                                    @if (audienceGenders != null)
+                                    {
+                                        @foreach (var g in audienceGenders)
+                                        {
+                                            <MudSelectItem T="int?" Value="@((int?)g.Id)">@g.FullName</MudSelectItem>
+                                        }
+                                    }
+                                </MudSelect>
+                                <MudSelect T="int?" @bind-Value="updateDto.AudienceAgeId"
+                                           Variant="Variant.Text" Margin="Margin.Dense"
+                                           AnchorOrigin="Origin.BottomCenter"
+                                           Class="edit-event__option-select"
+                                           Placeholder="Age">
+                                    <MudSelectItem T="int?" Value="@((int?)null)">Any Age</MudSelectItem>
+                                    @if (audienceAges != null)
+                                    {
+                                        @foreach (var a in audienceAges)
+                                        {
+                                            <MudSelectItem T="int?" Value="@((int?)a.Id)">@a.FullName</MudSelectItem>
+                                        }
+                                    }
+                                </MudSelect>
+                            </div>
+                        </div>
 
-    // Categories and Tags
-    private IEnumerable<Guid?> selectedCategoryIds = new HashSet<Guid?>();
-    private IEnumerable<Guid?> selectedTagIds = new HashSet<Guid?>();
-    private ICollection<object>? existingCategoriesRaw;
-    private ICollection<object>? existingTagsRaw;
+                        @* Madhab *@
+                        <div class="edit-event__option-row">
+                            <div class="d-flex align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Small" Color="Color.Secondary" />
+                                <MudText Typo="Typo.body2">Madhab</MudText>
+                            </div>
+                            <MudSelect T="int?" @bind-Value="updateDto.MadhabId"
+                                       Variant="Variant.Text" Margin="Margin.Dense"
+                                       AnchorOrigin="Origin.BottomCenter"
+                                       Clearable="true"
+                                       Class="edit-event__option-select">
+                                <MudSelectItem T="int?" Value="@((int?)null)">— None —</MudSelectItem>
+                                @if (madhabs != null)
+                                {
+                                    @foreach (var m in madhabs)
+                                    {
+                                        <MudSelectItem T="int?" Value="@((int?)m.Id)">@m.FullName</MudSelectItem>
+                                    }
+                                }
+                            </MudSelect>
+                        </div>
 
-    // Sessions
-    private List<SessionEditorModel> sessions = new();
-    private EventAppearanceSettings _appearance = new();
+                        @* Categories *@
+                        <div class="edit-event__option-row">
+                            <div class="d-flex align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Label" Size="Size.Small" Color="Color.Secondary" />
+                                <MudText Typo="Typo.body2">Categories</MudText>
+                            </div>
+                            <MudSelect T="Guid" MultiSelection="true"
+                                       @bind-SelectedValues="selectedCategoryIds"
+                                       Variant="Variant.Text" Margin="Margin.Dense"
+                                       AnchorOrigin="Origin.BottomCenter"
+                                       Class="edit-event__option-select">
+                                @if (allCategories != null)
+                                {
+                                    @foreach (var c in allCategories)
+                                    {
+                                        if (c.Id is not Guid categoryId) { continue; }
+                                        <MudSelectItem T="Guid" Value="@categoryId">@c.FullName</MudSelectItem>
+                                    }
+                                }
+                            </MudSelect>
+                        </div>
 
-    // Image upload state
-    private FileUploadData? _selectedFileData;
-    private string? _previewImageUrl;
-    private bool _isUploadingImage = false;
-    private Guid? _uploadedStorageObjectId;
-    private ImageUpload? _imageUploadComponent;
-    private string? _uploadError;
-    private string? _errorMessage;
+                        @* Tags *@
+                        <div class="edit-event__option-row">
+                            <div class="d-flex align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Tag" Size="Size.Small" Color="Color.Secondary" />
+                                <MudText Typo="Typo.body2">Tags</MudText>
+                            </div>
+                            <MudSelect T="Guid" MultiSelection="true"
+                                       @bind-SelectedValues="selectedTagIds"
+                                       Variant="Variant.Text" Margin="Margin.Dense"
+                                       AnchorOrigin="Origin.BottomCenter"
+                                       Class="edit-event__option-select">
+                                @if (allTags != null)
+                                {
+                                    @foreach (var t in allTags)
+                                    {
+                                        if (t.Id is not Guid tagId) { continue; }
+                                        <MudSelectItem T="Guid" Value="@tagId">@t.FullName</MudSelectItem>
+                                    }
+                                }
+                            </MudSelect>
+                        </div>
+                    </div>
 
-    protected override async Task OnInitializedAsync()
-    {
-        var eventIdStr = RouterState.GetParam("eventId");
-        if (Guid.TryParse(eventIdStr, out var id))
-        {
-            EventId = id;
-        }
+                </MudItem>
+            </MudGrid>
 
-        try
-        {
-            isLoading = true;
-
-            var eventTypesTask = AdminService.GetEventTypesAsync();
-            var eventFormatsTask = AdminService.GetEventFormatsAsync();
-            var eventStatusesTask = AdminService.GetEventStatusesAsync();
-            var visibilityTypesTask = AdminService.GetVisibilityTypesAsync();
-            var madhabsTask = AdminService.GetMadhabsAsync();
-
-            await Task.WhenAll(eventTypesTask, eventFormatsTask, eventStatusesTask, visibilityTypesTask, madhabsTask);
-
-            eventTypes = await eventTypesTask;
-            eventFormats = await eventFormatsTask;
-            eventStatuses = await eventStatusesTask;
-            visibilityTypes = await visibilityTypesTask;
-            madhabs = await madhabsTask;
-
-            currentEvent = await EventService.GetEventByIdAsync(EventId);
-
-            if (currentEvent != null)
-            {
-                updateDto = new UpdateEventDto
+            @* ===== Update Event Button (full width) ===== *@
+            <MudButton ButtonType="ButtonType.Submit"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       Disabled="@(isProcessing || _isUploadingImage)"
+                       Class="mt-6 edit-event__submit-button"
+                       Size="Size.Large">
+                @if (isProcessing)
                 {
-                    Id = currentEvent.Id,
-                    Title = currentEvent.Title,
-                    Subtitle = currentEvent.Subtitle,
-                    Description = currentEvent.Description,
-                    AudienceGenderId = currentEvent.AudienceGenderId,
-                    AudienceAgeId = currentEvent.AudienceAgeId,
-                    ActorId = currentEvent.ActorId,
-                    Price = currentEvent.Price,
-                    CurrencyCode = currentEvent.CurrencyCode,
-                    FeaturedImageId = currentEvent.FeaturedImageId,
-                    IsRegistrationRequired = currentEvent.IsRegistrationRequired,
-                    ExternalRegistrationUrl = currentEvent.EventUrl,
-                    EventTypeId = currentEvent.EventTypeId,
-                    EventFormatId = currentEvent.EventFormatId,
-                    EventStatusId = currentEvent.EventStatusId,
-                    VisibilityTypeId = currentEvent.VisibilityTypeId,
-                    FirstSessionDate = currentEvent.FirstSessionDate,
-                    LastSessionDate = currentEvent.LastSessionDate,
-                    MetadataJson = currentEvent.MetadataJson
-                };
-                _appearance = EventAppearanceMetadataHelper.Parse(currentEvent.MetadataJson);
-
-                if (currentEvent.FirstSessionDate.HasValue)
-                {
-                    var localStart = currentEvent.FirstSessionDate.Value.LocalDateTime;
-                    _startDate = localStart.Date;
-                    _startTime = localStart.TimeOfDay;
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    <span>Updating...</span>
                 }
-
-                if (currentEvent.LastSessionDate.HasValue)
+                else if (_isUploadingImage)
                 {
-                    var localEnd = currentEvent.LastSessionDate.Value.LocalDateTime;
-                    _endDate = localEnd.Date;
-                    _endTime = localEnd.TimeOfDay;
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    <span>Uploading image...</span>
                 }
-
-                _isOnline = currentEvent.EventFormatId == 2;
-                _previewImageUrl = currentEvent.FeaturedImageUri ?? GeneratePlaceholderImage();
-                selectedMadhabId = currentEvent.MadhabId;
-                selectedTimezone = currentEvent.Timezone;
-
-                var allCategoriesTask = CategoryService.GetAllCategoriesAsync();
-                var allTagsTask = TagService.GetAllTagsAsync();
-                var sessionsTask = EventService.GetSessionsByEventAsync(EventId);
-
-                await Task.WhenAll(allCategoriesTask, allTagsTask, sessionsTask);
-
-                allCategories = await allCategoriesTask;
-                allTags = await allTagsTask;
-                var eventSessions = await sessionsTask;
-
-                selectedCategoryIds = new HashSet<Guid?>();
-                selectedTagIds = new HashSet<Guid?>();
-
-                sessions = eventSessions?.Select(s => SessionEditorModel.FromDto(s)).ToList() ?? new List<SessionEditorModel>();
-            }
-            else
-            {
-                _errorMessage = "Event not found";
-            }
-        }
-        catch (Exception ex)
-        {
-            _errorMessage = $"Error loading event: {ex.Message}";
-        }
-        finally
-        {
-            isLoading = false;
-        }
+                else
+                {
+                    <span>Update Event</span>
+                }
+            </MudButton>
+        </EditForm>
+        </div>
     }
-
-    private string GeneratePlaceholderImage()
-    {
-        if (currentEvent == null) return string.Empty;
-        var eventTitle = Uri.EscapeDataString(currentEvent.Title ?? "Event");
-        return $"https://via.placeholder.com/400x250/607D8B/ffffff?text={eventTitle}";
-    }
-
-    private async Task HandleValidSubmit()
-    {
-        if (updateDto == null) return;
-
-        if (_isUploadingImage)
-        {
-            _errorMessage = "Please wait for the image upload to complete.";
-            return;
-        }
-
-        try
-        {
-            updateDto.FirstSessionDate = DateTimeHelper.CombineDateTimeToUtc(_startDate, _startTime);
-            updateDto.LastSessionDate = DateTimeHelper.CombineDateTimeToUtc(_endDate, _endTime);
-
-            if (_uploadedStorageObjectId.HasValue)
-            {
-                updateDto.FeaturedImageId = _uploadedStorageObjectId.Value;
-            }
-
-            updateDto.MetadataJson = EventAppearanceMetadataHelper.Upsert(updateDto.MetadataJson, _appearance);
-
-            if (!updateDto.Id.HasValue)
-            {
-                _errorMessage = "Event ID is missing";
-                return;
-            }
-            var response = await EventService.UpdateEventAsync(updateDto.Id.Value, updateDto);
-
-            if (response?.Success == true)
-            {
-                Navigation.NavigateTo("/myevents");
-            }
-            else
-            {
-                _errorMessage = response?.Message ?? "Failed to update event";
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Unexpected error updating event");
-            _errorMessage = $"Error updating event: {ex.Message}";
-        }
-    }
-
-    private void NavigateBack()
-    {
-        Navigation.NavigateTo("/myevents");
-    }
-
-    private async Task OnImageFileDataSelected(FileUploadData? fileData)
-    {
-        _selectedFileData = fileData;
-        _uploadError = null;
-
-        if (fileData == null)
-        {
-            return;
-        }
-
-        _isUploadingImage = true;
-        await InvokeAsync(StateHasChanged);
-
-        try
-        {
-            var uploadResult = await ImageStorageService.UploadAndCreateRecordFromBytesAsync(fileData);
-
-            if (uploadResult?.Success == true)
-            {
-                _uploadedStorageObjectId = uploadResult.StorageObjectId;
-                _uploadError = null;
-            }
-            else
-            {
-                _uploadError = uploadResult?.ErrorMessage ?? "Failed to upload image.";
-                await ClearUploadState();
-            }
-        }
-        catch (Exception ex)
-        {
-            _uploadError = $"Upload error: {ex.Message}";
-            await ClearUploadState();
-        }
-        finally
-        {
-            _isUploadingImage = false;
-            await InvokeAsync(StateHasChanged);
-        }
-    }
-
-    private async Task ClearUploadState()
-    {
-        try
-        {
-            if (_imageUploadComponent != null)
-            {
-                await _imageUploadComponent.RemoveImage();
-            }
-        }
-        catch { }
-
-        _selectedFileData = null;
-        if (currentEvent != null && !string.IsNullOrEmpty(currentEvent.FeaturedImageUri))
-        {
-            _previewImageUrl = currentEvent.FeaturedImageUri;
-        }
-        else
-        {
-            _previewImageUrl = GeneratePlaceholderImage();
-        }
-    }
-
-    private void AddSession()
-    {
-        sessions.Add(new SessionEditorModel
-        {
-            StartTime = _startDate?.Date.Add(_startTime ?? TimeSpan.Zero) ?? DateTime.Today.AddHours(9),
-            EndTime = _endDate?.Date.Add(_endTime ?? TimeSpan.Zero) ?? DateTime.Today.AddHours(17)
-        });
-    }
-
-    private void RemoveSession(int index)
-    {
-        if (sessions.Count > 0 && index >= 0 && index < sessions.Count)
-        {
-            sessions.RemoveAt(index);
-        }
-    }
-
-    private void OnSessionChanged(int index, SessionEditorModel session)
-    {
-        if (index >= 0 && index < sessions.Count)
-        {
-            sessions[index] = session;
-        }
-    }
-
-    private string GetCategorySelectionText(List<string> selectedValues)
-    {
-        if (selectedValues == null || !selectedValues.Any()) return "Select categories";
-        return $"{selectedValues.Count} categor{(selectedValues.Count == 1 ? "y" : "ies")} selected";
-    }
-
-    private string GetTagSelectionText(List<string> selectedValues)
-    {
-        if (selectedValues == null || !selectedValues.Any()) return "Select tags";
-        return $"{selectedValues.Count} tag{(selectedValues.Count == 1 ? "" : "s")} selected";
-    }
-}
+</MudContainer>

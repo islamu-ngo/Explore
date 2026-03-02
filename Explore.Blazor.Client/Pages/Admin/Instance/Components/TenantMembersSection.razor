@@ -93,7 +93,7 @@
 
 @code {
     private string _searchString = "";
-    private IEnumerable<int> _selectedRoleIds = [];
+    private IReadOnlyCollection<int> _selectedRoleIds = [];
 
     // Tenant-scope role definitions matching RoleEnum (10-19)
     private static readonly IReadOnlyList<(int Id, string Name)> TenantRoles =

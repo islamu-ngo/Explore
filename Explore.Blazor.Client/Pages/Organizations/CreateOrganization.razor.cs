@@ -15,6 +15,7 @@ public partial class CreateOrganization
     [Inject] protected IOrganizationService OrganizationService { get; set; } = null!;
     [Inject] protected IImageStorageService ImageStorageService { get; set; } = null!;
     [Inject] protected ILogger<CreateOrganization> Logger { get; set; } = null!;
+    [Inject] protected ISnackbar Snackbar { get; set; } = null!;
 
     private CreateOrganizationDto organization = new();
     private bool acceptTerms = false;
@@ -138,6 +139,43 @@ public partial class CreateOrganization
     private void OnLogoPreviewUrlChanged(string? value)
     {
         logoPreview = value ?? string.Empty;
+    }
+
+    private Task OnPreviewStepInteraction(StepperInteractionEventArgs args)
+    {
+        if (args.Action != StepAction.Complete)
+            return Task.CompletedTask;
+
+        var errors = new List<string>();
+
+        switch (args.StepIndex)
+        {
+            case 0: // Basic Info
+                if (string.IsNullOrWhiteSpace(organization.FullName))
+                    errors.Add("Organization Name is required.");
+                break;
+
+            case 1: // Contact & Address
+                if (string.IsNullOrWhiteSpace(organization.Email))
+                    errors.Add("Contact Email is required.");
+                if (string.IsNullOrWhiteSpace(organization.Address))
+                    errors.Add("Street Address is required.");
+                if (organization.Postcode <= 0)
+                    errors.Add("Postal Code is required.");
+                if (string.IsNullOrWhiteSpace(organization.City))
+                    errors.Add("City is required.");
+                if (string.IsNullOrWhiteSpace(organization.Country))
+                    errors.Add("Country is required.");
+                break;
+        }
+
+        if (errors.Count > 0)
+        {
+            args.Cancel = true;
+            Snackbar.Add(string.Join(" ", errors), Severity.Warning);
+        }
+
+        return Task.CompletedTask;
     }
 
     private bool CanSubmit()

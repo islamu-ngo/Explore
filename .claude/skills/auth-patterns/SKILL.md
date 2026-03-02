@@ -27,7 +27,10 @@ Standard rules for OIDC/JWT + BFF. Keep tokens server-side, enforce endpoint aut
 - **Endpoint auth**: `GET` = `[AllowAnonymous]`, write = `[Authorize]`, admin = `[Authorize(Roles = "Admin")]`.
 - **Ownership**: Resource ownership checks live in handlers (not controllers).
 - **UserId fallback**: `sub` → `nameidentifier` → `sid` (must use this order).
-- **JWT validation**: Validate issuer + audience, and check `aud` and `azp` for Keycloak multi‑client tokens.
+- **JWT validation**: Validate issuer + audience, and check both `aud` and `azp` (Keycloak authorized party) claims. Multi‑client audiences: `explore-api`, `explore-blazor-server`, `account`. Clock skew tolerance: 5 minutes.
+- **MediatR AuthorizationBehavior**: Resource‑level auth uses `IAuthorizedRequest` interface or `[AuthorizeResource]` attribute. `ISecureRequest` provides dynamic resource context. Denied → `AuthorizationException` → `403 Forbidden` via chained `IExceptionHandler`.
+- **HATEOAS authorization**: Link policies declare `RequiresAuth`, `RequiredRoles`, and `.RequirePermission()`. `HateoasAuthorizationEvaluator` batch‑evaluates permissions. Fail‑closed: on batch failure, permission‑bound links are denied.
+- **Security headers**: `SecurityHeadersMiddleware` adds `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, CSP, Permissions-Policy to every response. Non-GET responses also get `Cache-Control: no-store`.
 
 ## Resources (Read Before Applying)
 - [user-id-extraction.md](resources/user-id-extraction.md) — fallback extraction pattern
@@ -36,3 +39,7 @@ Standard rules for OIDC/JWT + BFF. Keep tokens server-side, enforce endpoint aut
 ## Related Skills
 - `clean-architecture-rules`
 - `blazor-bff-patterns`
+
+## Related Documentation
+- [`docs/API.md`](../../../docs/API.md) — Full middleware pipeline, rate limiting, HATEOAS authorization
+- [`docs/SECURITY.md`](../../../docs/SECURITY.md) — Security headers, CORS, JWT config

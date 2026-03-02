@@ -218,6 +218,42 @@ public sealed class EventCollectionLinkPolicy : ICollectionLinkPolicy<EventListD
             new { id = dto.ActorId },
             "GET",
             dto.ActorDisplayName);
+
+        // Edit link - requires authentication and permission
+        yield return new LinkDefinition(
+            LinkRelations.Edit,
+            RouteNames.UpdateEvent,
+            new { id = dto.Id },
+            "PUT",
+            "Update event",
+            RequiresAuth: true)
+            .RequirePermission(
+                PermissionAction.Update,
+                dto,
+                dto.Id.ToString(),
+                new Dictionary<string, object>
+                {
+                    ["tenantId"] = dto.TenantId.ToString()!,
+                    ["actorId"] = dto.ActorId.ToString()!
+                });
+
+        // Delete link - requires authentication and permission
+        yield return new LinkDefinition(
+            "delete",
+            RouteNames.DeleteEvent,
+            new { id = dto.Id },
+            "DELETE",
+            "Delete event",
+            RequiresAuth: true)
+            .RequirePermission(
+                PermissionAction.Delete,
+                dto,
+                dto.Id.ToString(),
+                new Dictionary<string, object>
+                {
+                    ["tenantId"] = dto.TenantId.ToString()!,
+                    ["actorId"] = dto.ActorId.ToString()!
+                });
     }
 
     /// <inheritdoc />

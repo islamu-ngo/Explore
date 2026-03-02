@@ -46,23 +46,23 @@ public partial class EventFilterBar : IBrowserViewportObserver, IAsyncDisposable
     // Filter State
     public DateRange? SelectedDateRange { get; set; }
     public string? SearchTerm { get; set; }
-    public IEnumerable<Guid> SelectedLocationIds { get; set; } = new HashSet<Guid>();
-    public IEnumerable<int> SelectedFormatIds { get; set; } = new HashSet<int>();
-    public IEnumerable<int> SelectedMadhabIds { get; set; } = new HashSet<int>();
-    public IEnumerable<int> SelectedRegistrationModeIds { get; set; } = new HashSet<int>();
-    public IEnumerable<int> SelectedLanguageIds { get; set; } = new HashSet<int>();
+    public IReadOnlyCollection<Guid> SelectedLocationIds { get; set; } = new HashSet<Guid>();
+    public IReadOnlyCollection<int> SelectedFormatIds { get; set; } = new HashSet<int>();
+    public IReadOnlyCollection<int> SelectedMadhabIds { get; set; } = new HashSet<int>();
+    public IReadOnlyCollection<int> SelectedRegistrationModeIds { get; set; } = new HashSet<int>();
+    public IReadOnlyCollection<int> SelectedLanguageIds { get; set; } = new HashSet<int>();
 
     // Core Filters
-    public IEnumerable<int> SelectedEventTypeIds { get; set; } = new HashSet<int>();
-    public IEnumerable<int> SelectedAudienceGenderIds { get; set; } = new HashSet<int>();
-    public IEnumerable<int> SelectedAudienceAgeIds { get; set; } = new HashSet<int>();
-    public IEnumerable<int> SelectedEventStatusIds { get; set; } = new HashSet<int>();
+    public IReadOnlyCollection<int> SelectedEventTypeIds { get; set; } = new HashSet<int>();
+    public IReadOnlyCollection<int> SelectedAudienceGenderIds { get; set; } = new HashSet<int>();
+    public IReadOnlyCollection<int> SelectedAudienceAgeIds { get; set; } = new HashSet<int>();
+    public IReadOnlyCollection<int> SelectedEventStatusIds { get; set; } = new HashSet<int>();
     public string SelectedSortBy { get; set; } = "date";
     public bool SortDescending { get; set; } = true;
 
     // Islamic Filters
-    public IEnumerable<int> SelectedGenderModeIds { get; set; } = new HashSet<int>();
-    public IEnumerable<int> SelectedReferencePrayerIds { get; set; } = new HashSet<int>();
+    public IReadOnlyCollection<int> SelectedGenderModeIds { get; set; } = new HashSet<int>();
+    public IReadOnlyCollection<int> SelectedReferencePrayerIds { get; set; } = new HashSet<int>();
 
     // Tech Filters
     public SkillLevel? SelectedSkillLevel { get; set; }

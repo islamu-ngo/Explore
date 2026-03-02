@@ -219,10 +219,8 @@ public class DeleteEventCommandHandler : IRequestHandler<DeleteEventCommand, boo
                 return false;
             }
 
-            // Check if role is Creator (1), CoOwner (2), or Admin (3)
-            return member.RoleId == (int)RoleEnum.OrgCreator ||
-                   member.RoleId == (int)RoleEnum.OrgCoOwner ||
-                   member.RoleId == (int)RoleEnum.OrgAdmin;
+            // Check if role is Admin
+            return member.RoleId == (int)RoleEnum.OrgAdmin;
         }
         catch (Exception ex)
         {

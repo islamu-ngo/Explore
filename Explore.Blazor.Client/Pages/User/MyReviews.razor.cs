@@ -54,7 +54,7 @@ public partial class MyReviews
 
     private async Task DeleteReview(OrganizationReviewDto review)
     {
-        bool? result = await DialogService.ShowMessageBox(
+        bool? result = await DialogService.ShowMessageBoxAsync(
             "Delete Review",
             "Are you sure you want to delete this review?",
             yesText: "Delete", cancelText: "Cancel");

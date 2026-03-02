@@ -247,20 +247,9 @@
         await SessionChanged.InvokeAsync(Session);
     }
 
-    private async Task OnLanguageValuesChanged(object? values)
+    private async Task OnLanguageValuesChanged(IReadOnlyCollection<int> languageIds)
     {
-        if (values is IEnumerable<int> languageIds)
-        {
-            Session.LanguageIds = languageIds.ToHashSet();
-        }
-        else if (values is IEnumerable<object> rawValues)
-        {
-            Session.LanguageIds = rawValues.OfType<int>().ToHashSet();
-        }
-        else
-        {
-            Session.LanguageIds = new HashSet<int>();
-        }
+        Session.LanguageIds = languageIds.ToHashSet();
 
         await SessionChanged.InvokeAsync(Session);
     }
@@ -280,7 +269,7 @@
         public Guid? LocationId { get; set; }
         public int? MaxAudienceAttendees { get; set; }
         public int? RegistrationModeId { get; set; } = 1;
-        public IEnumerable<int> LanguageIds { get; set; } = new HashSet<int>();
+        public IReadOnlyCollection<int> LanguageIds { get; set; } = new HashSet<int>();
 
         public CreateEventSessionDto ToCreateDto(Guid eventId, Guid tenantId)
         {

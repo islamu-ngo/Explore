@@ -1,0 +1,320 @@
+@* ABOUTME: Auth provider configuration page shown after setup token validation, before login. *@
+@* ABOUTME: Lets instance admin enable/configure Keycloak, ATProto Login, and Google SSO providers. *@
+
+@page "/onboarding/auth-provider"
+@rendermode InteractiveServer
+@layout SetupLayout
+@inject IInstanceOnboardingService InstanceOnboardingService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@inject IHttpClientFactory HttpClientFactory
+@inject ILogger<AuthProviderConfiguration> Logger
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-8">
+    <MudPaper Class="pa-6">
+        <MudText Typo="Typo.h4" Class="mb-2">Authentication Providers</MudText>
+        <MudText Typo="Typo.body2" Class="mb-4">
+            Choose how users will authenticate. At least one provider must be enabled.
+        </MudText>
+
+        @if (_isLoading)
+        {
+            <MudStack Spacing="3">
+                <MudSkeleton Width="60%" Height="20px" Class="mb-1" />
+                <MudSkeleton Width="100%" Height="56px" Class="mb-2" />
+                <MudSkeleton Width="100%" Height="56px" Class="mb-2" />
+                <MudSkeleton Width="100%" Height="56px" Class="mb-2" />
+                <MudSkeleton Width="120px" Height="40px" />
+            </MudStack>
+        }
+        else
+        {
+            @if (!string.IsNullOrWhiteSpace(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(_successMessage))
+            {
+                <MudAlert Severity="Severity.Success" Class="mb-4">@_successMessage</MudAlert>
+            }
+
+            @* ── Keycloak ── *@
+            <MudPaper Outlined="true" Class="pa-4 mb-4">
+                <MudStack Spacing="2">
+                    <MudStack Direction="Direction.Row" AlignItems="AlignItems.Center" Spacing="1">
+                        <MudSwitch T="bool"
+                                   Value="_model.KeycloakEnabled"
+                                   ValueChanged="OnKeycloakToggled"
+                                   Color="Color.Primary"
+                                   Disabled="_model.KeycloakDetectedFromEnvironment">
+                            Keycloak (OIDC)
+                        </MudSwitch>
+                        <MudTooltip Text="Self-hosted identity provider. Full control over user accounts, passwords, and SSO. Requires running a separate Keycloak server.">
+                            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" />
+                        </MudTooltip>
+                        @if (_model.KeycloakDetectedFromEnvironment)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">
+                                Auto-detected from environment
+                            </MudChip>
+                        }
+                    </MudStack>
+
+                    @if (_model.KeycloakEnabled)
+                    {
+                        @if (_model.KeycloakDetectedFromEnvironment)
+                        {
+                            <MudAlert Severity="Severity.Info" Dense="true" NoIcon="true">
+                                <MudText Typo="Typo.caption">
+                                    Keycloak credentials were detected from environment variables and cannot be modified here.
+                                </MudText>
+                            </MudAlert>
+                        }
+                        else
+                        {
+                            <MudTextField T="string"
+                                          Label="Authority URL (Required)"
+                                          Variant="Variant.Outlined"
+                                          @bind-Value="_model.KeycloakAuthority"
+                                          Placeholder="https://keycloak.example.com/realms/myrealm"
+                                          HelperText="The Keycloak realm URL used for OIDC discovery." />
+                            <MudTextField T="string"
+                                          Label="Client ID (Required)"
+                                          Variant="Variant.Outlined"
+                                          @bind-Value="_model.KeycloakClientId"
+                                          Placeholder="my-client" />
+                            <MudTextField T="string"
+                                          Label="Client Secret"
+                                          Variant="Variant.Outlined"
+                                          InputType="InputType.Password"
+                                          @bind-Value="_model.KeycloakClientSecret"
+                                          HelperText="Optional for public clients. Required for confidential clients." />
+                        }
+                    }
+                </MudStack>
+            </MudPaper>
+
+            @* ── ATProto Login ── *@
+            <MudPaper Outlined="true" Class="pa-4 mb-4">
+                <MudStack Spacing="2">
+                    <MudStack Direction="Direction.Row" AlignItems="AlignItems.Center" Spacing="1">
+                        <MudSwitch T="bool" @bind-Value="_model.AtprotoLoginEnabled" Color="Color.Primary">
+                            AT Protocol Login
+                        </MudSwitch>
+                        <MudTooltip Text="Users authenticate with their AT Protocol identity (e.g., Bluesky account). No external server needed — users bring their own identity.">
+                            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" />
+                        </MudTooltip>
+                    </MudStack>
+
+                    @if (_model.AtprotoLoginEnabled)
+                    {
+                        <MudTextField T="string"
+                                      Label="Public URL (Required)"
+                                      Variant="Variant.Outlined"
+                                      @bind-Value="_model.AtprotoPublicUrl"
+                                      Placeholder="https://event.example.com"
+                                      HelperText="Must be publicly accessible. AT Protocol OAuth requires a reachable client metadata URL." />
+
+                        @if (IsPrivateUrl(_model.AtprotoPublicUrl))
+                        {
+                            <MudAlert Severity="Severity.Warning" Dense="true">
+                                This URL appears to be a local or private address. AT Protocol OAuth requires a publicly
+                                accessible URL. If you're using a tunneling tool (e.g., ngrok, Cloudflare Tunnel),
+                                this may still work.
+                            </MudAlert>
+                        }
+                    }
+                </MudStack>
+            </MudPaper>
+
+            @* ── Google SSO ── *@
+            <MudPaper Outlined="true" Class="pa-4 mb-4">
+                <MudStack Spacing="2">
+                    <MudStack Direction="Direction.Row" AlignItems="AlignItems.Center" Spacing="1">
+                        <MudSwitch T="bool" @bind-Value="_model.GoogleSsoEnabled" Color="Color.Primary">
+                            Google SSO
+                        </MudSwitch>
+                        <MudTooltip Text="Users authenticate with their Google account. Requires a Google Cloud project with OAuth credentials configured.">
+                            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" />
+                        </MudTooltip>
+                    </MudStack>
+
+                    @if (_model.GoogleSsoEnabled)
+                    {
+                        <MudTextField T="string"
+                                      Label="Google Client ID (Required)"
+                                      Variant="Variant.Outlined"
+                                      @bind-Value="_model.GoogleClientId"
+                                      Placeholder="123456789.apps.googleusercontent.com" />
+                        <MudTextField T="string"
+                                      Label="Google Client Secret (Required)"
+                                      Variant="Variant.Outlined"
+                                      InputType="InputType.Password"
+                                      @bind-Value="_model.GoogleClientSecret" />
+                    }
+                </MudStack>
+            </MudPaper>
+
+            @* ── Validation message ── *@
+            @if (!HasAnyProviderEnabled)
+            {
+                <MudAlert Severity="Severity.Warning" Class="mb-4">
+                    At least one authentication provider must be enabled.
+                </MudAlert>
+            }
+
+            @* ── Actions ── *@
+            <MudStack Direction="Direction.Row" Spacing="2" Class="mt-2">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Disabled="@(!CanSave)"
+                           OnClick="SaveAndContinueAsync">
+                    @if (_isSaving)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        @:Saving...
+                    }
+                    else
+                    {
+                        @:Save & Continue to Login
+                    }
+                </MudButton>
+            </MudStack>
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private AuthProviderConfigurationModel _model = new();
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private string? _errorMessage;
+    private string? _successMessage;
+
+    private bool HasAnyProviderEnabled =>
+        _model.KeycloakEnabled || _model.AtprotoLoginEnabled || _model.GoogleSsoEnabled;
+
+    private bool HasKeycloakCredentials =>
+        _model.KeycloakDetectedFromEnvironment ||
+        (!string.IsNullOrWhiteSpace(_model.KeycloakAuthority) && !string.IsNullOrWhiteSpace(_model.KeycloakClientId));
+
+    private bool HasAtprotoCredentials =>
+        !string.IsNullOrWhiteSpace(_model.AtprotoPublicUrl);
+
+    private bool HasGoogleCredentials =>
+        !string.IsNullOrWhiteSpace(_model.GoogleClientId) && !string.IsNullOrWhiteSpace(_model.GoogleClientSecret);
+
+    private bool CanSave =>
+        !_isSaving &&
+        HasAnyProviderEnabled &&
+        (!_model.KeycloakEnabled || HasKeycloakCredentials) &&
+        (!_model.AtprotoLoginEnabled || HasAtprotoCredentials) &&
+        (!_model.GoogleSsoEnabled || HasGoogleCredentials);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var status = await InstanceOnboardingService.GetStatusAsync();
+        if (status?.IsCompleted == true)
+        {
+            Navigation.NavigateTo("/");
+            return;
+        }
+
+        _model = await InstanceOnboardingService.GetAuthProviderConfigurationAsync();
+
+        // Pre-fill the ATProto public URL from the current browser request if not already set
+        if (string.IsNullOrWhiteSpace(_model.AtprotoPublicUrl))
+        {
+            var baseUri = new Uri(Navigation.BaseUri);
+            _model.AtprotoPublicUrl = $"{baseUri.Scheme}://{baseUri.Host}" +
+                (baseUri.IsDefaultPort ? "" : $":{baseUri.Port}");
+        }
+
+        _isLoading = false;
+    }
+
+    private void OnKeycloakToggled(bool enabled)
+    {
+        _model.KeycloakEnabled = enabled;
+        if (!enabled)
+        {
+            // Clear credentials when disabled (unless env-detected)
+            if (!_model.KeycloakDetectedFromEnvironment)
+            {
+                _model.KeycloakAuthority = string.Empty;
+                _model.KeycloakClientId = string.Empty;
+                _model.KeycloakClientSecret = string.Empty;
+            }
+        }
+    }
+
+    private async Task SaveAndContinueAsync()
+    {
+        _isSaving = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        var response = await InstanceOnboardingService.SaveAuthProviderConfigurationAsync(_model);
+
+        if (!response.Success)
+        {
+            _isSaving = false;
+            _errorMessage = string.IsNullOrWhiteSpace(response.Message)
+                ? "Failed to save auth provider configuration."
+                : response.Message;
+
+            if (response.Errors.Count > 0)
+            {
+                _errorMessage += " " + string.Join(" ", response.Errors);
+            }
+            return;
+        }
+
+        // Trigger dynamic auth scheme registration in the BFF
+        try
+        {
+            var bffClient = CreateBffSelfClient();
+            await bffClient.PostAsync("/bff/auth/refresh-schemes", null);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to refresh auth schemes after saving config. Login may require app restart.");
+        }
+
+        _isSaving = false;
+
+        // Navigate to login so the admin can authenticate with the chosen provider
+        Navigation.NavigateTo("/auth/login?returnUrl=/setup", forceLoad: true);
+    }
+
+    private static bool IsPrivateUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return false;
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            return false;
+
+        var host = uri.Host.ToLowerInvariant();
+        return host is "localhost" or "127.0.0.1" or "0.0.0.0"
+            || host.StartsWith("192.168.")
+            || host.StartsWith("10.")
+            || host.StartsWith("172.16.")
+            || host.StartsWith("172.17.")
+            || host.StartsWith("172.18.")
+            || host.StartsWith("172.19.")
+            || host.StartsWith("172.2")
+            || host.StartsWith("172.30.")
+            || host.StartsWith("172.31.")
+            || host.EndsWith(".local")
+            || host.EndsWith(".internal");
+    }
+
+    private HttpClient CreateBffSelfClient()
+    {
+        var client = HttpClientFactory.CreateClient("BffSelfClient");
+        client.BaseAddress = new Uri(Navigation.BaseUri);
+        return client;
+    }
+}

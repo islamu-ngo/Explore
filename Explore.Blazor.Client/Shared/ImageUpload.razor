@@ -32,14 +32,15 @@
                        FilesChanged="OnFileSelected"
                        Accept="@AcceptedFormats"
                        MaximumFileCount="1">
-            <ActivatorContent>
+            <CustomContent Context="fileUpload">
                 <MudButton Variant="Variant.Outlined"
                            StartIcon="@Icons.Material.Filled.CloudUpload"
                            Color="Color.Primary"
-                           Size="Size.Small">
+                           Size="Size.Small"
+                           OnClick="@fileUpload.OpenFilePickerAsync">
                     @(UploadButtonText ?? "Select Image")
                 </MudButton>
-            </ActivatorContent>
+            </CustomContent>
         </MudFileUpload>
 
         @if (HasImage)

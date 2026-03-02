@@ -13,6 +13,7 @@ priority: high
 
 **Read these first (short files):**
 - `docs/ARCHITECTURE.md`
+- `docs/API.md`
 - `docs/QUICK_REFERENCE.md`
 - `.claude/skills/clean-architecture-rules/SKILL.md`
 - `.claude/skills/cqrs-mediatr-guidelines/SKILL.md`
@@ -27,6 +28,10 @@ Detect Clean Architecture/CQRS violations and provide exact fixes.
 - Enforce: repos return entities, handlers map DTOs.
 - Enforce: manual validator instantiation.
 - Enforce: GET AllowAnonymous, writes Authorize.
+- Enforce: Specification Pattern lives in Application layer (not Persistence). Repository applies specifications.
+- Enforce: HATEOAS assemblers/policies live in API layer (presentation concern).
+- Enforce: middleware pipeline order (14-step sequence, see docs/API.md).
+- Check: rate limiting policy assignment matches endpoint security level.
 
 ## Output
 

@@ -11,6 +11,7 @@ tools: All tools
 
 **Read these first (short files):**
 - `docs/ARCHITECTURE.md`
+- `docs/API.md`
 - `docs/QUICK_REFERENCE.md`
 - `.claude/skills/clean-architecture-rules/SKILL.md`
 - `.claude/skills/cqrs-mediatr-guidelines/SKILL.md`
@@ -23,6 +24,7 @@ Create phased refactor plans that preserve functionality and enforce architectur
 
 - Include rollback + verification steps.
 - Keep refactors incremental and testable.
+- Preserve middleware pipeline order, specification pattern, and HATEOAS policies during refactors.
 
 ## Output
 

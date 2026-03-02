@@ -1,21 +1,21 @@
 /* ===== CSS Custom Properties ===== */
 ::deep :root {
-    --event-session-editor-radius: 12px;
+    --event-session-editor-radius: var(--isl-radius-md);
 }
 
 /* ===== Block: event-session-editor ===== */
 ::deep .event-session-editor {
-    padding: 20px;
-    margin-bottom: 20px;
+    padding: var(--isl-space-5);
+    margin-bottom: var(--isl-space-5);
     border-radius: var(--event-session-editor-radius);
     background-color: var(--mud-palette-surface);
     border: 1px solid var(--mud-palette-lines-default);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.08);
     transition: all 280ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 ::deep .event-session-editor:hover {
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
+    box-shadow: 0 0.375rem 1.125rem rgba(0, 0, 0, 0.14);
 }
 
 /* ===== Element: event-session-editor__header ===== */
@@ -23,7 +23,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    margin-bottom: var(--isl-space-3);
 }
 
 /* ===== Element: event-session-editor__title ===== */
@@ -36,23 +36,23 @@
 
 /* ===== Element: event-session-editor__divider ===== */
 ::deep .event-session-editor__divider {
-    margin-bottom: 18px;
+    margin-bottom: 1.125rem;
 }
 
 /* ===== Input Styling ===== */
 ::deep .event-session-editor .mud-input-outlined {
-    border-radius: 8px;
+    border-radius: var(--isl-radius-sm);
 }
 
 ::deep .event-session-editor .mud-select {
-    border-radius: 8px;
+    border-radius: var(--isl-radius-sm);
 }
 
 /* ===== Responsive: Mobile (600px) ===== */
-@media (max-width: 600px) {
+@media (max-width: 37.5em) {
     ::deep .event-session-editor {
-        padding: 16px;
-        margin-bottom: 16px;
+        padding: var(--isl-space-4);
+        margin-bottom: var(--isl-space-4);
     }
 
     ::deep .event-session-editor__title {

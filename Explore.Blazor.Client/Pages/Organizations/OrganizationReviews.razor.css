@@ -1,12 +1,12 @@
 /* ===== Block: organization-reviews ===== */
 ::deep .organization-reviews {
-    padding-block: 24px;
+    padding-block: var(--isl-space-6);
 }
 
 /* ===== Element: organization-reviews__card ===== */
 ::deep .organization-reviews__card {
     height: 100%;
-    border-radius: 14px;
+    border-radius: 0.875rem;
     border: 1px solid
         color-mix(in srgb, var(--mud-palette-lines-default) 70%, transparent);
     background: color-mix(
@@ -21,8 +21,8 @@
 }
 
 ::deep .organization-reviews__card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+    transform: translateY(-0.125rem);
+    box-shadow: 0 0.75rem 1.75rem rgba(0, 0, 0, 0.12);
     border-color: color-mix(
         in srgb,
         var(--mud-palette-primary) 35%,
@@ -33,8 +33,8 @@
 /* ===== Element: organization-reviews__rating ===== */
 ::deep .organization-reviews__rating {
     display: inline-flex;
-    gap: 2px;
-    color: #ffc107; /* gold color for stars */
+    gap: 0.125rem;
+    color: var(--mud-palette-warning); /* gold color for stars */
 }
 
 ::deep .organization-reviews__rating .mud-icon-root {
@@ -42,19 +42,19 @@
 }
 
 /* ===== Responsive: Tablet ===== */
-@media (max-width: 960px) {
+@media (max-width: 60em) {
     ::deep .organization-reviews {
-        padding-block: 20px;
+        padding-block: var(--isl-space-5);
     }
 }
 
 /* ===== Responsive: Mobile ===== */
-@media (max-width: 600px) {
+@media (max-width: 37.5em) {
     ::deep .organization-reviews {
-        padding-block: 16px;
+        padding-block: var(--isl-space-4);
     }
 
     ::deep .organization-reviews__card:hover {
-        transform: translateY(-1px);
+        transform: translateY(-0.0625rem);
     }
 }

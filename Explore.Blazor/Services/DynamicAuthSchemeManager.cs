@@ -1,0 +1,380 @@
+// ABOUTME: Runtime authentication scheme manager that dynamically registers OIDC/OAuth schemes.
+// ABOUTME: Reads auth config from API + env vars, registers Keycloak/Google/ATProto schemes without restart.
+
+using Explore.Blazor.Constants;
+using Explore.Blazor.Models;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using Microsoft.IdentityModel.Tokens;
+
+namespace Explore.Blazor.Services;
+
+public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
+{
+    private readonly IAuthenticationSchemeProvider _schemeProvider;
+    private readonly IOptionsMonitorCache<OpenIdConnectOptions> _oidcOptionsCache;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IConfiguration _configuration;
+    private readonly IWebHostEnvironment _environment;
+    private readonly ILogger<DynamicAuthSchemeManager> _logger;
+    private readonly SemaphoreSlim _lock = new(1, 1);
+
+    /// <summary>
+    /// Tracks which dynamic provider schemes are currently registered.
+    /// </summary>
+    private readonly HashSet<string> _registeredSchemes = [];
+
+    public DynamicAuthSchemeManager(
+        IAuthenticationSchemeProvider schemeProvider,
+        IOptionsMonitorCache<OpenIdConnectOptions> oidcOptionsCache,
+        IHttpClientFactory httpClientFactory,
+        IConfiguration configuration,
+        IWebHostEnvironment environment,
+        ILogger<DynamicAuthSchemeManager> logger)
+    {
+        _schemeProvider = schemeProvider;
+        _oidcOptionsCache = oidcOptionsCache;
+        _httpClientFactory = httpClientFactory;
+        _configuration = configuration;
+        _environment = environment;
+        _logger = logger;
+    }
+
+    public async Task InitializeAsync()
+    {
+        await _lock.WaitAsync();
+        try
+        {
+            _logger.LogInformation("Initializing dynamic auth schemes...");
+
+            // 1. Check environment variables for Keycloak (legacy/Docker config)
+            var envAuthority = _configuration["Keycloak:Authority"];
+            var envClientId = _configuration["Keycloak:ClientId"];
+            var envClientSecret = _configuration["Keycloak:ClientSecret"];
+            var envMetadataAddress = _configuration["Keycloak:MetadataAddress"];
+
+            if (!string.IsNullOrEmpty(envAuthority) && !string.IsNullOrEmpty(envClientId))
+            {
+                _logger.LogInformation(
+                    "Keycloak config detected in environment variables — registering Keycloak scheme from env");
+
+                RegisterKeycloakScheme(envAuthority, envClientId, envClientSecret, envMetadataAddress);
+            }
+
+            // 2. Read DB configuration via API (may override or add providers).
+            //    At startup, the setup secret is not available, so we read without secrets.
+            //    Env-var Keycloak is the only scheme that works at cold start.
+            //    After setup flow, RefreshSchemesAsync is called with secrets from the cookie.
+            AuthProviderConfigurationResponse? dbConfig = null;
+            try
+            {
+                dbConfig = await FetchConfigFromApiAsync(includeSecrets: false, setupSecret: null);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "Could not read auth provider configuration from API at startup — " +
+                    "this is expected on first run before setup is completed");
+            }
+
+            if (dbConfig is not null)
+            {
+                ApplyConfiguration(dbConfig);
+            }
+
+            _logger.LogInformation(
+                "Dynamic auth scheme initialization complete. Registered providers: [{Providers}]",
+                string.Join(", ", _registeredSchemes));
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
+    public async Task RefreshSchemesAsync(string? setupSecret = null)
+    {
+        await _lock.WaitAsync();
+        try
+        {
+            _logger.LogInformation("Refreshing dynamic auth schemes from API...");
+
+            var config = await FetchConfigFromApiAsync(
+                includeSecrets: !string.IsNullOrEmpty(setupSecret),
+                setupSecret: setupSecret);
+
+            if (config is not null)
+            {
+                ApplyConfiguration(config);
+            }
+
+            _logger.LogInformation(
+                "Dynamic auth scheme refresh complete. Registered providers: [{Providers}]",
+                string.Join(", ", _registeredSchemes));
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
+    public Task<IReadOnlyList<string>> GetRegisteredProviderSchemesAsync()
+    {
+        return Task.FromResult<IReadOnlyList<string>>(_registeredSchemes.ToList().AsReadOnly());
+    }
+
+    private async Task<AuthProviderConfigurationResponse?> FetchConfigFromApiAsync(
+        bool includeSecrets,
+        string? setupSecret)
+    {
+        var client = _httpClientFactory.CreateClient("BffClient");
+
+        var endpoint = includeSecrets && !string.IsNullOrEmpty(setupSecret)
+            ? "api/InstanceOnboarding/auth-provider-configuration/internal"
+            : "api/InstanceOnboarding/auth-provider-configuration";
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, endpoint);
+
+        if (!string.IsNullOrEmpty(setupSecret))
+        {
+            request.Headers.TryAddWithoutValidation("X-Setup-Secret", setupSecret);
+        }
+
+        using var response = await client.SendAsync(request);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogDebug(
+                "Auth config API returned {StatusCode} for {Endpoint}",
+                (int)response.StatusCode, endpoint);
+            return null;
+        }
+
+        return await response.Content.ReadFromJsonAsync<AuthProviderConfigurationResponse>();
+    }
+
+    private void ApplyConfiguration(AuthProviderConfigurationResponse config)
+    {
+        // Keycloak: register if enabled and has credentials (env vars may already have registered it)
+        if (config.KeycloakEnabled &&
+            !string.IsNullOrEmpty(config.KeycloakAuthority) &&
+            !string.IsNullOrEmpty(config.KeycloakClientId))
+        {
+            if (!_registeredSchemes.Contains(AuthSchemeNames.Keycloak))
+            {
+                RegisterKeycloakScheme(
+                    config.KeycloakAuthority,
+                    config.KeycloakClientId,
+                    config.KeycloakClientSecret,
+                    metadataAddress: null);
+            }
+            else
+            {
+                // Update existing scheme options (credentials may have changed)
+                UpdateKeycloakSchemeOptions(
+                    config.KeycloakAuthority,
+                    config.KeycloakClientId,
+                    config.KeycloakClientSecret);
+            }
+        }
+        else if (!config.KeycloakEnabled && _registeredSchemes.Contains(AuthSchemeNames.Keycloak))
+        {
+            // Only remove if NOT configured via env vars (env vars take priority)
+            var envAuthority = _configuration["Keycloak:Authority"];
+            if (string.IsNullOrEmpty(envAuthority))
+            {
+                RemoveScheme(AuthSchemeNames.Keycloak);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "Keycloak is disabled in DB settings but configured via environment variables — keeping scheme registered");
+            }
+        }
+
+        // Google: register if enabled and has credentials
+        if (config.GoogleSsoEnabled && !string.IsNullOrEmpty(config.GoogleClientId))
+        {
+            if (!_registeredSchemes.Contains(AuthSchemeNames.Google))
+            {
+                RegisterGoogleScheme(config.GoogleClientId, config.GoogleClientSecret);
+            }
+            else
+            {
+                UpdateGoogleSchemeOptions(config.GoogleClientId, config.GoogleClientSecret);
+            }
+        }
+        else if (!config.GoogleSsoEnabled && _registeredSchemes.Contains(AuthSchemeNames.Google))
+        {
+            RemoveScheme(AuthSchemeNames.Google);
+        }
+
+        // ATProto: register handler if enabled (no OIDC — custom handler)
+        if (config.AtprotoLoginEnabled)
+        {
+            if (!_registeredSchemes.Contains(AuthSchemeNames.Atproto))
+            {
+                RegisterAtprotoScheme(config.AtprotoPublicUrl);
+            }
+        }
+        else if (!config.AtprotoLoginEnabled && _registeredSchemes.Contains(AuthSchemeNames.Atproto))
+        {
+            RemoveScheme(AuthSchemeNames.Atproto);
+        }
+    }
+
+    private void RegisterKeycloakScheme(
+        string authority,
+        string clientId,
+        string? clientSecret,
+        string? metadataAddress)
+    {
+        var options = CreateKeycloakOptions(authority, clientId, clientSecret, metadataAddress);
+        _oidcOptionsCache.TryAdd(AuthSchemeNames.Keycloak, options);
+
+        var scheme = new AuthenticationScheme(
+            AuthSchemeNames.Keycloak,
+            displayName: "Keycloak",
+            typeof(OpenIdConnectHandler));
+
+        _schemeProvider.TryAddScheme(scheme);
+        _registeredSchemes.Add(AuthSchemeNames.Keycloak);
+
+        _logger.LogInformation("Registered Keycloak OIDC scheme (authority: {Authority})", authority);
+    }
+
+    private void UpdateKeycloakSchemeOptions(string authority, string clientId, string? clientSecret)
+    {
+        _oidcOptionsCache.TryRemove(AuthSchemeNames.Keycloak);
+        var options = CreateKeycloakOptions(authority, clientId, clientSecret, metadataAddress: null);
+        _oidcOptionsCache.TryAdd(AuthSchemeNames.Keycloak, options);
+
+        _logger.LogInformation("Updated Keycloak OIDC scheme options (authority: {Authority})", authority);
+    }
+
+    private OpenIdConnectOptions CreateKeycloakOptions(
+        string authority,
+        string clientId,
+        string? clientSecret,
+        string? metadataAddress)
+    {
+        var options = new OpenIdConnectOptions
+        {
+            Authority = authority,
+            ClientId = clientId,
+            ClientSecret = clientSecret ?? string.Empty,
+            UsePkce = true,
+            SaveTokens = true,
+            GetClaimsFromUserInfoEndpoint = true,
+            RequireHttpsMetadata = !_environment.IsDevelopment(),
+            CallbackPath = "/signin-oidc",
+            SignedOutCallbackPath = "/signout-callback-oidc",
+            SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme,
+            ResponseType = OpenIdConnectResponseType.Code,
+            TokenValidationParameters = new TokenValidationParameters
+            {
+                NameClaimType = "preferred_username"
+            }
+        };
+
+        if (!string.IsNullOrEmpty(metadataAddress))
+        {
+            options.MetadataAddress = metadataAddress;
+        }
+
+        options.Scope.Clear();
+        options.Scope.Add("openid");
+        options.Scope.Add("profile");
+        options.Scope.Add("email");
+        options.Scope.Add("offline_access");
+
+        return options;
+    }
+
+    private void RegisterGoogleScheme(string clientId, string? clientSecret)
+    {
+        var options = CreateGoogleOptions(clientId, clientSecret);
+        _oidcOptionsCache.TryAdd(AuthSchemeNames.Google, options);
+
+        var scheme = new AuthenticationScheme(
+            AuthSchemeNames.Google,
+            displayName: "Google",
+            typeof(OpenIdConnectHandler));
+
+        _schemeProvider.TryAddScheme(scheme);
+        _registeredSchemes.Add(AuthSchemeNames.Google);
+
+        _logger.LogInformation("Registered Google OIDC scheme");
+    }
+
+    private void UpdateGoogleSchemeOptions(string clientId, string? clientSecret)
+    {
+        _oidcOptionsCache.TryRemove(AuthSchemeNames.Google);
+        var options = CreateGoogleOptions(clientId, clientSecret);
+        _oidcOptionsCache.TryAdd(AuthSchemeNames.Google, options);
+
+        _logger.LogInformation("Updated Google OIDC scheme options");
+    }
+
+    private OpenIdConnectOptions CreateGoogleOptions(string clientId, string? clientSecret)
+    {
+        return new OpenIdConnectOptions
+        {
+            Authority = "https://accounts.google.com",
+            ClientId = clientId,
+            ClientSecret = clientSecret ?? string.Empty,
+            UsePkce = true,
+            SaveTokens = true,
+            GetClaimsFromUserInfoEndpoint = true,
+            RequireHttpsMetadata = true,
+            CallbackPath = "/signin-google",
+            SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme,
+            ResponseType = OpenIdConnectResponseType.Code,
+            TokenValidationParameters = new TokenValidationParameters
+            {
+                NameClaimType = "name"
+            },
+            Scope = { "openid", "profile", "email" }
+        };
+    }
+
+    private void RegisterAtprotoScheme(string publicUrl)
+    {
+        // ATProto uses a custom authentication handler (not standard OIDC).
+        // Phase 2 registers a placeholder scheme. Full FishyFlip integration comes in a later phase.
+        // For now, we register the scheme name so the login UI can enumerate it,
+        // but the actual handler is a stub that returns NoResult until implemented.
+
+        var scheme = new AuthenticationScheme(
+            AuthSchemeNames.Atproto,
+            displayName: "AT Protocol",
+            typeof(Authentication.AtprotoAuthenticationHandler));
+
+        _schemeProvider.TryAddScheme(scheme);
+        _registeredSchemes.Add(AuthSchemeNames.Atproto);
+
+        _logger.LogInformation("Registered ATProto authentication scheme (public URL: {PublicUrl})", publicUrl);
+    }
+
+    private void RemoveScheme(string schemeName)
+    {
+        _schemeProvider.RemoveScheme(schemeName);
+
+        // Clean up cached options for OIDC-based schemes
+        if (schemeName is AuthSchemeNames.Keycloak or AuthSchemeNames.Google)
+        {
+            _oidcOptionsCache.TryRemove(schemeName);
+        }
+
+        _registeredSchemes.Remove(schemeName);
+        _logger.LogInformation("Removed auth scheme: {SchemeName}", schemeName);
+    }
+
+    public void Dispose()
+    {
+        _lock.Dispose();
+    }
+}

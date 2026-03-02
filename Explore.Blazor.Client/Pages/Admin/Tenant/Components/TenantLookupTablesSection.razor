@@ -26,7 +26,7 @@
     }
     else
     {
-        <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4">
+        <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" TabPanelsClass="pa-4">
             <MudTabPanel Text="Categories" Icon="@Icons.Material.Filled.Category">
                 <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mb-3">
                     <MudTextField @bind-Value="_categorySearch"
@@ -480,7 +480,7 @@
             return;
         }
 
-        var confirm = await DialogService.ShowMessageBox(
+        var confirm = await DialogService.ShowMessageBoxAsync(
             "Confirm Delete",
             $"Are you sure you want to delete the category '{category.FullName}'? This action cannot be undone.",
             yesText: "Delete",
@@ -567,7 +567,7 @@
             return;
         }
 
-        var confirm = await DialogService.ShowMessageBox(
+        var confirm = await DialogService.ShowMessageBoxAsync(
             "Confirm Delete",
             $"Are you sure you want to delete the tag '{tag.FullName}'? This action cannot be undone.",
             yesText: "Delete",
@@ -654,7 +654,7 @@
             return;
         }
 
-        var confirm = await DialogService.ShowMessageBox(
+        var confirm = await DialogService.ShowMessageBoxAsync(
             "Confirm Delete",
             $"Are you sure you want to delete the location '{location.FullName}'? This action cannot be undone.",
             yesText: "Delete",

@@ -91,7 +91,7 @@ public partial class MyEvents : ComponentBase
     {
         if (CanEditEvent(evt))
         {
-            Navigation.NavigateTo($"/eventedit/{evt.Id}");
+            Navigation.NavigateTo($"/event/edit/{evt.Id}");
         }
         else
         {
@@ -135,7 +135,7 @@ public partial class MyEvents : ComponentBase
             return;
         }
 
-        var result = await DialogService.ShowMessageBox(
+        var result = await DialogService.ShowMessageBoxAsync(
             "Delete Event",
             $"Are you sure you want to delete '{evt.Title}'? This action cannot be undone.",
             yesText: "Delete", cancelText: "Cancel",

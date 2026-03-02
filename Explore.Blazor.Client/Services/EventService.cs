@@ -56,7 +56,6 @@ public interface IEventService
     Task<PaginatedResult<EventSessionListDto>> GetSessionsPagedAsync(int pageNumber, int pageSize);
     Task<EventDto?> GetEventByIdAsync(Guid eventId);
     Task<bool> DeleteEventAsync(Guid eventId);
-    Task<bool> CanDeleteEventAsync(Guid eventId);
     Task<BaseCommandResponseOfGuid?> UpdateEventAsync(Guid eventId, UpdateEventDto eventDto);
     Task<BaseCommandResponseOfGuid?> CreateEventAsync(CreateEventDto createDto);
     Task<ICollection<EventTypeListDto>> GetEventTypesAsync();
@@ -77,16 +76,13 @@ public interface IEventService
 public partial class EventService : IEventService
 {
     private readonly IEventApiClient _apiClient;
-    private readonly IOrganizationService _organizationService;
     private readonly ILogger<EventService> _logger;
 
     public EventService(
         IEventApiClient apiClient,
-        IOrganizationService organizationService,
         ILogger<EventService> logger)
     {
         _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
-        _organizationService = organizationService ?? throw new ArgumentNullException(nameof(organizationService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -298,26 +294,6 @@ public partial class EventService : IEventService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting event {EventId}", eventId);
-            return false;
-        }
-    }
-
-    public async Task<bool> CanDeleteEventAsync(Guid eventId)
-    {
-        try
-        {
-            var eventResource = await _apiClient.GetEventByIdAsync(eventId);
-            if (eventResource?.ActorId is null) return false;
-
-            var actorResource = await _apiClient.GetActorByIdAsync(eventResource.ActorId.Value);
-            if (actorResource?.OrganizationId is null) return true; // It's a personal event
-
-            var myOrgs = await _organizationService.GetMyOrganizationsAsync();
-            return myOrgs?.Any(o => o.Id == actorResource.OrganizationId.Value) ?? false;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error checking CanDeleteEvent for {EventId}", eventId);
             return false;
         }
     }

@@ -185,7 +185,7 @@ public static class SeedData
         User = null!,
         TenantId = SeedIds.DefaultTenantId,
         Tenant = null!,
-        RoleId = (int)RoleEnum.TenantOwner,
+        RoleId = (int)RoleEnum.TenantAdmin,
         Role = null!
     };
 
@@ -222,7 +222,7 @@ public static class SeedData
         User = null!,
         TenantId = SeedIds.DefaultTenantId,
         Tenant = null!,
-        RoleId = (int)RoleEnum.OrgCreator,
+        RoleId = (int)RoleEnum.OrgAdmin,
         Role = null!,
         OrganizationPositionId = (int)OrganizationPositionEnum.Founder,
         CreatedAt = SeedTimestamp
@@ -260,7 +260,7 @@ public static class SeedData
         CreatedAt = SeedTimestamp
     };
 
-    // Admin is CoOwner of Tech org
+    // Admin is Admin of Tech org
     public static OrganizationMember AdminTechCoOwner => new()
     {
         Id = SeedIds.AdminTechCoOwnerId,
@@ -270,13 +270,13 @@ public static class SeedData
         User = null!,
         TenantId = SeedIds.DefaultTenantId,
         Tenant = null!,
-        RoleId = (int)RoleEnum.OrgCoOwner,
+        RoleId = (int)RoleEnum.OrgAdmin,
         Role = null!,
         OrganizationPositionId = (int)OrganizationPositionEnum.Director,
         CreatedAt = SeedTimestamp
     };
 
-    // Regular user is Creator of Tech org (Founder position)
+    // Regular user is Admin of Tech org (Founder position)
     public static OrganizationMember RegularTechCreator => new()
     {
         Id = SeedIds.RegularTechCreatorId,
@@ -286,7 +286,7 @@ public static class SeedData
         User = null!,
         TenantId = SeedIds.DefaultTenantId,
         Tenant = null!,
-        RoleId = (int)RoleEnum.OrgCreator,
+        RoleId = (int)RoleEnum.OrgAdmin,
         Role = null!,
         OrganizationPositionId = (int)OrganizationPositionEnum.Founder,
         CreatedAt = SeedTimestamp

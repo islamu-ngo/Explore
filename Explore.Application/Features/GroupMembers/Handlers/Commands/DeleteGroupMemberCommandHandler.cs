@@ -53,11 +53,10 @@ public class DeleteGroupMemberCommandHandler : IRequestHandler<DeleteGroupMember
 
         if (!hasPermission)
         {
-            // Transitional fallback: allow GroupCreator and GroupAdmin roles
+            // Transitional fallback: allow GroupAdmin role
             var requesterMember = await _groupMemberRepository.GetByGroupAndUser(memberToDelete.GroupId, requesterGuid);
             if (requesterMember == null ||
-                (requesterMember.RoleId != (int)RoleEnum.GroupCreator &&
-                 requesterMember.RoleId != (int)RoleEnum.GroupAdmin))
+                requesterMember.RoleId != (int)RoleEnum.GroupAdmin)
             {
                 response.Success = false;
                 response.Message = "You do not have permission to remove members.";
@@ -65,12 +64,12 @@ public class DeleteGroupMemberCommandHandler : IRequestHandler<DeleteGroupMember
             }
         }
 
-        // Prevent removing the last admin/creator
+        // Prevent removing the last admin
         var members = await _groupMemberRepository.GetMembersByGroupId(memberToDelete.GroupId);
         var adminCount = members.Count(m =>
-            m.RoleId == (int)RoleEnum.GroupCreator || m.RoleId == (int)RoleEnum.GroupAdmin);
+            m.RoleId == (int)RoleEnum.GroupAdmin);
 
-        if ((memberToDelete.RoleId == (int)RoleEnum.GroupCreator || memberToDelete.RoleId == (int)RoleEnum.GroupAdmin) &&
+        if (memberToDelete.RoleId == (int)RoleEnum.GroupAdmin &&
             adminCount <= 1)
         {
             response.Success = false;

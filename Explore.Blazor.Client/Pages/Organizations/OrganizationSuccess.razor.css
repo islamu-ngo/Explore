@@ -1,18 +1,18 @@
 /* ===== Block: organization-success ===== */
 ::deep .organization-success {
-    padding-block: 24px;
+    padding-block: var(--isl-space-6);
 }
 
 /* ===== Responsive: Tablet ===== */
-@media (max-width: 960px) {
+@media (max-width: 60em) {
     ::deep .organization-success {
-        padding-block: 20px;
+        padding-block: var(--isl-space-5);
     }
 }
 
 /* ===== Responsive: Mobile ===== */
-@media (max-width: 600px) {
+@media (max-width: 37.5em) {
     ::deep .organization-success {
-        padding-block: 16px;
+        padding-block: var(--isl-space-4);
     }
 }

@@ -54,11 +54,10 @@ public class UpdateGroupMemberRoleCommandHandler : IRequestHandler<UpdateGroupMe
 
         if (!hasPermission)
         {
-            // Transitional fallback: allow GroupCreator and GroupAdmin roles
+            // Transitional fallback: allow GroupAdmin role
             var requesterMember = await _groupMemberRepository.GetByGroupAndUser(memberToUpdate.GroupId, requesterGuid);
             if (requesterMember == null ||
-                (requesterMember.RoleId != (int)RoleEnum.GroupCreator &&
-                 requesterMember.RoleId != (int)RoleEnum.GroupAdmin))
+                requesterMember.RoleId != (int)RoleEnum.GroupAdmin)
             {
                 response.Success = false;
                 response.Message = "You do not have permission to update roles.";
@@ -66,13 +65,12 @@ public class UpdateGroupMemberRoleCommandHandler : IRequestHandler<UpdateGroupMe
             }
         }
 
-        // Prevent demoting the last admin/creator
+        // Prevent demoting the last admin
         var members = await _groupMemberRepository.GetMembersByGroupId(memberToUpdate.GroupId);
         var adminCount = members.Count(m =>
-            m.RoleId == (int)RoleEnum.GroupCreator || m.RoleId == (int)RoleEnum.GroupAdmin);
+            m.RoleId == (int)RoleEnum.GroupAdmin);
 
-        if ((memberToUpdate.RoleId == (int)RoleEnum.GroupCreator || memberToUpdate.RoleId == (int)RoleEnum.GroupAdmin) &&
-            (int)dto.Role != (int)RoleEnum.GroupCreator &&
+        if (memberToUpdate.RoleId == (int)RoleEnum.GroupAdmin &&
             (int)dto.Role != (int)RoleEnum.GroupAdmin &&
             adminCount <= 1)
         {

@@ -23,6 +23,10 @@ public class GroupMember : ITenantEntity, IAuditableEntity, ISoftDeletable
     public int RoleId { get; set; }
     public required Role Role { get; set; }
 
+    [ForeignKey("GroupPosition")]
+    public int? GroupPositionId { get; set; }
+    public GroupPosition? GroupPosition { get; set; }
+
     [ForeignKey("Tenant")]
     public Guid TenantId { get; set; }
     public required Tenant Tenant { get; set; }

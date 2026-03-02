@@ -11,6 +11,7 @@ tools: All tools
 
 **Read these first (short files):**
 - `docs/ARCHITECTURE.md`
+- `docs/API.md`
 - `docs/QUICK_REFERENCE.md`
 - `.claude/skills/clean-architecture-rules/SKILL.md`
 - `.claude/skills/cqrs-mediatr-guidelines/SKILL.md`
@@ -25,6 +26,9 @@ Review and refactor to match project rules; block architectural violations.
 - Repos return entities; DTO mapping in handlers.
 - Validators are manual (no DI).
 - Preserve observability and ProblemDetails patterns.
+- Preserve middleware pipeline order (14-step sequence).
+- Preserve specification pattern composition (immutable fluent builder).
+- Preserve HATEOAS link policies and assembler patterns.
 
 ## Output
 

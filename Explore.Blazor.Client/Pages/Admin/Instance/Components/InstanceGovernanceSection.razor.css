@@ -19,11 +19,11 @@
 .instance-governance__preset-card:hover {
     border-color: var(--mud-palette-primary);
     box-shadow: var(--mud-shadow-2);
-    transform: translateY(-1px);
+    transform: translateY(-0.0625rem);
 }
 
 .instance-governance__preset-card--recommended {
-    border-width: 2px;
+    border-width: 0.125rem;
     border-color: color-mix(in srgb, var(--mud-palette-success) 64%, var(--mud-palette-lines-default));
 }
 
@@ -39,7 +39,7 @@
     background: color-mix(in srgb, var(--mud-palette-background) 65%, var(--mud-palette-surface));
 }
 
-@media (max-width: 960px) {
+@media (max-width: 60em) {
     .instance-governance__preset-grid {
         grid-template-columns: 1fr;
     }

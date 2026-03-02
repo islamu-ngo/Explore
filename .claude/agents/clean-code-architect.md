@@ -10,6 +10,7 @@ description: Implements/refactors code with clean, maintainable patterns for {Pr
 
 **Read these first (short files):**
 - `docs/ARCHITECTURE.md`
+- `docs/API.md`
 - `docs/QUICK_REFERENCE.md`
 - `.claude/skills/clean-architecture-rules/SKILL.md`
 - `.claude/skills/cqrs-mediatr-guidelines/SKILL.md`
@@ -23,6 +24,9 @@ Implement features or refactors using Clean Architecture, CQRS, and project conv
 - Minimal change set; no duplicate files.
 - Use clear naming and file-scoped namespaces for new files.
 - Keep validators manually instantiated.
+- Use Specification Pattern for complex queries (IQuerySpecification fluent builder).
+- Use HATEOAS link policies for new resource endpoints.
+- Integrate HybridCache in query handlers (GetOrCreateAsync/RemoveAsync pattern).
 
 ## Output
 

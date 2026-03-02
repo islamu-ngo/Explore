@@ -31,8 +31,8 @@
         var(--mud-palette-surface) 95%,
         transparent
     ) !important;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(0.625rem);
+    -webkit-backdrop-filter: blur(0.625rem);
     color: var(--mud-palette-text-primary);
     border-bottom: 1px solid var(--mud-palette-lines-default);
 }
@@ -46,7 +46,7 @@
     align-items: center;
     justify-content: center;
     width: 100%;
-    gap: 16px;
+    gap: var(--isl-space-4);
 }
 
 /* ========================================

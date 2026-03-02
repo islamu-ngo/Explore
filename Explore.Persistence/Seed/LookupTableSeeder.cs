@@ -347,10 +347,8 @@ public static class LookupTableSeeder
         if (await context.Set<TagType>().AnyAsync(ct)) return;
 
         context.Set<TagType>().AddRange(
-            new TagType { Id = 1, MasterCode = "TOPIC", FullName = "Topic", Description = "Topic-based tags for content categorization" },
-            new TagType { Id = 2, MasterCode = "SKILL", FullName = "Skill Level", Description = "Skill level requirements (beginner, intermediate, advanced)" },
-            new TagType { Id = 3, MasterCode = "LANGUAGE", FullName = "Language", Description = "Language-based tags" },
-            new TagType { Id = 4, MasterCode = "AUDIENCE", FullName = "Audience", Description = "Target audience tags" });
+            new TagType { Id = 1, MasterCode = "TITLE", FullName = "Title", Description = "Title-based tags for labeling and categorization" },
+            new TagType { Id = 2, MasterCode = "PEOPLE", FullName = "People", Description = "People-based tags for associating persons with content" });
         await context.SaveChangesAsync(ct);
     }
 
@@ -373,22 +371,17 @@ public static class LookupTableSeeder
             // Platform scope (1-9)
             new Role { Id = (int)RoleEnum.Admin, MasterCode = "platform.admin", FullName = "Admin", Description = "Platform administration", Scope = RoleScopeEnum.Platform, IsSystem = true },
             new Role { Id = (int)RoleEnum.Moderator, MasterCode = "platform.moderator", FullName = "Moderator", Description = "Platform moderation", Scope = RoleScopeEnum.Platform, IsSystem = true },
-            new Role { Id = (int)RoleEnum.Editor, MasterCode = "platform.editor", FullName = "Editor", Description = "Platform content editing", Scope = RoleScopeEnum.Platform, IsSystem = true },
             new Role { Id = (int)RoleEnum.Member, MasterCode = "platform.member", FullName = "Member", Description = "Platform member", Scope = RoleScopeEnum.Platform, IsSystem = true },
 
             // Tenant scope (10-19)
-            new Role { Id = (int)RoleEnum.TenantOwner, MasterCode = "tenant.owner", FullName = "Tenant Owner", Description = "Tenant-level governance and lifecycle", Scope = RoleScopeEnum.Tenant, IsSystem = true },
-            new Role { Id = (int)RoleEnum.TenantAdmin, MasterCode = "tenant.admin", FullName = "Tenant Admin", Description = "Tenant policies and delegated controls", Scope = RoleScopeEnum.Tenant, IsSystem = true },
-            new Role { Id = (int)RoleEnum.TenantModerator, MasterCode = "tenant.moderator", FullName = "Tenant Moderator", Description = "Tenant content moderation", Scope = RoleScopeEnum.Tenant, IsSystem = true },
-            new Role { Id = (int)RoleEnum.TenantMember, MasterCode = "tenant.member", FullName = "Tenant Member", Description = "Tenant member", Scope = RoleScopeEnum.Tenant, IsSystem = true },
+            new Role { Id = (int)RoleEnum.TenantAdmin, MasterCode = "tenant.admin", FullName = "Admin", Description = "Tenant administration", Scope = RoleScopeEnum.Tenant, IsSystem = true },
+            new Role { Id = (int)RoleEnum.TenantModerator, MasterCode = "tenant.moderator", FullName = "Moderator", Description = "Tenant content moderation", Scope = RoleScopeEnum.Tenant, IsSystem = true },
+            new Role { Id = (int)RoleEnum.TenantMember, MasterCode = "tenant.member", FullName = "Member", Description = "Tenant member", Scope = RoleScopeEnum.Tenant, IsSystem = true },
 
             // Organization scope (20-29)
-            new Role { Id = (int)RoleEnum.OrgCreator, MasterCode = "org.creator", FullName = "Creator", Description = "Organization creator with full ownership", Scope = RoleScopeEnum.Organization, IsSystem = true },
-            new Role { Id = (int)RoleEnum.OrgCoOwner, MasterCode = "org.co_owner", FullName = "Co-Owner", Description = "Co-owner with near-full access", Scope = RoleScopeEnum.Organization, IsSystem = true },
             new Role { Id = (int)RoleEnum.OrgAdmin, MasterCode = "org.admin", FullName = "Admin", Description = "Organization administrator", Scope = RoleScopeEnum.Organization, IsSystem = true },
             new Role { Id = (int)RoleEnum.OrgModerator, MasterCode = "org.moderator", FullName = "Moderator", Description = "Organization moderator", Scope = RoleScopeEnum.Organization, IsSystem = true },
-            new Role { Id = (int)RoleEnum.OrgMember, MasterCode = "org.member", FullName = "Member", Description = "Regular organization member", Scope = RoleScopeEnum.Organization, IsSystem = true },
-            new Role { Id = (int)RoleEnum.OrgViewer, MasterCode = "org.viewer", FullName = "Viewer", Description = "Read-only access to organization", Scope = RoleScopeEnum.Organization, IsSystem = true }
+            new Role { Id = (int)RoleEnum.OrgMember, MasterCode = "org.member", FullName = "Member", Description = "Regular organization member", Scope = RoleScopeEnum.Organization, IsSystem = true }
         };
 
         var existingIds = await context.Roles

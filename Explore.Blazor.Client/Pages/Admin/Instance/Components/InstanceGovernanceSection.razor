@@ -16,9 +16,10 @@
         @if (ShowDeploymentMode)
         {
         @* ── Deployment Mode ──────────────────────────────────────────── *@
-        <MudPaper Class="pa-4" Elevation="0" Style="border: 1px solid var(--mud-palette-lines-default);">
+        <MudPaper Class="pa-4" Elevation="0" Style="@_deploymentModeCardStyle">
             <MudStack Spacing="2">
                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                    <MudIcon Icon="@Icons.Material.Filled.SwapHoriz" Color="@(DisplayMode == "multi-tenancy" ? Color.Error : Color.Default)" Size="Size.Small" />
                     <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Deployment Mode</MudText>
                     <MudTooltip Text="Single-Tenant runs one organization per instance. Multi-Tenant enables multiple isolated tenants.">
                         <MudIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
@@ -83,17 +84,34 @@
             </TitleContent>
             <DialogContent>
                 <MudText Typo="Typo.body1" Class="mb-3">
-                    Switching to Multi-Tenant mode allows creating multiple isolated tenants,
-                    each with their own settings, organizations, and users.
+                    Switching to Multi-Tenant mode will restructure your platform:
                 </MudText>
-                <MudAlert Severity="Severity.Info" Dense="true">
+                <MudList T="string" Dense="true" DisablePadding="true" Class="mb-3">
+                    <MudListItem Icon="@Icons.Material.Filled.ChevronRight" IconColor="Color.Warning" Dense="true">
+                        Settings will split into global defaults and per-tenant overrides
+                    </MudListItem>
+                    <MudListItem Icon="@Icons.Material.Filled.ChevronRight" IconColor="Color.Warning" Dense="true">
+                        Lock controls will appear to enforce consistency across tenants
+                    </MudListItem>
+                    <MudListItem Icon="@Icons.Material.Filled.ChevronRight" IconColor="Color.Warning" Dense="true">
+                        Your current configuration becomes the default tenant's settings
+                    </MudListItem>
+                </MudList>
+                <MudAlert Severity="Severity.Info" Dense="true" Class="mb-4">
                     You can revert to Single-Tenant mode later, as long as no more than one tenant exists.
-                    If multiple tenants are created, you must delete the extras before reverting.
                 </MudAlert>
+                <MudTextField @bind-Value="_multiTenantConfirmText"
+                              Label="Type ENABLE MULTI-TENANCY to confirm"
+                              Variant="Variant.Outlined"
+                              Immediate="true"
+                              HelperText="This action changes how your platform is administered." />
             </DialogContent>
             <DialogActions>
-                <MudButton OnClick="@(() => _showMultiTenantDialog = false)">Cancel</MudButton>
-                <MudButton Color="Color.Warning" Variant="Variant.Filled" OnClick="ConfirmMultiTenant">
+                <MudButton OnClick="CancelMultiTenantDialog">Cancel</MudButton>
+                <MudButton Color="Color.Warning"
+                           Variant="Variant.Filled"
+                           Disabled="@(!IsMultiTenantConfirmValid)"
+                           OnClick="ConfirmMultiTenant">
                     Confirm — Enable Multi-Tenant
                 </MudButton>
             </DialogActions>
@@ -124,9 +142,12 @@
 
         @if (ShowGeneralGovernance)
         {
-        <MudSwitch T="bool" @bind-Value="Model.AllowTenantSelfServiceRegistration" Color="Color.Primary">
-            Allow tenant self-service registration
-        </MudSwitch>
+        @if (ShowHomePage)
+        {
+            <MudSwitch T="bool" @bind-Value="Model.AllowTenantSelfServiceRegistration" Color="Color.Primary">
+                Allow tenant self-service registration
+            </MudSwitch>
+        }
 
         <MudDivider Class="my-2" />
         <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Event Submission Policies</MudText>
@@ -396,15 +417,21 @@
     {
         "general" => "Configure tenant registration and general platform behavior.",
         "render-policies" => "Choose a preset strategy for route rendering or configure per-route-group overrides.",
-        "multi-tenancy" => "Switch between single-tenant and multi-tenant deployment modes.",
+        "multi-tenancy" => "⚠️ Changing the deployment mode restructures how settings and tenants are managed.",
         _ => "Control deployment mode, tenant registration, and default home page behavior."
     };
 
     private int _tenantCount;
     private bool _showMultiTenantDialog;
     private bool _showSingleTenantDialog;
+    private string _multiTenantConfirmText = string.Empty;
+    private bool IsMultiTenantConfirmValid => string.Equals(_multiTenantConfirmText?.Trim(), "ENABLE MULTI-TENANCY", StringComparison.OrdinalIgnoreCase);
     private bool IsSingleTenant => string.Equals(Model.DeploymentMode, "SingleTenant", StringComparison.OrdinalIgnoreCase)
                                    || string.IsNullOrWhiteSpace(Model.DeploymentMode);
+
+    private string _deploymentModeCardStyle => DisplayMode == "multi-tenancy"
+        ? "border: 2px solid var(--mud-palette-error); border-radius: var(--mud-default-borderradius);"
+        : "border: 1px solid var(--mud-palette-lines-default);";
 
     protected override void OnParametersSet()
     {
@@ -417,9 +444,16 @@
         _showMultiTenantDialog = true;
     }
 
+    private void CancelMultiTenantDialog()
+    {
+        _showMultiTenantDialog = false;
+        _multiTenantConfirmText = string.Empty;
+    }
+
     private async Task ConfirmMultiTenant()
     {
         _showMultiTenantDialog = false;
+        _multiTenantConfirmText = string.Empty;
         Model.DeploymentMode = "MultiTenant";
         await DeploymentModeChanged.InvokeAsync("MultiTenant");
     }

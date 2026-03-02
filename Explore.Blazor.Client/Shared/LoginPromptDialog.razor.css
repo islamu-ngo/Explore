@@ -8,10 +8,7 @@
  *   .login-prompt__container
  *     .login-prompt__close
  *     .login-prompt__header
- *       .login-prompt__logo
  *       .login-prompt__title
- *     .login-prompt__tabs
- *       .login-prompt__tab-panel
  *     .login-prompt__section
  *       .login-prompt__islamu-row
  *         .login-prompt__btn--islamu
@@ -21,8 +18,6 @@
  *         .login-prompt__divider-text
  *       .login-prompt__input
  *       .login-prompt__btn--handle
- *     .login-prompt__social
- *       .login-prompt__btn--social
  *     .login-prompt__footer
  */
 
@@ -31,8 +26,8 @@
    Applied globally via BackgroundClass
    ======================================== */
 :global(.login-prompt-backdrop) {
-    backdrop-filter: blur(16px) saturate(1.2);
-    -webkit-backdrop-filter: blur(16px) saturate(1.2);
+    backdrop-filter: blur(1rem) saturate(1.2);
+    -webkit-backdrop-filter: blur(1rem) saturate(1.2);
     background: rgba(0, 0, 0, 0.3) !important;
 }
 
@@ -41,14 +36,14 @@
    Dialog container with glass card effect
    ======================================== */
 ::deep .login-prompt {
-    border-radius: 24px !important;
+    border-radius: 1.5rem !important;
     overflow: hidden;
     box-shadow:
-        0 24px 80px -12px rgba(0, 0, 0, 0.25),
+        0 1.5rem 5rem -0.75rem rgba(0, 0, 0, 0.25),
         0 0 0 1px color-mix(in srgb, var(--mud-palette-lines-default) 20%, transparent);
     background: color-mix(in srgb, var(--mud-palette-surface) 95%, transparent) !important;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(1.25rem);
+    -webkit-backdrop-filter: blur(1.25rem);
 }
 
 /* ========================================
@@ -57,7 +52,7 @@
    ======================================== */
 .login-prompt__container {
     position: relative;
-    padding: 32px 28px 24px;
+    padding: var(--isl-space-8) 1.75rem var(--isl-space-6);
 }
 
 /* ========================================
@@ -66,8 +61,8 @@
    ======================================== */
 ::deep .login-prompt__close {
     position: absolute !important;
-    top: 12px;
-    right: 12px;
+    top: var(--isl-space-3);
+    right: var(--isl-space-3);
     opacity: 0.5;
     transition: opacity 0.2s ease;
     z-index: 1;
@@ -79,61 +74,19 @@
 
 /* ========================================
    Element: login-prompt__header
-   Logo, title, subtitle
+   Title only
    ======================================== */
 .login-prompt__header {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 24px;
-}
-
-::deep .login-prompt__logo {
-    font-size: 2.5rem !important;
-    margin-bottom: 4px;
+    gap: var(--isl-space-2);
+    margin-bottom: var(--isl-space-6);
 }
 
 ::deep .login-prompt__title {
     font-weight: 800 !important;
     letter-spacing: -0.02em;
-}
-
-/* ========================================
-   Element: login-prompt__tabs
-   Login / Sign Up tab switcher
-   ======================================== */
-::deep .login-prompt__tabs {
-    margin-bottom: 4px;
-}
-
-::deep .login-prompt__tabs .mud-tabs-toolbar {
-    background: color-mix(in srgb, var(--mud-palette-surface) 60%, transparent);
-    border-radius: 14px;
-    padding: 4px;
-    margin-bottom: 8px;
-}
-
-::deep .login-prompt__tabs .mud-tab {
-    border-radius: 10px !important;
-    font-weight: 600;
-    text-transform: none;
-    letter-spacing: 0;
-    min-width: 100px;
-    transition: all 0.2s ease;
-}
-
-::deep .login-prompt__tabs .mud-tab.mud-tab-active {
-    background: var(--mud-palette-primary) !important;
-    color: white !important;
-}
-
-::deep .login-prompt__tabs .mud-tab-slider {
-    display: none;
-}
-
-::deep .login-prompt__tab-panel {
-    padding: 12px 0 0 !important;
 }
 
 /* ========================================
@@ -143,7 +96,25 @@
 .login-prompt__section {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: var(--isl-space-4);
+}
+
+/* ========================================
+   Element: login-prompt__islamu-group
+   Wraps the recommended chip + button row
+   ======================================== */
+.login-prompt__islamu-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+::deep .login-prompt__recommended-chip {
+    align-self: flex-start;
+    font-weight: 600 !important;
+    font-size: 0.7rem !important;
+    letter-spacing: 0.04em;
+    height: 1.375rem !important;
 }
 
 /* ========================================
@@ -153,7 +124,7 @@
 .login-prompt__islamu-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--isl-space-2);
 }
 
 ::deep .login-prompt__info-icon {
@@ -173,8 +144,8 @@
 .login-prompt__divider {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin: 4px 0;
+    gap: var(--isl-space-3);
+    margin: var(--isl-space-1) 0;
 }
 
 .login-prompt__divider-line {
@@ -197,7 +168,7 @@
    ATProto handle text field
    ======================================== */
 ::deep .login-prompt__input .mud-input-outlined-border {
-    border-radius: 14px !important;
+    border-radius: 0.875rem !important;
 }
 
 ::deep .login-prompt__input .mud-input-control {
@@ -209,72 +180,63 @@
    Shared button styles
    ======================================== */
 ::deep .login-prompt__btn {
-    border-radius: 14px !important;
+    border-radius: 0.875rem !important;
     font-weight: 600 !important;
     text-transform: none !important;
     letter-spacing: 0.01em;
-    padding: 12px 24px !important;
+    padding: var(--isl-space-3) var(--isl-space-6) !important;
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
-/* Modifier: login-prompt__btn--islamu */
+/* ----------------------------------------
+   Modifier: login-prompt__btn--islamu
+   Bordered button, theme-aware:
+     Dark mode  → dark bg, white border, white text
+     Light mode → white bg, dark border, dark text
+   Uses surface/text palette tokens so it auto-adapts.
+   ---------------------------------------- */
 ::deep .login-prompt__btn--islamu {
     font-weight: 700 !important;
     font-size: 0.95rem !important;
-    box-shadow: 0 4px 14px -4px var(--mud-palette-primary) !important;
+    background: var(--mud-palette-surface) !important;
+    color: var(--mud-palette-text-primary) !important;
+    border: 0.125rem solid var(--mud-palette-text-primary) !important;
 }
 
 ::deep .login-prompt__btn--islamu:hover {
-    box-shadow: 0 6px 20px -4px var(--mud-palette-primary) !important;
-    transform: translateY(-1px);
+    background: color-mix(in srgb, var(--mud-palette-text-primary) 10%, var(--mud-palette-surface)) !important;
+}
+
+::deep .login-prompt__btn--islamu .mud-button-icon-start {
+    color: var(--mud-palette-text-primary) !important;
 }
 
 /* Modifier: login-prompt__btn--handle */
 ::deep .login-prompt__btn--handle {
     font-weight: 600 !important;
-}
-
-/* Modifier: login-prompt__btn--social */
-::deep .login-prompt__btn--social {
-    border-color: color-mix(in srgb, var(--mud-palette-lines-default) 60%, transparent) !important;
+    border-color: color-mix(in srgb, var(--mud-palette-text-primary) 30%, transparent) !important;
     color: var(--mud-palette-text-primary) !important;
-    font-weight: 500 !important;
-    justify-content: center !important;
 }
 
-::deep .login-prompt__btn--social:hover {
-    background: color-mix(in srgb, var(--mud-palette-text-primary) 4%, transparent) !important;
-    border-color: var(--mud-palette-lines-default) !important;
-}
-
-/* ========================================
-   Element: login-prompt__social
-   Social login buttons container
-   ======================================== */
-.login-prompt__social {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+::deep .login-prompt__btn--handle:hover {
+    background: color-mix(in srgb, var(--mud-palette-text-primary) 6%, transparent) !important;
+    border-color: var(--mud-palette-text-primary) !important;
 }
 
 /* ========================================
    Element: login-prompt__footer
    Terms/privacy notice
    ======================================== */
-::deep .login-prompt__footer {
-    margin-top: 20px;
+.login-prompt__footer {
+    margin-top: var(--isl-space-5);
     opacity: 0.7;
 }
 
 /* ========================================
    Responsive: Mobile adjustments
    ======================================== */
-@media (max-width: 600px) {
+@media (max-width: 37.5em) {
     .login-prompt__container {
-        padding: 24px 20px 20px;
-    }
-
-    ::deep .login-prompt__logo {
-        font-size: 2rem !important;
+        padding: var(--isl-space-6) var(--isl-space-5) var(--isl-space-5);
     }
 }

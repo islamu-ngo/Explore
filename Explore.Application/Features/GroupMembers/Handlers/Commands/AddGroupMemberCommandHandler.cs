@@ -61,11 +61,10 @@ public class AddGroupMemberCommandHandler : IRequestHandler<AddGroupMemberComman
 
         if (!hasPermission)
         {
-            // Transitional fallback: allow GroupCreator and GroupAdmin roles if no permissions are seeded
+            // Transitional fallback: allow GroupAdmin role if no permissions are seeded
             var requesterMember = await _groupMemberRepository.GetByGroupAndUser(dto.GroupId, requesterGuid);
             if (requesterMember == null ||
-                (requesterMember.RoleId != (int)RoleEnum.GroupCreator &&
-                 requesterMember.RoleId != (int)RoleEnum.GroupAdmin))
+                requesterMember.RoleId != (int)RoleEnum.GroupAdmin)
             {
                 response.Success = false;
                 response.Message = "You do not have permission to add members.";

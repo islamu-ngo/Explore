@@ -110,7 +110,7 @@ public class CreateGroupCommandHandler : IRequestHandler<CreateGroupCommand, Bas
             Group = null!,
             UserId = currentUserId,
             User = null!,
-            RoleId = (int)RoleEnum.GroupCreator,
+            RoleId = (int)RoleEnum.GroupAdmin,
             Role = null!,
             TenantId = _tenantContext.TenantId,
             Tenant = null!

@@ -26,9 +26,11 @@ Keep tokens server‑side, proxy API calls via YARP, centralize auth state + ser
 - **BFF boundary**: Browser never sees tokens; BFF uses HttpOnly cookies.
 - **YARP**: API calls go through reverse proxy; attach Bearer token server‑side.
 - **Token forwarding**: Use YARP transforms or delegating handlers (no raw HttpClient in WASM).
+- **YARP header transforms**: `X-Setup-Secret` is stripped from inbound requests and replaced by the BFF from secure config. `X-Tenant-Id` is forwarded from the session/context to the API.
 - **Service layer**: Wrap NSwag clients for error handling + safe defaults.
 - **CSRF**: Enforce antiforgery on state‑changing routes.
 - **InteractiveAuto**: Avoid direct HttpContext assumptions in components.
+- **CORS**: API defines 5 CORS policies (BlazorDev, BlazorProd, Admin, Federation, Health). BFF requests typically match BlazorDev or BlazorProd policies.
 
 ## Resources (Read Before Applying)
 - [bff-configuration.md](resources/bff-configuration.md)

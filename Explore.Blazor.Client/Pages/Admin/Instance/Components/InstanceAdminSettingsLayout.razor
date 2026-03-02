@@ -48,8 +48,8 @@
             <!-- Main Layout: Sidebar + Content -->
             <MudGrid Spacing="4">
                 <!-- Sidebar Navigation -->
-                <MudItem xs="12" sm="12" md="3">
-                    <MudPaper Elevation="0" Class="settings-sidebar pa-0 rounded-lg border-solid border-1 mud-border-lines-default">
+                <MudItem xs="3" sm="3" md="3">
+                    <MudPaper Elevation="0" Class="settings-sidebar pa-0">
                         <MudList T="string" Dense="false" DisablePadding="true">
                             @if (IsSingleTenantMode)
                             {
@@ -156,15 +156,15 @@
                 </MudItem>
 
                 <!-- Content Area -->
-                <MudItem xs="12" sm="12" md="9">
-                    <MudPaper Elevation="0" Class="settings-content pa-6 rounded-lg border-solid border-1 mud-border-lines-default">
+                <MudItem xs="9" sm="9" md="9">
+                    <MudPaper Elevation="0" Class="settings-content pa-6">
                         @if (_currentSection == "governance")
                         {
                             <InstanceGovernanceSection Model="_model" TenantCount="_tenantCount" DeploymentModeChanged="OnDeploymentModeChanged" DisplayMode="@(IsSingleTenantMode ? "general" : "full")" />
                             @if (IsSingleTenantMode)
                             {
                                 <MudDivider Class="my-6" />
-                                <InstanceBrandingSection Model="_model" />
+                                <InstanceBrandingSection Model="_model" IsSingleTenant="true" />
                             }
                         }
                         else if (_currentSection == "domain")
@@ -173,7 +173,7 @@
                         }
                         else if (_currentSection == "branding" && !IsSingleTenantMode)
                         {
-                            <InstanceBrandingSection Model="_model" />
+                            <InstanceBrandingSection Model="_model" IsSingleTenant="false" />
                         }
                         else if (_currentSection == "appearance" && IsSingleTenantMode)
                         {

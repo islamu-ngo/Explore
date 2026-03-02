@@ -28,6 +28,9 @@ Component‑scoped CSS with BEM; `::deep` only when required.
 - Style child components in their own CSS; use wrapper pattern before `::deep`.
 - `::deep` only for third‑party internals (fragile).
 - Ensure `{Project}.styles.css` is referenced in host.
+- **MudBlazor styling**: Always wrap MudBlazor components in a `<div>` with a BEM class before using `::deep` selectors.
+- **Customization priority**: component params → `Class` + utility classes → MudTheme → CSS variables → wrapper components → `::deep` (last resort).
+- **Anti-pattern**: Never use global CSS to override MudBlazor base classes without scoping. Never use `!important` in isolated CSS.
 
 ## Resources (Read Before Applying)
 - [bem-with-isolation.md](resources/bem-with-isolation.md)

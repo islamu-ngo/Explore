@@ -195,3 +195,18 @@
         }
     }
 </MudContainer>
+
+<!-- Fixed quick-create FAB (visible on small screens, supplements header buttons) -->
+<MudFabMenu StartIcon="@Icons.Material.Filled.Add"
+            Color="Color.Primary"
+            Fixed="true"
+            Class="d-flex d-sm-none">
+    <MudFabMenuItem StartIcon="@Icons.Material.Filled.Event"
+                    Label="Event"
+                    Color="Color.Primary"
+                    OnClick="NavigateToCreateEvent" />
+    <MudFabMenuItem StartIcon="@Icons.Material.Filled.Business"
+                    Label="Organization"
+                    Color="Color.Secondary"
+                    OnClick="NavigateToCreateOrganization" />
+</MudFabMenu>

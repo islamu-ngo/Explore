@@ -161,7 +161,7 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
             entry.SlidingExpiration = CacheExpiration;
             var admins = await _tenantAdminRepo.GetByUserId(userId);
             var adminTenantIds = admins
-                .Where(a => a.RoleId == (int)RoleEnum.TenantOwner || a.RoleId == (int)RoleEnum.TenantAdmin)
+                .Where(a => a.RoleId == (int)RoleEnum.TenantAdmin)
                 .Select(a => a.TenantId)
                 .Distinct()
                 .ToList()
@@ -199,9 +199,7 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
 
     private static bool IsOrganizationAdminRole(int roleId)
     {
-        return roleId == (int)RoleEnum.OrgCreator
-            || roleId == (int)RoleEnum.OrgCoOwner
-            || roleId == (int)RoleEnum.OrgAdmin;
+        return roleId == (int)RoleEnum.OrgAdmin;
     }
 
     /// <inheritdoc />

@@ -151,8 +151,6 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
         {
             var adminRoles = new[]
             {
-                (int)RoleEnum.OrgCreator,
-                (int)RoleEnum.OrgCoOwner,
                 (int)RoleEnum.OrgAdmin
             };
             return adminRoles.Contains(roleId.Value);
@@ -183,8 +181,6 @@ public class OrganizationMemberRepository : GenericRepository<OrganizationMember
         {
             var adminRoles = new[]
             {
-                (int)RoleEnum.OrgCreator,
-                (int)RoleEnum.OrgCoOwner,
                 (int)RoleEnum.OrgAdmin
             };
 

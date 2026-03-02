@@ -1,45 +1,45 @@
 /* ABOUTME: Scoped CSS for the Luma-inspired single-page CreateEvent layout. */
-/* ABOUTME: Uses BEM methodology. ::deep used only for MudBlazor internal element overrides. */
+/* ABOUTME: Uses BEM methodology. All selectors use ::deep since content is inside MudBlazor component tree. */
 
 /* ===== Block: create-event ===== */
 
 /* --- Image Area --- */
-.create-event__image-area {
+::deep .create-event__image-area {
     position: relative;
     width: 100%;
     aspect-ratio: 3 / 4;
-    border-radius: 16px;
+    border-radius: var(--isl-radius-lg);
     overflow: hidden;
     background: var(--mud-palette-surface);
     border: 1px solid var(--mud-palette-lines-default);
 }
 
-.create-event__image {
+::deep .create-event__image {
     width: 100%;
     height: 100%;
     object-fit: cover;
     display: block;
 }
 
-.create-event__image-placeholder {
+::deep .create-event__image-placeholder {
     width: 100%;
     height: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: var(--isl-space-2);
     background: var(--mud-palette-background-gray);
 }
 
 ::deep .create-event__upload-trigger {
     position: absolute !important;
-    bottom: 12px;
-    right: 12px;
+    bottom: var(--isl-space-3);
+    right: var(--isl-space-3);
     z-index: 1;
 }
 
-.create-event__upload-overlay {
+::deep .create-event__upload-overlay {
     position: absolute;
     inset: 0;
     display: flex;
@@ -47,15 +47,15 @@
     justify-content: center;
     background: rgba(0, 0, 0, 0.45);
     z-index: 2;
-    border-radius: 16px;
+    border-radius: var(--isl-radius-lg);
 }
 
 /* --- Publisher Row --- */
-.create-event__publisher-row {
+::deep .create-event__publisher-row {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 12px;
+    gap: var(--isl-space-2);
+    margin-bottom: var(--isl-space-3);
     flex-wrap: nowrap;
 }
 
@@ -63,11 +63,11 @@
     text-transform: none !important;
     white-space: nowrap;
     flex: 1 1 0;
-    border-radius: 8px !important;
+    border-radius: var(--isl-radius-sm) !important;
 }
 
 ::deep .create-event__publisher-dropdown {
-    margin-bottom: 12px;
+    margin-bottom: var(--isl-space-3);
 }
 
 /* --- Title Input (large heading like Luma) --- */
@@ -84,54 +84,54 @@
 }
 
 /* --- Date/Time Block (Luma-style timeline) --- */
-.create-event__datetime-block {
+::deep .create-event__datetime-block {
     border: 1px solid var(--mud-palette-lines-default);
-    border-radius: 12px;
-    padding: 12px 16px;
-    margin-bottom: 12px;
+    border-radius: var(--isl-radius-md);
+    padding: var(--isl-space-3) var(--isl-space-4);
+    margin-bottom: var(--isl-space-3);
     position: relative;
 }
 
-.create-event__datetime-row {
+::deep .create-event__datetime-row {
     display: flex;
     align-items: center;
-    gap: 8px;
-    min-height: 40px;
+    gap: var(--isl-space-2);
+    min-height: var(--isl-space-10);
 }
 
-.create-event__datetime-indicator {
+::deep .create-event__datetime-indicator {
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 16px;
+    width: var(--isl-space-4);
     flex-shrink: 0;
 }
 
-.create-event__datetime-dot {
-    width: 10px;
-    height: 10px;
+::deep .create-event__datetime-dot {
+    width: 0.625rem;
+    height: 0.625rem;
     border-radius: 50%;
     flex-shrink: 0;
 }
 
-.create-event__datetime-dot--start {
+::deep .create-event__datetime-dot--start {
     background: var(--mud-palette-primary);
 }
 
-.create-event__datetime-dot--end {
-    border: 2px solid var(--mud-palette-text-secondary);
+::deep .create-event__datetime-dot--end {
+    border: 0.125rem solid var(--mud-palette-text-secondary);
     background: transparent;
     box-sizing: border-box;
 }
 
-.create-event__datetime-line {
+::deep .create-event__datetime-line {
     width: 0;
-    height: 20px;
-    border-left: 2px dotted var(--mud-palette-lines-default);
+    height: 1.25rem;
+    border-left: 0.125rem dotted var(--mud-palette-lines-default);
 }
 
-.create-event__datetime-label {
-    width: 36px;
+::deep .create-event__datetime-label {
+    width: 2.25rem;
     font-weight: 600;
     color: var(--mud-palette-text-secondary);
     flex-shrink: 0;
@@ -140,7 +140,7 @@
 
 ::deep .create-event__datetime-picker {
     flex: 1;
-    max-width: 160px;
+    max-width: 10rem;
 }
 
 ::deep .create-event__datetime-picker .mud-input-slot {
@@ -150,29 +150,29 @@
 
 ::deep .create-event__timezone-btn {
     position: absolute !important;
-    top: 8px;
-    right: 8px;
+    top: var(--isl-space-2);
+    right: var(--isl-space-2);
     text-transform: none !important;
     font-size: 0.75rem !important;
-    padding: 2px 8px !important;
+    padding: 0.125rem var(--isl-space-2) !important;
     min-width: unset !important;
     border: 1px solid var(--mud-palette-lines-default) !important;
-    border-radius: 8px !important;
+    border-radius: var(--isl-radius-sm) !important;
     color: var(--mud-palette-text-secondary) !important;
     white-space: nowrap;
 }
 
 ::deep .create-event__timezone-autocomplete {
-    margin-top: 8px;
+    margin-top: var(--isl-space-2);
 }
 
 /* --- Action Buttons (Add Description, Add Location) --- */
 ::deep .create-event__action-button {
     text-transform: none !important;
     border: 1px solid var(--mud-palette-lines-default) !important;
-    border-radius: 12px !important;
-    padding: 12px 16px !important;
-    margin-bottom: 8px !important;
+    border-radius: var(--isl-radius-md) !important;
+    padding: var(--isl-space-3) var(--isl-space-4) !important;
+    margin-bottom: var(--isl-space-2) !important;
     color: var(--mud-palette-text-secondary) !important;
 }
 
@@ -181,27 +181,27 @@
 }
 
 /* --- Event Options (Luma-style rows) --- */
-.create-event__options {
+::deep .create-event__options {
     border: 1px solid var(--mud-palette-lines-default);
-    border-radius: 12px;
+    border-radius: var(--isl-radius-md);
     overflow: hidden;
 }
 
-.create-event__option-row {
+::deep .create-event__option-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 16px;
-    min-height: 44px;
+    padding: var(--isl-space-2) var(--isl-space-4);
+    min-height: 2.75rem;
     border-bottom: 1px solid var(--mud-palette-lines-default);
 }
 
-.create-event__option-row:last-child {
+::deep .create-event__option-row:last-child {
     border-bottom: none;
 }
 
 ::deep .create-event__option-select {
-    max-width: 180px;
+    max-width: 11.25rem;
     text-align: right;
 }
 
@@ -214,12 +214,12 @@
 ::deep .create-event__submit-button {
     font-size: 1.1rem !important;
     font-weight: 600 !important;
-    padding: 14px 0 !important;
-    border-radius: 12px !important;
+    padding: 0.875rem 0 !important;
+    border-radius: var(--isl-radius-md) !important;
 }
 
 /* ===== Responsive: Mobile (single column) ===== */
-@media (max-width: 599px) {
+@media (max-width: 37.4375em) {
     ::deep .create-event__col-left {
         order: 2;
     }
@@ -232,29 +232,29 @@
         font-size: 1.5rem;
     }
 
-    .create-event__image-area {
-        border-radius: 12px;
+    ::deep .create-event__image-area {
+        border-radius: var(--isl-radius-md);
     }
 
     ::deep .create-event__timezone-btn {
         position: static !important;
-        margin-top: 8px;
+        margin-top: var(--isl-space-2);
         width: fit-content;
     }
 
-    .create-event__datetime-row {
+    ::deep .create-event__datetime-row {
         flex-wrap: wrap;
     }
 
     ::deep .create-event__datetime-picker {
-        max-width: 130px;
+        max-width: 8.125rem;
     }
 
-    .create-event__option-row {
+    ::deep .create-event__option-row {
         flex-direction: column;
         align-items: flex-start;
-        gap: 4px;
-        padding: 10px 16px;
+        gap: var(--isl-space-1);
+        padding: 0.625rem var(--isl-space-4);
     }
 
     ::deep .create-event__option-select {

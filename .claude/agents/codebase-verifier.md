@@ -12,6 +12,7 @@ tools: Bash
 **Read these first (short files):**
 - `docs/TROUBLESHOOTING.md`
 - `docs/QUICK_REFERENCE.md`
+- `docs/API.md` (for middleware/extension structure awareness)
 
 ## Role
 

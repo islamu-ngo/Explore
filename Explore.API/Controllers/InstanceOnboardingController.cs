@@ -1,5 +1,5 @@
-// ABOUTME: API controller for first-run instance onboarding, governance, and storage settings.
-// ABOUTME: Provides status, completion, governance update, and storage settings endpoints.
+// ABOUTME: API controller for first-run instance onboarding, governance, storage, and auth provider settings.
+// ABOUTME: Provides status, completion, governance update, storage settings, and auth provider configuration endpoints.
 
 using System;
 using System.Security.Claims;
@@ -319,6 +319,73 @@ public class InstanceOnboardingController : ControllerBase
 
         var isValid = _setupSecretProvider.ValidateSecret(request.Secret);
         return Ok(new { valid = isValid });
+    }
+
+    [HttpGet("auth-provider-configuration")]
+    [AllowAnonymous]
+    [EndpointSummary("Get Auth Provider Configuration")]
+    [EndpointDescription("Returns current auth provider configuration. Secrets are redacted. Accessible during setup (anonymous) and by instance admins after onboarding.")]
+    [ProducesResponseType(typeof(AuthProviderConfigurationDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<AuthProviderConfigurationDto>> GetAuthProviderConfiguration(CancellationToken cancellationToken = default)
+    {
+        var status = await _mediator.Send(new GetInstanceOnboardingStatusQuery(), cancellationToken);
+        if (status.IsCompleted && !status.IsCurrentUserInstanceAdmin)
+        {
+            return Forbid();
+        }
+
+        var configuration = await _mediator.Send(new GetAuthProviderConfigurationQuery(), cancellationToken);
+        return Ok(configuration);
+    }
+
+    [HttpGet("auth-provider-configuration/internal")]
+    [AllowAnonymous]
+    [SetupSecretRequired]
+    [EndpointSummary("Get Auth Provider Configuration (Internal)")]
+    [EndpointDescription("Returns auth provider configuration including secrets. For BFF internal use only. Protected by setup token.")]
+    [ProducesResponseType(typeof(AuthProviderConfigurationDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<AuthProviderConfigurationDto>> GetAuthProviderConfigurationInternal(CancellationToken cancellationToken = default)
+    {
+        var service = HttpContext.RequestServices.GetRequiredService<IAuthProviderConfigurationService>();
+        var configuration = await service.ReadConfigurationWithSecretsAsync();
+        return Ok(configuration);
+    }
+
+    [HttpPut("auth-provider-configuration")]
+    [AllowAnonymous]
+    [SetupSecretRequired]
+    [EnableRateLimiting("SetupSecret")]
+    [EndpointSummary("Save Auth Provider Configuration")]
+    [EndpointDescription("Saves auth provider configuration during instance setup. Protected by setup token. At least one provider must be enabled.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> SaveAuthProviderConfiguration([FromBody] AuthProviderConfigurationDto configuration, CancellationToken cancellationToken = default)
+    {
+        var command = new SaveAuthProviderConfigurationCommand
+        {
+            Configuration = configuration
+        };
+
+        var response = await _mediator.Send(command, cancellationToken);
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
+    [HttpGet("auth-provider-configured")]
+    [AllowAnonymous]
+    [EndpointSummary("Check Auth Provider Configuration Status")]
+    [EndpointDescription("Returns whether any auth provider has been configured. Used by the setup flow to determine if the auth provider configuration step should be shown.")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    public async Task<ActionResult> IsAuthProviderConfigured(CancellationToken cancellationToken = default)
+    {
+        var service = HttpContext.RequestServices.GetRequiredService<IAuthProviderConfigurationService>();
+        var isConfigured = await service.IsConfiguredAsync();
+        return Ok(new { configured = isConfigured });
     }
 
     private Guid? GetCurrentUserId()

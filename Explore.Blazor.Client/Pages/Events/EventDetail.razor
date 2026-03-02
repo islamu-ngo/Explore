@@ -111,30 +111,29 @@
                         </div>
                     </div>
 
-                    @* Admin controls *@
-                    @if (_canEdit || (_canDelete && !_isCheckingAuth))
+                    @* Admin controls — 3-dot action menu *@
+                    @if ((_canEdit || _canDelete) && !_isCheckingAuth)
                     {
-                        <div class="d-flex gap-2 mt-4">
-                            @if (_canEdit)
-                            {
-                                <MudButton StartIcon="@Icons.Material.Filled.Edit"
-                                           Variant="Variant.Outlined"
-                                           Color="Color.Primary"
-                                           Size="Size.Small"
-                                           Href="@($"/event/edit/{EventId}")">
-                                    Edit
-                                </MudButton>
-                            }
-                            @if (_canDelete && !_isCheckingAuth)
-                            {
-                                <MudButton StartIcon="@Icons.Material.Filled.Delete"
-                                           Variant="Variant.Outlined"
-                                           Color="Color.Error"
-                                           Size="Size.Small"
-                                           OnClick="OpenDeleteDialog">
-                                    Delete
-                                </MudButton>
-                            }
+                        <div class="d-flex mt-4">
+                            <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
+                                     AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                                     Variant="Variant.Outlined">
+                                @if (_canEdit)
+                                {
+                                    <MudMenuItem Icon="@Icons.Material.Filled.Edit"
+                                                 Href="@($"/event/edit/{EventId}")">
+                                        Edit
+                                    </MudMenuItem>
+                                }
+                                @if (_canDelete)
+                                {
+                                    <MudMenuItem Icon="@Icons.Material.Filled.Delete"
+                                                 IconColor="Color.Error"
+                                                 OnClick="OpenDeleteDialog">
+                                        Delete
+                                    </MudMenuItem>
+                                }
+                            </MudMenu>
                         </div>
                     }
                 </div>

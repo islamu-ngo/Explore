@@ -119,7 +119,7 @@ public partial class OrganizationMembers
 
     private async Task RemoveMember(OrganizationMemberDto member)
     {
-        bool? result = await DialogService.ShowMessageBox(
+        bool? result = await DialogService.ShowMessageBoxAsync(
             "Remove Member",
             $"Are you sure you want to remove {member.UserEmail} from the organization?",
             yesText: "Remove", cancelText: "Cancel");

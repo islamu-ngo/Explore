@@ -12,7 +12,9 @@ tools: All tools
 **Read these first (short files):**
 - `docs/ARCHITECTURE.md`
 - `docs/API.md`
+- `docs/OPERATIONS.md`
 - `docs/QUICK_REFERENCE.md`
+- `docs/CODEBASE_INSIGHTS.md`
 - `.claude/skills/clean-architecture-rules/SKILL.md`
 
 ## Role

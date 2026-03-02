@@ -533,6 +533,10 @@ public class AuthenticationFlowTests
 
         ctx.Services.AddSingleton(new Explore.Blazor.Client.Services.SidebarState());
 
+        var groupService = Substitute.For<IGroupService>();
+        groupService.GetMyGroupsAsync().Returns(new List<GroupPublisherListDto>());
+        ctx.Services.AddSingleton(groupService);
+
         var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
         instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
         {

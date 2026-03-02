@@ -100,11 +100,13 @@ public partial class EventDetail : ComponentBase
                 _primarySession = _eventSessions?.FirstOrDefault();
                 Logger.LogInformation("Loaded {SessionCount} sessions", _eventSessions?.Count ?? 0);
 
-                // Check registration status, authorization, and load aspects in parallel
+                // Check authorization from HAL links (synchronous — links are already in the response)
+                CheckAuthorizationFromHalLinks();
+
+                // Check registration status and load aspects in parallel
                 var registrationTask = CheckRegistrationStatusAsync();
-                var authTask = CheckDeleteAuthorizationAsync();
                 var aspectsTask = LoadEventAspectsAsync();
-                await Task.WhenAll(registrationTask, authTask, aspectsTask);
+                await Task.WhenAll(registrationTask, aspectsTask);
             }
         }
         catch (Exception ex)
@@ -142,13 +144,13 @@ public partial class EventDetail : ComponentBase
         _isCheckingRegistration = true;
         _isCheckingAuth = true;
 
+        CheckAuthorizationFromHalLinks();
+        _isCheckingAuth = false;
+
         _ = InvokeAsync(async () =>
         {
-            var registrationTask = CheckRegistrationStatusAsync();
-            var authTask = CheckDeleteAuthorizationAsync();
-            await Task.WhenAll(registrationTask, authTask);
+            await CheckRegistrationStatusAsync();
             _isCheckingRegistration = false;
-            _isCheckingAuth = false;
             StateHasChanged();
         });
 
@@ -240,7 +242,7 @@ public partial class EventDetail : ComponentBase
     {
         if (!_userRegistrationIds.Any()) return;
 
-        var confirm = await DialogService.ShowMessageBox(
+        var confirm = await DialogService.ShowMessageBoxAsync(
             "Cancel Registration",
             $"Are you sure you want to cancel your registration for \"{_eventDetails?.Title}\"?",
             yesText: "Cancel Registration",
@@ -284,33 +286,21 @@ public partial class EventDetail : ComponentBase
     }
 
     /// <summary>
-    /// Checks if the current user is authorized to edit/delete this event.
+    /// Checks if the current user is authorized to edit/delete this event
+    /// by reading HAL links from the server response.
     /// </summary>
-    private async Task CheckDeleteAuthorizationAsync()
+    private void CheckAuthorizationFromHalLinks()
     {
-        try
+        if (_eventDetails == null)
         {
-            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            if (authState.User.Identity?.IsAuthenticated == true)
-            {
-                _canDelete = await EventService.CanDeleteEventAsync(EventId);
-                // Edit permissions follow the same rules as delete (owner or admin)
-                _canEdit = _canDelete;
-                Logger.LogDebug("Authorization check for event {EventId}: CanDelete={CanDelete}, CanEdit={CanEdit}", EventId, _canDelete, _canEdit);
-            }
-            else
-            {
-                _canDelete = false;
-                _canEdit = false;
-                Logger.LogDebug("User not authenticated, cannot edit/delete event {EventId}", EventId);
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error checking authorization for event {EventId}", EventId);
-            _canDelete = false;
             _canEdit = false;
+            _canDelete = false;
+            return;
         }
+
+        _canEdit = _eventDetails.HasHalLink("edit");
+        _canDelete = _eventDetails.HasHalLink("delete");
+        Logger.LogDebug("HAL link authorization for event {EventId}: CanEdit={CanEdit}, CanDelete={CanDelete}", EventId, _canEdit, _canDelete);
     }
 
     /// <summary>
@@ -456,7 +446,7 @@ public partial class EventDetail : ComponentBase
         // Ensure sessions are loaded
         if (_eventSessions == null || !_eventSessions.Any())
         {
-            await DialogService.ShowMessageBox(
+            await DialogService.ShowMessageBoxAsync(
                 "Registration unavailable",
                 "No sessions are available for this event yet.",
                 yesText: "OK");
@@ -749,7 +739,7 @@ public partial class EventDetail : ComponentBase
     /// </summary>
     private async Task ConfirmDeleteIslamicAspect()
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             "Delete Islamic Characteristics",
             "Are you sure you want to remove the Islamic characteristics from this event? This action cannot be undone.",
             yesText: "Delete",
@@ -782,7 +772,7 @@ public partial class EventDetail : ComponentBase
     /// </summary>
     private async Task ConfirmDeleteTechAspect()
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             "Delete Tech Characteristics",
             "Are you sure you want to remove the Tech characteristics from this event? This action cannot be undone.",
             yesText: "Delete",

@@ -1834,6 +1834,10 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("group_id");
 
+                    b.Property<int?>("GroupPositionId")
+                        .HasColumnType("integer")
+                        .HasColumnName("group_position_id");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
@@ -1861,6 +1865,9 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_group_members");
 
+                    b.HasIndex("GroupPositionId")
+                        .HasDatabaseName("ix_group_members_group_position_id");
+
                     b.HasIndex("RoleId")
                         .HasDatabaseName("ix_group_members_role_id");
 
@@ -1875,6 +1882,35 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_group_members_tenant_user");
 
                     b.ToTable("group_members", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.GroupPosition", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_group_position");
+
+                    b.ToTable("group_position", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.GroupSetting", b =>
@@ -4671,6 +4707,11 @@ namespace Explore.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_group_members_groups_group_id");
 
+                    b.HasOne("Explore.Domain.GroupPosition", "GroupPosition")
+                        .WithMany()
+                        .HasForeignKey("GroupPositionId")
+                        .HasConstraintName("fk_group_members_group_position_group_position_id");
+
                     b.HasOne("Explore.Domain.Role", "Role")
                         .WithMany()
                         .HasForeignKey("RoleId")
@@ -4693,6 +4734,8 @@ namespace Explore.Persistence.Migrations
                         .HasConstraintName("fk_group_members_users_user_id");
 
                     b.Navigation("Group");
+
+                    b.Navigation("GroupPosition");
 
                     b.Navigation("Role");
 

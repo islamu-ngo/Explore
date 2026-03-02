@@ -11,6 +11,7 @@ tools: All tools
 
 **Read these first (short files):**
 - `docs/SECURITY.md`
+- `docs/API.md`
 - `docs/ARCHITECTURE.md`
 - `.claude/skills/auth-patterns/SKILL.md` (+ referenced resources)
 - `.claude/skills/blazor-bff-patterns/SKILL.md` if Blazor/BFF involved
@@ -23,7 +24,10 @@ Diagnose 401/403 issues in API or Blazor auth flows. Identify whether the break 
 
 - Confirm endpoint attributes: `GET` = `[AllowAnonymous]`, writes = `[Authorize]`.
 - Verify claim extraction uses fallback `sub → nameidentifier → sid`.
-- Check middleware order in `Program.cs` (`UseAuthentication` before `UseAuthorization`).
+- Check middleware order in `Program.cs` (full 14-step pipeline: ExceptionHandling → SecurityHeaders → CorrelationId → RequestLogging → ResponseCompression → HTTPS → HATEOAS → Routing → RequestTimeouts → Authentication → RateLimiter → Authorization → OutputCache → ETag).
+- Check rate limiting policy assignment: Global (IP), Authenticated (user), Write (user), SetupSecret (IP).
+- Verify HATEOAS authorization evaluator is fail-closed (permission-bound links denied on batch failure).
+- Check JWT multi-audience validation: both `aud` and `azp` claims validated.
 
 ## Output
 

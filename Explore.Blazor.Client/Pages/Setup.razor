@@ -100,8 +100,8 @@
 
                 @if (_validationSucceeded)
                 {
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ContinueToLogin">
-                        Continue to Login
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ContinueToAuthConfig">
+                        Configure Authentication
                     </MudButton>
                 }
             </MudStack>
@@ -198,9 +198,9 @@
         _isSecretSyncedForAuthenticatedSession = false;
     }
 
-    private void ContinueToLogin()
+    private void ContinueToAuthConfig()
     {
-        Navigation.NavigateTo("/auth/login?returnUrl=/setup", forceLoad: true);
+        Navigation.NavigateTo("/onboarding/auth-provider");
     }
 
     private async Task RestoreSecretFromSessionAsync()

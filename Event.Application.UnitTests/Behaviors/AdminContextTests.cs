@@ -150,7 +150,7 @@ public class AdminContextTests
                 User = null!,
                 TenantId = ownerTenantId,
                 Tenant = null!,
-                RoleId = (int)RoleEnum.TenantOwner,
+                RoleId = (int)RoleEnum.TenantAdmin,
                 Role = null!
             },
             new()

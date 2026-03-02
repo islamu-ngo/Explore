@@ -17,6 +17,7 @@
     top: 1rem;
     max-height: calc(100vh - 2rem);
     overflow-y: auto;
+    background-color: transparent;
 }
 
 .settings-sidebar ::deep .mud-list {
@@ -25,7 +26,7 @@
 
 .settings-sidebar ::deep .mud-list-item {
     padding: 0.75rem 1rem;
-    border-left: 3px solid transparent;
+    border-left: 0.1875rem solid transparent;
     transition: all 0.2s ease;
     cursor: pointer;
     color: var(--mud-palette-text-secondary);
@@ -49,7 +50,8 @@
 
 /* Content Area */
 .settings-content {
-    min-height: 500px;
+    min-height: 31.25rem;
+    background-color: transparent;
 }
 
 /* Section Styles */
@@ -60,7 +62,7 @@
 @keyframes fadeIn {
     from {
         opacity: 0;
-        transform: translateY(10px);
+        transform: translateY(0.625rem);
     }
     to {
         opacity: 1;
@@ -86,52 +88,21 @@
     margin-bottom: 1rem;
 }
 
-/* Responsive Design */
-@media (max-width: 960px) {
-    .settings-sidebar {
-        position: relative;
-        top: 0;
-        max-height: none;
-        margin-bottom: 2rem;
-    }
-
-    .settings-sidebar ::deep .mud-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-    }
-
+/* Responsive Design - Icon-only compact sidebar on small screens */
+@media (max-width: 59.997em) {
     .settings-sidebar ::deep .mud-list-item {
-        flex: 1;
-        min-width: 150px;
-        border-left: none;
-        border-bottom: 3px solid transparent;
         padding: 0.75rem;
-        text-align: center;
+        justify-content: center;
+        border-left-width: 0.125rem;
     }
 
-    .settings-sidebar ::deep .mud-list-item.settings-nav-active {
-        border-left: none;
-        border-bottom-color: var(--mud-palette-primary);
+    .settings-sidebar ::deep .mud-list-item-text {
+        display: none;
     }
 
     .settings-sidebar ::deep .mud-list-item-icon {
-        margin-right: 0.5rem;
-    }
-}
-
-@media (max-width: 600px) {
-    .settings-sidebar ::deep .mud-list-item {
-        flex: 1 1 calc(50% - 0.25rem);
-        min-width: auto;
-    }
-
-    .settings-content ::deep .settings-section-header {
-        margin-bottom: 1.5rem;
-    }
-
-    .settings-content ::deep .settings-form-section {
-        margin-bottom: 1.5rem;
+        margin-right: 0;
+        min-width: unset;
     }
 }
 
@@ -180,13 +151,4 @@
     padding: 0.75rem;
 }
 
-/* Dark Mode Support */
-@media (prefers-color-scheme: dark) {
-    .settings-sidebar {
-        background-color: var(--mud-palette-surface);
-    }
 
-    .settings-content {
-        background-color: var(--mud-palette-surface);
-    }
-}

@@ -1,0 +1,19 @@
+{
+  "include": ["docs/**/*", "README.md", "CLAUDE.md"],
+  "output": {
+    "style": "markdown",
+    "filePath": ".repomix/repomix-docs.md",
+    "showLineNumbers": false,
+    "topFilesLength": 50,
+    "copyToClipboard": false
+  },
+  "ignore": {
+    "customPatterns": [
+      "docs/semantic_versioning/**/*",
+      "docs/docs-website/**/*",
+      ".claude/hooks/**/*"
+    ],
+    "useGitignore": true,
+    "useDefaultPatterns": true
+  }
+}

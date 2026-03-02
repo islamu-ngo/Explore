@@ -153,6 +153,22 @@ public static class GovernanceSettingKeys
         public const string CustomAdminEndpoint = "cerbos.custom_admin_endpoint";
     }
 
+    public static class Authentication
+    {
+        public const string KeycloakEnabled = "auth.keycloak_enabled";
+        public const string KeycloakAuthority = "auth.keycloak_authority";
+        public const string KeycloakClientId = "auth.keycloak_client_id";
+        public const string AtprotoLoginEnabled = "auth.atproto_login_enabled";
+        public const string AtprotoPublicUrl = "auth.atproto_public_url";
+        public const string GoogleSsoEnabled = "auth.google_sso_enabled";
+        public const string GoogleClientId = "auth.google_client_id";
+    }
+
+    public static class Federation
+    {
+        public const string DecentralizationEnabled = "federation.decentralization_enabled";
+    }
+
     public static class Analytics
     {
         public const string Provider = "analytics.provider";
@@ -236,4 +252,15 @@ public static class GovernanceSettingKeys
     public const string AnalyticsApiKey = Analytics.ApiKey;
     public const string AnalyticsEndpointUrl = Analytics.EndpointUrl;
     public const string AnalyticsPersonalApiKey = Analytics.PersonalApiKey;
+
+    public const string AuthKeycloakEnabled = Authentication.KeycloakEnabled;
+    public const string AuthKeycloakAuthority = Authentication.KeycloakAuthority;
+    public const string AuthKeycloakClientId = Authentication.KeycloakClientId;
+    public const string AuthKeycloakClientSecret = InfrastructureSecretSettingKeys.Authentication.KeycloakClientSecret;
+    public const string AuthAtprotoLoginEnabled = Authentication.AtprotoLoginEnabled;
+    public const string AuthAtprotoPublicUrl = Authentication.AtprotoPublicUrl;
+    public const string AuthGoogleSsoEnabled = Authentication.GoogleSsoEnabled;
+    public const string AuthGoogleClientId = Authentication.GoogleClientId;
+    public const string AuthGoogleClientSecret = InfrastructureSecretSettingKeys.Authentication.GoogleClientSecret;
+    public const string FederationDecentralizationEnabled = Federation.DecentralizationEnabled;
 }

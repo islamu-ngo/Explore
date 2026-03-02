@@ -443,6 +443,52 @@ public static class HalResourceExtensions
         };
     }
 
+    // ========== HAL Link Helpers ==========
+
+    /// <summary>
+    /// Checks if an EventListDto has a specific HAL link relation in its AdditionalProperties.
+    /// HAL links are preserved in AdditionalProperties["_links"] when deserialized from embedded items.
+    /// </summary>
+    public static bool HasHalLink(this EventListDto dto, string linkRel)
+    {
+        if (dto.AdditionalProperties == null ||
+            !dto.AdditionalProperties.TryGetValue("_links", out var linksObj))
+            return false;
+
+        if (linksObj is JsonElement linksElement && linksElement.ValueKind == JsonValueKind.Object)
+            return linksElement.TryGetProperty(linkRel, out _);
+
+        return false;
+    }
+
+    /// <summary>
+    /// Checks if an EventListDto has any management links (edit or delete).
+    /// </summary>
+    public static bool HasManagementLinks(this EventListDto dto)
+        => dto.HasHalLink("edit") || dto.HasHalLink("delete");
+
+    /// <summary>
+    /// Checks if a HalResourceOfEventDto has a specific HAL link relation.
+    /// </summary>
+    public static bool HasLink(this HalResourceOfEventDto dto, string linkRel)
+        => dto._links?.ContainsKey(linkRel) == true;
+
+    /// <summary>
+    /// Checks if an EventDto has a specific HAL link relation preserved in AdditionalProperties.
+    /// Links flow through from HalResourceOfEventDto.ToDto() via JSON round-trip.
+    /// </summary>
+    public static bool HasHalLink(this EventDto dto, string linkRel)
+    {
+        if (dto.AdditionalProperties == null ||
+            !dto.AdditionalProperties.TryGetValue("_links", out var linksObj))
+            return false;
+
+        if (linksObj is JsonElement linksElement && linksElement.ValueKind == JsonValueKind.Object)
+            return linksElement.TryGetProperty(linkRel, out _);
+
+        return false;
+    }
+
     // ========== Helper Methods ==========
 
     /// <summary>

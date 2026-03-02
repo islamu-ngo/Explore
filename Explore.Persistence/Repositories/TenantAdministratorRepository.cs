@@ -59,6 +59,6 @@ public class TenantMemberRepository : GenericRepository<TenantMember, Guid>, ITe
             .AsNoTracking()
             .AnyAsync(x => x.TenantId == tenantId
                 && x.UserId == userId
-                && (x.RoleId == (int)RoleEnum.TenantOwner || x.RoleId == (int)RoleEnum.TenantAdmin));
+                && x.RoleId == (int)RoleEnum.TenantAdmin);
     }
 }

@@ -702,7 +702,7 @@
                 {
                     @for (int i = 0; i < (_currentLayout == LayoutMode.SingleRow ? 3 : 8); i++)
                     {
-                        <MudItem xs="@bp.Xs" sm="@bp.Sm" md="@bp.Md" lg="@bp.Lg">
+                        <MudItem xs="@bp.Xs" sm="@bp.Sm" md="@bp.Md" lg="@bp.Lg" xl="@bp.Xl">
                             @if (_currentLayout == LayoutMode.CompactGrid)
                             {
                                 <MudCard Class="event-card event-card--CompactGrid rounded-lg" Elevation="0">
@@ -735,6 +735,23 @@
                                 {
                                     <MudCard @onclick="@(() => SelectEvent(evt))" Class="@GetCardCssClass(evt)" Outlined="true" Elevation="0" Style="overflow: hidden; cursor: pointer;">
                                         <div class="event-card__image-wrapper">
+                                            @if (evt.HasManagementLinks())
+                                            {
+                                                <div class="event-card__action-menu event-card__action-menu--overlay" @onclick:stopPropagation="true">
+                                                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
+                                                             AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                                                             Class="event-card__menu-button">
+                                                        @if (evt.HasHalLink("edit"))
+                                                        {
+                                                            <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => NavigateToEdit(evt))">Edit</MudMenuItem>
+                                                        }
+                                                        @if (evt.HasHalLink("delete"))
+                                                        {
+                                                            <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" OnClick="@(() => OpenDeleteDialog(evt))">Delete</MudMenuItem>
+                                                        }
+                                                    </MudMenu>
+                                                </div>
+                                            }
                                             @{ var compactImgSrc = string.IsNullOrEmpty(evt.FeaturedImageUri) ? GetEventImage(evt) : evt.FeaturedImageUri; }
                                             <div class="event-card__image-blur" style="background-image: url('@compactImgSrc');"></div>
                                             <MudImage Src="@compactImgSrc"
@@ -772,12 +789,30 @@
                                             <div class="event-card__horizontal-content">
                                                 <div class="d-flex justify-space-between align-center mb-1">
                                                     <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="ml-n1 font-weight-bold">@GetEventTypeName(evt)</MudChip>
-                                                    @if (evt.IsUserReported == true)
-                                                    {
-                                                        <MudTooltip Text="Community Reported">
-                                                            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Color="Color.Info" />
-                                                        </MudTooltip>
-                                                    }
+                                                    <div class="d-flex align-center gap-1">
+                                                        @if (evt.IsUserReported == true)
+                                                        {
+                                                            <MudTooltip Text="Community Reported">
+                                                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Color="Color.Info" />
+                                                            </MudTooltip>
+                                                        }
+                                                        @if (evt.HasManagementLinks())
+                                                        {
+                                                            <div @onclick:stopPropagation="true">
+                                                                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
+                                                                         AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                                                                    @if (evt.HasHalLink("edit"))
+                                                                    {
+                                                                        <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => NavigateToEdit(evt))">Edit</MudMenuItem>
+                                                                    }
+                                                                    @if (evt.HasHalLink("delete"))
+                                                                    {
+                                                                        <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" OnClick="@(() => OpenDeleteDialog(evt))">Delete</MudMenuItem>
+                                                                    }
+                                                                </MudMenu>
+                                                            </div>
+                                                        }
+                                                    </div>
                                                 </div>
                                                 <MudText Typo="Typo.subtitle1" Style="font-weight: 700; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;" Class="mb-1">
                                                     @evt.Title
@@ -841,6 +876,22 @@
                                                                 <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Color="Color.Info" />
                                                             </MudTooltip>
                                                         }
+                                                        @if (evt.HasManagementLinks())
+                                                        {
+                                                            <div @onclick:stopPropagation="true">
+                                                                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
+                                                                         AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                                                                    @if (evt.HasHalLink("edit"))
+                                                                    {
+                                                                        <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => NavigateToEdit(evt))">Edit</MudMenuItem>
+                                                                    }
+                                                                    @if (evt.HasHalLink("delete"))
+                                                                    {
+                                                                        <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" OnClick="@(() => OpenDeleteDialog(evt))">Delete</MudMenuItem>
+                                                                    }
+                                                                </MudMenu>
+                                                            </div>
+                                                        }
                                                     </div>
                                                 </div>
 
@@ -903,7 +954,7 @@
                             </MudItem>
                         </ItemContent>
                         <Placeholder>
-                            <MudItem xs="@bp.Xs" sm="@bp.Sm" md="@bp.Md" lg="@bp.Lg">
+                            <MudItem xs="@bp.Xs" sm="@bp.Sm" md="@bp.Md" lg="@bp.Lg" xl="@bp.Xl">
                                 <MudCard Class="event-card event-card--skeleton rounded-xl border-solid border-1 mud-border-lines-default" Elevation="0">
                                     <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
                                     <MudCardContent>

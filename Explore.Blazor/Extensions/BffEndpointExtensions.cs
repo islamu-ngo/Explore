@@ -1,12 +1,12 @@
 // ABOUTME: Maps all BFF server endpoints (auth, theme, setup-secret, upload-proxy, user info).
-// ABOUTME: Extracts inline endpoint delegates from Program.cs into organized extension methods.
+// ABOUTME: Supports multi-provider auth: challenge accepts ?provider= for Keycloak/Google/ATProto.
 
 using System.Net.Http.Headers;
 using Explore.Blazor.Client.Pages;
+using Explore.Blazor.Constants;
 using Explore.Blazor.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Http.Extensions;
 
 namespace Explore.Blazor.Extensions;
@@ -15,7 +15,7 @@ public static class BffEndpointExtensions
 {
     /// <summary>
     /// Maps authentication endpoints: /auth/challenge, /auth/login, /auth/signout, /auth/status.
-    /// Also maps /auth/debug in development mode.
+    /// Also maps /auth/providers and /auth/debug (dev mode only).
     /// </summary>
     public static WebApplication MapAuthEndpoints(this WebApplication app)
     {
@@ -26,6 +26,11 @@ public static class BffEndpointExtensions
         app.MapGet("/auth/signout", HandleSignoutAsync);
 
         app.MapGet("/auth/status", HandleAuthStatus);
+
+        app.MapGet("/auth/providers", HandleGetProviders);
+
+        app.MapPost("/bff/auth/refresh-schemes", HandleRefreshSchemesAsync)
+            .ExcludeFromDescription();
 
         if (app.Environment.IsDevelopment())
         {
@@ -70,32 +75,43 @@ public static class BffEndpointExtensions
         var logger = ctx.RequestServices.GetRequiredService<ILoggerFactory>()
             .CreateLogger("AuthEndpoints");
         var returnUrl = GetSafeReturnUrl(ctx, logger);
-        var config = ctx.RequestServices.GetRequiredService<IConfiguration>();
-
-        logger.LogDebug(
-            "[AuthEndpoints] /auth/challenge - Config check: Authority={Authority}, HasClientId={HasClientId}, HasSecret={HasSecret}",
-            config["Keycloak:Authority"],
-            !string.IsNullOrEmpty(config["Keycloak:ClientId"]),
-            !string.IsNullOrEmpty(config["Keycloak:ClientSecret"]));
+        var provider = ctx.Request.Query["provider"].ToString();
 
         logger.LogInformation(
-            "[AuthEndpoints] /auth/challenge hit - Url: {Url} ReturnUrl: {ReturnUrl}",
-            ctx.Request.GetDisplayUrl(), returnUrl);
+            "[AuthEndpoints] /auth/challenge hit - Provider: {Provider}, Url: {Url}, ReturnUrl: {ReturnUrl}",
+            provider, ctx.Request.GetDisplayUrl(), returnUrl);
+
+        // Resolve which auth scheme to challenge
+        var schemeName = ResolveProviderScheme(provider);
+        if (string.IsNullOrEmpty(schemeName))
+        {
+            // No provider specified — try to find a single registered provider
+            var schemeManager = ctx.RequestServices.GetRequiredService<IDynamicAuthSchemeManager>();
+            var registered = await schemeManager.GetRegisteredProviderSchemesAsync();
+
+            if (registered.Count == 1)
+            {
+                schemeName = registered[0];
+            }
+            else
+            {
+                // Multiple or no providers — redirect to login page for selection
+                ctx.Response.Redirect($"/login?returnUrl={Uri.EscapeDataString(returnUrl)}");
+                return;
+            }
+        }
 
         try
         {
             await ctx.ChallengeAsync(
-                OpenIdConnectDefaults.AuthenticationScheme,
+                schemeName,
                 new AuthenticationProperties { RedirectUri = returnUrl });
         }
         catch (Exception ex)
         {
             logger.LogError(ex,
-                "[AuthEndpoints] Error during login challenge. Authority: {Authority}, ClientId: {ClientId}, HasSecret: {HasSecret}, InnerException: {Inner}",
-                config["Keycloak:Authority"],
-                config["Keycloak:ClientId"],
-                !string.IsNullOrEmpty(config["Keycloak:ClientSecret"]),
-                ex.InnerException?.Message);
+                "[AuthEndpoints] Error during {Provider} login challenge: {Error}",
+                schemeName, ex.InnerException?.Message ?? ex.Message);
 
             ctx.Response.StatusCode = 500;
             await ctx.Response.WriteAsJsonAsync(new { error = "Login failed. Please try again later." });
@@ -107,7 +123,13 @@ public static class BffEndpointExtensions
         var logger = ctx.RequestServices.GetRequiredService<ILoggerFactory>()
             .CreateLogger("AuthEndpoints");
         var returnUrl = Uri.EscapeDataString(GetSafeReturnUrl(ctx, logger));
-        ctx.Response.Redirect($"/auth/challenge?returnUrl={returnUrl}");
+        var provider = ctx.Request.Query["provider"].ToString();
+
+        var redirectUrl = string.IsNullOrEmpty(provider)
+            ? $"/auth/challenge?returnUrl={returnUrl}"
+            : $"/auth/challenge?provider={Uri.EscapeDataString(provider)}&returnUrl={returnUrl}";
+
+        ctx.Response.Redirect(redirectUrl);
         return Task.CompletedTask;
     }
 
@@ -123,11 +145,37 @@ public static class BffEndpointExtensions
 
         try
         {
+            // Always sign out of the cookie session
             await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            await ctx.SignOutAsync(
-                OpenIdConnectDefaults.AuthenticationScheme,
-                new AuthenticationProperties { RedirectUri = returnUrl });
-            logger.LogInformation("[AuthEndpoints] Signout completed");
+
+            // If user authenticated via an OIDC provider, sign out of that too
+            // (triggers RP-initiated logout at the IdP for Keycloak/Google)
+            var schemeManager = ctx.RequestServices.GetRequiredService<IDynamicAuthSchemeManager>();
+            var registered = await schemeManager.GetRegisteredProviderSchemesAsync();
+
+            foreach (var scheme in registered)
+            {
+                if (scheme is AuthSchemeNames.Keycloak or AuthSchemeNames.Google)
+                {
+                    try
+                    {
+                        await ctx.SignOutAsync(scheme,
+                            new AuthenticationProperties { RedirectUri = returnUrl });
+                        logger.LogInformation("[AuthEndpoints] Signed out of {Scheme}", scheme);
+                        return; // OIDC signout handles redirect
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogDebug(ex,
+                            "[AuthEndpoints] Could not sign out of {Scheme} — user may not have used this provider",
+                            scheme);
+                    }
+                }
+            }
+
+            // Fallback: redirect manually if no OIDC signout performed
+            ctx.Response.Redirect(returnUrl);
+            logger.LogInformation("[AuthEndpoints] Signout completed (cookie only)");
         }
         catch (Exception ex)
         {
@@ -379,6 +427,69 @@ public static class BffEndpointExtensions
                 .Where(c => safeClaims.Contains(c.Type, StringComparer.OrdinalIgnoreCase))
                 .Select(c => new { c.Type, c.Value })
         });
+    }
+
+    // ──────────────────────────────────────────────
+    // Multi-provider auth helpers
+    // ──────────────────────────────────────────────
+
+    private static async Task<IResult> HandleGetProviders(HttpContext ctx)
+    {
+        var schemeManager = ctx.RequestServices.GetRequiredService<IDynamicAuthSchemeManager>();
+        var registered = await schemeManager.GetRegisteredProviderSchemesAsync();
+
+        var config = ctx.RequestServices.GetRequiredService<IConfiguration>();
+        var keycloakFromEnv = !string.IsNullOrEmpty(config["Keycloak:Authority"]);
+
+        var providers = registered.Select(scheme => new
+        {
+            name = scheme,
+            displayName = scheme switch
+            {
+                AuthSchemeNames.Keycloak => "Keycloak",
+                AuthSchemeNames.Google => "Google",
+                AuthSchemeNames.Atproto => "AT Protocol",
+                _ => scheme
+            },
+            type = scheme switch
+            {
+                AuthSchemeNames.Atproto => "handle_input",
+                _ => "button"
+            },
+            recommended = scheme == AuthSchemeNames.Keycloak && keycloakFromEnv
+        });
+
+        return Results.Ok(new { providers });
+    }
+
+    private static async Task<IResult> HandleRefreshSchemesAsync(HttpContext ctx)
+    {
+        // Pass the setup secret from cookie so the manager can call the internal endpoint
+        // that returns credentials (client secrets) needed for OIDC scheme registration.
+        var setupSecret = ctx.Request.Cookies["setup-secret"];
+        var schemeManager = ctx.RequestServices.GetRequiredService<IDynamicAuthSchemeManager>();
+        await schemeManager.RefreshSchemesAsync(setupSecret);
+
+        var registered = await schemeManager.GetRegisteredProviderSchemesAsync();
+        return Results.Ok(new { refreshed = true, providers = registered });
+    }
+
+    /// <summary>
+    /// Maps a provider query parameter to its auth scheme name.
+    /// Returns null if the provider is unknown or not specified.
+    /// </summary>
+    private static string? ResolveProviderScheme(string? provider)
+    {
+        if (string.IsNullOrWhiteSpace(provider))
+            return null;
+
+        return provider.ToLowerInvariant() switch
+        {
+            "keycloak" => AuthSchemeNames.Keycloak,
+            "google" => AuthSchemeNames.Google,
+            "atproto" => AuthSchemeNames.Atproto,
+            _ => null
+        };
     }
 
     // ──────────────────────────────────────────────

@@ -136,7 +136,7 @@
             return;
         }
 
-        var ok = await DialogService.ShowMessageBox(
+        var ok = await DialogService.ShowMessageBoxAsync(
             "Confirm approval",
             $"Approve {req.FullName}?",
             yesText: "Approve",
@@ -163,7 +163,7 @@
             return;
         }
 
-        var ok = await DialogService.ShowMessageBox(
+        var ok = await DialogService.ShowMessageBoxAsync(
             "Confirm rejection",
             $"Reject {req.FullName}?",
             yesText: "Reject",

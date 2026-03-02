@@ -22,4 +22,10 @@ public static class InfrastructureSecretSettingKeys
         public const string CustomAdminUsername = "cerbos.custom_admin_username";
         public const string CustomAdminPassword = "cerbos.custom_admin_password";
     }
+
+    public static class Authentication
+    {
+        public const string KeycloakClientSecret = "auth.keycloak_client_secret";
+        public const string GoogleClientSecret = "auth.google_client_secret";
+    }
 }
