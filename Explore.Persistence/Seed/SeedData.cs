@@ -16,7 +16,7 @@ namespace Explore.Persistence.Seed;
 ///
 /// Seeding order matters due to FK constraints and circular dependencies (User/Org ↔ Actor):
 /// 1. Tenant → 2. Users (no ActorId) → 3. Organizations (no ActorId) → 4. Actors →
-/// 5. Update Users/Orgs with ActorId → 6. TenantUsers, OrgMembers, Storage →
+/// 5. Update Users/Orgs with ActorId → 6. TenantMembers, OrgMembers, Storage →
 /// 7. Settings, Capabilities → 8. Categories, Tags, Location → 9. Sample Event
 /// </summary>
 public static class SeedData
@@ -37,9 +37,12 @@ public static class SeedData
     public static User AdminUser => new()
     {
         Id = SeedIds.AdminUserId,
-        Email = "admin@islamu.dev",
-        FirstName = "Admin",
-        LastName = "User",
+        Pii = new UserPii
+        {
+            Email = "admin@islamu.dev",
+            FirstName = "Admin",
+            LastName = "User"
+        },
         AuthProvider = "dev",
         AuthProviderId = "admin-001",
         EmailVerified = true,
@@ -49,9 +52,12 @@ public static class SeedData
     public static User RegularUser => new()
     {
         Id = SeedIds.RegularUserId,
-        Email = "user@islamu.dev",
-        FirstName = "Regular",
-        LastName = "User",
+        Pii = new UserPii
+        {
+            Email = "user@islamu.dev",
+            FirstName = "Regular",
+            LastName = "User"
+        },
         AuthProvider = "dev",
         AuthProviderId = "user-001",
         EmailVerified = true,
@@ -61,9 +67,12 @@ public static class SeedData
     public static User ModeratorUser => new()
     {
         Id = SeedIds.ModeratorUserId,
-        Email = "moderator@islamu.dev",
-        FirstName = "Moderator",
-        LastName = "User",
+        Pii = new UserPii
+        {
+            Email = "moderator@islamu.dev",
+            FirstName = "Moderator",
+            LastName = "User"
+        },
         AuthProvider = "dev",
         AuthProviderId = "moderator-001",
         EmailVerified = true,
@@ -74,13 +83,16 @@ public static class SeedData
     public static Organization IslamuOrg => new()
     {
         Id = SeedIds.IslamuOrgId,
-        FullName = "ISLAMU",
+        Pii = new OrganizationPii
+        {
+            FullName = "ISLAMU",
+            Email = "contact@openislamu.org",
+            Country = "Belgium",
+            City = "Brussels",
+            Postcode = "1070",
+            Address = "Parc Du Peterbos"
+        },
         WebsiteUrl = "https://islamu.ngo",
-        Email = "contact@openislamu.org",
-        Country = "Belgium",
-        City = "Brussels",
-        Postcode = "1070",
-        Address = "Parc Du Peterbos",
         ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
         ApprovalStatus = null!,
         TenantId = SeedIds.DefaultTenantId,
@@ -91,13 +103,16 @@ public static class SeedData
     public static Organization TechOrg => new()
     {
         Id = SeedIds.TechOrgId,
-        FullName = "Tech Community",
+        Pii = new OrganizationPii
+        {
+            FullName = "Tech Community",
+            Email = "hello@techcommunity.dev",
+            Country = "Belgium",
+            City = "Antwerp",
+            Postcode = "2000",
+            Address = "Tech Hub 1"
+        },
         WebsiteUrl = "https://techcommunity.dev",
-        Email = "hello@techcommunity.dev",
-        Country = "Belgium",
-        City = "Antwerp",
-        Postcode = "2000",
-        Address = "Tech Hub 1",
         ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
         ApprovalStatus = null!,
         TenantId = SeedIds.DefaultTenantId,
@@ -113,8 +128,11 @@ public static class SeedData
         ActorType = null!,
         TenantId = SeedIds.DefaultTenantId,
         Tenant = null!,
-        DisplayName = "Admin User",
-        Handle = "admin",
+        Pii = new ActorPii
+        {
+            DisplayName = "Admin User",
+            Handle = "admin"
+        },
         Description = "Platform administrator",
         UserId = SeedIds.AdminUserId,
         OrganizationId = null
@@ -127,8 +145,11 @@ public static class SeedData
         ActorType = null!,
         TenantId = SeedIds.DefaultTenantId,
         Tenant = null!,
-        DisplayName = "Regular User",
-        Handle = "user",
+        Pii = new ActorPii
+        {
+            DisplayName = "Regular User",
+            Handle = "user"
+        },
         Description = "Regular platform user",
         UserId = SeedIds.RegularUserId,
         OrganizationId = null
@@ -141,8 +162,11 @@ public static class SeedData
         ActorType = null!,
         TenantId = SeedIds.DefaultTenantId,
         Tenant = null!,
-        DisplayName = "Moderator User",
-        Handle = "moderator",
+        Pii = new ActorPii
+        {
+            DisplayName = "Moderator User",
+            Handle = "moderator"
+        },
         Description = "Platform moderator",
         UserId = SeedIds.ModeratorUserId,
         OrganizationId = null
@@ -156,8 +180,11 @@ public static class SeedData
         ActorType = null!,
         TenantId = SeedIds.DefaultTenantId,
         Tenant = null!,
-        DisplayName = "ISLAMU",
-        Handle = "islamu",
+        Pii = new ActorPii
+        {
+            DisplayName = "ISLAMU",
+            Handle = "islamu"
+        },
         Description = "ISLAMU NGO - Islamic Learning and Media Union",
         UserId = null,
         OrganizationId = SeedIds.IslamuOrgId
@@ -170,45 +197,54 @@ public static class SeedData
         ActorType = null!,
         TenantId = SeedIds.DefaultTenantId,
         Tenant = null!,
-        DisplayName = "Tech Community",
-        Handle = "techcommunity",
+        Pii = new ActorPii
+        {
+            DisplayName = "Tech Community",
+            Handle = "techcommunity"
+        },
         Description = "Tech Community Belgium",
         UserId = null,
         OrganizationId = SeedIds.TechOrgId
     };
 
-    // ===== Tenant Users =====
-    public static TenantUser AdminTenantUser => new()
+    // ===== Tenant Members =====
+    public static TenantMember AdminTenantMember => new()
     {
-        Id = SeedIds.AdminTenantUserId,
+        Id = SeedIds.AdminTenantMemberId,
         UserId = SeedIds.AdminUserId,
         User = null!,
         TenantId = SeedIds.DefaultTenantId,
         Tenant = null!,
         RoleId = (int)RoleEnum.TenantAdmin,
-        Role = null!
+        Role = null!,
+        GrantedAt = SeedTimestamp,
+        CreatedAt = SeedTimestamp
     };
 
-    public static TenantUser RegularTenantUser => new()
+    public static TenantMember RegularTenantMember => new()
     {
-        Id = SeedIds.RegularTenantUserId,
+        Id = SeedIds.RegularTenantMemberId,
         UserId = SeedIds.RegularUserId,
         User = null!,
         TenantId = SeedIds.DefaultTenantId,
         Tenant = null!,
         RoleId = (int)RoleEnum.TenantMember,
-        Role = null!
+        Role = null!,
+        GrantedAt = SeedTimestamp,
+        CreatedAt = SeedTimestamp
     };
 
-    public static TenantUser ModeratorTenantUser => new()
+    public static TenantMember ModeratorTenantMember => new()
     {
-        Id = SeedIds.ModeratorTenantUserId,
+        Id = SeedIds.ModeratorTenantMemberId,
         UserId = SeedIds.ModeratorUserId,
         User = null!,
         TenantId = SeedIds.DefaultTenantId,
         Tenant = null!,
         RoleId = (int)RoleEnum.TenantModerator,
-        Role = null!
+        Role = null!,
+        GrantedAt = SeedTimestamp,
+        CreatedAt = SeedTimestamp
     };
 
     // ===== Organization Members =====
@@ -371,10 +407,13 @@ public static class SeedData
     {
         Id = SeedIds.OnlineLocationId,
         FullName = "Online / Virtual",
-        Address = "Virtual",
-        Postcode = "00000",
         Country = "Internet",
         City = "Virtual",
+        Pii = new LocationPii
+        {
+            Address = "Virtual",
+            Postcode = "00000"
+        },
         Timezone = "UTC",
         TenantId = SeedIds.DefaultTenantId,
         Tenant = null!

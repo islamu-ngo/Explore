@@ -53,7 +53,7 @@ ISLAMU Event is a **self-hostable event discovery and management platform** that
 - **🔧 Modular Events:** Plugin-style aspects (Islamic, Tech) with per-tenant enablement
 - **🎯 Cultural Intelligence:** Advanced filtering based on enabled modules. filter by madhab, gender, age, prayer times, skill level...
 - **🏗️ Enterprise Architecture:** Clean Architecture + CQRS with MediatR, REST Level 3 (HATEOAS)
-- **🌍 Federation-Ready:** ATProto/ActivityPub data models complete (Phase 1), protocol endpoints planned for 1.0.0
+- **🌍 Federation-Ready:** ATProto data models complete (Phase 1), ActivityPub and protocol endpoints planned for 1.0.0
 - **🧪 Test Coverage:** 7 test projects (TUnit, bUnit, architecture tests)
 - **📖 Open Source:** AGPL-3.0 licensed for transparency and community ownership
 
@@ -84,7 +84,7 @@ ISLAMU Event is a **self-hostable event discovery and management platform** that
 - **💼 Multi-Tenancy:** Switch between single-tenant and SaaS modes at runtime without code changes
 - **🛠️ White-Label Control:** Custom branding, domains, logos, navigation links, policies per tenant
 - **🔧 Admin Hierarchy:** Instance admins, tenant admins, and organization admins with cascading settings
-- **🌍 Federation Foundation:** ATProto/ActivityPub data models complete (Phase 1), protocol endpoints planned for 1.0.0
+- **🌍 Federation Foundation:** ATProto data models complete (Phase 1), ActivityPub and protocol endpoints planned for 1.0.0
 - **📚 Comprehensive Docs:** Architecture, deployment, configuration, troubleshooting, and API reference
 - **🔐 Enterprise Security:** BFF pattern, Cerbos authorization, Infisical secrets, HATEOAS REST API
 

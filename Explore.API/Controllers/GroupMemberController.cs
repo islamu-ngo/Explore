@@ -36,6 +36,21 @@ public class GroupMemberController : ControllerBase
         return Ok(members);
     }
 
+    [HttpGet("member/{id:guid}", Name = RouteNames.GetGroupMemberById)]
+    [AllowAnonymous]
+    [OutputCache(PolicyName = "DetailData")]
+    [ProducesResponseType(typeof(GroupMemberDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<GroupMemberDto>> GetById(Guid id, CancellationToken cancellationToken = default)
+    {
+        var member = await _mediator.Send(new GetGroupMemberDetailsRequest { Id = id }, cancellationToken);
+        if (member is null)
+        {
+            return NotFound();
+        }
+        return Ok(member);
+    }
+
     [HttpPost(Name = RouteNames.CreateGroupMember)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

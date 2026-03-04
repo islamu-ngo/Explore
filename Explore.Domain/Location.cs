@@ -7,35 +7,27 @@ namespace Explore.Domain;
 public class Location : ITenantEntity
 {
     public Guid Id { get; set; }
-    public string FullName { get; set; }
-    public string Country { get; set; }
-    public string City { get; set; }
+    public required string FullName { get; set; }
+    public required string Country { get; set; }
+    public required string City { get; set; }
 
     /// <summary>
     /// 1:1 extension table containing precise location PII data.
     /// </summary>
-    public LocationPii? Pii { get; set; }
+    public required LocationPii Pii { get; set; }
 
     [NotMapped]
     public string Address
     {
-        get => Pii?.Address ?? null!;
-        set
-        {
-            EnsurePii();
-            Pii!.Address = value;
-        }
+        get => Pii.Address;
+        set => Pii.Address = value;
     }
 
     [NotMapped]
     public string Postcode
     {
-        get => Pii?.Postcode ?? null!;
-        set
-        {
-            EnsurePii();
-            Pii!.Postcode = value;
-        }
+        get => Pii.Postcode;
+        set => Pii.Postcode = value;
     }
 
     [ForeignKey("Tenant")]
@@ -45,34 +37,17 @@ public class Location : ITenantEntity
     [NotMapped]
     public double? Latitude
     {
-        get => Pii?.Latitude;
-        set
-        {
-            EnsurePii();
-            Pii!.Latitude = value;
-        }
+        get => Pii.Latitude;
+        set => Pii.Latitude = value;
     }
 
     [NotMapped]
     public double? Longitude
     {
-        get => Pii?.Longitude;
-        set
-        {
-            EnsurePii();
-            Pii!.Longitude = value;
-        }
+        get => Pii.Longitude;
+        set => Pii.Longitude = value;
     }
 
     public string? Timezone { get; set; }
 
-    private void EnsurePii()
-    {
-        Pii ??= new LocationPii
-        {
-            Location = this,
-            Address = null!,
-            Postcode = null!
-        };
-    }
 }

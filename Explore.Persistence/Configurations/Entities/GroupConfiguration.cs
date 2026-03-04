@@ -28,7 +28,7 @@ public class GroupConfiguration : IEntityTypeConfiguration<Group>
             .HasMaxLength(5000);
 
         builder.Property(e => e.MetadataJson)
-            .HasColumnType("text");
+            .HasColumnType("jsonb");
 
         builder.HasOne(e => e.ApprovalStatus)
             .WithMany()
@@ -55,5 +55,9 @@ public class GroupConfiguration : IEntityTypeConfiguration<Group>
 
         builder.HasIndex(e => new { e.TenantId, e.FullName })
             .HasDatabaseName("ix_groups_tenant_name");
+
+        // Optimistic concurrency control (database-agnostic)
+        builder.Property(e => e.ConcurrencyStamp)
+            .IsConcurrencyToken();
     }
 }

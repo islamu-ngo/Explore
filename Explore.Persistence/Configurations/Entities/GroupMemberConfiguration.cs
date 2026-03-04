@@ -36,6 +36,11 @@ public class GroupMemberConfiguration : IEntityTypeConfiguration<GroupMember>
             .HasForeignKey(e => e.TenantId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasOne(e => e.GroupPosition)
+            .WithMany()
+            .HasForeignKey(e => e.GroupPositionId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasIndex(e => new { e.GroupId, e.UserId })
             .IsUnique()
             .HasDatabaseName("ix_group_members_group_user");

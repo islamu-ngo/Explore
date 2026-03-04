@@ -52,6 +52,10 @@ public class InstanceGovernanceSettingsDto
     public bool LockTenantBrandCustomCssUrl { get; set; }
     public bool LockTenantEventCardClickBehavior { get; set; }
 
+    // Federation
+    public bool DecentralizationEnabled { get; set; }
+    public bool LockDecentralizationEnabled { get; set; }
+
     // Authorization
     public string AuthorizationProvider { get; set; } = "local";
 }

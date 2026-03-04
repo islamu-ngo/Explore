@@ -1,6 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Text;
+// ABOUTME: Lookup entity representing a named position within a Group (e.g., Leader, Coordinator).
+// ABOUTME: Mirrors OrganizationPosition pattern — referenced by GroupMember via nullable FK.
 
 namespace Explore.Domain;
 

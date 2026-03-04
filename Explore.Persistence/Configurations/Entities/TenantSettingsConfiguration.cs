@@ -17,6 +17,10 @@ public class TenantSettingsConfiguration : IEntityTypeConfiguration<TenantSettin
             .HasForeignKey(e => e.TenantId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // Optimistic concurrency control (database-agnostic)
+        builder.Property(e => e.ConcurrencyStamp)
+            .IsConcurrencyToken();
+
         // NOTE: Business entity seed data moved to DatabaseSeeder for conditional (Development-only) seeding.
         // See Explore.Persistence/Seed/DatabaseSeeder.cs and SeedData.cs
     }

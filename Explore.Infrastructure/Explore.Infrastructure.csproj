@@ -31,4 +31,8 @@
     <ProjectReference Include="..\Explore.Application\Explore.Application.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Localization\Bundles\*.json" />
+  </ItemGroup>
+
 </Project>

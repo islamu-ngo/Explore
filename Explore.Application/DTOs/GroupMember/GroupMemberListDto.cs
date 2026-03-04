@@ -1,3 +1,6 @@
+// ABOUTME: List projection DTO for GroupMember with role and position info.
+// ABOUTME: Includes GroupPosition fields to match detail DTO pattern.
+
 using System;
 
 namespace Explore.Application.DTOs.GroupMember;
@@ -12,4 +15,8 @@ public class GroupMemberListDto
     public string? UserFullName { get; set; }
     public int RoleId { get; set; }
     public string? RoleName { get; set; }
+
+    // Position
+    public int? GroupPositionId { get; set; }
+    public string? GroupPositionFullName { get; set; }
 }

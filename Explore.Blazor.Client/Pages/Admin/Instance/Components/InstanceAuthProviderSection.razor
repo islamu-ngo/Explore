@@ -1,0 +1,94 @@
+@* ABOUTME: Instance admin settings section for post-onboarding authentication provider management. *@
+@* ABOUTME: Allows enabling/disabling Keycloak, Google, and ATProto login plus instance-level lock flags. *@
+
+@using Explore.Blazor.Client.Services
+@using MudBlazor
+
+<div class="settings-section">
+    <div class="settings-section-header">
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Auth Providers</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+            Configure which authentication providers users can use on this instance.
+        </MudText>
+    </div>
+
+    @if (!HasAnyProviderEnabled)
+    {
+        <MudAlert Severity="Severity.Warning" Class="mb-4">
+            At least one provider must remain enabled.
+        </MudAlert>
+    }
+
+    <MudStack Spacing="3">
+        <MudPaper Outlined="true" Class="pa-4">
+            <MudStack Spacing="2">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                    <MudSwitch T="bool" @bind-Value="Model.KeycloakEnabled" Color="Color.Primary">Keycloak</MudSwitch>
+                    <MudTooltip Text="Self-hosted OIDC provider for full identity management control.">
+                        <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" />
+                    </MudTooltip>
+                </MudStack>
+
+                @if (Model.KeycloakEnabled)
+                {
+                    <MudTextField T="string" Label="Authority URL" Variant="Variant.Outlined" @bind-Value="Model.KeycloakAuthority" />
+                    <MudTextField T="string" Label="Client ID" Variant="Variant.Outlined" @bind-Value="Model.KeycloakClientId" />
+                    <MudTextField T="string" Label="Client Secret" Variant="Variant.Outlined" InputType="InputType.Password" @bind-Value="Model.KeycloakClientSecret" />
+                }
+
+                <MudSwitch T="bool" @bind-Value="Model.LockKeycloakEnabled" Color="Color.Warning">
+                    Lock Keycloak setting for tenants
+                </MudSwitch>
+            </MudStack>
+        </MudPaper>
+
+        <MudPaper Outlined="true" Class="pa-4">
+            <MudStack Spacing="2">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                    <MudSwitch T="bool" @bind-Value="Model.AtprotoLoginEnabled" Color="Color.Primary">AT Protocol Login</MudSwitch>
+                    <MudTooltip Text="Users authenticate with AT Protocol identities; optionally link decentralization separately.">
+                        <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" />
+                    </MudTooltip>
+                </MudStack>
+
+                @if (Model.AtprotoLoginEnabled)
+                {
+                    <MudTextField T="string" Label="Public URL" Variant="Variant.Outlined" @bind-Value="Model.AtprotoPublicUrl" HelperText="Used to serve ATProto OAuth client metadata." />
+                }
+
+                <MudSwitch T="bool" @bind-Value="Model.LockAtprotoLoginEnabled" Color="Color.Warning">
+                    Lock AT Protocol setting for tenants
+                </MudSwitch>
+            </MudStack>
+        </MudPaper>
+
+        <MudPaper Outlined="true" Class="pa-4">
+            <MudStack Spacing="2">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                    <MudSwitch T="bool" @bind-Value="Model.GoogleSsoEnabled" Color="Color.Primary">Google SSO</MudSwitch>
+                    <MudTooltip Text="OAuth sign-in using Google accounts.">
+                        <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" />
+                    </MudTooltip>
+                </MudStack>
+
+                @if (Model.GoogleSsoEnabled)
+                {
+                    <MudTextField T="string" Label="Client ID" Variant="Variant.Outlined" @bind-Value="Model.GoogleClientId" />
+                    <MudTextField T="string" Label="Client Secret" Variant="Variant.Outlined" InputType="InputType.Password" @bind-Value="Model.GoogleClientSecret" />
+                }
+
+                <MudSwitch T="bool" @bind-Value="Model.LockGoogleSsoEnabled" Color="Color.Warning">
+                    Lock Google setting for tenants
+                </MudSwitch>
+            </MudStack>
+        </MudPaper>
+    </MudStack>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public AuthProviderConfigurationModel Model { get; set; } = null!;
+
+    private bool HasAnyProviderEnabled =>
+        Model.KeycloakEnabled || Model.AtprotoLoginEnabled || Model.GoogleSsoEnabled;
+}

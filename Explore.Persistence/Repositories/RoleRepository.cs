@@ -120,10 +120,9 @@ public class RoleRepository : GenericRepository<Role, int>, IRoleRepository
 
         if (hasOrgMembers) return true;
 
-        // TenantUser doesn't implement ISoftDeletable
-        var hasTenantUsers = await _dbContext.TenantUsers
-            .AnyAsync(tu => tu.RoleId == roleId);
+        var hasTenantMembers = await _dbContext.TenantMembers
+            .AnyAsync(tm => tm.RoleId == roleId);
 
-        return hasTenantUsers;
+        return hasTenantMembers;
     }
 }

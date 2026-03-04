@@ -25,6 +25,7 @@ public interface IInstanceOnboardingService
     // Auth provider configuration
     Task<AuthProviderConfigurationModel> GetAuthProviderConfigurationAsync();
     Task<InstanceCommandResponseModel> SaveAuthProviderConfigurationAsync(AuthProviderConfigurationModel config);
+    Task<InstanceCommandResponseModel> UpdateAuthProviderConfigurationAsAdminAsync(AuthProviderConfigurationModel config);
     Task<bool> IsAuthProviderConfiguredAsync();
     Task RefreshAuthSchemesAsync();
 }
@@ -127,6 +128,9 @@ public class InstanceOnboardingService : IInstanceOnboardingService
 
     public Task<InstanceCommandResponseModel> SaveAuthProviderConfigurationAsync(AuthProviderConfigurationModel config) =>
         SendCommandAsync(HttpMethod.Put, "api/InstanceOnboarding/auth-provider-configuration", config);
+
+    public Task<InstanceCommandResponseModel> UpdateAuthProviderConfigurationAsAdminAsync(AuthProviderConfigurationModel config) =>
+        SendCommandAsync(HttpMethod.Put, "api/InstanceOnboarding/admin/auth-provider-configuration", config);
 
     public async Task<bool> IsAuthProviderConfiguredAsync()
     {
@@ -358,6 +362,9 @@ public class InstanceGovernanceSettingsModel
     public bool LockTenantBrandFaviconUrl { get; set; }
     public bool LockTenantBrandCustomCssUrl { get; set; }
     public bool LockTenantEventCardClickBehavior { get; set; }
+    // Federation
+    public bool DecentralizationEnabled { get; set; }
+    public bool LockDecentralizationEnabled { get; set; }
 }
 
 public class InstanceCommandResponseModel

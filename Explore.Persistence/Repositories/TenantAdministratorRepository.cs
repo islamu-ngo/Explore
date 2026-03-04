@@ -61,4 +61,28 @@ public class TenantMemberRepository : GenericRepository<TenantMember, Guid>, ITe
                 && x.UserId == userId
                 && x.RoleId == (int)RoleEnum.TenantAdmin);
     }
+
+    public async Task<TenantMember?> GetMemberWithDetails(Guid id)
+    {
+        return await _dbContext.TenantMembers
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(x => x.User)
+                .ThenInclude(u => u!.Pii)
+            .Include(x => x.Tenant)
+            .Include(x => x.Role)
+            .FirstOrDefaultAsync(x => x.Id == id);
+    }
+
+    public async Task<List<TenantMember>> GetMembersWithDetails()
+    {
+        return await _dbContext.TenantMembers
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(x => x.User)
+                .ThenInclude(u => u!.Pii)
+            .Include(x => x.Tenant)
+            .Include(x => x.Role)
+            .ToListAsync();
+    }
 }

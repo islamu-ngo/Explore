@@ -61,6 +61,15 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
             return response;
         }
 
+        // Verify the target event belongs to the same tenant as the session (defense-in-depth)
+        var parentEvent = await _eventRepository.GetById(request.EventSessionDto.EventId);
+        if (parentEvent == null || parentEvent.TenantId != eventSession.TenantId)
+        {
+            response.Success = false;
+            response.Message = "Event does not belong to the same tenant as the session.";
+            return response;
+        }
+
         _mapper.Map(request.EventSessionDto, eventSession);
 
         await _eventSessionRepository.Update(eventSession);

@@ -167,7 +167,7 @@ public class EventTests
     {
         return new Actor
         {
-            DisplayName = "Actor",
+            Pii = new ActorPii { DisplayName = "Actor" },
             ActorType = CreateActorType(),
             Tenant = CreateTenant()
         };

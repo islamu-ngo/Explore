@@ -16,7 +16,7 @@ public class UserPiiConfiguration : IEntityTypeConfiguration<UserPii>
         builder.HasKey(e => e.UserId);
 
         builder.Property(e => e.Email)
-            .HasMaxLength(500)
+            .HasMaxLength(320)
             .IsRequired();
 
         builder.Property(e => e.FirstName)

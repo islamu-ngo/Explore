@@ -1,5 +1,5 @@
 using Explore.Application.Contracts.Persistence;
-using Explore.Application.DTOs.UserExternalLogin;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.UserExternalLogins.Requests.Commands;
 using MediatR;
 
@@ -20,6 +20,12 @@ public class DeleteUserExternalLoginCommandHandler : IRequestHandler<DeleteUserE
         if (login == null)
         {
             return false;
+        }
+
+        var userLogins = await _userExternalLoginRepository.GetByUser(login.UserId);
+        if (userLogins.Count <= 1)
+        {
+            throw new BadRequestException("Cannot unlink the last remaining authentication provider.");
         }
 
         await _userExternalLoginRepository.Delete(login);

@@ -22,5 +22,10 @@ public class EventSessionLanguageConfiguration : IEntityTypeConfiguration<EventS
             .WithMany()
             .HasForeignKey(e => e.TenantId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Unique constraint: one language per event session
+        builder.HasIndex(e => new { e.EventSessionId, e.LanguageId })
+            .IsUnique()
+            .HasDatabaseName("ix_eventsessionlanguages_session_language");
     }
 }

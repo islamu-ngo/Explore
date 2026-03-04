@@ -12,4 +12,6 @@ public interface ITenantMemberRepository : IGenericRepository<TenantMember, Guid
     Task<List<TenantMember>> GetByUserId(Guid userId);
     Task<bool> IsTenantMember(Guid tenantId, Guid userId);
     Task<bool> IsTenantAdmin(Guid tenantId, Guid userId);
+    Task<TenantMember?> GetMemberWithDetails(Guid id);
+    Task<List<TenantMember>> GetMembersWithDetails();
 }

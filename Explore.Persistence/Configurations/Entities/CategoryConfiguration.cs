@@ -12,8 +12,8 @@ public class CategoryConfiguration : IEntityTypeConfiguration<Category>
     {
         builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
 
-        builder.Property(e => e.MasterCode).HasMaxLength(500).IsRequired();
-        builder.Property(e => e.FullName).HasMaxLength(500).IsRequired();
+        builder.Property(e => e.MasterCode).HasMaxLength(100).IsRequired();
+        builder.Property(e => e.FullName).HasMaxLength(200).IsRequired();
 
         builder.HasOne(e => e.Parent)
             .WithMany()
@@ -24,6 +24,10 @@ public class CategoryConfiguration : IEntityTypeConfiguration<Category>
             .WithMany()
             .HasForeignKey(e => e.TenantId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(e => new { e.TenantId, e.MasterCode })
+            .IsUnique()
+            .HasDatabaseName("ix_categories_tenant_master_code");
 
         // NOTE: Business entity seed data moved to DatabaseSeeder for conditional (Development-only) seeding.
         // See Explore.Persistence/Seed/DatabaseSeeder.cs and SeedData.cs

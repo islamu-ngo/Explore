@@ -75,7 +75,7 @@ Failure behavior:
 
 Common user ID extraction order used in API/BFF paths:
 
-- `sub` -> `ClaimTypes.NameIdentifier` -> `sid` (used in several API controllers and BFF admin-claims transformation).
+- `internal_user_id` -> `sub` -> `ClaimTypes.NameIdentifier` -> `sid` (for provider subjects that are not GUIDs).
 
 Some BFF helpers currently use:
 
@@ -96,7 +96,13 @@ They are not security enforcement. Security enforcement remains server-side thro
 
 - calls API endpoint `api/User/admin-authority`,
 - adds admin claims to principal for UI use,
+- resolves and adds `internal_user_id` by matching external identity (`provider + provider subject`) to local user records,
 - caches positive results for 5 minutes and negative results for 30 seconds.
+
+Post-onboarding provider management safety:
+
+- `PUT /api/InstanceOnboarding/admin/auth-provider-configuration` requires authenticated instance admin context.
+- Update flow denies requests that would disable all providers linked to the current admin account (self-lockout prevention).
 
 If enrichment fails, authentication still continues and server-side authorization remains authoritative.
 
@@ -135,3 +141,26 @@ The HATEOAS link generation system is authorization-aware:
 3. Remaining links with `PermissionResourceKind` are batched into a single `IsAllowedBatchAsync()` call.
 4. On batch authorization failure, all permission-bound links are **denied** (fail-closed).
 5. This ensures clients never see links they cannot execute.
+
+## Row-Level Security (RLS) — Planned
+
+**Status:** Not yet implemented. Strategy documented for post-v1.0.
+
+**Current tenant isolation:** EF Core named query filters (`HasQueryFilter(name: "Tenant", ...)`) ensure all queries are tenant-scoped at the application layer. This is sufficient when all data access flows through the application.
+
+**Why RLS matters for defense-in-depth:**
+- Direct database access (migrations, reporting, debugging, data exports) bypasses EF query filters.
+- A compromised application layer could disable filters and leak cross-tenant data.
+- PostgreSQL RLS adds kernel-level row filtering that cannot be bypassed from SQL.
+
+**Planned approach:**
+1. Add a `current_tenant_id` session variable set via `SET app.current_tenant_id = '<guid>'` on each connection checkout.
+2. Create RLS policies on all tenant-scoped tables: `CREATE POLICY tenant_isolation ON events USING (tenant_id = current_setting('app.current_tenant_id')::uuid)`.
+3. Apply to: events, event_sessions, organization, groups, actors, event_registrations, storage_objects, audit_logs, notifications, configuration_change_logs, tenant_members, tenant_settings.
+4. The EF DbContext connection interceptor sets the session variable before first query.
+5. Superadmin connections use `SET ROLE` to bypass RLS for cross-tenant operations.
+
+**Risks:**
+- Connection pooling: Session variables must be set per checkout, not per pool. Npgsql connection interceptors handle this.
+- Performance: RLS adds a predicate to every query. Indexes on `tenant_id` (already exist) mitigate this.
+- Migrations: Must run with a superuser role that bypasses RLS.

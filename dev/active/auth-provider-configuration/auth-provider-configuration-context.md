@@ -1,28 +1,79 @@
 # Authentication Provider Configuration — Context
 
-> Last Updated: 2026-03-02 (Session 4 — Phase 2 verified complete)
+> Last Updated: 2026-03-03 (Session 9 — integration isolation fix)
 
-## SESSION PROGRESS (2026-03-02 — Session 4)
+## SESSION PROGRESS (2026-03-03 — Session 9)
 
 ### ✅ COMPLETED
 - Phase 0: All requirements finalized, plan documents created
 - Phase 1: Domain, Application, API layer — all files created, build+tests verified
 - Phase 2: Dynamic Auth Scheme Registration — all files created, build+tests verified
-  - Fixed BFF architecture violation: `DynamicAuthSchemeManager` now uses HTTP client to call API instead of directly referencing `Explore.Application`/`Explore.Domain`
-  - Created `Explore.Blazor/Constants/AuthSchemeNames.cs` (BFF-local mirror of Domain constants)
-  - Created `Explore.Blazor/Models/AuthProviderConfigurationResponse.cs` for API deserialization
-  - Added internal API endpoint `GET auth-provider-configuration/internal` (setup-secret-protected, returns secrets)
-  - `DynamicAuthSchemeManager` reads config from env vars at startup, from API on refresh
-  - `RefreshSchemesAsync` accepts optional setup secret to call internal endpoint with credentials
-  - Multi-provider BFF endpoints: `/auth/challenge?provider=`, `/auth/providers`, `/bff/auth/refresh-schemes`
-  - `AuthenticationExtensions` registers Cookie-only + singleton `DynamicAuthSchemeManager`
-  - ATProto handler stub returns NoResult for auth, 501 for challenge (placeholder for FishyFlip)
+- Phase 3: Auth Provider Configuration Blazor page — created, build verified
+- Phase 4: Decentralization Toggle — backend (DTO, service, helpers) + UI (InstanceOnboarding.razor) complete, build verified
+  - Added `DecentralizationEnabled` + `LockDecentralizationEnabled` to DTO and client model
+  - Added read/write in `InstanceGovernanceSettingService` and `InstanceGovernanceSettingHelpers`
+  - Added Federation section to InstanceOnboarding.razor: toggle, confirmation dialog, info tooltip, lock switch
+  - Added decentralization status to Review & Complete step
+  - Loads auth provider config in OnInitializedAsync to gate toggle on ATProto Login being enabled
+- Phase 5: Login Page Multi-Provider Support — complete, build verified
+  - Replaced `/login` loading-redirect page with provider selection UI in `LoginRedirect.razor`
+  - Login page now fetches enabled providers from `GET /auth/providers`
+  - Supports provider-specific flows:
+    - Keycloak/Google button challenge links
+    - ATProto handle input with `login_hint` forwarding
+  - Added single-provider auto-redirect behavior:
+    - auto-redirect for one button provider
+    - auto-redirect for sole ATProto provider when `login_hint` is present
+  - Keycloak recommended badge is shown when backend marks it recommended
+  - Fixed misplaced ATProto config-load block in `InstanceOnboarding.razor` that caused compile errors
 
 ### 🟡 IN PROGRESS
-- None — ready to begin Phase 3 (Blazor UI for auth provider configuration page)
+- Phase 6: User Sync & Account Linking (follow-up integration coverage pending)
+  - `SyncUserCommandHandler` refactored for provider-aware sync and linking.
+  - Provider support implemented for Keycloak, Google, and ATProto (including DID propagation for ATProto actor identity).
+  - External login linking now ensured through `UserExternalLogin` creation path with duplicate-link protection.
+  - Email auto-match linking implemented for verified Keycloak/Google identities.
+  - ATProto without email now requires pre-existing explicit link (guarded path).
+  - `UserController` now resolves current user from provider identity when `sub` is non-GUID via a new MediatR query:
+    - `ResolveCurrentUserIdByIdentityRequest`
+    - `ResolveCurrentUserIdByIdentityRequestHandler`
+  - Infrastructure and Blazor claim-parsing paths now consume `internal_user_id` first:
+    - `AdminClaimsTransformation` resolves non-GUID subjects through `UserExternalLogin` (+ verified email fallback for keycloak/google) and stamps `internal_user_id`
+    - `CurrentUserService`, `AdminContext`, `UserContext`, and `GroupAdminRouteGuard` now read `internal_user_id` before `sub/nameidentifier/sid`
+  - `DeleteUserExternalLoginCommandHandler` now blocks unlinking the last remaining provider (`BadRequestException`)
+  - `SettingsSecurity.razor` now includes explicit ATProto DID linking UI for the current account (loads linked providers + posts `/api/userexternallogin` link request)
+  - Added tests for unlink safety: `DeleteUserExternalLoginCommandHandlerTests`
+
+- Phase 7: Admin Settings — post-onboarding auth provider management
+  - Added admin-protected update endpoint: `PUT /api/InstanceOnboarding/admin/auth-provider-configuration`
+  - New command + handler:
+    - `UpdateAuthProviderConfigurationCommand`
+    - `UpdateAuthProviderConfigurationCommandHandler`
+  - Added lockout safeguard in handler:
+    - blocks disabling all currently linked providers for the current instance admin
+  - Added Blazor admin section + wiring:
+    - `InstanceAuthProviderSection.razor`
+    - nav + section integration in `InstanceAdminSettingsLayout.razor`
+    - service method `UpdateAuthProviderConfigurationAsAdminAsync` in `InstanceOnboardingService`
+  - Controller user-id resolution now prefers `internal_user_id` claim (then `sub/nameidentifier/sid`)
+  - Integration test isolation fix applied for API integration suite:
+    - `AuthenticatedWebApplicationFactory` now uses a unique in-memory database name per factory instance
+    - Removes cross-test state leakage in `Event.API.IntegrationTests`
+  - Re-verified `Event.API.IntegrationTests` after fix: now only 2 unrelated baseline smoke failures remain (`Public_Get_Endpoints_ReturnOk`, `Public_Write_Endpoints_DoNotReturnUnauthorized_Or_ServerError`)
 
 ### ⚠️ BLOCKERS
-- None
+- Branch baseline remains noisy with many pre-existing warnings and unrelated test-suite instability.
+- `Event.Persistence.IntegrationTests` cannot run in current environment (Docker/Testcontainers endpoint unavailable).
+- Verified in this session (green):
+  - `dotnet build Explore.Application/Explore.Application.csproj --configuration Release --verbosity quiet`
+  - `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet`
+  - `dotnet build Explore.Blazor.Client/Explore.Blazor.Client.csproj --configuration Release --verbosity quiet`
+  - `dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity minimal` (345/345 passed)
+  - `dotnet test --project Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet` (79/79 passed)
+  - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` (32/32 passed)
+  - `dotnet test --project Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --verbosity quiet` (190/190 passed)
+  - `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity quiet` (401/403 passed, 2 known unrelated failures)
+  - `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` (515/518 passed, 3 known unrelated flaky/UI timing failures)
 ## Key Design Decisions
 
 1. **ATProto is two toggles, not one**:
@@ -75,8 +126,9 @@
 ### Current Auth Flow
 - **`Explore.Blazor/Extensions/AuthenticationExtensions.cs`** — Cookie + OIDC setup. MUST be refactored to support conditional/dynamic registration.
 - **`Explore.Blazor.Client/Pages/Setup.razor`** — Setup token entry. "Continue to Login" link needs to route to auth provider config first (if not yet configured).
-- **`Explore.Blazor.Client/Pages/Onboarding/InstanceOnboarding.razor`** — Instance settings wizard. Needs new decentralization toggle.
-- **`Explore.Blazor/Extensions/BffEndpointExtensions.cs`** — BFF endpoints including `/auth/*` and `/bff/setup-secret`. Login endpoints need multi-provider support.
+- **`Explore.Blazor.Client/Pages/Onboarding/InstanceOnboarding.razor`** — Instance settings wizard with federation decentralization controls.
+- **`Explore.Blazor.Client/Pages/Auth/LoginRedirect.razor`** — Multi-provider login selection UI (button + handle input modes).
+- **`Explore.Blazor/Extensions/BffEndpointExtensions.cs`** — BFF `/auth/providers` contract and `/auth/challenge?provider=` behavior.
 
 ### Domain Model (Existing, Relevant)
 - **`Explore.Domain/User.cs`** — `AuthProvider`, `AuthProviderId`, `ActorId` fields
@@ -133,5 +185,5 @@ public class AuthProviderConfigurationDto
 1. Read this file for current state
 2. Check plan file for overall strategy and all resolved design questions
 3. Check tasks file for remaining work
-4. **Next step**: Review remaining requirements questions (info icon copy, edge cases)
-5. If all questions resolved → finalize plan and begin Phase 1 implementation
+4. Phase 7 implementation is complete in code; expand integration coverage in Phase 8.
+5. Phase 8: Testing & Documentation

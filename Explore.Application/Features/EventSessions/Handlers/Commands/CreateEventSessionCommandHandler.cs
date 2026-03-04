@@ -3,7 +3,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
-using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventSession.Validators;
 using Explore.Application.Features.EventSessions.Requests.Commands;
@@ -20,7 +19,6 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
     private readonly ILocationRepository _locationRepository;
     private readonly IRegistrationModeRepository _registrationModeRepository;
     private readonly IEventSessionIslamicAspectRepository _eventSessionIslamicAspectRepository;
-    private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
 
     public CreateEventSessionCommandHandler(
@@ -29,7 +27,6 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
         ILocationRepository locationRepository,
         IRegistrationModeRepository registrationModeRepository,
         IEventSessionIslamicAspectRepository eventSessionIslamicAspectRepository,
-        ITenantContext tenantContext,
         IMapper mapper)
     {
         _eventSessionRepository = eventSessionRepository;
@@ -37,7 +34,6 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
         _locationRepository = locationRepository;
         _registrationModeRepository = registrationModeRepository;
         _eventSessionIslamicAspectRepository = eventSessionIslamicAspectRepository;
-        _tenantContext = tenantContext;
         _mapper = mapper;
     }
 
@@ -56,11 +52,18 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
             return response;
         }
 
+        // Fetch the parent event to inherit its TenantId (defense-in-depth: global query filter already scopes by tenant)
+        var parentEvent = await _eventRepository.GetById(request.EventSessionDto.EventId);
+        if (parentEvent == null)
+        {
+            response.Success = false;
+            response.Message = "Event not found in the current tenant.";
+            return response;
+        }
+
         var eventSession = _mapper.Map<EventSession>(request.EventSessionDto);
         eventSession.CurrentAudienceAttendees = 0;
-
-        // Set TenantId from the request context
-        eventSession.TenantId = _tenantContext.TenantId;
+        eventSession.TenantId = parentEvent.TenantId;
 
         eventSession = await _eventSessionRepository.Create(eventSession);
 

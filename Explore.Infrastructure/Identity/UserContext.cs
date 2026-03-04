@@ -10,6 +10,7 @@ namespace Explore.Infrastructure.Identity;
 /// </summary>
 public class UserContext : IUserContext
 {
+    private const string InternalUserIdClaimType = "internal_user_id";
     private readonly IHttpContextAccessor _httpContextAccessor;
 
     public UserContext(IHttpContextAccessor httpContextAccessor)
@@ -25,8 +26,10 @@ public class UserContext : IUserContext
     {
         get
         {
-            var userIdClaim = User?.FindFirst("sub")?.Value
-                ?? User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userIdClaim = User?.FindFirst(InternalUserIdClaimType)?.Value
+                ?? User?.FindFirst("sub")?.Value
+                ?? User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? User?.FindFirst("sid")?.Value;
 
             if (string.IsNullOrEmpty(userIdClaim))
                 return null;

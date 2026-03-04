@@ -16,7 +16,7 @@ public class ModuleDefinitionConfiguration : IEntityTypeConfiguration<ModuleDefi
         builder.Property(m => m.ModuleKey).HasMaxLength(50).IsRequired();
         builder.Property(m => m.Name).HasMaxLength(100).IsRequired();
         builder.Property(m => m.Description).HasMaxLength(500);
-        builder.Property(m => m.WizardSchemaUrl).HasMaxLength(500);
+        builder.Property(m => m.WizardSchemaUrl).HasMaxLength(2048);
         builder.Property(m => m.IconName).HasMaxLength(50);
         builder.Property(m => m.Category).HasMaxLength(50);
 

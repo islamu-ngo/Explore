@@ -41,6 +41,7 @@ internal static class InstanceGovernanceSettingHelpers
         var brandingLogoUrl = await systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingLogoUrl);
         var brandingFaviconUrl = await systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingFaviconUrl);
         var brandingCustomCssUrl = await systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingCustomCssUrl);
+        var decentralizationEnabled = await systemSettingRepository.GetByKey(GovernanceSettingKeys.FederationDecentralizationEnabled);
         var resolvedDeploymentMode = DeserializeString(deploymentMode?.Value, "SingleTenant");
         var isMultiTenant = resolvedDeploymentMode.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
 
@@ -71,7 +72,9 @@ internal static class InstanceGovernanceSettingHelpers
             LockTenantBrandDisplayName = brandingDisplayName?.IsLocked == true,
             LockTenantBrandLogoUrl = brandingLogoUrl?.IsLocked == true,
             LockTenantBrandFaviconUrl = brandingFaviconUrl?.IsLocked == true,
-            LockTenantBrandCustomCssUrl = brandingCustomCssUrl?.IsLocked == true
+            LockTenantBrandCustomCssUrl = brandingCustomCssUrl?.IsLocked == true,
+            DecentralizationEnabled = DeserializeBoolean(decentralizationEnabled?.Value, false),
+            LockDecentralizationEnabled = decentralizationEnabled?.IsLocked == true
         };
     }
 
@@ -302,6 +305,16 @@ internal static class InstanceGovernanceSettingHelpers
             "Branding",
             4,
             "Default custom stylesheet URL applied when tenants do not override branding");
+
+        await UpsertSystemSettingAsync(
+            systemSettingRepository,
+            GovernanceSettingKeys.FederationDecentralizationEnabled,
+            JsonSerializer.Serialize(settings.DecentralizationEnabled),
+            SettingValueType.Boolean,
+            settings.LockDecentralizationEnabled,
+            "Federation",
+            1,
+            "Whether ATProto decentralization is enabled — event records are published to users' Personal Data Servers (PDS)");
 
         await UpsertTenantCapabilityAsync(
             tenantCapabilityRepository,

@@ -83,6 +83,7 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         var brandingFaviconUrl = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingFaviconUrl);
         var brandingCustomCssUrl = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingCustomCssUrl);
         var authorizationProvider = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AuthorizationProvider);
+        var decentralizationEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.FederationDecentralizationEnabled);
         var resolvedDeploymentMode = DeserializeString(deploymentMode?.Value, "SingleTenant");
         var isMultiTenant = resolvedDeploymentMode.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
 
@@ -134,7 +135,9 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             LockTenantBrandFaviconUrl = brandingFaviconUrl?.IsLocked == true,
             LockTenantBrandCustomCssUrl = brandingCustomCssUrl?.IsLocked == true,
             LockTenantEventCardClickBehavior = eventCardClickOpensDetailPage?.IsLocked == true,
-            AuthorizationProvider = NormalizeAuthorizationProvider(DeserializeString(authorizationProvider?.Value, "local"))
+            AuthorizationProvider = NormalizeAuthorizationProvider(DeserializeString(authorizationProvider?.Value, "local")),
+            DecentralizationEnabled = DeserializeBoolean(decentralizationEnabled?.Value, false),
+            LockDecentralizationEnabled = decentralizationEnabled?.IsLocked == true
         };
 
         NormalizeRenderPolicySettings(settings);
@@ -598,6 +601,15 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             1,
             "Authorization provider: 'local' for database-only RBAC, 'cerbos' for full PDP",
             "[\"local\", \"cerbos\"]");
+
+        await UpsertSystemSettingAsync(
+            GovernanceSettingKeys.FederationDecentralizationEnabled,
+            JsonSerializer.Serialize(settings.DecentralizationEnabled),
+            SettingValueType.Boolean,
+            settings.LockDecentralizationEnabled,
+            "Federation",
+            1,
+            "Whether ATProto decentralization is enabled — event records are published to users' Personal Data Servers (PDS)");
 
         if (defaultTenantId.HasValue)
         {

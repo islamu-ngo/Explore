@@ -11,8 +11,8 @@ public class AtprotoRecordConfiguration : IEntityTypeConfiguration<AtprotoRecord
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
 
         builder.Property(e => e.Did).HasMaxLength(255).IsRequired();
-        builder.Property(e => e.Collection).HasMaxLength(500).IsRequired();
-        builder.Property(e => e.RecordKey).HasMaxLength(500).IsRequired();
+        builder.Property(e => e.Collection).HasMaxLength(255).IsRequired();
+        builder.Property(e => e.RecordKey).HasMaxLength(255).IsRequired();
         builder.Property(e => e.Cid).HasMaxLength(255);
         builder.Property(e => e.Uri).HasMaxLength(500);
 

@@ -67,3 +67,45 @@ Blazor event list uses these flags to control filter/UI exposure.
 - [MODULAR_EVENTS.md](MODULAR_EVENTS.md)
 - [DOMAIN.md](DOMAIN.md)
 - [MULTI_TENANCY.md](MULTI_TENANCY.md)
+
+## API Keys / Service Accounts — Planned
+
+**Status:** Not yet implemented. Strategy documented for post-v1.0.
+
+**Current auth model:** User-centric via OIDC (Keycloak) through BFF pattern. All API access requires a user session.
+
+**Why machine-to-machine (M2M) is needed:**
+- Enterprise consumers integrating event data into CRM, LMS, or campus systems.
+- Automated event publishing from CI/CD or content pipelines.
+- Partner organizations syncing events bidirectionally.
+
+**Planned entities:**
+- `ApiKey`: id (uuid v7), tenant_id, name, hashed_key (sha256), prefix (first 8 chars for identification), scopes (jsonb — list of permitted operations), expires_at, created_by, is_revoked, last_used_at.
+- `ApiKeyAuditLog`: id, api_key_id, action, ip_address, timestamp.
+
+**Design decisions:**
+- Keys are tenant-scoped (no cross-tenant API keys).
+- Scopes map to existing permission codes (read:events, write:events, etc.).
+- Keys are hashed at rest (only shown once on creation).
+- Rate limiting per key via middleware.
+- Admin UI for key management (create, revoke, rotate, view usage).
+
+## Tenant Quotas / Usage Tracking — Planned
+
+**Status:** Not yet implemented. Strategy documented for post-v1.0.
+
+**Why quotas matter for multi-tenant SaaS:**
+- Prevent noisy-neighbor resource exhaustion.
+- Enable tiered pricing (free/pro/enterprise).
+- Provide usage visibility for tenant admins.
+
+**Planned entities:**
+- `TenantQuota`: id, tenant_id, resource_type (enum: events, storage_bytes, members, organizations, api_calls_per_day), max_allowed, current_usage, reset_period (monthly/none).
+- `TenantUsageLog`: id, tenant_id, resource_type, delta, recorded_at (for historical tracking and billing).
+
+**Enforcement approach:**
+- MediatR pipeline behavior checks quotas before write commands.
+- Soft limits: warn at 80%, block at 100%.
+- Storage quota enforced at upload handler level.
+- Usage counters updated via domain events (eventually consistent).
+- Admin override capability for emergency situations.

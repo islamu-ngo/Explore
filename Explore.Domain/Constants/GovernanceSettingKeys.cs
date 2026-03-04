@@ -178,6 +178,15 @@ public static class GovernanceSettingKeys
         public const string PersonalApiKey = "analytics.personal_api_key";
     }
 
+    public static class Localization
+    {
+        public const string DefaultLanguage = "localization.default_language";
+        public const string TmsProvider = "localization.tms_provider";
+        public const string TmsApiUrl = "localization.tms_api_url";
+        public const string TmsProjectId = "localization.tms_project_id";
+        public const string TmsComponent = "localization.tms_component";
+    }
+
     public const string DeploymentMode = Deployment.Mode;
     public const string TenantSelfServiceRegistration = Tenants.SelfServiceRegistration;
     public const string TenantWhiteLabelingEnabled = Tenants.WhiteLabelingEnabled;
@@ -263,4 +272,10 @@ public static class GovernanceSettingKeys
     public const string AuthGoogleClientId = Authentication.GoogleClientId;
     public const string AuthGoogleClientSecret = InfrastructureSecretSettingKeys.Authentication.GoogleClientSecret;
     public const string FederationDecentralizationEnabled = Federation.DecentralizationEnabled;
+
+    public const string LocalizationDefaultLanguage = Localization.DefaultLanguage;
+    public const string LocalizationTmsProvider = Localization.TmsProvider;
+    public const string LocalizationTmsApiUrl = Localization.TmsApiUrl;
+    public const string LocalizationTmsProjectId = Localization.TmsProjectId;
+    public const string LocalizationTmsComponent = Localization.TmsComponent;
 }

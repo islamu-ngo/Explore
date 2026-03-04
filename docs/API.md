@@ -410,6 +410,13 @@ Meter name: `Explore.Business`. All counters tagged with `tenant_id` and `resour
 5. Federation:
    - `/api/atproto/*` — AT Protocol record management
    - `/api/indexeddid/*` — DID indexing
+6. Notifications (all `[Authorize]`):
+   - `GET /api/notification` — paginated list with `?isRead=` and `?type=` filters
+   - `GET /api/notification/{id}` — detail
+   - `GET /api/notification/unread-count` — unread count (partial index optimized)
+   - `PATCH /api/notification/{id}/read` — mark single as read (idempotent)
+   - `POST /api/notification/read-all` — bulk mark all as read (YouTube-style, timestamp cutoff)
+   - `DELETE /api/notification/{id}` — soft delete
 
 ---
 

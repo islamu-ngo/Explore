@@ -26,10 +26,10 @@ public class OrganizationConfiguration : IEntityTypeConfiguration<Organization>
             .IsRequired();
 
         builder.Property(e => e.WebsiteUrl)
-            .HasMaxLength(500);
+            .HasMaxLength(2048);
 
         builder.Property(e => e.MetadataJson)
-            .HasColumnType("text");
+            .HasColumnType("jsonb");
 
         builder.HasOne(e => e.ApprovalStatus)
             .WithMany()
@@ -62,6 +62,10 @@ public class OrganizationConfiguration : IEntityTypeConfiguration<Organization>
         // Organization search by tenant.
         builder.HasIndex(e => e.TenantId)
             .HasDatabaseName("ix_organizations_tenant");
+
+        // Optimistic concurrency control (database-agnostic)
+        builder.Property(e => e.ConcurrencyStamp)
+            .IsConcurrencyToken();
 
         // NOTE: Business entity seed data moved to DatabaseSeeder for conditional (Development-only) seeding.
         // See Explore.Persistence/Seed/DatabaseSeeder.cs and SeedData.cs

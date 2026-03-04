@@ -17,6 +17,7 @@ public class UserDto
 
     // Auth
     public string? AuthProvider { get; set; }
+    public string? AuthProviderId { get; set; }
     public bool? EmailVerified { get; set; }
 
     // Profile image key (S3 object key) and URI for preview

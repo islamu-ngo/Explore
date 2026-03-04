@@ -11,39 +11,27 @@ public class User : IAuditableEntity, ISoftDeletable
     /// <summary>
     /// 1:1 extension table containing sensitive user identity fields.
     /// </summary>
-    public UserPii? Pii { get; set; }
+    public required UserPii Pii { get; set; }
 
     [NotMapped]
     public string Email
     {
-        get => Pii?.Email ?? null!;
-        set
-        {
-            EnsurePii();
-            Pii!.Email = value;
-        }
+        get => Pii.Email;
+        set => Pii.Email = value;
     }
 
     [NotMapped]
     public string FirstName
     {
-        get => Pii?.FirstName ?? null!;
-        set
-        {
-            EnsurePii();
-            Pii!.FirstName = value;
-        }
+        get => Pii.FirstName;
+        set => Pii.FirstName = value;
     }
 
     [NotMapped]
     public string LastName
     {
-        get => Pii?.LastName ?? null!;
-        set
-        {
-            EnsurePii();
-            Pii!.LastName = value;
-        }
+        get => Pii.LastName;
+        set => Pii.LastName = value;
     }
 
     /// <summary>
@@ -71,14 +59,4 @@ public class User : IAuditableEntity, ISoftDeletable
     public DateTime? DeletedAt { get; set; }
     public Guid? DeletedBy { get; set; }
 
-    private void EnsurePii()
-    {
-        Pii ??= new UserPii
-        {
-            User = this,
-            Email = null!,
-            FirstName = null!,
-            LastName = null!
-        };
-    }
 }

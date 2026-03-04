@@ -89,13 +89,15 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IMadhabRepository, MadhabRepository>();
         services.AddScoped<ILanguageRepository, LanguageRepository>();
         services.AddScoped<IOrganizationPositionRepository, OrganizationPositionRepository>();
+        services.AddScoped<IGroupPositionRepository, GroupPositionRepository>();
         services.AddScoped<IActorTypeRepository, ActorTypeRepository>();
         services.AddScoped<IDidCustodyTypeRepository, DidCustodyTypeRepository>();
         services.AddScoped<IFileTypeRepository, FileTypeRepository>();
+        services.AddScoped<INotificationTypeRepository, NotificationTypeRepository>();
+        services.AddScoped<INotificationEntityTypeRepository, NotificationEntityTypeRepository>();
 
         // Multi-tenancy Repositories
         services.AddScoped<ITenantRepository, TenantRepository>();
-        services.AddScoped<ITenantUserRepository, TenantUserRepository>();
         services.AddScoped<ITenantSettingsRepository, TenantSettingsRepository>();
         services.AddScoped<IInstanceBootstrapStateRepository, InstanceBootstrapStateRepository>();
         services.AddScoped<IPlatformUserRoleRepository, PlatformUserRoleRepository>();
@@ -178,6 +180,9 @@ public static class PersistenceServicesRegistration
 
         // Configuration Audit Repositories
         services.AddScoped<IConfigurationChangeLogRepository, ConfigurationChangeLogRepository>();
+
+        // Notification Repository
+        services.AddScoped<INotificationRepository, NotificationRepository>();
 
         return services;
     }

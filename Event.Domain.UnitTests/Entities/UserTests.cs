@@ -70,9 +70,12 @@ public class UserTests
     {
         return new User
         {
-            Email = "user@example.com",
-            FirstName = "Test",
-            LastName = "User"
+            Pii = new UserPii
+            {
+                Email = "user@example.com",
+                FirstName = "Test",
+                LastName = "User"
+            }
         };
     }
 }

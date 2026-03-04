@@ -77,8 +77,11 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
             ActorType = null!,
             TenantId = _tenantContext.TenantId,
             Tenant = null!,
-            DisplayName = organization.FullName,
-            Handle = GenerateHandle(organization.FullName),
+            Pii = new ActorPii
+            {
+                DisplayName = organization.FullName,
+                Handle = GenerateHandle(organization.FullName)
+            },
             Description = null,
             UserId = null, // Organization actors don't have a UserId
             OrganizationId = organization.Id, // Link to the organization

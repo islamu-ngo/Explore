@@ -4,7 +4,7 @@ using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
 
-public class EventSession : ITenantEntity, IAuditableEntity, ISoftDeletable
+public class EventSession : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurrencyAware
 {
     public Guid Id { get; set; }
     [ForeignKey("Event")]
@@ -50,6 +50,9 @@ public class EventSession : ITenantEntity, IAuditableEntity, ISoftDeletable
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }
     public Guid? DeletedBy { get; set; }
+
+    // Concurrency control
+    public Guid ConcurrencyStamp { get; set; }
 }
 
 public enum SessionStartTimeType

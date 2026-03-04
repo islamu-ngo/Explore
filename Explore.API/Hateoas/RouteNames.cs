@@ -147,17 +147,17 @@ public static class RouteNames
     public const string CreateTenant = "CreateTenant";
     public const string UpdateTenant = "UpdateTenant";
     public const string DeleteTenant = "DeleteTenant";
-    public const string GetTenantUsers = "GetTenantUsers";
     public const string GetTenantSettings = "GetTenantSettings";
 
     #endregion
 
-    #region Tenant User Routes
+    #region Tenant Member Routes
 
-    public const string GetTenantUserById = "GetTenantUserById";
-    public const string CreateTenantUser = "CreateTenantUser";
-    public const string UpdateTenantUser = "UpdateTenantUser";
-    public const string DeleteTenantUser = "DeleteTenantUser";
+    public const string GetTenantMembers = "GetTenantMembers";
+    public const string GetTenantMemberById = "GetTenantMemberById";
+    public const string CreateTenantMember = "CreateTenantMember";
+    public const string UpdateTenantMember = "UpdateTenantMember";
+    public const string DeleteTenantMember = "DeleteTenantMember";
 
     #endregion
 
@@ -193,6 +193,7 @@ public static class RouteNames
     public const string UpdateGroup = "UpdateGroup";
     public const string DeleteGroup = "DeleteGroup";
     public const string GetGroupMembers = "GetGroupMembers";
+    public const string GetGroupMemberById = "GetGroupMemberById";
     public const string CreateGroupMember = "CreateGroupMember";
     public const string UpdateGroupMember = "UpdateGroupMember";
     public const string DeleteGroupMember = "DeleteGroupMember";
@@ -224,6 +225,17 @@ public static class RouteNames
     public const string CreateOrganizationReview = "CreateOrganizationReview";
     public const string UpdateOrganizationReview = "UpdateOrganizationReview";
     public const string DeleteOrganizationReview = "DeleteOrganizationReview";
+
+    #endregion
+
+    #region Notification Routes
+
+    public const string GetNotifications = "GetNotifications";
+    public const string GetNotificationById = "GetNotificationById";
+    public const string GetUnreadNotificationCount = "GetUnreadNotificationCount";
+    public const string MarkNotificationAsRead = "MarkNotificationAsRead";
+    public const string MarkAllNotificationsAsRead = "MarkAllNotificationsAsRead";
+    public const string DeleteNotification = "DeleteNotification";
 
     #endregion
 

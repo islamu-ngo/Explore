@@ -19,6 +19,7 @@ namespace Explore.Infrastructure.Identity;
 /// </summary>
 public class AdminContext : IAdminContext, IAdminCacheInvalidator
 {
+    private const string InternalUserIdClaimType = "internal_user_id";
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IPlatformUserRoleRepository _platformUserRoleRepository;
     private readonly IInstanceBootstrapStateRepository _instanceBootstrapStateRepository;
@@ -56,7 +57,8 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
             if (user?.Identity?.IsAuthenticated != true)
                 return null;
 
-            var sub = user.FindFirst("sub")?.Value
+            var sub = user.FindFirst(InternalUserIdClaimType)?.Value
+                ?? user.FindFirst("sub")?.Value
                 ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value
                 ?? user.FindFirst("sid")?.Value;
 

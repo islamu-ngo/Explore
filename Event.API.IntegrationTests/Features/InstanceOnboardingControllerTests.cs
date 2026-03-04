@@ -7,6 +7,7 @@ using Event.Api.IntegrationTests.Fixtures;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Responses;
 using Explore.Domain;
+using Explore.Domain.Constants;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -100,6 +101,172 @@ public class InstanceOnboardingControllerTests
         await Assert.That((responseBody.Errors ?? new List<string>()).Any(e => e.Contains("EnableAdvancedRenderPolicyOverrides must be true when RenderPolicyPreset is CustomAdvanced", StringComparison.Ordinal))).IsTrue();
     }
 
+    [Test]
+    public async Task UpdateAuthProviderConfiguration_AdminEndpoint_WithoutAuthentication_ShouldReturnUnauthorized()
+    {
+        using var factory = CreateFactoryWithSetupSecret();
+        using var client = factory.CreateClient();
+
+        var response = await client.PutAsJsonAsync($"{BaseUrl}/admin/auth-provider-configuration", CreateGoogleOnlyAuthProviderConfiguration());
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task UpdateAuthProviderConfiguration_WhenUserIsNotInstanceAdmin_ShouldReturnForbidden()
+    {
+        using var factory = CreateFactoryWithSetupSecret();
+        using var client = factory.CreateClient();
+
+        var userId = Guid.NewGuid();
+        await EnsureUserExistsAsync(factory, userId);
+
+        using var request = CreateInstanceAdminRequest(
+            HttpMethod.Put,
+            $"{BaseUrl}/admin/auth-provider-configuration",
+            userId,
+            CreateGoogleOnlyAuthProviderConfiguration(),
+            includeSetupSecret: false);
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+    }
+
+    [Test]
+    public async Task UpdateAuthProviderConfiguration_WhenItWouldDisableAllLinkedAdminProviders_ShouldReturnBadRequest()
+    {
+        using var factory = CreateFactoryWithSetupSecret();
+        using var client = factory.CreateClient();
+
+        var userId = Guid.NewGuid();
+        await EnsureUserExistsAsync(factory, userId);
+        await EnsureInstanceAdminRoleAsync(factory, userId);
+
+        using var request = CreateInstanceAdminRequest(
+            HttpMethod.Put,
+            $"{BaseUrl}/admin/auth-provider-configuration",
+            userId,
+            CreateGoogleOnlyAuthProviderConfiguration(),
+            includeSetupSecret: false);
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+
+        var responseBody = await response.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
+        await Assert.That(responseBody).IsNotNull();
+        await Assert.That(responseBody!.Success).IsFalse();
+        await Assert.That(responseBody.Message).Contains("Cannot disable all authentication providers linked");
+    }
+
+    [Test]
+    public async Task UpdateAuthProviderConfiguration_WhenAdminHasLinkedEnabledProvider_ShouldUpdateAndReturnConfiguration()
+    {
+        using var factory = CreateFactoryWithSetupSecret();
+        using var client = factory.CreateClient();
+
+        var userId = Guid.NewGuid();
+        await EnsureUserExistsAsync(factory, userId);
+        await EnsureInstanceAdminRoleAsync(factory, userId);
+        await EnsureUserExternalLoginAsync(factory, userId, "google", $"google-{userId:N}");
+
+        using var updateRequest = CreateInstanceAdminRequest(
+            HttpMethod.Put,
+            $"{BaseUrl}/admin/auth-provider-configuration",
+            userId,
+            CreateGoogleOnlyAuthProviderConfiguration(),
+            includeSetupSecret: false);
+
+        var updateResponse = await client.SendAsync(updateRequest);
+        await Assert.That(updateResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        var updateBody = await updateResponse.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
+        await Assert.That(updateBody).IsNotNull();
+        await Assert.That(updateBody!.Success).IsTrue();
+
+        using var getRequest = CreateInstanceAdminRequest(
+            HttpMethod.Get,
+            $"{BaseUrl}/auth-provider-configuration",
+            userId,
+            body: null,
+            includeSetupSecret: false);
+
+        var getResponse = await client.SendAsync(getRequest);
+        await Assert.That(getResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        var config = await getResponse.Content.ReadFromJsonAsync<AuthProviderConfigurationDto>();
+        await Assert.That(config).IsNotNull();
+        await Assert.That(config!.KeycloakEnabled).IsFalse();
+        await Assert.That(config.GoogleSsoEnabled).IsTrue();
+    }
+
+    private static async Task EnsureInstanceAdminRoleAsync(AuthenticatedWebApplicationFactory factory, Guid userId)
+    {
+        using var scope = factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+
+        var bootstrap = await dbContext.InstanceBootstrapStates
+            .OrderByDescending(x => x.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        if (bootstrap == null)
+        {
+            dbContext.InstanceBootstrapStates.Add(new InstanceBootstrapState
+            {
+                Id = Guid.NewGuid(),
+                IsCompleted = true,
+                CreatedAt = DateTime.UtcNow,
+                CompletedAt = DateTime.UtcNow,
+                CompletedByUserId = userId,
+                SelectedDeploymentMode = "SingleTenant"
+            });
+        }
+        else
+        {
+            bootstrap.IsCompleted = true;
+            bootstrap.CompletedAt = DateTime.UtcNow;
+            bootstrap.CompletedByUserId = userId;
+            bootstrap.SelectedDeploymentMode ??= "SingleTenant";
+        }
+
+        await dbContext.SaveChangesAsync();
+    }
+
+    private static async Task EnsureUserExternalLoginAsync(
+        AuthenticatedWebApplicationFactory factory,
+        Guid userId,
+        string provider,
+        string providerKey)
+    {
+        using var scope = factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+
+        var exists = await dbContext.UserExternalLogins
+            .AnyAsync(x => x.UserId == userId && x.Provider == provider && x.ProviderKey == providerKey);
+
+        if (exists)
+        {
+            return;
+        }
+
+        dbContext.UserExternalLogins.Add(new UserExternalLogin
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            User = null!,
+            TenantId = PlatformDefaults.DefaultTenantId,
+            Tenant = null!,
+            Provider = provider,
+            ProviderKey = providerKey,
+            ProviderDisplayName = provider,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = userId
+        });
+
+        await dbContext.SaveChangesAsync();
+    }
+
     private static async Task EnsureUserExistsAsync(AuthenticatedWebApplicationFactory factory, Guid userId)
     {
         using var scope = factory.Services.CreateScope();
@@ -114,6 +281,8 @@ public class InstanceOnboardingControllerTests
         dbContext.Users.Add(new User
         {
             Id = userId,
+            AuthProvider = "keycloak",
+            AuthProviderId = userId.ToString(),
             CreatedAt = DateTime.UtcNow,
             CreatedBy = userId,
             Pii = new UserPii
@@ -174,6 +343,25 @@ public class InstanceOnboardingControllerTests
             OnboardingRenderMode = "InteractiveAuto",
             OnboardingPrerenderEnabled = false,
             DisallowInteractiveServerOnOnboarding = true
+        };
+    }
+
+    private static AuthProviderConfigurationDto CreateGoogleOnlyAuthProviderConfiguration()
+    {
+        return new AuthProviderConfigurationDto
+        {
+            KeycloakEnabled = false,
+            KeycloakAuthority = string.Empty,
+            KeycloakClientId = string.Empty,
+            KeycloakClientSecret = string.Empty,
+            AtprotoLoginEnabled = false,
+            AtprotoPublicUrl = string.Empty,
+            GoogleSsoEnabled = true,
+            GoogleClientId = "google-client-id",
+            GoogleClientSecret = "google-client-secret",
+            LockKeycloakEnabled = false,
+            LockAtprotoLoginEnabled = false,
+            LockGoogleSsoEnabled = false
         };
     }
 }

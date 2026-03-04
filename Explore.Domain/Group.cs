@@ -8,7 +8,7 @@ using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
 
-public class Group : ITenantEntity, IAuditableEntity, ISoftDeletable
+public class Group : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurrencyAware
 {
     public Guid Id { get; set; }
     public required string FullName { get; set; }
@@ -42,6 +42,9 @@ public class Group : ITenantEntity, IAuditableEntity, ISoftDeletable
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }
     public Guid? DeletedBy { get; set; }
+
+    // Concurrency control
+    public Guid ConcurrencyStamp { get; set; }
 
     // Navigation property for members
     public ICollection<GroupMember>? Members { get; set; }

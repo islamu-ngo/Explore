@@ -89,7 +89,7 @@ public class OrganizationTests
     {
         return new Organization
         {
-            FullName = "Org",
+            Pii = new OrganizationPii { FullName = "Org" },
             ApprovalStatus = new ApprovalStatus { MasterCode = "PENDING", FullName = "Pending" },
             Tenant = new Tenant
             {

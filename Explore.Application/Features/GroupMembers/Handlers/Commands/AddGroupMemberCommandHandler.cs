@@ -96,6 +96,7 @@ public class AddGroupMemberCommandHandler : IRequestHandler<AddGroupMemberComman
             User = null!,
             RoleId = (int)dto.Role,
             Role = null!,
+            GroupPositionId = dto.GroupPositionId,
             TenantId = _tenantContext.TenantId,
             Tenant = null!
         };

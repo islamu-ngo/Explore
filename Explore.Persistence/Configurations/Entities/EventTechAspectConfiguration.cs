@@ -22,7 +22,7 @@ public class EventTechAspectConfiguration : IEntityTypeConfiguration<EventTechAs
 
         // GitHub repo URL
         builder.Property(e => e.GithubRepoUrl)
-            .HasMaxLength(500);
+            .HasMaxLength(2048);
 
         // Hackathon track
         builder.Property(e => e.HackathonTrack)
@@ -49,7 +49,7 @@ public class EventTechAspectConfiguration : IEntityTypeConfiguration<EventTechAs
 
         // Prize configuration
         builder.Property(e => e.PrizePool)
-            .HasPrecision(18, 2);
+            .HasPrecision(19, 4);
 
         builder.Property(e => e.PrizeCurrencyCode)
             .HasMaxLength(3);

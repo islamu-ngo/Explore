@@ -6,7 +6,7 @@ using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
 
-public class TenantSettings : ITenantEntity
+public class TenantSettings : ITenantEntity, IConcurrencyAware
 {
     public Guid Id { get; set; }
     [ForeignKey("Tenant")]
@@ -32,4 +32,7 @@ public class TenantSettings : ITenantEntity
     [ForeignKey("DefaultGroup")]
     public Guid? DefaultGroupId { get; set; }
     public Group? DefaultGroup { get; set; }
+
+    // Concurrency control
+    public Guid ConcurrencyStamp { get; set; }
 }

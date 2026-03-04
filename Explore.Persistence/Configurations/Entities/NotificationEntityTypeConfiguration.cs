@@ -1,0 +1,27 @@
+// ABOUTME: EF Core configuration for the NotificationEntityType lookup entity.
+// ABOUTME: Follows ApprovalStatusConfiguration pattern with ValueGeneratedNever.
+
+using Explore.Domain;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Explore.Persistence.Configurations.Entities;
+
+public class NotificationEntityTypeConfiguration : IEntityTypeConfiguration<NotificationEntityType>
+{
+    public void Configure(EntityTypeBuilder<NotificationEntityType> builder)
+    {
+        builder.Property(e => e.Id).ValueGeneratedNever();
+
+        builder.Property(e => e.MasterCode)
+            .IsRequired()
+            .HasMaxLength(100);
+
+        builder.Property(e => e.FullName)
+            .IsRequired()
+            .HasMaxLength(200);
+
+        builder.Property(e => e.Description)
+            .HasMaxLength(500);
+    }
+}

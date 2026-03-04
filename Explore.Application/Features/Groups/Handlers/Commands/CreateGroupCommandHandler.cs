@@ -80,8 +80,11 @@ public class CreateGroupCommandHandler : IRequestHandler<CreateGroupCommand, Bas
             ActorType = null!,
             TenantId = _tenantContext.TenantId,
             Tenant = null!,
-            DisplayName = group.FullName,
-            Handle = GenerateHandle(group.FullName),
+            Pii = new ActorPii
+            {
+                DisplayName = group.FullName,
+                Handle = GenerateHandle(group.FullName)
+            },
             Description = null,
             UserId = null,
             OrganizationId = null,

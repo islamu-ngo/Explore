@@ -37,17 +37,13 @@ public class Actor : ITenantEntity, IAuditableEntity, ISoftDeletable
     /// <summary>
     /// 1:1 extension table containing actor-identifying fields.
     /// </summary>
-    public ActorPii? Pii { get; set; }
+    public required ActorPii Pii { get; set; }
 
     [NotMapped]
     public string DisplayName
     {
-        get => Pii?.DisplayName ?? null!;
-        set
-        {
-            EnsurePii();
-            Pii!.DisplayName = value;
-        }
+        get => Pii.DisplayName;
+        set => Pii.DisplayName = value;
     }
 
     [ForeignKey("ProfilePictureStorage")]
@@ -57,23 +53,15 @@ public class Actor : ITenantEntity, IAuditableEntity, ISoftDeletable
     [NotMapped]
     public string? Did
     {
-        get => Pii?.Did;
-        set
-        {
-            EnsurePii();
-            Pii!.Did = value;
-        }
+        get => Pii.Did;
+        set => Pii.Did = value;
     }
 
     [NotMapped]
     public string? Handle
     {
-        get => Pii?.Handle;
-        set
-        {
-            EnsurePii();
-            Pii!.Handle = value;
-        }
+        get => Pii.Handle;
+        set => Pii.Handle = value;
     }
 
     [ForeignKey("DidCustodyType")]
@@ -88,12 +76,8 @@ public class Actor : ITenantEntity, IAuditableEntity, ISoftDeletable
     [NotMapped]
     public string? ProfilePictureUri
     {
-        get => Pii?.ProfilePictureUri;
-        set
-        {
-            EnsurePii();
-            Pii!.ProfilePictureUri = value;
-        }
+        get => Pii.ProfilePictureUri;
+        set => Pii.ProfilePictureUri = value;
     }
 
     // Audit fields
@@ -107,12 +91,4 @@ public class Actor : ITenantEntity, IAuditableEntity, ISoftDeletable
     public DateTime? DeletedAt { get; set; }
     public Guid? DeletedBy { get; set; }
 
-    private void EnsurePii()
-    {
-        Pii ??= new ActorPii
-        {
-            Actor = this,
-            DisplayName = null!
-        };
-    }
 }

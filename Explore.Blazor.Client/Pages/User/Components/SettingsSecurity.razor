@@ -1,64 +1,257 @@
+@* ABOUTME: Account security settings UI focused on authentication-provider linking for current user. *@
+@* ABOUTME: Adds explicit AT Protocol DID linking flow required for non-email identity providers. *@
+
+@using System.Net.Http.Json
+@using Explore.Blazor.Client.Services
 @using MudBlazor
+@inject IUserService UserService
+@inject IHttpClientFactory HttpClientFactory
+@inject ILogger<SettingsSecurity> Logger
 
 <div class="settings-section">
-    <!-- Section Header -->
     <div class="settings-section-header mb-6">
         <MudText Typo="Typo.h5" Style="font-weight: 700;">Security</MudText>
-        <MudText Typo="Typo.body2" Color="Color.Secondary">Manage your account security and login settings</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Manage linked sign-in providers for your account</MudText>
     </div>
 
-    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Construction" Class="mb-6">
-        Security settings are coming soon. Password management, two-factor authentication, and session management will be available in a future update.
-    </MudAlert>
+    @if (_isLoading)
+    {
+        <MudStack AlignItems="AlignItems.Center" Spacing="2" Class="py-6">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Loading security settings...</MudText>
+        </MudStack>
+    }
+    else
+    {
+        @if (!string.IsNullOrWhiteSpace(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">@_errorMessage</MudAlert>
+        }
 
-    <!-- Password Section -->
-    <div class="settings-form-section mb-8" style="opacity: 0.5; pointer-events: none;">
-        <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-4">Password</MudText>
-        <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
-            <div class="d-flex justify-space-between align-center">
-                <div>
-                    <MudText Typo="Typo.body1" Style="font-weight: 500;">Change your password</MudText>
-                    <MudText Typo="Typo.body2" Color="Color.Secondary">Update your password regularly to keep your account secure</MudText>
-                </div>
-                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Edit" Class="rounded-pill" Disabled="true">
-                    Change Password
-                </MudButton>
-            </div>
-        </MudPaper>
-    </div>
+        @if (!string.IsNullOrWhiteSpace(_successMessage))
+        {
+            <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Class="mb-4">@_successMessage</MudAlert>
+        }
 
-    <!-- Divider -->
-    <MudDivider Class="my-6" />
+        <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-3">Linked Sign-In Providers</MudText>
 
-    <!-- Two-Factor Authentication Section -->
-    <div class="settings-form-section mb-8" style="opacity: 0.5; pointer-events: none;">
-        <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-4">Two-Factor Authentication</MudText>
-        <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
-            <div class="d-flex justify-space-between align-center">
-                <div>
-                    <MudText Typo="Typo.body1" Style="font-weight: 500;">Add an extra layer of security</MudText>
-                    <MudText Typo="Typo.body2" Color="Color.Secondary">Require a verification code in addition to your password</MudText>
-                </div>
-                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Security" Class="rounded-pill" Disabled="true">
-                    Enable 2FA
-                </MudButton>
-            </div>
-        </MudPaper>
-    </div>
+        @if (_linkedProviders.Count == 0)
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mb-6">
+                No external providers are linked yet.
+            </MudAlert>
+        }
+        else
+        {
+            <MudStack Direction="Direction.Row" Spacing="1" Class="mb-6" Wrap="Wrap.Wrap">
+                @foreach (var provider in _linkedProviders)
+                {
+                    <MudChip T="string" Color="Color.Primary" Variant="Variant.Outlined">@provider</MudChip>
+                }
+            </MudStack>
+        }
 
-    <!-- Divider -->
-    <MudDivider Class="my-6" />
+        <MudDivider Class="my-6" />
 
-    <!-- Active Sessions Section -->
-    <div class="settings-form-section" style="opacity: 0.5; pointer-events: none;">
-        <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-4">Active Sessions</MudText>
-        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">Manage devices where you're signed in</MudText>
+        <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-2">Link AT Protocol Identity</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+            Link your AT Protocol DID (for example, <code>did:plc:...</code>) to this account so sign-in with AT Protocol resolves to your existing profile.
+        </MudText>
 
-        <MudAlert Severity="Severity.Normal" Variant="Variant.Outlined">
-            Session management will be available when security features are enabled.
+        <MudStack Spacing="2">
+            <MudTextField @bind-Value="_atprotoDid"
+                          Label="AT Protocol DID"
+                          Placeholder="did:plc:example"
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Link"
+                          Immediate="true" />
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Disabled="@(!_canLinkAtproto || _isSaving)"
+                       OnClick="LinkAtprotoAsync"
+                       StartIcon="@Icons.Material.Filled.AddLink"
+                       Class="rounded-pill px-6"
+                       Style="width: fit-content;">
+                @if (_isSaving)
+                {
+                    <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+                    <span>Linking...</span>
+                }
+                else
+                {
+                    <span>Link AT Protocol DID</span>
+                }
+            </MudButton>
+        </MudStack>
+
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-4">
+            For security, at least one provider must remain linked to your account.
         </MudAlert>
-    </div>
+    }
 </div>
 
 @code {
+    private const string AtprotoProviderName = "atproto";
+
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private string _atprotoDid = string.Empty;
+    private string? _errorMessage;
+    private string? _successMessage;
+    private UserDto? _currentUser;
+    private List<UserExternalLoginListItem> _linkedLogins = [];
+
+    private List<string> _linkedProviders => _linkedLogins
+        .Where(x => !string.IsNullOrWhiteSpace(x.ProviderDisplayName))
+        .Select(x => x.ProviderDisplayName)
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+        .ToList();
+
+    private bool _canLinkAtproto =>
+        _currentUser is not null
+        && !string.IsNullOrWhiteSpace(_atprotoDid)
+        && _atprotoDid.Trim().StartsWith("did:", StringComparison.OrdinalIgnoreCase)
+        && !_linkedLogins.Any(x => string.Equals(x.Provider, AtprotoProviderName, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        try
+        {
+            _currentUser = await UserService.GetCurrentUserAsync();
+            if (_currentUser is null)
+            {
+                _errorMessage = "Could not load current user profile.";
+                return;
+            }
+
+            var client = HttpClientFactory.CreateClient("BffClient");
+            var allLogins = await client.GetFromJsonAsync<List<UserExternalLoginListItem>>("/api/userexternallogin");
+
+            _linkedLogins = allLogins?
+                .Where(x => x.UserId == _currentUser.Id)
+                .ToList()
+                ?? [];
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load linked providers in SettingsSecurity");
+            _errorMessage = "Failed to load linked providers.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LinkAtprotoAsync()
+    {
+        if (_currentUser is null)
+        {
+            _errorMessage = "Current user profile is unavailable.";
+            return;
+        }
+
+        if (!_currentUser.Id.HasValue)
+        {
+            _errorMessage = "Current user identifier is unavailable.";
+            return;
+        }
+
+        if (_linkedLogins.Any(x => string.Equals(x.Provider, AtprotoProviderName, StringComparison.OrdinalIgnoreCase)))
+        {
+            _errorMessage = "An AT Protocol identity is already linked to this account.";
+            return;
+        }
+
+        if (!_atprotoDid.Trim().StartsWith("did:", StringComparison.OrdinalIgnoreCase))
+        {
+            _errorMessage = "AT Protocol DID must start with 'did:'.";
+            return;
+        }
+
+        _isSaving = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        try
+        {
+            var client = HttpClientFactory.CreateClient("BffClient");
+            var payload = new CreateUserExternalLoginRequest
+            {
+                UserId = _currentUser.Id.Value,
+                TenantId = Guid.Empty,
+                Provider = AtprotoProviderName,
+                ProviderKey = _atprotoDid.Trim(),
+                ProviderDisplayName = "AT Protocol"
+            };
+
+            var response = await client.PostAsJsonAsync("/api/userexternallogin", payload);
+            var body = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _errorMessage = string.IsNullOrWhiteSpace(body)
+                    ? $"Failed to link DID ({(int)response.StatusCode})."
+                    : body;
+                return;
+            }
+
+            var commandResponse = await response.Content.ReadFromJsonAsync<BaseCommandResponseOfGuidLike>();
+            if (commandResponse is null || !commandResponse.Success)
+            {
+                _errorMessage = commandResponse?.Message ?? "Failed to link AT Protocol DID.";
+                return;
+            }
+
+            _successMessage = "AT Protocol DID linked successfully.";
+            _atprotoDid = string.Empty;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to link AT Protocol DID in SettingsSecurity");
+            _errorMessage = "Failed to link AT Protocol DID.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private sealed class UserExternalLoginListItem
+    {
+        public Guid Id { get; set; }
+        public Guid UserId { get; set; }
+        public string UserEmail { get; set; } = string.Empty;
+        public Guid TenantId { get; set; }
+        public string Provider { get; set; } = string.Empty;
+        public string ProviderDisplayName { get; set; } = string.Empty;
+    }
+
+    private sealed class CreateUserExternalLoginRequest
+    {
+        public Guid UserId { get; set; }
+        public Guid TenantId { get; set; }
+        public string Provider { get; set; } = string.Empty;
+        public string ProviderKey { get; set; } = string.Empty;
+        public string ProviderDisplayName { get; set; } = string.Empty;
+    }
+
+    private sealed class BaseCommandResponseOfGuidLike
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; } = string.Empty;
+    }
 }

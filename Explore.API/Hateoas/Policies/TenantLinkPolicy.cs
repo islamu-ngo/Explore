@@ -35,7 +35,7 @@ public sealed class TenantDetailLinkPolicy : ILinkPolicy<TenantDto>
         // Users link
         yield return new LinkDefinition(
             "users",
-            RouteNames.GetTenantUsers,
+            RouteNames.GetTenantMembers,
             new { tenantId = dto.Id },
             "GET",
             "Tenant users",

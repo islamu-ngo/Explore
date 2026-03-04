@@ -55,6 +55,7 @@ public static class DataBuilder
     #region User & Actor Entities
 
     public static Faker<User> User => new Faker<User>()
+        .RuleFor(u => u.Pii, f => new UserPii { Email = "", FirstName = "", LastName = "" })
         .RuleFor(u => u.Id, f => Guid.NewGuid())
         .RuleFor(u => u.Email, f => f.Internet.Email())
         .RuleFor(u => u.FirstName, f => f.Name.FirstName())
@@ -62,6 +63,7 @@ public static class DataBuilder
         .RuleFor(u => u.EmailVerified, f => f.Random.Bool());
 
     public static Faker<Actor> Actor => new Faker<Actor>()
+        .RuleFor(a => a.Pii, f => new ActorPii { DisplayName = "" })
         .RuleFor(a => a.Id, f => Guid.NewGuid())
         .RuleFor(a => a.DisplayName, f => f.Name.FullName())
         .RuleFor(a => a.Handle, f => f.Internet.UserName())
@@ -82,6 +84,7 @@ public static class DataBuilder
     #region Organization Entities
 
     public static Faker<Organization> Organization => new Faker<Organization>()
+        .RuleFor(o => o.Pii, f => new OrganizationPii { FullName = "" })
         .RuleFor(o => o.Id, f => Guid.NewGuid())
         .RuleFor(o => o.FullName, f => f.Company.CompanyName())
         .RuleFor(o => o.Email, f => f.Internet.Email())
@@ -107,6 +110,7 @@ public static class DataBuilder
     #region Location & Storage Entities
 
     public static Faker<Location> Location => new Faker<Location>()
+        .RuleFor(l => l.Pii, f => new LocationPii { Address = "", Postcode = "" })
         .RuleFor(l => l.Id, f => Guid.NewGuid())
         .RuleFor(l => l.FullName, f => f.Company.CompanyName())
         .RuleFor(l => l.Address, f => f.Address.StreetAddress())
@@ -156,9 +160,11 @@ public static class DataBuilder
             IsActiveState = true
         });
 
-    public static Faker<TenantUser> TenantUser => new Faker<TenantUser>()
+    public static Faker<TenantMember> TenantMember => new Faker<TenantMember>()
         .RuleFor(t => t.Id, f => Guid.NewGuid())
-        .RuleFor(t => t.RoleId, f => f.Random.Int(1, 3));
+        .RuleFor(t => t.RoleId, f => f.Random.Int(1, 3))
+        .RuleFor(t => t.GrantedAt, f => f.Date.Past())
+        .RuleFor(t => t.CreatedAt, f => f.Date.Past());
 
     #endregion
 

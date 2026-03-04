@@ -18,8 +18,8 @@ using Explore.Application.DTOs.OrganizationReview;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.DTOs.Tag;
 using Explore.Application.DTOs.Tenant;
+using Explore.Application.DTOs.TenantMember;
 using Explore.Application.DTOs.TenantSettings;
-using Explore.Application.DTOs.TenantUser;
 using Explore.Application.DTOs.User;
 
 /// <summary>
@@ -54,9 +54,9 @@ public static class ResourceDescriptorRegistry
         // User
         [typeof(UserDto)] = "user",
 
-        // Tenant User
-        [typeof(TenantUserDto)] = "tenant_user",
-        [typeof(TenantUserListDto)] = "tenant_user",
+        // Tenant Member
+        [typeof(TenantMemberDto)] = "tenant_member",
+        [typeof(TenantMemberListDto)] = "tenant_member",
 
         // Tag
         [typeof(TagDto)] = "tag",

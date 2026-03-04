@@ -50,26 +50,26 @@ public class TenantControllerTests
 
     #endregion
 
-    #region TenantUser Controller
+    #region TenantMember Controller
 
     [Test]
-    public async Task TenantUser_GetAll_ShouldReturnUnauthorized()
+    public async Task TenantMember_GetAll_ShouldReturnUnauthorized()
     {
-        var response = await _fixture.Client.GetAsync("/api/tenantuser");
+        var response = await _fixture.Client.GetAsync("/api/tenantmember");
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
     [Test]
-    public async Task TenantUser_GetById_WithRandomId_ShouldNotReturnServerError()
+    public async Task TenantMember_GetById_WithRandomId_ShouldNotReturnServerError()
     {
-        var response = await _fixture.Client.GetAsync($"/api/tenantuser/{1}");
+        var response = await _fixture.Client.GetAsync($"/api/tenantmember/{Guid.NewGuid()}");
         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
     }
 
     [Test]
-    public async Task TenantUser_Create_WithoutAuth_ShouldReturnUnauthorized()
+    public async Task TenantMember_Create_WithoutAuth_ShouldReturnUnauthorized()
     {
-        var response = await _fixture.Client.PostAsJsonAsync("/api/tenantuser", new
+        var response = await _fixture.Client.PostAsJsonAsync("/api/tenantmember", new
         {
             UserId = Guid.NewGuid(),
             TenantId = Guid.NewGuid(),

@@ -4,7 +4,7 @@ using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
 
-public class EventRegistration : ITenantEntity, IAuditableEntity
+public class EventRegistration : ITenantEntity, IAuditableEntity, ISoftDeletable
 {
     public Guid Id { get; set; }
 
@@ -33,4 +33,9 @@ public class EventRegistration : ITenantEntity, IAuditableEntity
     public Guid? CreatedBy { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public Guid? UpdatedBy { get; set; }
+
+    // Soft delete fields
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public Guid? DeletedBy { get; set; }
 }

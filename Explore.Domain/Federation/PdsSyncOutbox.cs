@@ -83,6 +83,16 @@ public class PdsSyncOutbox
     /// Source entity ID for correlation and debugging.
     /// </summary>
     public Guid? SourceEntityId { get; set; }
+
+    /// <summary>
+    /// Maximum number of retry attempts before dead-lettering. Worker should stop retrying when RetryCount >= MaxRetries.
+    /// </summary>
+    public int MaxRetries { get; set; }
+
+    /// <summary>
+    /// When the entry was moved to dead-letter state after exhausting retries. Null if still active.
+    /// </summary>
+    public DateTime? DeadLetteredAt { get; set; }
 }
 
 /// <summary>
@@ -115,5 +125,8 @@ public enum PdsSyncStatus
     Completed = 3,
 
     /// <summary>Failed after maximum retry attempts.</summary>
-    Failed = 4
+    Failed = 4,
+
+    /// <summary>Quarantined after exhausting all retries.</summary>
+    DeadLettered = 5
 }

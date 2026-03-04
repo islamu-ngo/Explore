@@ -1,4 +1,3 @@
-using System;
 using System.Security.Claims;
 using Explore.Application.Contracts.Infrastructure;
 using Microsoft.AspNetCore.Http;
@@ -11,6 +10,7 @@ namespace Explore.Infrastructure.Services;
 /// </summary>
 public class CurrentUserService : ICurrentUserService
 {
+    private const string InternalUserIdClaimType = "internal_user_id";
     private readonly IHttpContextAccessor _httpContextAccessor;
 
     public CurrentUserService(IHttpContextAccessor httpContextAccessor)
@@ -34,7 +34,8 @@ public class CurrentUserService : ICurrentUserService
             }
 
             // Try standard OIDC "sub" claim first, then fallback to other claim types
-            var userIdClaim = user.FindFirst("sub")?.Value
+            var userIdClaim = user.FindFirst(InternalUserIdClaimType)?.Value
+                ?? user.FindFirst("sub")?.Value
                 ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value
                 ?? user.FindFirst("sid")?.Value;
 

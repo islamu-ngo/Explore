@@ -4,7 +4,7 @@ using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
 
-public class OrganizationReview : ITenantEntity, IAuditableEntity
+public class OrganizationReview : ITenantEntity, IAuditableEntity, ISoftDeletable
 {
     public Guid Id { get; set; }
 
@@ -33,4 +33,9 @@ public class OrganizationReview : ITenantEntity, IAuditableEntity
     [ForeignKey("Tenant")]
     public Guid TenantId { get; set; }
     public required Tenant Tenant { get; set; }
+
+    // Soft delete fields
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public Guid? DeletedBy { get; set; }
 }

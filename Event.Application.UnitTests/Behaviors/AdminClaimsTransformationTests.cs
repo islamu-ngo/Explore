@@ -4,6 +4,7 @@
 using System.Security.Claims;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Identity;
+using Explore.Application.Contracts.Persistence;
 using Explore.Infrastructure.Identity;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -14,14 +15,18 @@ namespace Event.Application.UnitTests.Behaviors;
 public class AdminClaimsTransformationTests
 {
     private readonly IAdminContext _adminContext;
+    private readonly IUserExternalLoginRepository _userExternalLoginRepository;
+    private readonly IUserRepository _userRepository;
     private readonly ILogger<AdminClaimsTransformation> _logger;
     private readonly AdminClaimsTransformation _sut;
 
     public AdminClaimsTransformationTests()
     {
         _adminContext = Substitute.For<IAdminContext>();
+        _userExternalLoginRepository = Substitute.For<IUserExternalLoginRepository>();
+        _userRepository = Substitute.For<IUserRepository>();
         _logger = Substitute.For<ILogger<AdminClaimsTransformation>>();
-        _sut = new AdminClaimsTransformation(_adminContext, _logger);
+        _sut = new AdminClaimsTransformation(_adminContext, _userExternalLoginRepository, _userRepository, _logger);
     }
 
     [Test]

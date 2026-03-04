@@ -20,7 +20,7 @@ public class OrganizationPiiConfiguration : IEntityTypeConfiguration<Organizatio
             .IsRequired();
 
         builder.Property(e => e.Email)
-            .HasMaxLength(500);
+            .HasMaxLength(320);
 
         builder.Property(e => e.Country)
             .HasMaxLength(200);

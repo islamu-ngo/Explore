@@ -44,12 +44,15 @@ public static class LookupTableSeeder
         await SeedMadhabsAsync(context, cancellationToken);
         await SeedModuleDefinitionsAsync(context, cancellationToken);
         await SeedOrganizationPositionsAsync(context, cancellationToken);
+        await SeedGroupPositionsAsync(context, cancellationToken);
         await SeedRegistrationModesAsync(context, cancellationToken);
         await SeedRolesAsync(context, cancellationToken);
         await SeedSystemSettingsAsync(context, cancellationToken);
         await SeedTagTypesAsync(context, cancellationToken);
         await SeedVisibilityTypesAsync(context, cancellationToken);
         await SeedPermissionsAsync(context, cancellationToken);
+        await SeedNotificationTypesAsync(context, cancellationToken);
+        await SeedNotificationEntityTypesAsync(context, cancellationToken);
     }
 
     private static async Task SeedActorTypesAsync(ExploreDbContext context, CancellationToken ct)
@@ -253,6 +256,24 @@ public static class LookupTableSeeder
         await context.SaveChangesAsync(ct);
     }
 
+    private static async Task SeedGroupPositionsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<GroupPosition>().AnyAsync(ct)) return;
+
+        context.Set<GroupPosition>().AddRange(
+            new GroupPosition { Id = (int)GroupPositionEnum.Leader, MasterCode = "LEADER", FullName = "Leader", Description = "Group leader" },
+            new GroupPosition { Id = (int)GroupPositionEnum.CoLeader, MasterCode = "CO_LEADER", FullName = "Co-Leader", Description = "Group co-leader" },
+            new GroupPosition { Id = (int)GroupPositionEnum.Coordinator, MasterCode = "COORDINATOR", FullName = "Coordinator", Description = "Group coordinator" },
+            new GroupPosition { Id = (int)GroupPositionEnum.Moderator, MasterCode = "MODERATOR", FullName = "Moderator", Description = "Group moderator" },
+            new GroupPosition { Id = (int)GroupPositionEnum.Secretary, MasterCode = "SECRETARY", FullName = "Secretary", Description = "Group secretary" },
+            new GroupPosition { Id = (int)GroupPositionEnum.Treasurer, MasterCode = "TREASURER", FullName = "Treasurer", Description = "Group treasurer" },
+            new GroupPosition { Id = (int)GroupPositionEnum.Mentor, MasterCode = "MENTOR", FullName = "Mentor", Description = "Group mentor" },
+            new GroupPosition { Id = (int)GroupPositionEnum.Facilitator, MasterCode = "FACILITATOR", FullName = "Facilitator", Description = "Group facilitator" },
+            new GroupPosition { Id = (int)GroupPositionEnum.Volunteer, MasterCode = "VOLUNTEER", FullName = "Volunteer", Description = "Group volunteer" },
+            new GroupPosition { Id = (int)GroupPositionEnum.Member, MasterCode = "MEMBER", FullName = "Member", Description = "General group member" });
+        await context.SaveChangesAsync(ct);
+    }
+
     private static async Task SeedRegistrationModesAsync(ExploreDbContext context, CancellationToken ct)
     {
         if (await context.Set<RegistrationMode>().AnyAsync(ct)) return;
@@ -320,7 +341,14 @@ public static class LookupTableSeeder
             new SystemSetting { Id = SeedIds.SystemSettingAnalyticsEnabledId, SettingKey = GovernanceSettingKeys.AnalyticsEnabled, Value = "false", ValueType = SettingValueType.Boolean, IsLocked = false, Description = "Enable analytics tracking", Category = "Analytics", DisplayOrder = 2, CreatedAt = seedTimestamp },
             new SystemSetting { Id = SeedIds.SystemSettingAnalyticsApiKeyId, SettingKey = GovernanceSettingKeys.AnalyticsApiKey, Value = "\"\"", ValueType = SettingValueType.String, IsLocked = false, Description = "Analytics provider public/write API key", Category = "Analytics", DisplayOrder = 3, CreatedAt = seedTimestamp },
             new SystemSetting { Id = SeedIds.SystemSettingAnalyticsEndpointUrlId, SettingKey = GovernanceSettingKeys.AnalyticsEndpointUrl, Value = "\"\"", ValueType = SettingValueType.String, IsLocked = false, Description = "Analytics provider endpoint URL (supports self-hosted deployments)", Category = "Analytics", DisplayOrder = 4, CreatedAt = seedTimestamp },
-            new SystemSetting { Id = SeedIds.SystemSettingAnalyticsPersonalApiKeyId, SettingKey = GovernanceSettingKeys.AnalyticsPersonalApiKey, Value = "\"\"", ValueType = SettingValueType.String, IsLocked = false, Description = "Personal API key used for analytics feature flag evaluation when supported", Category = "Analytics", DisplayOrder = 5, CreatedAt = seedTimestamp }
+            new SystemSetting { Id = SeedIds.SystemSettingAnalyticsPersonalApiKeyId, SettingKey = GovernanceSettingKeys.AnalyticsPersonalApiKey, Value = "\"\"", ValueType = SettingValueType.String, IsLocked = false, Description = "Personal API key used for analytics feature flag evaluation when supported", Category = "Analytics", DisplayOrder = 5, CreatedAt = seedTimestamp },
+
+            // Localization / TMS
+            new SystemSetting { Id = SeedIds.SystemSettingLocalizationDefaultLanguageId, SettingKey = GovernanceSettingKeys.LocalizationDefaultLanguage, Value = "\"en\"", ValueType = SettingValueType.String, IsLocked = false, Description = "Default language code (ISO 639-1) for the instance", Category = "Localization", DisplayOrder = 1, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingLocalizationTmsProviderId, SettingKey = GovernanceSettingKeys.LocalizationTmsProvider, Value = "\"none\"", ValueType = SettingValueType.String, IsLocked = false, AllowedValues = "[\"none\",\"tolgee\",\"weblate\"]", Description = "Translation Management System provider (none uses offline bundles)", Category = "Localization", DisplayOrder = 2, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingLocalizationTmsApiUrlId, SettingKey = GovernanceSettingKeys.LocalizationTmsApiUrl, Value = "\"\"", ValueType = SettingValueType.String, IsLocked = false, Description = "TMS API base URL (e.g., https://app.tolgee.io or self-hosted URL)", Category = "Localization", DisplayOrder = 3, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingLocalizationTmsProjectIdId, SettingKey = GovernanceSettingKeys.LocalizationTmsProjectId, Value = "\"\"", ValueType = SettingValueType.String, IsLocked = false, Description = "TMS project identifier", Category = "Localization", DisplayOrder = 4, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingLocalizationTmsComponentId, SettingKey = GovernanceSettingKeys.LocalizationTmsComponent, Value = "\"\"", ValueType = SettingValueType.String, IsLocked = false, Description = "Weblate component slug (Weblate-specific, leave empty for Tolgee)", Category = "Localization", DisplayOrder = 5, CreatedAt = seedTimestamp }
         };
 
         var existingIds = await context.Set<SystemSetting>()
@@ -487,5 +515,37 @@ public static class LookupTableSeeder
     {
         return string.Join(' ', identifier.Split('_')
             .Select(word => char.ToUpperInvariant(word[0]) + word[1..]));
+    }
+
+    private static async Task SeedNotificationTypesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<NotificationType>().AnyAsync(ct)) return;
+
+        context.Set<NotificationType>().AddRange(
+            new NotificationType { Id = (int)NotificationTypeEnum.RegistrationConfirmed, MasterCode = "REGISTRATION_CONFIRMED", FullName = "Registration Confirmed", Description = "RSVP or registration was confirmed" },
+            new NotificationType { Id = (int)NotificationTypeEnum.ApprovalGranted, MasterCode = "APPROVAL_GRANTED", FullName = "Approval Granted", Description = "An approval request was granted" },
+            new NotificationType { Id = (int)NotificationTypeEnum.ApprovalRejected, MasterCode = "APPROVAL_REJECTED", FullName = "Approval Rejected", Description = "An approval request was rejected" },
+            new NotificationType { Id = (int)NotificationTypeEnum.WaitlistPromoted, MasterCode = "WAITLIST_PROMOTED", FullName = "Waitlist Promoted", Description = "Promoted from waitlist to confirmed" },
+            new NotificationType { Id = (int)NotificationTypeEnum.EventCreated, MasterCode = "EVENT_CREATED", FullName = "Event Created", Description = "A new event was created" },
+            new NotificationType { Id = (int)NotificationTypeEnum.EventUpdated, MasterCode = "EVENT_UPDATED", FullName = "Event Updated", Description = "An event was updated" },
+            new NotificationType { Id = (int)NotificationTypeEnum.EventCancelled, MasterCode = "EVENT_CANCELLED", FullName = "Event Cancelled", Description = "An event was cancelled" },
+            new NotificationType { Id = (int)NotificationTypeEnum.MemberInvited, MasterCode = "MEMBER_INVITED", FullName = "Member Invited", Description = "Invited to join an organization or group" },
+            new NotificationType { Id = (int)NotificationTypeEnum.MemberRemoved, MasterCode = "MEMBER_REMOVED", FullName = "Member Removed", Description = "Removed from an organization or group" },
+            new NotificationType { Id = (int)NotificationTypeEnum.General, MasterCode = "GENERAL", FullName = "General", Description = "General purpose notification" });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedNotificationEntityTypesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<NotificationEntityType>().AnyAsync(ct)) return;
+
+        context.Set<NotificationEntityType>().AddRange(
+            new NotificationEntityType { Id = (int)NotificationEntityTypeEnum.Event, MasterCode = "EVENT", FullName = "Event", Description = "Links to an event" },
+            new NotificationEntityType { Id = (int)NotificationEntityTypeEnum.Organization, MasterCode = "ORGANIZATION", FullName = "Organization", Description = "Links to an organization" },
+            new NotificationEntityType { Id = (int)NotificationEntityTypeEnum.Group, MasterCode = "GROUP", FullName = "Group", Description = "Links to a group" },
+            new NotificationEntityType { Id = (int)NotificationEntityTypeEnum.EventRegistration, MasterCode = "EVENT_REGISTRATION", FullName = "Event Registration", Description = "Links to an event registration" },
+            new NotificationEntityType { Id = (int)NotificationEntityTypeEnum.EventSession, MasterCode = "EVENT_SESSION", FullName = "Event Session", Description = "Links to an event session" },
+            new NotificationEntityType { Id = (int)NotificationEntityTypeEnum.User, MasterCode = "USER", FullName = "User", Description = "Links to a user" });
+        await context.SaveChangesAsync(ct);
     }
 }

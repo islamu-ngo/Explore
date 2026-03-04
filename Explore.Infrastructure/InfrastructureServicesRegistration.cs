@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Strategies;
 using Explore.Application.Models;
 using Explore.Infrastructure.Analytics;
 using Explore.Infrastructure.Identity;
+using Explore.Infrastructure.Localization;
 using Explore.Infrastructure.Mail;
 using Explore.Infrastructure.Services;
 using Explore.Infrastructure.Services.Federation;
@@ -139,6 +140,25 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<RuntimeAnalyticsProvider>();
         services.AddScoped<IAnalyticsProvider>(sp => sp.GetRequiredService<RuntimeAnalyticsProvider>());
         services.AddScoped<IAnalyticsFeatureFlagProvider>(sp => sp.GetRequiredService<RuntimeAnalyticsProvider>());
+
+        // Translation Management System providers (runtime-switchable via GovernanceSettings "localization.tms_provider")
+        // All concrete providers are always registered; RuntimeTranslationProvider delegates at runtime.
+        // None → OfflineTranslationProvider (bundled .json files), Tolgee → TolgeeTranslationProvider, Weblate → WeblateTranslationProvider
+        services.AddHttpClient<TolgeeTranslationProvider>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(10);
+        });
+        services.AddHttpClient<WeblateTranslationProvider>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(10);
+        });
+        services.AddSingleton<OfflineTranslationProvider>();
+        services.AddScoped<NullTranslationProvider>();
+        services.AddScoped<ITranslationConfigResolver, TranslationConfigResolver>();
+        services.AddScoped<RuntimeTranslationProvider>();
+        services.AddScoped<ITranslationManagementProvider>(sp => sp.GetRequiredService<RuntimeTranslationProvider>());
+        services.AddScoped<TranslationResolver>();
+        services.AddScoped<ITranslationResolver>(sp => sp.GetRequiredService<TranslationResolver>());
 
         // PDS Synchronization services
         services.Configure<PdsSyncSettings>(configuration.GetSection(PdsSyncSettings.SectionName));

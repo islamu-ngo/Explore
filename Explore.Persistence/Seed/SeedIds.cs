@@ -40,10 +40,10 @@ public static class SeedIds
     public static readonly Guid AdminTechCoOwnerId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000045");
     public static readonly Guid RegularTechCreatorId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000046");
 
-    // ===== Tenant Users (Development) =====
-    public static readonly Guid AdminTenantUserId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000070");
-    public static readonly Guid RegularTenantUserId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000071");
-    public static readonly Guid ModeratorTenantUserId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000072");
+    // ===== Tenant Members (Development) =====
+    public static readonly Guid AdminTenantMemberId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000070");
+    public static readonly Guid RegularTenantMemberId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000071");
+    public static readonly Guid ModeratorTenantMemberId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000072");
 
     // ===== Storage Objects (Development) =====
     public static readonly Guid DefaultEventImageId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000050");
@@ -132,6 +132,13 @@ public static class SeedIds
     public static readonly Guid SystemSettingGroupSubmissionEnabledId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000551");
     public static readonly Guid SystemSettingOrgSelfRegistrationEnabledId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000552");
     public static readonly Guid SystemSettingGroupSelfRegistrationEnabledId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000553");
+
+    // ===== System Settings — Localization / TMS =====
+    public static readonly Guid SystemSettingLocalizationDefaultLanguageId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000560");
+    public static readonly Guid SystemSettingLocalizationTmsProviderId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000561");
+    public static readonly Guid SystemSettingLocalizationTmsApiUrlId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000562");
+    public static readonly Guid SystemSettingLocalizationTmsProjectIdId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000563");
+    public static readonly Guid SystemSettingLocalizationTmsComponentId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000564");
 
     // ===== Module Definitions =====
     public static readonly Guid ModuleCoreId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000600");

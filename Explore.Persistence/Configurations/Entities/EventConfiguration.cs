@@ -23,10 +23,10 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.Property(e => e.Title).HasMaxLength(200).IsRequired();
         builder.Property(e => e.Subtitle).HasMaxLength(200);
         builder.Property(e => e.Description).HasMaxLength(5000);
-        builder.Property(e => e.Slug).HasMaxLength(500);
+        builder.Property(e => e.Slug).HasMaxLength(200);
         builder.Property(e => e.CurrencyCode).HasMaxLength(3);
-        builder.Property(e => e.EventUrl).HasMaxLength(500);
-        builder.Property(e => e.ExternalRegistrationUrl).HasMaxLength(500);
+        builder.Property(e => e.EventUrl).HasMaxLength(2048);
+        builder.Property(e => e.ExternalRegistrationUrl).HasMaxLength(2048);
         builder.Property(e => e.Timezone).HasMaxLength(100);
         builder.Property(e => e.Price).HasPrecision(19, 4);
 
@@ -126,6 +126,10 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.ToTable(t => t.HasCheckConstraint(
             "CK_Event_NonNegativePrice",
             "price IS NULL OR price >= 0"));
+
+        // Optimistic concurrency control (database-agnostic)
+        builder.Property(e => e.ConcurrencyStamp)
+            .IsConcurrencyToken();
 
         // NOTE: Business entity seed data moved to DatabaseSeeder for conditional (Development-only) seeding.
         // See Explore.Persistence/Seed/DatabaseSeeder.cs and SeedData.cs

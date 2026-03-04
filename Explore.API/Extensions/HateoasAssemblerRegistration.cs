@@ -12,16 +12,18 @@ using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionAgendaItem;
 using Explore.Application.DTOs.Group;
+using Explore.Application.DTOs.GroupMember;
 using Explore.Application.DTOs.IndexedDid;
 using Explore.Application.DTOs.Location;
+using Explore.Application.DTOs.Notification;
 using Explore.Application.DTOs.Organization;
 using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.DTOs.OrganizationReview;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.DTOs.Tag;
 using Explore.Application.DTOs.Tenant;
+using Explore.Application.DTOs.TenantMember;
 using Explore.Application.DTOs.TenantSettings;
-using Explore.Application.DTOs.TenantUser;
 using Explore.Application.DTOs.User;
 
 /// <summary>
@@ -70,6 +72,11 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ICollectionLinkPolicy<GroupListDto>, GroupCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<GroupDto, GroupListDto>, GroupResourceAssembler>();
 
+        // GroupMember (relationship with payload, same DTO for detail and list)
+        services.AddScoped<ILinkPolicy<GroupMemberDto>, GroupMemberDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<GroupMemberDto>, GroupMemberCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<GroupMemberDto, GroupMemberDto>, GroupMemberResourceAssembler>();
+
         // Tag
         services.AddScoped<ILinkPolicy<TagDto>, TagDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<TagListDto>, TagCollectionLinkPolicy>();
@@ -85,10 +92,10 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ICollectionLinkPolicy<TenantListDto>, TenantCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<TenantDto, TenantListDto>, TenantResourceAssembler>();
 
-        // TenantUser (relationship with payload)
-        services.AddScoped<ILinkPolicy<TenantUserDto>, TenantUserDetailLinkPolicy>();
-        services.AddScoped<ICollectionLinkPolicy<TenantUserListDto>, TenantUserCollectionLinkPolicy>();
-        services.AddScoped<IResourceAssembler<TenantUserDto, TenantUserListDto>, TenantUserResourceAssembler>();
+        // TenantMember (relationship with payload)
+        services.AddScoped<ILinkPolicy<TenantMemberDto>, TenantMemberDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<TenantMemberListDto>, TenantMemberCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<TenantMemberDto, TenantMemberListDto>, TenantMemberResourceAssembler>();
 
         // TenantSettings
         services.AddScoped<ILinkPolicy<TenantSettingsDto>, TenantSettingsDetailLinkPolicy>();
@@ -129,6 +136,11 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<IndexedDidDto>, IndexedDidDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<IndexedDidListDto>, IndexedDidCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<IndexedDidDto, IndexedDidListDto>, IndexedDidResourceAssembler>();
+
+        // Notification (personal user notifications)
+        services.AddScoped<ILinkPolicy<NotificationDto>, NotificationDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<NotificationListDto>, NotificationCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<NotificationDto, NotificationListDto>, NotificationResourceAssembler>();
 
         return services;
     }

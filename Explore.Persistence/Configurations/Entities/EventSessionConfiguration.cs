@@ -17,7 +17,7 @@ public class EventSessionConfiguration : IEntityTypeConfiguration<EventSession>
             .HasMaxLength(3);
 
         builder.Property(e => e.Title).HasMaxLength(500);
-        builder.Property(e => e.Slug).HasMaxLength(500);
+        builder.Property(e => e.Slug).HasMaxLength(200);
         builder.Property(e => e.Description).HasMaxLength(500);
 
         builder.HasOne(e => e.Event)
@@ -41,5 +41,9 @@ public class EventSessionConfiguration : IEntityTypeConfiguration<EventSession>
                 "CK_EventSession_NonNegativePrice",
                 "price IS NULL OR price >= 0");
         });
+
+        // Optimistic concurrency control (database-agnostic)
+        builder.Property(e => e.ConcurrencyStamp)
+            .IsConcurrencyToken();
     }
 }

@@ -4,7 +4,7 @@ using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
 
-public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable
+public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurrencyAware
 {
     public Guid Id { get; set; }
 
@@ -83,6 +83,9 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }
     public Guid? DeletedBy { get; set; }
+
+    // Concurrency control
+    public Guid ConcurrencyStamp { get; set; }
 
     // ===== Aspect Navigation Properties =====
     // Optional 1:1 aspects - only present when event has specific characteristics

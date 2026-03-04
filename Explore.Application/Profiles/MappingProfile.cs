@@ -40,8 +40,8 @@ using Explore.Application.DTOs.Tag;
 using Explore.Application.DTOs.TagType;
 using Explore.Application.DTOs.TagTypeTags;
 using Explore.Application.DTOs.Tenant;
+using Explore.Application.DTOs.TenantMember;
 using Explore.Application.DTOs.TenantSettings;
-using Explore.Application.DTOs.TenantUser;
 using Explore.Application.DTOs.User;
 using Explore.Application.DTOs.UserAuthenticationToken;
 using Explore.Application.DTOs.UserExternalLogin;
@@ -63,20 +63,20 @@ public class MappingProfile : Profile
         CreateMap<UpdateTenantDto, Tenant>();
 
         // ============================================
-        // TENANT USER MAPPINGS
+        // TENANT MEMBER MAPPINGS
         // ============================================
-        CreateMap<TenantUser, TenantUserDto>()
+        CreateMap<TenantMember, TenantMemberDto>()
             .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null))
             .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User != null ? $"{src.User.FirstName} {src.User.LastName}" : null))
             .ForMember(dest => dest.TenantFullName, opt => opt.MapFrom(src => src.Tenant != null ? src.Tenant.FullName : null))
             .ForMember(dest => dest.RoleName, opt => opt.MapFrom(src => src.Role != null ? src.Role.FullName : null));
-        CreateMap<TenantUser, TenantUserListDto>()
+        CreateMap<TenantMember, TenantMemberListDto>()
             .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null))
             .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User != null ? $"{src.User.FirstName} {src.User.LastName}" : null))
             .ForMember(dest => dest.TenantFullName, opt => opt.MapFrom(src => src.Tenant != null ? src.Tenant.FullName : null))
             .ForMember(dest => dest.RoleName, opt => opt.MapFrom(src => src.Role != null ? src.Role.FullName : null));
-        CreateMap<CreateTenantUserDto, TenantUser>();
-        CreateMap<UpdateTenantUserDto, TenantUser>();
+        CreateMap<CreateTenantMemberDto, TenantMember>();
+        CreateMap<UpdateTenantMemberDto, TenantMember>();
 
         // ============================================
         // TENANT SETTINGS MAPPINGS
@@ -213,12 +213,14 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.GroupFullName, opt => opt.MapFrom(src => src.Group != null ? src.Group.FullName : null))
             .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null))
             .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User != null ? $"{src.User.FirstName} {src.User.LastName}" : null))
-            .ForMember(dest => dest.RoleName, opt => opt.MapFrom(src => src.Role != null ? src.Role.FullName : null));
+            .ForMember(dest => dest.RoleName, opt => opt.MapFrom(src => src.Role != null ? src.Role.FullName : null))
+            .ForMember(dest => dest.GroupPositionFullName, opt => opt.MapFrom(src => src.GroupPosition != null ? src.GroupPosition.FullName : null));
         CreateMap<GroupMember, GroupMemberListDto>()
             .ForMember(dest => dest.GroupFullName, opt => opt.MapFrom(src => src.Group != null ? src.Group.FullName : null))
             .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null))
             .ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User != null ? $"{src.User.FirstName} {src.User.LastName}" : null))
-            .ForMember(dest => dest.RoleName, opt => opt.MapFrom(src => src.Role != null ? src.Role.FullName : null));
+            .ForMember(dest => dest.RoleName, opt => opt.MapFrom(src => src.Role != null ? src.Role.FullName : null))
+            .ForMember(dest => dest.GroupPositionFullName, opt => opt.MapFrom(src => src.GroupPosition != null ? src.GroupPosition.FullName : null));
         CreateMap<AddGroupMemberDto, GroupMember>();
         CreateMap<UpdateGroupMemberRoleDto, GroupMember>();
 
@@ -515,6 +517,12 @@ public class MappingProfile : Profile
         CreateMap<Domain.OrganizationPosition, OrganizationPositionListDto>().ReverseMap();
 
         // ============================================
+        // GROUP POSITION MAPPINGS (Readonly Lookup)
+        // ============================================
+        CreateMap<Domain.GroupPosition, DTOs.GroupPosition.GroupPositionDto>().ReverseMap();
+        CreateMap<Domain.GroupPosition, DTOs.GroupPosition.GroupPositionListDto>().ReverseMap();
+
+        // ============================================
         // UNIFIED ROLE MAPPINGS
         // ============================================
         CreateMap<Domain.Role, DTOs.Role.RoleDto>();
@@ -613,6 +621,11 @@ public class MappingProfile : Profile
         CreateMap<EventTechAspect, EventTechAspectDto>();
 
         CreateMap<CreateUpdateTechAspectDto, EventTechAspect>();
+
+        // ============================================
+        // NOTIFICATION MAPPINGS
+        // ============================================
+        CreateNotificationMappings();
     }
 
     /// <summary>
@@ -624,5 +637,24 @@ public class MappingProfile : Profile
         if (src.IslamicAspect != null) aspects.Add("Islamic");
         if (src.TechAspect != null) aspects.Add("Tech");
         return aspects;
+    }
+
+    /// <summary>
+    /// Configures notification entity to DTO mappings.
+    /// </summary>
+    private void CreateNotificationMappings()
+    {
+        CreateMap<Notification, DTOs.Notification.NotificationDto>()
+            .ForMember(d => d.NotificationTypeName, opt => opt.MapFrom(s => s.NotificationType != null ? s.NotificationType.FullName : null))
+            .ForMember(d => d.NotificationEntityTypeName, opt => opt.MapFrom(s => s.NotificationEntityType != null ? s.NotificationEntityType.FullName : null))
+            .ForMember(d => d.NotificationScopeName, opt => opt.MapFrom(s => s.NotificationScope != null ? s.NotificationScope.FullName : null))
+            .ForMember(d => d.SourceActorName, opt => opt.MapFrom(s => s.SourceActor != null && s.SourceActor.Pii != null ? s.SourceActor.Pii.DisplayName : null))
+            .ForMember(d => d.RecipientContextActorName, opt => opt.MapFrom(s => s.RecipientContextActor != null && s.RecipientContextActor.Pii != null ? s.RecipientContextActor.Pii.DisplayName : null));
+        CreateMap<Notification, DTOs.Notification.NotificationListDto>()
+            .ForMember(d => d.NotificationTypeName, opt => opt.MapFrom(s => s.NotificationType != null ? s.NotificationType.FullName : null))
+            .ForMember(d => d.NotificationEntityTypeName, opt => opt.MapFrom(s => s.NotificationEntityType != null ? s.NotificationEntityType.FullName : null))
+            .ForMember(d => d.NotificationScopeName, opt => opt.MapFrom(s => s.NotificationScope != null ? s.NotificationScope.FullName : null))
+            .ForMember(d => d.SourceActorName, opt => opt.MapFrom(s => s.SourceActor != null && s.SourceActor.Pii != null ? s.SourceActor.Pii.DisplayName : null))
+            .ForMember(d => d.RecipientContextActorName, opt => opt.MapFrom(s => s.RecipientContextActor != null && s.RecipientContextActor.Pii != null ? s.RecipientContextActor.Pii.DisplayName : null));
     }
 }

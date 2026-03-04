@@ -5,10 +5,10 @@ using Explore.Application.DTOs.User;
 using Explore.Application.Features.Users.Requests.Commands;
 using Explore.Application.Features.Users.Requests.Queries;
 using Explore.Application.Responses;
+using Explore.Domain.Constants;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Caching.Memory;
 
 namespace Explore.API.Controllers;
 
@@ -25,59 +25,64 @@ public class UserController : ControllerBase
     }
 
     /// <summary>
-    /// Syncs the authenticated user from Keycloak to the local database.
+    /// Syncs the authenticated user from the active identity provider to the local database.
     /// Creates a new User and Actor if they don't exist, otherwise updates the user's basic info.
     /// Call this endpoint after login/registration to ensure user exists in the system.
     /// </summary>
     [HttpPost("sync")]
     [Authorize]
-    [EndpointSummary("Sync user from Keycloak")]
-    [EndpointDescription("Creates or updates the user in the local database. Also creates the user's personal Actor if new user. Call this after login/registration.")]
+    [EndpointSummary("Sync user from identity provider")]
+    [EndpointDescription("Creates or updates the user in the local database and ensures external provider linkage. Also creates the user's personal Actor if new user. Call this after login/registration.")]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> SyncUser(CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirst("sub")?.Value
-                     ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var providerSubject = User.FindFirst("sub")?.Value
+                             ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                             ?? User.FindFirst("sid")?.Value;
 
-        if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var guidUserId))
+        if (string.IsNullOrWhiteSpace(providerSubject))
         {
             return BadRequest(new BaseCommandResponse<Guid>
             {
                 Success = false,
-                Message = "Invalid User ID in token",
-                Errors = new List<string> { "Could not parse user ID from authentication token." }
+                Message = "Invalid provider subject in token",
+                Errors = new List<string> { "Could not resolve provider identity from authentication token." }
             });
         }
 
         var email = User.FindFirst("email")?.Value
-                    ?? User.FindFirst(ClaimTypes.Email)?.Value ?? "";
+                    ?? User.FindFirst(ClaimTypes.Email)?.Value
+                    ?? string.Empty;
 
         var firstName = User.FindFirst("given_name")?.Value
-                        ?? User.FindFirst(ClaimTypes.GivenName)?.Value ?? "";
+                        ?? User.FindFirst(ClaimTypes.GivenName)?.Value
+                        ?? string.Empty;
 
         var lastName = User.FindFirst("family_name")?.Value
-                       ?? User.FindFirst(ClaimTypes.Surname)?.Value ?? "";
+                       ?? User.FindFirst(ClaimTypes.Surname)?.Value
+                       ?? string.Empty;
 
         var username = User.FindFirst("preferred_username")?.Value
-                       ?? User.FindFirst(ClaimTypes.Name)?.Value ?? "";
+                       ?? User.FindFirst(ClaimTypes.Name)?.Value
+                       ?? string.Empty;
 
-        // Validate required fields
-        if (string.IsNullOrWhiteSpace(email))
-        {
-            return BadRequest(new BaseCommandResponse<Guid>
-            {
-                Success = false,
-                Message = "Email is required",
-                Errors = new List<string> { "Email claim not found in token." }
-            });
-        }
+        var provider = ResolveAuthProvider(User);
+        var providerId = ResolveProviderId(User, providerSubject);
+        var emailVerified = ResolveEmailVerified(User, provider, email);
+
+        var userIdGuid = Guid.TryParse(providerSubject, out var parsedGuid)
+            ? parsedGuid
+            : Guid.Empty;
 
         var userDto = new UserDto
         {
-            Id = guidUserId,
+            Id = userIdGuid,
             Email = email,
             FirstName = string.IsNullOrWhiteSpace(firstName) ? "User" : firstName,
             LastName = string.IsNullOrWhiteSpace(lastName) ? "" : lastName,
-            Username = username
+            Username = username,
+            AuthProvider = provider,
+            AuthProviderId = providerId,
+            EmailVerified = emailVerified
         };
 
         var command = new SyncUserCommand { UserDto = userDto };
@@ -91,29 +96,88 @@ public class UserController : ControllerBase
         return Ok(response);
     }
 
+    private static string ResolveAuthProvider(ClaimsPrincipal user)
+    {
+        var explicitProvider = user.FindFirst("idp")?.Value;
+        if (!string.IsNullOrWhiteSpace(explicitProvider))
+        {
+            var normalized = explicitProvider.Trim().ToLowerInvariant();
+            if (normalized.Contains("google", StringComparison.Ordinal))
+            {
+                return AuthSchemeNames.Google.ToLowerInvariant();
+            }
+
+            if (normalized.Contains("atproto", StringComparison.Ordinal))
+            {
+                return AuthSchemeNames.Atproto.ToLowerInvariant();
+            }
+
+            if (normalized.Contains("keycloak", StringComparison.Ordinal))
+            {
+                return AuthSchemeNames.Keycloak.ToLowerInvariant();
+            }
+        }
+
+        var issuer = user.FindFirst("iss")?.Value ?? string.Empty;
+        if (issuer.Contains("accounts.google.com", StringComparison.OrdinalIgnoreCase))
+        {
+            return AuthSchemeNames.Google.ToLowerInvariant();
+        }
+
+        var subject = user.FindFirst("sub")?.Value ?? string.Empty;
+        if (subject.StartsWith("did:", StringComparison.OrdinalIgnoreCase) ||
+            issuer.Contains("atproto", StringComparison.OrdinalIgnoreCase))
+        {
+            return AuthSchemeNames.Atproto.ToLowerInvariant();
+        }
+
+        return AuthSchemeNames.Keycloak.ToLowerInvariant();
+    }
+
+    private static string ResolveProviderId(ClaimsPrincipal user, string providerSubject)
+    {
+        return user.FindFirst("did")?.Value
+               ?? user.FindFirst("atproto_did")?.Value
+               ?? providerSubject;
+    }
+
+    private static bool ResolveEmailVerified(ClaimsPrincipal user, string provider, string email)
+    {
+        var emailVerifiedClaim = user.FindFirst("email_verified")?.Value;
+        if (bool.TryParse(emailVerifiedClaim, out var emailVerified))
+        {
+            return emailVerified;
+        }
+
+        return provider switch
+        {
+            "keycloak" => true,
+            "google" => true,
+            _ => !string.IsNullOrWhiteSpace(email)
+        };
+    }
+
     [HttpGet]
     [Authorize]
     public async Task<ActionResult<UserDto>> GetCurrentUser(CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirst("sub")?.Value
-                     ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var guidUserId))
+        var currentUserId = await ResolveCurrentUserIdAsync(cancellationToken);
+        if (!currentUserId.HasValue)
         {
             return BadRequest("Invalid User ID in token");
         }
 
-        var query = new GetUserRequest { UserId = guidUserId };
+        var query = new GetUserRequest { UserId = currentUserId.Value };
         var user = await _mediator.Send(query, cancellationToken);
 
         // FIX: Return 404 if user doesn't exist
         if (user == null)
         {
-            Console.WriteLine($"[USER API] User not found in database: {guidUserId}");
+            Console.WriteLine($"[USER API] User not found in database: {currentUserId.Value}");
             return NotFound(new
             {
                 message = "User not found in database. Please refresh the page to sync your profile.",
-                userId = guidUserId
+                userId = currentUserId.Value
             });
         }
 
@@ -131,15 +195,13 @@ public class UserController : ControllerBase
     [EndpointDescription("Returns instance, tenant, and organization admin status for the authenticated user. Consumed by BFF claims transformation.")]
     public async Task<ActionResult<AdminAuthorityDto>> GetAdminAuthority(CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirst("sub")?.Value
-                     ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var guidUserId))
+        var currentUserId = await ResolveCurrentUserIdAsync(cancellationToken);
+        if (!currentUserId.HasValue)
         {
             return BadRequest("Invalid User ID in token");
         }
 
-        var query = new GetAdminAuthorityRequest { UserId = guidUserId };
+        var query = new GetAdminAuthorityRequest { UserId = currentUserId.Value };
         var authority = await _mediator.Send(query, cancellationToken);
 
         return Ok(authority);
@@ -156,17 +218,15 @@ public class UserController : ControllerBase
     public async Task<ActionResult<List<OrganizationListDto>>> GetUserOrganizations(Guid userId, CancellationToken cancellationToken = default)
     {
         // Verify the user is requesting their own organizations
-        var currentUserId = User.FindFirst("sub")?.Value
-                     ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        if (string.IsNullOrEmpty(currentUserId) || !Guid.TryParse(currentUserId, out var guidCurrentUserId))
+        var currentUserId = await ResolveCurrentUserIdAsync(cancellationToken);
+        if (!currentUserId.HasValue)
         {
             return Unauthorized("Invalid User ID in token");
         }
 
         // For now, only allow users to get their own organizations
         // TODO: Add admin check for viewing other users' organizations
-        if (userId != guidCurrentUserId)
+        if (userId != currentUserId.Value)
         {
             return Forbid("You can only view your own organizations");
         }
@@ -185,15 +245,13 @@ public class UserController : ControllerBase
     [Authorize]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateUser([FromBody] UpdateUserDto userDto, CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirst("sub")?.Value
-                     ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var guidUserId))
+        var currentUserId = await ResolveCurrentUserIdAsync(cancellationToken);
+        if (!currentUserId.HasValue)
         {
             return BadRequest("Invalid User ID in token");
         }
 
-        if (userDto.Id != guidUserId)
+        if (userDto.Id != currentUserId.Value)
         {
             return BadRequest("User ID mismatch");
         }
@@ -207,17 +265,49 @@ public class UserController : ControllerBase
     [Authorize]
     public async Task<ActionResult> DeleteUser(CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirst("sub")?.Value
-                     ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var guidUserId))
+        var currentUserId = await ResolveCurrentUserIdAsync(cancellationToken);
+        if (!currentUserId.HasValue)
         {
             return BadRequest("Invalid User ID in token");
         }
 
-        var command = new DeleteUserCommand { UserId = guidUserId };
+        var command = new DeleteUserCommand { UserId = currentUserId.Value };
         await _mediator.Send(command, cancellationToken);
 
         return NoContent();
+    }
+
+    private async Task<Guid?> ResolveCurrentUserIdAsync(CancellationToken cancellationToken)
+    {
+        var providerSubject = User.FindFirst("sub")?.Value
+                             ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                             ?? User.FindFirst("sid")?.Value;
+
+        if (string.IsNullOrWhiteSpace(providerSubject))
+        {
+            return null;
+        }
+
+        if (Guid.TryParse(providerSubject, out var guidUserId))
+        {
+            return guidUserId;
+        }
+
+        var provider = ResolveAuthProvider(User);
+        var providerId = ResolveProviderId(User, providerSubject);
+        var email = User.FindFirst("email")?.Value
+                    ?? User.FindFirst(ClaimTypes.Email)?.Value
+                    ?? string.Empty;
+        var emailVerified = ResolveEmailVerified(User, provider, email);
+
+        var resolveQuery = new ResolveCurrentUserIdByIdentityRequest
+        {
+            Provider = provider,
+            ProviderId = providerId,
+            Email = email,
+            EmailVerified = emailVerified
+        };
+
+        return await _mediator.Send(resolveQuery, cancellationToken);
     }
 }

@@ -137,3 +137,32 @@ Instance bootstrap uses `ISetupSecretProvider`:
 - [CONFIGURATION.md](CONFIGURATION.md)
 - [SECURITY.md](SECURITY.md)
 - [MULTI_TENANCY.md](MULTI_TENANCY.md)
+
+## Partitioning Strategy — Planned
+
+**Status:** Not yet implemented. Strategy documented for post-v1.0 when table sizes warrant it.
+
+**Candidate tables (high-growth, multi-tenant):**
+
+| Table | Growth Pattern | Partitioning Strategy |
+|---|---|---|
+| `events` | Per tenant, unbounded | Hash by `tenant_id` (16-64 partitions) |
+| `event_sessions` | Per event, high fan-out | Hash by `tenant_id` |
+| `event_registrations` | Per session × users | Hash by `tenant_id` |
+| `pds_sync_outbox` | Transactional, time-ordered | Range by `created_at` (monthly) |
+| `audit_logs` | Append-only, all writes | Range by `created_at` (monthly) |
+| `notifications` | Per user, high volume | Hash by `tenant_id` |
+| `configuration_change_logs` | Append-only audit | Range by `timestamp` (monthly) |
+
+**PostgreSQL declarative partitioning approach:**
+1. **Tenant-scoped tables** → Hash partition by `tenant_id`. This distributes tenants across partitions and allows partition pruning when `tenant_id` is in the WHERE clause (it always is due to query filters).
+2. **Time-series tables** (outbox, audit, change logs) → Range partition by creation timestamp with monthly boundaries. Old partitions can be detached and archived without affecting active data.
+3. **Hybrid** (notifications) → Could use composite partitioning (hash by tenant, then range by date) if volume justifies complexity.
+
+**Prerequisites before implementing:**
+- Table sizes must exceed ~10M rows to justify partitioning overhead.
+- All queries on partitioned tables must include the partition key in WHERE clause (tenant_id or created_at). Current EF query filters already ensure this for tenant_id.
+- Unique indexes must include the partition key. Current unique constraints already include tenant_id where applicable.
+- Foreign keys referencing partitioned tables have limitations in PostgreSQL — plan migration carefully.
+
+**Estimated trigger point:** When any single table exceeds 50M rows or query latency degrades despite proper indexing.

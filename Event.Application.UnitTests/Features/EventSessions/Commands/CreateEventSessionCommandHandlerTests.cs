@@ -1,6 +1,5 @@
 using AutoMapper;
 using Event.Application.UnitTests.Common;
-using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.Features.EventSessions.Handlers.Commands;
@@ -19,7 +18,6 @@ public class CreateEventSessionCommandHandlerTests
     private readonly ILocationRepository _locationRepository;
     private readonly IRegistrationModeRepository _registrationModeRepository;
     private readonly IEventSessionIslamicAspectRepository _eventSessionIslamicAspectRepository;
-    private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
     private readonly CreateEventSessionCommandHandler _handler;
 
@@ -30,7 +28,6 @@ public class CreateEventSessionCommandHandlerTests
         _locationRepository = Substitute.For<ILocationRepository>();
         _registrationModeRepository = Substitute.For<IRegistrationModeRepository>();
         _eventSessionIslamicAspectRepository = Substitute.For<IEventSessionIslamicAspectRepository>();
-        _tenantContext = Substitute.For<ITenantContext>();
         _mapper = Substitute.For<IMapper>();
 
         _handler = new CreateEventSessionCommandHandler(
@@ -39,7 +36,6 @@ public class CreateEventSessionCommandHandlerTests
             _locationRepository,
             _registrationModeRepository,
             _eventSessionIslamicAspectRepository,
-            _tenantContext,
             _mapper
         );
     }
@@ -48,7 +44,6 @@ public class CreateEventSessionCommandHandlerTests
     public async Task Handle_WithValidRequest_ReturnsSuccessResponse()
     {
         // Arrange
-        var tenantId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
         var command = new CreateEventSessionCommand
@@ -63,8 +58,6 @@ public class CreateEventSessionCommandHandlerTests
                 MaxAudienceAttendees = 100
             }
         };
-
-        _tenantContext.TenantId.Returns(tenantId);
 
         // Mock event existence validation
         var existingEvent = DataBuilder.Event.Generate();
@@ -148,7 +141,6 @@ public class CreateEventSessionCommandHandlerTests
     public async Task Handle_WithValidLocationId_AssociatesLocation()
     {
         // Arrange
-        var tenantId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
         var locationId = Guid.NewGuid();
         var sessionId = Guid.NewGuid();
@@ -163,8 +155,6 @@ public class CreateEventSessionCommandHandlerTests
                 Title = "Test Session"
             }
         };
-
-        _tenantContext.TenantId.Returns(tenantId);
 
         // Mock event and location existence
         var existingEvent = DataBuilder.Event.Generate();

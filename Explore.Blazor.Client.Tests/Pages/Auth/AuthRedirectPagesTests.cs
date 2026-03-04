@@ -1,8 +1,12 @@
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Json;
 using Bunit.TestDoubles;
 using Explore.Blazor.Client.Pages.Events;
 using Explore.Blazor.Client.Tests.Common;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
 
 namespace Explore.Blazor.Client.Tests.Pages.Auth;
 
@@ -13,6 +17,13 @@ public class AuthRedirectPagesTests : IDisposable
     public AuthRedirectPagesTests()
     {
         _ctx = new BlazorTestContext();
+        ConfigureAuthProviderClient(new
+        {
+            providers = new[]
+            {
+                new { name = "Keycloak", displayName = "Keycloak", type = "button", recommended = true }
+            }
+        });
     }
 
     public void Dispose()
@@ -37,11 +48,19 @@ public class AuthRedirectPagesTests : IDisposable
         nav.NavigateTo("/login");
 
         // Act
-        _ctx.RenderComponent<DynamicComponent>(parameters =>
+        var cut = _ctx.RenderComponent<DynamicComponent>(parameters =>
             parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
 
         // Assert
-        await Assert.That(nav.Uri).EndsWith("/auth/challenge");
+        cut.WaitForAssertion(() =>
+        {
+            if (!nav.Uri.EndsWith("/auth/challenge?provider=keycloak&returnUrl=%2F", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Expected navigation to keycloak challenge with default returnUrl.");
+            }
+        });
+
+        await Assert.That(nav.Uri).EndsWith("/auth/challenge?provider=keycloak&returnUrl=%2F");
     }
 
     [Test]
@@ -52,11 +71,19 @@ public class AuthRedirectPagesTests : IDisposable
         nav.NavigateTo("/login?returnUrl=%2Fadmin%2Ftenant%2Fsettings");
 
         // Act
-        _ctx.RenderComponent<DynamicComponent>(parameters =>
+        var cut = _ctx.RenderComponent<DynamicComponent>(parameters =>
             parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
 
         // Assert
-        await Assert.That(nav.Uri).EndsWith("/auth/challenge?returnUrl=%2Fadmin%2Ftenant%2Fsettings");
+        cut.WaitForAssertion(() =>
+        {
+            if (!nav.Uri.EndsWith("/auth/challenge?provider=keycloak&returnUrl=%2Fadmin%2Ftenant%2Fsettings", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Expected navigation to keycloak challenge with forwarded returnUrl.");
+            }
+        });
+
+        await Assert.That(nav.Uri).EndsWith("/auth/challenge?provider=keycloak&returnUrl=%2Fadmin%2Ftenant%2Fsettings");
     }
 
     [Test]
@@ -87,5 +114,32 @@ public class AuthRedirectPagesTests : IDisposable
 
         // Assert
         await Assert.That(nav.Uri).EndsWith("/auth/signout?returnUrl=%2F");
+    }
+
+    private void ConfigureAuthProviderClient(object responsePayload)
+    {
+        var handler = new StubHttpMessageHandler(_ =>
+        {
+            var response = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = JsonContent.Create(responsePayload)
+            };
+
+            return response;
+        });
+
+        var client = new HttpClient(handler);
+        var factory = Substitute.For<IHttpClientFactory>();
+        factory.CreateClient("BffSelfClient").Returns(client);
+        _ctx.Services.AddSingleton(factory);
+    }
+
+    private sealed class StubHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responder)
+        : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(responder(request));
+        }
     }
 }

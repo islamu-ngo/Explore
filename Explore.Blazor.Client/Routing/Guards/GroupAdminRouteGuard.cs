@@ -15,6 +15,8 @@ public sealed partial class GroupAdminRouteGuard(
     AuthenticationStateProvider authStateProvider,
     IGroupService groupService) : IRouteGuard
 {
+    private const string InternalUserIdClaimType = "internal_user_id";
+
     public async Task<bool> CanActivateAsync(RouteMatch match)
     {
         var authState = await authStateProvider.GetAuthenticationStateAsync().ConfigureAwait(false);
@@ -65,7 +67,8 @@ public sealed partial class GroupAdminRouteGuard(
 
     private static Guid? ExtractUserId(ClaimsPrincipal user)
     {
-        var sub = user.FindFirst("sub")?.Value
+        var sub = user.FindFirst(InternalUserIdClaimType)?.Value
+            ?? user.FindFirst("sub")?.Value
             ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value
             ?? user.FindFirst("sid")?.Value;
 

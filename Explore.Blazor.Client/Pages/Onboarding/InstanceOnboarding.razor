@@ -196,6 +196,28 @@
                         <MudSwitch T="bool" @bind-Value="_model.LockTenantBrandCustomCssUrl" Color="Color.Primary">
                             Lock tenant custom CSS URL
                         </MudSwitch>
+
+                        <MudDivider />
+                        <MudText Typo="Typo.h6">Federation</MudText>
+                        <MudStack Direction="Direction.Row" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudSwitch T="bool"
+                                       Value="_model.DecentralizationEnabled"
+                                       ValueChanged="OnDecentralizationToggled"
+                                       Disabled="@(!_atprotoLoginEnabled)"
+                                       Color="Color.Primary">
+                                Enable ATProto decentralization
+                            </MudSwitch>
+                            <MudTooltip Text="When enabled, event records are published to users' Personal Data Servers (PDS) on the AT Protocol network. This makes event data publicly accessible and enables cross-instance discovery. Keep disabled if you want events to remain private to this instance.">
+                                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" />
+                            </MudTooltip>
+                        </MudStack>
+                        @if (!_atprotoLoginEnabled)
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Warning">ATProto Login must be enabled in the authentication provider configuration to use decentralization.</MudText>
+                        }
+                        <MudSwitch T="bool" @bind-Value="_model.LockDecentralizationEnabled" Color="Color.Primary">
+                            Lock tenant decentralization override
+                        </MudSwitch>
                     </MudStack>
                     </MudStep>
 
@@ -272,6 +294,7 @@
                         {
                             <MudText Typo="Typo.body2"><strong>First Host Choice:</strong> @GetFirstHostChoiceLabel()</MudText>
                             <MudText Typo="Typo.body2"><strong>Event Card Click Opens Detail Page:</strong> @(_model.EventCardClickOpensDetailPage ? "Yes" : "No")</MudText>
+                            <MudText Typo="Typo.body2"><strong>ATProto Decentralization:</strong> @(_model.DecentralizationEnabled ? "Enabled" : "Disabled")</MudText>
                         }
 
                         <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
@@ -312,6 +335,25 @@
             </MudStepper>
         }
     </MudPaper>
+
+<MudDialog @bind-Visible="_showDecentralizationConfirmDialog">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Enable ATProto Decentralization?</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudAlert Severity="Severity.Warning" Class="mb-3">
+            Enabling ATProto decentralization means event records will be published to users' Personal Data Servers (PDS).
+            This data becomes publicly accessible on the AT Protocol network.
+        </MudAlert>
+        <MudText Typo="Typo.body2">
+            Self-hosters wanting private events should keep this disabled. This setting can be changed later in instance settings.
+        </MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CancelDecentralization" Color="Color.Default">Cancel</MudButton>
+        <MudButton OnClick="ConfirmDecentralization" Color="Color.Warning" Variant="Variant.Filled">Enable Decentralization</MudButton>
+    </DialogActions>
+</MudDialog>
 </MudContainer>
 
 @code {
@@ -336,6 +378,8 @@
     private string _completeButtonLabel = "Complete Instance Onboarding";
     private string _stepperKey = "single";
 
+    private bool _atprotoLoginEnabled;
+    private bool _showDecentralizationConfirmDialog;
     private bool IsSingleTenantMode => _model.DeploymentMode.Equals("SingleTenant", StringComparison.OrdinalIgnoreCase);
     private bool IsMultiTenantMode => _model.DeploymentMode.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
     private int LastStepIndex => IsSingleTenantMode ? 3 : 2;
@@ -369,6 +413,17 @@
         }
 
         _stepperKey = IsSingleTenantMode ? "single" : "multi";
+
+        // Load auth provider config to check if ATProto Login is enabled.
+        try
+        {
+            var authConfig = await InstanceOnboardingService.GetAuthProviderConfigurationAsync();
+            _atprotoLoginEnabled = authConfig.AtprotoLoginEnabled;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Could not load auth provider configuration during instance onboarding.");
+        }
 
         _isLoading = false;
     }
@@ -601,5 +656,30 @@
         var client = HttpClientFactory.CreateClient("BffSelfClient");
         client.BaseAddress = new Uri(Navigation.BaseUri);
         return client;
+    }
+
+    private void OnDecentralizationToggled(bool newValue)
+    {
+        if (newValue)
+        {
+            // Show confirmation dialog before enabling
+            _showDecentralizationConfirmDialog = true;
+        }
+        else
+        {
+            _model.DecentralizationEnabled = false;
+        }
+    }
+
+    private void ConfirmDecentralization()
+    {
+        _model.DecentralizationEnabled = true;
+        _showDecentralizationConfirmDialog = false;
+    }
+
+    private void CancelDecentralization()
+    {
+        _model.DecentralizationEnabled = false;
+        _showDecentralizationConfirmDialog = false;
     }
 }

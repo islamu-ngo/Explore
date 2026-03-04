@@ -20,6 +20,8 @@ namespace Event.Api.IntegrationTests.Fixtures;
 /// </summary>
 public class AuthenticatedWebApplicationFactory : WebApplicationFactory<Program>
 {
+    private readonly string _databaseName = $"InMemoryDbForAuthTesting_{Guid.NewGuid():N}";
+
     /// <summary>
     /// When non-null, replaces the real IAuthorizationProvider with this instance.
     /// Set to an allow-all mock for endpoint auth tests, or a selective mock for HATEOAS link tests.
@@ -51,10 +53,12 @@ public class AuthenticatedWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureServices(services =>
         {
+            services.RemoveAll<DbContextOptions<ExploreDbContext>>();
+
             // InMemory database
             services.AddDbContext<ExploreDbContext>(options =>
             {
-                options.UseInMemoryDatabase("InMemoryDbForAuthTesting");
+                options.UseInMemoryDatabase(_databaseName);
                 options.ConfigureWarnings(x => x.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning));
             });
         });

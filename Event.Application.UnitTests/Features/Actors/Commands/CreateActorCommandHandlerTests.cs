@@ -78,7 +78,7 @@ public class CreateActorCommandHandlerTests
         _userRepository.Exists(userId).Returns(true);
 
         // Mock actor creation
-        var actor = new Actor { Id = actorId, DisplayName = "Test User Actor", ActorType = null!, Tenant = null! };
+        var actor = new Actor { Id = actorId, Pii = new ActorPii { DisplayName = "Test User Actor" }, ActorType = null!, Tenant = null! };
         _mapper.Map<Actor>(command.ActorDto).Returns(actor);
         _actorRepository.Create(Arg.Any<Actor>()).Returns(actor);
 
@@ -119,7 +119,7 @@ public class CreateActorCommandHandlerTests
         _organizationRepository.Exists(organizationId).Returns(true);
 
         // Mock actor creation
-        var actor = new Actor { Id = actorId, DisplayName = "Test Organization Actor", ActorType = null!, Tenant = null! };
+        var actor = new Actor { Id = actorId, Pii = new ActorPii { DisplayName = "Test Organization Actor" }, ActorType = null!, Tenant = null! };
         _mapper.Map<Actor>(command.ActorDto).Returns(actor);
         _actorRepository.Create(Arg.Any<Actor>()).Returns(actor);
 
@@ -281,7 +281,7 @@ public class CreateActorCommandHandlerTests
         _tenantRepository.Exists(Arg.Any<Guid>()).Returns(true);
         _userRepository.Exists(userId).Returns(true);
 
-        var actor = new Actor { Id = actorId, DisplayName = "Test Actor", ActorType = null!, Tenant = null! };
+        var actor = new Actor { Id = actorId, Pii = new ActorPii { DisplayName = "Test Actor" }, ActorType = null!, Tenant = null! };
         _mapper.Map<Actor>(command.ActorDto).Returns(actor);
         _actorRepository.Create(Arg.Any<Actor>()).Returns(actor);
 

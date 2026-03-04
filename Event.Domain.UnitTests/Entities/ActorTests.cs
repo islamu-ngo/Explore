@@ -100,7 +100,7 @@ public class ActorTests
     {
         return new Actor
         {
-            DisplayName = "Actor",
+            Pii = new ActorPii { DisplayName = "Actor" },
             ActorType = new ActorType { FullName = "User", MasterCode = "USER" },
             Tenant = new Tenant
             {

@@ -16,8 +16,8 @@ public class PdsSyncOutboxConfiguration : IEntityTypeConfiguration<PdsSyncOutbox
 
         // AT Protocol identifiers
         builder.Property(e => e.Did).HasMaxLength(255).IsRequired();
-        builder.Property(e => e.Collection).HasMaxLength(500).IsRequired();
-        builder.Property(e => e.RecordKey).HasMaxLength(500).IsRequired();
+        builder.Property(e => e.Collection).HasMaxLength(255).IsRequired();
+        builder.Property(e => e.RecordKey).HasMaxLength(255).IsRequired();
 
         // Operation and status (stored as integers)
         builder.Property(e => e.Operation).IsRequired();
@@ -27,9 +27,12 @@ public class PdsSyncOutboxConfiguration : IEntityTypeConfiguration<PdsSyncOutbox
         builder.Property(e => e.Payload).HasColumnType("jsonb");
 
         // Optional fields
-        builder.Property(e => e.PdsHost).HasMaxLength(500);
+        builder.Property(e => e.PdsHost).HasMaxLength(255);
         builder.Property(e => e.LastError).HasMaxLength(2000);
         builder.Property(e => e.SourceEntityType).HasMaxLength(100);
+
+        // Dead-letter: default 10 retries before quarantine
+        builder.Property(e => e.MaxRetries).HasDefaultValue(10);
 
         // Primary index for background worker polling: pending items ordered by creation time
         builder.HasIndex(e => new { e.Status, e.NextRetryAt, e.CreatedAt })

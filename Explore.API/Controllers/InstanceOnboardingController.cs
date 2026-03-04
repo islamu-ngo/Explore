@@ -376,6 +376,46 @@ public class InstanceOnboardingController : ControllerBase
         return Ok(response);
     }
 
+    [HttpPut("admin/auth-provider-configuration")]
+    [Authorize]
+    [EndpointSummary("Update Auth Provider Configuration")]
+    [EndpointDescription("Updates auth provider configuration after onboarding. Requires instance administrator membership and blocks self-lockout.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateAuthProviderConfiguration([FromBody] AuthProviderConfigurationDto configuration, CancellationToken cancellationToken = default)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (!currentUserId.HasValue)
+        {
+            return BadRequest(new BaseCommandResponse<Guid>
+            {
+                Success = false,
+                Message = "Invalid user identity."
+            });
+        }
+
+        var command = new UpdateAuthProviderConfigurationCommand
+        {
+            UserId = currentUserId.Value,
+            Configuration = configuration
+        };
+
+        var response = await _mediator.Send(command, cancellationToken);
+        if (!response.Success)
+        {
+            if (response.Message.Contains("Only instance administrators", StringComparison.OrdinalIgnoreCase))
+            {
+                return Forbid();
+            }
+
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
     [HttpGet("auth-provider-configured")]
     [AllowAnonymous]
     [EndpointSummary("Check Auth Provider Configuration Status")]
@@ -390,7 +430,8 @@ public class InstanceOnboardingController : ControllerBase
 
     private Guid? GetCurrentUserId()
     {
-        var claim = User.FindFirst("sub")?.Value
+        var claim = User.FindFirst("internal_user_id")?.Value
+            ?? User.FindFirst("sub")?.Value
             ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
             ?? User.FindFirst("sid")?.Value;
 

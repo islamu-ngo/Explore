@@ -35,14 +35,14 @@ public class EventRepositoryTests
         };
         context.Tenants.Add(tenant);
 
-        var user = new User { Email = "test@example.com", FirstName = "Test", LastName = "User" };
+        var user = new User { Pii = new UserPii { Email = "test@example.com", FirstName = "Test", LastName = "User" } };
         context.Users.Add(user);
 
         await context.SaveChangesAsync();
 
         var actor = new Actor
         {
-            DisplayName = "Test Actor",
+            Pii = new ActorPii { DisplayName = "Test Actor" },
             ActorTypeId = 1,
             ActorType = null!,
             TenantId = tenant.Id,
@@ -111,14 +111,14 @@ public class EventRepositoryTests
         };
         context.Tenants.Add(tenant);
 
-        var user = new User { Email = "test2@example.com", FirstName = "Test", LastName = "User" };
+        var user = new User { Pii = new UserPii { Email = "test2@example.com", FirstName = "Test", LastName = "User" } };
         context.Users.Add(user);
 
         await context.SaveChangesAsync();
 
         var actor = new Actor
         {
-            DisplayName = "Test Actor",
+            Pii = new ActorPii { DisplayName = "Test Actor" },
             ActorTypeId = 1,
             ActorType = null!,
             TenantId = tenant.Id,

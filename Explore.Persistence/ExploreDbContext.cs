@@ -59,7 +59,8 @@ public class ExploreDbContext : DbContext
 
         // Event-related entities (tenant only - no soft delete)
         modelBuilder.Entity<EventRegistration>()
-            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
         modelBuilder.Entity<EventCategories>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
         modelBuilder.Entity<EventTags>()
@@ -92,9 +93,10 @@ public class ExploreDbContext : DbContext
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
             .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
 
-        // Organization review (tenant only - no soft delete)
+        // Organization review (tenant + soft delete)
         modelBuilder.Entity<OrganizationReview>()
-            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
 
         // ===== Group Entities =====
         modelBuilder.Entity<Group>()
@@ -163,8 +165,6 @@ public class ExploreDbContext : DbContext
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
 
         // ===== Tenant Entities =====
-        modelBuilder.Entity<TenantUser>()
-            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
         modelBuilder.Entity<TenantSettings>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
         modelBuilder.Entity<TenantSetting>()
@@ -181,6 +181,13 @@ public class ExploreDbContext : DbContext
         // ===== Module Governance Entities =====
         modelBuilder.Entity<TenantCapability>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+
+        // ===== Audit & Notifications =====
+        modelBuilder.Entity<AuditLog>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+        modelBuilder.Entity<Notification>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
     }
 
     /// <summary>
@@ -195,6 +202,13 @@ public class ExploreDbContext : DbContext
 
         foreach (var entry in ChangeTracker.Entries())
         {
+            // Handle IConcurrencyAware - automatic concurrency stamp generation
+            if (entry.Entity is IConcurrencyAware concurrencyAware &&
+                (entry.State == EntityState.Added || entry.State == EntityState.Modified))
+            {
+                concurrencyAware.ConcurrencyStamp = Guid.NewGuid();
+            }
+
             // Handle IAuditableEntity - automatic audit field population
             if (entry.Entity is IAuditableEntity auditable)
             {
@@ -250,7 +264,6 @@ public class ExploreDbContext : DbContext
 
     // ===== Multi-tenancy =====
     public DbSet<Tenant> Tenants { get; set; }
-    public DbSet<TenantUser> TenantUsers { get; set; }
     public DbSet<TenantSettings> TenantSettings { get; set; }
     public DbSet<TenantMember> TenantMembers { get; set; }
     public DbSet<TenantOnboardingState> TenantOnboardingStates { get; set; }
@@ -288,6 +301,7 @@ public class ExploreDbContext : DbContext
     // ===== Group Entities =====
     public DbSet<Group> Groups { get; set; }
     public DbSet<GroupMember> GroupMembers { get; set; }
+    public DbSet<GroupPosition> GroupPositions { get; set; }
 
     // ===== Events =====
     public DbSet<Event> Events { get; set; }
@@ -342,6 +356,12 @@ public class ExploreDbContext : DbContext
     public DbSet<UserPreference> UserPreferences { get; set; }
     public DbSet<AppSetting> AppSettings { get; set; }
     public DbSet<ConfigurationChangeLog> ConfigurationChangeLogs { get; set; }
+
+    // ===== Audit & Notifications =====
+    public DbSet<AuditLog> AuditLogs { get; set; }
+    public DbSet<Notification> Notifications { get; set; }
+    public DbSet<NotificationType> NotificationTypes { get; set; }
+    public DbSet<NotificationEntityType> NotificationEntityTypes { get; set; }
 
     // ===== Module Governance =====
     public DbSet<ModuleDefinition> ModuleDefinitions { get; set; }

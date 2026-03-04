@@ -17,7 +17,7 @@ public class OrganizationReviewConfiguration : IEntityTypeConfiguration<Organiza
             .HasDefaultValueSql("uuidv7()");
 
         builder.Property(e => e.OrganizationId).HasColumnName("organization_id");
-        builder.Property(e => e.EventId).HasColumnName("program_id");
+        builder.Property(e => e.EventId).HasColumnName("event_id");
         builder.Property(e => e.UserId).HasColumnName("user_id");
         builder.Property(e => e.ReviewerName).HasColumnName("reviewer_name").HasMaxLength(200);
         builder.Property(e => e.Rating).HasColumnName("rating");

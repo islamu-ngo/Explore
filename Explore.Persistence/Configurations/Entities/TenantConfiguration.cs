@@ -12,7 +12,7 @@ public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         builder.Property(e => e.Id).HasValueGenerator<GuidVersion7ValueGenerator>();
 
         builder.Property(e => e.FullName).HasMaxLength(500).IsRequired();
-        builder.Property(e => e.Slug).HasMaxLength(500).IsRequired();
+        builder.Property(e => e.Slug).HasMaxLength(200).IsRequired();
         builder.Property(e => e.Description).HasMaxLength(500);
         builder.Property(e => e.TenantStatusId).IsRequired();
 

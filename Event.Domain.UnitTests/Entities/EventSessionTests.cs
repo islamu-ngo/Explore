@@ -106,7 +106,7 @@ public class EventSessionTests
             Title = "Event",
             Actor = new Actor
             {
-                DisplayName = "Actor",
+                Pii = new ActorPii { DisplayName = "Actor" },
                 ActorType = new ActorType { FullName = "User", MasterCode = "USER" },
                 Tenant = CreateTenant()
             },

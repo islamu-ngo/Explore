@@ -1,9 +1,10 @@
-using AutoMapper;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.User;
 using Explore.Application.Features.Users.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
+using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -14,24 +15,27 @@ namespace Explore.Application.Features.Users.Handlers.Commands;
 public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseCommandResponse<Guid>>
 {
     private readonly IUserRepository _userRepository;
+    private readonly IUserExternalLoginRepository _userExternalLoginRepository;
     private readonly IActorRepository _actorRepository;
     private readonly ITenantRepository _tenantRepository;
-    private readonly IMapper _mapper;
+    private readonly ITenantContext _tenantContext;
     private readonly IConfiguration _configuration;
     private readonly HybridCache _cache;
 
     public SyncUserCommandHandler(
         IUserRepository userRepository,
+        IUserExternalLoginRepository userExternalLoginRepository,
         IActorRepository actorRepository,
         ITenantRepository tenantRepository,
-        IMapper mapper,
+        ITenantContext tenantContext,
         IConfiguration configuration,
         HybridCache cache)
     {
         _userRepository = userRepository;
+        _userExternalLoginRepository = userExternalLoginRepository;
         _actorRepository = actorRepository;
         _tenantRepository = tenantRepository;
-        _mapper = mapper;
+        _tenantContext = tenantContext;
         _configuration = configuration;
         _cache = cache;
     }
@@ -43,171 +47,264 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
 
         try
         {
-            Console.WriteLine($"[USER SYNC] Starting sync for user - ID: {userDto.Id}, Email: {userDto.Email}");
+            var provider = NormalizeProvider(userDto.AuthProvider);
+            var providerUserId = ResolveProviderUserId(userDto);
+            var supportsEmailAutoMatch = SupportsEmailAutoMatch(provider);
+            var email = NormalizeEmail(userDto.Email);
 
-            // Check by BOTH ID and EMAIL to handle all cases
-            var existingUserById = await _userRepository.GetById(userDto.Id);
-            var existingUserByEmail = await _userRepository.GetUserByEmail(userDto.Email);
-
-            Console.WriteLine($"[USER SYNC] Existing user by ID: {(existingUserById != null ? existingUserById.Id.ToString() : "NOT FOUND")}");
-            Console.WriteLine($"[USER SYNC] Existing user by email: {(existingUserByEmail != null ? existingUserByEmail.Id.ToString() : "NOT FOUND")}");
-
-            // If user exists by email but different ID, this is a conflict
-            if (existingUserByEmail != null && existingUserByEmail.Id != userDto.Id)
+            if (string.IsNullOrWhiteSpace(providerUserId))
             {
-                Console.WriteLine($"[USER SYNC] CONFLICT - Email exists with different ID. DB User ID: {existingUserByEmail.Id}, Keycloak User ID: {userDto.Id}");
                 response.Success = false;
-                response.Message = $"A user with email {userDto.Email} already exists with a different ID. Database ID: {existingUserByEmail.Id}, Keycloak ID: {userDto.Id}";
+                response.Message = "Provider user id is required to synchronize the user.";
                 return response;
             }
 
-            // Use whichever exists (prefer by ID)
-            var existingUser = existingUserById ?? existingUserByEmail;
-
-            if (existingUser == null)
+            if (!supportsEmailAutoMatch && string.IsNullOrWhiteSpace(email))
             {
-                Console.WriteLine($"[USER SYNC] No existing user found - Creating new user");
-
-                // ===== CREATE NEW USER AND ACTOR WITHOUT FK CIRCULARITY =====
-                // First, get the default tenant (or make configurable)
-                var defaultTenantId = await GetDefaultTenantIdAsync();
-
-                // Create the User first WITHOUT ActorId to avoid FK constraint
-                var user = new User
+                var existingProviderLogin = await _userExternalLoginRepository.GetByProviderAndKey(provider, providerUserId);
+                if (existingProviderLogin == null)
                 {
-                    Id = userDto.Id, // Use Keycloak ID as User ID
-                    Email = userDto.Email,
-                    FirstName = userDto.FirstName,
-                    LastName = userDto.LastName,
-                    ActorId = null, // set later
-                    AuthProvider = "keycloak",
-                    AuthProviderId = userDto.Id.ToString(),
-                    EmailVerified = true, // Keycloak handles email verification
+                    response.Success = false;
+                    response.Message =
+                        "AT Protocol identity must be explicitly linked to an existing account before sign-in sync without email.";
+                    return response;
+                }
+            }
+
+            User? user = null;
+
+            var existingLogin = await _userExternalLoginRepository.GetByProviderAndKey(provider, providerUserId);
+            if (existingLogin != null)
+            {
+                user = await _userRepository.GetById(existingLogin.UserId);
+            }
+
+            if (user == null && userDto.Id != Guid.Empty)
+            {
+                user = await _userRepository.GetById(userDto.Id);
+            }
+
+            if (user == null && supportsEmailAutoMatch && userDto.EmailVerified == true && !string.IsNullOrWhiteSpace(email))
+            {
+                user = await _userRepository.GetUserByEmail(email);
+            }
+
+            if (user == null)
+            {
+                var newUserId = userDto.Id != Guid.Empty ? userDto.Id : Guid.NewGuid();
+                var safeEmail = ResolveEmailForCreation(provider, email);
+                if (string.IsNullOrWhiteSpace(safeEmail))
+                {
+                    response.Success = false;
+                    response.Message = "Email is required to create a new account for this provider.";
+                    return response;
+                }
+
+                user = new User
+                {
+                    Id = newUserId,
+                    Pii = new UserPii
+                    {
+                        Email = safeEmail,
+                        FirstName = ResolveFirstName(userDto.FirstName),
+                        LastName = ResolveLastName(userDto.LastName)
+                    },
+                    ActorId = null,
+                    AuthProvider = provider,
+                    AuthProviderId = providerUserId,
+                    EmailVerified = userDto.EmailVerified ?? supportsEmailAutoMatch,
                     DefaultActorId = null
                 };
 
-                try
-                {
-                    user = await _userRepository.Create(user);
-                    Console.WriteLine($"[USER SYNC] User created successfully - ID: {user.Id}");
-                }
-                catch (InvalidOperationException ex) when (ex.Message.Contains("ix_users_email"))
-                {
-                    Console.WriteLine($"[USER SYNC] Race condition detected - User was created by another thread");
+                user = await _userRepository.Create(user);
 
-                    // Race condition: Another thread created the user just now
-                    // Retry by fetching the newly created user
-                    existingUser = await _userRepository.GetUserByEmail(userDto.Email);
-                    if (existingUser != null)
-                    {
-                        Console.WriteLine($"[USER SYNC] Found user created by another thread - ID: {existingUser.Id}");
-
-                        // User was created by another thread, update it instead
-                        existingUser.FirstName = userDto.FirstName;
-                        existingUser.LastName = userDto.LastName;
-
-                        if (existingUser.ActorId != null)
-                        {
-                            var actor = await _actorRepository.GetById(existingUser.ActorId.Value);
-                            if (actor != null)
-                            {
-                                actor.DisplayName = $"{userDto.FirstName} {userDto.LastName}".Trim();
-                                await _actorRepository.Update(actor);
-                            }
-                        }
-
-                        await _userRepository.Update(existingUser);
-                        response.Success = true;
-                        response.Message = "User updated successfully (created by another request)";
-                        response.Id = existingUser.Id;
-                        await _cache.RemoveAsync($"user:detail:{existingUser.Id}", cancellationToken);
-                        Console.WriteLine($"[USER SYNC] User updated after race condition - ID: {existingUser.Id}");
-                        return response;
-                    }
-
-                    Console.WriteLine($"[USER SYNC] ERROR - Could not find user after race condition");
-                    throw;
-                }
-
-                // Now create the Actor referencing the created User
-                var newActor = new Actor
+                var defaultTenantId = await GetDefaultTenantIdAsync();
+                var actor = new Actor
                 {
                     ActorTypeId = (int)ActorTypeEnum.User,
                     ActorType = null!,
                     TenantId = defaultTenantId,
                     Tenant = null!,
-                    DisplayName = $"{userDto.FirstName} {userDto.LastName}".Trim(),
-                    Handle = GenerateHandle(userDto.Username, userDto.Email),
+                    Pii = new ActorPii
+                    {
+                        DisplayName = BuildDisplayName(userDto.FirstName, userDto.LastName),
+                        Handle = GenerateHandle(userDto.Username, safeEmail, providerUserId),
+                        Did = provider == AuthSchemeNames.Atproto.ToLowerInvariant() ? providerUserId : null
+                    },
                     Description = null,
-                    UserId = user.Id, // Link to the newly created user
-                    OrganizationId = null
+                    UserId = user.Id,
+                    OrganizationId = null,
+                    DidCustodyTypeId = provider == AuthSchemeNames.Atproto.ToLowerInvariant()
+                        ? (int)DidCustodyTypeEnum.SelfCustody
+                        : (int)DidCustodyTypeEnum.Custodial
                 };
 
-                newActor = await _actorRepository.Create(newActor);
-                Console.WriteLine($"[USER SYNC] Actor created successfully - ID: {newActor.Id}");
-
-                // Update the User to set ActorId and DefaultActorId
-                user.ActorId = newActor.Id;
-                user.DefaultActorId = newActor.Id;
+                actor = await _actorRepository.Create(actor);
+                user.ActorId = actor.Id;
+                user.DefaultActorId = actor.Id;
                 await _userRepository.Update(user);
-
-                response.Success = true;
-                response.Message = "User and Actor created successfully";
-                response.Id = user.Id;
-                await _cache.RemoveAsync($"user:detail:{user.Id}", cancellationToken);
-                Console.WriteLine($"[USER SYNC] User creation completed - ID: {user.Id}");
             }
             else
             {
-                Console.WriteLine($"[USER SYNC] Existing user found - Updating user ID: {existingUser.Id}");
-
-                // ===== UPDATE EXISTING USER =====
-                // Only update fields from IDP (Keycloak)
-                // We do NOT overwrite user's custom data
-                existingUser.Email = userDto.Email;
-                existingUser.FirstName = userDto.FirstName;
-                existingUser.LastName = userDto.LastName;
-
-                // Also update the Actor's display name if it changed
-                if (existingUser.ActorId != null)
+                if (!string.IsNullOrWhiteSpace(email))
                 {
-                    var actor = await _actorRepository.GetById(existingUser.ActorId.Value);
+                    user.Email = email;
+                }
+
+                user.FirstName = ResolveFirstName(userDto.FirstName);
+                user.LastName = ResolveLastName(userDto.LastName);
+                user.AuthProvider = provider;
+                user.AuthProviderId = providerUserId;
+                if (userDto.EmailVerified.HasValue)
+                {
+                    user.EmailVerified = userDto.EmailVerified;
+                }
+
+                if (user.ActorId.HasValue)
+                {
+                    var actor = await _actorRepository.GetById(user.ActorId.Value);
                     if (actor != null)
                     {
-                        var newDisplayName = $"{userDto.FirstName} {userDto.LastName}".Trim();
-                        if (actor.DisplayName != newDisplayName)
+                        actor.DisplayName = BuildDisplayName(userDto.FirstName, userDto.LastName);
+                        if (provider == AuthSchemeNames.Atproto.ToLowerInvariant() && string.IsNullOrWhiteSpace(actor.Did))
                         {
-                            Console.WriteLine($"[USER SYNC] Updating actor display name from '{actor.DisplayName}' to '{newDisplayName}'");
-                            actor.DisplayName = newDisplayName;
-                            await _actorRepository.Update(actor);
+                            actor.Did = providerUserId;
+                            actor.DidCustodyTypeId = (int)DidCustodyTypeEnum.SelfCustody;
                         }
+
+                        await _actorRepository.Update(actor);
                     }
                 }
 
-                await _userRepository.Update(existingUser);
-                response.Success = true;
-                response.Message = "User updated successfully";
-                response.Id = existingUser.Id;
-                await _cache.RemoveAsync($"user:detail:{existingUser.Id}", cancellationToken);
-                Console.WriteLine($"[USER SYNC] User update completed - ID: {existingUser.Id}");
+                await _userRepository.Update(user);
             }
+
+            var linkResult = await EnsureExternalLoginLinkAsync(user, provider, providerUserId);
+            if (!linkResult.Success)
+            {
+                response.Success = false;
+                response.Message = linkResult.Message;
+                return response;
+            }
+
+            response.Success = true;
+            response.Message = "User synchronized successfully.";
+            response.Id = user.Id;
+            await _cache.RemoveAsync($"user:detail:{user.Id}", cancellationToken);
         }
         catch (Exception ex)
         {
             response.Success = false;
             response.Message = $"Error syncing user: {ex.Message}";
-            Console.WriteLine($"[USER SYNC] ERROR - Exception occurred: {ex.GetType().Name}");
-            Console.WriteLine($"[USER SYNC] ERROR - Message: {ex.Message}");
-            Console.WriteLine($"[USER SYNC] ERROR - StackTrace: {ex.StackTrace}");
-
-            if (ex.InnerException != null)
-            {
-                Console.WriteLine($"[USER SYNC] ERROR - InnerException: {ex.InnerException.GetType().Name}");
-                Console.WriteLine($"[USER SYNC] ERROR - InnerException Message: {ex.InnerException.Message}");
-            }
         }
 
         return response;
+    }
+
+    private async Task<(bool Success, string Message)> EnsureExternalLoginLinkAsync(
+        User user,
+        string provider,
+        string providerUserId)
+    {
+        var existingByProviderAndKey = await _userExternalLoginRepository.GetByProviderAndKey(provider, providerUserId);
+        if (existingByProviderAndKey != null)
+        {
+            if (existingByProviderAndKey.UserId != user.Id)
+            {
+                return (false, "This provider identity is already linked to another account.");
+            }
+
+            return (true, string.Empty);
+        }
+
+        var login = new UserExternalLogin
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            User = user,
+            TenantId = _tenantContext.TenantId,
+            Tenant = null!,
+            Provider = provider,
+            ProviderKey = providerUserId,
+            ProviderDisplayName = GetProviderDisplayName(provider)
+        };
+
+        await _userExternalLoginRepository.Create(login);
+        return (true, string.Empty);
+    }
+
+    private static string NormalizeProvider(string? provider)
+    {
+        if (string.IsNullOrWhiteSpace(provider))
+        {
+            return AuthSchemeNames.Keycloak.ToLowerInvariant();
+        }
+
+        return provider.Trim().ToLowerInvariant() switch
+        {
+            "keycloak" => "keycloak",
+            "google" => "google",
+            "atproto" => "atproto",
+            _ => provider.Trim().ToLowerInvariant()
+        };
+    }
+
+    private static string ResolveProviderUserId(UserDto userDto)
+    {
+        if (!string.IsNullOrWhiteSpace(userDto.AuthProviderId))
+        {
+            return userDto.AuthProviderId.Trim();
+        }
+
+        return userDto.Id == Guid.Empty ? string.Empty : userDto.Id.ToString();
+    }
+
+    private static bool SupportsEmailAutoMatch(string provider)
+    {
+        return provider is "keycloak" or "google";
+    }
+
+    private static string NormalizeEmail(string? email)
+    {
+        return string.IsNullOrWhiteSpace(email)
+            ? string.Empty
+            : email.Trim().ToLowerInvariant();
+    }
+
+    private static string ResolveEmailForCreation(string provider, string email)
+    {
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            return email;
+        }
+
+        return provider == "atproto" ? string.Empty : email;
+    }
+
+    private static string ResolveFirstName(string? firstName)
+    {
+        return string.IsNullOrWhiteSpace(firstName) ? "User" : firstName.Trim();
+    }
+
+    private static string ResolveLastName(string? lastName)
+    {
+        return string.IsNullOrWhiteSpace(lastName) ? string.Empty : lastName.Trim();
+    }
+
+    private static string BuildDisplayName(string? firstName, string? lastName)
+    {
+        return $"{ResolveFirstName(firstName)} {ResolveLastName(lastName)}".Trim();
+    }
+
+    private static string GetProviderDisplayName(string provider)
+    {
+        return provider switch
+        {
+            "keycloak" => "Keycloak",
+            "google" => "Google",
+            "atproto" => "AT Protocol",
+            _ => provider
+        };
     }
 
     private async Task<Guid> GetDefaultTenantIdAsync()
@@ -231,12 +328,17 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
         return defaultTenant.Id;
     }
 
-    private static string GenerateHandle(string? username, string email)
+    private static string GenerateHandle(string? username, string email, string providerUserId)
     {
         // Use username if available, otherwise use email prefix
         if (!string.IsNullOrWhiteSpace(username))
         {
             return username.ToLowerInvariant().Replace(" ", "-");
+        }
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return providerUserId.Replace(":", "-").Replace(".", "-").ToLowerInvariant();
         }
 
         var emailPrefix = email.Split('@')[0];

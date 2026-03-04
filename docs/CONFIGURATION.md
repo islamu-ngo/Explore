@@ -75,8 +75,15 @@ Major groups:
 - `authorization.*`
 - `cerbos.*`
 - `analytics.*`
+- `auth.*`
+- `federation.*`
 
 Values are stored as JSON-serialized strings in `SystemSetting.Value` and `TenantSetting.Value`.
+
+Post-onboarding management note:
+
+- Instance admins can update auth-provider governance values through `PUT /api/InstanceOnboarding/admin/auth-provider-configuration`.
+- Secret values (`keycloak`/`google` client secrets) continue to use secret-setting storage, not plain governance values.
 
 ## Settings Cascade Rules
 

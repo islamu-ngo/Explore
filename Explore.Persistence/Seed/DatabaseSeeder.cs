@@ -2,6 +2,7 @@
 // ABOUTME: In Development, also seeds business entities (users, orgs, events) for testing.
 
 using Explore.Domain;
+using Explore.Domain.Constants;
 using Explore.Domain.Modules;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
@@ -29,6 +30,7 @@ public static class DatabaseSeeder
         if (environment.IsDevelopment())
         {
             await SeedDevelopmentDataAsync(context, cancellationToken);
+            await SeedDevelopmentSmtpAsync(context, cancellationToken);
         }
     }
 
@@ -78,11 +80,11 @@ public static class DatabaseSeeder
         techOrg.ActorId = SeedIds.TechOrgActorId;
         await context.SaveChangesAsync(ct);
 
-        // Phase 6: Tenant users, organization members, storage objects
-        context.Set<TenantUser>().AddRange(
-            SeedData.AdminTenantUser,
-            SeedData.RegularTenantUser,
-            SeedData.ModeratorTenantUser);
+        // Phase 6: Tenant members, organization members, storage objects
+        context.Set<TenantMember>().AddRange(
+            SeedData.AdminTenantMember,
+            SeedData.RegularTenantMember,
+            SeedData.ModeratorTenantMember);
 
         context.Set<OrganizationMember>().AddRange(
             SeedData.AdminIslamuCreator,
@@ -130,5 +132,53 @@ public static class DatabaseSeeder
         // Phase 9: Sample event (depends on actors, storage, tenant)
         context.Set<Event>().Add(SeedData.SampleEvent);
         await context.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Pre-configures Mailpit SMTP in Development for email testing.
+    /// Mailpit captures all outbound emails for inspection without delivery.
+    /// Same SmtpEmailService code path is used in production with real SMTP credentials.
+    /// Idempotent: only applies when SMTP host is empty (not yet manually configured).
+    /// </summary>
+    private static async Task SeedDevelopmentSmtpAsync(
+        ExploreDbContext context,
+        CancellationToken ct)
+    {
+        var hostSetting = await context.Set<SystemSetting>()
+            .FirstOrDefaultAsync(s => s.SettingKey == GovernanceSettingKeys.EmailSmtpHost, ct);
+
+        if (hostSetting is null)
+            return;
+
+        var currentHost = hostSetting.Value?.Trim('"');
+        if (!string.IsNullOrWhiteSpace(currentHost))
+            return;
+
+        var now = DateTime.UtcNow;
+
+        await UpdateSettingValueAsync(context, GovernanceSettingKeys.EmailSmtpHost, "\"mailpit.openislamu.org\"", now, ct);
+        await UpdateSettingValueAsync(context, GovernanceSettingKeys.EmailSmtpPort, "1025", now, ct);
+        await UpdateSettingValueAsync(context, GovernanceSettingKeys.EmailSmtpSecurity, "\"None\"", now, ct);
+        await UpdateSettingValueAsync(context, GovernanceSettingKeys.EmailFromAddress, "\"noreply@explore.dev\"", now, ct);
+        await UpdateSettingValueAsync(context, GovernanceSettingKeys.EmailFromName, "\"Explore Dev\"", now, ct);
+
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task UpdateSettingValueAsync(
+        ExploreDbContext context,
+        string key,
+        string value,
+        DateTime timestamp,
+        CancellationToken ct)
+    {
+        var setting = await context.Set<SystemSetting>()
+            .FirstOrDefaultAsync(s => s.SettingKey == key, ct);
+
+        if (setting is not null)
+        {
+            setting.Value = value;
+            setting.UpdatedAt = timestamp;
+        }
     }
 }

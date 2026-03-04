@@ -105,7 +105,7 @@ public class CreateEventCommandHandlerTests
         _userContext.GetRequiredUserId().Returns(userId);
 
         // Mock Actor Resolution
-        var actor = new Actor { Id = actorId, UserId = userId, DisplayName = "Test Actor", ActorType = null!, Tenant = null! };
+        var actor = new Actor { Id = actorId, UserId = userId, Pii = new ActorPii { DisplayName = "Test Actor" }, ActorType = null!, Tenant = null! };
         _actorRepository.GetActorByUserId(userId).Returns(actor);
 
         // Mock Validation Dependencies
@@ -162,7 +162,7 @@ public class CreateEventCommandHandlerTests
         _userContext.GetRequiredUserId().Returns(userId);
 
         // Mock Actor Resolution
-        var actor = new Actor { Id = actorId, UserId = userId, DisplayName = "Test Actor", ActorType = null!, Tenant = null! };
+        var actor = new Actor { Id = actorId, UserId = userId, Pii = new ActorPii { DisplayName = "Test Actor" }, ActorType = null!, Tenant = null! };
         _actorRepository.GetActorByUserId(userId).Returns(actor);
 
         // Mock Validation Dependencies (Ensure Exists is NOT called for nulls, or if called, we don't care because validator skips check)

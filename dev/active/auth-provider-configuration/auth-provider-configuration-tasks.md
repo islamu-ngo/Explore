@@ -1,6 +1,6 @@
 # Authentication Provider Configuration — Task Checklist
 
-> Last Updated: 2026-03-02 (Session 4 — Phase 2 verified complete)
+> Last Updated: 2026-03-03 (Session 9 — integration isolation fix)
 
 ## Phase 0: Requirements Finalization ✅ COMPLETE
 - [x] Analyze current auth flow and identify chicken-and-egg problem
@@ -33,7 +33,7 @@
 - [x] Build verified: 0 errors, 9 pre-existing NuGet warnings
 - [x] Tests verified: 335 app + 32 arch + 79 domain + 190 secrets = all pass (2 pre-existing flaky bUnit tests unrelated)
 - [ ] Unit tests for command/query handlers (deferred to Phase 8)
-- [ ] Add credential validation logic — Keycloak connectivity test, Google client ID format (deferred to Phase 2)
+- [ ] Add credential validation logic — Keycloak connectivity test, Google client ID format (deferred)
 ## Phase 2: Infrastructure — Dynamic Auth Scheme Registration ✅ COMPLETE
 - [x] Refactor `AuthenticationExtensions` — Cookie-only default, dynamic scheme registration at startup
 - [x] Create `IDynamicAuthSchemeManager` interface
@@ -53,58 +53,80 @@
 - [x] Tests verified: 335 app + 32 arch + 79 domain + 190 secrets + 516 blazor = all pass (2 pre-existing flaky bUnit tests unrelated)
 - [ ] Unit tests for dynamic scheme manager (deferred to Phase 8)
 
-## Phase 3: Blazor UI — Auth Provider Configuration Page ⏳ NOT STARTED
-- [ ] Create `AuthProviderConfiguration.razor` component/page
-- [ ] Route: accessible after setup token validation, before login
-- [ ] Keycloak toggle with conditional credential inputs
-- [ ] ATProto Login toggle with info icon + public URL input (pre-filled, warn on private)
-- [ ] Google SSO toggle with conditional credential inputs
-- [ ] "At least 1 required" validation with visual feedback
-- [ ] Info icon tooltips with provider explanations
-- [ ] Save button → API → dynamic registration
-- [ ] Auto-detect Keycloak from env vars and pre-fill
-- [ ] Integration with setup flow (Setup → AuthConfig → Login → Onboarding)
+## Phase 3: Blazor UI — Auth Provider Configuration Page ✅ COMPLETE
+- [x] Create `AuthProviderConfiguration.razor` component/page
+- [x] Route: accessible after setup token validation, before login
+- [x] Keycloak toggle with conditional credential inputs
+- [x] ATProto Login toggle with info icon + public URL input (pre-filled, warn on private)
+- [x] Google SSO toggle with conditional credential inputs
+- [x] "At least 1 required" validation with visual feedback
+- [x] Info icon tooltips with provider explanations
+- [x] Save button → API → dynamic registration
+- [x] Auto-detect Keycloak from env vars and pre-fill
+- [x] Integration with setup flow (Setup → AuthConfig → Login → Onboarding)
 
-## Phase 4: Instance Onboarding — Decentralization Toggle ⏳ NOT STARTED
-- [ ] Add decentralization section to `InstanceOnboarding.razor`
-- [ ] ATProto Decentralization toggle (disabled if ATProto Login not enabled)
-- [ ] Confirmation dialog with warning text
-- [ ] Info icon explaining public data implications
-- [ ] Save setting via existing governance settings flow
+## Phase 4: Instance Onboarding — Decentralization Toggle ✅ COMPLETE
+- [x] Add `DecentralizationEnabled` + `LockDecentralizationEnabled` to `InstanceGovernanceSettingsDto`
+- [x] Add `DecentralizationEnabled` + `LockDecentralizationEnabled` to `InstanceGovernanceSettingsModel` (client)
+- [x] Add read/write for decentralization in `InstanceGovernanceSettingService`
+- [x] Add read/write for decentralization in `InstanceGovernanceSettingHelpers`
+- [x] Add Federation section to `InstanceOnboarding.razor` with decentralization toggle
+- [x] ATProto Decentralization toggle (disabled if ATProto Login not enabled)
+- [x] Confirmation dialog (MudDialog) with warning text about public data
+- [x] Info icon tooltip explaining public data implications
+- [x] Lock toggle for tenant override control
+- [x] Decentralization status in Review & Complete step
+- [x] Load auth provider config in OnInitializedAsync to check ATProto Login status
+- [x] Build verified: 0 errors
 
-## Phase 5: Login Page — Multi-Provider Support ⨼ NOT STARTED
-- [ ] Update login page to query enabled providers
-- [ ] Vertical stack layout: Keycloak button, Google button, ATProto handle input
-- [ ] Keycloak login → existing OIDC flow
-- [ ] Google login → Google OIDC flow
-- [ ] ATProto login → handle input → ATProto OAuth flow (resolve DID → PDS → AuthServer)
-- [ ] Handle provider-specific callbacks
-- [ ] If only 1 provider enabled, skip multi-provider UI
-- [ ] If Keycloak env vars present, show Keycloak first with "Recommended" badge
+## Phase 5: Login Page — Multi-Provider Support ✅ COMPLETE
+- [x] Update login page to query enabled providers (`GET /auth/providers`)
+- [x] Replace `/login` redirect screen with multi-provider UI (`LoginRedirect.razor`)
+- [x] Vertical stack layout: provider buttons + ATProto handle input section
+- [x] Keycloak login → `/auth/challenge?provider=keycloak&returnUrl=...`
+- [x] Google login → `/auth/challenge?provider=google&returnUrl=...`
+- [x] ATProto login → handle input + `/auth/challenge?provider=atproto&returnUrl=...&login_hint=...`
+- [x] Handle provider-specific challenge routing in UI (button vs handle_input)
+- [x] If only one button provider enabled, auto-redirect directly to that provider challenge
+- [x] If only ATProto provider is enabled and `login_hint` exists, auto-redirect using ATProto flow
+- [x] Show Keycloak first with "Recommended" badge when backend marks it recommended
+- [x] Build verified: 0 errors (pre-existing warnings remain)
 
-## Phase 6: User Sync & Account Linking — Multi-Provider Support ⨼ NOT STARTED
-- [ ] Refactor `SyncUserCommandHandler` for provider-agnostic sync
-- [ ] Keycloak sync (existing behavior, extracted)
-- [ ] Google sync (new: map Google claims to User + Actor)
-- [ ] ATProto sync (new: map DID to User + Actor with self-sovereign DID)
-- [ ] Link external logins via `UserExternalLogin` entity
-- [ ] Auto-match accounts by verified email (Keycloak ↔ Google)
-- [ ] Explicit ATProto linking via Account Settings page
-- [ ] Safety: cannot unlink last remaining provider
+## Phase 6: User Sync & Account Linking — Multi-Provider Support 🟡 IN PROGRESS
+- [x] Refactor `SyncUserCommandHandler` for provider-agnostic sync
+- [x] Keycloak sync (existing behavior, extracted)
+- [x] Google sync (new: map Google claims to User + Actor)
+- [x] ATProto sync (new: map DID to User + Actor with self-sovereign DID)
+- [x] Link external logins via `UserExternalLogin` entity
+- [x] Auto-match accounts by verified email (Keycloak ↔ Google)
+- [x] Add non-GUID provider-subject resolution for user profile/admin-authority/update/delete controller flows
+- [x] Add internal user-id claim propagation for non-GUID subjects in infrastructure identity services (`AdminClaimsTransformation`, `CurrentUserService`, `AdminContext`, `UserContext`) and Blazor `GroupAdminRouteGuard`
+- [x] Explicit ATProto linking via Account Settings page
+- [x] Safety: cannot unlink last remaining provider
 - [ ] Unit tests for each provider sync path
+- [x] Build verified: 0 errors (warnings remain)
+- [x] `Event.Application.UnitTests` baseline currently green in this branch (345/345)
+- [ ] Existing unrelated suite failures observed: `Event.API.IntegrationTests` (2), `Explore.Blazor.Client.Tests` (3)
 
-## Phase 7: Admin Settings — Post-Onboarding Management ⏳ NOT STARTED
-- [ ] Add auth provider section to instance admin settings page
-- [ ] Safety check: cannot disable sole provider for current admin
-- [ ] Allow adding/modifying providers after onboarding
-- [ ] Update credentials without disabling provider
+## Phase 7: Admin Settings — Post-Onboarding Management ✅ COMPLETE
+- [x] Add auth provider section to instance admin settings page
+- [x] Safety check: cannot disable sole provider for current admin
+- [x] Allow adding/modifying providers after onboarding
+- [x] Update credentials without disabling provider
+- [x] Add admin endpoint: `PUT /api/InstanceOnboarding/admin/auth-provider-configuration`
+- [x] Add app-layer command/handler for post-onboarding updates
+- [x] Add unit tests for new handler (`UpdateAuthProviderConfigurationCommandHandlerTests`)
 
 ## Phase 8: Testing & Documentation ⨼ NOT STARTED
 - [ ] Architecture tests for new governance setting keys
 - [ ] Integration tests: setup → auth config → login → onboarding flow
 - [ ] Integration tests: dynamic scheme registration lifecycle
-- [ ] Integration tests: admin provider management
+- [x] Integration tests: admin provider management
 - [ ] Integration tests: account linking (email auto-match, explicit ATProto)
 - [ ] Update `docs/SECURITY.md` with multi-provider auth model
 - [ ] Update `docs/CONFIGURATION.md` with new auth config keys
 - [ ] Update `docs/FEDERATION.md` with decentralization toggle
+
+### Session 9 notes
+- [x] Fixed API integration isolation in `AuthenticatedWebApplicationFactory` by using a unique in-memory DB name per factory instance
+- [x] Re-ran `Event.API.IntegrationTests` and reduced failures to 2 known unrelated baseline smoke tests
