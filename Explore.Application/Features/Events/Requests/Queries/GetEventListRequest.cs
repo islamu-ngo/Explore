@@ -219,20 +219,6 @@ public class GetEventListRequest : IRequest<PaginatedResult<EventListDto>>
     /// </summary>
     public bool? HasTechAspect { get; set; }
 
-    // ===== JSONB Metadata Filter Parameters =====
-
-    /// <summary>
-    /// JSON fragment for containment filter on MetadataJson JSONB column.
-    /// Uses PostgreSQL @&gt; operator. Example: "{\"customField\": \"value\"}".
-    /// </summary>
-    public string? MetadataJsonContains { get; set; }
-
-    /// <summary>
-    /// Key existence check on MetadataJson JSONB column.
-    /// Uses PostgreSQL ? operator. Example: "customField".
-    /// </summary>
-    public string? MetadataJsonKeyExists { get; set; }
-
     // ===== Sort Parameters =====
 
     /// <summary>

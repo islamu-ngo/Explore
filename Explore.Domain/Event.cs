@@ -102,9 +102,11 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
     /// </summary>
     public EventTechAspect? TechAspect { get; set; }
 
-    /// <summary>
-    /// JSON container for dynamic metadata that doesn't warrant a dedicated column.
-    /// Use for rare or tenant-specific custom fields.
-    /// </summary>
-    public string? MetadataJson { get; set; }
+    // Per-event appearance customization
+    public string? BackgroundColor { get; set; }
+    public string? BackgroundEffect { get; set; }
+
+    [ForeignKey("BackgroundImage")]
+    public Guid? BackgroundImageId { get; set; }
+    public StorageObject? BackgroundImage { get; set; }
 }

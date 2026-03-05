@@ -77,6 +77,7 @@ Major groups:
 - `analytics.*`
 - `auth.*`
 - `federation.*`
+- `localization.*`
 
 Values are stored as JSON-serialized strings in `SystemSetting.Value` and `TenantSetting.Value`.
 
@@ -111,6 +112,22 @@ Static deployment config is bound from `Deployment` section (`DeploymentSettings
 Runtime nuance:
 
 - `TenantContext` can override static mode using DB key `deployment.mode` when available.
+
+## Localization / TMS Settings (Governance)
+
+Keys in `GovernanceSettingKeys.Localization`:
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `localization.default_language` | string | `"en"` | Default language code (ISO 639-1) |
+| `localization.tms_provider` | int | `0` | TMS provider: 0=None (offline), 1=Tolgee, 2=Weblate |
+| `localization.tms_api_url` | string | `null` | Base URL for the TMS REST API |
+| `localization.tms_project_id` | string | `null` | TMS project identifier |
+| `localization.tms_component` | string | `null` | Weblate component slug (Weblate only) |
+
+TMS API keys/tokens are stored via `SecretProvider`, not governance settings.
+
+See [LOCALIZATION.md](LOCALIZATION.md) for full architecture.
 
 ## Related
 

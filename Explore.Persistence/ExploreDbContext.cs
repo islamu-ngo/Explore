@@ -107,6 +107,18 @@ public class ExploreDbContext : DbContext
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
             .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
 
+        // ===== Custom Properties (EAV) =====
+        modelBuilder.Entity<CustomPropertyDefinition>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
+        modelBuilder.Entity<CustomPropertyOption>()
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
+        modelBuilder.Entity<CustomPropertyValue>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
         // ===== Actor Entities =====
         // Entities with both Tenant and Soft Delete filters
         modelBuilder.Entity<Actor>()
@@ -302,6 +314,11 @@ public class ExploreDbContext : DbContext
     public DbSet<Group> Groups { get; set; }
     public DbSet<GroupMember> GroupMembers { get; set; }
     public DbSet<GroupPosition> GroupPositions { get; set; }
+
+    // ===== Custom Properties (EAV) =====
+    public DbSet<CustomPropertyDefinition> CustomPropertyDefinitions { get; set; }
+    public DbSet<CustomPropertyOption> CustomPropertyOptions { get; set; }
+    public DbSet<CustomPropertyValue> CustomPropertyValues { get; set; }
 
     // ===== Events =====
     public DbSet<Event> Events { get; set; }

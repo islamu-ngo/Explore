@@ -1,0 +1,36 @@
+/* ABOUTME: Scoped CSS for NotificationBell — bell trigger button, badge positioning, overlay. */
+/* ABOUTME: BEM block: notification-bell. Uses glass effect consistent with navbar styling. */
+
+.notification-bell {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.notification-bell__trigger {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: inherit;
+    transition: background-color 0.2s ease;
+}
+
+.notification-bell__trigger:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.notification-bell__trigger:focus-visible {
+    outline: 2px solid var(--mud-palette-primary);
+    outline-offset: 2px;
+}
+
+.notification-bell__overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+}

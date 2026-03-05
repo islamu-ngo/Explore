@@ -21,6 +21,7 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
     private readonly IWebHostEnvironment _environment;
     private readonly ILogger<DynamicAuthSchemeManager> _logger;
     private readonly SemaphoreSlim _lock = new(1, 1);
+    private readonly object _registeredSchemesSync = new();
 
     /// <summary>
     /// Tracks which dynamic provider schemes are currently registered.
@@ -55,6 +56,8 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
             var envClientId = _configuration["Keycloak:ClientId"];
             var envClientSecret = _configuration["Keycloak:ClientSecret"];
             var envMetadataAddress = _configuration["Keycloak:MetadataAddress"];
+            var envGoogleClientId = _configuration["Google:ClientId"];
+            var envGoogleClientSecret = _configuration["Google:ClientSecret"];
 
             if (!string.IsNullOrEmpty(envAuthority) && !string.IsNullOrEmpty(envClientId))
             {
@@ -62,6 +65,12 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
                     "Keycloak config detected in environment variables — registering Keycloak scheme from env");
 
                 RegisterKeycloakScheme(envAuthority, envClientId, envClientSecret, envMetadataAddress);
+            }
+
+            if (!string.IsNullOrEmpty(envGoogleClientId))
+            {
+                _logger.LogInformation("Google config detected in environment/configuration — registering Google scheme from env");
+                RegisterGoogleScheme(envGoogleClientId, envGoogleClientSecret);
             }
 
             // 2. Read DB configuration via API (may override or add providers).
@@ -87,7 +96,7 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
 
             _logger.LogInformation(
                 "Dynamic auth scheme initialization complete. Registered providers: [{Providers}]",
-                string.Join(", ", _registeredSchemes));
+                string.Join(", ", SnapshotRegisteredSchemes()));
         }
         finally
         {
@@ -113,7 +122,7 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
 
             _logger.LogInformation(
                 "Dynamic auth scheme refresh complete. Registered providers: [{Providers}]",
-                string.Join(", ", _registeredSchemes));
+                string.Join(", ", SnapshotRegisteredSchemes()));
         }
         finally
         {
@@ -123,7 +132,15 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
 
     public Task<IReadOnlyList<string>> GetRegisteredProviderSchemesAsync()
     {
-        return Task.FromResult<IReadOnlyList<string>>(_registeredSchemes.ToList().AsReadOnly());
+        return Task.FromResult<IReadOnlyList<string>>(SnapshotRegisteredSchemes().AsReadOnly());
+    }
+
+    private List<string> SnapshotRegisteredSchemes()
+    {
+        lock (_registeredSchemesSync)
+        {
+            return [.. _registeredSchemes];
+        }
     }
 
     private async Task<AuthProviderConfigurationResponse?> FetchConfigFromApiAsync(
@@ -209,7 +226,17 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
         }
         else if (!config.GoogleSsoEnabled && _registeredSchemes.Contains(AuthSchemeNames.Google))
         {
-            RemoveScheme(AuthSchemeNames.Google);
+            // Only remove if NOT configured via env vars (env vars take priority)
+            var envGoogleClientId = _configuration["Google:ClientId"];
+            if (string.IsNullOrEmpty(envGoogleClientId))
+            {
+                RemoveScheme(AuthSchemeNames.Google);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "Google is disabled in DB settings but configured via environment variables — keeping scheme registered");
+            }
         }
 
         // ATProto: register handler if enabled (no OIDC — custom handler)
@@ -241,7 +268,10 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
             typeof(OpenIdConnectHandler));
 
         _schemeProvider.TryAddScheme(scheme);
-        _registeredSchemes.Add(AuthSchemeNames.Keycloak);
+        lock (_registeredSchemesSync)
+        {
+            _registeredSchemes.Add(AuthSchemeNames.Keycloak);
+        }
 
         _logger.LogInformation("Registered Keycloak OIDC scheme (authority: {Authority})", authority);
     }
@@ -305,7 +335,10 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
             typeof(OpenIdConnectHandler));
 
         _schemeProvider.TryAddScheme(scheme);
-        _registeredSchemes.Add(AuthSchemeNames.Google);
+        lock (_registeredSchemesSync)
+        {
+            _registeredSchemes.Add(AuthSchemeNames.Google);
+        }
 
         _logger.LogInformation("Registered Google OIDC scheme");
     }
@@ -354,7 +387,10 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
             typeof(Authentication.AtprotoAuthenticationHandler));
 
         _schemeProvider.TryAddScheme(scheme);
-        _registeredSchemes.Add(AuthSchemeNames.Atproto);
+        lock (_registeredSchemesSync)
+        {
+            _registeredSchemes.Add(AuthSchemeNames.Atproto);
+        }
 
         _logger.LogInformation("Registered ATProto authentication scheme (public URL: {PublicUrl})", publicUrl);
     }
@@ -369,7 +405,10 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
             _oidcOptionsCache.TryRemove(schemeName);
         }
 
-        _registeredSchemes.Remove(schemeName);
+        lock (_registeredSchemesSync)
+        {
+            _registeredSchemes.Remove(schemeName);
+        }
         _logger.LogInformation("Removed auth scheme: {SchemeName}", schemeName);
     }
 

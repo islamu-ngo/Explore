@@ -12,7 +12,6 @@ public class OrganizationDto
     public required string City { get; set; }
     public required string Postcode { get; set; }
     public required string Address { get; set; }
-    public string? MetadataJson { get; set; }
 
     // Approval Status
     public int ApprovalStatusId { get; set; }
@@ -31,4 +30,9 @@ public class OrganizationDto
     // Profile Picture (resolved to presigned URL)
     public Guid? ActorProfilePictureId { get; set; }
     public string? ActorProfilePictureUri { get; set; }
+    public string? ActorBackgroundColor { get; set; }
+    public string? ActorBackgroundEffect { get; set; }
+    public string? ActorBannerColor { get; set; }
+    public Guid? ActorBannerPictureId { get; set; }
+    public string? ActorBannerPictureUri { get; set; }
 }

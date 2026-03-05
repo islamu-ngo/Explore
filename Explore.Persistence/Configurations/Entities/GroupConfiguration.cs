@@ -27,9 +27,6 @@ public class GroupConfiguration : IEntityTypeConfiguration<Group>
         builder.Property(e => e.Description)
             .HasMaxLength(5000);
 
-        builder.Property(e => e.MetadataJson)
-            .HasColumnType("jsonb");
-
         builder.HasOne(e => e.ApprovalStatus)
             .WithMany()
             .HasForeignKey(e => e.ApprovalStatusId)

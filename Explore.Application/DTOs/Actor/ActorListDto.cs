@@ -32,6 +32,13 @@ public class ActorListDto
     public Guid? ProfilePictureId { get; set; }
     public string? ProfilePictureUri { get; set; }
 
+    // Appearance
+    public string? BackgroundColor { get; set; }
+    public string? BackgroundEffect { get; set; }
+    public string? BannerColor { get; set; }
+    public Guid? BannerPictureId { get; set; }
+    public string? BannerPictureUri { get; set; }
+
     public string? PdsHost { get; set; }
     public DateTime? IndexedAt { get; set; }
 }

@@ -554,7 +554,8 @@ public partial class CreateEvent
             createDto.EventStatusId ??= 1;
             createDto.VisibilityTypeId ??= 1;
             createDto.EventFormatId ??= 1;
-            createDto.MetadataJson = EventAppearanceMetadataHelper.Upsert(createDto.MetadataJson, _appearance);
+            createDto.BackgroundColor = _appearance.BackgroundColor;
+            createDto.BackgroundEffect = _appearance.BackgroundEffect;
 
             var earliestStart = sessions.Min(s => DateTimeHelper.ConvertLocalToUtc(s.StartTime));
             var latestEnd = sessions.Max(s => DateTimeHelper.ConvertLocalToUtc(s.EndTime));

@@ -1,8 +1,8 @@
 # Authentication Provider Configuration — Context
 
-> Last Updated: 2026-03-03 (Session 9 — integration isolation fix)
+> Last Updated: 2026-03-04 (Session 14 — integration coverage expansion)
 
-## SESSION PROGRESS (2026-03-03 — Session 9)
+## SESSION PROGRESS (2026-03-04 — Session 14)
 
 ### ✅ COMPLETED
 - Phase 0: All requirements finalized, plan documents created
@@ -59,11 +59,28 @@
   - Integration test isolation fix applied for API integration suite:
     - `AuthenticatedWebApplicationFactory` now uses a unique in-memory database name per factory instance
     - Removes cross-test state leakage in `Event.API.IntegrationTests`
-  - Re-verified `Event.API.IntegrationTests` after fix: now only 2 unrelated baseline smoke failures remain (`Public_Get_Endpoints_ReturnOk`, `Public_Write_Endpoints_DoNotReturnUnauthorized_Or_ServerError`)
+  - Fixed API smoke auth classification:
+    - `ApiEndpointSmokeTests.IsProtected(...)` now treats `SetupSecretRequiredAttribute` endpoints as protected
+    - This aligns smoke expectations with setup-secret-gated onboarding endpoints (which can legitimately return `403`/`410` without setup token)
+  - Re-verified `Event.API.IntegrationTests` after smoke fix: full green (403/403)
+  - Updated `docs/FEDERATION.md` to document shipped decentralization governance controls and ATProto-login dependency, while retaining protocol bridge items as roadmap.
+  - Added architecture tests for new governance key coverage:
+    - `Event.Architecture.Tests/GovernanceSettingKeysTests.cs`
+    - validates `auth.*` and `federation.*` key prefixes
+    - validates flat alias mappings and secret-key mappings for auth providers
+  - Expanded onboarding/auth-config API integration flow coverage in `InstanceOnboardingControllerTests`:
+    - setup-token protected save of auth provider configuration
+    - `auth-provider-configured` transition assertion after save
+    - onboarding completion transition and post-completion anonymous lockout for public auth-config endpoint
+    - internal auth-config endpoint behavior (`/auth-provider-configuration/internal`) with and without setup secret
+  - Expanded provider-sync/account-linking integration coverage in `UserExternalLoginIntegrationTests`:
+    - Google verified-email auto-match links to existing local user via `/api/user/sync`
+    - ATProto sync without email fails when explicit DID link is missing
+    - ATProto sync without email succeeds when explicit DID link exists
+  - Re-verified `Event.API.IntegrationTests` after new tests: full green (411/411)
 
 ### ⚠️ BLOCKERS
 - Branch baseline remains noisy with many pre-existing warnings and unrelated test-suite instability.
-- `Event.Persistence.IntegrationTests` cannot run in current environment (Docker/Testcontainers endpoint unavailable).
 - Verified in this session (green):
   - `dotnet build Explore.Application/Explore.Application.csproj --configuration Release --verbosity quiet`
   - `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet`
@@ -72,7 +89,10 @@
   - `dotnet test --project Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet` (79/79 passed)
   - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` (32/32 passed)
   - `dotnet test --project Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --verbosity quiet` (190/190 passed)
-  - `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity quiet` (401/403 passed, 2 known unrelated failures)
+  - `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity quiet` (403/403 passed)
+  - `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet` (411/411 passed)
+  - `dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet` (2/2 passed)
+  - `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet` (36/36 passed)
   - `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` (515/518 passed, 3 known unrelated flaky/UI timing failures)
 ## Key Design Decisions
 

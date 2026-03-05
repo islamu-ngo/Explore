@@ -1,0 +1,60 @@
+@* ABOUTME: Notification panel popover showing the notification list with scope header and load-more.
+    ABOUTME: Renders as dropdown below NotificationBell. Shows loading, empty state, and scrollable list. *@
+
+<div class="notification-panel">
+    <div class="notification-panel__header">
+        <span class="notification-panel__title">Notifications</span>
+    </div>
+
+    <div class="notification-panel__body">
+        @if (IsLoading && !Notifications.Any())
+        {
+            <div class="notification-panel__loading">
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Primary" />
+                <MudText Typo="Typo.body2" Class="ml-2">Loading...</MudText>
+            </div>
+        }
+        else if (!Notifications.Any())
+        {
+            <div class="notification-panel__empty">
+                <MudIcon Icon="@Icons.Material.Outlined.NotificationsNone"
+                         Size="Size.Large"
+                         Color="Color.Default" />
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    No notifications yet
+                </MudText>
+            </div>
+        }
+        else
+        {
+            <div class="notification-panel__list">
+                @foreach (var notification in Notifications)
+                {
+                    <NotificationItem Notification="notification"
+                                      OnClick="OnNotificationClick"
+                                      OnDelete="OnDeleteNotification" />
+                }
+
+                @if (HasMore)
+                {
+                    <div class="notification-panel__load-more">
+                        @if (IsLoading)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Primary" />
+                        }
+                        else
+                        {
+                            <MudButton Variant="Variant.Text"
+                                       Color="Color.Primary"
+                                       Size="Size.Small"
+                                       FullWidth="true"
+                                       OnClick="OnLoadMore">
+                                Load more
+                            </MudButton>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>

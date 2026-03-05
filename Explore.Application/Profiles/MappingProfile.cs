@@ -121,6 +121,8 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.ActorProfilePictureUri, opt => opt.MapFrom(src => src.Actor != null && src.Actor.ProfilePicture != null ? src.Actor.ProfilePicture.Uri : null))
             // Featured Image
             .ForMember(dest => dest.FeaturedImageUri, opt => opt.MapFrom(src => src.FeaturedImage != null ? src.FeaturedImage.Uri : null))
+            // Background Image
+            .ForMember(dest => dest.BackgroundImageUri, opt => opt.MapFrom(src => src.BackgroundImage != null ? src.BackgroundImage.Uri : null))
             // Event Status
             .ForMember(dest => dest.EventStatusFullName, opt => opt.MapFrom(src => src.EventStatus != null ? src.EventStatus.FullName : null))
             .ForMember(dest => dest.EventStatusMasterCode, opt => opt.MapFrom(src => src.EventStatus != null ? src.EventStatus.MasterCode : null))
@@ -197,11 +199,23 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.ActorDisplayName, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.DisplayName : null))
             .ForMember(dest => dest.ActorHandle, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.Handle : null))
             .ForMember(dest => dest.ActorProfilePictureId, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.ProfilePictureId : null))
-            .ForMember(dest => dest.ActorProfilePictureUri, opt => opt.MapFrom(src => src.Actor != null && src.Actor.ProfilePicture != null ? src.Actor.ProfilePicture.Uri : null));
+            .ForMember(dest => dest.ActorProfilePictureUri, opt => opt.MapFrom(src => src.Actor != null && src.Actor.ProfilePicture != null ? src.Actor.ProfilePicture.Uri : null))
+            // Actor Appearance
+            .ForMember(dest => dest.ActorBackgroundColor, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.BackgroundColor : null))
+            .ForMember(dest => dest.ActorBackgroundEffect, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.BackgroundEffect : null))
+            .ForMember(dest => dest.ActorBannerColor, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.BannerColor : null))
+            .ForMember(dest => dest.ActorBannerPictureId, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.BannerPictureId : null))
+            .ForMember(dest => dest.ActorBannerPictureUri, opt => opt.MapFrom(src => src.Actor != null && src.Actor.BannerPicture != null ? src.Actor.BannerPicture.Uri : null));
         CreateMap<Group, GroupListDto>()
             .ForMember(dest => dest.ApprovalStatusFullName, opt => opt.MapFrom(src => src.ApprovalStatus != null ? src.ApprovalStatus.FullName : null))
             .ForMember(dest => dest.ActorProfilePictureId, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.ProfilePictureId : null))
-            .ForMember(dest => dest.ActorProfilePictureUri, opt => opt.MapFrom(src => src.Actor != null && src.Actor.ProfilePicture != null ? src.Actor.ProfilePicture.Uri : null));
+            .ForMember(dest => dest.ActorProfilePictureUri, opt => opt.MapFrom(src => src.Actor != null && src.Actor.ProfilePicture != null ? src.Actor.ProfilePicture.Uri : null))
+            // Actor Appearance
+            .ForMember(dest => dest.ActorBackgroundColor, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.BackgroundColor : null))
+            .ForMember(dest => dest.ActorBackgroundEffect, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.BackgroundEffect : null))
+            .ForMember(dest => dest.ActorBannerColor, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.BannerColor : null))
+            .ForMember(dest => dest.ActorBannerPictureId, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.BannerPictureId : null))
+            .ForMember(dest => dest.ActorBannerPictureUri, opt => opt.MapFrom(src => src.Actor != null && src.Actor.BannerPicture != null ? src.Actor.BannerPicture.Uri : null));
         CreateMap<CreateGroupDto, Group>();
         CreateMap<UpdateGroupDto, Group>();
         CreateMap<UpdateGroupApprovalStatusDto, Group>();
@@ -235,12 +249,24 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.ActorHandle, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.Handle : null))
             // Profile Picture
             .ForMember(dest => dest.ActorProfilePictureId, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.ProfilePictureId : null))
-            .ForMember(dest => dest.ActorProfilePictureUri, opt => opt.MapFrom(src => src.Actor != null && src.Actor.ProfilePicture != null ? src.Actor.ProfilePicture.Uri : null));
+            .ForMember(dest => dest.ActorProfilePictureUri, opt => opt.MapFrom(src => src.Actor != null && src.Actor.ProfilePicture != null ? src.Actor.ProfilePicture.Uri : null))
+            // Actor Appearance
+            .ForMember(dest => dest.ActorBackgroundColor, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.BackgroundColor : null))
+            .ForMember(dest => dest.ActorBackgroundEffect, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.BackgroundEffect : null))
+            .ForMember(dest => dest.ActorBannerColor, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.BannerColor : null))
+            .ForMember(dest => dest.ActorBannerPictureId, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.BannerPictureId : null))
+            .ForMember(dest => dest.ActorBannerPictureUri, opt => opt.MapFrom(src => src.Actor != null && src.Actor.BannerPicture != null ? src.Actor.BannerPicture.Uri : null));
         CreateMap<Organization, OrganizationListDto>()
             .ForMember(dest => dest.ApprovalStatusFullName, opt => opt.MapFrom(src => src.ApprovalStatus != null ? src.ApprovalStatus.FullName : null))
             // Profile Picture
             .ForMember(dest => dest.ActorProfilePictureId, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.ProfilePictureId : null))
-            .ForMember(dest => dest.ActorProfilePictureUri, opt => opt.MapFrom(src => src.Actor != null && src.Actor.ProfilePicture != null ? src.Actor.ProfilePicture.Uri : null));
+            .ForMember(dest => dest.ActorProfilePictureUri, opt => opt.MapFrom(src => src.Actor != null && src.Actor.ProfilePicture != null ? src.Actor.ProfilePicture.Uri : null))
+            // Actor Appearance
+            .ForMember(dest => dest.ActorBackgroundColor, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.BackgroundColor : null))
+            .ForMember(dest => dest.ActorBackgroundEffect, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.BackgroundEffect : null))
+            .ForMember(dest => dest.ActorBannerColor, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.BannerColor : null))
+            .ForMember(dest => dest.ActorBannerPictureId, opt => opt.MapFrom(src => src.Actor != null ? src.Actor.BannerPictureId : null))
+            .ForMember(dest => dest.ActorBannerPictureUri, opt => opt.MapFrom(src => src.Actor != null && src.Actor.BannerPicture != null ? src.Actor.BannerPicture.Uri : null));
         CreateMap<CreateOrganizationDto, Organization>();
         CreateMap<UpdateOrganizationDto, Organization>();
         CreateMap<UpdateOrganizationApprovalStatusDto, Organization>();

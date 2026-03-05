@@ -57,7 +57,6 @@ public class Organization : ITenantEntity, IAuditableEntity, ISoftDeletable, ICo
     }
 
     public string? WebsiteUrl { get; set; }
-    public string? MetadataJson { get; set; }
 
     [ForeignKey("ApprovalStatus")]
     public int ApprovalStatusId { get; set; }

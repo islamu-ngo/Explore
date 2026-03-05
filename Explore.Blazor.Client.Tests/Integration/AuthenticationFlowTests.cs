@@ -51,7 +51,7 @@ public class AuthenticationFlowTests
         RegisterNavMenuServices(ctx);
 
         // Act
-        var cut = ctx.RenderComponent<NavMenu>();
+        var cut = ctx.RenderMudComponent<NavMenu>();
 
         // Assert - Should show login/sign in option
         var markup = cut.Markup;
@@ -72,7 +72,7 @@ public class AuthenticationFlowTests
         RegisterNavMenuServices(ctx);
 
         // Act
-        var cut = ctx.RenderComponent<NavMenu>();
+        var cut = ctx.RenderMudComponent<NavMenu>();
 
         // Assert - Admin-specific links should not be visible
         var markup = cut.Markup.ToLowerInvariant();
@@ -93,7 +93,7 @@ public class AuthenticationFlowTests
         RegisterNavMenuServices(ctx);
 
         // Act
-        var cut = ctx.RenderComponent<NavMenu>();
+        var cut = ctx.RenderMudComponent<NavMenu>();
 
         // Assert - Admin should see admin controls or have access to admin routes
         await Assert.That(cut).IsNotNull();
@@ -110,7 +110,7 @@ public class AuthenticationFlowTests
         RegisterNavMenuServices(ctx);
 
         // Act
-        var cut = ctx.RenderComponent<NavMenu>();
+        var cut = ctx.RenderMudComponent<NavMenu>();
 
         // Assert - Should show some indication of logged-in state
         var markup = cut.Markup;
@@ -132,7 +132,7 @@ public class AuthenticationFlowTests
         RegisterNavMenuServices(ctx);
 
         // Act
-        var cut = ctx.RenderComponent<NavMenu>();
+        var cut = ctx.RenderMudComponent<NavMenu>();
 
         // Assert - Component should render without error during authorizing state
         await Assert.That(cut).IsNotNull();
@@ -544,6 +544,10 @@ public class AuthenticationFlowTests
             SelectedDeploymentMode = "MultiTenant"
         });
         ctx.Services.AddSingleton(instanceOnboardingService);
+
+        ctx.Services.AddSingleton(MockServiceFactory.CreateNotificationService());
+        ctx.Services.AddSingleton(MockServiceFactory.CreateTranslationService());
+        ctx.Services.AddSingleton(Substitute.For<IHttpClientFactory>());
     }
 
     private static void RegisterOrganizationServices(BlazorTestContext ctx)

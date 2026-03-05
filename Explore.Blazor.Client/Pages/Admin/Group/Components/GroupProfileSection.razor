@@ -32,8 +32,8 @@
         </MudItem>
 
         <MudItem xs="12" sm="6">
-            <MudTextField @bind-Value="Branding.PictureUrl"
-                          Label="Picture URL"
+            <MudTextField @bind-Value="Branding.BannerPictureUri"
+                          Label="Banner Picture URL"
                           Variant="Variant.Outlined"
                           Adornment="Adornment.Start"
                           AdornmentIcon="@Icons.Material.Filled.Image" />
@@ -47,7 +47,7 @@
         </MudItem>
 
         <MudItem xs="12">
-            <MudTextField @bind-Value="Branding.BannerMediaUrl"
+            <MudTextField @bind-Value="Branding.BannerPictureUri"
                           Label="Banner Media URL"
                           Variant="Variant.Outlined"
                           Placeholder="https://... (image or GIF)" />
@@ -57,7 +57,7 @@
             <MudSelect T="string"
                        Label="Banner Effect"
                        Variant="Variant.Outlined"
-                       @bind-Value="Branding.BannerEffect">
+                       @bind-Value="Branding.BackgroundEffect">
                 <MudSelectItem Value="@("None")">None</MudSelectItem>
                 <MudSelectItem Value="@("SoftOverlay")">Soft Overlay</MudSelectItem>
                 <MudSelectItem Value="@("StrongOverlay")">Strong Overlay</MudSelectItem>
@@ -73,10 +73,10 @@
               Class="pa-6 rounded-lg border-solid border-1 mud-border-lines-default"
               Style="@GetPreviewStyle()">
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-            @if (!string.IsNullOrWhiteSpace(Branding.PictureUrl))
+            @if (!string.IsNullOrWhiteSpace(Branding.BannerPictureUri))
             {
                 <MudAvatar Size="Size.Large" Rounded="true">
-                    <MudImage Src="@Branding.PictureUrl" Alt="Group picture preview" ObjectFit="ObjectFit.Cover" />
+                    <MudImage Src="@Branding.BannerPictureUri" Alt="Group picture preview" ObjectFit="ObjectFit.Cover" />
                 </MudAvatar>
             }
             else

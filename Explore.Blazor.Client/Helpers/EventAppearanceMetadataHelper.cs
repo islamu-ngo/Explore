@@ -1,84 +1,32 @@
-// ABOUTME: Helper for storing and retrieving event-level appearance settings inside Event.MetadataJson.
-// ABOUTME: Keeps visual customization schema stable without requiring immediate table expansion.
-
-using System.Text.Json;
-using System.Text.Json.Nodes;
+// ABOUTME: Helper for event-level appearance settings using dedicated columns on EventDto.
+// ABOUTME: Builds hero CSS styles from structured appearance properties.
 
 namespace Explore.Blazor.Client.Helpers;
 
 public sealed class EventAppearanceSettings
 {
     public string BackgroundColor { get; set; } = string.Empty;
-    public string BackgroundMediaUrl { get; set; } = string.Empty;
+    public string BackgroundImageUri { get; set; } = string.Empty;
     public string BackgroundEffect { get; set; } = "None";
 
     public bool IsEmpty =>
         string.IsNullOrWhiteSpace(BackgroundColor) &&
-        string.IsNullOrWhiteSpace(BackgroundMediaUrl) &&
+        string.IsNullOrWhiteSpace(BackgroundImageUri) &&
         (string.IsNullOrWhiteSpace(BackgroundEffect) ||
          BackgroundEffect.Equals("None", StringComparison.OrdinalIgnoreCase));
 }
 
 public static class EventAppearanceMetadataHelper
 {
-    private const string AppearanceNode = "appearance";
-
-    public static EventAppearanceSettings Parse(string? metadataJson)
+    public static EventAppearanceSettings FromColumns(
+        string? backgroundColor, string? backgroundImageUri, string? backgroundEffect)
     {
-        if (string.IsNullOrWhiteSpace(metadataJson))
+        return new EventAppearanceSettings
         {
-            return new EventAppearanceSettings();
-        }
-
-        try
-        {
-            var root = JsonNode.Parse(metadataJson) as JsonObject;
-            var appearance = root?[AppearanceNode] as JsonObject;
-            if (appearance == null)
-            {
-                return new EventAppearanceSettings();
-            }
-
-            return new EventAppearanceSettings
-            {
-                BackgroundColor = appearance["backgroundColor"]?.GetValue<string>() ?? string.Empty,
-                BackgroundMediaUrl = appearance["backgroundMediaUrl"]?.GetValue<string>() ?? string.Empty,
-                BackgroundEffect = appearance["backgroundEffect"]?.GetValue<string>() ?? "None"
-            };
-        }
-        catch
-        {
-            return new EventAppearanceSettings();
-        }
-    }
-
-    public static string? Upsert(string? metadataJson, EventAppearanceSettings appearance)
-    {
-        JsonObject root;
-        if (string.IsNullOrWhiteSpace(metadataJson))
-        {
-            root = new JsonObject();
-        }
-        else
-        {
-            root = JsonNode.Parse(metadataJson) as JsonObject ?? new JsonObject();
-        }
-
-        if (appearance.IsEmpty)
-        {
-            root.Remove(AppearanceNode);
-        }
-        else
-        {
-            root[AppearanceNode] = new JsonObject
-            {
-                ["backgroundColor"] = NullIfWhiteSpace(appearance.BackgroundColor),
-                ["backgroundMediaUrl"] = NullIfWhiteSpace(appearance.BackgroundMediaUrl),
-                ["backgroundEffect"] = string.IsNullOrWhiteSpace(appearance.BackgroundEffect) ? "None" : appearance.BackgroundEffect.Trim()
-            };
-        }
-
-        return root.Count == 0 ? null : root.ToJsonString(new JsonSerializerOptions { WriteIndented = false });
+            BackgroundColor = backgroundColor ?? string.Empty,
+            BackgroundImageUri = backgroundImageUri ?? string.Empty,
+            BackgroundEffect = backgroundEffect ?? "None"
+        };
     }
 
     public static string BuildHeroStyle(EventAppearanceSettings appearance, string fallbackColorHex)
@@ -87,7 +35,7 @@ public static class EventAppearanceMetadataHelper
             ? fallbackColorHex
             : appearance.BackgroundColor.Trim();
 
-        var mediaUrl = appearance.BackgroundMediaUrl?.Trim();
+        var mediaUrl = appearance.BackgroundImageUri?.Trim();
         var overlay = appearance.BackgroundEffect?.Trim() switch
         {
             "SoftOverlay" => "linear-gradient(rgba(0,0,0,0.24), rgba(0,0,0,0.24))",
@@ -108,10 +56,5 @@ public static class EventAppearanceMetadataHelper
         }
 
         return $"aspect-ratio: 16/9; position: relative; background: {overlay}, {mediaBackground};";
-    }
-
-    private static string? NullIfWhiteSpace(string? value)
-    {
-        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 }

@@ -54,7 +54,9 @@ public partial class OrganizationProfile
             // Load organization and its reviews
             _organization = await OrganizationService.GetOrganizationByIdAsync(Id);
             _reviews = (await OrganizationReviewService.GetReviewsByOrganizationId(Id)).ToList();
-            _appearance = OrganizationAppearanceMetadataHelper.Parse(_organization?.MetadataJson);
+            _appearance = OrganizationAppearanceMetadataHelper.FromColumns(
+                _organization?.ActorBackgroundColor,
+                _organization?.ActorBannerPictureUri, _organization?.ActorBackgroundEffect);
             _bannerStyle = OrganizationAppearanceMetadataHelper.BuildBannerStyle(_appearance, "#1f6feb");
             Logger.LogDebug("Loaded organization {OrganizationId} with {ReviewCount} reviews", Id, _reviews.Count);
 
@@ -91,11 +93,6 @@ public partial class OrganizationProfile
             return _organization.ActorProfilePictureUri;
         }
 
-        if (!string.IsNullOrWhiteSpace(_appearance.ProfileImageUrl))
-        {
-            return _appearance.ProfileImageUrl.Trim();
-        }
-
         return null;
     }
 
@@ -108,7 +105,9 @@ public partial class OrganizationProfile
 
         _organization = PersistedState.Organization;
         _reviews = PersistedState.Reviews;
-        _appearance = OrganizationAppearanceMetadataHelper.Parse(_organization?.MetadataJson);
+        _appearance = OrganizationAppearanceMetadataHelper.FromColumns(
+            _organization?.ActorBackgroundColor,
+            _organization?.ActorBannerPictureUri, _organization?.ActorBackgroundEffect);
         _bannerStyle = OrganizationAppearanceMetadataHelper.BuildBannerStyle(_appearance, "#1f6feb");
         _isLoading = false;
         _errorMessage = null;

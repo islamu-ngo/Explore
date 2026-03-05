@@ -96,9 +96,14 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
             .HasForeignKey<EventTechAspect>(a => a.Id)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // MetadataJson uses PostgreSQL jsonb for efficient JSON querying
-        builder.Property(e => e.MetadataJson)
-            .HasColumnType("jsonb");
+        // Per-event appearance
+        builder.Property(e => e.BackgroundColor).HasMaxLength(50);
+        builder.Property(e => e.BackgroundEffect).HasMaxLength(50);
+
+        builder.HasOne(e => e.BackgroundImage)
+            .WithMany()
+            .HasForeignKey(e => e.BackgroundImageId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         // ===== Performance Indexes =====
 

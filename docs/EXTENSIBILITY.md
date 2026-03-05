@@ -68,6 +68,30 @@ Blazor event list uses these flags to control filter/UI exposure.
 - [DOMAIN.md](DOMAIN.md)
 - [MULTI_TENANCY.md](MULTI_TENANCY.md)
 
+## Translation Management System (TMS) Provider Abstraction
+
+**Status:** Implemented.
+
+The localization system uses the same pluggable provider pattern as analytics:
+
+```
+ITranslationManagementProvider
+  ├── TolgeeTranslationProvider
+  ├── WeblateTranslationProvider
+  ├── OfflineTranslationProvider (default — reads bundled .json files)
+  └── NullTranslationProvider (safe no-op)
+```
+
+`RuntimeTranslationProvider` wraps all concrete providers and delegates based on the `localization.tms_provider` governance setting. Falls back to `OfflineTranslationProvider` on errors.
+
+Adding a new TMS provider:
+1. Create `{Provider}TranslationProvider : ITranslationManagementProvider` in `Explore.Infrastructure/Localization/`
+2. Add enum value to `TranslationManagementProviderEnum`
+3. Register in `InfrastructureServicesRegistration.cs` with named HttpClient
+4. Add routing case in `RuntimeTranslationProvider.ResolveProviderAsync()`
+
+See [LOCALIZATION.md](LOCALIZATION.md) for full details.
+
 ## API Keys / Service Accounts — Planned
 
 **Status:** Not yet implemented. Strategy documented for post-v1.0.

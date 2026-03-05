@@ -60,5 +60,9 @@ public class CreateEventDto
 
     // Metadata
     public string? EventUrl { get; set; }
-    public string? MetadataJson { get; set; }
+
+    // Appearance
+    public string? BackgroundColor { get; set; }
+    public string? BackgroundEffect { get; set; }
+    public Guid? BackgroundImageId { get; set; }
 }

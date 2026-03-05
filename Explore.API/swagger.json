@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "https://localhost:49486/"
+      "url": "https://localhost:64179/"
     }
   ],
   "paths": {
@@ -2089,7 +2089,7 @@
           "Event"
         ],
         "summary": "Get all Events",
-        "description": "Get a paginated, filterable list of all Events (Conference, Webinar, Workshop...). Default page size is 20, max is 100. Supports filtering by category, tag, format, madhab, location, language, date range, and free-text search. Supports module-conditional aspect filters: Islamic (genderMode, quranRecitation, referencePrayer, islamicLanguage) and Tech (skillLevel, codingCompetition, hackathon, requiresLaptop, techStack). Aspect filters are silently ignored when the corresponding module is not enabled for the tenant. Supports JSONB metadata filtering via metadataJsonContains and metadataJsonKeyExists. Supports sorting by date, title, views, or createdAt. Response includes HATEOAS navigation links (first, prev, next, last). Send \u0027Prefer: return=minimal\u0027 header to strip links.",
+        "description": "Get a paginated, filterable list of all Events (Conference, Webinar, Workshop...). Default page size is 20, max is 100. Supports filtering by category, tag, format, madhab, location, language, date range, and free-text search. Supports module-conditional aspect filters: Islamic (genderMode, quranRecitation, referencePrayer, islamicLanguage) and Tech (skillLevel, codingCompetition, hackathon, requiresLaptop, techStack). Aspect filters are silently ignored when the corresponding module is not enabled for the tenant. Supports sorting by date, title, views, or createdAt. Response includes HATEOAS navigation links (first, prev, next, last). Send \u0027Prefer: return=minimal\u0027 header to strip links.",
         "operationId": "GetEvents",
         "parameters": [
           {
@@ -2456,20 +2456,6 @@
             "in": "query",
             "schema": {
               "type": "boolean"
-            }
-          },
-          {
-            "name": "metadataJsonContains",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "metadataJsonKeyExists",
-            "in": "query",
-            "schema": {
-              "type": "string"
             }
           },
           {
@@ -5555,6 +5541,67 @@
         }
       }
     },
+    "/api/groupmember/member/{id}": {
+      "get": {
+        "tags": [
+          "GroupMember"
+        ],
+        "operationId": "GetGroupMemberById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupMemberDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupMemberDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupMemberDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/groupmember": {
       "post": {
         "tags": [
@@ -5735,6 +5782,112 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/groupposition": {
+      "get": {
+        "tags": [
+          "GroupPosition"
+        ],
+        "summary": "Get all Group Positions",
+        "description": "Retrieve a list of all group positions (Leader, Coordinator, Member, etc.)",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GroupPositionListDto"
+                  }
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GroupPositionListDto"
+                  }
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GroupPositionListDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/groupposition/{id}": {
+      "get": {
+        "tags": [
+          "GroupPosition"
+        ],
+        "summary": "Get Group Position by ID",
+        "description": "Retrieve details of a specific group position",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupPositionDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupPositionDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupPositionDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
@@ -6749,6 +6902,92 @@
         }
       }
     },
+    "/api/instanceonboarding/admin/auth-provider-configuration": {
+      "put": {
+        "tags": [
+          "InstanceOnboarding"
+        ],
+        "summary": "Update Auth Provider Configuration",
+        "description": "Updates auth provider configuration after onboarding. Requires instance administrator membership and blocks self-lockout.",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/instanceonboarding/auth-provider-configured": {
       "get": {
         "tags": [
@@ -6853,6 +7092,174 @@
               "text/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/LanguageDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/localization/test-connection": {
+      "post": {
+        "tags": [
+          "LocalizationAdmin"
+        ],
+        "summary": "Test TMS Connection",
+        "description": "Verifies that the configured Translation Management System (Tolgee/Weblate) is reachable.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/localization/configuration": {
+      "get": {
+        "tags": [
+          "LocalizationAdmin"
+        ],
+        "summary": "Get Localization Configuration",
+        "description": "Returns the current TMS provider settings and connection status.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocalizationConfigDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocalizationConfigDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocalizationConfigDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/localization/export-from-tms": {
+      "post": {
+        "tags": [
+          "LocalizationAdmin"
+        ],
+        "summary": "Export Translations from TMS",
+        "description": "Pulls translations from the connected TMS for the specified language and refreshes the cache.",
+        "parameters": [
+          {
+            "name": "languageCode",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -7763,6 +8170,465 @@
           },
           "403": {
             "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notification": {
+      "get": {
+        "tags": [
+          "Notification"
+        ],
+        "summary": "Get User Notifications",
+        "description": "Retrieve a paginated list of notifications for the authenticated user. Supports filtering by read status and notification type.",
+        "operationId": "GetNotifications",
+        "parameters": [
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 20
+            }
+          },
+          {
+            "name": "isRead",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "notificationTypeId",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "notificationScopeId",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResultOfNotificationListDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResultOfNotificationListDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResultOfNotificationListDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notification/{id}": {
+      "get": {
+        "tags": [
+          "Notification"
+        ],
+        "summary": "Get Notification by ID",
+        "description": "Retrieve a specific notification. Returns 404 if not found or doesn\u0027t belong to the authenticated user.",
+        "operationId": "GetNotificationById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Notification"
+        ],
+        "summary": "Delete Notification",
+        "description": "Soft-deletes a notification for the authenticated user.",
+        "operationId": "DeleteNotification",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notification/unread-count": {
+      "get": {
+        "tags": [
+          "Notification"
+        ],
+        "summary": "Get Unread Notification Count",
+        "description": "Returns the number of unread notifications for the authenticated user. Supports optional scope filter (ActorType: User=1, Organization=2, Group=4, System=5). Optimized with partial index.",
+        "operationId": "GetUnreadNotificationCount",
+        "parameters": [
+          {
+            "name": "notificationScopeId",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadCountDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadCountDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadCountDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notification/{id}/read": {
+      "patch": {
+        "tags": [
+          "Notification"
+        ],
+        "summary": "Mark Notification as Read",
+        "description": "Marks a single notification as read. Idempotent \u2014 succeeds silently if already read.",
+        "operationId": "MarkNotificationAsRead",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notification/read-all": {
+      "post": {
+        "tags": [
+          "Notification"
+        ],
+        "summary": "Mark All Notifications as Read",
+        "description": "Bulk marks all unread notifications as read (YouTube-style). Uses timestamp cutoff to prevent race conditions.",
+        "operationId": "MarkAllNotificationsAsRead",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
@@ -11210,6 +12076,325 @@
         }
       }
     },
+    "/api/tenantmember": {
+      "get": {
+        "tags": [
+          "TenantMember"
+        ],
+        "summary": "Get all Tenant Members",
+        "description": "Retrieve a list of all tenant members",
+        "operationId": "GetTenantMembers",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TenantMemberListDto"
+                  }
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TenantMemberListDto"
+                  }
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TenantMemberListDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "TenantMember"
+        ],
+        "summary": "Create new Tenant Member",
+        "description": "Create a new tenant member association",
+        "operationId": "CreateTenantMember",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTenantMemberDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTenantMemberDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTenantMemberDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tenantmember/{id}": {
+      "get": {
+        "tags": [
+          "TenantMember"
+        ],
+        "summary": "Get Tenant Member by ID",
+        "description": "Retrieve details of a specific tenant member",
+        "operationId": "GetTenantMemberById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantMemberDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantMemberDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantMemberDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "TenantMember"
+        ],
+        "summary": "Update Tenant Member",
+        "description": "Update an existing tenant member association",
+        "operationId": "UpdateTenantMember",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTenantMemberDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTenantMemberDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTenantMemberDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "TenantMember"
+        ],
+        "summary": "Delete Tenant Member",
+        "description": "Delete a tenant member association",
+        "operationId": "DeleteTenantMember",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/tenantonboarding/status": {
       "get": {
         "tags": [
@@ -11837,108 +13022,49 @@
         }
       }
     },
-    "/api/tenantuser": {
+    "/api/translation/{languageCode}": {
       "get": {
         "tags": [
-          "TenantUser"
+          "Translation"
         ],
-        "summary": "Get all Tenant Users",
-        "description": "Retrieve a list of all tenant users",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/TenantUserListDto"
-                  }
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/TenantUserListDto"
-                  }
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/TenantUserListDto"
-                  }
-                }
-              }
+        "summary": "Get Translations",
+        "description": "Returns all translation key-value pairs for the specified language code.",
+        "parameters": [
+          {
+            "name": "languageCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
             }
           }
-        }
-      },
-      "post": {
-        "tags": [
-          "TenantUser"
         ],
-        "summary": "Create new Tenant User",
-        "description": "Create a new tenant user association",
-        "requestBody": {
-          "content": {
-            "application/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateTenantUserDto"
-              }
-            },
-            "text/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateTenantUserDto"
-              }
-            },
-            "application/*\u002Bjson; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateTenantUserDto"
-              }
-            }
-          },
-          "required": true
-        },
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfint"
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfint"
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfint"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
                 }
               }
             }
@@ -11946,204 +13072,39 @@
         }
       }
     },
-    "/api/tenantuser/{id}": {
+    "/api/translation/languages": {
       "get": {
         "tags": [
-          "TenantUser"
+          "Translation"
         ],
-        "summary": "Get Tenant User by ID",
-        "description": "Retrieve details of a specific tenant user",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
+        "summary": "Get Available Languages",
+        "description": "Returns the list of language codes that have translations available.",
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/TenantUserDto"
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/TenantUserDto"
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/TenantUserDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "TenantUser"
-        ],
-        "summary": "Update Tenant User",
-        "description": "Update an existing tenant user association",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateTenantUserDto"
-              }
-            },
-            "text/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateTenantUserDto"
-              }
-            },
-            "application/*\u002Bjson; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateTenantUserDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "TenantUser"
-        ],
-        "summary": "Delete Tenant User",
-        "description": "Delete a tenant user association",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 }
               }
             }
@@ -12470,8 +13431,8 @@
         "tags": [
           "User"
         ],
-        "summary": "Sync user from Keycloak",
-        "description": "Creates or updates the user in the local database. Also creates the user\u0027s personal Actor if new user. Call this after login/registration.",
+        "summary": "Sync user from identity provider",
+        "description": "Creates or updates the user in the local database and ensures external provider linkage. Also creates the user\u0027s personal Actor if new user. Call this after login/registration.",
         "responses": {
           "200": {
             "description": "OK",
@@ -13199,6 +14160,37 @@
               "string"
             ]
           },
+          "backgroundColor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "backgroundEffect": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "bannerColor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "bannerPictureId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "bannerPictureUri": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "pdsHost": {
             "type": [
               "null",
@@ -13388,6 +14380,37 @@
               "string"
             ]
           },
+          "backgroundColor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "backgroundEffect": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "bannerColor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "bannerPictureId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "bannerPictureUri": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "pdsHost": {
             "type": [
               "null",
@@ -13476,6 +14499,15 @@
           },
           "role": {
             "$ref": "#/components/schemas/RoleEnum"
+          },
+          "groupPositionId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -14094,6 +15126,31 @@
             ],
             "format": "uuid"
           },
+          "backgroundColor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "backgroundEffect": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "bannerColor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "bannerPictureId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
           "did": {
             "type": [
               "null",
@@ -14400,11 +15457,24 @@
               "string"
             ]
           },
-          "metadataJson": {
+          "backgroundColor": {
             "type": [
               "null",
               "string"
             ]
+          },
+          "backgroundEffect": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "backgroundImageId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -14820,12 +15890,6 @@
               "string"
             ],
             "format": "uuid"
-          },
-          "metadataJson": {
-            "type": [
-              "null",
-              "string"
-            ]
           }
         }
       },
@@ -14970,12 +16034,6 @@
               "string"
             ],
             "format": "uuid"
-          },
-          "metadataJson": {
-            "type": [
-              "null",
-              "string"
-            ]
           }
         }
       },
@@ -15119,6 +16177,27 @@
           }
         }
       },
+      "CreateTenantMemberDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "roleId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "CreateTenantNavigationLinkDto": {
         "type": "object",
         "properties": {
@@ -15165,27 +16244,6 @@
           },
           "requireGroupApproval": {
             "type": "boolean"
-          }
-        }
-      },
-      "CreateTenantUserDto": {
-        "type": "object",
-        "properties": {
-          "userId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "tenantId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "roleId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
           }
         }
       },
@@ -15876,7 +16934,26 @@
               }
             }
           },
-          "metadataJson": {
+          "backgroundColor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "backgroundEffect": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "backgroundImageId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "backgroundImageUri": {
             "type": [
               "null",
               "string"
@@ -17275,6 +18352,79 @@
               "null",
               "string"
             ]
+          },
+          "groupPositionId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "groupPositionFullName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "GroupPositionDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "masterCode": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "GroupPositionListDto": {
+        "required": [
+          "masterCode",
+          "fullName"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "masterCode": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -18025,6 +19175,37 @@
               "string"
             ]
           },
+          "backgroundColor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "backgroundEffect": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "bannerColor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "bannerPictureId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "bannerPictureUri": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "pdsHost": {
             "type": [
               "null",
@@ -18581,7 +19762,26 @@
               }
             }
           },
-          "metadataJson": {
+          "backgroundColor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "backgroundEffect": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "backgroundImageId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "backgroundImageUri": {
             "type": [
               "null",
               "string"
@@ -18943,12 +20143,6 @@
           "address": {
             "type": "string"
           },
-          "metadataJson": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
           "approvalStatusId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
@@ -19006,6 +20200,37 @@
             "format": "uuid"
           },
           "actorProfilePictureUri": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "actorBackgroundColor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "actorBackgroundEffect": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "actorBannerColor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "actorBannerPictureId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "actorBannerPictureUri": {
             "type": [
               "null",
               "string"
@@ -19240,6 +20465,12 @@
           "lockTenantEventCardClickBehavior": {
             "type": "boolean"
           },
+          "decentralizationEnabled": {
+            "type": "boolean"
+          },
+          "lockDecentralizationEnabled": {
+            "type": "boolean"
+          },
           "authorizationProvider": {
             "type": "string"
           }
@@ -19412,6 +20643,44 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "LocalizationConfigDto": {
+        "type": "object",
+        "properties": {
+          "defaultLanguage": {
+            "type": "string"
+          },
+          "tmsProvider": {
+            "type": "string"
+          },
+          "tmsApiUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "tmsProjectId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "tmsComponent": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isConnected": {
+            "type": "boolean"
+          },
+          "availableLanguages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -19657,6 +20926,234 @@
           }
         }
       },
+      "NotificationDto": {
+        "required": [
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "notificationTypeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "notificationTypeName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isRead": {
+            "type": "boolean"
+          },
+          "readAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "notificationEntityTypeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "notificationEntityTypeName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "entityId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notificationScopeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "notificationScopeName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sourceActorId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "sourceActorName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "recipientContextActorId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "recipientContextActorName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "NotificationListDto": {
+        "required": [
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "notificationTypeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "notificationTypeName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isRead": {
+            "type": "boolean"
+          },
+          "readAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "notificationEntityTypeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "notificationEntityTypeName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "entityId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notificationScopeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "notificationScopeName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sourceActorId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "sourceActorName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "recipientContextActorId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "recipientContextActorName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "OrganizationDto": {
         "required": [
           "fullName",
@@ -19695,12 +21192,6 @@
           },
           "address": {
             "type": "string"
-          },
-          "metadataJson": {
-            "type": [
-              "null",
-              "string"
-            ]
           },
           "approvalStatusId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -19759,6 +21250,37 @@
             "format": "uuid"
           },
           "actorProfilePictureUri": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "actorBackgroundColor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "actorBackgroundEffect": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "actorBannerColor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "actorBannerPictureId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "actorBannerPictureUri": {
             "type": [
               "null",
               "string"
@@ -19832,12 +21354,6 @@
           "address": {
             "type": "string"
           },
-          "metadataJson": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
           "approvalStatusId": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
@@ -19877,6 +21393,37 @@
             "format": "uuid"
           },
           "actorProfilePictureUri": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "actorBackgroundColor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "actorBackgroundEffect": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "actorBannerColor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "actorBannerPictureId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "actorBannerPictureUri": {
             "type": [
               "null",
               "string"
@@ -20109,6 +21656,55 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/EventSessionAgendaItemListDto"
+            }
+          },
+          "pageNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalPages": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "hasPreviousPage": {
+            "type": "boolean"
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PaginatedResultOfNotificationListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationListDto"
             }
           },
           "pageNumber": {
@@ -20940,6 +22536,118 @@
           }
         }
       },
+      "TenantMemberDto": {
+        "required": [
+          "userEmail",
+          "userFullName",
+          "tenantFullName",
+          "roleName"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userEmail": {
+            "type": "string"
+          },
+          "userFullName": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantFullName": {
+            "type": "string"
+          },
+          "roleId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "roleName": {
+            "type": "string"
+          },
+          "grantedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "grantedBy": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "TenantMemberListDto": {
+        "required": [
+          "userEmail",
+          "userFullName",
+          "tenantFullName",
+          "roleName"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userEmail": {
+            "type": "string"
+          },
+          "userFullName": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantFullName": {
+            "type": "string"
+          },
+          "roleId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "roleName": {
+            "type": "string"
+          },
+          "grantedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "TenantNavigationLinkDto": {
         "type": "object",
         "properties": {
@@ -21226,97 +22934,16 @@
           }
         }
       },
-      "TenantUserDto": {
-        "required": [
-          "userEmail",
-          "userFullName",
-          "tenantFullName",
-          "roleName"
-        ],
+      "UnreadCountDto": {
         "type": "object",
         "properties": {
-          "id": {
+          "unreadCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
               "string"
             ],
             "format": "int32"
-          },
-          "userId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "userEmail": {
-            "type": "string"
-          },
-          "userFullName": {
-            "type": "string"
-          },
-          "tenantId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "tenantFullName": {
-            "type": "string"
-          },
-          "roleId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "roleName": {
-            "type": "string"
-          }
-        }
-      },
-      "TenantUserListDto": {
-        "required": [
-          "userEmail",
-          "userFullName",
-          "tenantFullName",
-          "roleName"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "userId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "userEmail": {
-            "type": "string"
-          },
-          "userFullName": {
-            "type": "string"
-          },
-          "tenantId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "tenantFullName": {
-            "type": "string"
-          },
-          "roleId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "roleName": {
-            "type": "string"
           }
         }
       },
@@ -21343,6 +22970,31 @@
             "type": "string"
           },
           "profilePictureId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "backgroundColor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "backgroundEffect": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "bannerColor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "bannerPictureId": {
             "type": [
               "null",
               "string"
@@ -21654,11 +23306,24 @@
               "string"
             ]
           },
-          "metadataJson": {
+          "backgroundColor": {
             "type": [
               "null",
               "string"
             ]
+          },
+          "backgroundEffect": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "backgroundImageId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -21846,12 +23511,6 @@
               "null",
               "string"
             ]
-          },
-          "metadataJson": {
-            "type": [
-              "null",
-              "string"
-            ]
           }
         }
       },
@@ -22014,12 +23673,6 @@
           },
           "address": {
             "type": "string"
-          },
-          "metadataJson": {
-            "type": [
-              "null",
-              "string"
-            ]
           }
         }
       },
@@ -22164,6 +23817,31 @@
           }
         }
       },
+      "UpdateTenantMemberDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "roleId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "UpdateTenantNavigationLinkDto": {
         "type": "object",
         "properties": {
@@ -22235,31 +23913,6 @@
           },
           "requireGroupApproval": {
             "type": "boolean"
-          }
-        }
-      },
-      "UpdateTenantUserDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "userId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "tenantId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "roleId": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
           }
         }
       },
@@ -22572,6 +24225,12 @@
               "string"
             ]
           },
+          "authProviderId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "emailVerified": {
             "type": [
               "null",
@@ -22799,6 +24458,9 @@
       "name": "GroupMember"
     },
     {
+      "name": "GroupPosition"
+    },
+    {
       "name": "IndexedDid"
     },
     {
@@ -22808,6 +24470,9 @@
       "name": "Language"
     },
     {
+      "name": "LocalizationAdmin"
+    },
+    {
       "name": "Location"
     },
     {
@@ -22815,6 +24480,9 @@
     },
     {
       "name": "Module"
+    },
+    {
+      "name": "Notification"
     },
     {
       "name": "Organization"
@@ -22853,13 +24521,16 @@
       "name": "Tenant"
     },
     {
+      "name": "TenantMember"
+    },
+    {
       "name": "TenantOnboarding"
     },
     {
       "name": "TenantSettings"
     },
     {
-      "name": "TenantUser"
+      "name": "Translation"
     },
     {
       "name": "UserAuthenticationToken"

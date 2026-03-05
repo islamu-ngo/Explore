@@ -258,5 +258,8 @@ public class NavMenuAdminTests : IDisposable
         _ctx.Services.AddSingleton(groupService);
 
         _ctx.Services.AddSingleton(new Explore.Blazor.Client.Services.SidebarState());
+        _ctx.Services.AddSingleton(MockServiceFactory.CreateNotificationService());
+        _ctx.Services.AddSingleton(MockServiceFactory.CreateTranslationService());
+        _ctx.Services.AddSingleton(Substitute.For<IHttpClientFactory>());
     }
 }

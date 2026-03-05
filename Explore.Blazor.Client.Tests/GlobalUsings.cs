@@ -1,6 +1,7 @@
 global using System;
 global using System.Collections.Generic;
 global using System.Linq;
+global using System.Net.Http;
 global using System.Security.Claims;
 global using System.Threading;
 global using System.Threading.Tasks;
@@ -10,8 +11,10 @@ global using Explore.Blazor.Client.Clients;
 global using Explore.Blazor.Client.Configuration;
 global using Explore.Blazor.Client.Contracts.Interop;
 global using Explore.Blazor.Client.Contracts.Providers;
+global using Explore.Blazor.Client.Contracts.Services;
 global using Explore.Blazor.Client.Contracts.Services.Events;
 global using Explore.Blazor.Client.Contracts.Services.Lookup;
+global using Explore.Blazor.Client.Contracts.Services.Notifications;
 global using Explore.Blazor.Client.Contracts.Services.Organizations;
 global using Explore.Blazor.Client.Services;
 global using Explore.Blazor.Client.Services.Lookup;

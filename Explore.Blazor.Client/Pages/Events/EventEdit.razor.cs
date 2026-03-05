@@ -182,10 +182,13 @@ public partial class EventEdit
             FirstSessionDate = currentEvent.FirstSessionDate,
             LastSessionDate = currentEvent.LastSessionDate,
             Timezone = currentEvent.Timezone,
-            MetadataJson = currentEvent.MetadataJson
+            BackgroundColor = currentEvent.BackgroundColor,
+            BackgroundImageId = currentEvent.BackgroundImageId,
+            BackgroundEffect = currentEvent.BackgroundEffect
         };
 
-        _appearance = EventAppearanceMetadataHelper.Parse(currentEvent.MetadataJson);
+        _appearance = EventAppearanceMetadataHelper.FromColumns(
+            currentEvent.BackgroundColor, currentEvent.BackgroundImageUri, currentEvent.BackgroundEffect);
         imagePreviewUrl = currentEvent.FeaturedImageUri;
 
         if (!string.IsNullOrEmpty(currentEvent.Timezone))
@@ -429,7 +432,8 @@ public partial class EventEdit
             }
 
             updateDto.IsRegistrationRequired = sessions.Any(s => s.RegistrationModeId is > 0);
-            updateDto.MetadataJson = EventAppearanceMetadataHelper.Upsert(updateDto.MetadataJson, _appearance);
+            updateDto.BackgroundColor = _appearance.BackgroundColor;
+            updateDto.BackgroundEffect = _appearance.BackgroundEffect;
 
             var earliestStart = sessions.Min(s => DateTimeHelper.ConvertLocalToUtc(s.StartTime));
             var latestEnd = sessions.Max(s => DateTimeHelper.ConvertLocalToUtc(s.EndTime));

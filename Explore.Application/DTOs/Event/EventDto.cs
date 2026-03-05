@@ -96,8 +96,11 @@ public class EventDto
     // Tech Aspect (only populated if event has Tech characteristics)
     public EventAspects.EventTechAspectDto? TechAspect { get; set; }
 
-    // Dynamic metadata JSON
-    public string? MetadataJson { get; set; }
+    // Appearance
+    public string? BackgroundColor { get; set; }
+    public string? BackgroundEffect { get; set; }
+    public Guid? BackgroundImageId { get; set; }
+    public string? BackgroundImageUri { get; set; }
 
     // Tags & Categories (populated via junction tables)
     public List<TagListDto> Tags { get; set; } = new();

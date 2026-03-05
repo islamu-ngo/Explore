@@ -73,7 +73,6 @@ public class UpdateOrganizationDetailsCommandHandler : IRequestHandler<UpdateOrg
         organization.City = request.OrganizationDto.City;
         organization.Postcode = request.OrganizationDto.Postcode.ToString();
         organization.Address = request.OrganizationDto.Address;
-        organization.MetadataJson = request.OrganizationDto.MetadataJson;
 
         await _organizationRepository.Update(organization);
         await _cache.RemoveAsync($"organization:detail:{organization.Id}", cancellationToken);

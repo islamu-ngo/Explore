@@ -30,8 +30,6 @@ public class Group : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
     public Guid? ActorId { get; set; }
     public Actor? Actor { get; set; }
 
-    public string? MetadataJson { get; set; }
-
     // Audit fields
     public DateTime CreatedAt { get; set; }
     public Guid? CreatedBy { get; set; }

@@ -503,6 +503,10 @@ Table "categories" {
   "full_name" varchar(500) [not null]
   "parent_id" uuid
   "tenant_id" uuid [not null]
+
+  Indexes {
+    (tenant_id, master_code) [unique, name: 'ix_categories_tenant_master_code']
+  }
 }
 
 Table "category_type_categories" {
@@ -517,6 +521,10 @@ Table "tags" {
   "master_code" varchar(500) [not null]
   "full_name" varchar(500) [not null]
   "tenant_id" uuid [not null]
+
+  Indexes {
+    (tenant_id, master_code) [unique, name: 'ix_tags_tenant_master_code']
+  }
 }
 
 Table "tag_type_tags" {
@@ -1228,6 +1236,12 @@ Enum "notification_entity_type_enum" {
   "EventRegistration" [note: '4']
   "EventSession" [note: '5']
   "User" [note: '6']
+}
+
+Enum "translation_management_provider_enum" {
+  "None" [note: '0 — Offline bundles only']
+  "Tolgee" [note: '1']
+  "Weblate" [note: '2']
 }
 
 // ============================================================

@@ -84,6 +84,7 @@
 
         <!-- Right Actions -->
         <div class="navbar__actions">
+            <LanguagePicker />
             <MudIconButton Icon="@Icons.Material.Rounded.LightMode"
                            Color="Color.Inherit"
                            OnClick="@OnToggleTheme"
@@ -104,6 +105,9 @@
                             </MudButton>
                         </a>
                     }
+
+                    <!-- Notification Bell -->
+                    <NotificationBell />
 
                     <!-- User Dropdown -->
                     <div class="navbar__user-dropdown">

@@ -43,6 +43,13 @@ public class ActorDto
     public string? DidCustodyTypeMasterCode { get; set; } // For i18n with Tolgee
     public string? DidCustodyTypeFullName { get; set; } // Fallback default
 
+    // Appearance
+    public string? BackgroundColor { get; set; }
+    public string? BackgroundEffect { get; set; }
+    public string? BannerColor { get; set; }
+    public Guid? BannerPictureId { get; set; }
+    public string? BannerPictureUri { get; set; }
+
     // Federation metadata
     public string? PdsHost { get; set; } // Personal Data Server host
     public string? Description { get; set; }

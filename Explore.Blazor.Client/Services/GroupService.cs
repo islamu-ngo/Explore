@@ -126,7 +126,10 @@ public class GroupService : IGroupService
                 Id = ReadGuid(root, "id") ?? groupId,
                 FullName = ReadString(root, "fullName") ?? string.Empty,
                 Description = ReadString(root, "description"),
-                MetadataJson = ReadString(root, "metadataJson"),
+                ActorBackgroundColor = ReadString(root, "actorBackgroundColor"),
+                ActorBackgroundEffect = ReadString(root, "actorBackgroundEffect"),
+                ActorBannerColor = ReadString(root, "actorBannerColor"),
+                ActorBannerPictureUri = ReadString(root, "actorBannerPictureUri"),
                 ActorProfilePictureUri = ReadString(root, "actorProfilePictureUri")
             };
         }
@@ -272,6 +275,9 @@ public class GroupAdminDetailsModel
     public Guid Id { get; set; }
     public string FullName { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public string? MetadataJson { get; set; }
+    public string? ActorBackgroundColor { get; set; }
+    public string? ActorBackgroundEffect { get; set; }
+    public string? ActorBannerColor { get; set; }
+    public string? ActorBannerPictureUri { get; set; }
     public string? ActorProfilePictureUri { get; set; }
 }

@@ -66,3 +66,35 @@ Last Updated: 2026-02-27
 - Verification:
   - `dotnet build --configuration Release --verbosity quiet` passed after namespace and Razor import updates.
   - `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` passed (518 tests).
+
+## 2026-03-03 Europe/Brussels - Notification System: Lookup Entity Refactor
+
+- Decision: Replace string-based `Type` and `EntityType` fields on `Notification` with proper FK lookup entities (`NotificationType`, `NotificationEntityType`) following the ApprovalStatus pattern.
+- Why: Type safety, referential integrity, eliminates magic strings, enables filtering/reporting by notification type with proper indexes.
+- Pattern: `int Id`, `string MasterCode`, `string FullName`, `string? Description` with companion enum in `Explore.Domain/Enums/`. Seeded via `LookupTableSeeder` at runtime (not HasData, due to EF Core 10 bug #36682).
+- Enums: `NotificationTypeEnum` (10 values), `NotificationEntityTypeEnum` (6 values).
+
+## 2026-03-04 Europe/Brussels - Notification System: Materialized Fan-Out with Scope Metadata
+
+- Decision: Notifications stay per-human-user (`UserId` is always the recipient). Added `SourceActorId`, `RecipientContextActorId`, and `NotificationScopeId` (FK→ActorType) for multi-scope targeting.
+- Why: Enterprise notification systems need org/group scope without sacrificing read-path performance. Fan-out at write time means read queries stay O(1) per user.
+- Architecture:
+  - `NotificationScopeId` (int, FK→ActorType) — classifies scope: User(1)=Personal, Organization(2), Group(4), System(5)
+  - `SourceActorId` (Guid?, FK→Actor) — who/what triggered the notification
+  - `RecipientContextActorId` (Guid?, FK→Actor) — which org/group context for UI differentiation
+- Rejected alternatives:
+  - Option A (Replace UserId with ActorId): Kills hot read path, requires JOIN for every notification query.
+  - Option C (NotificationRecipient junction table): Over-engineered for our scale, adds N+1 risk.
+- Verification: 474 tests passing (363 app + 79 domain + 32 architecture).
+
+## 2026-03-04 Europe/Brussels - Bots/System Are Senders Not Receivers
+
+- Decision: Bot and System actors should NOT receive notifications. They should consume domain events or message queues for automation. However, they CAN be notification sources (`SourceActorId`).
+- Why: Notifications are best-effort, human-oriented (dismissable, soft-deletable). Bots need guaranteed delivery, ordering, retry semantics. Different delivery guarantees → different mechanisms.
+- Implication: Fan-out logic should filter by ActorType=User when distributing org/group notifications to members.
+
+## 2026-03-04 Europe/Brussels - Reuse ActorType as Notification Scope
+
+- Decision: Instead of creating a new `NotificationScope` lookup entity, reuse the existing `ActorType` entity as the scope classifier for notifications.
+- Why: ActorType already has the exact values needed (User=1, Organization=2, Group=4, System=5). Creating a duplicate lookup adds no value and introduces synchronization burden.
+- Trade-off: Semantic coupling between actor classification and notification scoping, but the domain concepts are genuinely aligned.

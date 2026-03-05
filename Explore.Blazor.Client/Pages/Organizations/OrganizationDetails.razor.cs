@@ -74,11 +74,12 @@ public partial class OrganizationDetails
                 Country = organization.Country,
                 City = organization.City,
                 Postcode = int.TryParse(organization.Postcode, out var pc) ? pc : 0,
-                Address = organization.Address,
-                MetadataJson = organization.MetadataJson
+                Address = organization.Address
             };
 
-            _appearance = OrganizationAppearanceMetadataHelper.Parse(organization.MetadataJson);
+            _appearance = OrganizationAppearanceMetadataHelper.FromColumns(
+                organization.ActorBackgroundColor,
+                organization.ActorBannerPictureUri, organization.ActorBackgroundEffect);
         }
     }
 
@@ -159,7 +160,6 @@ public partial class OrganizationDetails
             errorMessage = string.Empty;
             successMessage = string.Empty;
 
-            editModel.MetadataJson = OrganizationAppearanceMetadataHelper.Upsert(editModel.MetadataJson, _appearance);
             var success = await OrganizationService.UpdateOrganizationAsync(Id, editModel!);
 
             if (success?.Success == true)

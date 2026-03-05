@@ -1,32 +1,36 @@
+ABOUTME: Documents federation status, boundaries, and planned protocol architecture.
+ABOUTME: Distinguishes shipped governance/auth controls from roadmap protocol features.
+
 # Federation
 
 ## Status
 
-Federation (ATProto / ActivityPub) is a **roadmap feature** - currently in **Phase 1: Data Model Only**.
+Federation protocol support (ATProto / ActivityPub bridge behavior) remains a **roadmap feature**. The project currently ships foundation models and federation-related governance/auth controls, but not full protocol endpoints.
 
-### ✅ Implemented (Phase 1: Foundation)
-- **Domain Entities**: Federation data models exist in `Explore.Domain`:
-  - `Actor` - Federated identity representation
-  - `AtprotoRecord` - ATProto record storage
-  - `PdsSyncOutbox` - Sync queue for outbound records
-  - `IndexedDid` - DID resolution cache
-  - `ActorKeyStore` - Cryptographic key storage
-  - Supporting entities: `ActorType`, `DidCustodyType` enums
+### ✅ Implemented (Current Runtime + Foundation)
+- **Domain entities**: federation models exist in `Explore.Domain`:
+  - `Actor` (federated identity representation)
+  - `AtprotoRecord` (ATProto record storage)
+  - `PdsSyncOutbox` (outbound sync queue model)
+  - `IndexedDid` (DID cache model)
+  - `ActorKeyStore` (key storage model)
+  - supporting enums: `ActorType`, `DidCustodyType`
+- **Governance toggle**: instance-level decentralization setting is available via `federation.decentralization_enabled`.
+- **Onboarding/admin controls**: decentralization is exposed in instance onboarding/admin settings with a confirmation warning and lock semantics (`LockDecentralizationEnabled`).
+- **Dependency gating**: decentralization is coupled to auth-provider setup and requires ATProto login support (`auth.atproto_login_enabled`).
 
-### ⏳ Not Yet Implemented (Roadmap)
-- **HTTP Endpoints**: No federation endpoints exposed in `Explore.API`:
-  - ❌ WebFinger (`/.well-known/webfinger`)
-  - ❌ Actor endpoints (`/actors/{handle}`)
-  - ❌ Inbox/Outbox (ActivityPub)
-  - ❌ ATProto PDS server
-  - ❌ ATProto AppView indexing
-- **Protocol Implementation**: No active federation protocol logic
-- **Bridge/Gateway**: ActivityPub ↔ ATProto translation not implemented
-- **DID Resolution**: No PLC/DNS-based DID resolution
-- **HTTP Signatures**: Cryptographic message verification not implemented
-- **Collections**: Followers/Following/Liked collections not exposed
+### ⏳ Not Yet Implemented (Protocol Roadmap)
+- **Public protocol endpoints** are still not implemented:
+  - WebFinger (`/.well-known/webfinger`)
+  - Actor profile endpoints (`/actors/{handle}`)
+  - ActivityPub inbox/outbox
+  - ATProto PDS server behavior
+  - ATProto AppView indexing behavior
+- **Bridge/gateway** translation (ActivityPub ↔ ATProto) is not implemented.
+- **Cryptographic federation verification** (HTTP signatures / full protocol validation paths) is not implemented.
+- **Public social collections** (followers/following/liked) are not exposed as protocol collections.
 
-**Timeline**: Federation implementation planned for future release. Foundation (entities) is complete.
+**Important**: The decentralization toggle is now part of runtime governance configuration, but full external federation protocol behavior is still phased roadmap work.
 
 ## Protocol Overview (Planned)
 

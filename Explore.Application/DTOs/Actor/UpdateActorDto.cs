@@ -20,6 +20,12 @@ public class UpdateActorDto
 
     public Guid? ProfilePictureId { get; set; }
 
+    // Appearance
+    public string? BackgroundColor { get; set; }
+    public string? BackgroundEffect { get; set; }
+    public string? BannerColor { get; set; }
+    public Guid? BannerPictureId { get; set; }
+
     // Federation identifiers
     public string? Did { get; set; }
     public string? Handle { get; set; }

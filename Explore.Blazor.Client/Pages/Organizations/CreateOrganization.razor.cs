@@ -48,7 +48,6 @@ public partial class CreateOrganization
 
         try
         {
-            organization.MetadataJson = OrganizationAppearanceMetadataHelper.Upsert(organization.MetadataJson, _appearance);
             var createdOrganization = await OrganizationService.CreateOrganizationAsync(organization);
 
             if (createdOrganization != null)

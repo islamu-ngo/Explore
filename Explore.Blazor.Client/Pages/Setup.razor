@@ -9,6 +9,7 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
 @inject IHttpClientFactory HttpClientFactory
+@using System.Net.Http.Json
 
 <MudContainer MaxWidth="MaxWidth.Small" Class="py-8">
     <MudPaper Class="pa-6">
@@ -97,14 +98,31 @@
                            OnClick="ValidateAsync">
                     Validate
                 </MudButton>
+            </MudStack>
 
-                @if (_validationSucceeded)
-                {
+            @if (_validationSucceeded)
+            {
+                <MudStack Spacing="2" Class="mt-3">
+                    @if (_isDetectingProviders)
+                    {
+                        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+                    }
+
+                    @foreach (var provider in _detectedProviders)
+                    {
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Login"
+                                   OnClick="@(() => ContinueToProviderLogin(provider))">
+                            Continue with @provider.DisplayName
+                        </MudButton>
+                    }
+
                     <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ContinueToAuthConfig">
                         Configure Authentication
                     </MudButton>
-                }
-            </MudStack>
+                </MudStack>
+            }
         }
     </MudPaper>
 </MudContainer>
@@ -123,6 +141,8 @@
     private Timer? _countdownTimer;
     private bool _isSyncingSecret;
     private bool _isSecretSyncedForAuthenticatedSession;
+    private bool _isDetectingProviders;
+    private List<AuthProviderQuickAction> _detectedProviders = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -196,11 +216,24 @@
         _hasStoredSecret = true;
         _validationSucceeded = true;
         _isSecretSyncedForAuthenticatedSession = false;
+        await LoadDetectedProvidersAsync();
     }
 
     private void ContinueToAuthConfig()
     {
         Navigation.NavigateTo("/onboarding/auth-provider");
+    }
+
+    private void ContinueToProviderLogin(AuthProviderQuickAction provider)
+    {
+        var providerQuery = provider.Name.ToLowerInvariant() switch
+        {
+            "keycloak" => "keycloak",
+            "google" => "google",
+            _ => provider.Name.ToLowerInvariant()
+        };
+
+        Navigation.NavigateTo($"/login?provider={Uri.EscapeDataString(providerQuery)}&returnUrl=/setup", forceLoad: true);
     }
 
     private async Task RestoreSecretFromSessionAsync()
@@ -229,6 +262,7 @@
         _validationSucceeded = true;
         _isSecretSyncedForAuthenticatedSession = false;
         _errorMessage = null;
+        await LoadDetectedProvidersAsync();
         StateHasChanged();
     }
 
@@ -241,6 +275,37 @@
         _validationSucceeded = false;
         _secret = string.Empty;
         _isSecretSyncedForAuthenticatedSession = false;
+        _detectedProviders = [];
+    }
+
+    private async Task LoadDetectedProvidersAsync()
+    {
+        if (!_validationSucceeded)
+        {
+            _detectedProviders = [];
+            return;
+        }
+
+        _isDetectingProviders = true;
+        try
+        {
+            var bffClient = CreateBffSelfClient();
+            var response = await bffClient.GetFromJsonAsync<AuthProvidersResponse>("/auth/providers");
+            _detectedProviders = (response?.Providers ?? [])
+                .Where(provider => provider.Type.Equals("button", StringComparison.OrdinalIgnoreCase))
+                .Where(provider =>
+                    provider.Name.Equals("Keycloak", StringComparison.OrdinalIgnoreCase)
+                    || provider.Name.Equals("Google", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+        catch (Exception)
+        {
+            _detectedProviders = [];
+        }
+        finally
+        {
+            _isDetectingProviders = false;
+        }
     }
 
     private async Task ContinueToOnboardingAsync()
@@ -345,5 +410,17 @@
         var client = HttpClientFactory.CreateClient("BffSelfClient");
         client.BaseAddress = new Uri(Navigation.BaseUri);
         return client;
+    }
+
+    private sealed class AuthProvidersResponse
+    {
+        public List<AuthProviderQuickAction> Providers { get; set; } = [];
+    }
+
+    private sealed class AuthProviderQuickAction
+    {
+        public string Name { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
     }
 }

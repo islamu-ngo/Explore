@@ -74,7 +74,6 @@ public class UpdateGroupCommandHandler : IRequestHandler<UpdateGroupCommand, Bas
 
         group.FullName = request.GroupDto.FullName;
         group.Description = request.GroupDto.Description;
-        group.MetadataJson = request.GroupDto.MetadataJson;
         group.UpdatedAt = DateTime.UtcNow;
         group.UpdatedBy = currentUserId;
 

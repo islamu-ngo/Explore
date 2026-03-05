@@ -1,6 +1,6 @@
 # Authentication Provider Configuration — Task Checklist
 
-> Last Updated: 2026-03-03 (Session 9 — integration isolation fix)
+> Last Updated: 2026-03-04 (Session 14 — integration coverage expansion)
 
 ## Phase 0: Requirements Finalization ✅ COMPLETE
 - [x] Analyze current auth flow and identify chicken-and-egg problem
@@ -117,16 +117,42 @@
 - [x] Add app-layer command/handler for post-onboarding updates
 - [x] Add unit tests for new handler (`UpdateAuthProviderConfigurationCommandHandlerTests`)
 
-## Phase 8: Testing & Documentation ⨼ NOT STARTED
-- [ ] Architecture tests for new governance setting keys
+## Phase 8: Testing & Documentation 🟡 IN PROGRESS
+- [x] Architecture tests for new governance setting keys
 - [ ] Integration tests: setup → auth config → login → onboarding flow
 - [ ] Integration tests: dynamic scheme registration lifecycle
 - [x] Integration tests: admin provider management
-- [ ] Integration tests: account linking (email auto-match, explicit ATProto)
-- [ ] Update `docs/SECURITY.md` with multi-provider auth model
-- [ ] Update `docs/CONFIGURATION.md` with new auth config keys
-- [ ] Update `docs/FEDERATION.md` with decentralization toggle
+- [x] Integration tests: account linking (email auto-match, explicit ATProto)
+- [x] Update `docs/SECURITY.md` with multi-provider auth model
+- [x] Update `docs/CONFIGURATION.md` with new auth config keys
+- [x] Update `docs/FEDERATION.md` with decentralization toggle
 
 ### Session 9 notes
 - [x] Fixed API integration isolation in `AuthenticatedWebApplicationFactory` by using a unique in-memory DB name per factory instance
 - [x] Re-ran `Event.API.IntegrationTests` and reduced failures to 2 known unrelated baseline smoke tests
+
+### Session 10 notes
+- [x] Fixed smoke-test authorization classification in `ApiEndpointSmokeTests` by treating `SetupSecretRequiredAttribute` as protected
+- [x] Re-ran `Event.API.IntegrationTests` with full pass (403/403)
+
+### Session 11 notes
+- [x] Re-ran `Event.Persistence.IntegrationTests` after Docker startup with full pass (2/2)
+
+### Session 12 notes
+- [x] Updated `docs/FEDERATION.md` to reflect shipped decentralization governance toggle and ATProto-login dependency while keeping protocol bridge work as roadmap
+
+### Session 13 notes
+- [x] Added architecture coverage for auth/federation governance keys in `Event.Architecture.Tests/GovernanceSettingKeysTests.cs`
+- [x] Verified `Event.Architecture.Tests` full pass (36/36)
+
+### Session 14 notes
+- [x] Expanded onboarding API integration coverage in `InstanceOnboardingControllerTests`:
+  - setup-secret save of auth config
+  - configured status endpoint assertion
+  - completion transition assertion with post-completion public-read lockout
+  - internal auth-config secret access behavior (`/auth-provider-configuration/internal`)
+- [x] Expanded provider-sync/account-linking integration coverage in `UserExternalLoginIntegrationTests`:
+  - Google verified-email auto-match links to existing local user
+  - ATProto sync blocked when no explicit link exists
+  - ATProto sync succeeds when explicit DID link already exists
+- [x] Re-ran `Event.API.IntegrationTests` with full pass (411/411)

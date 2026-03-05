@@ -276,16 +276,6 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
                             esl.EventSessionId == es.Id &&
                             ((List<int>)subFilter.Value).Contains(esl.LanguageId)))),
 
-                // JSONB containment: MetadataJson @> '{"key": "value"}'
-                EventSubqueryFilterType.JsonContains => query.Where(e =>
-                    e.MetadataJson != null &&
-                    EF.Functions.JsonContains(e.MetadataJson, (string)subFilter.Value)),
-
-                // JSONB key existence: MetadataJson ? 'key'
-                EventSubqueryFilterType.JsonKeyExists => query.Where(e =>
-                    e.MetadataJson != null &&
-                    EF.Functions.JsonExists(e.MetadataJson, (string)subFilter.Value)),
-
                 _ => query
             };
 

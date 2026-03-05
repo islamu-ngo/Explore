@@ -21,9 +21,4 @@ public class CreateOrganizationDto
     /// This should be the ID of a previously uploaded StorageObject.
     /// </summary>
     public Guid? ProfilePictureId { get; set; }
-
-    /// <summary>
-    /// Optional JSON metadata for organization page appearance customization.
-    /// </summary>
-    public string? MetadataJson { get; set; }
 }

@@ -1,0 +1,31 @@
+@* ABOUTME: Notification bell icon with unread badge, placed in NavMenu navbar__actions.
+    ABOUTME: Click opens NotificationPanel popover; overlay closes it. YouTube-style mark-all-read on open. *@
+
+<div class="notification-bell" @onclick:stopPropagation>
+    <button class="notification-bell__trigger"
+            @onclick="TogglePanel"
+            aria-label="@(_unreadCount > 0 ? $"Notifications ({_unreadCount} unread)" : "Notifications")"
+            aria-expanded="@_panelOpen"
+            aria-haspopup="true"
+            title="Notifications">
+        <MudBadge Content="@BadgeContent"
+                  Visible="@(_unreadCount > 0)"
+                  Color="Color.Error"
+                  Overlap="true"
+                  Dot="@(_unreadCount == 0)">
+            <MudIcon Icon="@(_panelOpen ? Icons.Material.Filled.Notifications : Icons.Material.Outlined.Notifications)"
+                     Size="Size.Medium" />
+        </MudBadge>
+    </button>
+
+    @if (_panelOpen)
+    {
+        <div class="notification-bell__overlay" @onclick="ClosePanel"></div>
+        <NotificationPanel Notifications="_notifications"
+                           IsLoading="_isLoading"
+                           HasMore="_hasMore"
+                           OnLoadMore="LoadMoreAsync"
+                           OnNotificationClick="HandleNotificationClick"
+                           OnDeleteNotification="HandleDeleteNotification" />
+    }
+</div>

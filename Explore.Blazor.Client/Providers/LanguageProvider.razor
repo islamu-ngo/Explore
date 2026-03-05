@@ -1,0 +1,80 @@
+@* ABOUTME: Cascading language provider that initializes translations from cookie/default. *@
+@* ABOUTME: Wraps child content with CascadingValue for LanguageContext, manages RTL direction via JS. *@
+
+@inject ITranslationService TranslationService
+@inject IJSRuntime JSRuntime
+@inject ILogger<LanguageProvider> Logger
+
+<CascadingValue Value="@_languageContext" Name="Language">
+    @ChildContent
+</CascadingValue>
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private Models.LanguageContext _languageContext = Models.LanguageContext.ForLanguage("en");
+
+    protected override async Task OnInitializedAsync()
+    {
+        TranslationService.OnLanguageChanged += HandleLanguageChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                // Read language from cookie via JS interop
+                var cookieLang = await JSRuntime.InvokeAsync<string?>("localization.getLanguageCookie");
+                var lang = cookieLang ?? "en";
+
+                Logger.LogInformation("[LANGUAGE] Initializing with language: {Language}", lang);
+
+                // Preload translations
+                await TranslationService.PreloadAsync(lang);
+
+                // Update context
+                _languageContext = Models.LanguageContext.ForLanguage(lang);
+
+                // Set document direction and lang attribute
+                await JSRuntime.InvokeVoidAsync("localization.setDirection",
+                    _languageContext.IsRtl ? "rtl" : "ltr",
+                    _languageContext.LanguageCode);
+
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to initialize language provider");
+            }
+        }
+    }
+
+    private async void HandleLanguageChanged(string newLanguage)
+    {
+        try
+        {
+            _languageContext = Models.LanguageContext.ForLanguage(newLanguage);
+
+            await InvokeAsync(async () =>
+            {
+                await JSRuntime.InvokeVoidAsync("localization.setDirection",
+                    _languageContext.IsRtl ? "rtl" : "ltr",
+                    _languageContext.LanguageCode);
+
+                StateHasChanged();
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to handle language change to {Language}", newLanguage);
+        }
+    }
+
+    public void Dispose()
+    {
+        TranslationService.OnLanguageChanged -= HandleLanguageChanged;
+    }
+}

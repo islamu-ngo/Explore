@@ -1,3 +1,4 @@
+using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Services;
 using MudBlazor;
 using MudBlazor.Services;
@@ -61,6 +62,20 @@ public class BlazorTestContext : Bunit.TestContext
 
         // Add common infrastructure services
         Services.AddLogging();
+
+        // Localization services (required by LanguagePicker in NavMenu/MainLayout)
+        var translationService = Substitute.For<ITranslationService>();
+        translationService.CurrentLanguage.Returns("en");
+        translationService.T(Arg.Any<string>(), Arg.Any<string?>()).Returns(ci => ci.ArgAt<string>(0));
+        translationService.GetAvailableLanguagesAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<string> { "en" });
+        translationService.PreloadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        Services.AddSingleton(translationService);
+        Services.AddSingleton(Substitute.For<IHttpClientFactory>());
+
+        // Notification services (required by NotificationBell in NavMenu/MainLayout)
+        Services.AddSingleton(MockServiceFactory.CreateNotificationService());
 
         var groupService = Substitute.For<IGroupService>();
         groupService.GetMyGroupsAsync().Returns(new List<GroupPublisherListDto>());

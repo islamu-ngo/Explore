@@ -1,0 +1,51 @@
+@* ABOUTME: Individual notification row showing type icon, scope badge, title, body, relative time.
+    ABOUTME: Click navigates to entity; delete button removes notification. Unread items have highlight. *@
+
+<div class="notification-item @(IsUnread ? "notification-item--unread" : "")"
+     @onclick="() => OnClick.InvokeAsync(Notification)"
+     role="button"
+     tabindex="0"
+     aria-label="@Notification.Title">
+
+    <div class="notification-item__icon">
+        <MudIcon Icon="@GetTypeIcon()" Size="Size.Small" Color="@GetScopeColor()" />
+    </div>
+
+    <div class="notification-item__content">
+        <div class="notification-item__header">
+            <span class="notification-item__title">@Notification.Title</span>
+            @if (!string.IsNullOrEmpty(Notification.NotificationScopeName))
+            {
+                <MudChip T="string"
+                         Size="Size.Small"
+                         Variant="Variant.Outlined"
+                         Color="@GetScopeColor()"
+                         Class="notification-item__scope">
+                    @Notification.NotificationScopeName
+                </MudChip>
+            }
+        </div>
+
+        @if (!string.IsNullOrEmpty(Notification.Body))
+        {
+            <p class="notification-item__body">@TruncateBody(Notification.Body)</p>
+        }
+
+        <div class="notification-item__meta">
+            @if (!string.IsNullOrEmpty(Notification.SourceActorName))
+            {
+                <span class="notification-item__source">@Notification.SourceActorName</span>
+                <span class="notification-item__dot">·</span>
+            }
+            <span class="notification-item__time">@FormatRelativeTime(Notification.CreatedAt)</span>
+        </div>
+    </div>
+
+    <button class="notification-item__delete"
+            @onclick="HandleDelete"
+            @onclick:stopPropagation
+            aria-label="Delete notification"
+            title="Delete">
+        <MudIcon Icon="@Icons.Material.Outlined.Close" Size="Size.Small" />
+    </button>
+</div>

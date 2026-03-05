@@ -2,8 +2,10 @@
 // ABOUTME: Eliminates duplication between server Program.cs and client Program.cs (DRY).
 
 using Explore.Blazor.Client.Contracts.Providers;
+using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Events;
 using Explore.Blazor.Client.Contracts.Services.Lookup;
+using Explore.Blazor.Client.Contracts.Services.Notifications;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Lookup;
@@ -51,6 +53,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IActorService, ActorService>();
         services.AddScoped<IEventCreationEligibilityService, EventCreationEligibilityService>();
 
+        // Notification services
+        services.AddScoped<INotificationService, NotificationService>();
+
         // BFF / onboarding services (use named HttpClient "BffClient")
         services.AddScoped<IInstanceOnboardingService, InstanceOnboardingService>();
         services.AddScoped<ITenantOnboardingService, TenantOnboardingService>();
@@ -62,6 +67,9 @@ public static class ServiceCollectionExtensions
 
         // Auth state
         services.AddScoped<IAuthStateService, AuthStateService>();
+
+        // Localization
+        services.AddScoped<ITranslationService, TranslationService>();
 
         // UI state
         services.AddScoped<SidebarState>();

@@ -115,10 +115,11 @@
                 _model = new UpdateGroupDto
                 {
                     FullName = _group.FullName,
-                    Description = _group.Description,
-                    MetadataJson = _group.MetadataJson
+                    Description = _group.Description
                 };
-                _branding = GroupBrandingMetadataHelper.Parse(_group.MetadataJson);
+                _branding = GroupBrandingMetadataHelper.FromColumns(
+                    _group.ActorBannerColor,
+                    _group.ActorBannerPictureUri, _group.ActorBackgroundEffect);
             }
         }
         catch (Exception ex)
@@ -143,7 +144,7 @@
         _errorMessage = null;
         try
         {
-            _model.MetadataJson = GroupBrandingMetadataHelper.Upsert(_model.MetadataJson, _branding);
+            // Branding fields are now managed via Actor — not saved through UpdateGroupDto
             var response = await GroupService.UpdateGroupAsync(GroupId, _model);
 
             if (response?.Success == true)
@@ -169,11 +170,6 @@
 
     private string? GetAvatarUri()
     {
-        if (!string.IsNullOrWhiteSpace(_branding.PictureUrl))
-        {
-            return _branding.PictureUrl.Trim();
-        }
-
         return _group?.ActorProfilePictureUri;
     }
 

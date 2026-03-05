@@ -206,6 +206,7 @@ These docs are intentionally short. **Open them whenever their topic applies**:
 - `docs/CODEBASE_INSIGHTS.md` — non‑intuitive patterns
 - `docs/QUICK_REFERENCE.md` — hard constraints
 - `docs/EXTENSIBILITY.md`, `docs/MODULAR_EVENTS.md` — modular event composition
+- `docs/LOCALIZATION.md` — i18n/l10n, TMS provider abstraction, offline bundles
 - `docs/MULTI_TENANCY.md`, `docs/ADMIN_HIERARCHY.md` — tenancy/admin rules
 - `docs/RENDER_POLICIES.md` — render policy rules
 - `docs/DEPLOYMENT_MODES.md`, `docs/DEPLOYMENT_TIERS.md` — deployment models

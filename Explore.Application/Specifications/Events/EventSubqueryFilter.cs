@@ -127,25 +127,6 @@ public sealed class EventSubqueryFilter
     /// </summary>
     public static EventSubqueryFilter RegistrationModes(List<int> registrationModeIds) =>
         new(EventSubqueryFilterType.RegistrationModes, registrationModeIds);
-
-    /// <summary>
-    /// Filters events whose MetadataJson JSONB column contains the specified JSON fragment.
-    /// Uses PostgreSQL <c>@&gt;</c> (jsonb containment) operator via <c>EF.Functions.JsonContains()</c>.
-    /// </summary>
-    /// <param name="jsonFragment">
-    /// A JSON string representing the key-value pairs to match.
-    /// Example: <c>"{\"customField\": \"value\"}"</c>
-    /// </param>
-    public static EventSubqueryFilter JsonContains(string jsonFragment) =>
-        new(EventSubqueryFilterType.JsonContains, jsonFragment);
-
-    /// <summary>
-    /// Filters events whose MetadataJson JSONB column contains a specific key.
-    /// Uses PostgreSQL <c>?</c> (jsonb key existence) operator via <c>EF.Functions.JsonExists()</c>.
-    /// </summary>
-    /// <param name="key">The JSON key to check for existence.</param>
-    public static EventSubqueryFilter JsonKeyExists(string key) =>
-        new(EventSubqueryFilterType.JsonKeyExists, key);
 }
 
 /// <summary>
@@ -196,11 +177,5 @@ public enum EventSubqueryFilterType
     RegistrationMode,
 
     /// <summary>Registration mode multi-value filter via EventSessions table (OR logic).</summary>
-    RegistrationModes,
-
-    /// <summary>JSONB containment filter on MetadataJson using @&gt; operator.</summary>
-    JsonContains,
-
-    /// <summary>JSONB key existence filter on MetadataJson using ? operator.</summary>
-    JsonKeyExists
+    RegistrationModes
 }

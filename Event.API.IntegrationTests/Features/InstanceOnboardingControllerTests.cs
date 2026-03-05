@@ -201,6 +201,96 @@ public class InstanceOnboardingControllerTests
         await Assert.That(config.GoogleSsoEnabled).IsTrue();
     }
 
+    [Test]
+    public async Task SetupAuthProviderConfigurationFlow_SaveThenComplete_ShouldExposeConfiguredAndProtectPublicReadAfterCompletion()
+    {
+        using var factory = CreateFactoryWithSetupSecret();
+        using var client = factory.CreateClient();
+
+        var userId = Guid.NewGuid();
+        await EnsureUserExistsAsync(factory, userId);
+
+        using var saveRequest = CreateInstanceAdminRequest(
+            HttpMethod.Put,
+            $"{BaseUrl}/auth-provider-configuration",
+            userId,
+            CreateGoogleOnlyAuthProviderConfiguration(),
+            includeSetupSecret: true);
+        var saveResponse = await client.SendAsync(saveRequest);
+        await Assert.That(saveResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        var configuredResponse = await client.GetAsync($"{BaseUrl}/auth-provider-configured");
+        await Assert.That(configuredResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        var configuredPayload = await configuredResponse.Content.ReadFromJsonAsync<AuthProviderConfiguredResponse>();
+        await Assert.That(configuredPayload).IsNotNull();
+        await Assert.That(configuredPayload!.Configured).IsTrue();
+
+        var completePayload = CreateValidSettings();
+        using var completeRequest = CreateInstanceAdminRequest(
+            HttpMethod.Post,
+            $"{BaseUrl}/complete",
+            userId,
+            completePayload,
+            includeSetupSecret: true);
+        var completeResponse = await client.SendAsync(completeRequest);
+        await Assert.That(completeResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        var anonymousGetResponse = await client.GetAsync($"{BaseUrl}/auth-provider-configuration");
+        await Assert.That(anonymousGetResponse.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+
+        using var adminGetRequest = CreateInstanceAdminRequest(
+            HttpMethod.Get,
+            $"{BaseUrl}/auth-provider-configuration",
+            userId,
+            body: null,
+            includeSetupSecret: false);
+        var adminGetResponse = await client.SendAsync(adminGetRequest);
+        await Assert.That(adminGetResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        var adminConfig = await adminGetResponse.Content.ReadFromJsonAsync<AuthProviderConfigurationDto>();
+        await Assert.That(adminConfig).IsNotNull();
+        await Assert.That(adminConfig!.GoogleSsoEnabled).IsTrue();
+    }
+
+    [Test]
+    public async Task GetAuthProviderConfigurationInternal_WithSetupSecret_ShouldReturnSecretsWhilePublicEndpointRedacts()
+    {
+        using var factory = CreateFactoryWithSetupSecret();
+        using var client = factory.CreateClient();
+
+        var userId = Guid.NewGuid();
+        await EnsureUserExistsAsync(factory, userId);
+
+        using var saveRequest = CreateInstanceAdminRequest(
+            HttpMethod.Put,
+            $"{BaseUrl}/auth-provider-configuration",
+            userId,
+            CreateGoogleOnlyAuthProviderConfiguration(),
+            includeSetupSecret: true);
+        var saveResponse = await client.SendAsync(saveRequest);
+        await Assert.That(saveResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        var publicResponse = await client.GetAsync($"{BaseUrl}/auth-provider-configuration");
+        await Assert.That(publicResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        var publicConfig = await publicResponse.Content.ReadFromJsonAsync<AuthProviderConfigurationDto>();
+        await Assert.That(publicConfig).IsNotNull();
+        await Assert.That(publicConfig!.GoogleClientSecret).IsEqualTo(string.Empty);
+
+        using var internalWithoutSecretRequest = new HttpRequestMessage(HttpMethod.Get, $"{BaseUrl}/auth-provider-configuration/internal");
+        var internalWithoutSecretResponse = await client.SendAsync(internalWithoutSecretRequest);
+        await Assert.That(internalWithoutSecretResponse.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+
+        using var internalWithSecretRequest = new HttpRequestMessage(HttpMethod.Get, $"{BaseUrl}/auth-provider-configuration/internal");
+        internalWithSecretRequest.Headers.Add("X-Setup-Secret", SetupSecret);
+        var internalWithSecretResponse = await client.SendAsync(internalWithSecretRequest);
+        await Assert.That(internalWithSecretResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        var internalConfig = await internalWithSecretResponse.Content.ReadFromJsonAsync<AuthProviderConfigurationDto>();
+        await Assert.That(internalConfig).IsNotNull();
+        await Assert.That(internalConfig!.GoogleSsoEnabled).IsTrue();
+        await Assert.That(internalConfig.GoogleClientSecret).IsEqualTo("google-client-secret");
+    }
+
     private static async Task EnsureInstanceAdminRoleAsync(AuthenticatedWebApplicationFactory factory, Guid userId)
     {
         using var scope = factory.Services.CreateScope();
@@ -363,5 +453,10 @@ public class InstanceOnboardingControllerTests
             LockAtprotoLoginEnabled = false,
             LockGoogleSsoEnabled = false
         };
+    }
+
+    private sealed class AuthProviderConfiguredResponse
+    {
+        public bool Configured { get; set; }
     }
 }

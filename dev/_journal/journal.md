@@ -53,3 +53,32 @@
 
 ## Technical Insights
 - [2026-02-16 01:55 Europe/Brussels] In Blazor `InteractiveAuto`, components in client assembly can be instantiated during server prerender; any injected service must exist in server DI too. Added server no-op `IAnalyticsInterop` implementation to prevent prerender resolution failures.
+
+## Notification System Implementation (2026-03-03 → 2026-03-04)
+
+### Technical Insights
+- [2026-03-03 Europe/Brussels] `ExecuteUpdateAsync` with timestamp cutoff is the correct pattern for bulk mark-all-read — prevents race condition where new notifications arrive during operation.
+- [2026-03-03 Europe/Brussels] Project uses a SINGLE `MappingProfile.cs` file for all AutoMapper mappings (not per-feature profiles). Add a `CreateXxxMappings()` private method and call from constructor.
+- [2026-03-03 Europe/Brussels] `required` keyword on navigation properties (e.g., `required User User`) means test initializers MUST include `= null!` assignments or compilation fails with CS9035.
+- [2026-03-03 Europe/Brussels] NSubstitute mock calls must match EXACT parameter count including new optional params. Adding `int? notificationScopeId = null` to repository method requires updating ALL mock `.Received()` calls to include the extra `null` argument.
+- [2026-03-03 Europe/Brussels] EF Core named query filters: `.HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted)` — uses `QueryFilterNames` constants.
+- [2026-03-04 Europe/Brussels] LookupTableSeeder uses runtime seeding (not HasData) due to EF Core 10 bug #36682 with circular FKs.
+- [2026-03-04 Europe/Brussels] Actor has Pii (1:1 extension table) with `DisplayName`. Repo queries need `.ThenInclude(a => a!.Pii)` for display names.
+- [2026-03-04 Europe/Brussels] FK to ActorType uses `DeleteBehavior.Restrict` (scope must not be orphaned), FK to Actor uses `DeleteBehavior.SetNull` (actor deletion shouldn't cascade to notifications).
+
+### Failed Approaches
+- [2026-03-04 Europe/Brussels] Considered replacing `UserId` with `ActorId` for notification targeting (Option A). Rejected because it kills the hot read path — would require JOIN through Actor→User to query "my notifications", and complicates the most frequent access pattern.
+- [2026-03-04 Europe/Brussels] Considered NotificationRecipient junction table (Option C) for multi-recipient support. Rejected as over-engineered — materialized fan-out gives the same result with simpler queries and no N+1 risks.
+
+### Key Decisions
+- [2026-03-03 Europe/Brussels] Notification endpoints are ALL `[Authorize]` — deviates from project default where GET is `[AllowAnonymous]`, but notifications are personal data.
+- [2026-03-03 Europe/Brussels] Lookup entities (NotificationType, NotificationEntityType) follow ApprovalStatus pattern exactly: int Id, MasterCode, FullName, Description + companion enum.
+- [2026-03-04 Europe/Brussels] Materialized fan-out: notifications always per-user (UserId stays), org/group notifications fan out at write time → N rows per member. Read path stays O(1).
+- [2026-03-04 Europe/Brussels] Reuse existing ActorType entity as notification scope (User=1→Personal, Organization=2, Group=4, System=5) instead of creating new NotificationScope lookup.
+- [2026-03-04 Europe/Brussels] Bots/System are senders not receivers — they should consume domain events directly, not notifications. But they CAN be SourceActorId.
+
+### Deferred Fixes
+- [2026-03-04 Europe/Brussels] EF migration for notification system not yet created. All schema changes are in EF configs but no migration generated.
+- [2026-03-04 Europe/Brussels] Notification dispatch handlers (domain events → fan-out logic) not yet implemented — will need OrganizationMember/GroupMember queries.
+- [2026-03-04 Europe/Brussels] Push delivery (WebSocket/SSE) for real-time notifications not yet implemented.
+- [2026-03-04 Europe/Brussels] Per-user notification preferences not yet implemented.

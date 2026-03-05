@@ -87,6 +87,122 @@ public class AuthRedirectPagesTests : IDisposable
     }
 
     [Test]
+    public async Task LoginRedirect_WithMultipleProviders_ShouldNotAutoRedirect()
+    {
+        // Arrange
+        ConfigureAuthProviderClient(new
+        {
+            providers = new[]
+            {
+                new { name = "Keycloak", displayName = "Keycloak", type = "button", recommended = true },
+                new { name = "Google", displayName = "Google", type = "button", recommended = false },
+                new { name = "Atproto", displayName = "AT Protocol", type = "handle_input", recommended = false }
+            }
+        });
+
+        var nav = _ctx.Services.GetRequiredService<FakeNavigationManager>();
+        nav.NavigateTo("/login?returnUrl=%2Fevents");
+
+        // Act
+        var cut = _ctx.RenderComponent<DynamicComponent>(parameters =>
+            parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
+
+        // Assert
+        await Assert.That(nav.Uri).EndsWith("/login?returnUrl=%2Fevents");
+        await Assert.That(cut.Markup).Contains("Continue with Keycloak");
+        await Assert.That(cut.Markup).Contains("Continue with Google");
+        await Assert.That(cut.Markup).Contains("AT Protocol");
+    }
+
+    [Test]
+    public async Task LoginRedirect_WithForcedProvider_ShouldAutoRedirectToThatProvider()
+    {
+        // Arrange
+        ConfigureAuthProviderClient(new
+        {
+            providers = new[]
+            {
+                new { name = "Keycloak", displayName = "Keycloak", type = "button", recommended = true },
+                new { name = "Google", displayName = "Google", type = "button", recommended = false }
+            }
+        });
+
+        var nav = _ctx.Services.GetRequiredService<FakeNavigationManager>();
+        nav.NavigateTo("/login?provider=google&returnUrl=%2Fsetup");
+
+        // Act
+        var cut = _ctx.RenderComponent<DynamicComponent>(parameters =>
+            parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
+
+        // Assert
+        cut.WaitForAssertion(() =>
+        {
+            if (!nav.Uri.EndsWith("/auth/challenge?provider=google&returnUrl=%2Fsetup", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Expected navigation to forced Google challenge URL.");
+            }
+        });
+
+        await Assert.That(nav.Uri).EndsWith("/auth/challenge?provider=google&returnUrl=%2Fsetup");
+    }
+
+    [Test]
+    public async Task LoginRedirect_WithSingleAtprotoAndLoginHint_ShouldAutoRedirectToAtprotoChallenge()
+    {
+        // Arrange
+        ConfigureAuthProviderClient(new
+        {
+            providers = new[]
+            {
+                new { name = "Atproto", displayName = "AT Protocol", type = "handle_input", recommended = false }
+            }
+        });
+
+        var nav = _ctx.Services.GetRequiredService<FakeNavigationManager>();
+        nav.NavigateTo("/login?returnUrl=%2Fdashboard&login_hint=user.bsky.social");
+
+        // Act
+        var cut = _ctx.RenderComponent<DynamicComponent>(parameters =>
+            parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
+
+        // Assert
+        cut.WaitForAssertion(() =>
+        {
+            if (!nav.Uri.EndsWith("/auth/challenge?provider=atproto&returnUrl=%2Fdashboard&login_hint=user.bsky.social", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Expected automatic redirect to ATProto challenge with login_hint.");
+            }
+        });
+
+        await Assert.That(nav.Uri).EndsWith("/auth/challenge?provider=atproto&returnUrl=%2Fdashboard&login_hint=user.bsky.social");
+    }
+
+    [Test]
+    public async Task LoginRedirect_WithSingleAtprotoWithoutLoginHint_ShouldNotAutoRedirect()
+    {
+        // Arrange
+        ConfigureAuthProviderClient(new
+        {
+            providers = new[]
+            {
+                new { name = "Atproto", displayName = "AT Protocol", type = "handle_input", recommended = false }
+            }
+        });
+
+        var nav = _ctx.Services.GetRequiredService<FakeNavigationManager>();
+        nav.NavigateTo("/login?returnUrl=%2Fdashboard");
+
+        // Act
+        var cut = _ctx.RenderComponent<DynamicComponent>(parameters =>
+            parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
+
+        // Assert
+        await Assert.That(nav.Uri).EndsWith("/login?returnUrl=%2Fdashboard");
+        await Assert.That(cut.Markup).Contains("AT Protocol");
+        await Assert.That(cut.Markup).Contains("Handle");
+    }
+
+    [Test]
     public async Task LogoutRedirect_NavigatesToAuthSignout_WhenNoQueryString()
     {
         // Arrange

@@ -291,6 +291,44 @@ public static class MockServiceFactory
 
     #endregion
 
+    #region Notification Services
+
+    /// <summary>
+    /// Creates a mock INotificationService that returns empty defaults.
+    /// </summary>
+    public static INotificationService CreateNotificationService()
+    {
+        var mock = Substitute.For<INotificationService>();
+        mock.GetUnreadCountAsync(Arg.Any<int?>()).Returns(0);
+        mock.GetNotificationsAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<bool?>(), Arg.Any<int?>())
+            .Returns(Blazor.Client.Models.PaginatedResult<NotificationListDto>.Empty());
+        mock.MarkAllAsReadAsync().Returns(true);
+        mock.MarkAsReadAsync(Arg.Any<Guid>()).Returns(true);
+        mock.DeleteAsync(Arg.Any<Guid>()).Returns(true);
+        return mock;
+    }
+
+    /// <summary>
+    /// Creates a mock ITranslationService that returns key-as-value defaults.
+    /// </summary>
+    public static ITranslationService CreateTranslationService()
+    {
+        var mock = Substitute.For<ITranslationService>();
+        mock.CurrentLanguage.Returns("en");
+        mock.T(Arg.Any<string>(), Arg.Any<string?>()).Returns(ci => ci.ArgAt<string>(0));
+        mock.GetTranslationsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, string>());
+        mock.GetAvailableLanguagesAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<string> { "en" });
+        mock.ChangeLanguageAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        mock.PreloadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        return mock;
+    }
+
+    #endregion
+
     #region Bulk Registration
 
     /// <summary>
@@ -315,6 +353,9 @@ public static class MockServiceFactory
         services.AddSingleton(CreateLocationService());
         services.AddSingleton(CreateImageStorageService());
         services.AddSingleton(CreateTenantNavigationService());
+        services.AddSingleton(CreateNotificationService());
+        services.AddSingleton(CreateTranslationService());
+        services.AddSingleton(Substitute.For<IHttpClientFactory>());
         RegisterLookupServiceMocks(services);
     }
 

@@ -6,5 +6,6 @@ public enum FileTypeEnum
     Document = 2,
     Video = 3,
     Audio = 4,
-    Other = 5
+    Other = 5,
+    Banner = 6
 }

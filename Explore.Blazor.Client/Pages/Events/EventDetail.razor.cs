@@ -93,7 +93,8 @@ public partial class EventDetail : ComponentBase
             if (_eventDetails != null)
             {
                 Logger.LogInformation("Loaded event: {Title}", _eventDetails.Title);
-                _appearance = EventAppearanceMetadataHelper.Parse(_eventDetails.MetadataJson);
+                _appearance = EventAppearanceMetadataHelper.FromColumns(
+                    _eventDetails.BackgroundColor, _eventDetails.BackgroundImageUri, _eventDetails.BackgroundEffect);
 
                 // Load event sessions
                 _eventSessions = await EventService.GetSessionsByEventAsync(EventId);

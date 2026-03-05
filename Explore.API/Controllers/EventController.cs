@@ -55,7 +55,6 @@ public class EventController : ControllerBase
         "Supports module-conditional aspect filters: Islamic (genderMode, quranRecitation, referencePrayer, islamicLanguage) " +
         "and Tech (skillLevel, codingCompetition, hackathon, requiresLaptop, techStack). " +
         "Aspect filters are silently ignored when the corresponding module is not enabled for the tenant. " +
-        "Supports JSONB metadata filtering via metadataJsonContains and metadataJsonKeyExists. " +
         "Supports sorting by date, title, views, or createdAt. " +
         "Response includes HATEOAS navigation links (first, prev, next, last). " +
         "Send 'Prefer: return=minimal' header to strip links.")]
@@ -100,9 +99,6 @@ public class EventController : ControllerBase
         [FromQuery] bool? requiresLaptop = null,
         [FromQuery] string? techStackTag = null,
         [FromQuery] bool? hasTechAspect = null,
-        // JSONB metadata filters
-        [FromQuery] string? metadataJsonContains = null,
-        [FromQuery] string? metadataJsonKeyExists = null,
         // Sorting
         [FromQuery] string? sortBy = null,
         [FromQuery] bool sortDescending = true,
@@ -147,9 +143,6 @@ public class EventController : ControllerBase
             RequiresLaptop = requiresLaptop,
             TechStackTag = techStackTag,
             HasTechAspect = hasTechAspect,
-            // JSONB metadata filters
-            MetadataJsonContains = metadataJsonContains,
-            MetadataJsonKeyExists = metadataJsonKeyExists,
             // Sorting
             SortBy = sortBy,
             SortDescending = sortDescending

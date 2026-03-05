@@ -1,88 +1,32 @@
-// ABOUTME: Helper for group-level branding settings stored in Group.MetadataJson.
-// ABOUTME: Supports profile image and banner theming without dedicated schema columns.
-
-using System.Text.Json;
-using System.Text.Json.Nodes;
+// ABOUTME: Helper for group-level branding settings using Actor-denormalized columns.
+// ABOUTME: Builds banner CSS styles from Actor branding properties.
 
 namespace Explore.Blazor.Client.Helpers;
 
 public sealed class GroupBrandingSettings
 {
-    public string PictureUrl { get; set; } = string.Empty;
     public string BannerColor { get; set; } = string.Empty;
-    public string BannerMediaUrl { get; set; } = string.Empty;
-    public string BannerEffect { get; set; } = "None";
+    public string BannerPictureUri { get; set; } = string.Empty;
+    public string BackgroundEffect { get; set; } = "None";
 
     public bool IsEmpty =>
-        string.IsNullOrWhiteSpace(PictureUrl) &&
         string.IsNullOrWhiteSpace(BannerColor) &&
-        string.IsNullOrWhiteSpace(BannerMediaUrl) &&
-        (string.IsNullOrWhiteSpace(BannerEffect) ||
-         BannerEffect.Equals("None", StringComparison.OrdinalIgnoreCase));
+        string.IsNullOrWhiteSpace(BannerPictureUri) &&
+        (string.IsNullOrWhiteSpace(BackgroundEffect) ||
+         BackgroundEffect.Equals("None", StringComparison.OrdinalIgnoreCase));
 }
 
 public static class GroupBrandingMetadataHelper
 {
-    private const string BrandingNode = "groupBranding";
-
-    public static GroupBrandingSettings Parse(string? metadataJson)
+    public static GroupBrandingSettings FromColumns(
+        string? bannerColor, string? bannerPictureUri, string? backgroundEffect)
     {
-        if (string.IsNullOrWhiteSpace(metadataJson))
+        return new GroupBrandingSettings
         {
-            return new GroupBrandingSettings();
-        }
-
-        try
-        {
-            var root = JsonNode.Parse(metadataJson) as JsonObject;
-            var branding = root?[BrandingNode] as JsonObject;
-            if (branding == null)
-            {
-                return new GroupBrandingSettings();
-            }
-
-            return new GroupBrandingSettings
-            {
-                PictureUrl = branding["pictureUrl"]?.GetValue<string>() ?? string.Empty,
-                BannerColor = branding["bannerColor"]?.GetValue<string>() ?? string.Empty,
-                BannerMediaUrl = branding["bannerMediaUrl"]?.GetValue<string>() ?? string.Empty,
-                BannerEffect = branding["bannerEffect"]?.GetValue<string>() ?? "None"
-            };
-        }
-        catch
-        {
-            return new GroupBrandingSettings();
-        }
-    }
-
-    public static string? Upsert(string? metadataJson, GroupBrandingSettings branding)
-    {
-        JsonObject root;
-        if (string.IsNullOrWhiteSpace(metadataJson))
-        {
-            root = new JsonObject();
-        }
-        else
-        {
-            root = JsonNode.Parse(metadataJson) as JsonObject ?? new JsonObject();
-        }
-
-        if (branding.IsEmpty)
-        {
-            root.Remove(BrandingNode);
-        }
-        else
-        {
-            root[BrandingNode] = new JsonObject
-            {
-                ["pictureUrl"] = NullIfWhiteSpace(branding.PictureUrl),
-                ["bannerColor"] = NullIfWhiteSpace(branding.BannerColor),
-                ["bannerMediaUrl"] = NullIfWhiteSpace(branding.BannerMediaUrl),
-                ["bannerEffect"] = string.IsNullOrWhiteSpace(branding.BannerEffect) ? "None" : branding.BannerEffect.Trim()
-            };
-        }
-
-        return root.Count == 0 ? null : root.ToJsonString(new JsonSerializerOptions { WriteIndented = false });
+            BannerColor = bannerColor ?? string.Empty,
+            BannerPictureUri = bannerPictureUri ?? string.Empty,
+            BackgroundEffect = backgroundEffect ?? "None"
+        };
     }
 
     public static string BuildBannerStyle(GroupBrandingSettings branding, string fallbackColorHex)
@@ -91,8 +35,8 @@ public static class GroupBrandingMetadataHelper
             ? fallbackColorHex
             : branding.BannerColor.Trim();
 
-        var mediaUrl = branding.BannerMediaUrl?.Trim();
-        var overlay = branding.BannerEffect?.Trim() switch
+        var mediaUrl = branding.BannerPictureUri?.Trim();
+        var overlay = branding.BackgroundEffect?.Trim() switch
         {
             "SoftOverlay" => "linear-gradient(rgba(0,0,0,0.22), rgba(0,0,0,0.22))",
             "StrongOverlay" => "linear-gradient(rgba(0,0,0,0.40), rgba(0,0,0,0.40))",
@@ -112,10 +56,5 @@ public static class GroupBrandingMetadataHelper
         }
 
         return $"background: {overlay}, {mediaBackground};";
-    }
-
-    private static string? NullIfWhiteSpace(string? value)
-    {
-        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 }

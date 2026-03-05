@@ -28,9 +28,6 @@ public class OrganizationConfiguration : IEntityTypeConfiguration<Organization>
         builder.Property(e => e.WebsiteUrl)
             .HasMaxLength(2048);
 
-        builder.Property(e => e.MetadataJson)
-            .HasColumnType("jsonb");
-
         builder.HasOne(e => e.ApprovalStatus)
             .WithMany()
             .HasForeignKey(e => e.ApprovalStatusId)

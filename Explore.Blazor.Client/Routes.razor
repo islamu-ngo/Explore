@@ -19,19 +19,21 @@
 @using Microsoft.AspNetCore.Components.Authorization
 
 <TenantContextProvider>
-    <Blazouter.Components.Router Routes="@_routes" DefaultLayout="typeof(MainLayout)">
-        <NotFound>
-            <LayoutView Layout="typeof(MainLayout)">
-                <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-8">
-                    <MudText Typo="Typo.h3">404 - Page Not Found</MudText>
-                    <MudText Typo="Typo.body1" Class="mt-4">The page you requested could not be found.</MudText>
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/" Class="mt-4">
-                        Return to Home
-                    </MudButton>
-                </MudContainer>
-            </LayoutView>
-        </NotFound>
-    </Blazouter.Components.Router>
+    <LanguageProvider>
+        <Blazouter.Components.Router Routes="@_routes" DefaultLayout="typeof(MainLayout)">
+            <NotFound>
+                <LayoutView Layout="typeof(MainLayout)">
+                    <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-8">
+                        <MudText Typo="Typo.h3">404 - Page Not Found</MudText>
+                        <MudText Typo="Typo.body1" Class="mt-4">The page you requested could not be found.</MudText>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/" Class="mt-4">
+                            Return to Home
+                        </MudButton>
+                    </MudContainer>
+                </LayoutView>
+            </NotFound>
+        </Blazouter.Components.Router>
+    </LanguageProvider>
 </TenantContextProvider>
 
 @code {
@@ -54,6 +56,7 @@
             new RouteConfig { Path = "/home", Component = typeof(Home), Transition = RouteTransition.Fade },
             new RouteConfig { Path = "/startup", Component = typeof(StartupGate), Transition = RouteTransition.None, EnableCache = false },
             new RouteConfig { Path = "/setup", Component = typeof(Setup), Transition = RouteTransition.None, EnableCache = false },
+            new RouteConfig { Path = "/onboarding/auth-provider", Component = typeof(AuthProviderConfiguration), Transition = RouteTransition.None, EnableCache = false },
             new RouteConfig { Path = "/login", Component = typeof(LoginRedirect), Transition = RouteTransition.None, EnableCache = false },
             new RouteConfig { Path = "/logout", Component = typeof(LogoutRedirect), Transition = RouteTransition.None, EnableCache = false },
             new RouteConfig

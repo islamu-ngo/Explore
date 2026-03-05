@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
 using Event.Api.IntegrationTests.Fixtures;
+using Explore.API.Filters;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
@@ -112,8 +113,9 @@ public class ApiEndpointSmokeTests
         var metadata = description.ActionDescriptor.EndpointMetadata;
         var hasAllowAnonymous = metadata.OfType<IAllowAnonymous>().Any();
         var hasAuthorize = metadata.OfType<IAuthorizeData>().Any();
+        var hasSetupSecretRequirement = metadata.OfType<SetupSecretRequiredAttribute>().Any();
 
-        return hasAuthorize && !hasAllowAnonymous;
+        return (hasAuthorize && !hasAllowAnonymous) || hasSetupSecretRequirement;
     }
 
     private static bool IsHttpMethod(ApiDescription description, HttpMethod method)

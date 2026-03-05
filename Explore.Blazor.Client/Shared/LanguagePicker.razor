@@ -1,0 +1,76 @@
+@* ABOUTME: Dropdown language picker using MudMenu, displays current language flag/code. *@
+@* ABOUTME: Fetches available languages from ITranslationService, persists selection via BFF cookie. *@
+
+@using Explore.Blazor.Client.Models
+@inject ITranslationService TranslationService
+@inject IHttpClientFactory HttpClientFactory
+@inject ILogger<LanguagePicker> Logger
+
+<MudMenu Icon="@Icons.Material.Rounded.Language"
+         Color="Color.Inherit"
+         AnchorOrigin="Origin.BottomCenter"
+         TransformOrigin="Origin.TopCenter"
+         Dense="true"
+         Class="language-picker">
+    @if (_languages.Count > 0)
+    {
+        @foreach (var lang in _languages)
+        {
+            var ctx = LanguageContext.ForLanguage(lang);
+            <MudMenuItem OnClick="@(() => SelectLanguageAsync(lang))"
+                         Class="@(lang == _currentLang ? "language-picker__item--active" : "")">
+                <MudText Typo="Typo.body2">@ctx.LanguageName (@lang)</MudText>
+            </MudMenuItem>
+        }
+    }
+    else
+    {
+        <MudMenuItem Disabled="true">
+            <MudText Typo="Typo.body2">Loading...</MudText>
+        </MudMenuItem>
+    }
+</MudMenu>
+
+@code {
+    [CascadingParameter(Name = "Language")]
+    private LanguageContext? Language { get; set; }
+
+    private ICollection<string> _languages = new List<string>();
+    private string _currentLang = "en";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _currentLang = Language?.LanguageCode ?? "en";
+
+        try
+        {
+            _languages = await TranslationService.GetAvailableLanguagesAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load available languages");
+            _languages = new List<string> { "en" };
+        }
+    }
+
+    private async Task SelectLanguageAsync(string languageCode)
+    {
+        if (languageCode == _currentLang)
+            return;
+
+        try
+        {
+            // Persist via BFF cookie endpoint
+            var httpClient = HttpClientFactory.CreateClient("BffClient");
+            await httpClient.PostAsync($"/bff/language?lang={languageCode}", null);
+
+            // Change language in service (updates cache + fires event)
+            await TranslationService.ChangeLanguageAsync(languageCode);
+            _currentLang = languageCode;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to change language to {Language}", languageCode);
+        }
+    }
+}

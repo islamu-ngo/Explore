@@ -1,0 +1,79 @@
+/* ABOUTME: Scoped CSS for NotificationPanel — dropdown popover with glass effect, scrollable list. */
+/* ABOUTME: BEM block: notification-panel. Consistent with navbar dropdown styling. */
+
+.notification-panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 380px;
+    max-height: 480px;
+    background: var(--mud-palette-surface);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.notification-panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+}
+
+.notification-panel__title {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--mud-palette-text-primary);
+}
+
+.notification-panel__body {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.notification-panel__list {
+    display: flex;
+    flex-direction: column;
+}
+
+.notification-panel__loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 16px;
+}
+
+.notification-panel__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 16px;
+    gap: 8px;
+}
+
+.notification-panel__load-more {
+    display: flex;
+    justify-content: center;
+    padding: 8px 16px;
+    border-top: 1px solid var(--mud-palette-lines-default);
+}
+
+/* Responsive: full-width on small screens */
+@media (max-width: 480px) {
+    .notification-panel {
+        position: fixed;
+        top: 56px;
+        left: 0;
+        right: 0;
+        width: 100%;
+        max-height: calc(100vh - 56px);
+        border-radius: 0;
+    }
+}

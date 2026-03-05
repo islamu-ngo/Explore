@@ -67,7 +67,6 @@ public class OrganizationTests
         await Assert.That(entity.Address).IsNull();
         await Assert.That(entity.Postcode).IsNull();
         await Assert.That(entity.WebsiteUrl).IsNull();
-        await Assert.That(entity.MetadataJson).IsNull();
     }
 
     [Test]

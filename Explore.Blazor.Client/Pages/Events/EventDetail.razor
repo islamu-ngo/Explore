@@ -34,9 +34,9 @@
                                   ObjectFit="ObjectFit.Cover"
                                   Style="width: 100%; height: 100%; object-fit: cover; display: block;" />
                     }
-                    else if (!string.IsNullOrWhiteSpace(_appearance.BackgroundMediaUrl))
+                    else if (!string.IsNullOrWhiteSpace(_appearance.BackgroundImageUri))
                     {
-                        <MudImage Src="@_appearance.BackgroundMediaUrl"
+                        <MudImage Src="@_appearance.BackgroundImageUri"
                                   ObjectFit="ObjectFit.Cover"
                                   Style="width: 100%; height: 100%; object-fit: cover; display: block;" />
                     }

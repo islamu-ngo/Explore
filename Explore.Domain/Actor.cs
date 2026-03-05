@@ -50,6 +50,15 @@ public class Actor : ITenantEntity, IAuditableEntity, ISoftDeletable
     public Guid? ProfilePictureId { get; set; }
     public StorageObject? ProfilePicture { get; set; }
 
+    [ForeignKey("BannerPictureStorage")]
+    public Guid? BannerPictureId { get; set; }
+    public StorageObject? BannerPicture { get; set; }
+
+    // Appearance settings
+    public string? BackgroundColor { get; set; }
+    public string? BackgroundEffect { get; set; }
+    public string? BannerColor { get; set; }
+
     [NotMapped]
     public string? Did
     {

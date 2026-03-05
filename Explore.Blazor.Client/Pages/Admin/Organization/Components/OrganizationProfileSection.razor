@@ -81,10 +81,11 @@
                               Required="true" />
             </MudItem>
             <MudItem xs="12">
-                <MudTextField @bind-Value="_appearance.ProfileImageUrl"
-                              Label="Profile Image URL"
+                <MudTextField Value="@_organization?.ActorProfilePictureUri"
+                              Label="Profile Image URL (managed via Actor)"
                               Variant="Variant.Outlined"
-                              Placeholder="https://..." />
+                              ReadOnly="true"
+                              Placeholder="Set through Actor settings" />
             </MudItem>
             <MudItem xs="12" sm="4">
                 <MudTextField @bind-Value="_appearance.BackgroundColor"
@@ -93,8 +94,8 @@
                               InputType="InputType.Color" />
             </MudItem>
             <MudItem xs="12" sm="8">
-                <MudTextField @bind-Value="_appearance.BackgroundMediaUrl"
-                              Label="Banner Media URL"
+                <MudTextField @bind-Value="_appearance.BannerPictureUri"
+                              Label="Banner Picture URL"
                               Variant="Variant.Outlined"
                               Placeholder="https://... (image or GIF)" />
             </MudItem>
@@ -182,10 +183,11 @@
                     Address = _organization.Address ?? string.Empty,
                     City = _organization.City ?? string.Empty,
                     Country = _organization.Country ?? string.Empty,
-                    Postcode = int.TryParse(_organization.Postcode, out var postcode) ? postcode : null,
-                    MetadataJson = _organization.MetadataJson
+                    Postcode = int.TryParse(_organization.Postcode, out var postcode) ? postcode : null
                 };
-                _appearance = OrganizationAppearanceMetadataHelper.Parse(_organization.MetadataJson);
+                _appearance = OrganizationAppearanceMetadataHelper.FromColumns(
+                    _organization.ActorBackgroundColor,
+                    _organization.ActorBannerPictureUri, _organization.ActorBackgroundEffect);
             }
         }
         catch (Exception ex)
@@ -214,7 +216,7 @@
         _errorMessage = null;
         try
         {
-            _model.MetadataJson = OrganizationAppearanceMetadataHelper.Upsert(_model.MetadataJson, _appearance);
+            // Appearance fields are now managed via Actor — not saved through UpdateOrganizationDto
             var response = await OrganizationService.UpdateOrganizationAsync(OrganizationId, _model);
 
             if (response?.Success == true)
@@ -240,11 +242,11 @@
 
     private string? GetProfileImageUri()
     {
-        if (!string.IsNullOrWhiteSpace(_appearance.ProfileImageUrl))
+        if (!string.IsNullOrWhiteSpace(_organization?.ActorProfilePictureUri))
         {
-            return _appearance.ProfileImageUrl.Trim();
+            return _organization.ActorProfilePictureUri.Trim();
         }
 
-        return _organization?.ActorProfilePictureUri;
+        return null;
     }
 }

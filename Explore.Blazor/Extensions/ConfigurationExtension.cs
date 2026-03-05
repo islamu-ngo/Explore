@@ -2,7 +2,6 @@
 // ABOUTME: Adds Infisical as configuration source and provides compatibility mapping for environment variables.
 
 using Explore.Secrets.Extensions;
-using Microsoft.Extensions.Configuration;
 
 namespace Explore.Blazor.Extensions;
 
@@ -60,29 +59,65 @@ public static class ConfigurationExtensions
     private static void ApplyBlazorCompatibilityMapping(IConfigurationBuilder configBuilder, IConfiguration config)
     {
         // Read values (from Infisical, environment, or existing config)
-        var rawRealm = config["Keycloak:Realm"] ?? config["KEYCLOAK_REALM"] ?? "islamu-dev";
+        var rawRealm = config["Keycloak:Realm"] ?? config["KEYCLOAK_REALM"];
+        var rawKeycloakClientId = config["Keycloak:ClientId"]
+            ?? config["KEYCLOAK_CLIENT_ID"]
+            ?? config["KEYCLOAK_BLAZOR_CLIENT_ID"]
+            ?? config["EXPLORE_BLAZOR_SERVER_CLIENT_ID"];
         var rawClientSecret = config["EXPLORE_BLAZOR_SERVER_CLIENT_SECRET_COOLIFY"]
             ?? config["EXPLORE_BLAZOR_SERVER_CLIENT_SECRET"]
             ?? config["KEYCLOAK_BLAZOR_CLIENT_SECRET"]
+            ?? config["KEYCLOAK_CLIENT_SECRET"]
             ?? config["Keycloak:ClientSecret"];
+        var rawGoogleClientId = config["Google:ClientId"]
+            ?? config["GOOGLE_CLIENT_ID"]
+            ?? config["GOOGLE_SSO_CLIENT_ID"];
+        var rawGoogleClientSecret = config["Google:ClientSecret"]
+            ?? config["GOOGLE_CLIENT_SECRET"]
+            ?? config["GOOGLE_SSO_CLIENT_SECRET"];
         var rawApiUrl = config["EXPLORE_API_BASE_URL"] ?? config["ExploreApi:BaseUrl"];
+        var rawAuthority = config["KEYCLOAK_AUTHORITY"];
         var baseUrl = config["KEYCLOAK_PUBLIC_URL"]
             ?? config["KEYCLOAK_BASE_URL"]
-            ?? config["Keycloak:BaseUrl"]
-            ?? "https://keycloak.openislamu.org";
-        var explicitAuthority = config["Keycloak:Authority"];
+            ?? config["Keycloak:BaseUrl"];
+        var explicitAuthority = config["Keycloak:Authority"] ?? rawAuthority;
 
-        // Construct derived values
-        var keycloakAuthority = !string.IsNullOrEmpty(explicitAuthority)
-            ? explicitAuthority
-            : $"{baseUrl.TrimEnd('/')}/realms/{rawRealm}";
-        var metadataAddress = $"{keycloakAuthority}/.well-known/openid-configuration";
+        var hasKeycloakInput =
+            !string.IsNullOrWhiteSpace(explicitAuthority)
+            || !string.IsNullOrWhiteSpace(baseUrl)
+            || !string.IsNullOrWhiteSpace(rawRealm)
+            || !string.IsNullOrWhiteSpace(rawKeycloakClientId)
+            || !string.IsNullOrWhiteSpace(rawClientSecret);
+
+        string? keycloakAuthority = null;
+        if (!string.IsNullOrWhiteSpace(explicitAuthority))
+        {
+            keycloakAuthority = explicitAuthority.TrimEnd('/');
+        }
+        else if (!string.IsNullOrWhiteSpace(baseUrl) && !string.IsNullOrWhiteSpace(rawRealm))
+        {
+            keycloakAuthority = $"{baseUrl.TrimEnd('/')}/realms/{rawRealm}";
+        }
+
+        var keycloakClientId = rawKeycloakClientId;
+        if (string.IsNullOrWhiteSpace(keycloakClientId) && !string.IsNullOrWhiteSpace(keycloakAuthority))
+        {
+            keycloakClientId = "explore-blazor-server";
+        }
+
+        var metadataAddress = string.IsNullOrWhiteSpace(keycloakAuthority)
+            ? null
+            : $"{keycloakAuthority}/.well-known/openid-configuration";
 
         // Log non-sensitive configuration summary for startup diagnostics
         // NOTE: Console.WriteLine is intentional - ILogger is not yet available during configuration setup
         Console.WriteLine("[Blazor Infisical] Keycloak configuration mapped:");
-        Console.WriteLine($"  Authority: {keycloakAuthority}");
+        Console.WriteLine($"  HasKeycloakInput: {hasKeycloakInput}");
+        Console.WriteLine($"  Authority: {keycloakAuthority ?? "(not mapped)"}");
+        Console.WriteLine($"  ClientId: {keycloakClientId ?? "(not mapped)"}");
         Console.WriteLine($"  HasClientSecret: {!string.IsNullOrEmpty(rawClientSecret)}");
+        Console.WriteLine($"  HasGoogleClientId: {!string.IsNullOrEmpty(rawGoogleClientId)}");
+        Console.WriteLine($"  HasGoogleClientSecret: {!string.IsNullOrEmpty(rawGoogleClientSecret)}");
         Console.WriteLine($"  API BaseUrl: {rawApiUrl ?? "(not set, will use default)"}");
 
         var mappedConfig = new Dictionary<string, string?>();
@@ -98,11 +133,14 @@ public static class ConfigurationExtensions
         }
 
         // Keycloak Mapping
-        TrySet(mappedConfig, config, "Keycloak:Realm", rawRealm);
-        TrySet(mappedConfig, config, "Keycloak:Authority", keycloakAuthority);
-        TrySet(mappedConfig, config, "Keycloak:MetadataAddress", metadataAddress);
-        TrySet(mappedConfig, config, "Keycloak:ClientId", config["Keycloak:ClientId"] ?? "explore-blazor-server");
-        TrySet(mappedConfig, config, "Keycloak:RequireHttpsMetadata", "true");
+        if (hasKeycloakInput)
+        {
+            TrySet(mappedConfig, config, "Keycloak:Realm", rawRealm);
+            TrySet(mappedConfig, config, "Keycloak:Authority", keycloakAuthority);
+            TrySet(mappedConfig, config, "Keycloak:MetadataAddress", metadataAddress);
+            TrySet(mappedConfig, config, "Keycloak:ClientId", keycloakClientId);
+            TrySet(mappedConfig, config, "Keycloak:RequireHttpsMetadata", "true");
+        }
 
         // Always set client secret from Infisical (override any existing value)
         // This ensures the correct secret from Infisical is used, not a stale value from user secrets
@@ -110,6 +148,13 @@ public static class ConfigurationExtensions
         {
             mappedConfig["Keycloak:ClientSecret"] = rawClientSecret;
             Console.WriteLine("[Blazor Infisical] Setting Keycloak:ClientSecret from Infisical (overriding existing)");
+        }
+
+        // Google Mapping (for env vars and injected runtime secrets)
+        TrySet(mappedConfig, config, "Google:ClientId", rawGoogleClientId);
+        if (!string.IsNullOrWhiteSpace(rawGoogleClientSecret))
+        {
+            mappedConfig["Google:ClientSecret"] = rawGoogleClientSecret;
         }
 
         // API Mapping

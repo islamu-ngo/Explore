@@ -19,6 +19,11 @@
             Choose an authentication provider to continue.
         </MudText>
 
+        @if (!string.IsNullOrWhiteSpace(_challengeErrorMessage))
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-4">@_challengeErrorMessage</MudAlert>
+        }
+
         @if (_isLoading || _isAutoRedirecting)
         {
             <MudStack AlignItems="AlignItems.Center" Spacing="3" Class="py-4">
@@ -107,7 +112,9 @@
     private bool _isAutoRedirecting;
     private bool _hasTriggeredRedirect;
     private string? _errorMessage;
+    private string? _challengeErrorMessage;
     private string _returnUrl = "/";
+    private string _forcedProviderQuery = string.Empty;
     private string _atprotoHandle = string.Empty;
     private List<AuthProviderItem> _buttonProviders = [];
     private AuthProviderItem? _atprotoProvider;
@@ -157,7 +164,40 @@
 
     private async Task TryAutoRedirectAsync(List<AuthProviderItem> providers)
     {
-        if (_hasTriggeredRedirect || providers.Count != 1)
+        if (_hasTriggeredRedirect)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_forcedProviderQuery))
+        {
+            var forcedProvider = providers.FirstOrDefault(provider =>
+                string.Equals(MapProviderNameToQueryValue(provider.Name), _forcedProviderQuery, StringComparison.OrdinalIgnoreCase));
+
+            if (forcedProvider is not null)
+            {
+                if (string.Equals(forcedProvider.Type, "button", StringComparison.OrdinalIgnoreCase))
+                {
+                    _isAutoRedirecting = true;
+                    _hasTriggeredRedirect = true;
+                    await Task.Yield();
+                    StartButtonProviderChallenge(forcedProvider);
+                    return;
+                }
+
+                if (string.Equals(forcedProvider.Name, "Atproto", StringComparison.OrdinalIgnoreCase)
+                    && !string.IsNullOrWhiteSpace(_atprotoHandle))
+                {
+                    _isAutoRedirecting = true;
+                    _hasTriggeredRedirect = true;
+                    await Task.Yield();
+                    StartAtprotoChallenge();
+                    return;
+                }
+            }
+        }
+
+        if (providers.Count != 1)
         {
             return;
         }
@@ -219,9 +259,21 @@
             _returnUrl = GetSafeReturnUrl(returnUrlValue);
         }
 
+        if (query.TryGetValue("provider", out var providerValue))
+        {
+            _forcedProviderQuery = providerValue.Trim().ToLowerInvariant();
+        }
+
         if (query.TryGetValue("login_hint", out var loginHintValue))
         {
             _atprotoHandle = loginHintValue;
+        }
+
+        if (query.TryGetValue("challengeError", out var challengeErrorValue)
+            && (string.Equals(challengeErrorValue, "1", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(challengeErrorValue, "true", StringComparison.OrdinalIgnoreCase)))
+        {
+            _challengeErrorMessage = "The last login attempt failed. Please choose a provider and try again.";
         }
     }
 

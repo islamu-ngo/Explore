@@ -152,14 +152,6 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
         if (request.RegistrationModeIds is { Count: > 0 })
             spec = spec.And(EventSubqueryFilter.RegistrationModes(request.RegistrationModeIds));
 
-        // ===== JSONB metadata filters (always available) =====
-
-        if (!string.IsNullOrWhiteSpace(request.MetadataJsonContains))
-            spec = spec.And(EventSubqueryFilter.JsonContains(request.MetadataJsonContains.Trim()));
-
-        if (!string.IsNullOrWhiteSpace(request.MetadataJsonKeyExists))
-            spec = spec.And(EventSubqueryFilter.JsonKeyExists(request.MetadataJsonKeyExists.Trim()));
-
         // ===== Islamic aspect filters (module-conditional) =====
 
         var tenantId = _tenantContext.TenantId;

@@ -58,7 +58,9 @@ public class EventTests
         await Assert.That(entity.EventUrl).IsNull();
         await Assert.That(entity.ExternalRegistrationUrl).IsNull();
         await Assert.That(entity.Timezone).IsNull();
-        await Assert.That(entity.MetadataJson).IsNull();
+        await Assert.That(entity.BackgroundColor).IsNull();
+        await Assert.That(entity.BackgroundImageId).IsNull();
+        await Assert.That(entity.BackgroundEffect).IsNull();
     }
 
     [Test]

@@ -55,6 +55,9 @@ public class CreateEventTests : IDisposable
         _ctx.Services.AddSingleton(Substitute.For<IDialogService>());
         _ctx.Services.AddSingleton(Substitute.For<ISnackbar>());
         _ctx.Services.AddSingleton(Substitute.For<ILogger<CreateEvent>>());
+        _ctx.Services.AddSingleton(MockServiceFactory.CreateNotificationService());
+        _ctx.Services.AddSingleton(MockServiceFactory.CreateTranslationService());
+        _ctx.Services.AddSingleton(Substitute.For<IHttpClientFactory>());
 
         // Setup default mock responses
         SetupDefaultMockResponses();
