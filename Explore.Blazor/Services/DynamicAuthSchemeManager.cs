@@ -30,6 +30,10 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
     /// </summary>
     private readonly HashSet<string> _registeredSchemes = [];
 
+    // Tracks the last-known Keycloak client secret so it can be preserved
+    // when ApplyConfiguration is called without secrets (includeSecrets: false).
+    private string? _currentKeycloakSecret;
+
     public DynamicAuthSchemeManager(
         IAuthenticationSchemeProvider schemeProvider,
         IOptionsMonitorCache<OpenIdConnectOptions> oidcOptionsCache,
@@ -194,11 +198,16 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
             }
             else
             {
-                // Update existing scheme options (credentials may have changed)
+                // Preserve the existing secret from env vars when DB config has no secret
+                // (e.g., at startup when includeSecrets: false)
+                var effectiveSecret = !string.IsNullOrEmpty(config.KeycloakClientSecret)
+                    ? config.KeycloakClientSecret
+                    : GetCurrentKeycloakSecret();
+
                 UpdateKeycloakSchemeOptions(
                     config.KeycloakAuthority,
                     config.KeycloakClientId,
-                    config.KeycloakClientSecret);
+                    effectiveSecret);
             }
         }
         else if (!config.KeycloakEnabled && _registeredSchemes.Contains(AuthSchemeNames.Keycloak))
@@ -279,9 +288,12 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
             _registeredSchemes.Add(AuthSchemeNames.Keycloak);
         }
 
+        if (!string.IsNullOrEmpty(clientSecret?.Trim()))
+            _currentKeycloakSecret = clientSecret;
+
         _logger.LogInformation(
             "Registered Keycloak OIDC scheme (authority: {Authority}, clientId: {ClientId}, secretLength: {SecretLen})",
-            authority, clientId, clientSecret?.Length ?? 0);
+            authority, clientId, clientSecret?.Trim().Length ?? 0);
     }
 
     private void UpdateKeycloakSchemeOptions(string authority, string clientId, string? clientSecret)
@@ -292,7 +304,17 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
             .PostConfigure(AuthSchemeNames.Keycloak, options);
         _oidcOptionsCache.TryAdd(AuthSchemeNames.Keycloak, options);
 
-        _logger.LogInformation("Updated Keycloak OIDC scheme options (authority: {Authority})", authority);
+        if (!string.IsNullOrEmpty(clientSecret?.Trim()))
+            _currentKeycloakSecret = clientSecret;
+
+        _logger.LogInformation(
+            "Updated Keycloak OIDC scheme options (authority: {Authority}, secretLength: {SecretLen})",
+            authority, clientSecret?.Trim().Length ?? 0);
+    }
+
+    private string? GetCurrentKeycloakSecret()
+    {
+        return _currentKeycloakSecret ?? _configuration["Keycloak:ClientSecret"];
     }
 
     private OpenIdConnectOptions CreateKeycloakOptions(
