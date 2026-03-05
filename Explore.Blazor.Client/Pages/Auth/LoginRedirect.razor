@@ -169,6 +169,12 @@
             return;
         }
 
+        // Don't auto-redirect when the last challenge failed — let user see the error
+        if (!string.IsNullOrWhiteSpace(_challengeErrorMessage))
+        {
+            return;
+        }
+
         if (!string.IsNullOrWhiteSpace(_forcedProviderQuery))
         {
             var forcedProvider = providers.FirstOrDefault(provider =>

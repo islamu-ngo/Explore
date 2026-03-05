@@ -147,6 +147,25 @@ public class AuthRedirectPagesTests : IDisposable
     }
 
     [Test]
+    public async Task LoginRedirect_WithChallengeError_ShouldNotAutoRedirect()
+    {
+        // Arrange — single provider + forced provider + challengeError=1
+        // This scenario occurs when OIDC callback fails (OnRemoteFailure).
+        // The login page must NOT auto-redirect back to the same provider, or it loops.
+        var nav = _ctx.Services.GetRequiredService<FakeNavigationManager>();
+        nav.NavigateTo("/login?returnUrl=%2Fsetup&challengeError=1&provider=keycloak");
+
+        // Act
+        var cut = _ctx.RenderComponent<DynamicComponent>(parameters =>
+            parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
+
+        // Assert — page stays on /login, shows error message, does NOT redirect
+        await Assert.That(nav.Uri).EndsWith("/login?returnUrl=%2Fsetup&challengeError=1&provider=keycloak");
+        await Assert.That(cut.Markup).Contains("The last login attempt failed");
+        await Assert.That(cut.Markup).Contains("Continue with Keycloak");
+    }
+
+    [Test]
     public async Task LoginRedirect_WithSingleAtprotoAndLoginHint_ShouldAutoRedirectToAtprotoChallenge()
     {
         // Arrange
