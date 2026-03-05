@@ -6,6 +6,7 @@ using Explore.Blazor.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
@@ -19,6 +20,7 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IConfiguration _configuration;
     private readonly IWebHostEnvironment _environment;
+    private readonly IDataProtectionProvider _dataProtection;
     private readonly ILogger<DynamicAuthSchemeManager> _logger;
     private readonly SemaphoreSlim _lock = new(1, 1);
     private readonly object _registeredSchemesSync = new();
@@ -34,6 +36,7 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
         IHttpClientFactory httpClientFactory,
         IConfiguration configuration,
         IWebHostEnvironment environment,
+        IDataProtectionProvider dataProtection,
         ILogger<DynamicAuthSchemeManager> logger)
     {
         _schemeProvider = schemeProvider;
@@ -41,6 +44,7 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
         _httpClientFactory = httpClientFactory;
         _configuration = configuration;
         _environment = environment;
+        _dataProtection = dataProtection;
         _logger = logger;
     }
 
@@ -260,6 +264,8 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
         string? metadataAddress)
     {
         var options = CreateKeycloakOptions(authority, clientId, clientSecret, metadataAddress);
+        new OpenIdConnectPostConfigureOptions(_dataProtection)
+            .PostConfigure(AuthSchemeNames.Keycloak, options);
         _oidcOptionsCache.TryAdd(AuthSchemeNames.Keycloak, options);
 
         var scheme = new AuthenticationScheme(
@@ -273,13 +279,17 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
             _registeredSchemes.Add(AuthSchemeNames.Keycloak);
         }
 
-        _logger.LogInformation("Registered Keycloak OIDC scheme (authority: {Authority})", authority);
+        _logger.LogInformation(
+            "Registered Keycloak OIDC scheme (authority: {Authority}, clientId: {ClientId}, secretLength: {SecretLen})",
+            authority, clientId, clientSecret?.Length ?? 0);
     }
 
     private void UpdateKeycloakSchemeOptions(string authority, string clientId, string? clientSecret)
     {
         _oidcOptionsCache.TryRemove(AuthSchemeNames.Keycloak);
         var options = CreateKeycloakOptions(authority, clientId, clientSecret, metadataAddress: null);
+        new OpenIdConnectPostConfigureOptions(_dataProtection)
+            .PostConfigure(AuthSchemeNames.Keycloak, options);
         _oidcOptionsCache.TryAdd(AuthSchemeNames.Keycloak, options);
 
         _logger.LogInformation("Updated Keycloak OIDC scheme options (authority: {Authority})", authority);
@@ -291,11 +301,17 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
         string? clientSecret,
         string? metadataAddress)
     {
+        var trimmedSecret = clientSecret?.Trim();
+
+        var cookieSecure = _environment.IsDevelopment()
+            ? CookieSecurePolicy.SameAsRequest
+            : CookieSecurePolicy.Always;
+
         var options = new OpenIdConnectOptions
         {
             Authority = authority,
             ClientId = clientId,
-            ClientSecret = clientSecret ?? string.Empty,
+            ClientSecret = trimmedSecret ?? string.Empty,
             UsePkce = true,
             SaveTokens = true,
             GetClaimsFromUserInfoEndpoint = true,
@@ -304,10 +320,27 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
             SignedOutCallbackPath = "/signout-callback-oidc",
             SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme,
             ResponseType = OpenIdConnectResponseType.Code,
+            // Use query response mode so the callback is a GET redirect instead of a
+            // cross-site POST (form_post). Lax cookies are sent on top-level GET navigations
+            // but NOT on cross-site POSTs, which causes correlation failures with form_post.
+            // PKCE protects the authorization code in the query string.
+            ResponseMode = OpenIdConnectResponseMode.Query,
+            PushedAuthorizationBehavior = PushedAuthorizationBehavior.Disable,
+            CorrelationCookie =
+            {
+                SameSite = SameSiteMode.Lax,
+                SecurePolicy = cookieSecure
+            },
+            NonceCookie =
+            {
+                SameSite = SameSiteMode.Lax,
+                SecurePolicy = cookieSecure
+            },
             TokenValidationParameters = new TokenValidationParameters
             {
                 NameClaimType = "preferred_username"
-            }
+            },
+            Events = CreateRemoteFailureEvents()
         };
 
         if (!string.IsNullOrEmpty(metadataAddress))
@@ -327,6 +360,8 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
     private void RegisterGoogleScheme(string clientId, string? clientSecret)
     {
         var options = CreateGoogleOptions(clientId, clientSecret);
+        new OpenIdConnectPostConfigureOptions(_dataProtection)
+            .PostConfigure(AuthSchemeNames.Google, options);
         _oidcOptionsCache.TryAdd(AuthSchemeNames.Google, options);
 
         var scheme = new AuthenticationScheme(
@@ -347,6 +382,8 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
     {
         _oidcOptionsCache.TryRemove(AuthSchemeNames.Google);
         var options = CreateGoogleOptions(clientId, clientSecret);
+        new OpenIdConnectPostConfigureOptions(_dataProtection)
+            .PostConfigure(AuthSchemeNames.Google, options);
         _oidcOptionsCache.TryAdd(AuthSchemeNames.Google, options);
 
         _logger.LogInformation("Updated Google OIDC scheme options");
@@ -354,11 +391,16 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
 
     private OpenIdConnectOptions CreateGoogleOptions(string clientId, string? clientSecret)
     {
+        var trimmedSecret = clientSecret?.Trim();
+        var cookieSecure = _environment.IsDevelopment()
+            ? CookieSecurePolicy.SameAsRequest
+            : CookieSecurePolicy.Always;
+
         return new OpenIdConnectOptions
         {
             Authority = "https://accounts.google.com",
             ClientId = clientId,
-            ClientSecret = clientSecret ?? string.Empty,
+            ClientSecret = trimmedSecret ?? string.Empty,
             UsePkce = true,
             SaveTokens = true,
             GetClaimsFromUserInfoEndpoint = true,
@@ -366,11 +408,24 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
             CallbackPath = "/signin-google",
             SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme,
             ResponseType = OpenIdConnectResponseType.Code,
+            ResponseMode = OpenIdConnectResponseMode.Query,
+            PushedAuthorizationBehavior = PushedAuthorizationBehavior.Disable,
+            CorrelationCookie =
+            {
+                SameSite = SameSiteMode.Lax,
+                SecurePolicy = cookieSecure
+            },
+            NonceCookie =
+            {
+                SameSite = SameSiteMode.Lax,
+                SecurePolicy = cookieSecure
+            },
             TokenValidationParameters = new TokenValidationParameters
             {
                 NameClaimType = "name"
             },
-            Scope = { "openid", "profile", "email" }
+            Scope = { "openid", "profile", "email" },
+            Events = CreateRemoteFailureEvents()
         };
     }
 
@@ -410,6 +465,49 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
             _registeredSchemes.Remove(schemeName);
         }
         _logger.LogInformation("Removed auth scheme: {SchemeName}", schemeName);
+    }
+
+    /// <summary>
+    /// Creates OIDC events that handle remote authentication failures gracefully
+    /// by redirecting to the login page instead of showing a raw exception.
+    /// </summary>
+    private OpenIdConnectEvents CreateRemoteFailureEvents()
+    {
+        return new OpenIdConnectEvents
+        {
+            OnRemoteFailure = context =>
+            {
+                var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("AuthEndpoints");
+
+                var provider = context.Scheme.Name.ToLowerInvariant();
+                var returnUrl = context.Properties?.RedirectUri ?? "/";
+
+                // Log credentials diagnostics for token exchange failures
+                var oidcOptions = context.HttpContext.RequestServices
+                    .GetRequiredService<IOptionsMonitor<OpenIdConnectOptions>>()
+                    .Get(context.Scheme.Name);
+
+                var innerMsg = context.Failure?.InnerException?.Message;
+                logger.LogError(
+                    context.Failure,
+                    "Remote authentication failure for {Provider}: {Error} " +
+                    "(innerError={InnerError}, exceptionType={ExType}, " +
+                    "clientId={ClientId}, secretLength={SecretLen}, authority={Authority})",
+                    provider, context.Failure?.Message,
+                    innerMsg,
+                    context.Failure?.GetType().Name,
+                    oidcOptions.ClientId,
+                    oidcOptions.ClientSecret?.Length ?? 0,
+                    oidcOptions.Authority);
+
+                var redirectUrl = $"/login?returnUrl={Uri.EscapeDataString(returnUrl)}" +
+                                  $"&challengeError=1&provider={Uri.EscapeDataString(provider)}";
+                context.Response.Redirect(redirectUrl);
+                context.HandleResponse();
+                return Task.CompletedTask;
+            }
+        };
     }
 
     public void Dispose()
