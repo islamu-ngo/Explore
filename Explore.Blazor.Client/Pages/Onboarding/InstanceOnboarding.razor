@@ -52,41 +52,83 @@
                         ShowResetButton="false"
                         OnPreviewInteraction="OnPreviewStepInteraction">
                 <ChildContent>
-                    <MudStep Title="Deployment">
+                    <MudStep Title="Tenant Mode">
                     <MudStack Spacing="3">
-                        <MudText Typo="Typo.h6">Platform Governance</MudText>
-                        <MudText Typo="Typo.caption" Class="mb-1">Fields marked "(Required)" must be provided before completing onboarding.</MudText>
-
-                        <MudSelect T="string"
-                                   Label="Deployment Mode (Required)"
-                                   Value="_model.DeploymentMode"
-                                   ValueChanged="OnDeploymentModeChanged"
-                                   Variant="Variant.Outlined"
-                                   Required="true"
-                                   RequiredError="Deployment mode is required.">
-                            <MudSelectItem Value="@("SingleTenant")">Single Tenant</MudSelectItem>
-                            <MudSelectItem Value="@("MultiTenant")">Multi Tenant</MudSelectItem>
-                        </MudSelect>
-                        <MudText Typo="Typo.caption">
-                            Single Tenant merges instance and tenant administration. Multi Tenant enables tenant-level onboarding and separation.
+                        <MudText Typo="Typo.h6">Choose Your Tenant Mode</MudText>
+                        <MudText Typo="Typo.body2">
+                            This determines how your instance is organized. Most self-hosters should choose Single Tenant.
                         </MudText>
 
-                        @if (IsMultiTenantMode)
-                        {
-                            <MudSwitch T="bool" @bind-Value="_model.AllowTenantSelfServiceRegistration" Color="Color.Primary">
-                                Allow tenant self-service registration
-                            </MudSwitch>
-                        }
-                        <MudSwitch T="bool"
-                                   @bind-Value="_model.AllowTenantWhiteLabeling"
-                                   Disabled="@(!IsMultiTenantMode)"
-                                   Color="Color.Primary">
-                            Allow tenant white-label branding
-                        </MudSwitch>
-                        @if (!IsMultiTenantMode)
-                        {
-                            <MudText Typo="Typo.caption">Tenant white-labeling is only available in multi-tenant mode.</MudText>
-                        }
+                        <MudGrid Spacing="3">
+                            <MudItem xs="12" sm="6">
+                                <MudPaper Class="@GetTenantModeCardClass("SingleTenant")" Elevation="@(IsSingleTenantMode ? 4 : 1)" Style="cursor:pointer; height:100%"
+                                          @onclick="@(() => OnDeploymentModeChanged("SingleTenant"))">
+                                    <MudStack Spacing="1" Class="pa-4">
+                                        <MudStack Direction="Direction.Row" AlignItems="AlignItems.Center" Spacing="2">
+                                            <MudIcon Icon="@Icons.Material.Filled.Person" Color="@(IsSingleTenantMode ? Color.Primary : Color.Default)" Size="Size.Large" />
+                                            <MudText Typo="Typo.h6">Single Tenant</MudText>
+                                        </MudStack>
+                                        <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Outlined">Recommended</MudChip>
+                                        <MudText Typo="Typo.body2">
+                                            One tenant, one admin panel. Instance and tenant administration are merged.
+                                            Everything is allowed by default — no governance overhead.
+                                        </MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            Best for: personal instances, small communities, single organizations.
+                                        </MudText>
+                                    </MudStack>
+                                </MudPaper>
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudPaper Class="@GetTenantModeCardClass("MultiTenant")" Elevation="@(IsMultiTenantMode ? 4 : 1)" Style="cursor:pointer; height:100%"
+                                          @onclick="@(() => OnDeploymentModeChanged("MultiTenant"))">
+                                    <MudStack Spacing="1" Class="pa-4">
+                                        <MudStack Direction="Direction.Row" AlignItems="AlignItems.Center" Spacing="2">
+                                            <MudIcon Icon="@Icons.Material.Filled.Business" Color="@(IsMultiTenantMode ? Color.Primary : Color.Default)" Size="Size.Large" />
+                                            <MudText Typo="Typo.h6">Multi Tenant</MudText>
+                                        </MudStack>
+                                        <MudChip T="string" Color="Color.Info" Size="Size.Small" Variant="Variant.Outlined">Advanced</MudChip>
+                                        <MudText Typo="Typo.body2">
+                                            Multiple independent tenants, each with their own branding, policies, and admin.
+                                            Instance admin governs tenant-level overrides and onboarding.
+                                        </MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            Best for: SaaS platforms, hosting providers, multi-organization deployments.
+                                        </MudText>
+                                    </MudStack>
+                                </MudPaper>
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudExpansionPanels Elevation="0">
+                            <MudExpansionPanel Text="Help me choose — what's the difference?">
+                                <MudStack Spacing="2">
+                                    <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text">
+                                        <strong>Single Tenant</strong> creates one tenant automatically with all features unlocked.
+                                        You manage everything from one admin panel. There is no concept of tenant-level governance
+                                        or overrides — you are both the instance admin and the tenant admin. You can transition
+                                        to multi-tenant later from instance settings if your needs change.
+                                    </MudAlert>
+                                    <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text">
+                                        <strong>Multi Tenant</strong> separates instance administration from tenant administration.
+                                        You control which features tenants can override (branding, home page, policies), whether
+                                        tenants can self-register, and domain governance (subdomains, custom domains). Each tenant
+                                        gets its own onboarding flow and admin panel. Choose this if you're hosting for multiple
+                                        communities or organizations.
+                                    </MudAlert>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        Not sure? Start with Single Tenant. You can always transition to Multi Tenant later
+                                        without losing data — you'll just need to configure tenant governance settings at that point.
+                                    </MudText>
+                                </MudStack>
+                            </MudExpansionPanel>
+                        </MudExpansionPanels>
+                    </MudStack>
+                    </MudStep>
+
+                    <MudStep Title="Instance Settings">
+                    <MudStack Spacing="3">
+                        <MudText Typo="Typo.caption" Class="mb-1">Fields marked "(Required)" must be provided before completing onboarding.</MudText>
 
                         <MudSelect T="string"
                                    Label="Default Public Home Page (Required)"
@@ -98,30 +140,37 @@
                             <MudSelectItem Value="@("LandingPage")">Landing Page</MudSelectItem>
                         </MudSelect>
 
-                        <MudSwitch T="bool" @bind-Value="_model.LockTenantHomePagePreference" Color="Color.Primary">
-                            Lock tenant home page preference
-                        </MudSwitch>
-                    </MudStack>
-                    </MudStep>
+                        @if (IsMultiTenantMode)
+                        {
+                            <MudDivider />
+                            <MudText Typo="Typo.h6">Tenant Governance</MudText>
+                            <MudSwitch T="bool" @bind-Value="_model.AllowTenantSelfServiceRegistration" Color="Color.Primary">
+                                Allow tenant self-service registration
+                            </MudSwitch>
+                            <MudSwitch T="bool" @bind-Value="_model.AllowTenantWhiteLabeling" Color="Color.Primary">
+                                Allow tenant white-label branding
+                            </MudSwitch>
+                            <MudSwitch T="bool" @bind-Value="_model.LockTenantHomePagePreference" Color="Color.Primary">
+                                Lock tenant home page preference
+                            </MudSwitch>
 
-                    <MudStep Title="Instance Settings">
-                    <MudStack Spacing="3">
-                        <MudDivider />
-                        <MudText Typo="Typo.h6">Domain Governance</MudText>
-                        <MudTextField Label="Instance Base Domain (Optional)"
-                                      Variant="Variant.Outlined"
-                                      @bind-Value="_model.InstanceBaseDomain"
-                                      Placeholder="example.com"
-                                      HelperText="Used for tenant subdomains (e.g., tenant.example.com)." />
-                        <MudSwitch T="bool" @bind-Value="_model.AllowTenantCustomDomains" Color="Color.Primary">
-                            Allow tenant custom domains
-                        </MudSwitch>
-                        <MudSwitch T="bool" @bind-Value="_model.LockTenantSubdomain" Color="Color.Primary">
-                            Lock tenant subdomain changes
-                        </MudSwitch>
-                        <MudSwitch T="bool" @bind-Value="_model.LockTenantCustomDomain" Color="Color.Primary">
-                            Lock tenant custom domain changes
-                        </MudSwitch>
+                            <MudDivider />
+                            <MudText Typo="Typo.h6">Domain Governance</MudText>
+                            <MudTextField Label="Instance Base Domain (Optional)"
+                                          Variant="Variant.Outlined"
+                                          @bind-Value="_model.InstanceBaseDomain"
+                                          Placeholder="example.com"
+                                          HelperText="Used for tenant subdomains (e.g., tenant.example.com)." />
+                            <MudSwitch T="bool" @bind-Value="_model.AllowTenantCustomDomains" Color="Color.Primary">
+                                Allow tenant custom domains
+                            </MudSwitch>
+                            <MudSwitch T="bool" @bind-Value="_model.LockTenantSubdomain" Color="Color.Primary">
+                                Lock tenant subdomain changes
+                            </MudSwitch>
+                            <MudSwitch T="bool" @bind-Value="_model.LockTenantCustomDomain" Color="Color.Primary">
+                                Lock tenant custom domain changes
+                            </MudSwitch>
+                        }
 
                         <MudDivider />
                         <MudText Typo="Typo.h6">Policy Defaults</MudText>
@@ -157,15 +206,21 @@
                         <MudSwitch T="bool" @bind-Value="_model.RequireOrganizationVerification" Color="Color.Primary">
                             Require organization verification
                         </MudSwitch>
-                        <MudSwitch T="bool" @bind-Value="_model.AllowTenantToOmitVerification" Color="Color.Primary">
-                            Allow tenant admins to omit organization verification
-                        </MudSwitch>
+                        @if (IsMultiTenantMode)
+                        {
+                            <MudSwitch T="bool" @bind-Value="_model.AllowTenantToOmitVerification" Color="Color.Primary">
+                                Allow tenant admins to omit organization verification
+                            </MudSwitch>
+                        }
                         <MudSwitch T="bool" @bind-Value="_model.EventCardClickOpensDetailPage" Color="Color.Primary">
                             Event card click opens detail page (instead of sidebar)
                         </MudSwitch>
-                        <MudSwitch T="bool" @bind-Value="_model.LockTenantEventCardClickBehavior" Color="Color.Primary">
-                            Lock tenant event card click behavior
-                        </MudSwitch>
+                        @if (IsMultiTenantMode)
+                        {
+                            <MudSwitch T="bool" @bind-Value="_model.LockTenantEventCardClickBehavior" Color="Color.Primary">
+                                Lock tenant event card click behavior
+                            </MudSwitch>
+                        }
 
                         <MudDivider />
                         <MudText Typo="Typo.h6">Default Branding</MudText>
@@ -184,18 +239,21 @@
                                       Variant="Variant.Outlined"
                                       @bind-Value="_model.DefaultBrandCustomCssUrl"
                                       HelperText="Optional advanced override for platform-level custom stylesheet." />
-                        <MudSwitch T="bool" @bind-Value="_model.LockTenantBrandDisplayName" Color="Color.Primary">
-                            Lock tenant brand display name
-                        </MudSwitch>
-                        <MudSwitch T="bool" @bind-Value="_model.LockTenantBrandLogoUrl" Color="Color.Primary">
-                            Lock tenant brand logo
-                        </MudSwitch>
-                        <MudSwitch T="bool" @bind-Value="_model.LockTenantBrandFaviconUrl" Color="Color.Primary">
-                            Lock tenant brand favicon
-                        </MudSwitch>
-                        <MudSwitch T="bool" @bind-Value="_model.LockTenantBrandCustomCssUrl" Color="Color.Primary">
-                            Lock tenant custom CSS URL
-                        </MudSwitch>
+                        @if (IsMultiTenantMode)
+                        {
+                            <MudSwitch T="bool" @bind-Value="_model.LockTenantBrandDisplayName" Color="Color.Primary">
+                                Lock tenant brand display name
+                            </MudSwitch>
+                            <MudSwitch T="bool" @bind-Value="_model.LockTenantBrandLogoUrl" Color="Color.Primary">
+                                Lock tenant brand logo
+                            </MudSwitch>
+                            <MudSwitch T="bool" @bind-Value="_model.LockTenantBrandFaviconUrl" Color="Color.Primary">
+                                Lock tenant brand favicon
+                            </MudSwitch>
+                            <MudSwitch T="bool" @bind-Value="_model.LockTenantBrandCustomCssUrl" Color="Color.Primary">
+                                Lock tenant custom CSS URL
+                            </MudSwitch>
+                        }
 
                         <MudDivider />
                         <MudText Typo="Typo.h6">Federation</MudText>
@@ -215,9 +273,12 @@
                         {
                             <MudText Typo="Typo.caption" Color="Color.Warning">ATProto Login must be enabled in the authentication provider configuration to use decentralization.</MudText>
                         }
-                        <MudSwitch T="bool" @bind-Value="_model.LockDecentralizationEnabled" Color="Color.Primary">
-                            Lock tenant decentralization override
-                        </MudSwitch>
+                        @if (IsMultiTenantMode)
+                        {
+                            <MudSwitch T="bool" @bind-Value="_model.LockDecentralizationEnabled" Color="Color.Primary">
+                                Lock tenant decentralization override
+                            </MudSwitch>
+                        }
                     </MudStack>
                     </MudStep>
 
@@ -288,13 +349,18 @@
                     <MudStep Title="Review & Complete">
                     <MudStack Spacing="2">
                         <MudText Typo="Typo.h6">Review</MudText>
-                        <MudText Typo="Typo.body2"><strong>Deployment Mode:</strong> @(_model.DeploymentMode)</MudText>
+                        <MudText Typo="Typo.body2"><strong>Tenant Mode:</strong> @(IsSingleTenantMode ? "Single Tenant" : "Multi Tenant")</MudText>
                         <MudText Typo="Typo.body2"><strong>Default Public Home Page:</strong> @(_model.DefaultPublicHomePage)</MudText>
                         @if (IsSingleTenantMode)
                         {
                             <MudText Typo="Typo.body2"><strong>First Host Choice:</strong> @GetFirstHostChoiceLabel()</MudText>
-                            <MudText Typo="Typo.body2"><strong>Event Card Click Opens Detail Page:</strong> @(_model.EventCardClickOpensDetailPage ? "Yes" : "No")</MudText>
-                            <MudText Typo="Typo.body2"><strong>ATProto Decentralization:</strong> @(_model.DecentralizationEnabled ? "Enabled" : "Disabled")</MudText>
+                        }
+                        <MudText Typo="Typo.body2"><strong>Event Card Click Opens Detail Page:</strong> @(_model.EventCardClickOpensDetailPage ? "Yes" : "No")</MudText>
+                        <MudText Typo="Typo.body2"><strong>ATProto Decentralization:</strong> @(_model.DecentralizationEnabled ? "Enabled" : "Disabled")</MudText>
+                        @if (IsMultiTenantMode)
+                        {
+                            <MudText Typo="Typo.body2"><strong>Tenant Self-Registration:</strong> @(_model.AllowTenantSelfServiceRegistration ? "Allowed" : "Disabled")</MudText>
+                            <MudText Typo="Typo.body2"><strong>Tenant White-Labeling:</strong> @(_model.AllowTenantWhiteLabeling ? "Allowed" : "Disabled")</MudText>
                         }
 
                         <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
@@ -382,6 +448,7 @@
     private bool _showDecentralizationConfirmDialog;
     private bool IsSingleTenantMode => _model.DeploymentMode.Equals("SingleTenant", StringComparison.OrdinalIgnoreCase);
     private bool IsMultiTenantMode => _model.DeploymentMode.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
+    // Steps: 0=TenantMode, 1=InstanceSettings, 2=FirstHost(single)/Review(multi), 3=Review(single)
     private int LastStepIndex => IsSingleTenantMode ? 3 : 2;
     private bool IsFirstHostSelectionMissing => IsSingleTenantMode && _firstHostSetupChoice == FirstHostSetupChoice.None;
     private bool IsCompleteDisabled => IsFirstHostSelectionMissing;
@@ -406,10 +473,9 @@
         }
 
         _model = await InstanceOnboardingService.GetSettingsAsync();
-        if (!IsMultiTenantMode)
+        if (IsSingleTenantMode)
         {
-            _model.AllowTenantSelfServiceRegistration = false;
-            _model.AllowTenantWhiteLabeling = false;
+            ApplySingleTenantDefaults();
         }
 
         _stepperKey = IsSingleTenantMode ? "single" : "multi";
@@ -472,10 +538,23 @@
         var wasSingleTenantMode = IsSingleTenantMode;
 
         _model.DeploymentMode = string.IsNullOrWhiteSpace(deploymentMode) ? "SingleTenant" : deploymentMode.Trim();
-        if (!IsMultiTenantMode)
+
+        if (IsSingleTenantMode)
         {
+            // Single-tenant: everything allowed, nothing locked
             _model.AllowTenantSelfServiceRegistration = false;
             _model.AllowTenantWhiteLabeling = false;
+            _model.AllowTenantCustomDomains = true;
+            _model.AllowTenantToOmitVerification = false;
+            _model.LockTenantHomePagePreference = false;
+            _model.LockTenantSubdomain = false;
+            _model.LockTenantCustomDomain = false;
+            _model.LockTenantBrandDisplayName = false;
+            _model.LockTenantBrandLogoUrl = false;
+            _model.LockTenantBrandFaviconUrl = false;
+            _model.LockTenantBrandCustomCssUrl = false;
+            _model.LockTenantEventCardClickBehavior = false;
+            _model.LockDecentralizationEnabled = false;
         }
 
         if (wasSingleTenantMode != IsSingleTenantMode)
@@ -558,10 +637,9 @@
         _completeButtonLabel = "Saving...";
         _errorMessage = null;
 
-        if (!IsMultiTenantMode)
+        if (IsSingleTenantMode)
         {
-            _model.AllowTenantSelfServiceRegistration = false;
-            _model.AllowTenantWhiteLabeling = false;
+            ApplySingleTenantDefaults();
         }
 
         var response = await InstanceOnboardingService.CompleteAsync(_model);
@@ -681,5 +759,28 @@
     {
         _model.DecentralizationEnabled = false;
         _showDecentralizationConfirmDialog = false;
+    }
+
+    private void ApplySingleTenantDefaults()
+    {
+        _model.AllowTenantSelfServiceRegistration = false;
+        _model.AllowTenantWhiteLabeling = false;
+        _model.AllowTenantCustomDomains = true;
+        _model.AllowTenantToOmitVerification = false;
+        _model.LockTenantHomePagePreference = false;
+        _model.LockTenantSubdomain = false;
+        _model.LockTenantCustomDomain = false;
+        _model.LockTenantBrandDisplayName = false;
+        _model.LockTenantBrandLogoUrl = false;
+        _model.LockTenantBrandFaviconUrl = false;
+        _model.LockTenantBrandCustomCssUrl = false;
+        _model.LockTenantEventCardClickBehavior = false;
+        _model.LockDecentralizationEnabled = false;
+    }
+
+    private string GetTenantModeCardClass(string mode)
+    {
+        var isSelected = _model.DeploymentMode.Equals(mode, StringComparison.OrdinalIgnoreCase);
+        return isSelected ? "border-solid border-2 mud-border-primary" : "";
     }
 }

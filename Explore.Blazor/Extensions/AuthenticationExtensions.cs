@@ -4,6 +4,9 @@
 using Explore.Blazor.Authentication;
 using Explore.Blazor.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Serilog;
 
 namespace Explore.Blazor.Extensions;
@@ -48,6 +51,16 @@ public static class AuthenticationExtensions
         // Register the ATProto auth handler options so the scheme can be added dynamically.
         // The handler itself is registered by DynamicAuthSchemeManager when ATProto is enabled.
         services.AddOptions<AtprotoAuthenticationOptions>(Explore.Blazor.Constants.AuthSchemeNames.Atproto);
+
+        // Register OpenIdConnectHandler and its PostConfigure in DI so that dynamically
+        // added OIDC schemes (Keycloak, Google) can be resolved at runtime.
+        // Normally AddOpenIdConnect() does this, but we register schemes dynamically via
+        // IAuthenticationSchemeProvider + IOptionsMonitorCache, so we need the handler
+        // and PostConfigure available without calling AddOpenIdConnect().
+        services.AddTransient<OpenIdConnectHandler>();
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IPostConfigureOptions<OpenIdConnectOptions>,
+                OpenIdConnectPostConfigureOptions>());
 
         // DynamicAuthSchemeManager is a singleton — it holds the set of registered schemes
         // and uses IAuthenticationSchemeProvider + IOptionsMonitorCache for runtime registration.

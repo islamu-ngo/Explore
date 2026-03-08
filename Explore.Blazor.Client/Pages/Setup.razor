@@ -1,5 +1,6 @@
 @* ABOUTME: Setup secret entry page for first-run bootstrap access control. *@
 @* ABOUTME: Validates secret, stores it in sessionStorage, then routes to onboarding/login flow. *@
+@* ABOUTME: Split-screen login-style layout with branding panel and form panel. *@
 
 @page "/setup"
 @rendermode InteractiveServer
@@ -11,121 +12,182 @@
 @inject IHttpClientFactory HttpClientFactory
 @using System.Net.Http.Json
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="py-8">
-    <MudPaper Class="pa-6">
-        <MudText Typo="Typo.h4" Class="mb-2">Setup Access</MudText>
+<div class="setup-page">
+    @* Left branding panel *@
+    <div class="setup-left-panel">
+        <div class="setup-left-content">
+            <MudText Typo="Typo.h3" Class="setup-title mb-2">Welcome to</MudText>
+            <MudText Typo="Typo.h2" Class="setup-title-brand mb-6">ISLAMU Event</MudText>
+            <MudText Typo="Typo.h6" Class="setup-subtitle mb-6">Event Platform & Management System</MudText>
 
-        @if (_isLoading)
-        {
-            <MudStack Spacing="2">
-                <MudSkeleton Width="80%" Height="20px" Class="mb-1" />
-                <MudSkeleton Width="100%" Height="56px" Class="mb-2" />
-                <MudSkeleton Width="50%" Height="16px" Class="mb-3" />
-                <MudStack Direction="Direction.Row" Spacing="2">
-                    <MudSkeleton Width="100px" Height="40px" />
-                    <MudSkeleton Width="120px" Height="40px" />
+            <MudDivider Class="setup-divider mb-6" />
+
+            <MudStack Spacing="3">
+                <MudStack Direction="Direction.Row" Spacing="2" AlignItems="AlignItems.Start">
+                    <MudIcon Icon="@Icons.Material.Filled.Rocket" Class="setup-feature-icon" />
+                    <MudText Class="setup-feature-text">
+                        Self-hostable, decentralized, multi-tenant event platform for any community or industry
+                    </MudText>
+                </MudStack>
+                <MudStack Direction="Direction.Row" Spacing="2" AlignItems="AlignItems.Start">
+                    <MudIcon Icon="@Icons.Material.Filled.Palette" Class="setup-feature-icon" />
+                    <MudText Class="setup-feature-text">
+                        Fully white-label — rebrand and customize for your specific use case
+                    </MudText>
+                </MudStack>
+                <MudStack Direction="Direction.Row" Spacing="2" AlignItems="AlignItems.Start">
+                    <MudIcon Icon="@Icons.Material.Filled.Security" Class="setup-feature-icon" />
+                    <MudText Class="setup-feature-text">
+                        Security-first with BFF pattern, verified organizations, and enterprise architecture
+                    </MudText>
+                </MudStack>
+                <MudStack Direction="Direction.Row" Spacing="2" AlignItems="AlignItems.Start">
+                    <MudIcon Icon="@Icons.Material.Filled.Public" Class="setup-feature-icon" />
+                    <MudText Class="setup-feature-text">
+                        Federation-ready with ATProto data models and open-source AGPL-3.0 license
+                    </MudText>
                 </MudStack>
             </MudStack>
-        }
-        else if (_setupTimedOut)
-        {
-            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
-                Setup window expired. Please restart the application.
-            </MudAlert>
-            @if (_instanceStartedAt.HasValue)
-            {
-                <MudText Typo="Typo.caption" Class="mt-2">
-                    Instance started at: @_instanceStartedAt.Value.ToString("yyyy-MM-dd HH:mm:ss") UTC
-                </MudText>
-            }
-        }
-        else if (_isAuthenticated && _hasStoredSecret)
-        {
-            <MudAlert Severity="Severity.Success" Class="mb-4">
-                Setup secret is validated and your session is authenticated.
-            </MudAlert>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ContinueToOnboardingAsync">
-                Continue to Instance Onboarding
-            </MudButton>
-            <MudButton Variant="Variant.Text" Color="Color.Default" Class="ml-2" OnClick="ClearStoredSecretAsync">
-                Clear Secret
-            </MudButton>
-        }
-        else
-        {
-            @if (_instanceStartedAt.HasValue)
-            {
-                <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3" NoIcon="true">
-                    <MudStack Direction="Direction.Row" Spacing="1" AlignItems="AlignItems.Center">
-                        <MudIcon Icon="@Icons.Material.Filled.Timer" Size="Size.Small" />
-                        <MudText Typo="Typo.body2">
-                            Setup window: @_remainingTime remaining
-                        </MudText>
-                    </MudStack>
-                </MudAlert>
-            }
+        </div>
+    </div>
 
-            <MudText Typo="Typo.body1" Class="mb-3">Enter setup secret</MudText>
-
-            @if (!string.IsNullOrWhiteSpace(_errorMessage))
-            {
-                <MudAlert Severity="Severity.Error" Class="mb-3">@_errorMessage</MudAlert>
-            }
-
-            @if (_validationSucceeded)
-            {
-                <MudAlert Severity="Severity.Success" Class="mb-3">
-                    Secret validated successfully.
-                </MudAlert>
-            }
-
-            <MudTextField T="string"
-                          Label="Setup Secret"
-                          InputType="InputType.Password"
-                          Variant="Variant.Outlined"
-                          Immediate="true"
-                          @bind-Value="_secret"
-                          Disabled="_isValidating" />
-
-            <MudText Typo="Typo.caption" Class="mt-1 mb-3 d-block">
-                Check the <code>SETUP_SECRET</code> environment variable, or check the API server logs.
+    @* Right form panel *@
+    <div class="setup-right-panel">
+        <div class="setup-form-container">
+            <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Class="setup-form-icon mb-4" />
+            <MudText Typo="Typo.h4" Class="mb-1">Setup Access</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">
+                Authenticate to begin instance configuration
             </MudText>
 
-            <MudStack Direction="Direction.Row" Spacing="2">
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           Disabled="_isValidating || string.IsNullOrWhiteSpace(_secret)"
-                           OnClick="ValidateAsync">
-                    Validate
-                </MudButton>
-            </MudStack>
-
-            @if (_validationSucceeded)
+            @if (_isLoading)
             {
-                <MudStack Spacing="2" Class="mt-3">
-                    @if (_isDetectingProviders)
-                    {
-                        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
-                    }
-
-                    @foreach (var provider in _detectedProviders)
-                    {
-                        <MudButton Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   StartIcon="@Icons.Material.Filled.Login"
-                                   OnClick="@(() => ContinueToProviderLogin(provider))">
-                            Continue with @provider.DisplayName
-                        </MudButton>
-                    }
-
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ContinueToAuthConfig">
-                        Configure Authentication
-                    </MudButton>
+                <MudStack Spacing="2" Class="setup-form-width">
+                    <MudSkeleton Width="80%" Height="20px" Class="mb-1" />
+                    <MudSkeleton Width="100%" Height="56px" Class="mb-2" />
+                    <MudSkeleton Width="50%" Height="16px" Class="mb-3" />
+                    <MudStack Direction="Direction.Row" Spacing="2">
+                        <MudSkeleton Width="100px" Height="40px" />
+                        <MudSkeleton Width="120px" Height="40px" />
+                    </MudStack>
                 </MudStack>
             }
-        }
-    </MudPaper>
-</MudContainer>
+            else if (_setupTimedOut)
+            {
+                <div class="setup-form-width">
+                    <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+                        Setup window expired. Please restart the application.
+                    </MudAlert>
+                    @if (_instanceStartedAt.HasValue)
+                    {
+                        <MudText Typo="Typo.caption" Class="mt-2">
+                            Instance started at: @_instanceStartedAt.Value.ToString("yyyy-MM-dd HH:mm:ss") UTC
+                        </MudText>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="setup-form-width">
+                    @if (_instanceStartedAt.HasValue)
+                    {
+                        <MudAlert Severity="Severity.Info" Dense="true" Class="mb-4" NoIcon="true">
+                            <MudStack Direction="Direction.Row" Spacing="1" AlignItems="AlignItems.Center">
+                                <MudIcon Icon="@Icons.Material.Filled.Timer" Size="Size.Small" />
+                                <MudText Typo="Typo.body2">
+                                    Setup window: @_remainingTime remaining
+                                </MudText>
+                            </MudStack>
+                        </MudAlert>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                    {
+                        <MudAlert Severity="Severity.Error" Class="mb-3">@_errorMessage</MudAlert>
+                    }
+
+                    @if (_isAuthenticated && _hasStoredSecret)
+                    {
+                        @* Authenticated + validated: show success + continue to onboarding only *@
+                        <MudAlert Severity="Severity.Success" Class="mb-4">
+                            Setup secret is validated and your session is authenticated.
+                        </MudAlert>
+
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   FullWidth="true"
+                                   Size="Size.Large"
+                                   OnClick="ContinueToOnboardingAsync"
+                                   Class="mb-2">
+                            Continue to Instance Onboarding
+                        </MudButton>
+                        <MudButton Variant="Variant.Text" Color="Color.Default" FullWidth="true" OnClick="ClearStoredSecretAsync">
+                            Clear Secret
+                        </MudButton>
+                    }
+                    else if (_validationSucceeded)
+                    {
+                        @* Validated but not yet authenticated: show success + provider/auth buttons *@
+                        <MudAlert Severity="Severity.Success" Class="mb-3">
+                            Secret validated successfully.
+                        </MudAlert>
+
+                        @if (_isDetectingProviders)
+                        {
+                            <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-3" />
+                        }
+
+                        @foreach (var provider in _detectedProviders)
+                        {
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       FullWidth="true"
+                                       StartIcon="@Icons.Material.Filled.Login"
+                                       OnClick="@(() => ContinueToProviderLogin(provider))"
+                                       Class="mb-2">
+                                Continue with @provider.DisplayName
+                            </MudButton>
+                        }
+
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true" OnClick="ContinueToAuthConfig">
+                            Configure Authentication
+                        </MudButton>
+                    }
+                    else
+                    {
+                        @* Not yet validated: show secret input + validate button *@
+                        <MudTextField T="string"
+                                      Label="Setup Secret"
+                                      InputType="InputType.Password"
+                                      Variant="Variant.Outlined"
+                                      Immediate="true"
+                                      @bind-Value="_secret"
+                                      Disabled="_isValidating"
+                                      Class="mb-1" />
+
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-4 d-block">
+                            Check the <code>SETUP_SECRET</code> environment variable or API server logs.
+                        </MudText>
+
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   FullWidth="true"
+                                   Size="Size.Large"
+                                   Disabled="_isValidating || string.IsNullOrWhiteSpace(_secret)"
+                                   OnClick="ValidateAsync"
+                                   Class="mb-3">
+                            @if (_isValidating)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            Validate Secret
+                        </MudButton>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
 
 @code {
     private bool _isLoading = true;

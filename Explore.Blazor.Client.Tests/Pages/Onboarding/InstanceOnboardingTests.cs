@@ -93,6 +93,9 @@ public class InstanceOnboardingTests : IDisposable
         // Arrange
         var cut = RenderForDeploymentMode("MultiTenant");
 
+        // Act — navigate to Instance Settings step where tenant governance now lives
+        ClickButton(cut, "Next");
+
         // Assert
         cut.WaitForAssertion(() =>
         {
@@ -214,7 +217,7 @@ public class InstanceOnboardingTests : IDisposable
         var cut = _ctx.RenderMudComponent<InstanceOnboarding>();
         cut.WaitForAssertion(() =>
         {
-            if (!cut.Markup.Contains("Platform Governance", StringComparison.OrdinalIgnoreCase))
+            if (!cut.Markup.Contains("Choose Your Tenant Mode", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Onboarding form did not finish loading.");
             }

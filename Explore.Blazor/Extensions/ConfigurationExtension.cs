@@ -64,11 +64,28 @@ public static class ConfigurationExtensions
             ?? config["KEYCLOAK_CLIENT_ID"]
             ?? config["KEYCLOAK_BLAZOR_CLIENT_ID"]
             ?? config["EXPLORE_BLAZOR_SERVER_CLIENT_ID"];
-        var rawClientSecret = config["EXPLORE_BLAZOR_SERVER_CLIENT_SECRET_COOLIFY"]
-            ?? config["EXPLORE_BLAZOR_SERVER_CLIENT_SECRET"]
-            ?? config["KEYCLOAK_BLAZOR_CLIENT_SECRET"]
-            ?? config["KEYCLOAK_CLIENT_SECRET"]
-            ?? config["Keycloak:ClientSecret"];
+
+        // Client secret priority chain — log which key matched for debugging
+        string? rawClientSecret = null;
+        string? secretSourceKey = null;
+        foreach (var key in new[]
+        {
+            "EXPLORE_BLAZOR_SERVER_CLIENT_SECRET_COOLIFY",
+            "EXPLORE_BLAZOR_SERVER_CLIENT_SECRET",
+            "KEYCLOAK_BLAZOR_CLIENT_SECRET",
+            "KEYCLOAK_CLIENT_SECRET",
+            "Keycloak:ClientSecret"
+        })
+        {
+            var val = config[key];
+            if (!string.IsNullOrEmpty(val))
+            {
+                rawClientSecret = val;
+                secretSourceKey = key;
+                break;
+            }
+        }
+
         var rawGoogleClientId = config["Google:ClientId"]
             ?? config["GOOGLE_CLIENT_ID"]
             ?? config["GOOGLE_SSO_CLIENT_ID"];
@@ -116,6 +133,8 @@ public static class ConfigurationExtensions
         Console.WriteLine($"  Authority: {keycloakAuthority ?? "(not mapped)"}");
         Console.WriteLine($"  ClientId: {keycloakClientId ?? "(not mapped)"}");
         Console.WriteLine($"  HasClientSecret: {!string.IsNullOrEmpty(rawClientSecret)}");
+        Console.WriteLine($"  SecretSourceKey: {secretSourceKey ?? "(none)"}");
+        Console.WriteLine($"  SecretLength: {rawClientSecret?.Trim().Length ?? 0}");
         Console.WriteLine($"  HasGoogleClientId: {!string.IsNullOrEmpty(rawGoogleClientId)}");
         Console.WriteLine($"  HasGoogleClientSecret: {!string.IsNullOrEmpty(rawGoogleClientSecret)}");
         Console.WriteLine($"  API BaseUrl: {rawApiUrl ?? "(not set, will use default)"}");

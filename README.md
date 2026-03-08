@@ -151,7 +151,9 @@ Visit **[event.openislamu.org](https://event.openislamu.org)** to:
 ### 🖥️ Self-Host Your Instance
 
 **Prerequisites:**
+- Git
 - Docker
+- Docker Compose (v2+)
 - .NET 10 SDK (solution targets `net10.0`; preview SDK pinned in `global.json`)
 
 **Quick Deploy:**

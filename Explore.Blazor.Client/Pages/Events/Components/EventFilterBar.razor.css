@@ -126,14 +126,15 @@
     background-color: var(--mud-palette-surface);
 }
 
-/* ── Responsive: stack on small screens ── */
+/* ── Responsive: compact on small screens ── */
 @media (max-width: 37.5em) {
     .filter-bar__primary-row {
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
     }
 
     .filter-bar__search-field {
-        flex: 1 1 100%;
+        flex: 1 1 0%;
+        min-width: 0;
     }
 
     .filter-bar__filter-item {

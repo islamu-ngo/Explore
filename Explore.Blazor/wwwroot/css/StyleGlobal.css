@@ -462,11 +462,11 @@ ul {
 }
 
 /* When the event-list drawer container is present, remove the
-   content-wrapper's right gutter + bottom padding so the content
-   sits flush against the viewport edge and touches the footer.
-   !important overrides the Blazor-scoped padding-inline rule. */
+   content-wrapper's bottom padding so the content touches the footer.
+   The right detail drawer is position:fixed, so it sits at the
+   viewport edge regardless of container padding — no need to zero
+   padding-right. !important overrides the Blazor-scoped rule. */
 .main-layout__content-wrapper:has(.event-list__drawer-container) {
-    padding-right: 0 !important;
     padding-bottom: 0 !important;
 }
 

@@ -140,6 +140,7 @@ public static class BffEndpointExtensions
             logger.LogError(ex,
                 "[AuthEndpoints] Error during {Provider} login challenge: {Error}",
                 schemeName, ex.InnerException?.Message ?? ex.Message);
+
             ctx.Response.Redirect(BuildLoginRedirectUrl(returnUrl, provider, challengeError: true));
         }
     }
