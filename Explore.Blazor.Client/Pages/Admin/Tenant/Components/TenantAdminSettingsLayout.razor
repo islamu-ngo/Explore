@@ -6,6 +6,7 @@
 @using Explore.Blazor.Client.Services
 
 @inject ITenantOnboardingService TenantOnboardingService
+@inject IInstanceOnboardingService InstanceOnboardingService
 @inject ISnackbar Snackbar
 
 <div class="settings-layout">
@@ -14,6 +15,36 @@
         <div class="settings-header mb-8">
             <MudText Typo="Typo.h4" Style="font-weight: 800;">Tenant Administration</MudText>
             <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">Manage tenant policies, domains, branding, organization approvals, and lookup tables</MudText>
+            @if (_isInstanceAdmin)
+            {
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mt-4">
+                    <MudChip T="string"
+                             Color="@(_isSingleTenantMode ? Color.Warning : Color.Info)"
+                             Variant="Variant.Outlined"
+                             Icon="@Icons.Material.Filled.Apartment">
+                        @(_isSingleTenantMode ? "Single Tenant" : "Multi-Tenant")
+                    </MudChip>
+
+                    @if (_isSingleTenantMode)
+                    {
+                        <MudButton Variant="Variant.Text"
+                                   Color="Color.Warning"
+                                   StartIcon="@Icons.Material.Filled.RocketLaunch"
+                                   OnClick="@(() => SelectSection("advanced"))">
+                            Enable SaaS Mode
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudButton Variant="Variant.Text"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Dns"
+                                   Href="/admin/instance/settings">
+                            Manage Platform
+                        </MudButton>
+                    }
+                </MudStack>
+            }
         </div>
 
         @if (!string.IsNullOrWhiteSpace(_errorMessage))
@@ -66,6 +97,13 @@
                                          Text="Lookup Tables"
                                          Class="@GetNavItemClass("lookups")"
                                          OnClick="@(() => SelectSection("lookups"))" />
+                            @if (_isSingleTenantMode && _isInstanceAdmin)
+                            {
+                                <MudListItem Icon="@Icons.Material.Filled.Engineering"
+                                             Text="Advanced"
+                                             Class="@GetNavItemClass("advanced")"
+                                             OnClick="@(() => SelectSection("advanced"))" />
+                            }
                         </MudList>
                     </MudPaper>
                 </MudItem>
@@ -97,6 +135,25 @@
                         {
                             <TenantLookupTablesSection />
                         }
+                        else if (_currentSection == "advanced" && _isSingleTenantMode && _isInstanceAdmin)
+                        {
+                            <div class="settings-section">
+                                <div class="settings-section-header">
+                                    <MudText Typo="Typo.h5" Style="font-weight: 700;">Advanced Settings</MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">Danger zone and platform-level operations.</MudText>
+                                </div>
+                                <div class="settings-form-section">
+                                    <MudText Typo="Typo.subtitle2">Multi-Tenant Mode</MudText>
+                                    <MudText Typo="Typo.body2" Class="mb-4">
+                                        Your platform is currently running in Single-Tenant Mode. If you intend to host multiple organizations with their own dedicated instances, domains, and policies, you can switch to Multi-Tenant Mode. 
+                                        <strong>This will enable the full Instance Administration dashboard.</strong>
+                                    </MudText>
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Warning" Href="/admin/instance/settings">
+                                        Go to Instance Administration
+                                    </MudButton>
+                                </div>
+                            </div>
+                        }
 
                         <MudDivider Class="my-4" />
 
@@ -121,19 +178,27 @@
     private bool _isLoading = true;
     private bool _isSaving;
     private bool _canEdit;
+    private bool _isSingleTenantMode;
+    private bool _isInstanceAdmin;
     private string? _errorMessage;
     private string _currentSection = "policies";
 
     protected override async Task OnInitializedAsync()
     {
-        var status = await TenantOnboardingService.GetStatusAsync();
-        _canEdit = status?.IsCurrentUserTenantAdministrator == true;
+        var tenantStatus = await TenantOnboardingService.GetStatusAsync();
+        _canEdit = tenantStatus?.IsCurrentUserTenantAdministrator == true;
 
         if (!_canEdit)
         {
             _isLoading = false;
             return;
         }
+
+        var instanceStatus = await InstanceOnboardingService.GetStatusAsync();
+        _isInstanceAdmin = instanceStatus?.IsCurrentUserInstanceAdmin == true;
+        _isSingleTenantMode = instanceStatus == null
+            || string.IsNullOrWhiteSpace(instanceStatus.SelectedDeploymentMode)
+            || string.Equals(instanceStatus.SelectedDeploymentMode, "SingleTenant", StringComparison.OrdinalIgnoreCase);
 
         _model = await TenantOnboardingService.GetSettingsAsync();
         _isLoading = false;

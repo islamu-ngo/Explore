@@ -3,7 +3,8 @@
 
 using System.Collections.Concurrent;
 using System.IdentityModel.Tokens.Jwt;
-using Explore.Blazor.Client.Constants;
+using Explore.Application.Constants;
+using Explore.Application.Contracts.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 
@@ -218,21 +219,24 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
 }
 
 /// <summary>
-/// HTTP message handler that forwards the access token and tenant ID to API requests.
+/// HTTP message handler that forwards the access token and trusted tenant slug to API requests.
 /// Resolves token for the current authenticated user only.
 /// </summary>
 public class AccessTokenForwardingHandler : DelegatingHandler
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ITenantRouteContextAccessor _tenantRouteContextAccessor;
     private readonly ISetupSecretSessionService _setupSecretSessionService;
     private readonly ILogger<AccessTokenForwardingHandler> _logger;
 
     public AccessTokenForwardingHandler(
         IHttpContextAccessor httpContextAccessor,
+        ITenantRouteContextAccessor tenantRouteContextAccessor,
         ISetupSecretSessionService setupSecretSessionService,
         ILogger<AccessTokenForwardingHandler> logger)
     {
         _httpContextAccessor = httpContextAccessor;
+        _tenantRouteContextAccessor = tenantRouteContextAccessor;
         _setupSecretSessionService = setupSecretSessionService;
         _logger = logger;
     }
@@ -314,13 +318,13 @@ public class AccessTokenForwardingHandler : DelegatingHandler
             }
         }
 
-        var incomingTenantHeader = httpContext?.Request.Headers[TenantConstants.TenantIdHeaderName].FirstOrDefault();
-        if (!request.Headers.Contains(TenantConstants.TenantIdHeaderName) &&
-            !string.IsNullOrWhiteSpace(incomingTenantHeader))
+        var tenantSlug = _tenantRouteContextAccessor.TenantSlug;
+        if (!request.Headers.Contains(TenantHeaderNames.TenantSlug) &&
+            !string.IsNullOrWhiteSpace(tenantSlug))
         {
-            request.Headers.Add(TenantConstants.TenantIdHeaderName, incomingTenantHeader);
-            _logger.LogDebug("[AccessTokenForwardingHandler] Forwarded tenant header {Header}: {TenantId} to {Path}",
-                TenantConstants.TenantIdHeaderName, incomingTenantHeader, request.RequestUri?.PathAndQuery);
+            request.Headers.Add(TenantHeaderNames.TenantSlug, tenantSlug);
+            _logger.LogDebug("[AccessTokenForwardingHandler] Forwarded tenant header {Header}: {TenantSlug} to {Path}",
+                TenantHeaderNames.TenantSlug, tenantSlug, request.RequestUri?.PathAndQuery);
         }
 
         var forwardedHost = httpContext?.Request.Headers["X-Forwarded-Host"].FirstOrDefault();

@@ -2,7 +2,8 @@
 // ABOUTME: Handles route/cluster setup and request transforms (token, tenant, setup-secret forwarding).
 
 using System.Net.Http.Headers;
-using Explore.Blazor.Client.Constants;
+using Explore.Application.Constants;
+using Explore.Application.Contracts.Services;
 using Explore.Blazor.Services;
 using Microsoft.AspNetCore.Authentication;
 using Yarp.ReverseProxy.Configuration;
@@ -60,7 +61,7 @@ public static class YarpProxyExtensions
                 context.AddRequestTransform(async transformContext =>
                 {
                     await ForwardBearerTokenAsync(transformContext);
-                    ForwardTenantHeader(transformContext);
+                    ForwardTenantHeaders(transformContext);
                     await ForwardSetupSecretAsync(transformContext);
                 });
             });
@@ -78,15 +79,16 @@ public static class YarpProxyExtensions
         }
     }
 
-    private static void ForwardTenantHeader(RequestTransformContext context)
+    private static void ForwardTenantHeaders(RequestTransformContext context)
     {
-        var incomingTenantId = context.HttpContext.Request.Headers[TenantConstants.TenantIdHeaderName]
-            .FirstOrDefault();
+        context.ProxyRequest.Headers.Remove(TenantHeaderNames.TenantId);
+        context.ProxyRequest.Headers.Remove(TenantHeaderNames.TenantSlug);
 
-        if (!context.ProxyRequest.Headers.Contains(TenantConstants.TenantIdHeaderName) &&
-            !string.IsNullOrWhiteSpace(incomingTenantId))
+        var tenantRouteContextAccessor = context.HttpContext.RequestServices.GetRequiredService<ITenantRouteContextAccessor>();
+        var tenantSlug = tenantRouteContextAccessor.TenantSlug;
+        if (!string.IsNullOrWhiteSpace(tenantSlug))
         {
-            context.ProxyRequest.Headers.Add(TenantConstants.TenantIdHeaderName, incomingTenantId);
+            context.ProxyRequest.Headers.Add(TenantHeaderNames.TenantSlug, tenantSlug);
         }
     }
 

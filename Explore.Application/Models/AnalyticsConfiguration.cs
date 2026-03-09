@@ -1,6 +1,7 @@
 // ABOUTME: Analytics configuration POCO resolved from the cascading settings engine.
 // ABOUTME: Supports Posthog, Plausible, Rybbit, RudderStack, or None — provider-agnostic configuration.
 
+using Explore.Application.Analytics;
 using Explore.Domain.Enums;
 
 namespace Explore.Application.Models;
@@ -17,6 +18,16 @@ public class AnalyticsConfiguration
 
     /// <summary>Whether analytics tracking is enabled. When false, all calls are no-ops.</summary>
     public bool IsEnabled { get; set; }
+
+    /// <summary>
+    /// Consent/privacy mode controlling whether analytics is anonymous, pseudonymous, or identified.
+    /// </summary>
+    public AnalyticsConsentMode ConsentMode { get; set; } = AnalyticsConsentMode.Pseudonymous;
+
+    /// <summary>
+    /// Browser transport mode: direct script loading, first-party proxying, or server relay.
+    /// </summary>
+    public AnalyticsTransportMode TransportMode { get; set; } = AnalyticsTransportMode.Direct;
 
     /// <summary>
     /// API key / project key for the analytics provider.

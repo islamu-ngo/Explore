@@ -106,6 +106,7 @@ else
 app.UseHttpsRedirection();
 app.UseAntiforgeryTokenMiddleware();
 app.UseStartupRedirectMiddleware();
+app.UsePathTenantResolverMiddleware();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAccessTokenCaptureMiddleware();

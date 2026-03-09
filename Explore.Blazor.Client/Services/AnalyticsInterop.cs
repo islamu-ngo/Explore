@@ -18,12 +18,12 @@ public class AnalyticsInterop : IAnalyticsInterop, IAsyncDisposable
         _logger = logger;
     }
 
-    public async Task InitAsync(string analyticsProvider, bool analyticsEnabled, string? apiKey, string? endpointUrl)
+    public async Task InitAsync(string analyticsProvider, bool analyticsEnabled, string analyticsConsentMode, string analyticsTransportMode, bool allowIdentify, string? apiKey, string? endpointUrl)
     {
         try
         {
             var module = await GetModuleAsync();
-            await module.InvokeVoidAsync("initAnalytics", analyticsProvider, analyticsEnabled, apiKey ?? string.Empty, endpointUrl ?? string.Empty);
+            await module.InvokeVoidAsync("initAnalytics", analyticsProvider, analyticsEnabled, analyticsConsentMode, analyticsTransportMode, allowIdentify, apiKey ?? string.Empty, endpointUrl ?? string.Empty);
         }
         catch (Exception ex)
         {

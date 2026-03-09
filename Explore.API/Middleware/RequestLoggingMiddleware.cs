@@ -2,6 +2,8 @@
 // ABOUTME: Designed for observability; never logs sensitive data such as headers or bodies.
 
 using System.Diagnostics;
+using Explore.Application.Constants;
+using Explore.Application.Contracts.Services;
 
 namespace Explore.API.Middleware;
 
@@ -21,7 +23,7 @@ public sealed class RequestLoggingMiddleware
         _logger = logger;
     }
 
-    public async Task InvokeAsync(HttpContext context)
+    public async Task InvokeAsync(HttpContext context, ITenantContextAccessor tenantContextAccessor)
     {
         var startTimestamp = Stopwatch.GetTimestamp();
 
@@ -36,17 +38,19 @@ public sealed class RequestLoggingMiddleware
             var userId = context.User?.FindFirst("sub")?.Value
                 ?? context.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
 
-            var tenantId = context.Request.Headers["X-Tenant-Id"].FirstOrDefault();
+            var tenantId = tenantContextAccessor.TenantId?.ToString();
+            var tenantSlug = context.Request.Headers[TenantHeaderNames.TenantSlug].FirstOrDefault();
             var correlationId = context.Items["CorrelationId"] as string;
 
             _logger.LogInformation(
-                "HTTP {Method} {Path} responded {StatusCode} in {ElapsedMs:0.00}ms | User={UserId} Tenant={TenantId} CorrelationId={CorrelationId}",
+                "HTTP {Method} {Path} responded {StatusCode} in {ElapsedMs:0.00}ms | User={UserId} Tenant={TenantId} TenantSlug={TenantSlug} CorrelationId={CorrelationId}",
                 context.Request.Method,
                 context.Request.Path.Value,
                 context.Response.StatusCode,
                 elapsed.TotalMilliseconds,
                 userId ?? "-",
                 tenantId ?? "-",
+                tenantSlug ?? "-",
                 correlationId ?? "-");
         }
     }

@@ -4,6 +4,7 @@
 namespace Explore.Application.Settings.Groups;
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Domain.Constants;
 
 /// <summary>
 /// Strongly-typed group for analytics/tracking settings.
@@ -11,28 +12,39 @@ using Explore.Application.Contracts.Infrastructure;
 public class AnalyticsSettingGroup : ISettingGroup
 {
     public string Provider { get; private set; } = "none";
-    public string? SiteId { get; private set; }
-    public string? Endpoint { get; private set; }
+    public string ConsentMode { get; private set; } = "pseudonymous";
+    public string TransportMode { get; private set; } = "direct";
+    public string? EndpointUrl { get; private set; }
     public string? ApiKey { get; private set; }
+    public string? PersonalApiKey { get; private set; }
     public bool Enabled { get; private set; }
 
     public static IEnumerable<string> SettingKeys =>
     [
-        "analytics.provider", "analytics.site_id", "analytics.endpoint",
-        "analytics.api_key", "analytics.enabled"
+        GovernanceSettingKeys.Analytics.Provider,
+        GovernanceSettingKeys.Analytics.ConsentMode,
+        GovernanceSettingKeys.Analytics.TransportMode,
+        GovernanceSettingKeys.Analytics.EndpointUrl,
+        GovernanceSettingKeys.Analytics.ApiKey,
+        GovernanceSettingKeys.Analytics.PersonalApiKey,
+        GovernanceSettingKeys.Analytics.Enabled
     ];
 
     public void Populate(IReadOnlyDictionary<string, ResolvedSetting> settings)
     {
-        if (settings.TryGetValue("analytics.provider", out var provider))
+        if (settings.TryGetValue(GovernanceSettingKeys.Analytics.Provider, out var provider))
             Provider = SettingValueSerializer.Deserialize(provider.Value, "none");
-        if (settings.TryGetValue("analytics.site_id", out var siteId))
-            SiteId = SettingValueSerializer.DeserializeString(siteId.Value);
-        if (settings.TryGetValue("analytics.endpoint", out var ep))
-            Endpoint = SettingValueSerializer.DeserializeString(ep.Value);
-        if (settings.TryGetValue("analytics.api_key", out var apiKey))
+        if (settings.TryGetValue(GovernanceSettingKeys.Analytics.ConsentMode, out var consentMode))
+            ConsentMode = SettingValueSerializer.Deserialize(consentMode.Value, "pseudonymous");
+        if (settings.TryGetValue(GovernanceSettingKeys.Analytics.TransportMode, out var transportMode))
+            TransportMode = SettingValueSerializer.Deserialize(transportMode.Value, "direct");
+        if (settings.TryGetValue(GovernanceSettingKeys.Analytics.EndpointUrl, out var endpointUrl))
+            EndpointUrl = SettingValueSerializer.DeserializeString(endpointUrl.Value);
+        if (settings.TryGetValue(GovernanceSettingKeys.Analytics.ApiKey, out var apiKey))
             ApiKey = SettingValueSerializer.DeserializeString(apiKey.Value);
-        if (settings.TryGetValue("analytics.enabled", out var enabled))
+        if (settings.TryGetValue(GovernanceSettingKeys.Analytics.PersonalApiKey, out var personalApiKey))
+            PersonalApiKey = SettingValueSerializer.DeserializeString(personalApiKey.Value);
+        if (settings.TryGetValue(GovernanceSettingKeys.Analytics.Enabled, out var enabled))
             Enabled = SettingValueSerializer.Deserialize(enabled.Value, false);
     }
 }

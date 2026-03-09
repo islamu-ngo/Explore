@@ -23,6 +23,33 @@
                     ? "Manage platform settings, organizations, modules, storage, and SMTP"
                     : "Manage platform governance, tenants, domain, branding, modules, storage, and SMTP settings")
             </MudText>
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mt-4">
+                <MudChip T="string"
+                         Color="@(IsSingleTenantMode ? Color.Warning : Color.Info)"
+                         Variant="Variant.Outlined"
+                         Icon="@Icons.Material.Filled.Apartment">
+                    @(IsSingleTenantMode ? "Single Tenant" : "Multi-Tenant")
+                </MudChip>
+
+                @if (IsSingleTenantMode)
+                {
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Warning"
+                               StartIcon="@Icons.Material.Filled.RocketLaunch"
+                               OnClick="@(() => SelectSection("multi-tenancy"))">
+                        Enable SaaS Mode
+                    </MudButton>
+                }
+                else
+                {
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.DomainAdd"
+                               OnClick="@(() => SelectSection("tenants"))">
+                        Manage Platform
+                    </MudButton>
+                }
+            </MudStack>
         </div>
 
         @if (!string.IsNullOrWhiteSpace(_errorMessage))

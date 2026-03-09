@@ -335,14 +335,25 @@
         {
             <section class="mb-8">
                 <MudText Typo="Typo.h5" Style="font-weight: 800;" Class="mb-4">
-                    @(_eventSessions.Count == 1 ? "Session" : "Agenda")
+                    @(_eventSessions.Count == 1 ? "When & Where" : "Agenda")
                 </MudText>
 
                 @if (_eventSessions.Count == 1)
                 {
-                    @* Single session: detailed inline card *@
+                    @* Single session: show as event-level details (hide session abstraction) *@
                     var session = _eventSessions.First();
                     <MudPaper Elevation="0" Outlined="true" Class="pa-5 rounded-xl">
+                        @* Format badge *@
+                        @if (!string.IsNullOrEmpty(_eventDetails?.EventFormatFullName))
+                        {
+                            <div class="mb-3">
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                                         Color="@(_eventDetails.EventFormatMasterCode == "Digital" ? Color.Info : _eventDetails.EventFormatMasterCode == "Hybrid" ? Color.Tertiary : Color.Default)"
+                                         Icon="@(_eventDetails.EventFormatMasterCode == "Digital" ? Icons.Material.Filled.Videocam : _eventDetails.EventFormatMasterCode == "Hybrid" ? Icons.Material.Filled.Devices : Icons.Material.Filled.LocationOn)">
+                                    @_eventDetails.EventFormatFullName
+                                </MudChip>
+                            </div>
+                        }
                         <MudGrid Spacing="4">
                             <MudItem xs="12" sm="6">
                                 @if (!string.IsNullOrEmpty(session.Title))
@@ -367,11 +378,30 @@
                                             <MudText Typo="Typo.body2">@session.LocationFullName</MudText>
                                         </div>
                                     }
+                                    @if (!string.IsNullOrEmpty(_eventDetails?.EventUrl))
+                                    {
+                                        <div class="d-flex gap-3 align-center">
+                                            <MudIcon Icon="@Icons.Material.Outlined.Videocam" Color="Color.Primary" Size="Size.Small" />
+                                            <MudLink Href="@_eventDetails.EventUrl" Target="_blank" Typo="Typo.body2">
+                                                Join online
+                                            </MudLink>
+                                        </div>
+                                    }
                                     @if (!string.IsNullOrEmpty(session.RegistrationModeFullName))
                                     {
                                         <div class="d-flex gap-3 align-center">
                                             <MudIcon Icon="@Icons.Material.Outlined.HowToReg" Color="Color.Primary" Size="Size.Small" />
                                             <MudText Typo="Typo.body2">@session.RegistrationModeFullName</MudText>
+                                        </div>
+                                    }
+                                    @{
+                                        var primaryLanguage = _eventDetails?.IslamicAspect?.PrimaryLanguageName;
+                                    }
+                                    @if (!string.IsNullOrEmpty(primaryLanguage))
+                                    {
+                                        <div class="d-flex gap-3 align-center">
+                                            <MudIcon Icon="@Icons.Material.Outlined.Translate" Color="Color.Primary" Size="Size.Small" />
+                                            <MudText Typo="Typo.body2">@primaryLanguage</MudText>
                                         </div>
                                     }
                                 </MudStack>
@@ -402,6 +432,34 @@
                             </MudItem>
                         </MudGrid>
                     </MudPaper>
+
+                    @* Agenda items (optional, expandable) *@
+                    @if (_agendaItems != null && _agendaItems.Count > 0)
+                    {
+                        <MudPaper Elevation="0" Outlined="true" Class="pa-4 rounded-xl mt-3">
+                            <MudText Typo="Typo.subtitle1" Style="font-weight: 700;" Class="mb-3">
+                                <MudIcon Icon="@Icons.Material.Outlined.ViewAgenda" Class="mr-2" Size="Size.Small" />
+                                Agenda
+                            </MudText>
+                            <MudTimeline TimelinePosition="TimelinePosition.Start" Class="event-detail__agenda-timeline">
+                                @foreach (var item in _agendaItems.OrderBy(a => a.StartTime))
+                                {
+                                    <MudTimelineItem Color="Color.Primary" Size="Size.Small">
+                                        <ItemContent>
+                                            <MudText Typo="Typo.body2" Style="font-weight: 600;">@item.Title</MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                @(item.StartTime?.ToString("HH:mm") ?? "")@(item.EndTime != null ? $" — {item.EndTime?.ToString("HH:mm")}" : "")
+                                                @if (!string.IsNullOrEmpty(item.LocationFullName))
+                                                {
+                                                    @($" · {item.LocationFullName}")
+                                                }
+                                            </MudText>
+                                        </ItemContent>
+                                    </MudTimelineItem>
+                                }
+                            </MudTimeline>
+                        </MudPaper>
+                    }
                 }
                 else
                 {

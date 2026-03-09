@@ -81,6 +81,34 @@ Major groups:
 
 Values are stored as JSON-serialized strings in `SystemSetting.Value` and `TenantSetting.Value`.
 
+## Analytics Settings (Governance)
+
+Analytics configuration is governed entirely through `analytics.*` keys.
+The runtime abstraction is optional by design: instance admins can lock a shared provider,
+leave settings unlocked so tenants can bring their own provider, or disable analytics entirely.
+
+Canonical keys:
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `analytics.provider` | string | `"none"` | Active provider: `none`, `posthog`, `plausible`, `rybbit`, `rudderstack` |
+| `analytics.enabled` | bool | `false` | Master enable switch for analytics emission |
+| `analytics.consent_mode` | string | `"pseudonymous"` | Privacy mode: `anonymous`, `pseudonymous`, `identified` |
+| `analytics.transport_mode` | string | `"direct"` | Browser transport: `direct`, `proxy`, `relay` |
+| `analytics.api_key` | string | `""` | Public or write key used by the active provider |
+| `analytics.endpoint_url` | string | `""` | Provider base URL, especially important for self-hosted deployments |
+| `analytics.personal_api_key` | string | `""` | Sensitive key used for advanced provider features such as PostHog feature flags |
+
+Important notes:
+
+- `analytics.endpoint_url` is the canonical endpoint key. Do not introduce `analytics.endpoint`.
+- There is no canonical `analytics.site_id` governance key in the current abstraction.
+- The analytics settings follow the standard settings cascade: system setting -> tenant override -> system default.
+- Sensitive keys should still be treated carefully in UI and operational workflows even when stored as governance values.
+- `analytics.transport_mode=relay` is the only mode that does not require a browser-exposed `analytics.api_key`; the browser posts first-party events to `/api/a/t` and the server uses the resolved provider settings.
+- `analytics.transport_mode=proxy` still uses the provider script/client in the browser, but the script host and ingest host should usually point at a first-party reverse-proxy path through `analytics.endpoint_url`.
+- `analytics.consent_mode=identified` only enables identify semantics for providers that explicitly support them today (`posthog`, `rudderstack`).
+
 Post-onboarding management note:
 
 - Instance admins can update auth-provider governance values through `PUT /api/InstanceOnboarding/admin/auth-provider-configuration`.

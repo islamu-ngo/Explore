@@ -2,9 +2,11 @@
 
 using System.Linq;
 using System.Text.Json;
+using Explore.Application.Analytics;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Features.TenantOnboarding.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
@@ -17,17 +19,23 @@ public class SaveTenantOnboardingStepCommandHandler : IRequestHandler<SaveTenant
     private readonly ITenantContext _tenantContext;
     private readonly ITenantOnboardingStateRepository _tenantOnboardingStateRepository;
     private readonly IAnalyticsProvider _analyticsProvider;
+    private readonly IAnalyticsConfigResolver _analyticsConfigResolver;
+    private readonly IAnalyticsGovernanceService _analyticsGovernanceService;
     private readonly IAdminContext _adminContext;
 
     public SaveTenantOnboardingStepCommandHandler(
         ITenantContext tenantContext,
         ITenantOnboardingStateRepository tenantOnboardingStateRepository,
         IAnalyticsProvider analyticsProvider,
+        IAnalyticsConfigResolver analyticsConfigResolver,
+        IAnalyticsGovernanceService analyticsGovernanceService,
         IAdminContext adminContext)
     {
         _tenantContext = tenantContext;
         _tenantOnboardingStateRepository = tenantOnboardingStateRepository;
         _analyticsProvider = analyticsProvider;
+        _analyticsConfigResolver = analyticsConfigResolver;
+        _analyticsGovernanceService = analyticsGovernanceService;
         _adminContext = adminContext;
     }
 
@@ -81,17 +89,33 @@ public class SaveTenantOnboardingStepCommandHandler : IRequestHandler<SaveTenant
         string[] completedSteps,
         CancellationToken cancellationToken)
     {
+        var analyticsConfiguration = await _analyticsConfigResolver.ResolveAsync(cancellationToken);
         var stepName = completedSteps.LastOrDefault() ?? string.Empty;
-        var properties = new Dictionary<string, object>
+        var rawProperties = new Dictionary<string, object?>
         {
-            ["tenant_id"] = _tenantContext.TenantId,
-            ["step_index"] = currentStep,
-            ["step_name"] = stepName,
-            ["total_steps"] = totalSteps,
-            ["completed_steps"] = completedSteps
+            [AnalyticsEvents.Properties.TenantId] = _tenantContext.TenantId,
+            [AnalyticsEvents.Properties.StepIndex] = currentStep,
+            [AnalyticsEvents.Properties.StepName] = stepName,
+            [AnalyticsEvents.Properties.TotalSteps] = totalSteps,
+            [AnalyticsEvents.Properties.CompletedSteps] = completedSteps
         };
 
-        await _analyticsProvider.TrackAsync(userId.ToString(), "onboarding.step_completed", properties, cancellationToken);
+        var trackRequest = _analyticsGovernanceService.CreateTrackRequest(
+            analyticsConfiguration,
+            userId.ToString(),
+            AnalyticsEvents.TenantOnboarding.StepCompleted,
+            rawProperties);
+
+        if (trackRequest is null)
+        {
+            return;
+        }
+
+        await _analyticsProvider.TrackAsync(
+            trackRequest.DistinctId,
+            trackRequest.EventName,
+            trackRequest.Properties.ToDictionary(x => x.Key, x => x.Value),
+            cancellationToken);
     }
 
     private static string SerializeCompletedSteps(string[] completedSteps)

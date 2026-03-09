@@ -1,6 +1,9 @@
 // ABOUTME: Authorization filter that blocks endpoints in single-tenant deployment mode.
 // ABOUTME: Returns 404 to hide platform-admin endpoints from discovery in simplified deployments.
 
+using System.Text.Json;
+using Explore.Application.Contracts.Persistence;
+using Explore.Domain.Constants;
 using Explore.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -22,19 +25,20 @@ namespace Explore.API.Filters;
 /// </code>
 /// </remarks>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false)]
-public class BlockInSingleTenantAttribute : Attribute, IAuthorizationFilter
+public class BlockInSingleTenantAttribute : Attribute, IAsyncAuthorizationFilter
 {
     /// <summary>
     /// Called early in the filter pipeline to confirm request is authorized.
     /// In single-tenant mode with HidePlatformAdminInSingleTenant enabled, returns 404.
     /// </summary>
-    public void OnAuthorization(AuthorizationFilterContext context)
+    public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {
         var deploymentSettings = context.HttpContext.RequestServices
             .GetRequiredService<IOptions<DeploymentSettings>>().Value;
 
         // Only block if in single-tenant mode AND hiding is enabled
-        if (deploymentSettings.IsSingleTenant && deploymentSettings.HidePlatformAdminInSingleTenant)
+        if (deploymentSettings.HidePlatformAdminInSingleTenant
+            && await DeploymentModeResolver.IsSingleTenantAsync(context.HttpContext.RequestServices, deploymentSettings))
         {
             // Return 404 to hide the endpoint from discovery
             // Using NotFoundResult instead of ForbidResult to prevent enumeration
@@ -49,18 +53,18 @@ public class BlockInSingleTenantAttribute : Attribute, IAuthorizationFilter
 /// Use when you want to inform the client that the feature is unavailable.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false)]
-public class RequireMultiTenantAttribute : Attribute, IAuthorizationFilter
+public class RequireMultiTenantAttribute : Attribute, IAsyncAuthorizationFilter
 {
     /// <summary>
     /// Called early in the filter pipeline to confirm request is authorized.
     /// In single-tenant mode, returns 403 Forbidden with explanation.
     /// </summary>
-    public void OnAuthorization(AuthorizationFilterContext context)
+    public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {
         var deploymentSettings = context.HttpContext.RequestServices
             .GetRequiredService<IOptions<DeploymentSettings>>().Value;
 
-        if (deploymentSettings.IsSingleTenant)
+        if (await DeploymentModeResolver.IsSingleTenantAsync(context.HttpContext.RequestServices, deploymentSettings))
         {
             context.Result = new ObjectResult(new
             {
@@ -70,6 +74,55 @@ public class RequireMultiTenantAttribute : Attribute, IAuthorizationFilter
             {
                 StatusCode = StatusCodes.Status403Forbidden
             };
+        }
+    }
+}
+
+internal static class DeploymentModeResolver
+{
+    internal static async Task<bool> IsSingleTenantAsync(IServiceProvider services, DeploymentSettings deploymentSettings)
+    {
+        try
+        {
+            var systemSettingRepository = services.GetService<ISystemSettingRepository>();
+            if (systemSettingRepository != null)
+            {
+                var setting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.DeploymentMode);
+                var runtimeMode = DeserializeString(setting?.Value);
+
+                if (string.Equals(runtimeMode, "SingleTenant", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                if (string.Equals(runtimeMode, "MultiTenant", StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+            }
+        }
+        catch
+        {
+            // Fall back to static configuration when runtime settings cannot be read.
+        }
+
+        return deploymentSettings.IsSingleTenant;
+    }
+
+    private static string? DeserializeString(string? rawValue)
+    {
+        if (string.IsNullOrWhiteSpace(rawValue))
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<string>(rawValue);
+        }
+        catch
+        {
+            return rawValue.Trim('"');
         }
     }
 }

@@ -81,6 +81,11 @@ Configured in `RateLimitingExtensions.cs`. All settings are configurable via `ap
 - **Mechanism**: Fixed window per IP address.
 - **Defaults**: 5 requests per 60-second window.
 
+### AnalyticsRelay (Fixed Window)
+- **Policy**: `AnalyticsRelay` — for anonymous browser analytics relay traffic.
+- **Mechanism**: Fixed window per IP address.
+- **Defaults**: 120 requests per 60-second window.
+
 ### Rejection Behavior
 - Returns `429 Too Many Requests` with RFC 6585 `ProblemDetails`.
 - Includes `Retry-After` header and `X-RateLimit-*` headers (limit, remaining, reset).
@@ -388,7 +393,7 @@ Meter name: `Explore.Business`. All counters tagged with `tenant_id` and `resour
 1. Tenant context is resolved per request.
 2. Resolution behavior:
    - `SingleTenant`: default tenant
-   - `MultiTenant`: `X-Tenant-Id` → custom domain → subdomain → default tenant
+   - `MultiTenant`: trusted `X-Tenant-Slug` → custom domain → subdomain → `404` when unresolved
 3. EF query filters enforce tenant scoping in persistence.
 
 ---
@@ -406,7 +411,8 @@ Meter name: `Explore.Business`. All counters tagged with `tenant_id` and `resour
 3. Module governance:
    - `/api/module/*` (`available`, `enabled`, `enable`, `disable`, `schema`)
 4. Public experience:
-   - `GET /api/publicexperience/settings`
+    - `GET /api/publicexperience/settings`
+    - `POST /api/a/t` — anonymous-safe analytics relay for relay transport mode
 5. Federation:
    - `/api/atproto/*` — AT Protocol record management
    - `/api/indexeddid/*` — DID indexing

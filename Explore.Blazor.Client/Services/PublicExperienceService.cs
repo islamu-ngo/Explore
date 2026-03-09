@@ -99,6 +99,9 @@ public class PublicExperienceSettingsModel
     public List<string> EnabledModules { get; set; } = new();
     public string AnalyticsProvider { get; set; } = "none";
     public bool AnalyticsEnabled { get; set; }
+    public string AnalyticsConsentMode { get; set; } = "pseudonymous";
+    public string AnalyticsTransportMode { get; set; } = "direct";
+    public bool AnalyticsAllowIdentify { get; set; }
     public string AnalyticsPublicApiKey { get; set; } = string.Empty;
     public string AnalyticsEndpointUrl { get; set; } = string.Empty;
     public int RenderPolicyVersion { get; set; } = 1;

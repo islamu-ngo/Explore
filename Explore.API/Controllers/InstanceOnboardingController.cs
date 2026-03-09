@@ -1,7 +1,6 @@
 // ABOUTME: API controller for first-run instance onboarding, governance, storage, and auth provider settings.
 // ABOUTME: Provides status, completion, governance update, storage settings, and auth provider configuration endpoints.
 
-using System;
 using System.Security.Claims;
 using Asp.Versioning;
 using Explore.API.Filters;
@@ -12,7 +11,6 @@ using Explore.Application.Features.InstanceOnboarding.Requests.Queries;
 using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
@@ -64,6 +62,24 @@ public class InstanceOnboardingController : ControllerBase
 
         var settings = await _mediator.Send(new GetInstanceGovernanceSettingsQuery(), cancellationToken);
         return Ok(settings);
+    }
+
+    [HttpGet("resolver-config")]
+    [Authorize]
+    [EndpointSummary("Get Tenant Resolver Configuration")]
+    [EndpointDescription("Returns instance-level tenant resolver configuration stored directly in system settings.")]
+    [ProducesResponseType(typeof(ResolverConfigurationDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<ResolverConfigurationDto>> GetResolverConfiguration(CancellationToken cancellationToken = default)
+    {
+        var status = await _mediator.Send(new GetInstanceOnboardingStatusQuery(), cancellationToken);
+        if (status.IsCompleted && !status.IsCurrentUserInstanceAdmin)
+        {
+            return Forbid();
+        }
+
+        var configuration = await _mediator.Send(new GetResolverConfigurationQuery(), cancellationToken);
+        return Ok(configuration);
     }
 
     [HttpPost("complete")]
@@ -133,7 +149,88 @@ public class InstanceOnboardingController : ControllerBase
         var response = await _mediator.Send(command, cancellationToken);
         if (!response.Success)
         {
-            if (response.Message.Contains("Only instance administrators", StringComparison.OrdinalIgnoreCase))
+            if (ContainsInstanceAdminMessage(response))
+            {
+                return Forbid();
+            }
+
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
+    [HttpPut("resolver-config")]
+    [Authorize]
+    [EndpointSummary("Update Tenant Resolver Configuration")]
+    [EndpointDescription("Updates instance-level tenant resolver configuration stored directly in system settings.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateResolverConfiguration([FromBody] ResolverConfigurationDto configuration, CancellationToken cancellationToken = default)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (!currentUserId.HasValue)
+        {
+            return BadRequest(new BaseCommandResponse<Guid>
+            {
+                Success = false,
+                Message = "Invalid user identity."
+            });
+        }
+
+        var command = new UpdateResolverConfigurationCommand
+        {
+            UserId = currentUserId.Value,
+            Configuration = configuration
+        };
+
+        var response = await _mediator.Send(command, cancellationToken);
+        if (!response.Success)
+        {
+            if (ContainsInstanceAdminMessage(response))
+            {
+                return Forbid();
+            }
+
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
+    [HttpPost("deployment-mode")]
+    [Authorize]
+    [EndpointSummary("Switch Deployment Mode")]
+    [EndpointDescription("Switches the instance between SingleTenant and MultiTenant mode. Reverting to SingleTenant requires exactly one active tenant.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateDeploymentMode([FromBody] UpdateDeploymentModeRequest request, CancellationToken cancellationToken = default)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (!currentUserId.HasValue)
+        {
+            return BadRequest(new BaseCommandResponse<Guid>
+            {
+                Success = false,
+                Message = "Invalid user identity."
+            });
+        }
+
+        var settings = await _mediator.Send(new GetInstanceGovernanceSettingsQuery(), cancellationToken);
+        settings.DeploymentMode = request.DeploymentMode ?? string.Empty;
+
+        var command = new UpdateInstanceGovernanceSettingsCommand
+        {
+            UserId = currentUserId.Value,
+            Settings = settings
+        };
+
+        var response = await _mediator.Send(command, cancellationToken);
+        if (!response.Success)
+        {
+            if (ContainsInstanceAdminMessage(response))
             {
                 return Forbid();
             }
@@ -191,7 +288,7 @@ public class InstanceOnboardingController : ControllerBase
         var response = await _mediator.Send(command, cancellationToken);
         if (!response.Success)
         {
-            if (response.Message.Contains("Only instance administrators", StringComparison.OrdinalIgnoreCase))
+            if (ContainsInstanceAdminMessage(response))
             {
                 return Forbid();
             }
@@ -269,7 +366,7 @@ public class InstanceOnboardingController : ControllerBase
         var response = await _mediator.Send(command, cancellationToken);
         if (!response.Success)
         {
-            if (response.Message.Contains("Only instance administrators", StringComparison.OrdinalIgnoreCase))
+            if (ContainsInstanceAdminMessage(response))
             {
                 return Forbid();
             }
@@ -405,7 +502,7 @@ public class InstanceOnboardingController : ControllerBase
         var response = await _mediator.Send(command, cancellationToken);
         if (!response.Success)
         {
-            if (response.Message.Contains("Only instance administrators", StringComparison.OrdinalIgnoreCase))
+            if (ContainsInstanceAdminMessage(response))
             {
                 return Forbid();
             }
@@ -437,9 +534,19 @@ public class InstanceOnboardingController : ControllerBase
 
         return Guid.TryParse(claim, out var parsedUserId) ? parsedUserId : null;
     }
+
+    private static bool ContainsInstanceAdminMessage(BaseCommandResponse<Guid> response)
+    {
+        return response.Message?.Contains("Only instance administrators", StringComparison.OrdinalIgnoreCase) == true;
+    }
 }
 
 public class ValidateSetupSecretRequest
 {
     public string? Secret { get; set; }
+}
+
+public class UpdateDeploymentModeRequest
+{
+    public string? DeploymentMode { get; set; }
 }

@@ -12,18 +12,18 @@
 
 Multi-tenancy is **not middleware-based** — it uses EF Core global query filters injected via the DbContext. The flow:
 
-1. **TenantContext** (API service) resolves the tenant from the HTTP request
+1. **ApiTenantResolutionMiddleware** resolves tenant identity from trusted slug/host request context before tenant-scoped data access
 2. **ExploreDbContext** receives TenantContext via **property injection** (not constructor injection) because the DbContext uses pooling
 3. **Named query filters** on every tenant-scoped entity automatically filter by `TenantId`
 4. The filter expression is: `TenantContext == null || e.TenantId == TenantContext.TenantId` — the null check allows migrations and seeding to bypass tenant filtering
 
 ### Tenant Resolution Priority
 
-TenantContext resolves the tenant in this order:
-1. `X-Tenant-Id` HTTP header (explicit selection)
+The API-authoritative tenant resolver uses this order for normal multi-tenant requests:
+1. trusted `X-Tenant-Slug` HTTP header from the BFF
 2. Custom domain lookup (checks `TenantSetting` for matching domain)
-3. Subdomain extraction (extracts from host, looks up tenant by subdomain or slug)
-4. Default tenant (from configuration or hardcoded fallback)
+3. Subdomain extraction (extracts from host, looks up tenant by subdomain)
+4. Unresolved request fails closed; single-tenant mode still uses the configured default tenant
 
 ### Runtime vs Static Deployment Mode
 
@@ -591,4 +591,39 @@ API versioning uses **media-type strategy** (not URL segments):
 - Default version: `0.1` when unspecified.
 - Clean URLs — no `/v1/` or `/v2/` path segments.
 - Reported in response headers via `Asp.Versioning` middleware.
+
+---
+
+## 35. Analytics Abstraction Is Already Runtime-Selectable
+
+The analytics system is not a future concept anymore; it already follows the same runtime-provider pattern as localization.
+
+### Actual shape
+
+- `IAnalyticsProvider` is the lowest-common-denominator contract.
+- `RuntimeAnalyticsProvider` routes to the active provider at runtime.
+- `AnalyticsConfigResolver` resolves provider config from governance settings with tenant-aware cascade and short-lived cache.
+- `NullAnalyticsProvider` is a first-class safe fallback, not an error path.
+
+### Current capability reality
+
+- `PostHog` is the richest provider today: track, pageview, identify, group identify, feature flags.
+- `Plausible` is intentionally lightweight by product design, not by incomplete integration: track/pageview only; identify/group calls safely no-op.
+- `Rybbit` currently behaves as a browser-richer but server-thinner provider: the repo implements track/pageview only on the server, while official docs show browser-side identify but no documented server-side parity, groups, or feature flags.
+- `RudderStack` is implemented across track/pageview/identify/group, but its product category is different: it behaves more like a CDP/router than a first-party analytics backend, so rollout guarantees should be framed carefully.
+- Feature flags are effectively `PostHog`-only in the current abstraction. Other providers degrade to safe false/null defaults.
+
+### Non-intuitive rule
+
+Do not assume every provider supports the same semantics. The abstraction is designed around safe degradation, not fake parity.
+
+### Canonical governance keys
+
+- `analytics.provider`
+- `analytics.enabled`
+- `analytics.api_key`
+- `analytics.endpoint_url`
+- `analytics.personal_api_key`
+
+`analytics.endpoint_url` is canonical. `analytics.endpoint` and `analytics.site_id` are legacy drift, not valid runtime contract keys.
 

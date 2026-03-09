@@ -28,6 +28,7 @@ public static class ApplicationServicesRegistration
         services.AddScoped<IInstanceStorageSettingService, InstanceStorageSettingService>();
         services.AddScoped<IInstanceSmtpSettingService, InstanceSmtpSettingService>();
         services.AddScoped<IAuthProviderConfigurationService, AuthProviderConfigurationService>();
+        services.AddScoped<IAnalyticsGovernanceService, AnalyticsGovernanceService>();
 
         // Authorization: dynamic permission infrastructure
         services.AddScoped<ICapabilityCeilingService, CapabilityCeilingService>();

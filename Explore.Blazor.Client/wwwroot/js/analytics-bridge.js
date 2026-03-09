@@ -1,10 +1,14 @@
 let state = {
     provider: "none",
     enabled: false,
+    consentMode: "pseudonymous",
+    transportMode: "direct",
+    allowIdentify: false,
     apiKey: "",
     endpointUrl: "",
     ready: false,
-    adapter: null
+    adapter: null,
+    sessionId: null
 };
 
 function noopAdapter() {
@@ -134,15 +138,64 @@ async function createRudderStackAdapter(apiKey, endpointUrl) {
     };
 }
 
-export async function initAnalytics(provider, enabled, apiKey, endpointUrl) {
+async function postRelayEvent(payload) {
+    const response = await fetch((state.endpointUrl && state.endpointUrl.trim()) || "/api/a/t", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        credentials: "include",
+        body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+        throw new Error(`Analytics relay failed with status ${response.status}`);
+    }
+}
+
+function createRelayAdapter() {
+    return {
+        identify: async () => {},
+        track: async (eventName, properties) => {
+            await postRelayEvent({
+                eventType: "track",
+                distinctId: state.sessionId,
+                eventName,
+                properties: properties || {}
+            });
+        },
+        page: async (pagePath, properties) => {
+            await postRelayEvent({
+                eventType: "pageview",
+                distinctId: state.sessionId,
+                pagePath,
+                properties: properties || {}
+            });
+        }
+    };
+}
+
+export async function initAnalytics(provider, enabled, consentMode, transportMode, allowIdentify, apiKey, endpointUrl) {
     state.provider = (provider || "none").toString().toLowerCase();
     state.enabled = !!enabled;
+    state.consentMode = (consentMode || "pseudonymous").toString().toLowerCase();
+    state.transportMode = (transportMode || "direct").toString().toLowerCase();
+    state.allowIdentify = !!allowIdentify;
     state.apiKey = apiKey || "";
     state.endpointUrl = endpointUrl || "";
     state.adapter = noopAdapter();
     state.ready = false;
+    state.sessionId = (globalThis.crypto && typeof globalThis.crypto.randomUUID === "function")
+        ? globalThis.crypto.randomUUID()
+        : `session-${Date.now()}`;
 
     if (!state.enabled || state.provider === "none") {
+        state.ready = true;
+        return;
+    }
+
+    if (state.transportMode === "relay") {
+        state.adapter = createRelayAdapter();
         state.ready = true;
         return;
     }
@@ -179,6 +232,10 @@ export async function trackEvent(eventName, properties) {
 
 export async function identifyUser(distinctId, traits) {
     if (!state.ready || !state.adapter) {
+        return;
+    }
+
+    if (!state.allowIdentify) {
         return;
     }
 

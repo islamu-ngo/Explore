@@ -1,6 +1,7 @@
 // ABOUTME: Resolves analytics configuration from the cascading settings engine with short-lived cache.
 // ABOUTME: Uses system defaults with tenant overrides and lock semantics through ISettingsResolver.
 
+using Explore.Application.Analytics;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Models;
 using Explore.Domain.Constants;
@@ -76,6 +77,8 @@ public class AnalyticsConfigResolver : IAnalyticsConfigResolver
 
         var providerStr = await _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsProvider, tenantId, cancellationToken);
         var enabled = await _settingsResolver.GetSettingAsync<bool>(GovernanceSettingKeys.AnalyticsEnabled, tenantId, cancellationToken);
+        var consentMode = await _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsConsentMode, tenantId, cancellationToken);
+        var transportMode = await _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsTransportMode, tenantId, cancellationToken);
         var apiKey = await _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsApiKey, tenantId, cancellationToken);
         var endpointUrl = await _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsEndpointUrl, tenantId, cancellationToken);
         var personalApiKey = await _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsPersonalApiKey, tenantId, cancellationToken);
@@ -89,6 +92,8 @@ public class AnalyticsConfigResolver : IAnalyticsConfigResolver
         {
             Provider = provider,
             IsEnabled = enabled,
+            ConsentMode = ParseConsentMode(consentMode),
+            TransportMode = ParseTransportMode(transportMode),
             ApiKey = string.IsNullOrWhiteSpace(apiKey) ? null : apiKey,
             EndpointUrl = string.IsNullOrWhiteSpace(endpointUrl) ? null : endpointUrl,
             PersonalApiKey = string.IsNullOrWhiteSpace(personalApiKey) ? null : personalApiKey
@@ -104,6 +109,26 @@ public class AnalyticsConfigResolver : IAnalyticsConfigResolver
             "rybbit" => AnalyticsProviderEnum.Rybbit,
             "rudderstack" => AnalyticsProviderEnum.RudderStack,
             _ => AnalyticsProviderEnum.None
+        };
+    }
+
+    private static AnalyticsConsentMode ParseConsentMode(string? value)
+    {
+        return value?.Trim().ToLowerInvariant() switch
+        {
+            "anonymous" => AnalyticsConsentMode.Anonymous,
+            "identified" => AnalyticsConsentMode.Identified,
+            _ => AnalyticsConsentMode.Pseudonymous
+        };
+    }
+
+    private static AnalyticsTransportMode ParseTransportMode(string? value)
+    {
+        return value?.Trim().ToLowerInvariant() switch
+        {
+            "proxy" => AnalyticsTransportMode.Proxy,
+            "relay" => AnalyticsTransportMode.Relay,
+            _ => AnalyticsTransportMode.Direct
         };
     }
 }

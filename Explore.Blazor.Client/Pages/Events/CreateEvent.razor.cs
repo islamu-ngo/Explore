@@ -368,6 +368,14 @@ public partial class CreateEvent
         }
     }
 
+    private void OnFirstSessionLanguagesChanged(IEnumerable<int> selectedLanguageIds)
+    {
+        if (sessions.Count > 0)
+        {
+            sessions[0].LanguageIds = new HashSet<int>(selectedLanguageIds);
+        }
+    }
+
     // ========== Form Data Loading ==========
 
     private async Task LoadFormData()
@@ -554,6 +562,7 @@ public partial class CreateEvent
             createDto.EventStatusId ??= 1;
             createDto.VisibilityTypeId ??= 1;
             createDto.EventFormatId ??= 1;
+            createDto.Timezone = _selectedTimezone.Id;
             createDto.BackgroundColor = _appearance.BackgroundColor;
             createDto.BackgroundEffect = _appearance.BackgroundEffect;
 

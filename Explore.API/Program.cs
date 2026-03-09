@@ -3,12 +3,15 @@ using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text.RegularExpressions;
 using System.Threading.RateLimiting;
+using Explore.API.Authentication;
 using Explore.API.BackgroundServices;
 using Explore.API.Extensions;
 using Explore.API.Middleware;
 using Explore.API.Services;
 using Explore.Application;
+using Explore.Application.Constants;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Telemetry;
 using Explore.Infrastructure;
 using Explore.Persistence;
@@ -78,13 +81,16 @@ builder.Services.AddOutputCache(options =>
     options.AddBasePolicy(builder => builder.NoCache());
     options.AddPolicy("LookupData", builder => builder
         .Expire(TimeSpan.FromHours(1))
+        .SetVaryByHeader(TenantHeaderNames.TenantSlug, "X-Forwarded-Host", "Host")
         .Tag("lookup-data"));
     options.AddPolicy("ListData", builder => builder
         .Expire(TimeSpan.FromSeconds(30))
+        .SetVaryByHeader(TenantHeaderNames.TenantSlug, "X-Forwarded-Host", "Host")
         .SetVaryByQuery("pageNumber", "pageSize")
         .Tag("list-data"));
     options.AddPolicy("DetailData", builder => builder
         .Expire(TimeSpan.FromSeconds(60))
+        .SetVaryByHeader(TenantHeaderNames.TenantSlug, "X-Forwarded-Host", "Host")
         .SetVaryByRouteValue("id")
         .Tag("detail-data"));
 });
@@ -117,8 +123,9 @@ builder.Services.ConfigureInfrastructureServices(builder.Configuration);
 var skipDbContext = builder.Environment.IsEnvironment("Testing");
 builder.Services.CongfigurePersistenceServices(builder.Configuration, skipDbContextRegistration: skipDbContext);
 
-// Register tenant context for single-tenant mode
-builder.Services.AddScoped<ITenantContext, TenantContext>();
+// Register shared tenant context; API middleware is authoritative for normal tenant resolution.
+builder.Services.AddScoped<ITenantResolverService, Explore.Infrastructure.Services.TenantResolverService>();
+builder.Services.AddScoped<ITenantContext, Explore.Infrastructure.Services.TenantContext>();
 
 // Register HATEOAS infrastructure and resource assemblers
 builder.Services.AddHateoas();
@@ -196,7 +203,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("ExternalWebsitePolicy",
         policy => policy.WithOrigins(corsAllowedOrigins)
             .WithMethods("GET", "OPTIONS")
-            .WithHeaders("Accept", "Content-Type", "Authorization", "X-Tenant-Id"));
+            .WithHeaders("Accept", "Content-Type", "Authorization", "X-Tenant-Slug"));
 
     options.AddPolicy("DevPolicy",
         policy => policy.AllowAnyOrigin()
@@ -210,10 +217,26 @@ builder.Host.UseSerilog((ctx, services, lc) =>
       .Enrich.FromLogContext(),
     writeToProviders: true);
 
-// JWT Bearer Authentication for Keycloak
-// Using standard AddJwtBearer instead of AddKeycloakJwtBearer for better control
-// over token validation when using external Keycloak (not Aspire-hosted)
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+// Multi-auth API authentication for direct callers.
+// Bearer remains JWT-only. Machine callers use X-API-Key and are dispatched explicitly.
+builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultScheme = ApiAuthenticationSchemeNames.MultiAuth;
+        options.DefaultAuthenticateScheme = ApiAuthenticationSchemeNames.MultiAuth;
+        options.DefaultChallengeScheme = ApiAuthenticationSchemeNames.MultiAuth;
+    })
+    .AddPolicyScheme(ApiAuthenticationSchemeNames.MultiAuth, ApiAuthenticationSchemeNames.MultiAuth, options =>
+    {
+        options.ForwardDefaultSelector = context =>
+        {
+            if (context.Request.Headers.ContainsKey(ApiAuthenticationHeaderNames.ApiKey))
+            {
+                return ApiAuthenticationSchemeNames.ApiKey;
+            }
+
+            return JwtBearerDefaults.AuthenticationScheme;
+        };
+    })
     .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
     {
         // Sets options.RequireHttpsMetadata based on configuration
@@ -370,7 +393,18 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 return Task.CompletedTask;
             }
         };
-    });
+    })
+    .AddScheme<ApiKeyAuthenticationOptions, ApiKeyAuthenticationHandler>(
+        ApiAuthenticationSchemeNames.ApiKey,
+        options =>
+        {
+            builder.Configuration.GetSection(ApiKeyAuthenticationOptions.SectionName).Bind(options);
+
+            if (string.IsNullOrWhiteSpace(options.HeaderName))
+            {
+                options.HeaderName = ApiAuthenticationHeaderNames.ApiKey;
+            }
+        });
 
 builder.Services.AddAuthorizationBuilder();
 //builder.Services.AddAuthorization();
@@ -579,8 +613,10 @@ app.UseHttpsRedirection();
 app.UseHateoas();
 
 app.UseRouting();
+app.UseMiddleware<ApiTenantResolutionMiddleware>();
 app.UseRequestTimeouts();
 app.UseAuthentication();
+app.UseMiddleware<ApiTenantPostAuthenticationMiddleware>();
 app.UseRateLimiter();
 app.UseAuthorization();
 app.UseOutputCache();

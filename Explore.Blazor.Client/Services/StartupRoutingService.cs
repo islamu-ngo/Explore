@@ -30,6 +30,12 @@ public sealed class StartupRoutingService : IStartupRoutingService
             return StartupRouteDecision.Setup;
         }
 
+        if (string.IsNullOrWhiteSpace(instanceStatus.SelectedDeploymentMode)
+            || instanceStatus.SelectedDeploymentMode.Equals("SingleTenant", StringComparison.OrdinalIgnoreCase))
+        {
+            return StartupRouteDecision.PublicHome;
+        }
+
         if (instanceStatus.IsAuthenticated &&
             instanceStatus.SelectedDeploymentMode?.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase) == true)
         {

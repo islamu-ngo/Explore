@@ -22,6 +22,24 @@ public static class AnalyticsSettingDefinitions
         Description: "Enable analytics tracking",
         MaxScope: SettingScope.Tenant);
 
+    public static readonly SettingDefinition ConsentMode = new(
+        Key: "analytics.consent_mode",
+        ValueType: SettingValueType.String,
+        DefaultValue: "\"pseudonymous\"",
+        Category: "Analytics",
+        Description: "Analytics identity mode (anonymous, pseudonymous, identified)",
+        MaxScope: SettingScope.Tenant,
+        AllowedValues: ["anonymous", "pseudonymous", "identified"]);
+
+    public static readonly SettingDefinition TransportMode = new(
+        Key: "analytics.transport_mode",
+        ValueType: SettingValueType.String,
+        DefaultValue: "\"direct\"",
+        Category: "Analytics",
+        Description: "Analytics browser transport mode (direct, proxy, relay)",
+        MaxScope: SettingScope.Tenant,
+        AllowedValues: ["direct", "proxy", "relay"]);
+
     public static readonly SettingDefinition ApiKey = new(
         Key: "analytics.api_key",
         ValueType: SettingValueType.String,
@@ -48,5 +66,5 @@ public static class AnalyticsSettingDefinitions
         IsSensitive: true);
 
     public static IReadOnlyList<SettingDefinition> All =>
-        [Provider, Enabled, ApiKey, EndpointUrl, PersonalApiKey];
+        [Provider, Enabled, ConsentMode, TransportMode, ApiKey, EndpointUrl, PersonalApiKey];
 }

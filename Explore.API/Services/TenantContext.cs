@@ -1,5 +1,5 @@
-// ABOUTME: Provides tenant context for multi-tenant data isolation with runtime mode awareness.
-// ABOUTME: Resolves tenant from header/custom-domain/subdomain with fallback to default tenant.
+// ABOUTME: Legacy API tenant context implementation kept for comparison during the tenant-resolution migration.
+// ABOUTME: Standard runtime wiring now uses shared infrastructure tenant context plus API-authoritative middleware.
 
 using System.Text.Json;
 using Explore.Application.Contracts.Infrastructure;
@@ -13,9 +13,8 @@ using Microsoft.Extensions.Options;
 namespace Explore.API.Services;
 
 /// <summary>
-/// Provides tenant context by reading the X-Tenant-Id header from HTTP requests.
-/// In SingleTenant mode, always returns the configured default tenant ID.
-/// In MultiTenant mode, resolves from header or subdomain with fallback to default.
+/// Legacy API tenant context implementation retained outside the active DI path.
+/// It still documents the old direct-resolution model but is no longer the standard runtime authority.
 /// </summary>
 public class TenantContext : ITenantContext
 {

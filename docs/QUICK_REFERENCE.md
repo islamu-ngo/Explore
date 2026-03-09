@@ -27,12 +27,12 @@ ABOUTME: Focuses on non-inferable constraints and project-specific behavior.
 
 ## Multi-Tenancy Reminder
 Runtime tenant resolution:
-1. `X-Tenant-Id` header
+1. trusted `X-Tenant-Slug` header from the BFF
 2. custom domain
 3. subdomain
-4. default tenant fallback
+4. unresolved multi-tenant request fails closed (`404`)
 
-Default fallback tenant ID: `018e4e5c-7f00-7000-8000-000000000001`.
+Single-tenant fallback default tenant ID: `018e4e5c-7f00-7000-8000-000000000001`.
 
 ## Auditing And Soft Delete
 1. Auditable entities use `CreatedAt/By` and `UpdatedAt/By`.

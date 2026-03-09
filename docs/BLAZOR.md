@@ -38,13 +38,24 @@ Other BFF endpoints:
 YARP transform behavior is security-sensitive:
 
 1. access token is forwarded from server-side auth session to API request.
-2. `X-Tenant-Id` is forwarded when present.
+2. `X-Tenant-Slug` is forwarded when route context is available; the API resolves tenant identity authoritatively.
 3. incoming `X-Setup-Secret` is stripped first, then replaced using trusted sources (header, cookie, server session).
 
 ## Render Strategy
 1. Interactive rendering is configured through server + WASM render modes.
 2. Route-level rendering policy decisions are governed by runtime policy services (see `docs/RENDER_POLICIES.md`).
 3. Public experience settings are fetched from `api/PublicExperience/settings` and cached client-side for 5 minutes.
+
+## Analytics Bootstrap And Degradation
+1. `AnalyticsInitializer` reads `PublicExperienceSettingsDto` once after first render and initializes the JS bridge through `IAnalyticsInterop`.
+2. Public bootstrap now carries provider, consent mode, transport mode, identify allowance, public API key, and endpoint URL.
+3. Readiness rules are explicit: disabled analytics or provider `none` still initialize a safe no-op bridge, and `relay` mode stays eligible even when the browser has no public API key.
+4. `direct` and `proxy` modes use the browser bridge to load provider-specific scripts; failures degrade to a no-op adapter.
+5. `relay` mode does not require a browser API key and posts first-party pageview/custom events to `POST /api/a/t` instead of loading a vendor script.
+6. `AnalyticsInitializer` owns browser pageview tracking: it emits one initial pageview after successful initialization, subscribes to `NavigationManager.LocationChanged`, tracks normalized path-only routes, and includes `navigation_source`, `tenant_id`, and prior-path `page_referrer` when available.
+7. Client analytics should stay limited to pageviews and low-risk UI interaction signals. Server-side business events remain the responsibility of application handlers so they can be emitted exactly once from authoritative flows.
+8. Relay transport currently supports pageview and constrained client custom events; identify remains policy-gated and is not emitted by the relay bridge.
+9. Analytics bootstrap must never interfere with route rendering, startup navigation, or authenticated BFF flows.
 
 ## API Client Generation (Non-Obvious)
 1. `Explore.Blazor.Client.csproj` runs target `GenerateApiClient` before `CoreCompile`.

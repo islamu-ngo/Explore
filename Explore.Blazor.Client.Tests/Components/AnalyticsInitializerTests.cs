@@ -5,6 +5,10 @@ namespace Explore.Blazor.Client.Tests.Components;
 
 public class AnalyticsInitializerTests : IDisposable
 {
+    private const string NavigationSourceProperty = "navigation_source";
+    private const string TenantIdProperty = "tenant_id";
+    private const string PageReferrerProperty = "page_referrer";
+
     private readonly BlazorTestContext _ctx;
     private readonly Type _analyticsInitializerType;
 
@@ -20,24 +24,92 @@ public class AnalyticsInitializerTests : IDisposable
         _ctx.Dispose();
     }
 
-    private void RenderAnalyticsInitializer()
+    private static bool MatchesInitialPageViewProperties(IDictionary<string, object>? properties, Guid tenantId)
+    {
+        return MatchesPageViewProperties(properties, "initial_load", tenantId.ToString(), null, 2);
+    }
+
+    private static bool MatchesProgrammaticPageViewProperties(IDictionary<string, object>? properties, Guid tenantId, string pageReferrer)
+    {
+        return MatchesPageViewProperties(properties, "programmatic_navigation", tenantId.ToString(), pageReferrer, 3);
+    }
+
+    private static bool MatchesPageViewProperties(
+        IDictionary<string, object>? properties,
+        string expectedNavigationSource,
+        string? expectedTenantId,
+        string? expectedPageReferrer,
+        int expectedCount)
+    {
+        if (properties is null || properties.Count != expectedCount)
+        {
+            return false;
+        }
+
+        if (!TryGetString(properties, NavigationSourceProperty, out var navigationSource)
+            || !string.Equals(navigationSource, expectedNavigationSource, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (expectedTenantId is null)
+        {
+            if (properties.ContainsKey(TenantIdProperty))
+            {
+                return false;
+            }
+        }
+        else if (!TryGetString(properties, TenantIdProperty, out var tenantId)
+            || !string.Equals(tenantId, expectedTenantId, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (expectedPageReferrer is null)
+        {
+            return !properties.ContainsKey(PageReferrerProperty);
+        }
+
+        return TryGetString(properties, PageReferrerProperty, out var pageReferrer)
+            && string.Equals(pageReferrer, expectedPageReferrer, StringComparison.Ordinal);
+    }
+
+    private static bool TryGetString(IDictionary<string, object> properties, string key, out string? value)
+    {
+        value = null;
+
+        if (!properties.TryGetValue(key, out var rawValue))
+        {
+            return false;
+        }
+
+        value = rawValue?.ToString();
+        return !string.IsNullOrWhiteSpace(value);
+    }
+
+    private IRenderedFragmentBase RenderAnalyticsInitializer()
     {
         var method = typeof(Bunit.TestContext)
             .GetMethods()
             .First(x => x.Name == "RenderComponent" && x.IsGenericMethod && x.GetParameters().Length == 1);
 
-        method.MakeGenericMethod(_analyticsInitializerType)
-            .Invoke(_ctx, new object?[] { Array.Empty<ComponentParameter>() });
+        return (IRenderedFragmentBase)method.MakeGenericMethod(_analyticsInitializerType)
+            .Invoke(_ctx, new object?[] { Array.Empty<ComponentParameter>() })!;
     }
 
     [Test]
-    public async Task Renders_WithValidSettings_InitializesInteropOnce()
+    public async Task Renders_WithValidSettings_InitializesInteropAndTracksInitialPageView()
     {
+        var tenantId = Guid.NewGuid();
         var settingsService = Substitute.For<IPublicExperienceService>();
         settingsService.GetSettingsAsync().Returns(new PublicExperienceSettingsModel
         {
+            TenantId = tenantId,
             AnalyticsProvider = "posthog",
             AnalyticsEnabled = true,
+            AnalyticsConsentMode = "identified",
+            AnalyticsTransportMode = "relay",
+            AnalyticsAllowIdentify = true,
             AnalyticsPublicApiKey = "public-key",
             AnalyticsEndpointUrl = "https://analytics.example.com"
         });
@@ -46,10 +118,16 @@ public class AnalyticsInitializerTests : IDisposable
         _ctx.Services.AddSingleton(settingsService);
         _ctx.Services.AddSingleton(analyticsInterop);
 
-        RenderAnalyticsInitializer();
+        var cut = RenderAnalyticsInitializer();
         await Task.Yield();
 
-        await analyticsInterop.Received(1).InitAsync("posthog", true, "public-key", "https://analytics.example.com");
+        cut.WaitForAssertion(() =>
+        {
+            analyticsInterop.Received(1).InitAsync("posthog", true, "identified", "relay", true, "public-key", "https://analytics.example.com");
+            analyticsInterop.Received(1).PageViewAsync(
+                "/",
+                Arg.Is<IDictionary<string, object>>(properties => MatchesInitialPageViewProperties(properties, tenantId)));
+        });
     }
 
     [Test]
@@ -65,7 +143,75 @@ public class AnalyticsInitializerTests : IDisposable
         RenderAnalyticsInitializer();
         await Task.Yield();
 
-        await analyticsInterop.DidNotReceiveWithAnyArgs().InitAsync(default, default, default!, default!);
+        await analyticsInterop.DidNotReceiveWithAnyArgs().InitAsync(default!, default, default!, default!, default, default!, default!);
+    }
+
+    [Test]
+    public async Task Renders_WithAnalyticsDisabled_DoesNotTrackPageViews()
+    {
+        var settingsService = Substitute.For<IPublicExperienceService>();
+        settingsService.GetSettingsAsync().Returns(new PublicExperienceSettingsModel
+        {
+            AnalyticsProvider = "none",
+            AnalyticsEnabled = false,
+            AnalyticsConsentMode = "anonymous",
+            AnalyticsTransportMode = "direct",
+            AnalyticsAllowIdentify = false
+        });
+
+        var analyticsInterop = Substitute.For<IAnalyticsInterop>();
+        _ctx.Services.AddSingleton(settingsService);
+        _ctx.Services.AddSingleton(analyticsInterop);
+
+        var cut = RenderAnalyticsInitializer();
+        await Task.Yield();
+
+        cut.WaitForAssertion(() =>
+        {
+            analyticsInterop.Received(1).InitAsync("none", false, "anonymous", "direct", false, string.Empty, string.Empty);
+            analyticsInterop.DidNotReceiveWithAnyArgs().PageViewAsync(default!, default!);
+        });
+    }
+
+    [Test]
+    public async Task Navigates_ToNewRoute_TracksProgrammaticPageViewWithReferrer()
+    {
+        var tenantId = Guid.NewGuid();
+        var settingsService = Substitute.For<IPublicExperienceService>();
+        settingsService.GetSettingsAsync().Returns(new PublicExperienceSettingsModel
+        {
+            TenantId = tenantId,
+            AnalyticsProvider = "posthog",
+            AnalyticsEnabled = true,
+            AnalyticsConsentMode = "pseudonymous",
+            AnalyticsTransportMode = "relay",
+            AnalyticsAllowIdentify = false,
+            AnalyticsEndpointUrl = "/api/a/t"
+        });
+
+        var analyticsInterop = Substitute.For<IAnalyticsInterop>();
+        _ctx.Services.AddSingleton(settingsService);
+        _ctx.Services.AddSingleton(analyticsInterop);
+        var navigationManager = _ctx.Services.GetRequiredService<FakeNavigationManager>();
+
+        var cut = RenderAnalyticsInitializer();
+        await Task.Yield();
+
+        cut.WaitForAssertion(() =>
+        {
+            analyticsInterop.Received(1).PageViewAsync(
+                "/",
+                Arg.Is<IDictionary<string, object>>(properties => MatchesInitialPageViewProperties(properties, tenantId)));
+        });
+
+        navigationManager.NavigateTo("/events");
+
+        cut.WaitForAssertion(() =>
+        {
+            analyticsInterop.Received(1).PageViewAsync(
+                "/events",
+                Arg.Is<IDictionary<string, object>>(properties => MatchesProgrammaticPageViewProperties(properties, tenantId, "/")));
+        });
     }
 
     [Test]
@@ -81,6 +227,6 @@ public class AnalyticsInitializerTests : IDisposable
         RenderAnalyticsInitializer();
         await Task.Yield();
 
-        await analyticsInterop.DidNotReceiveWithAnyArgs().InitAsync(default, default, default!, default!);
+        await analyticsInterop.DidNotReceiveWithAnyArgs().InitAsync(default!, default, default!, default!, default, default!, default!);
     }
 }

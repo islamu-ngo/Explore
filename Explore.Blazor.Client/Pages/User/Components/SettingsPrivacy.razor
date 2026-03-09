@@ -1,3 +1,5 @@
+@* ABOUTME: Placeholder user privacy settings surface for profile visibility and future analytics/privacy controls. *@
+@* ABOUTME: Keeps future UX aligned with operator analytics modes and consent-policy behavior. *@
 @using MudBlazor
 
 <div class="settings-section">
@@ -8,7 +10,7 @@
     </div>
 
     <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Construction" Class="mb-6">
-        Privacy settings are coming soon. Profile visibility, data controls, and account deletion will be available in a future update.
+        Privacy settings are coming soon. Profile visibility, data controls, and account deletion will arrive in a future update, and analytics choices will follow the instance or tenant policy for disabled, anonymous, pseudonymous, or identified tracking.
     </MudAlert>
 
     <!-- Profile Visibility Section -->
@@ -53,6 +55,9 @@
     <!-- Data & Privacy Section -->
     <div class="settings-form-section" style="opacity: 0.5; pointer-events: none;">
         <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-4">Data & Privacy</MudText>
+        <MudAlert Severity="Severity.Info" Variant="Variant.Text" Dense="true" Class="mb-3">
+            Future analytics controls will reflect operator policy and the current consent mode instead of acting as ad hoc client-only toggles.
+        </MudAlert>
         <MudStack Spacing="3">
             <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
                 <div class="d-flex justify-space-between align-center">

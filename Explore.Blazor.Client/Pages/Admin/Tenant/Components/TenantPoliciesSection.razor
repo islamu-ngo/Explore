@@ -60,6 +60,22 @@
                 Verification requirement is locked by instance policy.
             </MudText>
         }
+
+        <MudDivider />
+
+        <MudSwitch T="bool"
+                   @bind-Value="Model.EventCardClickOpensDetailPage"
+                   Color="Color.Primary"
+                   Disabled="@(!Model.CanOverrideEventCardClickBehavior)">
+            Event card click opens detail page
+        </MudSwitch>
+
+        @if (!Model.CanOverrideEventCardClickBehavior)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Warning">
+                Event card click behavior is locked by instance policy.
+            </MudText>
+        }
     </MudStack>
 </div>
 

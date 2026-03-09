@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Text;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Persistence.Caching;
 using Explore.Persistence.Repositories;
+using Explore.Persistence.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -98,6 +100,7 @@ public static class PersistenceServicesRegistration
 
         // Multi-tenancy Repositories
         services.AddScoped<ITenantRepository, TenantRepository>();
+        services.AddScoped<ITenantLookupSource, TenantLookupSource>();
         services.AddScoped<ITenantSettingsRepository, TenantSettingsRepository>();
         services.AddScoped<IInstanceBootstrapStateRepository, InstanceBootstrapStateRepository>();
         services.AddScoped<IPlatformUserRoleRepository, PlatformUserRoleRepository>();

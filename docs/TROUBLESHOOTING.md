@@ -75,10 +75,10 @@ Symptoms:
 - tenant-scoped data appears empty.
 
 Resolution order in API:
-1. `X-Tenant-Id` header
+1. trusted `X-Tenant-Slug` header from the BFF
 2. custom domain
 3. subdomain
-4. default tenant fallback (`018e4e5c-7f00-7000-8000-000000000001`)
+4. unresolved multi-tenant request returns `404`
 
 Checks:
 - host headers (`X-Forwarded-Host` / host).
@@ -99,6 +99,20 @@ If `_links` are missing:
 `504`:
 - request timeout policy exceeded (`Default`, `Lookup`, `Complex`).
 - verify endpoint timeout category and long-running query behavior.
+
+## Analytics And Tracking Issues
+
+Symptoms:
+- pageviews are missing in dashboards.
+- relay requests return `204`, `4xx`, or appear absent.
+- analytics appears disabled for one tenant but not another.
+
+Checks:
+1. Confirm resolved `analytics.enabled`, `analytics.provider`, `analytics.transport_mode`, and `analytics.endpoint_url` for the affected tenant.
+2. If using `direct` or `proxy`, inspect browser network failures and CSP violations before assuming provider-side breakage.
+3. If using `relay`, confirm the browser can reach `POST /api/a/t` and that the endpoint is not being rate-limited.
+4. Remember that analytics failures should degrade to no-op behavior; if user-facing routes break, the issue is larger than analytics transport.
+5. If the operator wants an emergency stop, switch to provider `none` or disable analytics rather than removing scripts manually.
 
 ## Local URLs
 

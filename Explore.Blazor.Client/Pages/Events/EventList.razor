@@ -312,21 +312,28 @@
                             </div>
                         }
 
-                        @* ── Sessions (single vs multiple display) ── *@
+                        @* ── Single session: show as event-level details (hide session abstraction) ── *@
                         @if (_selectedEventSessions is { Count: 1 })
                         {
-                            @* Single session: inline info *@
                             var session = _selectedEventSessions.First();
                             <MudDivider Class="mb-4" />
+                            @* Format badge *@
+                            @if (!string.IsNullOrEmpty(_selectedEventDetail?.EventFormatFullName))
+                            {
+                                <div class="mb-2">
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                                             Color="@(_selectedEventDetail.EventFormatMasterCode == "Digital" ? Color.Info : _selectedEventDetail.EventFormatMasterCode == "Hybrid" ? Color.Tertiary : Color.Default)"
+                                             Icon="@(_selectedEventDetail.EventFormatMasterCode == "Digital" ? Icons.Material.Filled.Videocam : _selectedEventDetail.EventFormatMasterCode == "Hybrid" ? Icons.Material.Filled.Devices : Icons.Material.Filled.LocationOn)">
+                                        @_selectedEventDetail.EventFormatFullName
+                                    </MudChip>
+                                </div>
+                            }
                             <MudStack Spacing="2" Class="mb-4">
                                 @if (!string.IsNullOrEmpty(session.Title))
                                 {
                                     <div class="d-flex gap-3 align-center">
                                         <MudIcon Icon="@Icons.Material.Outlined.Event" Color="Color.Primary" Size="Size.Small" />
-                                        <div>
-                                            <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">Session</MudText>
-                                            <MudText Typo="Typo.body2" Color="Color.Secondary">@session.Title</MudText>
-                                        </div>
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">@session.Title</MudText>
                                     </div>
                                 }
                                 <div class="d-flex gap-3 align-center">
@@ -352,6 +359,18 @@
                                         </div>
                                     </div>
                                 }
+                                @if (!string.IsNullOrEmpty(_selectedEventDetail?.EventUrl))
+                                {
+                                    <div class="d-flex gap-3 align-center">
+                                        <MudIcon Icon="@Icons.Material.Outlined.Videocam" Color="Color.Primary" Size="Size.Small" />
+                                        <div>
+                                            <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">Online</MudText>
+                                            <MudLink Href="@_selectedEventDetail.EventUrl" Target="_blank" Typo="Typo.body2">
+                                                Join meeting
+                                            </MudLink>
+                                        </div>
+                                    </div>
+                                }
                                 @if (session.MaxAudienceAttendees > 0)
                                 {
                                     <div class="d-flex gap-3 align-center">
@@ -361,6 +380,19 @@
                                             <MudText Typo="Typo.body2" Color="Color.Secondary">
                                                 @(session.CurrentAudienceAttendees ?? 0) / @session.MaxAudienceAttendees attendees
                                             </MudText>
+                                        </div>
+                                    </div>
+                                }
+                                @{
+                                    var sidebarLanguage = _selectedEventDetail?.IslamicAspect?.PrimaryLanguageName;
+                                }
+                                @if (!string.IsNullOrEmpty(sidebarLanguage))
+                                {
+                                    <div class="d-flex gap-3 align-center">
+                                        <MudIcon Icon="@Icons.Material.Outlined.Translate" Color="Color.Primary" Size="Size.Small" />
+                                        <div>
+                                            <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">Language</MudText>
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">@sidebarLanguage</MudText>
                                         </div>
                                     </div>
                                 }

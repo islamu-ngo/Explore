@@ -4,20 +4,21 @@
 namespace Explore.Application.Contracts.Infrastructure;
 
 /// <summary>
-/// Analytics provider that abstracts event tracking, user identification, and group analytics.
+/// Analytics provider that abstracts the lowest-common-denominator tracking contract.
 /// <para>
 /// Implementations include PostHogAnalyticsProvider, PlausibleAnalyticsProvider, RybbitAnalyticsProvider, RudderStackAnalyticsProvider, and NullAnalyticsProvider.
 /// Runtime switching is handled by RuntimeAnalyticsProvider wrapper via SystemSetting.
 /// </para>
 /// <para>
 /// All implementations must be fire-and-forget safe — analytics failures must NEVER break business logic.
+/// Not every provider meaningfully supports every method; some implementations intentionally no-op identify or group calls.
 /// </para>
 /// </summary>
 public interface IAnalyticsProvider
 {
     /// <summary>
-    /// Identifies a user with optional traits (e.g., email, name, plan).
-    /// Creates or updates the user profile in the analytics provider.
+    /// Requests user identification with optional traits (e.g., email, name, plan).
+    /// Providers that do not support identity semantics may intentionally no-op this call.
     /// </summary>
     /// <param name="distinctId">Unique user identifier (typically Keycloak sub claim).</param>
     /// <param name="traits">Optional user properties to set (e.g., email, name, tenantId).</param>
@@ -54,7 +55,8 @@ public interface IAnalyticsProvider
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Associates a user with a group (e.g., tenant, organization).
+    /// Requests association of a user with a group (e.g., tenant, organization).
+    /// Providers that do not support group analytics may intentionally no-op this call.
     /// </summary>
     /// <param name="groupType">The group type (e.g., "tenant", "organization").</param>
     /// <param name="groupKey">The group identifier.</param>

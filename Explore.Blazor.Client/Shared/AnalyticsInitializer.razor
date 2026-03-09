@@ -1,10 +1,24 @@
+@* ABOUTME: Initializes browser analytics from public bootstrap settings and keeps navigation pageviews in sync. *@
+@* ABOUTME: Degrades safely when analytics is disabled, settings fail, or the client bridge no-ops. *@
 @using Explore.Blazor.Client.Services
 @inject IPublicExperienceService PublicExperienceService
 @inject IAnalyticsInterop AnalyticsInterop
+@inject NavigationManager NavigationManager
 @inject ILogger<AnalyticsInitializer> Logger
+@implements IDisposable
 
 @code {
+    private const string NavigationSourceProperty = "navigation_source";
+    private const string TenantIdProperty = "tenant_id";
+    private const string PageReferrerProperty = "page_referrer";
+    private const string InitialLoadNavigationSource = "initial_load";
+    private const string InterceptedNavigationSource = "intercepted_navigation";
+    private const string ProgrammaticNavigationSource = "programmatic_navigation";
+
     private bool _initialized;
+    private bool _analyticsEnabled;
+    private string? _lastTrackedPath;
+    private string? _tenantId;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -26,12 +40,84 @@
             await AnalyticsInterop.InitAsync(
                 settings.AnalyticsProvider,
                 settings.AnalyticsEnabled,
+                settings.AnalyticsConsentMode,
+                settings.AnalyticsTransportMode,
+                settings.AnalyticsAllowIdentify,
                 settings.AnalyticsPublicApiKey,
                 settings.AnalyticsEndpointUrl);
+
+            _analyticsEnabled = settings.AnalyticsEnabled;
+            _tenantId = settings.TenantId == Guid.Empty ? null : settings.TenantId.ToString();
+
+            if (!_analyticsEnabled)
+            {
+                return;
+            }
+
+            NavigationManager.LocationChanged += OnLocationChanged;
+            await TrackPageViewAsync(NormalizePagePath(NavigationManager.Uri), InitialLoadNavigationSource);
         }
         catch (Exception ex)
         {
             Logger.LogWarning(ex, "Analytics initializer failed");
         }
+    }
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        try
+        {
+            var navigationSource = e.IsNavigationIntercepted
+                ? InterceptedNavigationSource
+                : ProgrammaticNavigationSource;
+
+            await TrackPageViewAsync(NormalizePagePath(e.Location), navigationSource);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Analytics pageview tracking failed for {Location}", e.Location);
+        }
+    }
+
+    private async Task TrackPageViewAsync(string pagePath, string navigationSource)
+    {
+        if (!_analyticsEnabled || string.Equals(_lastTrackedPath, pagePath, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var properties = new Dictionary<string, object>(StringComparer.Ordinal)
+        {
+            [NavigationSourceProperty] = navigationSource
+        };
+
+        if (!string.IsNullOrWhiteSpace(_tenantId))
+        {
+            properties[TenantIdProperty] = _tenantId;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_lastTrackedPath))
+        {
+            properties[PageReferrerProperty] = _lastTrackedPath;
+        }
+
+        await AnalyticsInterop.PageViewAsync(pagePath, properties);
+        _lastTrackedPath = pagePath;
+    }
+
+    private static string NormalizePagePath(string location)
+    {
+        if (!Uri.TryCreate(location, UriKind.Absolute, out var absoluteUri))
+        {
+            return string.IsNullOrWhiteSpace(location) ? "/" : location;
+        }
+
+        var path = absoluteUri.AbsolutePath;
+        return string.IsNullOrWhiteSpace(path) ? "/" : path;
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
     }
 }

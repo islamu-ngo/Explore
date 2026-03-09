@@ -1,9 +1,12 @@
+using Explore.Application.Analytics;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.PublicExperience.Handlers.Queries;
 using Explore.Application.Features.PublicExperience.Requests.Queries;
+using Explore.Application.Models;
+using Explore.Application.Services;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using NSubstitute;
@@ -14,29 +17,33 @@ public class GetPublicExperienceSettingsQueryHandlerTests
 {
     private readonly ITenantContext _tenantContext;
     private readonly ISystemSettingRepository _systemSettingRepository;
-    private readonly ISettingsResolver _settingsResolver;
+    private readonly IAnalyticsConfigResolver _analyticsConfigResolver;
     private readonly ITenantPolicySettingService _policySettingService;
     private readonly IModuleService _moduleService;
     private readonly IInstanceGovernanceSettingService _instanceGovernanceSettingService;
+    private readonly IAnalyticsGovernanceService _analyticsGovernanceService;
     private readonly GetPublicExperienceSettingsQueryHandler _handler;
 
     public GetPublicExperienceSettingsQueryHandlerTests()
     {
         _tenantContext = Substitute.For<ITenantContext>();
         _systemSettingRepository = Substitute.For<ISystemSettingRepository>();
-        _settingsResolver = Substitute.For<ISettingsResolver>();
+        _analyticsConfigResolver = Substitute.For<IAnalyticsConfigResolver>();
         _policySettingService = Substitute.For<ITenantPolicySettingService>();
         _moduleService = Substitute.For<IModuleService>();
         _instanceGovernanceSettingService = Substitute.For<IInstanceGovernanceSettingService>();
+        _analyticsGovernanceService = new AnalyticsGovernanceService();
         _instanceGovernanceSettingService.ReadEffectiveSettingsForTenantAsync(Arg.Any<Guid>()).Returns(new InstanceGovernanceSettingsDto());
+        _analyticsConfigResolver.ResolveAsync(Arg.Any<CancellationToken>()).Returns(new AnalyticsConfiguration());
 
         _handler = new GetPublicExperienceSettingsQueryHandler(
             _tenantContext,
             _systemSettingRepository,
-            _settingsResolver,
+            _analyticsConfigResolver,
             _policySettingService,
             _moduleService,
-            _instanceGovernanceSettingService);
+            _instanceGovernanceSettingService,
+            _analyticsGovernanceService);
     }
 
     [Test]
@@ -141,14 +148,15 @@ public class GetPublicExperienceSettingsQueryHandlerTests
         _moduleService.GetEnabledModulesAsync(tenantId, Arg.Any<CancellationToken>())
             .Returns(new List<ModuleInfo>());
 
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsProvider, tenantId, Arg.Any<CancellationToken>())
-            .Returns("posthog");
-        _settingsResolver.GetSettingAsync<bool>(GovernanceSettingKeys.AnalyticsEnabled, tenantId, Arg.Any<CancellationToken>())
-            .Returns(true);
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsApiKey, tenantId, Arg.Any<CancellationToken>())
-            .Returns("public-key");
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsEndpointUrl, tenantId, Arg.Any<CancellationToken>())
-            .Returns("https://analytics.example.com");
+        _analyticsConfigResolver.ResolveAsync(Arg.Any<CancellationToken>()).Returns(new AnalyticsConfiguration
+        {
+            Provider = Explore.Domain.Enums.AnalyticsProviderEnum.Posthog,
+            IsEnabled = true,
+            ConsentMode = AnalyticsConsentMode.Identified,
+            TransportMode = AnalyticsTransportMode.Relay,
+            ApiKey = "public-key",
+            EndpointUrl = "https://analytics.example.com"
+        });
 
         // Act
         var result = await _handler.Handle(new GetPublicExperienceSettingsQuery(), CancellationToken.None);
@@ -156,6 +164,9 @@ public class GetPublicExperienceSettingsQueryHandlerTests
         // Assert
         await Assert.That(result.AnalyticsProvider).IsEqualTo("posthog");
         await Assert.That(result.AnalyticsEnabled).IsTrue();
+        await Assert.That(result.AnalyticsConsentMode).IsEqualTo("identified");
+        await Assert.That(result.AnalyticsTransportMode).IsEqualTo("relay");
+        await Assert.That(result.AnalyticsAllowIdentify).IsTrue();
         await Assert.That(result.AnalyticsPublicApiKey).IsEqualTo("public-key");
         await Assert.That(result.AnalyticsEndpointUrl).IsEqualTo("https://analytics.example.com");
     }
@@ -171,12 +182,14 @@ public class GetPublicExperienceSettingsQueryHandlerTests
         _moduleService.GetEnabledModulesAsync(tenantId, Arg.Any<CancellationToken>())
             .Returns(new List<ModuleInfo>());
 
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsProvider, tenantId, Arg.Any<CancellationToken>())
-            .Returns("posthog");
-        _settingsResolver.GetSettingAsync<bool>(GovernanceSettingKeys.AnalyticsEnabled, tenantId, Arg.Any<CancellationToken>())
-            .Returns(true);
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsApiKey, tenantId, Arg.Any<CancellationToken>())
-            .Returns(string.Empty);
+        _analyticsConfigResolver.ResolveAsync(Arg.Any<CancellationToken>()).Returns(new AnalyticsConfiguration
+        {
+            Provider = Explore.Domain.Enums.AnalyticsProviderEnum.Posthog,
+            IsEnabled = true,
+            ConsentMode = AnalyticsConsentMode.Pseudonymous,
+            TransportMode = AnalyticsTransportMode.Direct,
+            ApiKey = string.Empty
+        });
 
         // Act
         var result = await _handler.Handle(new GetPublicExperienceSettingsQuery(), CancellationToken.None);
@@ -184,6 +197,38 @@ public class GetPublicExperienceSettingsQueryHandlerTests
         // Assert
         await Assert.That(result.AnalyticsProvider).IsEqualTo("posthog");
         await Assert.That(result.AnalyticsEnabled).IsFalse();
+        await Assert.That(result.AnalyticsConsentMode).IsEqualTo("pseudonymous");
+        await Assert.That(result.AnalyticsTransportMode).IsEqualTo("direct");
+        await Assert.That(result.AnalyticsAllowIdentify).IsFalse();
+    }
+
+    [Test]
+    public async Task Handle_WhenRelayTransportHasNoPublicApiKey_KeepsAnalyticsEnabled()
+    {
+        var tenantId = Guid.NewGuid();
+        _tenantContext.TenantId.Returns(tenantId);
+
+        _policySettingService.ReadEffectiveTenantSettingsAsync(tenantId).Returns(new TenantPolicySettingsDto());
+        _moduleService.GetEnabledModulesAsync(tenantId, Arg.Any<CancellationToken>())
+            .Returns(new List<ModuleInfo>());
+
+        _analyticsConfigResolver.ResolveAsync(Arg.Any<CancellationToken>()).Returns(new AnalyticsConfiguration
+        {
+            Provider = Explore.Domain.Enums.AnalyticsProviderEnum.Posthog,
+            IsEnabled = true,
+            ConsentMode = AnalyticsConsentMode.Pseudonymous,
+            TransportMode = AnalyticsTransportMode.Relay,
+            ApiKey = string.Empty,
+            EndpointUrl = string.Empty
+        });
+
+        var result = await _handler.Handle(new GetPublicExperienceSettingsQuery(), CancellationToken.None);
+
+        await Assert.That(result.AnalyticsProvider).IsEqualTo("posthog");
+        await Assert.That(result.AnalyticsEnabled).IsTrue();
+        await Assert.That(result.AnalyticsTransportMode).IsEqualTo("relay");
+        await Assert.That(result.AnalyticsPublicApiKey).IsEqualTo(string.Empty);
+        await Assert.That(result.AnalyticsAllowIdentify).IsFalse();
     }
 
     [Test]

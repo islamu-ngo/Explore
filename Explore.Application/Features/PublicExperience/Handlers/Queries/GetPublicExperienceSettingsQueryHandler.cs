@@ -2,6 +2,7 @@
 // ABOUTME: Supports anonymous-safe home page routing and white-label branding consumption.
 
 using System.Text.Json;
+using Explore.Application.Analytics;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
@@ -16,25 +17,28 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
 {
     private readonly ITenantContext _tenantContext;
     private readonly ISystemSettingRepository _systemSettingRepository;
-    private readonly ISettingsResolver _settingsResolver;
+    private readonly IAnalyticsConfigResolver _analyticsConfigResolver;
     private readonly ITenantPolicySettingService _policySettingService;
     private readonly IModuleService _moduleService;
     private readonly IInstanceGovernanceSettingService _instanceGovernanceSettingService;
+    private readonly IAnalyticsGovernanceService _analyticsGovernanceService;
 
     public GetPublicExperienceSettingsQueryHandler(
         ITenantContext tenantContext,
         ISystemSettingRepository systemSettingRepository,
-        ISettingsResolver settingsResolver,
+        IAnalyticsConfigResolver analyticsConfigResolver,
         ITenantPolicySettingService policySettingService,
         IModuleService moduleService,
-        IInstanceGovernanceSettingService instanceGovernanceSettingService)
+        IInstanceGovernanceSettingService instanceGovernanceSettingService,
+        IAnalyticsGovernanceService analyticsGovernanceService)
     {
         _tenantContext = tenantContext;
         _systemSettingRepository = systemSettingRepository;
-        _settingsResolver = settingsResolver;
+        _analyticsConfigResolver = analyticsConfigResolver;
         _policySettingService = policySettingService;
         _moduleService = moduleService;
         _instanceGovernanceSettingService = instanceGovernanceSettingService;
+        _analyticsGovernanceService = analyticsGovernanceService;
     }
 
     public async Task<PublicExperienceSettingsDto> Handle(GetPublicExperienceSettingsQuery request, CancellationToken cancellationToken)
@@ -44,15 +48,21 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
         var enabledModulesInfo = await _moduleService.GetEnabledModulesAsync(tenantId, cancellationToken);
         var enabledModuleKeys = enabledModulesInfo.Select(m => m.ModuleKey).ToList();
         var governanceSettings = await _instanceGovernanceSettingService.ReadEffectiveSettingsForTenantAsync(tenantId);
+        var analyticsConfiguration = await _analyticsConfigResolver.ResolveAsync(cancellationToken);
 
         var deploymentModeSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DeploymentMode);
         var deploymentMode = DeserializeString(deploymentModeSetting?.Value, "SingleTenant");
-        var analyticsProvider = await _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsProvider, tenantId, cancellationToken) ?? "none";
-        var analyticsEnabled = await _settingsResolver.GetSettingAsync<bool>(GovernanceSettingKeys.AnalyticsEnabled, tenantId, cancellationToken);
-        var analyticsPublicApiKey = await _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsApiKey, tenantId, cancellationToken);
-        var analyticsEndpointUrl = await _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsEndpointUrl, tenantId, cancellationToken);
+        var analyticsProvider = analyticsConfiguration.Provider.ToString().ToLowerInvariant();
+        var analyticsPublicApiKey = analyticsConfiguration.ApiKey;
+        var analyticsEndpointUrl = analyticsConfiguration.EndpointUrl;
         var hasAnalyticsApiKey = !string.IsNullOrWhiteSpace(analyticsPublicApiKey);
-        var shouldEnableAnalytics = analyticsEnabled && analyticsProvider != "none" && hasAnalyticsApiKey;
+        var transportRequiresPublicApiKey = analyticsConfiguration.TransportMode != AnalyticsTransportMode.Relay;
+        var shouldEnableAnalytics = analyticsConfiguration.IsEnabled
+            && analyticsConfiguration.Provider != Domain.Enums.AnalyticsProviderEnum.None
+            && (!transportRequiresPublicApiKey || hasAnalyticsApiKey);
+        var analyticsConsentMode = analyticsConfiguration.ConsentMode.ToString().ToLowerInvariant();
+        var analyticsTransportMode = analyticsConfiguration.TransportMode.ToString().ToLowerInvariant();
+        var analyticsAllowIdentify = _analyticsGovernanceService.AllowsIdentify(analyticsConfiguration.Provider, analyticsConfiguration.ConsentMode);
 
         return new PublicExperienceSettingsDto
         {
@@ -77,6 +87,9 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
             EnabledModules = enabledModuleKeys,
             AnalyticsProvider = analyticsProvider,
             AnalyticsEnabled = shouldEnableAnalytics,
+            AnalyticsConsentMode = analyticsConsentMode,
+            AnalyticsTransportMode = analyticsTransportMode,
+            AnalyticsAllowIdentify = analyticsAllowIdentify,
             AnalyticsPublicApiKey = analyticsPublicApiKey ?? string.Empty,
             AnalyticsEndpointUrl = analyticsEndpointUrl ?? string.Empty,
             RenderPolicyVersion = governanceSettings.RenderPolicyVersion,

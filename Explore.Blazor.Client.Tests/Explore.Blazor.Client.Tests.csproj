@@ -10,11 +10,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Explore.Application\Explore.Application.csproj" />
     <ProjectReference Include="..\Explore.Blazor.Client\Explore.Blazor.Client.csproj" />
+    <ProjectReference Include="..\Explore.Infrastructure\Explore.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <Compile Include="..\Explore.Blazor\Services\CircuitAccessTokenService.cs" Link="Server\CircuitAccessTokenService.cs" />
+    <Compile Include="..\Explore.Blazor\Services\ITenantRouteContextAccessor.cs" Link="Server\ITenantRouteContextAccessor.cs" />
+    <Compile Include="..\Explore.Blazor\Services\TenantRouteContextAccessor.cs" Link="Server\TenantRouteContextAccessor.cs" />
   </ItemGroup>
 
   <ItemGroup>

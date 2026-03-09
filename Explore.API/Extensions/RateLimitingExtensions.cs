@@ -24,6 +24,7 @@ public static class RateLimitingExtensions
     public const string AuthenticatedPolicy = "Authenticated";
     public const string WritePolicy = "Write";
     public const string SetupSecretPolicy = "SetupSecret";
+    public const string AnalyticsRelayPolicy = "AnalyticsRelay";
 
     public static IServiceCollection AddApiRateLimiting(
         this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
@@ -41,6 +42,8 @@ public static class RateLimitingExtensions
                 options.AddPolicy(WritePolicy, _ =>
                     RateLimitPartition.GetNoLimiter<string>("test"));
                 options.AddPolicy(SetupSecretPolicy, _ =>
+                    RateLimitPartition.GetNoLimiter<string>("test"));
+                options.AddPolicy(AnalyticsRelayPolicy, _ =>
                     RateLimitPartition.GetNoLimiter<string>("test"));
             });
 
@@ -62,6 +65,10 @@ public static class RateLimitingExtensions
         // Write limits
         var writePermitLimit = section.GetValue("Write:PermitLimit", 30);
         var writeWindowSeconds = section.GetValue("Write:WindowSeconds", 60);
+
+        // Analytics relay limits
+        var analyticsRelayPermitLimit = section.GetValue("AnalyticsRelay:PermitLimit", 120);
+        var analyticsRelayWindowSeconds = section.GetValue("AnalyticsRelay:WindowSeconds", 60);
 
         services.AddRateLimiter(options =>
         {
@@ -154,6 +161,20 @@ public static class RateLimitingExtensions
                     {
                         PermitLimit = 5,
                         Window = TimeSpan.FromMinutes(1),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0,
+                        AutoReplenishment = true
+                    });
+            });
+
+            options.AddPolicy(AnalyticsRelayPolicy, httpContext =>
+            {
+                var ip = ResolveClientIp(httpContext)?.ToString() ?? "unknown";
+                return RateLimitPartition.GetFixedWindowLimiter($"analytics-relay:{ip}", _ =>
+                    new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = analyticsRelayPermitLimit,
+                        Window = TimeSpan.FromSeconds(analyticsRelayWindowSeconds),
                         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                         QueueLimit = 0,
                         AutoReplenishment = true

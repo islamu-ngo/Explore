@@ -4,7 +4,6 @@ using System.Reflection;
 using Explore.Blazor.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Explore.Blazor.Client.Tests.Services;
 
@@ -29,6 +28,7 @@ public class CircuitAccessTokenServiceTests
         var accessor = new HttpContextAccessor { HttpContext = requestContext };
         var handler = new TestableAccessTokenForwardingHandler(
             accessor,
+            new TenantRouteContextAccessor(accessor),
             new SetupSecretSessionService(),
             Substitute.For<ILogger<AccessTokenForwardingHandler>>());
         var terminal = new CaptureHandler();
@@ -59,6 +59,7 @@ public class CircuitAccessTokenServiceTests
         var accessor = new HttpContextAccessor { HttpContext = requestContext };
         var handler = new TestableAccessTokenForwardingHandler(
             accessor,
+            new TenantRouteContextAccessor(accessor),
             new SetupSecretSessionService(),
             Substitute.For<ILogger<AccessTokenForwardingHandler>>());
         var terminal = new CaptureHandler();
@@ -90,6 +91,7 @@ public class CircuitAccessTokenServiceTests
         var accessor = new HttpContextAccessor { HttpContext = requestContext };
         var handler = new TestableAccessTokenForwardingHandler(
             accessor,
+            new TenantRouteContextAccessor(accessor),
             new SetupSecretSessionService(),
             Substitute.For<ILogger<AccessTokenForwardingHandler>>());
         var terminal = new CaptureHandler();
@@ -136,6 +138,7 @@ public class CircuitAccessTokenServiceTests
         var accessor = new HttpContextAccessor { HttpContext = context };
         var handler = new TestableAccessTokenForwardingHandler(
             accessor,
+            new TenantRouteContextAccessor(accessor),
             new SetupSecretSessionService(),
             Substitute.For<ILogger<AccessTokenForwardingHandler>>());
         var terminal = new CaptureHandler();
@@ -172,6 +175,7 @@ public class CircuitAccessTokenServiceTests
         var accessor = new HttpContextAccessor { HttpContext = context };
         var handler = new TestableAccessTokenForwardingHandler(
             accessor,
+            new TenantRouteContextAccessor(accessor),
             new SetupSecretSessionService(),
             Substitute.For<ILogger<AccessTokenForwardingHandler>>());
         var terminal = new CaptureHandler();
@@ -196,6 +200,7 @@ public class CircuitAccessTokenServiceTests
         var accessor = new HttpContextAccessor { HttpContext = context };
         var handler = new TestableAccessTokenForwardingHandler(
             accessor,
+            new TenantRouteContextAccessor(accessor),
             sessionService,
             Substitute.For<ILogger<AccessTokenForwardingHandler>>());
         var terminal = new CaptureHandler();
@@ -267,9 +272,10 @@ public class CircuitAccessTokenServiceTests
     {
         public TestableAccessTokenForwardingHandler(
             IHttpContextAccessor httpContextAccessor,
+            ITenantRouteContextAccessor tenantRouteContextAccessor,
             ISetupSecretSessionService setupSecretSessionService,
             ILogger<AccessTokenForwardingHandler> logger)
-            : base(httpContextAccessor, setupSecretSessionService, logger)
+            : base(httpContextAccessor, tenantRouteContextAccessor, setupSecretSessionService, logger)
         {
         }
 

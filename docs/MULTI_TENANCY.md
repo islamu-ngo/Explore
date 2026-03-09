@@ -19,12 +19,16 @@ In single-tenant mode, tenant context always resolves to default tenant ID.
 
 ## Tenant Resolution Order
 
-`Explore.API.Services.TenantContext` resolves tenant in this strict order:
+Standard runtime authority lives in `Explore.API.Middleware.ApiTenantResolutionMiddleware`.
 
-1. `X-Tenant-Id` header (if valid GUID),
+In multi-tenant mode, the API resolves tenant in this strict order:
+
+1. trusted `X-Tenant-Slug` header forwarded by the BFF,
 2. custom-domain lookup (`domains.tenant_custom_domain`) if custom domains are allowed,
-3. subdomain lookup (`domains.tenant_subdomain`, then fallback to active tenant slug),
-4. default tenant ID.
+3. subdomain lookup (`domains.tenant_subdomain`),
+4. unresolved request fails closed with `404`.
+
+In single-tenant mode, tenant context always resolves to the configured default tenant ID.
 
 Request host source:
 
@@ -34,7 +38,7 @@ Resolved tenant is cached for the request in `HttpContext.Items["__resolved_tena
 
 ## Default Tenant Fallback
 
-Fallback default tenant ID in `TenantContext` is:
+Fallback default tenant ID in single-tenant runtime is:
 
 - `018e4e5c-7f00-7000-8000-000000000001`
 

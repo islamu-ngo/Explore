@@ -114,6 +114,102 @@ Instance bootstrap uses `ISetupSecretProvider`:
 - if setup mode is active and no env secret exists, API auto-generates a setup secret and logs it at startup;
 - onboarding endpoints in BFF (`/bff/setup-secret*`) validate and synchronize secret state.
 
+## Analytics Operational Contract
+
+Analytics is optional infrastructure. Provider failures must never block normal product flows.
+
+Current operational expectations:
+
+- `NullAnalyticsProvider` is the safe baseline for disabled deployments.
+- Runtime provider selection is tenant-aware and settings-driven through `AnalyticsConfigResolver`.
+- Provider/network failures are logged and swallowed so command/query flows continue.
+- Self-hosted operators may need first-party proxying or custom endpoints via `analytics.endpoint_url` to reduce CSP or ad-blocker loss.
+- Browser relay fallback is available at `POST /api/a/t` for operators who cannot or do not want to load vendor analytics scripts in the browser.
+
+Current provider capability tiers:
+
+| Provider | Current operational tier | Notes |
+|---|---|---|
+| `none` | Disabled | First-class no-op mode |
+| `plausible` | Lightweight web analytics | Pageviews and custom events only; no identify/group semantics by design |
+| `posthog` | Rich product analytics | Richest current provider: identify, groups, and feature flags |
+| `rybbit` | Browser-richer / validate before broad rollout | Current server code is track/pageview-focused; official docs justify browser identify but not server/group/flag parity |
+| `rudderstack` | Advanced pipeline / validate before broad rollout | Full event-spec surface in code, but better understood as a CDP/router than a first-party analytics backend |
+
+Self-hoster deployment tiers:
+
+| Tier | Typical operator posture | Expected analytics mode | Operational focus |
+|---|---|---|---|
+| Tier 0 | Privacy-first / no analytics | `none` | Zero breakage, zero analytics dependency |
+| Tier 1 | Lightweight self-hosting | `plausible`-style web analytics | Simple setup, low overhead, pageview/custom event tracking |
+| Tier 2 | Product analytics | `posthog`, `rybbit`, or `rudderstack` | Richer events, optional identity semantics, stronger operator validation |
+| Tier 3 | Accuracy-sensitive/self-hosted proxy | First-party proxied analytics | Reverse proxy, CSP, and blocker mitigation guidance |
+
+Incident triage for analytics-related issues:
+
+1. Check whether `analytics.enabled` is actually `true` for the affected tenant.
+2. Check resolved `analytics.provider` and `analytics.endpoint_url` values.
+3. Check browser blocking conditions first for client-side analytics: CSP, ad blockers, reverse proxy pathing.
+4. Confirm failures are isolated to analytics logging and not leaking into user-facing requests.
+
+Transport mode quick guide:
+
+| Mode | Browser behavior | Typical operator use | Requirements |
+|---|---|---|---|
+| `direct` | Loads provider script from vendor/provider host | Fastest setup, cloud-hosted or permissive CSP | Public API/site key, provider host allowed by CSP/network |
+| `proxy` | Loads provider script and ingest through a first-party reverse proxy | Self-hosted deployments that want better blocker resistance and simpler CSP | Reverse proxy for script + ingest paths, forwarded host/proto headers, stable first-party path |
+| `relay` | No vendor script in browser; client posts pageview/custom events to `/api/a/t` | Strict CSP, privacy-sensitive, or heavily blocked environments | API reachable from browser, provider configured server-side, no public API key required |
+
+Reverse proxy and CSP notes:
+
+- Avoid blocker-friendly path names such as `/analytics`, `/tracking`, or `/stats` when fronting third-party providers; use opaque first-party paths instead.
+- Preserve `Host`, `X-Forwarded-Proto`, and `X-Forwarded-For` correctly so provider proxies and relay rate limiting see the intended origin/protocol.
+- Keep proxied analytics endpoints on HTTPS; mixed-content browser failures look like random analytics drops.
+- `direct` and `proxy` modes need CSP allowances for the chosen script/connect sources; `relay` mode can keep CSP tighter because the browser only talks to the application origin.
+- The relay endpoint has its own `AnalyticsRelay` fixed-window rate limit in addition to normal API protections.
+
+Bootstrap and failure behavior:
+
+- Disabled analytics or provider `none` results in a clean no-op bridge.
+- `relay` mode initializes even when `analytics.api_key` is empty.
+- Script load failures in `direct` or `proxy` mode degrade to a no-op adapter rather than breaking the page.
+- Relay/browser failures must be treated as observational loss only; user-facing navigation and commands continue normally.
+
+Client vs server event responsibilities:
+
+- Browser-side analytics is for pageviews and low-risk interaction telemetry only.
+- Server-side analytics is for business events that must come from authoritative handlers or workflows.
+- Do not emit the same business action from both client and server unless the event is deliberately modeled as correlated-but-distinct.
+- Treat browser pageviews as navigation context and server events as domain facts.
+
+Provider-capability caution:
+
+- Do not promise semantic parity across providers just because the interface shape is shared.
+- `PostHog` is the only currently validated provider in this repo that supports rich product-analytics behavior plus feature flags.
+- `Plausible` should be positioned as the privacy-friendly lightweight tier.
+- `Rybbit` should stay in a validated-with-caution tier until official docs justify server-side parity beyond browser events.
+- `RudderStack` should be documented as an advanced event pipeline option, especially for operators who want to forward data onward, not as a direct substitute for PostHog dashboards/flags.
+
+Analytics rollout and incident runbook:
+
+1. **Enable / disable**
+   - Use `analytics.enabled = false` or provider `none` for a clean global or tenant-level kill switch.
+   - For urgent incident response, short-circuit the proxy/relay path to `204` rather than redeploying clients.
+2. **Provider switch**
+   - Validate the target provider in a staging tenant first.
+   - Keep event names and property semantics stable across the switch; do not promise unsupported provider parity.
+   - Prefer a short dual-run window only when operators explicitly need migration confidence.
+3. **Proxy / relay verification**
+   - Confirm the reverse proxy preserves `Host`, `X-Forwarded-Proto`, and `X-Forwarded-For`.
+   - Verify CSP permits the required `script-src` / `connect-src` entries for `direct` or `proxy` mode.
+   - Verify `relay` mode can reach `/api/a/t` from the browser without a public API key.
+4. **Blocked or missing data**
+   - Check CSP reports, browser network failures, and ad-blocker interference before suspecting provider code.
+   - If traffic is heavily blocked, move to `proxy` or `relay` mode before expanding provider-specific debugging.
+5. **Deferred reliability work**
+   - Buffered/outbox analytics delivery is intentionally deferred to a follow-up milestone.
+   - Current guidance is best-effort delivery for browser analytics and handler-driven best-effort server events; introduce an outbox only if operators need stronger guarantees for business-critical analytics.
+
 ## Single-Tenant Endpoint Exposure
 
 `BlockInSingleTenantAttribute` behavior:

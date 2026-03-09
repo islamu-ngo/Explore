@@ -1,7 +1,9 @@
 @using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services.Events
 @using MudBlazor
 @inject IDialogService DialogService
 @inject IEventService EventService
+@inject IEventSessionAgendaItemService AgendaItemService
 @inject ISnackbar Snackbar
 
 <div class="event-session-manager">
@@ -35,18 +37,50 @@
                                 </div>
                             </div>
                         </div>
-                        
-                        <div>
+
+                        <div class="d-flex gap-2">
+                            @if (_sessionAgendaItems.TryGetValue(session.Id!.Value, out var items) && items.Count > 0)
+                            {
+                                <MudButton Variant="Variant.Text"
+                                           Size="Size.Small"
+                                           Color="Color.Default"
+                                           OnClick="@(() => ToggleAgenda(session.Id!.Value))">
+                                    <MudIcon Icon="@Icons.Material.Outlined.ViewAgenda" Size="Size.Small" Class="mr-1" />
+                                    @items.Count item@(items.Count == 1 ? "" : "s")
+                                </MudButton>
+                            }
                             @if (ShowRegisterButton)
                             {
-                                <MudButton Variant="Variant.Outlined" 
-                                           Color="Color.Primary" 
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Primary"
                                            OnClick="@(() => OnRegisterClick.InvokeAsync(session))">
                                     Register
                                 </MudButton>
                             }
                         </div>
                     </div>
+
+                    @if (_expandedSessions.Contains(session.Id!.Value) && _sessionAgendaItems.TryGetValue(session.Id!.Value, out var agendaItems) && agendaItems.Count > 0)
+                    {
+                        <MudDivider Class="my-3" />
+                        <MudTimeline TimelinePosition="TimelinePosition.Start">
+                            @foreach (var item in agendaItems.OrderBy(a => a.StartTime))
+                            {
+                                <MudTimelineItem Color="Color.Primary" Size="Size.Small">
+                                    <ItemContent>
+                                        <MudText Typo="Typo.body2" Style="font-weight: 600;">@item.Title</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            @(item.StartTime?.ToString("HH:mm") ?? "")@(item.EndTime != null ? $" — {item.EndTime?.ToString("HH:mm")}" : "")
+                                            @if (!string.IsNullOrEmpty(item.LocationFullName))
+                                            {
+                                                @($" · {item.LocationFullName}")
+                                            }
+                                        </MudText>
+                                    </ItemContent>
+                                </MudTimelineItem>
+                            }
+                        </MudTimeline>
+                    }
                 </MudPaper>
             }
         </MudStack>
@@ -68,9 +102,11 @@
     [Parameter] public EventCallback<EventSessionListDto> OnRegisterClick { get; set; }
 
     public List<EventSessionListDto> Sessions { get; private set; } = new();
-    
+
     private Guid _previousEventId;
     private bool _isLoading = true;
+    private Dictionary<Guid, ICollection<EventSessionAgendaItemListDto>> _sessionAgendaItems = new();
+    private HashSet<Guid> _expandedSessions = new();
 
     protected override async Task OnParametersSetAsync()
     {
@@ -88,6 +124,17 @@
         {
             var result = await EventService.GetSessionsByEventAsync(EventId);
             Sessions = result.OrderBy(s => s.StartTime).ToList();
+
+            // Load agenda items for all sessions in parallel
+            var agendaTasks = Sessions
+                .Where(s => s.Id.HasValue && s.Id != Guid.Empty)
+                .Select(async s =>
+                {
+                    var items = await AgendaItemService.GetAgendaItemsBySessionAsync(s.Id!.Value);
+                    return (SessionId: s.Id!.Value, Items: items);
+                });
+            var results = await Task.WhenAll(agendaTasks);
+            _sessionAgendaItems = results.ToDictionary(r => r.SessionId, r => r.Items);
         }
         catch (Exception ex)
         {
@@ -98,6 +145,14 @@
         {
             _isLoading = false;
             StateHasChanged();
+        }
+    }
+
+    private void ToggleAgenda(Guid sessionId)
+    {
+        if (!_expandedSessions.Remove(sessionId))
+        {
+            _expandedSessions.Add(sessionId);
         }
     }
 }

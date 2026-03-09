@@ -21,7 +21,10 @@
     <PackageReference Include="Blazouter" />
     <PackageReference Include="Blazouter.Server" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
+    <ProjectReference Include="..\Explore.Application\Explore.Application.csproj" />
     <ProjectReference Include="..\Explore.Blazor.Client\Explore.Blazor.Client.csproj" />
+    <ProjectReference Include="..\Explore.Infrastructure\Explore.Infrastructure.csproj" />
+    <ProjectReference Include="..\Explore.Persistence\Explore.Persistence.csproj" />
     <ProjectReference Include="..\Explore.Secrets\Explore.Secrets.csproj" />
     <ProjectReference Include="..\Explore.ServiceDefaults\Explore.ServiceDefaults.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" />

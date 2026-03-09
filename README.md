@@ -4,12 +4,14 @@
 
 # ISLAMU Event
 
-# Event Platform & Management System — v0.1.0 Beta
+Event Platform & Management System
 
-⚠️ **Beta Release**: Currently at v0.1.0 — First public release ready for beta testing and early adopters. API may change before 1.0.0 stable release.
+**v0.1.0 Beta**
 
-ISLAMU Event is a self-hostable, decentralized, multi-tenant event platform for any community or industry.
-The ISLAMU organization hosts a public instance focused on Islamic events, but the software itself is purpose-agnostic, fully white-label, and designed to be rebranded for any use case.
+⚠️ **Beta Release:** ready for beta testing, self-hosted evaluation, and early adopters. The API and operational experience may still change before `1.0.0`.
+
+ISLAMU Event is a self-hostable, white-label event discovery and management platform for communities, organizations, and SaaS operators.
+The public ISLAMU instance is Islamic-focused, but the software itself is purpose-agnostic and designed to be rebranded for any event ecosystem.
 
 ![GitHub Workflow Status][github-workflow-status-shield]
 [![Codecov][codecov-shield]][codecov-link]
@@ -21,7 +23,7 @@ The ISLAMU organization hosts a public instance focused on Islamic events, but t
 [![Discussions][github-discussions-shield]][github-discussions-link]
 [![Discord][discord-shield]][discord-link]
 
-[**ISLAMU's Islamic Instance**][islamu-platform] · [**Docs**](docs/index.md) · [**Roadmap**][roadmap-link]
+[**Public Instance**][islamu-platform] · [**Quick Start**](#-quick-start) · [**Docs**](docs/index.md) · [**Roadmap**][roadmap-link]
 
 </div>
 
@@ -29,9 +31,9 @@ The ISLAMU organization hosts a public instance focused on Islamic events, but t
 
 ## ℹ About ISLAMU Event
 
-ISLAMU Event is a **self-hostable event discovery and management platform** that helps communities find, organize, and promote events. Built with advanced filtering, verification workflows, and cultural intelligence to serve diverse communities worldwide.
+ISLAMU Event is a **self-hostable event discovery and management platform** for publishing, discovering, and operating events across one organization or many isolated tenants.
 
-> **v0.1.0 Beta** — Historical note: [v0.1.0 release file](docs/semantic_versioning/v0.1.0.md).
+It is built as a **white-label platform engine**: the hosted ISLAMU instance focuses on Islamic events, while the core software can be rebranded for conferences, tech communities, nonprofits, education, local groups, and other event-driven ecosystems.
 
 > Give us a Star ⭐️
 
@@ -40,26 +42,83 @@ ISLAMU Event is a **self-hostable event discovery and management platform** that
 - **The ISLAMU-hosted instance is Islamic-focused**: Our public instance at [event.openislamu.org](https://event.openislamu.org) is curated for Islamic events and community needs
 - **White-label ready**: Rebrand and customize the platform for your specific use case with full control over branding, policies, and features
 
-
 ![Event List Screenshot][event-list-image]
 
-## ✨ Why ISLAMU Event
+## 🚀 Quick Start
 
-### Key Differentiators
+### 🌐 Try the Public Instance
+
+Visit **[event.openislamu.org](https://event.openislamu.org)** to:
+- 🔍 browse events without an account
+- 📝 create an account and publish events
+- ✅ register for events
+- 👥 follow organizations
+
+### 🐳 Run with Docker
+
+**Prerequisites:**
+- Git
+- Docker
+- Docker Compose v2+
+
+**Quick deploy:**
+```bash
+# Clone the repository
+git clone https://github.com/islamu-ngo/Event.git && cd Event
+
+# Start core services (UI, API, PostgreSQL, Keycloak)
+docker compose up -d
+
+# Optional: start with object storage support
+docker compose up --profile storage -d
+```
+
+**Default local endpoints:**
+- Blazor UI: `http://localhost:7002`
+- API: `http://localhost:7039`
+- Swagger UI: `http://localhost:7039/swagger`
+
+### 🛠️ Run for Local Development
+
+**Prerequisites:**
+- .NET 10 SDK (solution targets `net10.0`; preview SDK pinned in `global.json`)
+- Docker or local equivalents for required infrastructure
+
+**Typical local dev endpoints:**
+- Blazor: `https://localhost:7177`
+- API: `https://localhost:7039`
+
+### 🔐 First Run
+
+- If onboarding is not completed yet, the Blazor root route redirects to `/setup`
+- When `SETUP_SECRET` is not set, API startup logs print an auto-generated setup secret valid for 60 minutes
+- Production deployments still require real configuration for domains, TLS, secrets, and external integrations
+
+**For detailed deployment instructions:**
+- [Operations Guide](docs/OPERATIONS.md) — production deployment and hosting
+- [Configuration Guide](docs/CONFIGURATION.md) — environment variables and runtime settings
+
+### 👩‍💻 Contributor Fast-Track
+
+If you plan to contribute code, start with:
+- [Contribution Guidelines](docs/CONTRIBUTING.md)
+- [Governance](docs/GOVERNANCE.md)
+- [Quick Reference](docs/QUICK_REFERENCE.md)
+- [Architecture](docs/ARCHITECTURE.md)
+
+## ✨ Capabilities
+
+### Why Teams Choose It
 
 - **🔐 Security-First:** BFF pattern (no browser token storage), runtime authorization provider (Cerbos or local), secret provider abstraction
-- **🛡️ Verified Organizations:** Two-tier verification system for trust and quality
-- **⚡ Multi-Tenancy:** Runtime mode switching (Single-tenant ↔ Multi-tenant) without code changes
+- **🛡️ Verified Organizations:** Two-tier verification system designed to build trust and content quality
+- **⚡ Multi-Tenancy:** Runtime mode switching between single-tenant and SaaS-style deployments without code changes
 - **🔧 Modular Events:** Plugin-style aspects (Islamic, Tech) with per-tenant enablement
-- **🎯 Cultural Intelligence:** Advanced filtering based on enabled modules. filter by madhab, gender, age, prayer times, skill level...
+- **🎯 Cultural Intelligence:** Advanced filtering based on enabled modules, including madhab, gender, age, prayer-relative timing, and skill level
 - **🏗️ Enterprise Architecture:** Clean Architecture + CQRS with MediatR, REST Level 3 (HATEOAS)
-- **🌍 Federation-Ready:** ATProto data models complete (Phase 1), ActivityPub and protocol endpoints planned for 1.0.0
-- **🧪 Test Coverage:** 7 test projects (TUnit, bUnit, architecture tests)
+- **🌍 Federation-Ready:** ATProto data models complete (Phase 1), with ActivityPub and protocol endpoints planned for `1.0.0`
+- **🧪 Test Strategy:** Unit, integration, UI, and architecture test projects are already in place
 - **📖 Open Source:** AGPL-3.0 licensed for transparency and community ownership
-
----
-
-## 🎯 Core Features (v0.1.0)
 
 ### For Event Seekers
 
@@ -74,21 +133,23 @@ ISLAMU Event is a **self-hostable event discovery and management platform** that
 - **📅 Multi-Session Events:** Conferences, seminars, recurring programs with speakers, agendas, and language variants
 - **🛡️ Organization Verification:** Two-tier system (user-submitted vs. verified organizations)
 - **👥 Member Management:** Invite members, assign roles (Owner, Admin, Editor, Viewer), track permissions
-- **⭐ Reviews & Ratings:** Users can review verified organizations to build trust
+- **⭐ Reviews & Ratings:** Review verified organizations to build community trust
 - **🎯 Modular Event Types:** Enable Islamic or Tech aspects per event based on tenant configuration
 - **📊 Flexible Publishing:** Open registration, approval-required, or invite-only policies
+- **🧩 Composition-Based Event Modeling:** Mix aspects such as Islamic and Tech on the same event without class explosion
 
 ### For Platform Owners
 
-- **🐳 Docker-Ready:** One-command deployment with `docker compose up -d`
+- **🐳 Docker-Ready:** Fast local deployment with `docker compose up -d`
 - **💼 Multi-Tenancy:** Switch between single-tenant and SaaS modes at runtime without code changes
+- **🧭 API-Authoritative Tenant Isolation:** Blazor handles routing convenience while the API owns tenant identity and data isolation
 - **🛠️ White-Label Control:** Custom branding, domains, logos, navigation links, policies per tenant
 - **🔧 Admin Hierarchy:** Instance admins, tenant admins, and organization admins with cascading settings
 - **🌍 Federation Foundation:** ATProto data models complete (Phase 1), ActivityPub and protocol endpoints planned for 1.0.0
 - **📚 Comprehensive Docs:** Architecture, deployment, configuration, troubleshooting, and API reference
 - **🔐 Enterprise Security:** BFF pattern, Cerbos authorization, Infisical secrets, HATEOAS REST API
 
-##  Deployment & Hosting Options
+## Deployment & Hosting Options
 
 This platform is designed to be flexible and self-hostable for any organization.
 
@@ -112,11 +173,12 @@ See [Configuration Guide][configuration-doc] for full customization options.
 
 We treat security as a first-class citizen, not an afterthought.
 
-* **Identity & Access:** OAuth2/OIDC via **Keycloak**.
-* **Authorization:** Runtime provider switching via system setting (Cerbos PDP or local DB-backed provider), with optional tenant BYO Cerbos.
-* **Data Integrity:** All database interactions use **Parameterized EF Core queries** to eliminate SQL injection.
-* **Secret Management:** Secret provider abstraction supports environment variables and Infisical-compatible loading.
-* **Observability:** **OpenTelemetry** + structured logging (Serilog).
+- **Identity & Access:** OAuth2/OIDC via **Keycloak**
+- **Authorization:** Runtime provider switching via system setting (Cerbos PDP or local DB-backed provider), with optional tenant BYO Cerbos
+- **Tenant Isolation:** API-authoritative tenant resolution with EF Core global query filters for tenant-scoped data
+- **Data Integrity:** Parameterized EF Core queries to eliminate SQL injection
+- **Secret Management:** Secret provider abstraction for environment variables and Infisical-compatible loading
+- **Observability:** OpenTelemetry + structured logging with Serilog
 
 ### Security Features
 
@@ -137,49 +199,6 @@ Events use **composition over inheritance**:
 A "Ramadan Tech Workshop" has both Islamic and Tech aspects. No class explosion.
 
 See [EXTENSIBILITY.md](docs/EXTENSIBILITY.md) and [MODULAR_EVENTS.md](docs/MODULAR_EVENTS.md).
-
-## 🚀 Quick Start
-
-### 🌐 Try Our Public Instance
-
-Visit **[event.openislamu.org](https://event.openislamu.org)** to:
-- 🔍 Browse events (no account needed)
-- 📝 Create account to post events
-- ✅ Register for events
-- 👥 Follow organizations
-
-### 🖥️ Self-Host Your Instance
-
-**Prerequisites:**
-- Git
-- Docker
-- Docker Compose (v2+)
-- .NET 10 SDK (solution targets `net10.0`; preview SDK pinned in `global.json`)
-
-**Quick Deploy:**
-```bash
-# Clone the repository
-git clone https://github.com/islamu-ngo/Event.git && cd Event
-
-# Option 1: Start core services (API, DB, Auth, UI)
-docker compose up -d
-
-# Option 2: Start with object storage (S3/MinIO)
-docker compose up --profile storage -d
-
-# Access the application
-# Blazor UI (Docker): http://localhost:7002
-# API (Docker): http://localhost:7039
-# Swagger UI (Docker): http://localhost:7039/swagger
-# Local dev (dotnet run): Blazor https://localhost:7177, API https://localhost:7039
-```
-
-If onboarding is not completed yet, the Blazor root route redirects to `/setup`.
-When `SETUP_SECRET` is not set, API startup logs print an auto-generated setup secret (valid for 60 minutes).
-
-**For detailed deployment instructions**, see:
-- [Operations Guide](docs/OPERATIONS.md) — Production deployment
-- [Configuration Guide](docs/CONFIGURATION.md) — Environment variables and settings
 
 ## Roadmap
 
@@ -214,11 +233,13 @@ There are many ways you can contribute to ISLAMU Event:
 ### Development Guidelines
 
 Before contributing code, please review:
-- **[CLAUDE.md](CLAUDE.md)** — Project overview and AI agent instructions
+- **[Contribution Guidelines](docs/CONTRIBUTING.md)** — contributor workflow and expectations
 - **[GOVERNANCE.md](docs/GOVERNANCE.md)** — Code conventions and architectural rules
-- **[QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md)** — 12 critical rules for contributors
+- **[QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md)** — critical rules and project-specific constraints
 - **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** — Clean Architecture patterns and CQRS implementation
 - **[v0.1.0 Release Notes](docs/semantic_versioning/v0.1.0.md)** — Current feature set and known limitations
+
+If you are using AI-assisted workflows, `CLAUDE.md` documents the repo-specific operating rules used by coding agents.
 
 ### How to Contribute
 
@@ -228,40 +249,53 @@ Before contributing code, please review:
 4. Push to the branch (`git push origin feature/foobar`)
 5. Create a new Pull Request
 
+Before opening a PR:
+- build the solution in Release mode
+- run the affected test projects individually
+- update docs when behavior, configuration, or operations change
+
 Please read [Contribution Guidelines][contribution-guidelines] for details on the process for submitting pull requests to us.
 
 ## 📚 Documentation
 
 Start here for deeper details and technical guides:
 
-### 📚 Core Docs
+### If You Want to Self-Host
 
-- **Project Overview**: [Master Reference][master-reference-doc] & [Project Context][project-doc]
+- [Operations Guide][operations-doc]
+- [Configuration & Environment][configuration-doc]
+- [Deployment Modes][deployment-modes-doc]
+- [Troubleshooting][troubleshooting-doc]
+
+### If You Want to Contribute
+
+- [Project Overview][project-doc]
 - [Architecture][architecture-doc]
 - [Governance][governance-doc]
 - [Quick Reference][quick-reference-doc]
 
-### 📚 Platform Docs
+### If You Want Platform Context
 
-- [Operations Guide][operations-doc]
+- [Master Reference][master-reference-doc]
 - [Multi-Tenancy][multi-tenancy-doc]
 - [Admin Hierarchy][admin-hierarchy-doc]
-- [Deployment Modes][deployment-modes-doc]
+- [Rendering Policies][render-policies-doc]
 - [Extensibility][extensibility-doc]
 - [Modular Events][modular-events-doc]
-- [Rendering Policies][render-policies-doc]
 
-### 📚 Reference Docs
+### If You Want Integration Details
 
 - [API Reference][api-doc]
 - [Domain Model][domain-doc]
 - [Security][security-doc]
-- [Configuration & Environment][configuration-doc]
-- [Troubleshooting][troubleshooting-doc]
 
 ## 🏗️ Technical Overview
 
 ISLAMU Event is built on **Clean Architecture + CQRS** with a **BFF (Backend-for-Frontend)** pattern.
+
+Typical request flow:
+
+`Browser -> Blazor BFF -> API -> Application handlers -> EF Core/PostgreSQL`
 
 ### Technology Stack (v0.1.0)
 

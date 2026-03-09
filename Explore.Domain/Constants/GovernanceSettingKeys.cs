@@ -19,6 +19,11 @@ public static class GovernanceSettingKeys
     public static class Routing
     {
         public const string DefaultPublicHomePage = "routing.default_public_home_page";
+        public const string ResolverHeaderEnabled = "routing.resolver_header_enabled";
+        public const string ResolverSubdomainEnabled = "routing.resolver_subdomain_enabled";
+        public const string ResolverCustomDomainEnabled = "routing.resolver_custom_domain_enabled";
+        public const string ResolverPathEnabled = "routing.resolver_path_enabled";
+        public const string PathPrefix = "routing.path_prefix";
 
         public static class RenderPolicy
         {
@@ -173,6 +178,8 @@ public static class GovernanceSettingKeys
     {
         public const string Provider = "analytics.provider";
         public const string Enabled = "analytics.enabled";
+        public const string ConsentMode = "analytics.consent_mode";
+        public const string TransportMode = "analytics.transport_mode";
         public const string ApiKey = "analytics.api_key";
         public const string EndpointUrl = "analytics.endpoint_url";
         public const string PersonalApiKey = "analytics.personal_api_key";
@@ -191,6 +198,11 @@ public static class GovernanceSettingKeys
     public const string TenantSelfServiceRegistration = Tenants.SelfServiceRegistration;
     public const string TenantWhiteLabelingEnabled = Tenants.WhiteLabelingEnabled;
     public const string RoutingDefaultPublicHomePage = Routing.DefaultPublicHomePage;
+    public const string RoutingResolverHeaderEnabled = Routing.ResolverHeaderEnabled;
+    public const string RoutingResolverSubdomainEnabled = Routing.ResolverSubdomainEnabled;
+    public const string RoutingResolverCustomDomainEnabled = Routing.ResolverCustomDomainEnabled;
+    public const string RoutingResolverPathEnabled = Routing.ResolverPathEnabled;
+    public const string RoutingPathPrefix = Routing.PathPrefix;
     public const string RoutingRenderPolicyVersion = Routing.RenderPolicy.Version;
     public const string RoutingRenderPolicyPreset = Routing.RenderPolicy.Preset;
     public const string RoutingRenderPolicyAdvancedEnabled = Routing.RenderPolicy.AdvancedEnabled;
@@ -258,6 +270,8 @@ public static class GovernanceSettingKeys
 
     public const string AnalyticsProvider = Analytics.Provider;
     public const string AnalyticsEnabled = Analytics.Enabled;
+    public const string AnalyticsConsentMode = Analytics.ConsentMode;
+    public const string AnalyticsTransportMode = Analytics.TransportMode;
     public const string AnalyticsApiKey = Analytics.ApiKey;
     public const string AnalyticsEndpointUrl = Analytics.EndpointUrl;
     public const string AnalyticsPersonalApiKey = Analytics.PersonalApiKey;

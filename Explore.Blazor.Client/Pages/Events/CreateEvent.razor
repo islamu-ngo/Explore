@@ -221,6 +221,36 @@
                                   Immediate="true"
                                   Class="create-event__title-input mb-1" />
 
+                    @* --- Event Timezone (event-level, shared by all sessions) --- *@
+                    @if (sessions.Count > 0)
+                    {
+                        <div class="d-flex align-center gap-2 mb-2">
+                            <MudButton Variant="Variant.Text"
+                                       Size="Size.Small"
+                                       Color="Color.Default"
+                                       OnClick="@(() => _showTimezoneSelector = !_showTimezoneSelector)"
+                                       Class="create-event__timezone-btn">
+                                <MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Small" Class="mr-1" />
+                                @_selectedTimezoneDisplay
+                                <MudIcon Icon="@(_showTimezoneSelector ? Icons.Material.Filled.ArrowDropUp : Icons.Material.Filled.ArrowDropDown)" Size="Size.Small" />
+                            </MudButton>
+                        </div>
+                        @if (_showTimezoneSelector)
+                        {
+                            <MudAutocomplete T="TimeZoneInfo"
+                                             Value="_selectedTimezone"
+                                             ValueChanged="OnTimezoneChanged"
+                                             SearchFunc="SearchTimezones"
+                                             ToStringFunc="@(tz => tz?.DisplayName ?? "")"
+                                             Label="Search timezone"
+                                             Variant="Variant.Outlined"
+                                             Margin="Margin.Dense"
+                                             Dense="true"
+                                             Immediate="true"
+                                             Class="mb-2" />
+                        }
+                    }
+
                     @* --- First Session: Luma-style Date/Time Block --- *@
                     @if (sessions.Count > 0)
                     {
@@ -260,67 +290,73 @@
                                                Margin="Margin.Dense"
                                                Class="create-event__datetime-picker" />
                             </div>
-                            <MudButton Variant="Variant.Text"
-                                       Size="Size.Small"
-                                       Color="Color.Default"
-                                       OnClick="@(() => _showTimezoneSelector = !_showTimezoneSelector)"
-                                       Class="create-event__timezone-btn">
-                                <MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Small" Class="mr-1" />
-                                @_selectedTimezoneDisplay
-                                <MudIcon Icon="@(_showTimezoneSelector ? Icons.Material.Filled.ArrowDropUp : Icons.Material.Filled.ArrowDropDown)" Size="Size.Small" />
-                            </MudButton>
-                            @if (_showTimezoneSelector)
-                            {
-                                <MudAutocomplete T="TimeZoneInfo"
-                                                 Value="_selectedTimezone"
-                                                 ValueChanged="OnTimezoneChanged"
-                                                 SearchFunc="SearchTimezones"
-                                                 ToStringFunc="@(tz => tz?.DisplayName ?? "")"
-                                                 Label="Search timezone"
-                                                 Variant="Variant.Outlined"
-                                                 Margin="Margin.Dense"
-                                                 Dense="true"
-                                                 Immediate="true"
-                                                 Class="create-event__timezone-autocomplete" />
-                            }
                         </div>
 
-                        @* First session location *@
-                        <MudButton StartIcon="@Icons.Material.Filled.LocationOn"
-                                   Variant="Variant.Text"
-                                   Color="Color.Default"
-                                   FullWidth="true"
-                                   Class="create-event__action-button justify-start"
-                                   OnClick="@(() => _showFirstSessionLocation = !_showFirstSessionLocation)">
-                            @if (sessions[0].LocationId.HasValue && locations != null)
-                            {
-                                var loc = locations.FirstOrDefault(l => (Guid?)l.Id == sessions[0].LocationId);
-                                <span>@(loc?.FullName ?? "Change location")</span>
-                            }
-                            else
-                            {
-                                <span>Add event location</span>
-                                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-2">Physical or virtual link</MudText>
-                            }
-                        </MudButton>
+                        @* --- Event Format: In-person / Online / Hybrid --- *@
+                        <MudToggleGroup T="int?"
+                                        @bind-Value="createDto.EventFormatId"
+                                        Color="Color.Primary"
+                                        SelectionMode="SelectionMode.SingleSelection"
+                                        CheckMark="true"
+                                        FixedContent="true"
+                                        Class="mb-3">
+                            <MudToggleItem T="int?" Value="@((int?)1)" Text="In-person" />
+                            <MudToggleItem T="int?" Value="@((int?)2)" Text="Online" />
+                            <MudToggleItem T="int?" Value="@((int?)3)" Text="Hybrid" />
+                        </MudToggleGroup>
 
-                        @if (_showFirstSessionLocation && locations != null)
+                        @* Location selector (shown for In-person and Hybrid) *@
+                        @if (createDto.EventFormatId is 1 or 3)
                         {
-                            <MudSelect T="Guid?"
-                                       @bind-Value="sessions[0].LocationId"
-                                       Label="Location"
-                                       Variant="Variant.Outlined"
+                            <MudButton StartIcon="@Icons.Material.Filled.LocationOn"
+                                       Variant="Variant.Text"
+                                       Color="Color.Default"
                                        FullWidth="true"
-                                       Clearable="true"
-                                       Margin="Margin.Dense"
-                                       Class="mb-3">
-                                @foreach (var location in locations)
+                                       Class="create-event__action-button justify-start"
+                                       OnClick="@(() => _showFirstSessionLocation = !_showFirstSessionLocation)">
+                                @if (sessions[0].LocationId.HasValue && locations != null)
                                 {
-                                    <MudSelectItem T="Guid?" Value="@((Guid?)location.Id)">
-                                        @location.FullName @(!string.IsNullOrEmpty(location.City) ? $" - {location.City}" : "")
-                                    </MudSelectItem>
+                                    var loc = locations.FirstOrDefault(l => (Guid?)l.Id == sessions[0].LocationId);
+                                    <span>@(loc?.FullName ?? "Change location")</span>
                                 }
-                            </MudSelect>
+                                else
+                                {
+                                    <span>Add event location</span>
+                                }
+                            </MudButton>
+
+                            @if (_showFirstSessionLocation && locations != null)
+                            {
+                                <MudSelect T="Guid?"
+                                           @bind-Value="sessions[0].LocationId"
+                                           Label="Location"
+                                           Variant="Variant.Outlined"
+                                           FullWidth="true"
+                                           Clearable="true"
+                                           Margin="Margin.Dense"
+                                           Class="mb-3">
+                                    @foreach (var location in locations)
+                                    {
+                                        <MudSelectItem T="Guid?" Value="@((Guid?)location.Id)">
+                                            @location.FullName @(!string.IsNullOrEmpty(location.City) ? $" - {location.City}" : "")
+                                        </MudSelectItem>
+                                    }
+                                </MudSelect>
+                            }
+                        }
+
+                        @* Meeting link field (shown for Online and Hybrid) *@
+                        @if (createDto.EventFormatId is 2 or 3)
+                        {
+                            <MudTextField @bind-Value="createDto.EventUrl"
+                                          Label="Meeting link"
+                                          Placeholder="https://zoom.us/j/... or Google Meet link"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense"
+                                          FullWidth="true"
+                                          Adornment="Adornment.Start"
+                                          AdornmentIcon="@Icons.Material.Filled.Link"
+                                          Class="mb-3" />
                         }
 
                         @* First session: compact registration & capacity row *@
@@ -351,6 +387,30 @@
                                                  Min="0" />
                             </MudItem>
                         </MudGrid>
+
+                        @* First session: language selector *@
+                        @if (languages != null && languages.Any())
+                        {
+                            <MudSelect T="int"
+                                       MultiSelection="true"
+                                       SelectedValues="sessions[0].LanguageIds"
+                                       SelectedValuesChanged="OnFirstSessionLanguagesChanged"
+                                       Label="Language(s)"
+                                       Variant="Variant.Outlined"
+                                       Margin="Margin.Dense"
+                                       FullWidth="true"
+                                       Class="mb-2"
+                                       AdornmentIcon="@Icons.Material.Filled.Translate">
+                                @foreach (var language in languages)
+                                {
+                                    if (language.Id is not int languageId)
+                                    {
+                                        continue;
+                                    }
+                                    <MudSelectItem T="int" Value="@languageId">@language.FullName</MudSelectItem>
+                                }
+                            </MudSelect>
+                        }
                     }
 
                     @* --- Add Description Button (Luma-style popup) --- *@
@@ -426,26 +486,6 @@
                                     @foreach (var type in eventTypes)
                                     {
                                         <MudSelectItem T="int?" Value="@((int?)type.Id)">@type.FullName</MudSelectItem>
-                                    }
-                                }
-                            </MudSelect>
-                        </div>
-
-                        @* Format *@
-                        <div class="create-event__option-row">
-                            <div class="d-flex align-center gap-2">
-                                <MudIcon Icon="@Icons.Material.Filled.Videocam" Size="Size.Small" Color="Color.Secondary" />
-                                <MudText Typo="Typo.body2">Format</MudText>
-                            </div>
-                            <MudSelect T="int?" @bind-Value="createDto.EventFormatId"
-                                       Variant="Variant.Text" Margin="Margin.Dense"
-                                       AnchorOrigin="Origin.BottomCenter"
-                                       Class="create-event__option-select">
-                                @if (eventFormats != null)
-                                {
-                                    @foreach (var f in eventFormats)
-                                    {
-                                        <MudSelectItem T="int?" Value="@((int?)f.Id)">@f.FullName</MudSelectItem>
                                     }
                                 }
                             </MudSelect>

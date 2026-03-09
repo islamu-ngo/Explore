@@ -29,18 +29,18 @@ Relevant static setting:
 
 ## Multi-Tenant Mode Behavior
 
-When active, `TenantContext` resolves tenant by request context:
+When active, the API-authoritative resolver middleware resolves tenant by request context:
 
-1. `X-Tenant-Id` header,
+1. trusted `X-Tenant-Slug` header,
 2. custom domain,
 3. subdomain,
-4. default tenant fallback.
+4. unresolved request fails closed with `404`.
 
 Tenant-scoped queries are filtered by global EF query filters.
 
 ## Default Tenant Contract
 
-If no configured default tenant exists, `TenantContext` uses fallback:
+If no configured default tenant exists in single-tenant mode, runtime uses fallback:
 
 - `018e4e5c-7f00-7000-8000-000000000001`
 

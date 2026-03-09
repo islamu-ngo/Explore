@@ -1,6 +1,7 @@
 // ABOUTME: Unit tests for AnalyticsConfigResolver covering setting resolution and provider fallback behavior.
 // ABOUTME: Verifies runtime cache-backed resolver returns safe defaults for unsupported provider keys.
 
+using Explore.Application.Analytics;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
@@ -24,6 +25,10 @@ public class AnalyticsConfigResolverTests
             .Returns("posthog");
         settingsResolver.GetSettingAsync<bool>(GovernanceSettingKeys.AnalyticsEnabled, tenantContext.TenantId, Arg.Any<CancellationToken>())
             .Returns(true);
+        settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsConsentMode, tenantContext.TenantId, Arg.Any<CancellationToken>())
+            .Returns("identified");
+        settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsTransportMode, tenantContext.TenantId, Arg.Any<CancellationToken>())
+            .Returns("relay");
         settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsApiKey, tenantContext.TenantId, Arg.Any<CancellationToken>())
             .Returns("pk_test");
         settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsEndpointUrl, tenantContext.TenantId, Arg.Any<CancellationToken>())
@@ -39,6 +44,8 @@ public class AnalyticsConfigResolverTests
 
         await Assert.That(config.Provider).IsEqualTo(AnalyticsProviderEnum.Posthog);
         await Assert.That(config.IsEnabled).IsTrue();
+        await Assert.That(config.ConsentMode).IsEqualTo(AnalyticsConsentMode.Identified);
+        await Assert.That(config.TransportMode).IsEqualTo(AnalyticsTransportMode.Relay);
         await Assert.That(config.ApiKey).IsEqualTo("pk_test");
         await Assert.That(config.EndpointUrl).IsEqualTo("https://analytics.example.com");
         await Assert.That(config.PersonalApiKey).IsEqualTo("ph_personal_test");
@@ -55,6 +62,10 @@ public class AnalyticsConfigResolverTests
             .Returns("unknown-provider");
         settingsResolver.GetSettingAsync<bool>(GovernanceSettingKeys.AnalyticsEnabled, tenantContext.TenantId, Arg.Any<CancellationToken>())
             .Returns(true);
+        settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsConsentMode, tenantContext.TenantId, Arg.Any<CancellationToken>())
+            .Returns("unexpected");
+        settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsTransportMode, tenantContext.TenantId, Arg.Any<CancellationToken>())
+            .Returns("unexpected");
         settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsApiKey, tenantContext.TenantId, Arg.Any<CancellationToken>())
             .Returns("pk_test");
 
@@ -65,5 +76,7 @@ public class AnalyticsConfigResolverTests
         var config = await resolver.ResolveAsync();
 
         await Assert.That(config.Provider).IsEqualTo(AnalyticsProviderEnum.None);
+        await Assert.That(config.ConsentMode).IsEqualTo(AnalyticsConsentMode.Pseudonymous);
+        await Assert.That(config.TransportMode).IsEqualTo(AnalyticsTransportMode.Direct);
     }
 }

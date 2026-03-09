@@ -4,7 +4,7 @@ namespace Explore.Blazor.Services;
 
 public sealed class ServerAnalyticsInterop : IAnalyticsInterop
 {
-    public Task InitAsync(string analyticsProvider, bool analyticsEnabled, string? apiKey, string? endpointUrl)
+    public Task InitAsync(string analyticsProvider, bool analyticsEnabled, string analyticsConsentMode, string analyticsTransportMode, bool allowIdentify, string? apiKey, string? endpointUrl)
     {
         return Task.CompletedTask;
     }

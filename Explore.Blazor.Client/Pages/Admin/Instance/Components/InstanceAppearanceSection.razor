@@ -27,7 +27,8 @@
         <MudText Typo="Typo.h6" Style="font-weight: 600;">Event Card Behavior</MudText>
         <MudSelect T="string"
                    Label="Event Card Click Action"
-                   @bind-Value="_eventCardClickAction"
+                   Value="_eventCardClickAction"
+                   ValueChanged="OnEventCardClickActionChanged"
                    Variant="Variant.Outlined"
                    HelperText="Choose what happens when a user clicks on an event card.">
             <MudSelectItem Value="@("Sidebar")">Show details sidebar</MudSelectItem>
@@ -41,4 +42,15 @@
     public InstanceGovernanceSettingsModel Model { get; set; } = null!;
 
     private string _eventCardClickAction = "Sidebar";
+
+    protected override void OnParametersSet()
+    {
+        _eventCardClickAction = Model.EventCardClickOpensDetailPage ? "Navigate" : "Sidebar";
+    }
+
+    private void OnEventCardClickActionChanged(string value)
+    {
+        _eventCardClickAction = value;
+        Model.EventCardClickOpensDetailPage = value == "Navigate";
+    }
 }

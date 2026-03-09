@@ -249,19 +249,19 @@
                                     <div class="navbar__dropdown-divider"></div>
                                     <div class="navbar__dropdown-section-label">Admin</div>
 
-                                    @if (IsInstanceAdmin(context.User))
+                                    @if (IsInstanceAdmin(context.User) && !_isSingleTenantMode)
                                     {
                                         <a href="/admin/instance/settings" class="navbar__dropdown-item" @onclick="CloseDropdown">
                                             <MudIcon Icon="@Icons.Material.Filled.Dns" Size="Size.Small" />
-                                            @(_isSingleTenantMode ? "Administration" : "Instance Administration")
+                                            Instance Administration
                                         </a>
                                     }
 
-                                    @if (IsTenantAdmin(context.User) && !_isSingleTenantMode)
+                                    @if (IsTenantAdmin(context.User) || (IsInstanceAdmin(context.User) && _isSingleTenantMode))
                                     {
                                         <a href="/admin/tenant/settings" class="navbar__dropdown-item" @onclick="CloseDropdown">
                                             <MudIcon Icon="@Icons.Material.Filled.Domain" Size="Size.Small" />
-                                            Tenant Administration
+                                            @(_isSingleTenantMode ? "Administration" : "Tenant Administration")
                                         </a>
                                     }
 

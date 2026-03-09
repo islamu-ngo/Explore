@@ -29,6 +29,7 @@ public partial class EventDetail : ComponentBase
     [Inject] private IUserService UserService { get; set; } = default!;
     [Inject] private Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
     [Inject] private IEventAspectService EventAspectService { get; set; } = default!;
+    [Inject] private IEventSessionAgendaItemService AgendaItemService { get; set; } = default!;
 
     [PersistentState]
     public EventDetailState? PersistedState { get; set; }
@@ -54,6 +55,7 @@ public partial class EventDetail : ComponentBase
     // Event Aspects
     private EventIslamicAspectDto? _islamicAspect;
     private EventTechAspectDto? _techAspect;
+    private ICollection<EventSessionAgendaItemListDto>? _agendaItems;
     private EventAppearanceSettings _appearance = new();
 
     /// <summary>
@@ -107,7 +109,11 @@ public partial class EventDetail : ComponentBase
                 // Check registration status and load aspects in parallel
                 var registrationTask = CheckRegistrationStatusAsync();
                 var aspectsTask = LoadEventAspectsAsync();
-                await Task.WhenAll(registrationTask, aspectsTask);
+                var agendaTask = _primarySession?.Id != null && _primarySession.Id != Guid.Empty
+                    ? AgendaItemService.GetAgendaItemsBySessionAsync(_primarySession.Id.Value)
+                    : Task.FromResult<ICollection<EventSessionAgendaItemListDto>>(new List<EventSessionAgendaItemListDto>());
+                await Task.WhenAll(registrationTask, aspectsTask, agendaTask);
+                _agendaItems = agendaTask.Result;
             }
         }
         catch (Exception ex)
