@@ -37,7 +37,7 @@ public class AnalyticsGovernanceService : IAnalyticsGovernanceService
         return consentMode == AnalyticsConsentMode.Identified && provider is AnalyticsProviderEnum.Posthog or AnalyticsProviderEnum.RudderStack;
     }
 
-    public SanitizedAnalyticsTrackRequest? CreateTrackRequest(
+    public SanitizedAnalyticsTrackPayload? CreateTrackRequest(
         AnalyticsConfiguration configuration,
         string distinctId,
         AnalyticsEventDefinition definition,
@@ -56,13 +56,13 @@ public class AnalyticsGovernanceService : IAnalyticsGovernanceService
         var sanitizedProperties = SanitizeProperties(definition.AllowedPropertyKeys, properties);
         var resolvedDistinctId = ResolveDistinctId(configuration.ConsentMode, distinctId);
 
-        return new SanitizedAnalyticsTrackRequest(
+        return new SanitizedAnalyticsTrackPayload(
             resolvedDistinctId,
             definition.EventName,
             sanitizedProperties);
     }
 
-    public SanitizedAnalyticsPageViewRequest? CreatePageViewRequest(
+    public SanitizedAnalyticsPageViewPayload? CreatePageViewRequest(
         AnalyticsConfiguration configuration,
         string distinctId,
         string pagePath,
@@ -76,7 +76,7 @@ public class AnalyticsGovernanceService : IAnalyticsGovernanceService
         var sanitizedProperties = SanitizeProperties(AnalyticsEvents.PublicExperience.PageViewed.AllowedPropertyKeys, properties);
         var resolvedDistinctId = ResolveDistinctId(configuration.ConsentMode, distinctId);
 
-        return new SanitizedAnalyticsPageViewRequest(
+        return new SanitizedAnalyticsPageViewPayload(
             resolvedDistinctId,
             pagePath,
             sanitizedProperties);

@@ -171,6 +171,8 @@ public class ExploreDbContext : DbContext
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
 
         // ===== User-Related Tenant Entities =====
+        modelBuilder.Entity<ExternalApiKey>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
         modelBuilder.Entity<UserAuthenticationToken>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
         modelBuilder.Entity<UserExternalLogin>()
@@ -288,6 +290,7 @@ public class ExploreDbContext : DbContext
     // ===== Users & Authentication =====
     public DbSet<User> Users { get; set; }
     public DbSet<UserPii> UserPii { get; set; }
+    public DbSet<ExternalApiKey> ExternalApiKeys { get; set; }
     public DbSet<UserAuthenticationToken> UserAuthenticationTokens { get; set; }
     public DbSet<UserExternalLogin> UserExternalLogins { get; set; }
 

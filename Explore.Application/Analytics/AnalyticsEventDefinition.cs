@@ -8,12 +8,12 @@ public sealed record AnalyticsEventDefinition(
     IReadOnlySet<string> AllowedPropertyKeys,
     bool RequiresIdentifiedTracking = false);
 
-public sealed record SanitizedAnalyticsTrackRequest(
+public sealed record SanitizedAnalyticsTrackPayload(
     string DistinctId,
     string EventName,
     IReadOnlyDictionary<string, object> Properties);
 
-public sealed record SanitizedAnalyticsPageViewRequest(
+public sealed record SanitizedAnalyticsPageViewPayload(
     string DistinctId,
     string PagePath,
     IReadOnlyDictionary<string, object> Properties);

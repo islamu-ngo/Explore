@@ -13,13 +13,13 @@ public interface IAnalyticsGovernanceService
 
     bool AllowsGroupIdentify(AnalyticsProviderEnum provider, AnalyticsConsentMode consentMode);
 
-    SanitizedAnalyticsTrackRequest? CreateTrackRequest(
+    SanitizedAnalyticsTrackPayload? CreateTrackRequest(
         AnalyticsConfiguration configuration,
         string distinctId,
         AnalyticsEventDefinition definition,
         IReadOnlyDictionary<string, object?>? properties = null);
 
-    SanitizedAnalyticsPageViewRequest? CreatePageViewRequest(
+    SanitizedAnalyticsPageViewPayload? CreatePageViewRequest(
         AnalyticsConfiguration configuration,
         string distinctId,
         string pagePath,

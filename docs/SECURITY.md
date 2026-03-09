@@ -39,6 +39,12 @@ In YARP transforms:
 
 This prevents direct client injection of setup-secret into proxied API traffic.
 
+Forwarded-host trust for direct API traffic:
+
+- `Explore.API` only applies `X-Forwarded-Host`, `X-Forwarded-For`, and `X-Forwarded-Proto` when a trusted proxy boundary is configured through `ForwardedHeadersTrust`.
+- Host-derived tenant resolution must use normalized `Request.Host` after trusted forwarded-header processing, not raw `X-Forwarded-Host`.
+- If no trusted proxy boundary is configured, the API ignores forwarded host/IP headers and falls back to the direct request host and remote IP.
+
 ## Authorization Boundary
 
 Server-side enforcement is layered:

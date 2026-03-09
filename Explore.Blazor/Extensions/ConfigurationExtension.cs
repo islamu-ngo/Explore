@@ -40,7 +40,7 @@ public static class ConfigurationExtensions
         {
             // Configure paths to load from Infisical
             source.Paths.Clear();
-            source.Paths.AddRange(["/keycloak", "/blazor", "/api"]);
+            source.Paths.AddRange(["/keycloak", "/blazor", "/api", "/postgresql"]);
 
             // Don't fail if Infisical isn't configured (allows local dev without Infisical)
             source.ThrowOnFirstLoadFailure = false;
@@ -59,6 +59,7 @@ public static class ConfigurationExtensions
     private static void ApplyBlazorCompatibilityMapping(IConfigurationBuilder configBuilder, IConfiguration config)
     {
         // Read values (from Infisical, environment, or existing config)
+        var rawDbUrl = config["POSTGRESQL_PUBLIC_URL"] ?? config["ConnectionStrings:DefaultConnection"];
         var rawRealm = config["Keycloak:Realm"] ?? config["KEYCLOAK_REALM"];
         var rawKeycloakClientId = config["Keycloak:ClientId"]
             ?? config["KEYCLOAK_CLIENT_ID"]
@@ -177,6 +178,11 @@ public static class ConfigurationExtensions
         }
 
         // API Mapping
+        if (!string.IsNullOrEmpty(rawDbUrl))
+        {
+            TrySet(mappedConfig, config, "ConnectionStrings:DefaultConnection", rawDbUrl);
+        }
+
         if (!string.IsNullOrEmpty(rawApiUrl))
         {
             TrySet(mappedConfig, config, "ExploreApi:BaseUrl", rawApiUrl);

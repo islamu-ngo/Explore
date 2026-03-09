@@ -1,0 +1,62 @@
+// ABOUTME: Shared claim-reading helpers for direct JWT and API-key authenticated principals.
+// ABOUTME: Centralizes API-key principal parsing so middleware, controllers, and later authorization code use one contract.
+
+using System.Security.Claims;
+using Explore.Application.Constants;
+using Explore.Domain.Enums;
+
+namespace Explore.Application.Authentication;
+
+public static class ApiAuthenticationPrincipalExtensions
+{
+    public static string? GetApiKeyId(this ClaimsPrincipal principal)
+    {
+        return principal.FindFirst(ApiAuthenticationClaimTypes.ApiKeyId)?.Value;
+    }
+
+    public static ApiKeyPrincipalContext? TryGetApiKeyPrincipalContext(this ClaimsPrincipal principal)
+    {
+        var keyId = principal.GetApiKeyId();
+        var tenantIdValue = principal.FindFirst(ApiAuthenticationClaimTypes.TenantId)?.Value;
+        var ownerTypeValue = principal.FindFirst(ApiAuthenticationClaimTypes.OwnerType)?.Value;
+        var ownerIdValue = principal.FindFirst(ApiAuthenticationClaimTypes.OwnerId)?.Value;
+
+        if (string.IsNullOrWhiteSpace(keyId) ||
+            !Guid.TryParse(tenantIdValue, out var tenantId) ||
+            !Enum.TryParse<ExternalApiKeyOwnerType>(ownerTypeValue, ignoreCase: true, out var ownerType) ||
+            !Guid.TryParse(ownerIdValue, out var ownerId))
+        {
+            return null;
+        }
+
+        var scopes = principal.FindAll(ApiAuthenticationClaimTypes.Scope)
+            .Select(claim => claim.Value)
+            .Where(scope => !string.IsNullOrWhiteSpace(scope))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        return new ApiKeyPrincipalContext(keyId, tenantId, ownerType, ownerId, scopes);
+    }
+
+    public static Guid? GetAuthenticatedUserId(this ClaimsPrincipal principal)
+    {
+        var candidate = principal.FindFirst("sub")?.Value
+                        ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                        ?? principal.FindFirst("sid")?.Value;
+
+        return Guid.TryParse(candidate, out var parsed) ? parsed : null;
+    }
+
+    public static string? GetAuthenticationMethod(this ClaimsPrincipal principal)
+    {
+        return principal.FindFirst(ApiAuthenticationClaimTypes.AuthMethod)?.Value
+            ?? (principal.Identity?.IsAuthenticated == true ? "jwt" : null);
+    }
+}
+
+public sealed record ApiKeyPrincipalContext(
+    string KeyId,
+    Guid TenantId,
+    ExternalApiKeyOwnerType OwnerType,
+    Guid OwnerId,
+    IReadOnlyList<string> Scopes);

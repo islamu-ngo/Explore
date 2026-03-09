@@ -94,6 +94,12 @@ Timeout expiry: `504 Gateway Timeout`.
 - Generates new UUID if absent.
 - Pushes to Serilog `LogContext` as `CorrelationId` property for structured log correlation.
 
+### Forwarded Header Trust
+
+- `Explore.API` uses ASP.NET Core forwarded-header middleware with explicit `ForwardedHeadersTrust` configuration.
+- Operators must configure trusted reverse-proxy IPs or CIDR networks before relying on `X-Forwarded-Host` for custom-domain or subdomain tenant resolution.
+- Without trusted proxy configuration, forwarded host/IP headers are ignored by the API host.
+
 ### Security Headers
 
 Added to every response by `SecurityHeadersMiddleware`:

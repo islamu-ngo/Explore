@@ -1,10 +1,12 @@
 using System.IO.Compression;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text.RegularExpressions;
 using System.Threading.RateLimiting;
 using Explore.API.Authentication;
 using Explore.API.BackgroundServices;
+using Explore.API.Configuration;
 using Explore.API.Extensions;
 using Explore.API.Middleware;
 using Explore.API.Services;
@@ -64,6 +66,24 @@ var audience = builder.Configuration["Keycloak:Audience"]; // Should be "explore
 
 builder.Services.AddHttpContextAccessor();
 
+var forwardedHeadersTrust = builder.Configuration
+    .GetSection(ForwardedHeadersTrustOptions.SectionName)
+    .Get<ForwardedHeadersTrustOptions>() ?? new ForwardedHeadersTrustOptions();
+
+if (builder.Environment.IsEnvironment("Testing") &&
+    builder.Configuration[$"{ForwardedHeadersTrustOptions.SectionName}:TrustLoopbackProxy"] is null &&
+    !forwardedHeadersTrust.TrustLoopbackProxy &&
+    forwardedHeadersTrust.KnownProxies.Count == 0 &&
+    forwardedHeadersTrust.KnownNetworks.Count == 0)
+{
+    forwardedHeadersTrust.TrustLoopbackProxy = true;
+}
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    forwardedHeadersTrust.ApplyTo(options);
+});
+
 // Performance: Response compression (Brotli + Gzip)
 builder.Services.AddResponseCompression(options =>
 {
@@ -81,16 +101,16 @@ builder.Services.AddOutputCache(options =>
     options.AddBasePolicy(builder => builder.NoCache());
     options.AddPolicy("LookupData", builder => builder
         .Expire(TimeSpan.FromHours(1))
-        .SetVaryByHeader(TenantHeaderNames.TenantSlug, "X-Forwarded-Host", "Host")
+        .SetVaryByHeader(TenantHeaderNames.TenantSlug, "Host")
         .Tag("lookup-data"));
     options.AddPolicy("ListData", builder => builder
         .Expire(TimeSpan.FromSeconds(30))
-        .SetVaryByHeader(TenantHeaderNames.TenantSlug, "X-Forwarded-Host", "Host")
+        .SetVaryByHeader(TenantHeaderNames.TenantSlug, "Host")
         .SetVaryByQuery("pageNumber", "pageSize")
         .Tag("list-data"));
     options.AddPolicy("DetailData", builder => builder
         .Expire(TimeSpan.FromSeconds(60))
-        .SetVaryByHeader(TenantHeaderNames.TenantSlug, "X-Forwarded-Host", "Host")
+        .SetVaryByHeader(TenantHeaderNames.TenantSlug, "Host")
         .SetVaryByRouteValue("id")
         .Tag("detail-data"));
 });
@@ -596,6 +616,7 @@ else
 }
 
 app.UseApiExceptionHandling();
+app.UseForwardedHeaders();
 
 // Security: add protective headers to all responses
 app.UseSecurityHeaders();
@@ -615,6 +636,7 @@ app.UseHateoas();
 app.UseRouting();
 app.UseMiddleware<ApiTenantResolutionMiddleware>();
 app.UseRequestTimeouts();
+app.UseMiddleware<ApiAuthenticationConflictMiddleware>();
 app.UseAuthentication();
 app.UseMiddleware<ApiTenantPostAuthenticationMiddleware>();
 app.UseRateLimiter();

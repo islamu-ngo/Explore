@@ -1,48 +1,43 @@
 // ABOUTME: Internal Phase 0 probe endpoint for validating authentication plus tenant-resolution flow.
 // ABOUTME: Returns the resolved runtime context for integration tests without exposing the endpoint in API docs.
 
-using System.Security.Claims;
+using Asp.Versioning;
+using Explore.Application.Authentication;
 using Explore.Application.Constants;
 using Explore.Application.Contracts.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Explore.API.Controllers;
 
 [ApiController]
+[ApiVersion("0.1")]
 [ApiExplorerSettings(IgnoreApi = true)]
 [Route("api/_internal/auth-probe")]
 public sealed class AuthContextProbeController : ControllerBase
 {
     [Authorize]
     [HttpGet("secure")]
-    public ActionResult<AuthContextProbeResponse> GetSecure([FromServices] ITenantContextAccessor tenantContextAccessor)
+    public ActionResult<AuthContextProbeResponse> GetSecure([FromServices] ITenantContextAccessor tenantContextAccessor, [FromServices] IHostEnvironment hostEnvironment, [FromServices] IConfiguration configuration)
     {
+        if (!hostEnvironment.IsEnvironment("Testing") || !configuration.GetValue<bool>("Diagnostics:EnableAuthContextProbe"))
+        {
+            return NotFound();
+        }
+
+        var apiKeyContext = User.TryGetApiKeyPrincipalContext();
+
         return Ok(new AuthContextProbeResponse
         {
             AuthenticationType = User.Identity?.AuthenticationType,
-            AuthMethod = ResolveAuthMethod(User),
-            ApiKeyId = User.FindFirstValue(ApiAuthenticationClaimTypes.ApiKeyId),
-            OwnerType = User.FindFirstValue(ApiAuthenticationClaimTypes.OwnerType),
-            OwnerId = User.FindFirstValue(ApiAuthenticationClaimTypes.OwnerId),
+            AuthMethod = User.GetAuthenticationMethod(),
+            ApiKeyId = apiKeyContext?.KeyId,
+            OwnerType = apiKeyContext?.OwnerType.ToString(),
+            OwnerId = apiKeyContext?.OwnerId.ToString(),
             TenantId = tenantContextAccessor.TenantId,
-            UserId = ResolveUserId(User)
+            UserId = User.GetAuthenticatedUserId()
         });
-    }
-
-    private static Guid? ResolveUserId(ClaimsPrincipal principal)
-    {
-        var candidate = principal.FindFirstValue("sub")
-                        ?? principal.FindFirstValue(ClaimTypes.NameIdentifier)
-                        ?? principal.FindFirstValue("sid");
-
-        return Guid.TryParse(candidate, out var parsed) ? parsed : null;
-    }
-
-    private static string? ResolveAuthMethod(ClaimsPrincipal principal)
-    {
-        return principal.FindFirstValue(ApiAuthenticationClaimTypes.AuthMethod)
-            ?? (principal.Identity?.IsAuthenticated == true ? "jwt" : null);
     }
 
     public sealed record AuthContextProbeResponse

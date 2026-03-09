@@ -133,12 +133,7 @@ public sealed class ApiTenantResolutionMiddleware
 
     private static string GetRequestHost(HttpContext context)
     {
-        var forwardedHost = context.Request.Headers["X-Forwarded-Host"].FirstOrDefault();
-        var host = string.IsNullOrWhiteSpace(forwardedHost)
-            ? context.Request.Host.Host
-            : forwardedHost.Split(',')[0].Trim();
-
-        return NormalizeHost(host) ?? string.Empty;
+        return NormalizeHost(context.Request.Host.Host) ?? string.Empty;
     }
 
     private static string? NormalizeHost(string? host)

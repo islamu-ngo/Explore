@@ -1,5 +1,5 @@
 // ABOUTME: Defines custom OpenTelemetry business metrics for the platform.
-// ABOUTME: Tracks event creation, registration, organization creation, and authorization decisions.
+// ABOUTME: Tracks domain activity plus external API-key lifecycle, authentication, and throttling signals.
 
 using System.Diagnostics.Metrics;
 
@@ -19,6 +19,10 @@ public sealed class BusinessMetrics
     private readonly Counter<long> _registrationsCreated;
     private readonly Counter<long> _organizationsCreated;
     private readonly Counter<long> _authorizationDecisions;
+    private readonly Counter<long> _externalApiKeysCreated;
+    private readonly Counter<long> _externalApiKeysRevoked;
+    private readonly Counter<long> _externalApiKeyAuthenticationAttempts;
+    private readonly Counter<long> _externalApiKeyThrottleEvents;
 
     public BusinessMetrics(IMeterFactory meterFactory)
     {
@@ -48,6 +52,26 @@ public sealed class BusinessMetrics
             "explore.authorization.decisions",
             unit: "{decision}",
             description: "Total authorization decisions (allowed/denied)");
+
+        _externalApiKeysCreated = meter.CreateCounter<long>(
+            "explore.external_api_keys.created",
+            unit: "{key}",
+            description: "Total number of external API keys created");
+
+        _externalApiKeysRevoked = meter.CreateCounter<long>(
+            "explore.external_api_keys.revoked",
+            unit: "{key}",
+            description: "Total number of external API keys revoked");
+
+        _externalApiKeyAuthenticationAttempts = meter.CreateCounter<long>(
+            "explore.external_api_keys.authentication_attempts",
+            unit: "{attempt}",
+            description: "Total external API key authentication attempts by outcome");
+
+        _externalApiKeyThrottleEvents = meter.CreateCounter<long>(
+            "explore.external_api_keys.throttled",
+            unit: "{throttle}",
+            description: "Total external API key throttle events by policy");
     }
 
     public void RecordEventCreated(string? tenantId = null, string? eventType = null)
@@ -81,5 +105,35 @@ public sealed class BusinessMetrics
             new KeyValuePair<string, object?>("resource", resource),
             new KeyValuePair<string, object?>("action", action),
             new KeyValuePair<string, object?>("result", allowed ? "allowed" : "denied"));
+    }
+
+    public void RecordExternalApiKeyCreated(string? tenantId = null, string? ownerType = null)
+    {
+        _externalApiKeysCreated.Add(1,
+            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
+            new KeyValuePair<string, object?>("owner_type", ownerType ?? "unknown"));
+    }
+
+    public void RecordExternalApiKeyRevoked(string? tenantId = null, string? ownerType = null)
+    {
+        _externalApiKeysRevoked.Add(1,
+            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
+            new KeyValuePair<string, object?>("owner_type", ownerType ?? "unknown"));
+    }
+
+    public void RecordExternalApiKeyAuthentication(string outcome, string? tenantId = null, string? ownerType = null)
+    {
+        _externalApiKeyAuthenticationAttempts.Add(1,
+            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
+            new KeyValuePair<string, object?>("owner_type", ownerType ?? "unknown"),
+            new KeyValuePair<string, object?>("outcome", outcome));
+    }
+
+    public void RecordExternalApiKeyThrottle(string policy, string? tenantId = null, string? ownerType = null)
+    {
+        _externalApiKeyThrottleEvents.Add(1,
+            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
+            new KeyValuePair<string, object?>("owner_type", ownerType ?? "unknown"),
+            new KeyValuePair<string, object?>("policy", policy));
     }
 }

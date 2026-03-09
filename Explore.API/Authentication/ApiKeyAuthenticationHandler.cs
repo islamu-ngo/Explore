@@ -4,6 +4,11 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Explore.Application.Constants;
+using Explore.Application.Contracts.Persistence;
+using Explore.Application.Services;
+using Explore.Application.Telemetry;
+using Explore.Domain;
+using Explore.Domain.Enums;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 
@@ -11,63 +16,70 @@ namespace Explore.API.Authentication;
 
 public sealed class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAuthenticationOptions>
 {
+    private static readonly TimeSpan UsageUpdateInterval = TimeSpan.FromMinutes(5);
+    private readonly IExternalApiKeyRepository _externalApiKeyRepository;
+    private readonly BusinessMetrics _metrics;
+
     public ApiKeyAuthenticationHandler(
         IOptionsMonitor<ApiKeyAuthenticationOptions> options,
         ILoggerFactory logger,
-        UrlEncoder encoder)
+        UrlEncoder encoder,
+        IExternalApiKeyRepository externalApiKeyRepository,
+        BusinessMetrics metrics)
         : base(options, logger, encoder)
     {
+        _externalApiKeyRepository = externalApiKeyRepository;
+        _metrics = metrics;
     }
 
-    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+    protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         if (!Request.Headers.TryGetValue(Options.HeaderName, out var headerValues))
         {
-            return Task.FromResult(AuthenticateResult.NoResult());
+            return AuthenticateResult.NoResult();
         }
 
         var rawApiKey = headerValues.FirstOrDefault();
         if (string.IsNullOrWhiteSpace(rawApiKey))
         {
-            return Task.FromResult(AuthenticateResult.Fail("API key header is empty."));
+            _metrics.RecordExternalApiKeyAuthentication("empty_header", tenantId: "unknown", ownerType: "unknown");
+            return AuthenticateResult.Fail("API key header is empty.");
         }
 
-        var client = Options.Clients.FirstOrDefault(candidate =>
+        var persistedResult = await TryAuthenticatePersistedClientAsync(rawApiKey);
+        if (persistedResult is not null)
+        {
+            return persistedResult;
+        }
+
+        var configuredClient = Options.Clients.FirstOrDefault(candidate =>
             candidate.IsActive &&
             ApiKeyHashing.MatchesHash(rawApiKey, candidate.SecretHash));
 
-        if (client is null)
+        if (configuredClient is null)
         {
+            _metrics.RecordExternalApiKeyAuthentication("invalid", tenantId: "unknown", ownerType: "unknown");
             Logger.LogWarning("[ApiKey] Authentication failed for path {Path}: no matching active client.", Request.Path);
-            return Task.FromResult(AuthenticateResult.Fail("Invalid API key."));
+            return AuthenticateResult.Fail("Invalid API key.");
         }
 
-        if (client.ExpiresAtUtc is DateTimeOffset expiresAtUtc && expiresAtUtc <= DateTimeOffset.UtcNow)
+        if (configuredClient.ExpiresAtUtc is DateTimeOffset expiresAtUtc && expiresAtUtc <= DateTimeOffset.UtcNow)
         {
-            Logger.LogWarning("[ApiKey] Authentication failed for key {KeyId}: key expired at {ExpiresAtUtc}.", client.KeyId, expiresAtUtc);
-            return Task.FromResult(AuthenticateResult.Fail("API key expired."));
+            _metrics.RecordExternalApiKeyAuthentication(
+                "expired",
+                configuredClient.TenantId.ToString(),
+                configuredClient.OwnerType);
+            Logger.LogWarning("[ApiKey] Authentication failed for key {KeyId}: key expired at {ExpiresAtUtc}.", configuredClient.KeyId, expiresAtUtc);
+            return AuthenticateResult.Fail("API key expired.");
         }
 
-        var claims = new List<Claim>
-        {
-            new(ClaimTypes.Name, $"api-key:{client.KeyId}"),
-            new(ApiAuthenticationClaimTypes.AuthMethod, "api_key"),
-            new(ApiAuthenticationClaimTypes.ApiKeyId, client.KeyId),
-            new(ApiAuthenticationClaimTypes.TenantId, client.TenantId.ToString()),
-            new(ApiAuthenticationClaimTypes.OwnerType, client.OwnerType),
-            new(ApiAuthenticationClaimTypes.OwnerId, client.OwnerId)
-        };
-
-        claims.AddRange(client.Scopes
-            .Where(scope => !string.IsNullOrWhiteSpace(scope))
-            .Select(scope => new Claim(ApiAuthenticationClaimTypes.Scope, scope)));
-
-        var identity = new ClaimsIdentity(claims, ApiAuthenticationSchemeNames.ApiKey, ClaimTypes.Name, ClaimTypes.Role);
-        var principal = new ClaimsPrincipal(identity);
-        var ticket = new AuthenticationTicket(principal, ApiAuthenticationSchemeNames.ApiKey);
-
-        Logger.LogInformation("[ApiKey] Authenticated key {KeyId} for tenant {TenantId} on {Path}.", client.KeyId, client.TenantId, Request.Path);
-        return Task.FromResult(AuthenticateResult.Success(ticket));
+        return BuildSuccessResult(
+            configuredClient.KeyId,
+            configuredClient.TenantId,
+            configuredClient.OwnerType,
+            configuredClient.OwnerId,
+            configuredClient.Scopes,
+            "configured fallback");
     }
 
     protected override Task HandleChallengeAsync(AuthenticationProperties properties)
@@ -75,5 +87,101 @@ public sealed class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAu
         Response.StatusCode = StatusCodes.Status401Unauthorized;
         Response.Headers.WWWAuthenticate = $"{ApiAuthenticationSchemeNames.ApiKey} realm=\"api\"";
         return Task.CompletedTask;
+    }
+
+    private async Task<AuthenticateResult?> TryAuthenticatePersistedClientAsync(string rawApiKey)
+    {
+        if (!ApiKeyHashing.TryParsePersistedApiKey(rawApiKey, out var keyId, out var secret))
+        {
+            return null;
+        }
+
+        var persistedClient = await _externalApiKeyRepository.GetByKeyIdForAuthentication(keyId);
+        if (persistedClient is null)
+        {
+            return null;
+        }
+
+        if (persistedClient.Status != ExternalApiKeyStatus.Active)
+        {
+            _metrics.RecordExternalApiKeyAuthentication(
+                "inactive",
+                persistedClient.TenantId.ToString(),
+                persistedClient.OwnerType.ToString());
+            Logger.LogWarning("[ApiKey] Authentication failed for persisted key {KeyId}: status {Status} is not active.", persistedClient.KeyId, persistedClient.Status);
+            return AuthenticateResult.Fail("API key is not active.");
+        }
+
+        if (!ApiKeyHashing.MatchesHash(secret, persistedClient.SecretHash))
+        {
+            _metrics.RecordExternalApiKeyAuthentication(
+                "invalid",
+                persistedClient.TenantId.ToString(),
+                persistedClient.OwnerType.ToString());
+            Logger.LogWarning("[ApiKey] Authentication failed for persisted key {KeyId}: secret hash mismatch.", persistedClient.KeyId);
+            return AuthenticateResult.Fail("Invalid API key.");
+        }
+
+        if (persistedClient.ExpiresAt is DateTime expiresAtUtc && expiresAtUtc <= DateTime.UtcNow)
+        {
+            _metrics.RecordExternalApiKeyAuthentication(
+                "expired",
+                persistedClient.TenantId.ToString(),
+                persistedClient.OwnerType.ToString());
+            Logger.LogWarning("[ApiKey] Authentication failed for persisted key {KeyId}: key expired at {ExpiresAtUtc}.", persistedClient.KeyId, expiresAtUtc);
+            return AuthenticateResult.Fail("API key expired.");
+        }
+
+        await _externalApiKeyRepository.TouchUsageMetadata(
+            persistedClient.Id,
+            DateTime.UtcNow,
+            Request.HttpContext.Connection.RemoteIpAddress?.ToString(),
+            UsageUpdateInterval,
+            Context.RequestAborted);
+
+        return BuildSuccessResult(
+            persistedClient.KeyId,
+            persistedClient.TenantId,
+            persistedClient.OwnerType.ToString(),
+            persistedClient.OwnerId.ToString(),
+            SplitScopes(persistedClient.Scopes),
+            "persisted credential");
+    }
+
+    private AuthenticateResult BuildSuccessResult(
+        string keyId,
+        Guid tenantId,
+        string ownerType,
+        string ownerId,
+        IEnumerable<string> scopes,
+        string source)
+    {
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.Name, $"api-key:{keyId}"),
+            new(ApiAuthenticationClaimTypes.AuthMethod, "api_key"),
+            new(ApiAuthenticationClaimTypes.ApiKeyId, keyId),
+            new(ApiAuthenticationClaimTypes.TenantId, tenantId.ToString()),
+            new(ApiAuthenticationClaimTypes.OwnerType, ownerType),
+            new(ApiAuthenticationClaimTypes.OwnerId, ownerId)
+        };
+
+        claims.AddRange(scopes
+            .Where(scope => !string.IsNullOrWhiteSpace(scope))
+            .Select(scope => new Claim(ApiAuthenticationClaimTypes.Scope, scope)));
+
+        var identity = new ClaimsIdentity(claims, ApiAuthenticationSchemeNames.ApiKey, ClaimTypes.Name, ClaimTypes.Role);
+        var principal = new ClaimsPrincipal(identity);
+        var ticket = new AuthenticationTicket(principal, ApiAuthenticationSchemeNames.ApiKey);
+
+        _metrics.RecordExternalApiKeyAuthentication("success", tenantId.ToString(), ownerType);
+        Logger.LogInformation("[ApiKey] Authenticated key {KeyId} for tenant {TenantId} on {Path} via {Source}.", keyId, tenantId, Request.Path, source);
+        return AuthenticateResult.Success(ticket);
+    }
+
+    private static IReadOnlyList<string> SplitScopes(string scopes)
+    {
+        return scopes
+            .Split([' ', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 }

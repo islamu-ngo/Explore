@@ -1,18 +1,25 @@
 // ABOUTME: Test host factory for the Phase 0 external API access seam.
 // ABOUTME: Provides deterministic JWT validation, API-key config, and tenant lookup stubs for split-phase tenant tests.
 
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Threading.RateLimiting;
 using Explore.API.Authentication;
+using Explore.Application.Authentication;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
+using Explore.Domain;
 using Explore.Domain.Constants;
+using Explore.Domain.Enums;
 using Explore.Infrastructure;
 using Explore.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -21,6 +28,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
+using ApiKeyHashing = Explore.Application.Services.ApiKeyHashing;
 
 namespace Event.Api.IntegrationTests.Fixtures;
 
@@ -35,11 +43,33 @@ public sealed class ExternalApiPhase0WebApplicationFactory : WebApplicationFacto
 
     public Guid DefaultTenantId { get; init; } = PlatformDefaults.DefaultTenantId;
 
+    public bool EnableAuthContextProbe { get; init; } = true;
+
+    public bool TrustLoopbackProxy { get; init; } = true;
+
+    public bool DisableRateLimitingInTesting { get; init; } = true;
+
+    public int? GlobalRateLimitTokenLimit { get; init; }
+
+    public int? GlobalRateLimitTokensPerPeriod { get; init; }
+
+    public int? GlobalRateLimitReplenishPeriodSeconds { get; init; }
+
+    public bool CustomDomainEnabled { get; init; }
+
+    public bool AllowTenantCustomDomains { get; init; } = true;
+
+    public bool SubdomainEnabled { get; init; }
+
+    public string InstanceBaseDomain { get; init; } = string.Empty;
+
     public IReadOnlyDictionary<string, Guid> TenantSlugMappings { get; init; } = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
 
     public IReadOnlyDictionary<string, Guid> TenantDomainMappings { get; init; } = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
 
     public IReadOnlyList<ApiKeyClientDescriptor> ApiKeyClients { get; init; } = [];
+
+    public IReadOnlyList<PersistedApiKeySeed> PersistedApiKeys { get; init; } = [];
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -62,8 +92,27 @@ public sealed class ExternalApiPhase0WebApplicationFactory : WebApplicationFacto
                 ["S3Settings:Endpoint"] = "https://s3.example.com",
                 ["Deployment:Mode"] = DeploymentMode.ToString(),
                 ["Deployment:DefaultTenantId"] = DefaultTenantId.ToString(),
-                ["Authentication:ApiKeys:HeaderName"] = "X-API-Key"
+                ["Authentication:ApiKeys:HeaderName"] = "X-API-Key",
+                ["Diagnostics:EnableAuthContextProbe"] = EnableAuthContextProbe.ToString(),
+                ["ForwardedHeadersTrust:TrustLoopbackProxy"] = TrustLoopbackProxy.ToString(),
+                ["ForwardedHeadersTrust:ForwardLimit"] = "1",
+                ["RateLimiting:DisableInTesting"] = DisableRateLimitingInTesting.ToString()
             };
+
+            if (GlobalRateLimitTokenLimit.HasValue)
+            {
+                inMemoryConfig["RateLimiting:Global:TokenLimit"] = GlobalRateLimitTokenLimit.Value.ToString();
+            }
+
+            if (GlobalRateLimitTokensPerPeriod.HasValue)
+            {
+                inMemoryConfig["RateLimiting:Global:TokensPerPeriod"] = GlobalRateLimitTokensPerPeriod.Value.ToString();
+            }
+
+            if (GlobalRateLimitReplenishPeriodSeconds.HasValue)
+            {
+                inMemoryConfig["RateLimiting:Global:ReplenishPeriodSeconds"] = GlobalRateLimitReplenishPeriodSeconds.Value.ToString();
+            }
 
             for (var index = 0; index < ApiKeyClients.Count; index++)
             {
@@ -96,15 +145,82 @@ public sealed class ExternalApiPhase0WebApplicationFactory : WebApplicationFacto
                 options.UseInMemoryDatabase(_databaseName);
                 options.ConfigureWarnings(x => x.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning));
             });
+
+            using var scope = services.BuildServiceProvider().CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+            dbContext.Database.EnsureCreated();
+
+            if (PersistedApiKeys.Count > 0)
+            {
+                dbContext.ExternalApiKeys.AddRange(PersistedApiKeys.Select(seed => new ExternalApiKey
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = seed.TenantId,
+                    Tenant = null!,
+                    Name = seed.Name,
+                    KeyId = seed.KeyId,
+                    SecretHash = ApiKeyHashing.ComputeHash(seed.Secret),
+                    Scopes = string.Join(' ', seed.Scopes),
+                    OwnerType = seed.OwnerType,
+                    OwnerId = seed.OwnerId,
+                    Status = seed.Status,
+                    ExpiresAt = seed.ExpiresAtUtc?.UtcDateTime
+                }));
+
+                dbContext.SaveChanges();
+            }
         });
 
         builder.ConfigureTestServices(services =>
         {
+            if (!DisableRateLimitingInTesting)
+            {
+                var tokenLimit = GlobalRateLimitTokenLimit ?? 200;
+                var tokensPerPeriod = GlobalRateLimitTokensPerPeriod ?? 40;
+                var replenishPeriodSeconds = GlobalRateLimitReplenishPeriodSeconds ?? 10;
+
+                services.PostConfigure<RateLimiterOptions>(options =>
+                {
+                    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                    options.OnRejected = async (context, token) =>
+                    {
+                        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+
+                        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+                        {
+                            context.HttpContext.Response.Headers.RetryAfter =
+                                ((int)retryAfter.TotalSeconds).ToString(NumberFormatInfo.InvariantInfo);
+                        }
+                    };
+
+                    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+                    {
+                        var apiKeyId = httpContext.User.GetApiKeyId();
+                        if (!string.IsNullOrWhiteSpace(apiKeyId))
+                        {
+                            return RateLimitPartition.GetTokenBucketLimiter(
+                                $"api-key:{apiKeyId}",
+                                _ => new TokenBucketRateLimiterOptions
+                                {
+                                    TokenLimit = tokenLimit,
+                                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                                    QueueLimit = 0,
+                                    ReplenishmentPeriod = TimeSpan.FromSeconds(replenishPeriodSeconds),
+                                    TokensPerPeriod = tokensPerPeriod,
+                                    AutoReplenishment = true
+                                });
+                        }
+
+                        return RateLimitPartition.GetNoLimiter("test");
+                    });
+                });
+            }
+
             services.RemoveAll<ITenantSlugCache>();
             services.AddSingleton<ITenantSlugCache>(new TestTenantSlugCache(TenantSlugMappings, TenantDomainMappings));
 
             services.RemoveAll<IResolverConfigService>();
-            services.AddSingleton<IResolverConfigService>(new TestResolverConfigService());
+            services.AddSingleton<IResolverConfigService>(new TestResolverConfigService(CustomDomainEnabled, AllowTenantCustomDomains, SubdomainEnabled, InstanceBaseDomain));
 
             services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
             {
@@ -164,19 +280,24 @@ public sealed class ExternalApiPhase0WebApplicationFactory : WebApplicationFacto
 
     private sealed class TestResolverConfigService : IResolverConfigService
     {
-        private static readonly ResolverConfigurationDto Configuration = new()
+        private readonly ResolverConfigurationDto _configuration;
+
+        public TestResolverConfigService(bool customDomainEnabled, bool allowTenantCustomDomains, bool subdomainEnabled, string instanceBaseDomain)
         {
-            HeaderEnabled = true,
-            PathEnabled = true,
-            SubdomainEnabled = false,
-            CustomDomainEnabled = false,
-            AllowTenantCustomDomains = false,
-            InstanceBaseDomain = string.Empty
-        };
+            _configuration = new ResolverConfigurationDto
+            {
+                HeaderEnabled = true,
+                PathEnabled = true,
+                SubdomainEnabled = subdomainEnabled,
+                CustomDomainEnabled = customDomainEnabled,
+                AllowTenantCustomDomains = allowTenantCustomDomains,
+                InstanceBaseDomain = instanceBaseDomain
+            };
+        }
 
         public Task<ResolverConfigurationDto> GetConfigurationAsync(CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(Configuration);
+            return Task.FromResult(_configuration);
         }
 
         public Task ApplyConfigurationAsync(ResolverConfigurationDto configuration, Guid? actorUserId, CancellationToken cancellationToken = default)
@@ -219,5 +340,26 @@ public sealed class ExternalApiPhase0WebApplicationFactory : WebApplicationFacto
         {
             return ValueTask.FromResult(_domainMappings.TryGetValue(domain, out var tenantId) ? (Guid?)tenantId : null);
         }
+    }
+
+    public sealed class PersistedApiKeySeed
+    {
+        public string Name { get; init; } = "Phase0 persisted key";
+
+        public string KeyId { get; init; } = string.Empty;
+
+        public string Secret { get; init; } = string.Empty;
+
+        public Guid TenantId { get; init; }
+
+        public ExternalApiKeyOwnerType OwnerType { get; init; } = ExternalApiKeyOwnerType.User;
+
+        public Guid OwnerId { get; init; }
+
+        public ExternalApiKeyStatus Status { get; init; } = ExternalApiKeyStatus.Active;
+
+        public DateTimeOffset? ExpiresAtUtc { get; init; }
+
+        public IReadOnlyList<string> Scopes { get; init; } = [];
     }
 }

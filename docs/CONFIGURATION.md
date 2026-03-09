@@ -18,6 +18,7 @@ Commonly consumed sections in code:
 - `Keycloak:*` (authority, metadata, client IDs/secrets)
 - `ConnectionStrings:DefaultConnection`
 - `Cors:AllowedOrigins`
+- `ForwardedHeadersTrust:*`
 - `RateLimiting:*`
 - `RequestTimeouts:*`
 - `Cerbos:*`
@@ -136,6 +137,20 @@ Static deployment config is bound from `Deployment` section (`DeploymentSettings
 - `DefaultTenantId`
 - `HidePlatformAdminInSingleTenant` (default `true`)
 - `DefaultTenantSubdomain`
+
+## Reverse Proxy Trust Configuration
+
+`Explore.API` binds trusted forwarded-header settings from `ForwardedHeadersTrust`:
+
+- `ForwardLimit` (default `1`)
+- `TrustLoopbackProxy` (useful for local/test proxy chains)
+- `KnownProxies` (IP list)
+- `KnownNetworks` (CIDR list)
+
+Important behavior:
+
+- if no trusted proxy boundary is configured, forwarded host/IP processing is disabled in the API host;
+- host-derived tenant resolution and proxy-aware rate limiting rely on normalized request values after trusted forwarded-header processing, not on raw `X-Forwarded-*` headers.
 
 Runtime nuance:
 

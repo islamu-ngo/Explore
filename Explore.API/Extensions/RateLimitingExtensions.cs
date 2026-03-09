@@ -4,6 +4,8 @@
 using System.Globalization;
 using System.Net;
 using System.Threading.RateLimiting;
+using Explore.Application.Authentication;
+using Explore.Application.Telemetry;
 
 namespace Explore.API.Extensions;
 
@@ -15,8 +17,8 @@ namespace Explore.API.Extensions;
 /// - SetupSecret: Existing fixed window for instance bootstrap
 ///
 /// All limits are configurable via appsettings.json under "RateLimiting".
-/// When behind a reverse proxy (e.g., ngrok, Cloudflare), the global limiter
-/// reads from X-Forwarded-For to identify the real client IP.
+/// When behind a reverse proxy, client IP comes from HttpContext.Connection.RemoteIpAddress
+/// after trusted forwarded headers have been applied by the main API pipeline.
 /// </summary>
 public static class RateLimitingExtensions
 {
@@ -29,8 +31,10 @@ public static class RateLimitingExtensions
     public static IServiceCollection AddApiRateLimiting(
         this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
+        var disableInTesting = configuration.GetValue("RateLimiting:DisableInTesting", true);
+
         // Disable rate limiting in test environments to prevent 429s during parallel test execution
-        if (environment.EnvironmentName == "Testing")
+        if (environment.EnvironmentName == "Testing" && disableInTesting)
         {
             services.AddRateLimiter(options =>
             {
@@ -76,6 +80,25 @@ public static class RateLimitingExtensions
 
             options.OnRejected = async (ctx, token) =>
             {
+                var apiKeyPrincipal = ctx.HttpContext.User.TryGetApiKeyPrincipalContext();
+                if (apiKeyPrincipal is not null)
+                {
+                    var metrics = ctx.HttpContext.RequestServices.GetRequiredService<BusinessMetrics>();
+                    metrics.RecordExternalApiKeyThrottle(
+                        GlobalPolicy.ToLowerInvariant(),
+                        apiKeyPrincipal.TenantId.ToString(),
+                        apiKeyPrincipal.OwnerType.ToString());
+
+                    var loggerFactory = ctx.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>();
+                    var logger = loggerFactory.CreateLogger("ExternalApiKeyRateLimiting");
+                    logger.LogWarning(
+                        "External API key {KeyId} for tenant {TenantId} was throttled by rate-limit policy {Policy} on {Path}.",
+                        apiKeyPrincipal.KeyId,
+                        apiKeyPrincipal.TenantId,
+                        GlobalPolicy,
+                        ctx.HttpContext.Request.Path);
+                }
+
                 ctx.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
 
                 if (ctx.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
@@ -96,10 +119,27 @@ public static class RateLimitingExtensions
                 }, token);
             };
 
-            // Global limiter: token bucket per IP
-            // Supports X-Forwarded-For for reverse proxy deployments (ngrok, Cloudflare, etc.)
+            // Global limiter: token bucket per IP.
+            // API-key callers are partitioned by authenticated key id; other callers remain IP-based.
+            // RemoteIpAddress is already proxy-aware when UseForwardedHeaders is configured.
             options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
             {
+                var apiKeyId = httpContext.User.GetApiKeyId();
+                if (!string.IsNullOrWhiteSpace(apiKeyId))
+                {
+                    return RateLimitPartition.GetTokenBucketLimiter(
+                        $"api-key:{apiKeyId}",
+                        _ => new TokenBucketRateLimiterOptions
+                        {
+                            TokenLimit = globalTokenLimit,
+                            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                            QueueLimit = 0,
+                            ReplenishmentPeriod = TimeSpan.FromSeconds(globalReplenishPeriodSeconds),
+                            TokensPerPeriod = globalTokensPerPeriod,
+                            AutoReplenishment = true
+                        });
+                }
+
                 var remoteIp = ResolveClientIp(httpContext);
 
                 if (remoteIp is not null && IPAddress.IsLoopback(remoteIp))
@@ -123,7 +163,7 @@ public static class RateLimitingExtensions
             // Authenticated: sliding window per user identity
             options.AddPolicy(AuthenticatedPolicy, httpContext =>
             {
-                var userId = httpContext.User.Identity?.Name ?? "anonymous";
+                var userId = GetAuthenticatedPartitionKey(httpContext);
 
                 return RateLimitPartition.GetSlidingWindowLimiter(userId, _ =>
                     new SlidingWindowRateLimiterOptions
@@ -139,7 +179,7 @@ public static class RateLimitingExtensions
             // Write operations: stricter fixed window per user
             options.AddPolicy(WritePolicy, httpContext =>
             {
-                var userId = httpContext.User.Identity?.Name ?? "anonymous";
+                var userId = GetAuthenticatedPartitionKey(httpContext);
 
                 return RateLimitPartition.GetFixedWindowLimiter($"write:{userId}", _ =>
                     new FixedWindowRateLimiterOptions
@@ -186,23 +226,21 @@ public static class RateLimitingExtensions
     }
 
     /// <summary>
-    /// Resolves the real client IP, accounting for reverse proxies.
-    /// Checks X-Forwarded-For first (for ngrok, Cloudflare, etc.), falls back to RemoteIpAddress.
+    /// Resolves the client IP after any trusted forwarded-header processing.
     /// </summary>
     private static IPAddress? ResolveClientIp(HttpContext context)
     {
-        var forwardedFor = context.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+        return context.Connection.RemoteIpAddress;
+    }
 
-        if (!string.IsNullOrEmpty(forwardedFor))
+    private static string GetAuthenticatedPartitionKey(HttpContext context)
+    {
+        var apiKeyId = context.User.GetApiKeyId();
+        if (!string.IsNullOrWhiteSpace(apiKeyId))
         {
-            // X-Forwarded-For may contain multiple IPs: "client, proxy1, proxy2"
-            var firstIp = forwardedFor.Split(',', StringSplitOptions.TrimEntries)[0];
-            if (IPAddress.TryParse(firstIp, out var parsed))
-            {
-                return parsed;
-            }
+            return $"api-key:{apiKeyId}";
         }
 
-        return context.Connection.RemoteIpAddress;
+        return context.User.Identity?.Name ?? "anonymous";
     }
 }
