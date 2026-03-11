@@ -1,0 +1,33 @@
+@* ABOUTME: Non-blocking cookie consent banner with equal Accept/Decline buttons. *@
+@* ABOUTME: Driven by AnalyticsInitializer state machine. Emits OnAccept/OnDecline callbacks. *@
+
+@if (Visible)
+{
+    <div class="cookie-consent-banner">
+        <div class="cookie-consent-banner__content">
+            <p class="cookie-consent-banner__text">
+                This site uses cookies and similar technologies for analytics to improve your experience.
+                You can accept or decline non-essential cookies.
+            </p>
+            <div class="cookie-consent-banner__actions">
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="HandleDecline"
+                           Class="cookie-consent-banner__btn">
+                    Decline
+                </MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="HandleAccept"
+                           Class="cookie-consent-banner__btn">
+                    Accept
+                </MudButton>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback OnAccept { get; set; }
+    [Parameter] public EventCallback OnDecline { get; set; }
+
+    private async Task HandleAccept() => await OnAccept.InvokeAsync();
+    private async Task HandleDecline() => await OnDecline.InvokeAsync();
+}

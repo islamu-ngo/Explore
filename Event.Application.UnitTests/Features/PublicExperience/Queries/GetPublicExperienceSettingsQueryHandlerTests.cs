@@ -7,6 +7,8 @@ using Explore.Application.Features.PublicExperience.Handlers.Queries;
 using Explore.Application.Features.PublicExperience.Requests.Queries;
 using Explore.Application.Models;
 using Explore.Application.Services;
+using Explore.Application.Settings;
+using Explore.Application.Settings.Groups;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using NSubstitute;
@@ -22,6 +24,8 @@ public class GetPublicExperienceSettingsQueryHandlerTests
     private readonly IModuleService _moduleService;
     private readonly IInstanceGovernanceSettingService _instanceGovernanceSettingService;
     private readonly IAnalyticsGovernanceService _analyticsGovernanceService;
+    private readonly IAnalyticsRuntimeProfileResolver _runtimeProfileResolver;
+    private readonly IHierarchicalSettingsResolver _hierarchicalSettingsResolver;
     private readonly GetPublicExperienceSettingsQueryHandler _handler;
 
     public GetPublicExperienceSettingsQueryHandlerTests()
@@ -33,6 +37,13 @@ public class GetPublicExperienceSettingsQueryHandlerTests
         _moduleService = Substitute.For<IModuleService>();
         _instanceGovernanceSettingService = Substitute.For<IInstanceGovernanceSettingService>();
         _analyticsGovernanceService = new AnalyticsGovernanceService();
+        _runtimeProfileResolver = Substitute.For<IAnalyticsRuntimeProfileResolver>();
+        _runtimeProfileResolver.Resolve(Arg.Any<AnalyticsSettingGroup>())
+            .Returns(new AnalyticsRuntimeProfile());
+        _hierarchicalSettingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
+        _hierarchicalSettingsResolver.ResolveGroupAsync<AnalyticsSettingGroup>(
+            Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
+            .Returns(new AnalyticsSettingGroup());
         _instanceGovernanceSettingService.ReadEffectiveSettingsForTenantAsync(Arg.Any<Guid>()).Returns(new InstanceGovernanceSettingsDto());
         _analyticsConfigResolver.ResolveAsync(Arg.Any<CancellationToken>()).Returns(new AnalyticsConfiguration());
 
@@ -43,7 +54,9 @@ public class GetPublicExperienceSettingsQueryHandlerTests
             _policySettingService,
             _moduleService,
             _instanceGovernanceSettingService,
-            _analyticsGovernanceService);
+            _analyticsGovernanceService,
+            _runtimeProfileResolver,
+            _hierarchicalSettingsResolver);
     }
 
     [Test]

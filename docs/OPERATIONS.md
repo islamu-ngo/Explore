@@ -216,6 +216,50 @@ Analytics rollout and incident runbook:
    - Buffered/outbox analytics delivery is intentionally deferred to a follow-up milestone.
    - Current guidance is best-effort delivery for browser analytics and handler-driven best-effort server events; introduce an outbox only if operators need stronger guarantees for business-critical analytics.
 
+### Cookie Consent & Privacy Governance
+
+The platform provides a consent framework; each instance operator is the data controller responsible for their own legal compliance.
+
+Global kill switch:
+
+- `analytics.global_disable_client_tracking = true` immediately disables all browser-side analytics across all tenants.
+- Use this for urgent legal/privacy incidents without editing individual tenant settings.
+- Server-side analytics continues normally; this only affects browser SDK initialization.
+
+Provider consent matrix:
+
+| Provider | Cookieless Mode | Banner Required | Decline Behavior |
+|---|---|---|---|
+| `none` | N/A | No | N/A |
+| `plausible` | Always cookieless | No | N/A |
+| `rybbit` | Always cookieless | No | N/A |
+| `posthog` (`cookieless_mode=always`) | Always cookieless | No | N/A |
+| `posthog` (`cookieless_mode=on_reject`) | Cookieless after decline | Yes | Cookieless analytics continues |
+| `posthog` (`cookieless_mode=off`) | Consent-managed | Yes | Configurable: `disable` or `cookieless` |
+| `rudderstack` | Full consent (v1) | Yes | Configurable: `disable` or `cookieless` |
+
+PostHog privacy defaults for self-hosters:
+
+- `posthog_session_replay`: disabled by default. Requires explicit consent if enabled.
+- `posthog_autocapture`: disabled by default. When enabled, captures click/input interactions.
+- `posthog_heatmaps`: disabled by default. Collects pointer position data.
+- `posthog_person_profiles`: `identified_only` by default. Set to `never` for fully anonymous analytics.
+- Admin UI shows contextual warnings when enabling features that expand the consent surface.
+
+Consent cookie operational notes:
+
+- Consent cookies are tenant-scoped (`explore_cc_{tenantSlug}`) — never shared across tenants.
+- Default lifetime is 180 days (configurable via `analytics.consent_cookie_lifetime_days`).
+- Cookie values are minimal (`accepted`/`declined` only) — not identity artifacts.
+- The consent cookie is classified as strictly necessary and does not require its own consent.
+- A persistent "Cookie Settings" link in the footer allows users to withdraw consent at any time.
+
+Admin settings management:
+
+- `GET /api/InstanceOnboarding/analytics-governance` returns current governance settings plus computed advisory fields.
+- `PUT /api/InstanceOnboarding/analytics-governance` updates all 10 consent/privacy governance keys.
+- Auto-computation is advisory: the resolver suggests recommended settings but does not silently overwrite operator choices.
+
 ## Single-Tenant Endpoint Exposure
 
 `BlockInSingleTenantAttribute` behavior:

@@ -124,6 +124,10 @@
                                              Text="SMTP"
                                              Class="@GetNavItemClass("smtp")"
                                              OnClick="@(() => SelectSection("smtp"))" />
+                                <MudListItem Icon="@Icons.Material.Filled.Analytics"
+                                             Text="Analytics & Privacy"
+                                             Class="@GetNavItemClass("analytics-privacy")"
+                                             OnClick="@(() => SelectSection("analytics-privacy"))" />
 
                                 <!-- Advanced Section -->
                                 <div class="settings-nav-separator">
@@ -181,6 +185,10 @@
                                              Text="SMTP"
                                              Class="@GetNavItemClass("smtp")"
                                              OnClick="@(() => SelectSection("smtp"))" />
+                                <MudListItem Icon="@Icons.Material.Filled.Analytics"
+                                             Text="Analytics & Privacy"
+                                             Class="@GetNavItemClass("analytics-privacy")"
+                                             OnClick="@(() => SelectSection("analytics-privacy"))" />
                                 <MudListItem Icon="@Icons.Material.Filled.DomainAdd"
                                              Text="Tenants"
                                              Class="@GetNavItemClass("tenants")"
@@ -229,6 +237,10 @@
                         else if (_currentSection == "smtp")
                         {
                             <InstanceSmtpSection Model="_smtpModel" OnboardingService="InstanceOnboardingService" />
+                        }
+                        else if (_currentSection == "analytics-privacy")
+                        {
+                            <InstanceAnalyticsPrivacySection Model="_analyticsModel" />
                         }
                         else if (_currentSection == "members" && IsSingleTenantMode)
                         {
@@ -335,6 +347,7 @@
     private InstanceSmtpSettingsModel _smtpModel = new();
     private AuthProviderConfigurationModel _authProviderModel = new();
     private TenantPolicySettingsModel _tenantModel = new();
+    private Explore.Blazor.Client.Models.Analytics.AnalyticsGovernanceSettingsModel _analyticsModel = new();
     private int _tenantCount;
     private bool _isLoading = true;
     private bool _isSaving;
@@ -346,7 +359,7 @@
                                        || string.IsNullOrWhiteSpace(_model.DeploymentMode);
 
     private static bool IsSettingsSection(string section) =>
-        section is "governance" or "domain" or "branding" or "auth-providers" or "modules" or "storage" or "smtp" or "policies" or "render-policies" or "multi-tenancy" or "appearance";
+        section is "governance" or "domain" or "branding" or "auth-providers" or "modules" or "storage" or "smtp" or "policies" or "render-policies" or "multi-tenancy" or "appearance" or "analytics-privacy";
 
     protected override async Task OnInitializedAsync()
     {
@@ -363,6 +376,7 @@
         _storageModel = await InstanceOnboardingService.GetStorageSettingsAsync();
         _smtpModel = await InstanceOnboardingService.GetSmtpSettingsAsync();
         _authProviderModel = await InstanceOnboardingService.GetAuthProviderConfigurationAsync();
+        _analyticsModel = await InstanceOnboardingService.GetAnalyticsGovernanceSettingsAsync();
         _tenantCount = await InstanceOnboardingService.GetActiveTenantCountAsync();
 
         if (IsSingleTenantMode)
@@ -433,6 +447,7 @@
 
         var storageResponse = await InstanceOnboardingService.UpdateStorageSettingsAsync(_storageModel);
         var smtpResponse = await InstanceOnboardingService.UpdateSmtpSettingsAsync(_smtpModel);
+        var analyticsResponse = await InstanceOnboardingService.UpdateAnalyticsGovernanceSettingsAsync(_analyticsModel);
 
         if (IsSingleTenantMode && _currentSection == "policies")
         {

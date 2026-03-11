@@ -2,6 +2,7 @@
 // ABOUTME: Initializes provider adapter from public settings payload and safely no-ops on JS failures.
 
 using Explore.Blazor.Client.Contracts.Interop;
+using Explore.Blazor.Client.Models.Analytics;
 using Microsoft.JSInterop;
 
 namespace Explore.Blazor.Client.Services;
@@ -18,12 +19,23 @@ public class AnalyticsInterop : IAnalyticsInterop, IAsyncDisposable
         _logger = logger;
     }
 
-    public async Task InitAsync(string analyticsProvider, bool analyticsEnabled, string analyticsConsentMode, string analyticsTransportMode, bool allowIdentify, string? apiKey, string? endpointUrl)
+    public async Task InitAsync(string analyticsProvider, bool analyticsEnabled, string analyticsConsentMode, string analyticsTransportMode, bool allowIdentify, string? apiKey, string? endpointUrl, PosthogClientBootstrapModel? posthogOptions = null)
     {
         try
         {
             var module = await GetModuleAsync();
-            await module.InvokeVoidAsync("initAnalytics", analyticsProvider, analyticsEnabled, analyticsConsentMode, analyticsTransportMode, allowIdentify, apiKey ?? string.Empty, endpointUrl ?? string.Empty);
+            object? jsPosthogOptions = posthogOptions is not null
+                ? new
+                {
+                    cookielessMode = posthogOptions.CookielessMode,
+                    personProfiles = posthogOptions.PersonProfiles,
+                    sessionReplay = posthogOptions.SessionReplay,
+                    autocapture = posthogOptions.Autocapture,
+                    heatmaps = posthogOptions.Heatmaps,
+                    toolbar = posthogOptions.Toolbar
+                }
+                : null;
+            await module.InvokeVoidAsync("initAnalytics", analyticsProvider, analyticsEnabled, analyticsConsentMode, analyticsTransportMode, allowIdentify, apiKey ?? string.Empty, endpointUrl ?? string.Empty, jsPosthogOptions);
         }
         catch (Exception ex)
         {
@@ -70,6 +82,32 @@ public class AnalyticsInterop : IAnalyticsInterop, IAsyncDisposable
         }
     }
 
+    public async Task OptInCapturingAsync()
+    {
+        try
+        {
+            var module = await GetModuleAsync();
+            await module.InvokeVoidAsync("optInCapturing");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Analytics bridge opt-in failed");
+        }
+    }
+
+    public async Task OptOutCapturingAsync()
+    {
+        try
+        {
+            var module = await GetModuleAsync();
+            await module.InvokeVoidAsync("optOutCapturing");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Analytics bridge opt-out failed");
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (_module is not null)
@@ -80,7 +118,6 @@ public class AnalyticsInterop : IAnalyticsInterop, IAsyncDisposable
             }
             catch (JSDisconnectedException)
             {
-                // no-op
             }
         }
     }

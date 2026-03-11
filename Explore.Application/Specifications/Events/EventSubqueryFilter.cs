@@ -1,3 +1,4 @@
+using Explore.Application.Features.Events.Requests.Queries;
 using Explore.Domain;
 
 namespace Explore.Application.Specifications.Events;
@@ -127,6 +128,18 @@ public sealed class EventSubqueryFilter
     /// </summary>
     public static EventSubqueryFilter RegistrationModes(List<int> registrationModeIds) =>
         new(EventSubqueryFilterType.RegistrationModes, registrationModeIds);
+
+    /// <summary>
+    /// Filters out events that have already finished (last session has started).
+    /// </summary>
+    public static EventSubqueryFilter FutureOnly(DateTimeOffset now) =>
+        new(EventSubqueryFilterType.FutureOnly, now);
+
+    /// <summary>
+    /// Filters events based on their temporal status relative to Now.
+    /// </summary>
+    public static EventSubqueryFilter Temporal(TemporalView view, DateTimeOffset now) =>
+        new(EventSubqueryFilterType.TemporalView, (view, now));
 }
 
 /// <summary>
@@ -177,5 +190,11 @@ public enum EventSubqueryFilterType
     RegistrationMode,
 
     /// <summary>Registration mode multi-value filter via EventSessions table (OR logic).</summary>
-    RegistrationModes
+    RegistrationModes,
+
+    /// <summary>Filters out events where the last session has already started.</summary>
+    FutureOnly,
+
+    /// <summary>Filters events by temporal status (Upcoming, Ongoing, Past).</summary>
+    TemporalView
 }

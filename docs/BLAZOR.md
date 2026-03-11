@@ -57,6 +57,42 @@ YARP transform behavior is security-sensitive:
 8. Relay transport currently supports pageview and constrained client custom events; identify remains policy-gated and is not emitted by the relay bridge.
 9. Analytics bootstrap must never interfere with route rendering, startup navigation, or authenticated BFF flows.
 
+## Cookie Consent & Privacy State Machine
+
+`AnalyticsInitializer` implements a 7-state consent state machine that governs analytics initialization based on the computed `AnalyticsConsentBootstrap` from the server:
+
+States: `Uninitialized` → `NoBannerImmediateInit` | `BannerPendingCookieless` | `BannerPendingBlocked` → `Accepted` | `DeclinedCookieless` | `DeclinedDisabled`
+
+State transitions:
+
+1. **Uninitialized**: Initial state. Reads `AnalyticsConsentBootstrap` and tenant-scoped consent cookie.
+2. **NoBannerImmediateInit**: No banner needed (cookieless provider or banner disabled). Analytics initializes immediately.
+3. **BannerPendingCookieless**: Banner shown; analytics can run in cookieless mode before consent. PostHog initialized with `opt_out_capturing_by_default: true`.
+4. **BannerPendingBlocked**: Banner shown; analytics blocked until consent. No PostHog initialization.
+5. **Accepted**: User accepted. PostHog `posthog.opt_in_capturing()` called if SDK was pre-initialized; otherwise full init.
+6. **DeclinedCookieless**: User declined but `decline_behavior=cookieless`. PostHog continues in cookieless mode.
+7. **DeclinedDisabled**: User declined and `decline_behavior=disable`. Analytics fully disabled.
+
+Key components:
+
+- `CookieConsentBanner.razor`: Non-blocking fixed-bottom banner with equal Accept/Decline buttons. Uses MudBlazor.
+- `CookieConsentStateService`: Cross-component event bridge. Footer "Cookie Settings" link triggers `RequestReopenAsync()`, which `AnalyticsInitializer` subscribes to.
+- `ICookieConsentInterop`: JS module interop for tenant-scoped consent cookies (`cookie-consent.js`). Server-side no-op via `ServerCookieConsentInterop`.
+- `analytics-bridge.js`: PostHog adapter accepts `posthogOptions` (cookielessMode, personProfiles, sessionReplay, autocapture, heatmaps, toolbar, optOutByDefault). Exposes `optInCapturing`, `optOutCapturing` for consent transitions.
+
+Consent cookie design:
+
+- Name: `explore_cc_{tenantSlug}` (tenant-scoped to prevent cross-tenant leakage).
+- Values: `accepted` or `declined` only (minimal, no tracking data).
+- Lifetime: configurable, default 180 days.
+
+Privacy-first defaults:
+
+- `opt_out_capturing_by_default: true` when consent is required.
+- PostHog `person_profiles: 'identified_only'` (or `'never'` for anonymous-only).
+- Session replay, autocapture, heatmaps, and toolbar all disabled by default.
+- PostHog `defaults` version pin recommended for SDK stability.
+
 ## API Client Generation (Non-Obvious)
 1. `Explore.Blazor.Client.csproj` runs target `GenerateApiClient` before `CoreCompile`.
 2. NSwag input is `../Explore.API/swagger.json`; output is `Clients/EventApiClient.g.cs`.

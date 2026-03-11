@@ -17,6 +17,10 @@ public class AnalyticsInitializerTests : IDisposable
         _ctx = new BlazorTestContext();
         _analyticsInitializerType = typeof(IPublicExperienceService).Assembly.GetTypes()
             .First(x => x.Name == "AnalyticsInitializer");
+
+        // Register services added by the consent state machine rewrite
+        _ctx.Services.AddSingleton(Substitute.For<ICookieConsentInterop>());
+        _ctx.Services.AddSingleton(new CookieConsentStateService());
     }
 
     public void Dispose()
@@ -168,7 +172,7 @@ public class AnalyticsInitializerTests : IDisposable
 
         cut.WaitForAssertion(() =>
         {
-            analyticsInterop.Received(1).InitAsync("none", false, "anonymous", "direct", false, string.Empty, string.Empty);
+            analyticsInterop.DidNotReceiveWithAnyArgs().InitAsync(default!, default, default!, default!, default, default!, default!);
             analyticsInterop.DidNotReceiveWithAnyArgs().PageViewAsync(default!, default!);
         });
     }

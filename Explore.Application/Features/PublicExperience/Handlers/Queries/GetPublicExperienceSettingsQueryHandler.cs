@@ -8,7 +8,10 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.PublicExperience.Requests.Queries;
+using Explore.Application.Settings;
+using Explore.Application.Settings.Groups;
 using Explore.Domain.Constants;
+using Explore.Domain.Enums.Analytics;
 using MediatR;
 
 namespace Explore.Application.Features.PublicExperience.Handlers.Queries;
@@ -22,6 +25,8 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
     private readonly IModuleService _moduleService;
     private readonly IInstanceGovernanceSettingService _instanceGovernanceSettingService;
     private readonly IAnalyticsGovernanceService _analyticsGovernanceService;
+    private readonly IAnalyticsRuntimeProfileResolver _runtimeProfileResolver;
+    private readonly IHierarchicalSettingsResolver _hierarchicalSettingsResolver;
 
     public GetPublicExperienceSettingsQueryHandler(
         ITenantContext tenantContext,
@@ -30,7 +35,9 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
         ITenantPolicySettingService policySettingService,
         IModuleService moduleService,
         IInstanceGovernanceSettingService instanceGovernanceSettingService,
-        IAnalyticsGovernanceService analyticsGovernanceService)
+        IAnalyticsGovernanceService analyticsGovernanceService,
+        IAnalyticsRuntimeProfileResolver runtimeProfileResolver,
+        IHierarchicalSettingsResolver hierarchicalSettingsResolver)
     {
         _tenantContext = tenantContext;
         _systemSettingRepository = systemSettingRepository;
@@ -39,6 +46,8 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
         _moduleService = moduleService;
         _instanceGovernanceSettingService = instanceGovernanceSettingService;
         _analyticsGovernanceService = analyticsGovernanceService;
+        _runtimeProfileResolver = runtimeProfileResolver;
+        _hierarchicalSettingsResolver = hierarchicalSettingsResolver;
     }
 
     public async Task<PublicExperienceSettingsDto> Handle(GetPublicExperienceSettingsQuery request, CancellationToken cancellationToken)
@@ -63,6 +72,13 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
         var analyticsConsentMode = analyticsConfiguration.ConsentMode.ToString().ToLowerInvariant();
         var analyticsTransportMode = analyticsConfiguration.TransportMode.ToString().ToLowerInvariant();
         var analyticsAllowIdentify = _analyticsGovernanceService.AllowsIdentify(analyticsConfiguration.Provider, analyticsConfiguration.ConsentMode);
+
+        // Resolve consent bootstrap via the runtime profile resolver
+        var analyticsSettingGroup = await _hierarchicalSettingsResolver.ResolveGroupAsync<AnalyticsSettingGroup>(
+            new SettingContext(TenantId: tenantId), cancellationToken);
+        analyticsSettingGroup.TenantSlug = effectiveTenantSettings.Subdomain;
+        var runtimeProfile = _runtimeProfileResolver.Resolve(analyticsSettingGroup);
+        var consentBootstrap = MapToConsentBootstrap(runtimeProfile, analyticsProvider);
 
         return new PublicExperienceSettingsDto
         {
@@ -92,6 +108,7 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
             AnalyticsAllowIdentify = analyticsAllowIdentify,
             AnalyticsPublicApiKey = analyticsPublicApiKey ?? string.Empty,
             AnalyticsEndpointUrl = analyticsEndpointUrl ?? string.Empty,
+            AnalyticsConsent = consentBootstrap,
             RenderPolicyVersion = governanceSettings.RenderPolicyVersion,
             RenderPolicyPreset = governanceSettings.RenderPolicyPreset,
             EnableAdvancedRenderPolicyOverrides = governanceSettings.EnableAdvancedRenderPolicyOverrides,
@@ -107,6 +124,49 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
             OnboardingPrerenderEnabled = governanceSettings.OnboardingPrerenderEnabled,
             DisallowInteractiveServerOnOnboarding = governanceSettings.DisallowInteractiveServerOnOnboarding
         };
+    }
+
+    private static AnalyticsConsentBootstrapDto MapToConsentBootstrap(AnalyticsRuntimeProfile profile, string provider)
+    {
+        var bootstrap = new AnalyticsConsentBootstrapDto
+        {
+            CookieBannerEnabled = profile.CookieBannerEnabled,
+            CanRunBeforeConsent = profile.CanRunBeforeConsent,
+            DeclineBehavior = profile.DeclineBehavior switch
+            {
+                DeclineBehavior.Cookieless => "cookieless",
+                DeclineBehavior.Disable => "disable",
+                _ => "disable"
+            },
+            ConsentCookieKey = profile.ConsentCookieKey,
+            ConsentCookieLifetimeDays = profile.ConsentCookieLifetimeDays,
+            AnalyticsProvider = provider
+        };
+
+        if (profile.Posthog is not null)
+        {
+            bootstrap.Posthog = new PosthogClientBootstrapDto
+            {
+                CookielessMode = profile.Posthog.CookielessMode switch
+                {
+                    PosthogCookielessMode.Always => "always",
+                    PosthogCookielessMode.OnReject => "on_reject",
+                    _ => "off"
+                },
+                PersonProfiles = profile.Posthog.PersonProfiles switch
+                {
+                    PosthogPersonProfiles.Always => "always",
+                    PosthogPersonProfiles.Never => "never",
+                    _ => "identified_only"
+                },
+                SessionReplay = profile.Posthog.SessionReplay,
+                Autocapture = profile.Posthog.Autocapture,
+                Heatmaps = profile.Posthog.Heatmaps,
+                Toolbar = profile.Posthog.Toolbar
+            };
+        }
+
+        return bootstrap;
     }
 
     private static string DeserializeString(string? rawValue, string defaultValue)

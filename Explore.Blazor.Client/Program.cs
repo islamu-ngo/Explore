@@ -74,6 +74,8 @@ builder.Services.AddSharedApplicationServices();
 builder.Services.AddScoped<IGroupService, GroupService>();
 builder.Services.AddScoped<ITenantNavigationService, TenantNavigationService>();
 builder.Services.AddScoped<IAnalyticsInterop, AnalyticsInterop>();
+builder.Services.AddScoped<ICookieConsentInterop, CookieConsentInterop>();
+builder.Services.AddScoped<CookieConsentStateService>();
 
 // Register message handler for S3 cross-origin uploads
 builder.Services.AddTransient<S3UploadMessageHandler>();

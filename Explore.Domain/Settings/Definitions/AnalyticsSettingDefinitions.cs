@@ -65,6 +65,98 @@ public static class AnalyticsSettingDefinitions
         MaxScope: SettingScope.Tenant,
         IsSensitive: true);
 
+    // Cookie consent & storage governance
+
+    public static readonly SettingDefinition CookieConsentEnabled = new(
+        Key: "analytics.cookie_consent_enabled",
+        ValueType: SettingValueType.Boolean,
+        DefaultValue: "false",
+        Category: "Analytics",
+        Description: "Enable browser cookie consent banner for analytics",
+        MaxScope: SettingScope.Tenant);
+
+    public static readonly SettingDefinition DeclineBehavior = new(
+        Key: "analytics.decline_behavior",
+        ValueType: SettingValueType.String,
+        DefaultValue: "\"cookieless\"",
+        Category: "Analytics",
+        Description: "Behavior when user declines cookies (disable, cookieless)",
+        MaxScope: SettingScope.Tenant,
+        AllowedValues: ["disable", "cookieless"]);
+
+    public static readonly SettingDefinition ConsentCookieLifetimeDays = new(
+        Key: "analytics.consent_cookie_lifetime_days",
+        ValueType: SettingValueType.Integer,
+        DefaultValue: "180",
+        Category: "Analytics",
+        Description: "Consent cookie lifetime in days (ICO recommends 6 months)",
+        MaxScope: SettingScope.Tenant);
+
+    public static readonly SettingDefinition GlobalDisableClientTracking = new(
+        Key: "analytics.global_disable_client_tracking",
+        ValueType: SettingValueType.Boolean,
+        DefaultValue: "false",
+        Category: "Analytics",
+        Description: "Emergency kill switch — disables all browser analytics immediately across all tenants",
+        MaxScope: SettingScope.Instance);
+
+    // PostHog privacy & feature controls
+
+    public static readonly SettingDefinition PosthogCookielessMode = new(
+        Key: "analytics.posthog_cookieless_mode",
+        ValueType: SettingValueType.String,
+        DefaultValue: "\"on_reject\"",
+        Category: "Analytics",
+        Description: "PostHog cookieless mode (off, always, on_reject)",
+        MaxScope: SettingScope.Tenant,
+        AllowedValues: ["off", "always", "on_reject"]);
+
+    public static readonly SettingDefinition PosthogPersonProfiles = new(
+        Key: "analytics.posthog_person_profiles",
+        ValueType: SettingValueType.String,
+        DefaultValue: "\"identified_only\"",
+        Category: "Analytics",
+        Description: "PostHog person profiles mode (always, identified_only, never)",
+        MaxScope: SettingScope.Tenant,
+        AllowedValues: ["always", "identified_only", "never"]);
+
+    public static readonly SettingDefinition PosthogSessionReplay = new(
+        Key: "analytics.posthog_session_replay",
+        ValueType: SettingValueType.Boolean,
+        DefaultValue: "false",
+        Category: "Analytics",
+        Description: "Enable PostHog session replay recording",
+        MaxScope: SettingScope.Tenant);
+
+    public static readonly SettingDefinition PosthogAutocapture = new(
+        Key: "analytics.posthog_autocapture",
+        ValueType: SettingValueType.Boolean,
+        DefaultValue: "false",
+        Category: "Analytics",
+        Description: "Enable PostHog automatic event capture",
+        MaxScope: SettingScope.Tenant);
+
+    public static readonly SettingDefinition PosthogHeatmaps = new(
+        Key: "analytics.posthog_heatmaps",
+        ValueType: SettingValueType.Boolean,
+        DefaultValue: "false",
+        Category: "Analytics",
+        Description: "Enable PostHog heatmap tracking",
+        MaxScope: SettingScope.Tenant);
+
+    public static readonly SettingDefinition PosthogToolbar = new(
+        Key: "analytics.posthog_toolbar",
+        ValueType: SettingValueType.Boolean,
+        DefaultValue: "false",
+        Category: "Analytics",
+        Description: "Enable PostHog toolbar metrics",
+        MaxScope: SettingScope.Tenant);
+
     public static IReadOnlyList<SettingDefinition> All =>
-        [Provider, Enabled, ConsentMode, TransportMode, ApiKey, EndpointUrl, PersonalApiKey];
+    [
+        Provider, Enabled, ConsentMode, TransportMode, ApiKey, EndpointUrl, PersonalApiKey,
+        CookieConsentEnabled, DeclineBehavior, ConsentCookieLifetimeDays, GlobalDisableClientTracking,
+        PosthogCookielessMode, PosthogPersonProfiles, PosthogSessionReplay, PosthogAutocapture,
+        PosthogHeatmaps, PosthogToolbar
+    ];
 }

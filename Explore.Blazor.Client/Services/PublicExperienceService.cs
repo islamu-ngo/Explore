@@ -2,6 +2,7 @@
 // ABOUTME: Provides a single route-resolution helper for event-list versus landing-page entry behavior.
 
 using System.Net.Http.Json;
+using Explore.Blazor.Client.Models.Analytics;
 
 namespace Explore.Blazor.Client.Services;
 
@@ -104,6 +105,7 @@ public class PublicExperienceSettingsModel
     public bool AnalyticsAllowIdentify { get; set; }
     public string AnalyticsPublicApiKey { get; set; } = string.Empty;
     public string AnalyticsEndpointUrl { get; set; } = string.Empty;
+    public AnalyticsConsentBootstrapModel? AnalyticsConsent { get; set; }
     public int RenderPolicyVersion { get; set; } = 1;
     public string RenderPolicyPreset { get; set; } = "AllInteractiveServer";
     public bool EnableAdvancedRenderPolicyOverrides { get; set; }

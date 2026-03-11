@@ -31,6 +31,7 @@ public class PublicExperienceSettingsDto
     public bool AnalyticsAllowIdentify { get; set; }
     public string AnalyticsPublicApiKey { get; set; } = string.Empty;
     public string AnalyticsEndpointUrl { get; set; } = string.Empty;
+    public AnalyticsConsentBootstrapDto? AnalyticsConsent { get; set; }
     public int RenderPolicyVersion { get; set; } = 1;
     public string RenderPolicyPreset { get; set; } = "AllInteractiveServer";
     public bool EnableAdvancedRenderPolicyOverrides { get; set; }

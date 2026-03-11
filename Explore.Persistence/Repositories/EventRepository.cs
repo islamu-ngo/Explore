@@ -1,4 +1,5 @@
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Features.Events.Requests.Queries;
 using Explore.Application.Specifications.Events;
 using Explore.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -188,12 +189,13 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
         query = ApplySubqueryFilters(query, specification);
 
         // Apply direct filters and sorting via specification
-        query = (IQueryable<Event>)specification.Apply(query);
+        var now = DateTimeOffset.UtcNow;
+        query = specification.Apply(query, now);
 
         // If no sort was specified by the specification, default to date descending
         if (!specification.HasSort)
         {
-            query = query.OrderByDescending(e => e.FirstSessionDate);
+            query = query.OrderByDescending(e => e.FirstSessionStartUtc);
         }
 
         var totalCount = await query.CountAsync();
@@ -276,6 +278,11 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
                             esl.EventSessionId == es.Id &&
                             ((List<int>)subFilter.Value).Contains(esl.LanguageId)))),
 
+                EventSubqueryFilterType.FutureOnly => query.Where(e =>
+                    e.LastSessionStartUtc == null || e.LastSessionStartUtc > (DateTimeOffset)subFilter.Value),
+
+                EventSubqueryFilterType.TemporalView => ApplyTemporalFilter(query, subFilter),
+
                 _ => query
             };
 
@@ -292,9 +299,18 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
             else if (subFilter.FilterType == EventSubqueryFilterType.TagsExcludedAll)
             {
                 var tagIds = (List<Guid>)subFilter.Value;
-                query = query.Where(e =>
-                    !tagIds.All(tid =>
-                        _dbContext.EventTags.Any(et => et.EventId == e.Id && et.TagId == tid)));
+                // Logically: NOT (Exists(T1) AND Exists(T2) AND ...)
+                // Is equivalent to: NOT Exists(T1) OR NOT Exists(T2) OR ...
+                // But for EF compatibility, we use a single Where with a manual expression if needed,
+                // or just stay with the existing one if we can fix it.
+                // The issue is tid is a variable from outside.
+
+                // Let's try a more robust pattern:
+                query = query.Where(e => _dbContext.EventTags
+                    .Where(et => et.EventId == e.Id && tagIds.Contains(et.TagId))
+                    .Select(et => et.TagId)
+                    .Distinct()
+                    .Count() < tagIds.Count);
             }
             else if (subFilter.FilterType == EventSubqueryFilterType.CategoriesIncludedAll)
             {
@@ -308,13 +324,30 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
             else if (subFilter.FilterType == EventSubqueryFilterType.CategoriesExcludedAll)
             {
                 var categoryIds = (List<Guid>)subFilter.Value;
-                query = query.Where(e =>
-                    !categoryIds.All(cid =>
-                        _dbContext.EventCategories.Any(ec => ec.EventId == e.Id && ec.CategoryId == cid)));
+                query = query.Where(e => _dbContext.EventCategories
+                    .Where(ec => ec.EventId == e.Id && categoryIds.Contains(ec.CategoryId))
+                    .Select(ec => ec.CategoryId)
+                    .Distinct()
+                    .Count() < categoryIds.Count);
             }
         }
 
         return query;
+    }
+
+    private static IQueryable<Event> ApplyTemporalFilter(IQueryable<Event> query, EventSubqueryFilter filter)
+    {
+        var (view, now) = ((TemporalView, DateTimeOffset))filter.Value;
+
+        return view switch
+        {
+            TemporalView.Upcoming => query.Where(e => e.FirstSessionStartUtc != null && e.FirstSessionStartUtc > now),
+            TemporalView.Ongoing => query.Where(e => e.FirstSessionStartUtc != null && e.FirstSessionStartUtc <= now && e.LastSessionStartUtc != null && e.LastSessionStartUtc > now),
+            TemporalView.Past => query.Where(e => e.LastSessionStartUtc != null && e.LastSessionStartUtc <= now),
+            TemporalView.UpcomingAndOngoing => query.Where(e => e.LastSessionStartUtc == null || e.LastSessionStartUtc > now),
+            TemporalView.All => query,
+            _ => query
+        };
     }
 
     public async Task<(List<Event> Items, int TotalCount)> GetMyEventsWithDetailsPaged(string userId, int pageNumber, int pageSize)

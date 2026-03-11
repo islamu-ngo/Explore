@@ -5,6 +5,7 @@
               __section, __heading, __link, __bottom, __copyright, __social, __social-btn
 -->
 @inject IPublicExperienceService PublicExperienceService
+@inject CookieConsentStateService CookieConsentState
 
 <div class="site-footer-root @(_drawerOpenCss)">
 <footer class="site-footer">
@@ -52,7 +53,7 @@
                     <div class="site-footer__heading">Legal</div>
                     <a href="/privacy" class="site-footer__link">Privacy Policy</a>
                     <a href="/terms" class="site-footer__link">Terms of Service</a>
-                    <a href="/cookies" class="site-footer__link">Cookie Settings</a>
+                    <a href="#" class="site-footer__link" @onclick="HandleCookieSettingsClick" @onclick:preventDefault="true">Cookie Settings</a>
                 </div>
             </div>
         </div>
@@ -97,5 +98,10 @@
         }
 
         _brandLogoUrl = settings.BrandLogoUrl ?? string.Empty;
+    }
+
+    private async Task HandleCookieSettingsClick()
+    {
+        await CookieConsentState.RequestReopenAsync();
     }
 }

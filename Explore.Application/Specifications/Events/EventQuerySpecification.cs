@@ -133,9 +133,14 @@ public sealed class EventQuerySpecification : IQuerySpecification<Event>
     /// <summary>
     /// Applies all direct filter predicates and sorting to the given queryable.
     /// Note: Subquery filters must be applied separately at the repository level
-    /// using <see cref="ApplySubqueryFilters"/> where the DbContext is available.
+    /// using ApplySubqueryFilters where the DbContext is available.
     /// </summary>
-    public IQueryable<Event> Apply(IQueryable<Event> query)
+    public IQueryable<Event> Apply(IQueryable<Event> query) => Apply(query, null);
+
+    /// <summary>
+    /// Applies all direct filter predicates and sorting to the given queryable with temporal context for bucketed sorting.
+    /// </summary>
+    public IQueryable<Event> Apply(IQueryable<Event> query, DateTimeOffset? now)
     {
         // Apply direct filters
         foreach (var filter in _filters)
@@ -146,9 +151,23 @@ public sealed class EventQuerySpecification : IQuerySpecification<Event>
         // Apply sorting
         if (_sort is not null)
         {
-            query = _sortDescending
-                ? query.OrderByDescending(_sort.KeySelector)
-                : query.OrderBy(_sort.KeySelector);
+            if (_sort == EventSort.Temporal && now.HasValue)
+            {
+                var ts = now.Value;
+                // Bucket 1: Not Past (LastSessionStartUtc > now) -> Sort by NextSessionStartUtc ASC
+                // Bucket 2: Past (LastSessionStartUtc <= now) -> Sort by LastSessionStartUtc DESC
+                // We use LastSessionStartUtc <= now as the first sort key (false < true, so NotPast comes first)
+                query = query.OrderBy(e => e.LastSessionStartUtc != null && e.LastSessionStartUtc <= ts)
+                             .ThenBy(e => e.LastSessionStartUtc != null && e.LastSessionStartUtc <= ts
+                                 ? -e.LastSessionStartUtc.Value.Ticks
+                                 : e.FirstSessionStartUtc.Value.Ticks);
+            }
+            else
+            {
+                query = _sortDescending
+                    ? query.OrderByDescending(_sort.KeySelector)
+                    : query.OrderBy(_sort.KeySelector);
+            }
         }
 
         return query;

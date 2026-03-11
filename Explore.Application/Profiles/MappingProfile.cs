@@ -167,7 +167,21 @@ public class MappingProfile : Profile
             // Event Format
             .ForMember(dest => dest.EventFormatFullName, opt => opt.MapFrom(src => src.EventFormat != null ? src.EventFormat.FullName : null))
             // Madhab
-            .ForMember(dest => dest.MadhabFullName, opt => opt.MapFrom(src => src.Madhab != null ? src.Madhab.FullName : null));
+            .ForMember(dest => dest.MadhabFullName, opt => opt.MapFrom(src => src.Madhab != null ? src.Madhab.FullName : null))
+            // Series Info
+            .ForMember(dest => dest.EventSeriesTitle, opt => opt.MapFrom(src => src.EventSeries != null ? src.EventSeries.Title : null))
+            // Temporal Summary
+            .ForMember(dest => dest.IsPast, opt => opt.MapFrom(src => src.LastSessionStartUtc != null && src.LastSessionStartUtc <= DateTimeOffset.UtcNow));
+
+        // Event Series
+        CreateMap<EventSeries, EventSeriesListDto>()
+        .ForMember(d => d.FeaturedImageUri, opt => opt.MapFrom(s => s.FeaturedImage != null ? s.FeaturedImage.Uri : null))
+        .ForMember(d => d.ActorDisplayName, opt => opt.MapFrom(s => s.Actor != null && s.Actor.Pii != null ? s.Actor.Pii.DisplayName : null))
+        .ForMember(d => d.EventCount, opt => opt.MapFrom(s => s.Events != null ? s.Events.Count : 0));
+
+        CreateMap<EventSeries, EventSeriesDto>()
+        .ForMember(d => d.FeaturedImageUri, opt => opt.MapFrom(s => s.FeaturedImage != null ? s.FeaturedImage.Uri : null))
+        .ForMember(d => d.ActorDisplayName, opt => opt.MapFrom(s => s.Actor != null && s.Actor.Pii != null ? s.Actor.Pii.DisplayName : null));
 
         CreateMap<CreateEventDto, Event>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
@@ -177,12 +191,29 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.SessionCount, opt => opt.Ignore())
             .ForMember(dest => dest.AtprotoRecordId, opt => opt.Ignore())
             .ForMember(dest => dest.IsUserReported, opt => opt.Ignore()) // Set by handler based on OrganizationId
-                                                                         // Convert DateTimeOffset? to DateOnly? for session dates
+                                                                         // Convert DateTimeOffset? to DateOnly? for legacy session dates
             .ForMember(dest => dest.FirstSessionDate, opt => opt.MapFrom(src =>
                 src.FirstSessionDate.HasValue ? DateOnly.FromDateTime(src.FirstSessionDate.Value.DateTime) : (DateOnly?)null))
             .ForMember(dest => dest.LastSessionDate, opt => opt.MapFrom(src =>
-                src.LastSessionDate.HasValue ? DateOnly.FromDateTime(src.LastSessionDate.Value.DateTime) : (DateOnly?)null));
-        CreateMap<UpdateEventDto, Event>();
+                src.LastSessionDate.HasValue ? DateOnly.FromDateTime(src.LastSessionDate.Value.DateTime) : (DateOnly?)null))
+            .ForMember(dest => dest.FirstSessionStartUtc, opt => opt.MapFrom(src => src.FirstSessionStartUtc ?? src.FirstSessionDate))
+            .ForMember(dest => dest.LastSessionStartUtc, opt => opt.MapFrom(src => src.LastSessionStartUtc ?? src.LastSessionDate))
+            .ForMember(dest => dest.EventTimeZoneId, opt => opt.MapFrom(src => src.EventTimeZoneId ?? src.Timezone))
+            .ForMember(dest => dest.Timezone, opt => opt.MapFrom(src => src.Timezone ?? src.EventTimeZoneId));
+
+        CreateMap<UpdateEventDto, Event>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.ActorId, opt => opt.Ignore()) // Resolved by handler
+            .ForMember(dest => dest.TotalViews, opt => opt.Ignore())
+            .ForMember(dest => dest.TenantId, opt => opt.Ignore())
+            .ForMember(dest => dest.FirstSessionDate, opt => opt.MapFrom(src =>
+                src.FirstSessionDate.HasValue ? DateOnly.FromDateTime(src.FirstSessionDate.Value.DateTime) : (DateOnly?)null))
+            .ForMember(dest => dest.LastSessionDate, opt => opt.MapFrom(src =>
+                src.LastSessionDate.HasValue ? DateOnly.FromDateTime(src.LastSessionDate.Value.DateTime) : (DateOnly?)null))
+            .ForMember(dest => dest.FirstSessionStartUtc, opt => opt.MapFrom(src => src.FirstSessionStartUtc ?? src.FirstSessionDate))
+            .ForMember(dest => dest.LastSessionStartUtc, opt => opt.MapFrom(src => src.LastSessionStartUtc ?? src.LastSessionDate))
+            .ForMember(dest => dest.EventTimeZoneId, opt => opt.MapFrom(src => src.EventTimeZoneId ?? src.Timezone))
+            .ForMember(dest => dest.Timezone, opt => opt.MapFrom(src => src.Timezone ?? src.EventTimeZoneId));
 
         // ============================================
         // EVENT TYPE MAPPINGS (Readonly Lookup)

@@ -1,0 +1,41 @@
+/* ABOUTME: Scoped CSS for CookieConsentBanner. Non-blocking fixed-bottom banner with BEM naming. */
+
+.cookie-consent-banner {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    background: var(--mud-palette-surface);
+    border-top: 1px solid var(--mud-palette-lines-default);
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.12);
+    padding: 16px 24px;
+}
+
+.cookie-consent-banner__content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 1200px;
+    margin: 0 auto;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.cookie-consent-banner__text {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--mud-palette-text-primary);
+    flex: 1 1 auto;
+    min-width: 200px;
+}
+
+.cookie-consent-banner__actions {
+    display: flex;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.cookie-consent-banner__btn {
+    min-width: 100px;
+}

@@ -110,8 +110,40 @@ Important notes:
 - `analytics.transport_mode=proxy` still uses the provider script/client in the browser, but the script host and ingest host should usually point at a first-party reverse-proxy path through `analytics.endpoint_url`.
 - `analytics.consent_mode=identified` only enables identify semantics for providers that explicitly support them today (`posthog`, `rudderstack`).
 
+Cookie consent and privacy governance keys:
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `analytics.global_disable_client_tracking` | bool | `false` | Emergency kill switch — disables all browser analytics immediately |
+| `analytics.cookie_banner_enabled` | bool | `false` | Whether the cookie consent banner is shown to end users |
+| `analytics.decline_behavior` | enum | `"disable"` | What happens when a user declines consent: `disable` (no analytics) or `cookieless` (privacy-preserving analytics) |
+| `analytics.consent_cookie_lifetime_days` | int | `180` | How long the consent preference cookie persists (ICO recommends 6 months) |
+| `analytics.posthog_cookieless_mode` | enum | `"off"` | PostHog cookieless mode: `off`, `always` (never stores on device), `on_reject` (cookieless after decline) |
+| `analytics.posthog_person_profiles` | enum | `"identified_only"` | PostHog person profile creation: `always`, `identified_only`, `never` |
+| `analytics.posthog_session_replay` | bool | `false` | PostHog session recording (non-essential, requires consent) |
+| `analytics.posthog_autocapture` | bool | `false` | PostHog autocapture of clicks/inputs (non-essential) |
+| `analytics.posthog_heatmaps` | bool | `false` | PostHog heatmap data collection (non-essential) |
+| `analytics.posthog_toolbar` | bool | `false` | PostHog toolbar for on-page debugging |
+
+Storage-mode-driven consent rules:
+
+- The cookie banner requirement is **not** determined by provider name alone. It is determined by whether the provider's configured runtime mode stores or accesses non-essential data on the user's device.
+- `plausible` and `rybbit`: cookieless by design, no banner required by default.
+- `posthog` with `cookieless_mode=always`: no banner required (no device storage).
+- `posthog` with `cookieless_mode=on_reject`: banner required; decline switches to cookieless analytics instead of total silence.
+- `posthog` with `cookieless_mode=off` and any non-essential feature enabled: banner required.
+- `rudderstack`: treated as "full consent required" for v1.
+- The computed storage profile (`Cookieless`, `ConsentManaged`, `FullConsent`) drives all runtime behavior through `IAnalyticsRuntimeProfileResolver`.
+
+Consent cookie design:
+
+- Cookie name is tenant-scoped: `explore_cc_{tenantSlug}` to prevent cross-tenant consent leakage.
+- Cookie value is minimal: `accepted` or `declined` only. No timestamps, user IDs, or tracking data.
+- The consent cookie itself is classified as strictly necessary (remembering the user's choice).
+
 Post-onboarding management note:
 
+- Instance admins can update analytics governance values through `PUT /api/InstanceOnboarding/analytics-governance`.
 - Instance admins can update auth-provider governance values through `PUT /api/InstanceOnboarding/admin/auth-provider-configuration`.
 - Secret values (`keycloak`/`google` client secrets) continue to use secret-setting storage, not plain governance values.
 

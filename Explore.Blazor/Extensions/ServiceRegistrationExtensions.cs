@@ -45,6 +45,8 @@ public static class ServiceRegistrationExtensions
     {
         // Server-specific IAnalyticsInterop (no-op, replaces shared registration)
         services.AddScoped<IAnalyticsInterop, ServerAnalyticsInterop>();
+        services.AddScoped<ICookieConsentInterop, ServerCookieConsentInterop>();
+        services.AddScoped<Explore.Blazor.Client.Services.CookieConsentStateService>();
         services.AddScoped<ICircuitAccessTokenService, CircuitAccessTokenService>();
         services.AddSingleton<ISetupSecretSessionService, SetupSecretSessionService>();
         services.AddMemoryCache();

@@ -525,6 +525,65 @@ public class InstanceOnboardingController : ControllerBase
         return Ok(new { configured = isConfigured });
     }
 
+    [HttpGet("analytics-governance")]
+    [Authorize]
+    [EndpointSummary("Get Analytics Governance Settings")]
+    [EndpointDescription("Returns analytics and cookie consent governance settings. Only instance admins can access.")]
+    [ProducesResponseType(typeof(Application.DTOs.Analytics.AnalyticsGovernanceSettingsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<Application.DTOs.Analytics.AnalyticsGovernanceSettingsDto>> GetAnalyticsGovernanceSettings(CancellationToken cancellationToken = default)
+    {
+        var status = await _mediator.Send(new GetInstanceOnboardingStatusQuery(), cancellationToken);
+        if (status.IsCompleted && !status.IsCurrentUserInstanceAdmin)
+        {
+            return Forbid();
+        }
+
+        var settings = await _mediator.Send(new GetAnalyticsGovernanceSettingsQuery(), cancellationToken);
+        return Ok(settings);
+    }
+
+    [HttpPut("analytics-governance")]
+    [Authorize]
+    [EndpointSummary("Update Analytics Governance Settings")]
+    [EndpointDescription("Updates analytics and cookie consent governance settings. Requires instance administrator.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateAnalyticsGovernanceSettings(
+        [FromBody] Application.DTOs.Analytics.AnalyticsGovernanceSettingsDto settings,
+        CancellationToken cancellationToken = default)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (!currentUserId.HasValue)
+        {
+            return BadRequest(new BaseCommandResponse<Guid>
+            {
+                Success = false,
+                Message = "Invalid user identity."
+            });
+        }
+
+        var command = new UpdateAnalyticsGovernanceSettingsCommand
+        {
+            UserId = currentUserId.Value,
+            Settings = settings
+        };
+
+        var response = await _mediator.Send(command, cancellationToken);
+        if (!response.Success)
+        {
+            if (ContainsInstanceAdminMessage(response))
+            {
+                return Forbid();
+            }
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
     private Guid? GetCurrentUserId()
     {
         var claim = User.FindFirst("internal_user_id")?.Value

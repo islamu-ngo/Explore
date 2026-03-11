@@ -183,6 +183,20 @@ public static class GovernanceSettingKeys
         public const string ApiKey = "analytics.api_key";
         public const string EndpointUrl = "analytics.endpoint_url";
         public const string PersonalApiKey = "analytics.personal_api_key";
+
+        // Cookie consent & storage governance
+        public const string CookieConsentEnabled = "analytics.cookie_consent_enabled";
+        public const string DeclineBehavior = "analytics.decline_behavior";
+        public const string ConsentCookieLifetimeDays = "analytics.consent_cookie_lifetime_days";
+        public const string GlobalDisableClientTracking = "analytics.global_disable_client_tracking";
+
+        // PostHog privacy & feature controls
+        public const string PosthogCookielessMode = "analytics.posthog_cookieless_mode";
+        public const string PosthogPersonProfiles = "analytics.posthog_person_profiles";
+        public const string PosthogSessionReplay = "analytics.posthog_session_replay";
+        public const string PosthogAutocapture = "analytics.posthog_autocapture";
+        public const string PosthogHeatmaps = "analytics.posthog_heatmaps";
+        public const string PosthogToolbar = "analytics.posthog_toolbar";
     }
 
     public static class Localization

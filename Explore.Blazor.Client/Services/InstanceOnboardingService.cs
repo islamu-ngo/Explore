@@ -28,6 +28,10 @@ public interface IInstanceOnboardingService
     Task<InstanceCommandResponseModel> UpdateAuthProviderConfigurationAsAdminAsync(AuthProviderConfigurationModel config);
     Task<bool> IsAuthProviderConfiguredAsync();
     Task RefreshAuthSchemesAsync();
+
+    // Analytics governance
+    Task<Models.Analytics.AnalyticsGovernanceSettingsModel> GetAnalyticsGovernanceSettingsAsync();
+    Task<InstanceCommandResponseModel> UpdateAnalyticsGovernanceSettingsAsync(Models.Analytics.AnalyticsGovernanceSettingsModel settings);
 }
 
 public class InstanceOnboardingService : IInstanceOnboardingService
@@ -165,6 +169,15 @@ public class InstanceOnboardingService : IInstanceOnboardingService
             _logger.LogError(ex, "Failed to refresh auth schemes.");
         }
     }
+
+    public async Task<Models.Analytics.AnalyticsGovernanceSettingsModel> GetAnalyticsGovernanceSettingsAsync()
+    {
+        var result = await GetAsync<Models.Analytics.AnalyticsGovernanceSettingsModel>("api/InstanceOnboarding/analytics-governance");
+        return result ?? new Models.Analytics.AnalyticsGovernanceSettingsModel();
+    }
+
+    public Task<InstanceCommandResponseModel> UpdateAnalyticsGovernanceSettingsAsync(Models.Analytics.AnalyticsGovernanceSettingsModel settings) =>
+        SendCommandAsync(HttpMethod.Put, "api/InstanceOnboarding/analytics-governance", settings);
     // ── Shared helpers ───────────────────────────────────────────────────
 
     private HttpClient CreateClient() => _httpClientFactory.CreateClient("BffClient");

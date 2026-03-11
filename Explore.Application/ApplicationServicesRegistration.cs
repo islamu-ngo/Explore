@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
+using Explore.Application.Analytics;
 using Explore.Application.Authorization;
 using Explore.Application.Behaviors;
 using Explore.Application.Contracts.Services;
@@ -29,6 +30,9 @@ public static class ApplicationServicesRegistration
         services.AddScoped<IInstanceSmtpSettingService, InstanceSmtpSettingService>();
         services.AddScoped<IAuthProviderConfigurationService, AuthProviderConfigurationService>();
         services.AddScoped<IAnalyticsGovernanceService, AnalyticsGovernanceService>();
+
+        // Analytics consent / runtime profile resolution
+        services.AddScoped<IAnalyticsRuntimeProfileResolver, AnalyticsRuntimeProfileResolver>();
 
         // Authorization: dynamic permission infrastructure
         services.AddScoped<ICapabilityCeilingService, CapabilityCeilingService>();

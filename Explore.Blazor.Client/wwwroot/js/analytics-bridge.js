@@ -44,7 +44,7 @@ function loadScript(src, attrs = {}) {
     });
 }
 
-async function createPostHogAdapter(apiKey, endpointUrl) {
+async function createPostHogAdapter(apiKey, endpointUrl, posthogOptions) {
     const host = (endpointUrl && endpointUrl.trim()) || "https://us.i.posthog.com";
     await loadScript(`${host.replace(/\/$/, "")}/static/array.js`);
 
@@ -52,7 +52,31 @@ async function createPostHogAdapter(apiKey, endpointUrl) {
         return noopAdapter();
     }
 
-    window.posthog.init(apiKey, { api_host: host });
+    const opts = posthogOptions || {};
+    const cookielessMode = opts.cookielessMode || "off";
+    const personProfiles = opts.personProfiles || "identified_only";
+
+    const initConfig = {
+        api_host: host,
+        defaults: "2026-01-30",
+        person_profiles: personProfiles,
+        capture_pageview: false,
+        capture_pageleave: false,
+        autocapture: opts.autocapture !== false && opts.autocapture !== undefined ? opts.autocapture : false,
+        disable_session_recording: !opts.sessionReplay,
+        enable_heatmaps: !!opts.heatmaps,
+    };
+
+    if (cookielessMode === "always" || cookielessMode === "on_reject") {
+        initConfig.cookieless_mode = cookielessMode;
+    }
+
+    if (opts.optOutByDefault) {
+        initConfig.opt_out_capturing_by_default = true;
+        initConfig.persistence = "memory";
+    }
+
+    window.posthog.init(apiKey, initConfig);
 
     return {
         identify: async (distinctId, traits) => {
@@ -175,7 +199,7 @@ function createRelayAdapter() {
     };
 }
 
-export async function initAnalytics(provider, enabled, consentMode, transportMode, allowIdentify, apiKey, endpointUrl) {
+export async function initAnalytics(provider, enabled, consentMode, transportMode, allowIdentify, apiKey, endpointUrl, posthogOptions) {
     state.provider = (provider || "none").toString().toLowerCase();
     state.enabled = !!enabled;
     state.consentMode = (consentMode || "pseudonymous").toString().toLowerCase();
@@ -207,7 +231,7 @@ export async function initAnalytics(provider, enabled, consentMode, transportMod
 
     try {
         if (state.provider === "posthog") {
-            state.adapter = await createPostHogAdapter(state.apiKey, state.endpointUrl);
+            state.adapter = await createPostHogAdapter(state.apiKey, state.endpointUrl, posthogOptions);
         } else if (state.provider === "plausible") {
             state.adapter = await createPlausibleAdapter(state.apiKey, state.endpointUrl);
         } else if (state.provider === "rybbit") {
@@ -248,4 +272,23 @@ export async function trackPageView(pagePath, properties) {
     }
 
     await state.adapter.page(pagePath, properties || {});
+}
+
+export function optInCapturing() {
+    if (state.provider === "posthog" && window.posthog && typeof window.posthog.opt_in_capturing === "function") {
+        window.posthog.opt_in_capturing();
+    }
+}
+
+export function optOutCapturing() {
+    if (state.provider === "posthog" && window.posthog && typeof window.posthog.opt_out_capturing === "function") {
+        window.posthog.opt_out_capturing();
+    }
+}
+
+export function getExplicitConsentStatus() {
+    if (state.provider === "posthog" && window.posthog && typeof window.posthog.get_explicit_consent_status === "function") {
+        return window.posthog.get_explicit_consent_status();
+    }
+    return null;
 }

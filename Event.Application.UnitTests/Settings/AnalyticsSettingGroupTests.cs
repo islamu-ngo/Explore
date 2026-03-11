@@ -23,7 +23,17 @@ public class AnalyticsSettingGroupTests
             GovernanceSettingKeys.Analytics.EndpointUrl,
             GovernanceSettingKeys.Analytics.ApiKey,
             GovernanceSettingKeys.Analytics.PersonalApiKey,
-            GovernanceSettingKeys.Analytics.Enabled
+            GovernanceSettingKeys.Analytics.Enabled,
+            GovernanceSettingKeys.Analytics.CookieConsentEnabled,
+            GovernanceSettingKeys.Analytics.DeclineBehavior,
+            GovernanceSettingKeys.Analytics.ConsentCookieLifetimeDays,
+            GovernanceSettingKeys.Analytics.GlobalDisableClientTracking,
+            GovernanceSettingKeys.Analytics.PosthogCookielessMode,
+            GovernanceSettingKeys.Analytics.PosthogPersonProfiles,
+            GovernanceSettingKeys.Analytics.PosthogSessionReplay,
+            GovernanceSettingKeys.Analytics.PosthogAutocapture,
+            GovernanceSettingKeys.Analytics.PosthogHeatmaps,
+            GovernanceSettingKeys.Analytics.PosthogToolbar
         };
 
         await Assert.That(keys.SequenceEqual(expected)).IsTrue();
