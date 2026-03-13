@@ -479,7 +479,17 @@ ul {
     position: fixed !important;
     z-index: 1400 !important;
     overflow: hidden !important;
-    max-width: min(35rem, 90vw);
+    /* Dynamic width: at least 560px, scales with viewport, caps at 700px on large screens */
+    max-width: clamp(560px, 35vw, 700px);
+    width: clamp(560px, 35vw, 700px) !important;
+}
+
+/* On small screens, allow the drawer to shrink to 90vw */
+@media (max-width: 767px) {
+    .event-list__detail-drawer {
+        max-width: 90vw;
+        width: 90vw !important;
+    }
 }
 
 /* Gutter inset from top/right/bottom (Luma-style) — only when open.

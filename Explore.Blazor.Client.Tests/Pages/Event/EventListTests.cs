@@ -44,6 +44,7 @@ public class EventListTests : IDisposable
         _ctx.Services.AddSingleton(Substitute.For<ISnackbar>());
         _ctx.Services.AddSingleton(Substitute.For<ILogger<EventList>>());
         _ctx.Services.AddSingleton(Substitute.For<IAuthStateService>());
+        _ctx.Services.AddSingleton(Substitute.For<IContactShareConsentService>());
         _ctx.Services.AddSingleton(new Explore.Blazor.Client.Services.SidebarState());
 
         SetupDefaultLookupResponses();

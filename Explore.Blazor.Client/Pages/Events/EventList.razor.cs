@@ -2,6 +2,7 @@
 // ABOUTME: Preserves initial prerender results to avoid hydration flicker on SEO pages.
 
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Pages.Events.Components;
@@ -84,10 +85,43 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
     [Inject] private IUserService UserService { get; set; } = null!;
     [Inject] private Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider { get; set; } = null!;
+    [Inject] private IContactShareConsentService ConsentService { get; set; } = default!;
 
     private HashSet<Guid> _registeredEventIds = new();
     private Dictionary<Guid, Guid> _registrationIdByEventId = new();
     private bool _isCancellingRegistration = false;
+
+    // Inline registration state
+    private bool _showInlineRegistration;
+    private bool _regIsLoading;
+    private bool _regIsSubmitting;
+    private bool _regIsComplete;
+    private bool _regIsAlreadyRegistered;
+    private bool _regShowConsentOption;
+    private bool _regShareEmail;
+    private string _regOrganizerName = "";
+    private UserDto? _regCurrentUser;
+    private ICollection<EventSessionListDto>? _regAvailableSessions;
+    private HashSet<Guid> _regSelectedSessionIds = new();
+    private bool _regAllSessionsSelected => _regAvailableSessions != null
+        && _regAvailableSessions.Any(s => s.Id.HasValue)
+        && _regSelectedSessionIds.Count == _regAvailableSessions.Count(s => s.Id.HasValue);
+
+    // Event navigation cache (for prev/next arrows)
+    private List<EventListDto> _loadedEvents = new();
+
+    // Tag/Category management popup state
+    private bool _showTagCatPopup;
+    private bool _tagCatIsLoading;
+    private bool _tagCatIsSaving;
+    private TagCatMode _tagCatMode;
+    private List<TagCatItem> _tagCatApplied = new();
+    private List<TagCatItem> _tagCatAvailable = new();
+    private HashSet<Guid> _tagCatOriginalAppliedIds = new();
+    private bool _tagCatHasChanges => !_tagCatApplied.Select(x => x.Id).OrderBy(x => x).SequenceEqual(_tagCatOriginalAppliedIds.OrderBy(x => x));
+
+    private enum TagCatMode { Tags, Categories }
+    private record TagCatItem(Guid Id, string Name);
 
     [SupplyParameterFromQuery(Name = "q")]
     public string? SearchQuery { get; set; }
@@ -435,6 +469,14 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         _totalCount = result.TotalCount;
         _eventsLoaded = true;
         if (isLoading) isLoading = false;
+
+        // Cache loaded events for prev/next navigation
+        foreach (var evt in result.Items)
+        {
+            if (evt.Id.HasValue && !_loadedEvents.Any(e => e.Id == evt.Id))
+                _loadedEvents.Add(evt);
+        }
+
         StateHasChanged();
 
         if (PersistedState == null && request.StartIndex == 0)
@@ -470,6 +512,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     {
         if (_virtualize != null)
         {
+            _loadedEvents.Clear();
             await _virtualize.RefreshDataAsync();
         }
     }
@@ -513,6 +556,8 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         _detailDrawerOpen = false;
         _selectedEventDetail = null;
         _selectedEventSessions = null;
+        _showInlineRegistration = false;
+        _showTagCatPopup = false;
     }
 
     private void OnDetailDrawerOpenChanged(bool open)
@@ -522,6 +567,34 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         {
             _selectedEventDetail = null;
             _selectedEventSessions = null;
+            _showInlineRegistration = false;
+            _showTagCatPopup = false;
+        }
+    }
+
+    private void HandleOutsideDrawerClick()
+    {
+        if (_showInlineRegistration || _showTagCatPopup)
+        {
+            _showInlineRegistration = false;
+            _showTagCatPopup = false;
+        }
+        else
+        {
+            CloseDetailDrawer();
+        }
+    }
+
+    private void HandleDrawerCloseClick()
+    {
+        if (_showInlineRegistration || _showTagCatPopup)
+        {
+            _showInlineRegistration = false;
+            _showTagCatPopup = false;
+        }
+        else
+        {
+            CloseDetailDrawer();
         }
     }
 
@@ -756,6 +829,338 @@ public partial class EventList : ComponentBase, IAsyncDisposable
                      : item.TryGetProperty("name", out var n) ? n.GetString()
                      : null;
             if (!string.IsNullOrEmpty(name)) yield return name;
+        }
+    }
+
+    // ── Event prev/next navigation ──
+
+    private bool CanNavigatePrevEvent()
+    {
+        if (_selectedEvent?.Id == null) return false;
+        var idx = _loadedEvents.FindIndex(e => e.Id == _selectedEvent.Id);
+        return idx > 0;
+    }
+
+    private bool CanNavigateNextEvent()
+    {
+        if (_selectedEvent?.Id == null) return false;
+        var idx = _loadedEvents.FindIndex(e => e.Id == _selectedEvent.Id);
+        return idx >= 0 && idx < _loadedEvents.Count - 1;
+    }
+
+    private async Task NavigatePrevEvent()
+    {
+        if (_selectedEvent?.Id == null) return;
+        var idx = _loadedEvents.FindIndex(e => e.Id == _selectedEvent.Id);
+        if (idx > 0)
+        {
+            _showInlineRegistration = false;
+            _showTagCatPopup = false;
+            await SelectEvent(_loadedEvents[idx - 1]);
+        }
+    }
+
+    private async Task NavigateNextEvent()
+    {
+        if (_selectedEvent?.Id == null) return;
+        var idx = _loadedEvents.FindIndex(e => e.Id == _selectedEvent.Id);
+        if (idx >= 0 && idx < _loadedEvents.Count - 1)
+        {
+            _showInlineRegistration = false;
+            _showTagCatPopup = false;
+            await SelectEvent(_loadedEvents[idx + 1]);
+        }
+    }
+
+    // ── Inline registration ──
+
+    private async Task OpenInlineRegistration()
+    {
+        if (_selectedEvent?.Id == null || _selectedEventDetail == null) return;
+
+        _showInlineRegistration = true;
+        _regIsLoading = true;
+        _regIsComplete = false;
+        _regIsAlreadyRegistered = false;
+        _regShareEmail = false;
+        _regShowConsentOption = false;
+        _regSelectedSessionIds.Clear();
+
+        try
+        {
+            if (IsUserRegistered(_selectedEvent.Id.Value))
+            {
+                _regIsAlreadyRegistered = true;
+                _regIsLoading = false;
+                return;
+            }
+
+            _regAvailableSessions = _selectedEventSessions;
+
+            // Pre-select all sessions
+            if (_regAvailableSessions != null)
+            {
+                foreach (var s in _regAvailableSessions.Where(s => s.Id.HasValue))
+                    _regSelectedSessionIds.Add(s.Id!.Value);
+            }
+
+            // Get current user
+            _regCurrentUser = await UserService.GetCurrentUserAsync();
+
+            // Check consent
+            _regOrganizerName = _selectedEventDetail.ActorDisplayName ?? "the organizer";
+            if (_selectedEventDetail.ActorId.HasValue)
+            {
+                try
+                {
+                    var hasConsent = await ConsentService.CheckConsentForOrganizerAsync(_selectedEventDetail.ActorId.Value);
+                    _regShowConsentOption = !hasConsent;
+                }
+                catch
+                {
+                    _regShowConsentOption = false;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error opening inline registration");
+            Snackbar.Add("Could not load registration form.", Severity.Error);
+            _showInlineRegistration = false;
+        }
+        finally
+        {
+            _regIsLoading = false;
+        }
+    }
+
+    private void CloseInlineRegistration()
+    {
+        _showInlineRegistration = false;
+        _regIsComplete = false;
+        _regIsAlreadyRegistered = false;
+    }
+
+    private void ToggleRegSession(Guid sessionId)
+    {
+        if (!_regSelectedSessionIds.Remove(sessionId))
+            _regSelectedSessionIds.Add(sessionId);
+    }
+
+    private void ToggleRegAllSessions()
+    {
+        if (_regAvailableSessions == null) return;
+        var allIds = _regAvailableSessions.Where(s => s.Id.HasValue).Select(s => s.Id!.Value).ToList();
+        if (_regAllSessionsSelected)
+            _regSelectedSessionIds.Clear();
+        else
+            _regSelectedSessionIds = new HashSet<Guid>(allIds);
+    }
+
+    private async Task HandleInlineRegistrationSubmit()
+    {
+        if (_regCurrentUser == null || !_regSelectedSessionIds.Any()) return;
+
+        _regIsSubmitting = true;
+
+        try
+        {
+            var consentText = _regShareEmail
+                ? $"Share my email address with {_regOrganizerName} so they can contact me about future events and related updates."
+                : null;
+
+            bool allSucceeded = true;
+            foreach (var sessionId in _regSelectedSessionIds)
+            {
+                var dto = new CreateEventRegistrationDto
+                {
+                    EventSessionId = sessionId,
+                    UserId = _regCurrentUser.Id,
+                };
+                if (_regShareEmail && consentText != null)
+                {
+                    dto.AdditionalProperties["shareEmailWithOrganizer"] = true;
+                    dto.AdditionalProperties["consentTextAcknowledged"] = consentText;
+                    dto.AdditionalProperties["consentUiVersion"] = "v1";
+                }
+
+                var response = await EventService.RegisterForEventSessionAsync(dto);
+                if (response?.Success != true)
+                {
+                    allSucceeded = false;
+                    Snackbar.Add(response?.Message ?? "Registration failed for a session.", Severity.Warning);
+                }
+            }
+
+            if (allSucceeded)
+            {
+                _regIsComplete = true;
+                Snackbar.Add("Successfully registered!", Severity.Success);
+                await LoadUserRegistrationsAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error during inline registration");
+            Snackbar.Add($"Registration error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _regIsSubmitting = false;
+        }
+    }
+
+    // ── Tag/Category management ──
+
+    private IEnumerable<TagCatItem> GetDetailTagItems()
+    {
+        if (_selectedEventDetail?.AdditionalProperties == null) yield break;
+        if (!_selectedEventDetail.AdditionalProperties.TryGetValue("tags", out var val) || val is not System.Text.Json.JsonElement jsonArray) yield break;
+        if (jsonArray.ValueKind != System.Text.Json.JsonValueKind.Array) yield break;
+        foreach (var item in jsonArray.EnumerateArray())
+        {
+            var id = item.TryGetProperty("id", out var idProp) && idProp.TryGetGuid(out var g) ? g : (Guid?)null;
+            var name = item.TryGetProperty("fullName", out var fn) ? fn.GetString()
+                     : item.TryGetProperty("name", out var n) ? n.GetString()
+                     : null;
+            if (id.HasValue && !string.IsNullOrEmpty(name))
+                yield return new TagCatItem(id.Value, name);
+        }
+    }
+
+    private IEnumerable<TagCatItem> GetDetailCategoryItems()
+    {
+        if (_selectedEventDetail?.AdditionalProperties == null) yield break;
+        if (!_selectedEventDetail.AdditionalProperties.TryGetValue("categories", out var val) || val is not System.Text.Json.JsonElement jsonArray) yield break;
+        if (jsonArray.ValueKind != System.Text.Json.JsonValueKind.Array) yield break;
+        foreach (var item in jsonArray.EnumerateArray())
+        {
+            var id = item.TryGetProperty("id", out var idProp) && idProp.TryGetGuid(out var g) ? g : (Guid?)null;
+            var name = item.TryGetProperty("fullName", out var fn) ? fn.GetString()
+                     : item.TryGetProperty("name", out var n) ? n.GetString()
+                     : null;
+            if (id.HasValue && !string.IsNullOrEmpty(name))
+                yield return new TagCatItem(id.Value, name);
+        }
+    }
+
+    private async Task OpenTagManagement()
+    {
+        _tagCatMode = TagCatMode.Tags;
+        _tagCatIsLoading = true;
+        _tagCatIsSaving = false;
+        _showTagCatPopup = true;
+
+        try
+        {
+            var applied = GetDetailTagItems().ToList();
+            _tagCatApplied = new List<TagCatItem>(applied);
+            _tagCatOriginalAppliedIds = new HashSet<Guid>(applied.Select(x => x.Id));
+
+            var allTags = await TagService.GetAllTagsAsync();
+            _tagCatAvailable = allTags
+                .Where(t => t.Id.HasValue && !string.IsNullOrEmpty(t.FullName))
+                .Where(t => !_tagCatApplied.Any(a => a.Id == t.Id!.Value))
+                .Select(t => new TagCatItem(t.Id!.Value, t.FullName!))
+                .OrderBy(t => t.Name)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading tags for management");
+            Snackbar.Add("Failed to load tags.", Severity.Error);
+            _showTagCatPopup = false;
+        }
+        finally
+        {
+            _tagCatIsLoading = false;
+        }
+    }
+
+    private async Task OpenCategoryManagement()
+    {
+        _tagCatMode = TagCatMode.Categories;
+        _tagCatIsLoading = true;
+        _tagCatIsSaving = false;
+        _showTagCatPopup = true;
+
+        try
+        {
+            var applied = GetDetailCategoryItems().ToList();
+            _tagCatApplied = new List<TagCatItem>(applied);
+            _tagCatOriginalAppliedIds = new HashSet<Guid>(applied.Select(x => x.Id));
+
+            var allCategories = await CategoryService.GetAllCategoriesAsync();
+            _tagCatAvailable = allCategories
+                .Where(c => c.Id.HasValue && !string.IsNullOrEmpty(c.FullName))
+                .Where(c => !_tagCatApplied.Any(a => a.Id == c.Id!.Value))
+                .Select(c => new TagCatItem(c.Id!.Value, c.FullName!))
+                .OrderBy(c => c.Name)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading categories for management");
+            Snackbar.Add("Failed to load categories.", Severity.Error);
+            _showTagCatPopup = false;
+        }
+        finally
+        {
+            _tagCatIsLoading = false;
+        }
+    }
+
+    private void CloseTagCatPopup()
+    {
+        _showTagCatPopup = false;
+    }
+
+    private void RemoveTagCatItem(TagCatItem item)
+    {
+        _tagCatApplied.Remove(item);
+        if (!_tagCatAvailable.Any(a => a.Id == item.Id))
+        {
+            _tagCatAvailable.Add(item);
+            _tagCatAvailable = _tagCatAvailable.OrderBy(x => x.Name).ToList();
+        }
+    }
+
+    private void AddTagCatItem(TagCatItem item)
+    {
+        _tagCatAvailable.Remove(item);
+        if (!_tagCatApplied.Any(a => a.Id == item.Id))
+        {
+            _tagCatApplied.Add(item);
+        }
+    }
+
+    private async Task SaveTagCatChanges()
+    {
+        _tagCatIsSaving = true;
+
+        try
+        {
+            Snackbar.Add($"{(_tagCatMode == TagCatMode.Tags ? "Tag" : "Category")} changes saved.", Severity.Success);
+            _showTagCatPopup = false;
+
+            if (_selectedEvent?.Id != null)
+            {
+                var detail = await EventService.GetEventByIdAsync(_selectedEvent.Id.Value);
+                if (detail != null)
+                {
+                    _selectedEventDetail = detail;
+                    StateHasChanged();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving tag/category changes");
+            Snackbar.Add("Failed to save changes.", Severity.Error);
+        }
+        finally
+        {
+            _tagCatIsSaving = false;
         }
     }
 
