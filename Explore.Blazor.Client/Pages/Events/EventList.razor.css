@@ -498,64 +498,6 @@
     display: block;
 }
 
-/* ══════════════════════════════════════════════
-   Tag / Category Management Popup (two-pane)
-   ══════════════════════════════════════════════ */
 
-::deep .drawer-tagcat-popup {
-    max-width: 520px;
-}
-
-::deep .drawer-tagcat-panes {
-    display: flex;
-    gap: 16px;
-    min-height: 200px;
-}
-
-::deep .drawer-tagcat-pane {
-    flex: 1;
-    min-width: 0;
-    border: 1px solid var(--mud-palette-lines-default);
-    border-radius: 10px;
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-}
-
-::deep .drawer-tagcat-list {
-    flex: 1;
-    overflow-y: auto;
-    max-height: 260px;
-}
-
-::deep .drawer-tagcat-list::-webkit-scrollbar {
-    width: 4px;
-}
-
-::deep .drawer-tagcat-list::-webkit-scrollbar-thumb {
-    background: var(--mud-palette-lines-default);
-    border-radius: 2px;
-}
-
-::deep .drawer-tagcat-item {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 6px 8px;
-    border-radius: 6px;
-    transition: background-color 0.15s ease;
-}
-
-::deep .drawer-tagcat-item:hover {
-    background: var(--mud-palette-action-default-hover);
-}
-
-::deep .drawer-tagcat-item--add {
-    cursor: pointer;
-}
-
-::deep .flex-1 {
-    flex: 1;
-}
 
 

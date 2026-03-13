@@ -857,111 +857,12 @@
                 }
 
                 @* ── Tag / Category Management Popup ── *@
-                @if (_showTagCatPopup)
-                {
-                    <div class="drawer-reg-overlay" @onclick="CloseTagCatPopup" @onclick:stopPropagation="true">
-                        <div class="drawer-reg-popup drawer-tagcat-popup" @onclick:stopPropagation="true">
-                            <div class="drawer-reg-popup__header">
-                                <MudText Typo="Typo.h6" Class="drawer-reg-popup__title">
-                                    Manage @(_tagCatMode == TagCatMode.Tags ? "Tags" : "Categories")
-                                </MudText>
-                                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
-                                               OnClick="CloseTagCatPopup" />
-                            </div>
-
-                            @if (_tagCatIsLoading)
-                            {
-                                <div class="drawer-reg-popup__loading">
-                                    <MudProgressCircular Indeterminate="true" Size="Size.Large" Color="Color.Primary" />
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="drawer-tagcat-panes">
-                                    @* ── Left pane: currently applied ── *@
-                                    <div class="drawer-tagcat-pane">
-                                        <MudText Typo="Typo.subtitle2" Class="mb-2" Style="font-weight: 700;">
-                                            Applied
-                                        </MudText>
-                                        <div class="drawer-tagcat-list">
-                                            @if (_tagCatApplied.Count == 0)
-                                            {
-                                                <MudText Typo="Typo.caption" Class="mud-text-secondary pa-2" Style="font-style: italic;">
-                                                    None applied
-                                                </MudText>
-                                            }
-                                            else
-                                            {
-                                                @foreach (var item in _tagCatApplied)
-                                                {
-                                                    <div class="drawer-tagcat-item">
-                                                        <MudText Typo="Typo.body2" Style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                                            @item.Name
-                                                        </MudText>
-                                                        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
-                                                                       Color="Color.Error"
-                                                                       OnClick="@(() => RemoveTagCatItem(item))"
-                                                                       aria-label="Remove" />
-                                                    </div>
-                                                }
-                                            }
-                                        </div>
-                                    </div>
-
-                                    @* ── Right pane: available to add ── *@
-                                    <div class="drawer-tagcat-pane">
-                                        <MudText Typo="Typo.subtitle2" Class="mb-2" Style="font-weight: 700;">
-                                            Available
-                                        </MudText>
-                                        <div class="drawer-tagcat-list">
-                                            @if (_tagCatAvailable.Count == 0)
-                                            {
-                                                <MudText Typo="Typo.caption" Class="mud-text-secondary pa-2" Style="font-style: italic;">
-                                                    No more available
-                                                </MudText>
-                                            }
-                                            else
-                                            {
-                                                @foreach (var item in _tagCatAvailable)
-                                                {
-                                                    <div class="drawer-tagcat-item drawer-tagcat-item--add cursor-pointer"
-                                                         @onclick="@(() => AddTagCatItem(item))">
-                                                        <MudText Typo="Typo.body2" Style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                                            @item.Name
-                                                        </MudText>
-                                                        <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Primary" />
-                                                    </div>
-                                                }
-                                            }
-                                        </div>
-                                    </div>
-                                </div>
-
-                                @* ── Save / Cancel ── *@
-                                <div class="d-flex gap-3 mt-4">
-                                    <MudButton Variant="Variant.Text" Color="Color.Default" Class="rounded-lg flex-1"
-                                               OnClick="CloseTagCatPopup" Disabled="_tagCatIsSaving">
-                                        Cancel
-                                    </MudButton>
-                                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="rounded-lg flex-1"
-                                               OnClick="SaveTagCatChanges"
-                                               Disabled="@(_tagCatIsSaving || !_tagCatHasChanges)"
-                                               StartIcon="@(_tagCatIsSaving ? null : Icons.Material.Filled.Save)">
-                                        @if (_tagCatIsSaving)
-                                        {
-                                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                                            <span>Saving…</span>
-                                        }
-                                        else
-                                        {
-                                            <span>Save</span>
-                                        }
-                                    </MudButton>
-                                </div>
-                            }
-                        </div>
-                    </div>
-                }
+                <TagCategoryManagerPopup
+                    Visible="_showTagCatPopup"
+                    VisibleChanged="@(v => { _showTagCatPopup = v; StateHasChanged(); })"
+                    Mode="@_tagCatMode"
+                    InitialAppliedIds="@_tagCatInitialIds"
+                    OnSaved="HandleTagCatSaved" />
             }
         </MudDrawer>
 

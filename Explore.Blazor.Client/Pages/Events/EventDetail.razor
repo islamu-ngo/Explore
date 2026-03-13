@@ -268,6 +268,12 @@
                         </MudChip>
                     }
                 }
+                @if (_canEdit)
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
+                                   OnClick="@OpenDetailTagManagement"
+                                   aria-label="Manage tags" />
+                }
                 @if (_eventDetails.Categories is { Count: > 0 })
                 {
                     @foreach (var cat in _eventDetails.Categories)
@@ -276,6 +282,12 @@
                             @cat.FullName
                         </MudChip>
                     }
+                }
+                @if (_canEdit)
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
+                                   OnClick="@OpenDetailCategoryManagement"
+                                   aria-label="Manage categories" />
                 }
             </div>
 
@@ -502,6 +514,14 @@
         </div>
 
     </MudContainer>
+
+    @* ── Tag/Category Management Popup ── *@
+    <TagCategoryManagerPopup
+        Visible="_showDetailTagCatPopup"
+        VisibleChanged="@(v => { _showDetailTagCatPopup = v; StateHasChanged(); })"
+        Mode="@_detailTagCatMode"
+        InitialAppliedIds="@_detailTagCatInitialIds"
+        OnSaved="HandleDetailTagCatSaved" />
 }
 else if (_isLoading)
 {

@@ -75,6 +75,11 @@ public partial class CreateEvent
     private IReadOnlyCollection<Guid> selectedCategoryIds = new HashSet<Guid>();
     private IReadOnlyCollection<Guid> selectedTagIds = new HashSet<Guid>();
 
+    // Tag/Category management popup state
+    private bool _showCreateTagCatPopup;
+    private TagCategoryMode _createTagCatMode;
+    private IReadOnlyCollection<Guid> _createTagCatInitialIds = Array.Empty<Guid>();
+
     // Sessions
     private List<SessionEditorModel> sessions = new();
     private EventAppearanceSettings _appearance = new();
@@ -700,5 +705,15 @@ public partial class CreateEvent
         var sign = offset >= TimeSpan.Zero ? "+" : "-";
         var abs = offset.Duration();
         return $"GMT{sign}{abs.Hours}:{abs.Minutes:D2} {tz.StandardName}";
+    }
+
+    private void HandleCreateTagCatSaved(IReadOnlyCollection<Guid> newIds)
+    {
+        if (_createTagCatMode == TagCategoryMode.Tags)
+            selectedTagIds = new HashSet<Guid>(newIds);
+        else
+            selectedCategoryIds = new HashSet<Guid>(newIds);
+
+        StateHasChanged();
     }
 }

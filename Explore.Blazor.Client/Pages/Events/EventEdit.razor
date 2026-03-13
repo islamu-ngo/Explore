@@ -468,20 +468,24 @@
                                 <MudIcon Icon="@Icons.Material.Filled.Label" Size="Size.Small" Color="Color.Secondary" />
                                 <MudText Typo="Typo.body2">Categories</MudText>
                             </div>
-                            <MudSelect T="Guid" MultiSelection="true"
-                                       @bind-SelectedValues="selectedCategoryIds"
-                                       Variant="Variant.Text" Margin="Margin.Dense"
-                                       AnchorOrigin="Origin.BottomCenter"
-                                       Class="edit-event__option-select">
+                            <div class="d-flex gap-1 flex-wrap align-center" style="flex: 1; min-width: 0;">
                                 @if (allCategories != null)
                                 {
-                                    @foreach (var c in allCategories)
+                                    @foreach (var c in allCategories.Where(c => c.Id.HasValue && selectedCategoryIds.Contains(c.Id.Value)))
                                     {
-                                        if (c.Id is not Guid categoryId) { continue; }
-                                        <MudSelectItem T="Guid" Value="@categoryId">@c.FullName</MudSelectItem>
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary">
+                                            @c.FullName
+                                        </MudChip>
                                     }
                                 }
-                            </MudSelect>
+                                @if (!selectedCategoryIds.Any())
+                                {
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="font-style: italic;">None</MudText>
+                                }
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                               OnClick="@(() => { _editTagCatMode = TagCategoryMode.Categories; _editTagCatInitialIds = selectedCategoryIds.ToList().AsReadOnly(); _showEditTagCatPopup = true; })"
+                                               aria-label="Manage categories" />
+                            </div>
                         </div>
 
                         @* Tags *@
@@ -490,20 +494,24 @@
                                 <MudIcon Icon="@Icons.Material.Filled.Tag" Size="Size.Small" Color="Color.Secondary" />
                                 <MudText Typo="Typo.body2">Tags</MudText>
                             </div>
-                            <MudSelect T="Guid" MultiSelection="true"
-                                       @bind-SelectedValues="selectedTagIds"
-                                       Variant="Variant.Text" Margin="Margin.Dense"
-                                       AnchorOrigin="Origin.BottomCenter"
-                                       Class="edit-event__option-select">
+                            <div class="d-flex gap-1 flex-wrap align-center" style="flex: 1; min-width: 0;">
                                 @if (allTags != null)
                                 {
-                                    @foreach (var t in allTags)
+                                    @foreach (var t in allTags.Where(t => t.Id.HasValue && selectedTagIds.Contains(t.Id.Value)))
                                     {
-                                        if (t.Id is not Guid tagId) { continue; }
-                                        <MudSelectItem T="Guid" Value="@tagId">@t.FullName</MudSelectItem>
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary">
+                                            @t.FullName
+                                        </MudChip>
                                     }
                                 }
-                            </MudSelect>
+                                @if (!selectedTagIds.Any())
+                                {
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="font-style: italic;">None</MudText>
+                                }
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                               OnClick="@(() => { _editTagCatMode = TagCategoryMode.Tags; _editTagCatInitialIds = selectedTagIds.ToList().AsReadOnly(); _showEditTagCatPopup = true; })"
+                                               aria-label="Manage tags" />
+                            </div>
                         </div>
                     </div>
 
@@ -536,4 +544,12 @@
         </EditForm>
         </div>
     }
+
+    <TagCategoryManagerPopup
+        Visible="_showEditTagCatPopup"
+        VisibleChanged="@(v => { _showEditTagCatPopup = v; StateHasChanged(); })"
+        Mode="@_editTagCatMode"
+        InitialAppliedIds="@_editTagCatInitialIds"
+        OnSaved="HandleEditTagCatSaved" />
+
 </MudContainer>

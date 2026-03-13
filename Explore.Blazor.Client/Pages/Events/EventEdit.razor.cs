@@ -59,6 +59,11 @@ public partial class EventEdit
     private IReadOnlyCollection<Guid> selectedCategoryIds = new HashSet<Guid>();
     private IReadOnlyCollection<Guid> selectedTagIds = new HashSet<Guid>();
 
+    // Tag/Category management popup state
+    private bool _showEditTagCatPopup;
+    private TagCategoryMode _editTagCatMode;
+    private IReadOnlyCollection<Guid> _editTagCatInitialIds = Array.Empty<Guid>();
+
     // Sessions
     private List<SessionEditorModel> sessions = new();
     private EventAppearanceSettings _appearance = new();
@@ -523,5 +528,15 @@ public partial class EventEdit
         var sign = offset >= TimeSpan.Zero ? "+" : "-";
         var abs = offset.Duration();
         return $"GMT{sign}{abs.Hours}:{abs.Minutes:D2} {tz.StandardName}";
+    }
+
+    private void HandleEditTagCatSaved(IReadOnlyCollection<Guid> newIds)
+    {
+        if (_editTagCatMode == TagCategoryMode.Tags)
+            selectedTagIds = new HashSet<Guid>(newIds);
+        else
+            selectedCategoryIds = new HashSet<Guid>(newIds);
+
+        StateHasChanged();
     }
 }

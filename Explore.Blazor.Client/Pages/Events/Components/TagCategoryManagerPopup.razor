@@ -1,0 +1,107 @@
+@* ABOUTME: Reusable two-pane popup for managing tags or categories on an event.
+   ABOUTME: Shows applied items (left) and available items (right) with add/remove. *@
+
+@if (Visible)
+{
+    <div class="tagcat-manager__overlay" @onclick="HandleOverlayClick" @onclick:stopPropagation="true">
+        <div class="tagcat-manager__popup" @onclick:stopPropagation="true">
+            <div class="tagcat-manager__header">
+                <MudText Typo="Typo.h6" Class="tagcat-manager__title">
+                    Manage @(Mode == TagCategoryMode.Tags ? "Tags" : "Categories")
+                </MudText>
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                               OnClick="HandleClose" />
+            </div>
+
+            @if (_isLoading)
+            {
+                <div class="tagcat-manager__loading">
+                    <MudProgressCircular Indeterminate="true" Size="Size.Large" Color="Color.Primary" />
+                </div>
+            }
+            else
+            {
+                <div class="tagcat-manager__panes">
+                    @* Left pane: currently applied *@
+                    <div class="tagcat-manager__pane">
+                        <MudText Typo="Typo.subtitle2" Class="mb-2" Style="font-weight: 700;">
+                            Applied
+                        </MudText>
+                        <div class="tagcat-manager__list">
+                            @if (_applied.Count == 0)
+                            {
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary pa-2" Style="font-style: italic;">
+                                    None applied
+                                </MudText>
+                            }
+                            else
+                            {
+                                @foreach (var item in _applied)
+                                {
+                                    <div class="tagcat-manager__item">
+                                        <MudText Typo="Typo.body2" Style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                            @item.Name
+                                        </MudText>
+                                        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                                                       Color="Color.Error"
+                                                       OnClick="@(() => RemoveItem(item))"
+                                                       aria-label="Remove" />
+                                    </div>
+                                }
+                            }
+                        </div>
+                    </div>
+
+                    @* Right pane: available to add *@
+                    <div class="tagcat-manager__pane">
+                        <MudText Typo="Typo.subtitle2" Class="mb-2" Style="font-weight: 700;">
+                            Available
+                        </MudText>
+                        <div class="tagcat-manager__list">
+                            @if (_available.Count == 0)
+                            {
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary pa-2" Style="font-style: italic;">
+                                    No more available
+                                </MudText>
+                            }
+                            else
+                            {
+                                @foreach (var item in _available)
+                                {
+                                    <div class="tagcat-manager__item tagcat-manager__item--add cursor-pointer"
+                                         @onclick="@(() => AddItem(item))">
+                                        <MudText Typo="Typo.body2" Style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                            @item.Name
+                                        </MudText>
+                                        <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Primary" />
+                                    </div>
+                                }
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-3 mt-4">
+                    <MudButton Variant="Variant.Text" Color="Color.Default" Class="rounded-lg flex-1"
+                               OnClick="HandleClose" Disabled="_isSaving">
+                        Cancel
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="rounded-lg flex-1"
+                               OnClick="HandleSave"
+                               Disabled="@(_isSaving || !HasChanges)"
+                               StartIcon="@(_isSaving ? null : Icons.Material.Filled.Save)">
+                        @if (_isSaving)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            <span>Saving…</span>
+                        }
+                        else
+                        {
+                            <span>Save</span>
+                        }
+                    </MudButton>
+                </div>
+            }
+        </div>
+    </div>
+}

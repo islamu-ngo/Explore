@@ -30,6 +30,7 @@ public partial class EventDetail : ComponentBase
     [Inject] private Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
     [Inject] private IEventAspectService EventAspectService { get; set; } = default!;
     [Inject] private IEventSessionAgendaItemService AgendaItemService { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
 
     [PersistentState]
     public EventDetailState? PersistedState { get; set; }
@@ -57,6 +58,11 @@ public partial class EventDetail : ComponentBase
     private EventTechAspectDto? _techAspect;
     private ICollection<EventSessionAgendaItemListDto>? _agendaItems;
     private EventAppearanceSettings _appearance = new();
+
+    // Tag/Category management
+    private bool _showDetailTagCatPopup;
+    private TagCategoryMode _detailTagCatMode;
+    private IReadOnlyCollection<Guid> _detailTagCatInitialIds = Array.Empty<Guid>();
 
     /// <summary>
     /// Initializes the component and loads event data.
@@ -838,4 +844,46 @@ public partial class EventDetail : ComponentBase
     }
 
     #endregion
+
+    // ── Tag/Category management ──
+
+    private void OpenDetailTagManagement()
+    {
+        _detailTagCatMode = TagCategoryMode.Tags;
+        _detailTagCatInitialIds = (_eventDetails?.Tags?
+            .Where(t => t.Id.HasValue)
+            .Select(t => t.Id!.Value)
+            .ToList() ?? new List<Guid>()).AsReadOnly();
+        _showDetailTagCatPopup = true;
+    }
+
+    private void OpenDetailCategoryManagement()
+    {
+        _detailTagCatMode = TagCategoryMode.Categories;
+        _detailTagCatInitialIds = (_eventDetails?.Categories?
+            .Where(c => c.Id.HasValue)
+            .Select(c => c.Id!.Value)
+            .ToList() ?? new List<Guid>()).AsReadOnly();
+        _showDetailTagCatPopup = true;
+    }
+
+    private async Task HandleDetailTagCatSaved(IReadOnlyCollection<Guid> newIds)
+    {
+        var label = _detailTagCatMode == TagCategoryMode.Tags ? "Tag" : "Category";
+        Snackbar.Add($"{label} changes saved.", Severity.Success);
+
+        try
+        {
+            var detail = await EventService.GetEventByIdAsync(EventId);
+            if (detail != null)
+            {
+                _eventDetails = detail;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error refreshing event after {Label} changes", label);
+        }
+    }
 }

@@ -112,16 +112,8 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
     // Tag/Category management popup state
     private bool _showTagCatPopup;
-    private bool _tagCatIsLoading;
-    private bool _tagCatIsSaving;
-    private TagCatMode _tagCatMode;
-    private List<TagCatItem> _tagCatApplied = new();
-    private List<TagCatItem> _tagCatAvailable = new();
-    private HashSet<Guid> _tagCatOriginalAppliedIds = new();
-    private bool _tagCatHasChanges => !_tagCatApplied.Select(x => x.Id).OrderBy(x => x).SequenceEqual(_tagCatOriginalAppliedIds.OrderBy(x => x));
-
-    private enum TagCatMode { Tags, Categories }
-    private record TagCatItem(Guid Id, string Name);
+    private TagCategoryMode _tagCatMode;
+    private IReadOnlyCollection<Guid> _tagCatInitialIds = Array.Empty<Guid>();
 
     [SupplyParameterFromQuery(Name = "q")]
     public string? SearchQuery { get; set; }
@@ -1012,7 +1004,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
     // ── Tag/Category management ──
 
-    private IEnumerable<TagCatItem> GetDetailTagItems()
+    private IEnumerable<TagCategoryManagerPopup.TagCategoryItem> GetDetailTagItems()
     {
         if (_selectedEventDetail?.AdditionalProperties == null) yield break;
         if (!_selectedEventDetail.AdditionalProperties.TryGetValue("tags", out var val) || val is not System.Text.Json.JsonElement jsonArray) yield break;
@@ -1024,11 +1016,11 @@ public partial class EventList : ComponentBase, IAsyncDisposable
                      : item.TryGetProperty("name", out var n) ? n.GetString()
                      : null;
             if (id.HasValue && !string.IsNullOrEmpty(name))
-                yield return new TagCatItem(id.Value, name);
+                yield return new TagCategoryManagerPopup.TagCategoryItem(id.Value, name);
         }
     }
 
-    private IEnumerable<TagCatItem> GetDetailCategoryItems()
+    private IEnumerable<TagCategoryManagerPopup.TagCategoryItem> GetDetailCategoryItems()
     {
         if (_selectedEventDetail?.AdditionalProperties == null) yield break;
         if (!_selectedEventDetail.AdditionalProperties.TryGetValue("categories", out var val) || val is not System.Text.Json.JsonElement jsonArray) yield break;
@@ -1040,110 +1032,32 @@ public partial class EventList : ComponentBase, IAsyncDisposable
                      : item.TryGetProperty("name", out var n) ? n.GetString()
                      : null;
             if (id.HasValue && !string.IsNullOrEmpty(name))
-                yield return new TagCatItem(id.Value, name);
+                yield return new TagCategoryManagerPopup.TagCategoryItem(id.Value, name);
         }
     }
 
-    private async Task OpenTagManagement()
+    private void OpenTagManagement()
     {
-        _tagCatMode = TagCatMode.Tags;
-        _tagCatIsLoading = true;
-        _tagCatIsSaving = false;
+        _tagCatMode = TagCategoryMode.Tags;
+        _tagCatInitialIds = GetDetailTagItems().Select(x => x.Id).ToList().AsReadOnly();
         _showTagCatPopup = true;
-
-        try
-        {
-            var applied = GetDetailTagItems().ToList();
-            _tagCatApplied = new List<TagCatItem>(applied);
-            _tagCatOriginalAppliedIds = new HashSet<Guid>(applied.Select(x => x.Id));
-
-            var allTags = await TagService.GetAllTagsAsync();
-            _tagCatAvailable = allTags
-                .Where(t => t.Id.HasValue && !string.IsNullOrEmpty(t.FullName))
-                .Where(t => !_tagCatApplied.Any(a => a.Id == t.Id!.Value))
-                .Select(t => new TagCatItem(t.Id!.Value, t.FullName!))
-                .OrderBy(t => t.Name)
-                .ToList();
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error loading tags for management");
-            Snackbar.Add("Failed to load tags.", Severity.Error);
-            _showTagCatPopup = false;
-        }
-        finally
-        {
-            _tagCatIsLoading = false;
-        }
     }
 
-    private async Task OpenCategoryManagement()
+    private void OpenCategoryManagement()
     {
-        _tagCatMode = TagCatMode.Categories;
-        _tagCatIsLoading = true;
-        _tagCatIsSaving = false;
+        _tagCatMode = TagCategoryMode.Categories;
+        _tagCatInitialIds = GetDetailCategoryItems().Select(x => x.Id).ToList().AsReadOnly();
         _showTagCatPopup = true;
-
-        try
-        {
-            var applied = GetDetailCategoryItems().ToList();
-            _tagCatApplied = new List<TagCatItem>(applied);
-            _tagCatOriginalAppliedIds = new HashSet<Guid>(applied.Select(x => x.Id));
-
-            var allCategories = await CategoryService.GetAllCategoriesAsync();
-            _tagCatAvailable = allCategories
-                .Where(c => c.Id.HasValue && !string.IsNullOrEmpty(c.FullName))
-                .Where(c => !_tagCatApplied.Any(a => a.Id == c.Id!.Value))
-                .Select(c => new TagCatItem(c.Id!.Value, c.FullName!))
-                .OrderBy(c => c.Name)
-                .ToList();
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error loading categories for management");
-            Snackbar.Add("Failed to load categories.", Severity.Error);
-            _showTagCatPopup = false;
-        }
-        finally
-        {
-            _tagCatIsLoading = false;
-        }
     }
 
-    private void CloseTagCatPopup()
+    private async Task HandleTagCatSaved(IReadOnlyCollection<Guid> newIds)
     {
-        _showTagCatPopup = false;
-    }
+        var label = _tagCatMode == TagCategoryMode.Tags ? "Tag" : "Category";
+        Snackbar.Add($"{label} changes saved.", Severity.Success);
 
-    private void RemoveTagCatItem(TagCatItem item)
-    {
-        _tagCatApplied.Remove(item);
-        if (!_tagCatAvailable.Any(a => a.Id == item.Id))
+        if (_selectedEvent?.Id != null)
         {
-            _tagCatAvailable.Add(item);
-            _tagCatAvailable = _tagCatAvailable.OrderBy(x => x.Name).ToList();
-        }
-    }
-
-    private void AddTagCatItem(TagCatItem item)
-    {
-        _tagCatAvailable.Remove(item);
-        if (!_tagCatApplied.Any(a => a.Id == item.Id))
-        {
-            _tagCatApplied.Add(item);
-        }
-    }
-
-    private async Task SaveTagCatChanges()
-    {
-        _tagCatIsSaving = true;
-
-        try
-        {
-            Snackbar.Add($"{(_tagCatMode == TagCatMode.Tags ? "Tag" : "Category")} changes saved.", Severity.Success);
-            _showTagCatPopup = false;
-
-            if (_selectedEvent?.Id != null)
+            try
             {
                 var detail = await EventService.GetEventByIdAsync(_selectedEvent.Id.Value);
                 if (detail != null)
@@ -1152,15 +1066,10 @@ public partial class EventList : ComponentBase, IAsyncDisposable
                     StateHasChanged();
                 }
             }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error saving tag/category changes");
-            Snackbar.Add("Failed to save changes.", Severity.Error);
-        }
-        finally
-        {
-            _tagCatIsSaving = false;
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error refreshing event after {Label} changes", label);
+            }
         }
     }
 
