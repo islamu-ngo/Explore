@@ -65,6 +65,12 @@ public class EventListDto
     public DateOnly? LastSessionDate { get; set; }
     public string? Timezone { get; set; }
 
+    // Series
+    public string? EventSeriesTitle { get; set; }
+
+    // Temporal
+    public bool IsPast { get; set; }
+
     // Metadata
     public int TotalViews { get; set; }
     public bool IsUserReported { get; set; }

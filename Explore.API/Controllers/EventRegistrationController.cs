@@ -112,7 +112,7 @@ public class EventRegistrationController : ControllerBase
     {
         if (id != dto.Id)
         {
-            return BadRequest(new { error = "Event Registration ID mismatch" });
+            return Problem(detail: "Event Registration ID mismatch", statusCode: StatusCodes.Status400BadRequest, title: "Bad request");
         }
 
         var command = new UpdateEventRegistrationCommand { EventRegistrationDto = dto };
@@ -141,7 +141,7 @@ public class EventRegistrationController : ControllerBase
 
         if (!result)
         {
-            return NotFound(new { error = "Event Registration not found" });
+            return Problem(detail: "Event Registration not found", statusCode: StatusCodes.Status404NotFound, title: "Resource not found");
         }
 
         return NoContent();

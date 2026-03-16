@@ -4,6 +4,27 @@ using Explore.Domain;
 namespace Explore.Application.Specifications.Events;
 
 /// <summary>
+/// Temporal view filter for event listing queries.
+/// </summary>
+public enum TemporalView
+{
+    /// <summary>Events where the first session has not started yet.</summary>
+    Upcoming,
+
+    /// <summary>Events currently in progress (first session started, last not yet ended).</summary>
+    Ongoing,
+
+    /// <summary>Events where the last session has already ended.</summary>
+    Past,
+
+    /// <summary>Events that are either upcoming or ongoing (default filter).</summary>
+    UpcomingAndOngoing,
+
+    /// <summary>No temporal filter — returns all events.</summary>
+    All
+}
+
+/// <summary>
 /// Represents a filter that requires access to related DbSets (junction tables)
 /// and cannot be expressed as a simple <see cref="IFilterSpecification{T}"/> predicate.
 /// These filters are applied at the repository level where the DbContext is available.

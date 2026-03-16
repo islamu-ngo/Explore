@@ -68,6 +68,9 @@ public partial class EventFilterBar : IBrowserViewportObserver, IAsyncDisposable
     public SkillLevel? SelectedSkillLevel { get; set; }
     public string? TechStackTag { get; set; }
 
+    // Temporal View
+    public TemporalView SelectedTemporalView { get; set; } = TemporalView.UpcomingAndOngoing;
+
     private TriStateTagFilterDropdown? _tagFilterDropdown;
     private TriStateCategoryFilterDropdown? _categoryFilterDropdown;
 

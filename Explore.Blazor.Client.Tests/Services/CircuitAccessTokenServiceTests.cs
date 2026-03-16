@@ -28,8 +28,6 @@ public class CircuitAccessTokenServiceTests
         var accessor = new HttpContextAccessor { HttpContext = requestContext };
         var handler = new TestableAccessTokenForwardingHandler(
             accessor,
-            new TenantRouteContextAccessor(accessor),
-            new SetupSecretSessionService(),
             Substitute.For<ILogger<AccessTokenForwardingHandler>>());
         var terminal = new CaptureHandler();
         handler.InnerHandler = terminal;
@@ -59,8 +57,6 @@ public class CircuitAccessTokenServiceTests
         var accessor = new HttpContextAccessor { HttpContext = requestContext };
         var handler = new TestableAccessTokenForwardingHandler(
             accessor,
-            new TenantRouteContextAccessor(accessor),
-            new SetupSecretSessionService(),
             Substitute.For<ILogger<AccessTokenForwardingHandler>>());
         var terminal = new CaptureHandler();
         handler.InnerHandler = terminal;
@@ -91,8 +87,6 @@ public class CircuitAccessTokenServiceTests
         var accessor = new HttpContextAccessor { HttpContext = requestContext };
         var handler = new TestableAccessTokenForwardingHandler(
             accessor,
-            new TenantRouteContextAccessor(accessor),
-            new SetupSecretSessionService(),
             Substitute.For<ILogger<AccessTokenForwardingHandler>>());
         var terminal = new CaptureHandler();
         handler.InnerHandler = terminal;
@@ -127,8 +121,10 @@ public class CircuitAccessTokenServiceTests
     }
 
     [Test]
-    public async Task AccessTokenForwardingHandler_ForwardsSetupSecret_ForInstanceOnboardingEndpoints()
+    public async Task AccessTokenForwardingHandler_DoesNotForwardSetupSecret_ForInstanceOnboardingEndpoints()
     {
+        // Setup-secret forwarding is now handled by SetupSecretForwardingHandler.
+        // AccessTokenForwardingHandler should NOT add X-Setup-Secret headers.
         ClearTokenStore();
 
         var userId = Guid.NewGuid().ToString();
@@ -138,8 +134,6 @@ public class CircuitAccessTokenServiceTests
         var accessor = new HttpContextAccessor { HttpContext = context };
         var handler = new TestableAccessTokenForwardingHandler(
             accessor,
-            new TenantRouteContextAccessor(accessor),
-            new SetupSecretSessionService(),
             Substitute.For<ILogger<AccessTokenForwardingHandler>>());
         var terminal = new CaptureHandler();
         handler.InnerHandler = terminal;
@@ -147,20 +141,7 @@ public class CircuitAccessTokenServiceTests
         var request = new HttpRequestMessage(HttpMethod.Post, "https://localhost/api/InstanceOnboarding/complete");
         _ = await handler.InvokeAsync(request);
 
-        IEnumerable<string> values = Array.Empty<string>();
-        var hasHeader = terminal.Request?.Headers.Contains("X-Setup-Secret") == true;
-        if (hasHeader)
-        {
-            values = terminal.Request!.Headers.GetValues("X-Setup-Secret");
-        }
-
-        await Assert.That(hasHeader).IsTrue();
-        if (!hasHeader)
-        {
-            return;
-        }
-
-        await Assert.That(values.Single()).IsEqualTo("test-setup-secret");
+        await Assert.That(terminal.Request?.Headers.Contains("X-Setup-Secret")).IsFalse();
     }
 
     [Test]
@@ -175,8 +156,6 @@ public class CircuitAccessTokenServiceTests
         var accessor = new HttpContextAccessor { HttpContext = context };
         var handler = new TestableAccessTokenForwardingHandler(
             accessor,
-            new TenantRouteContextAccessor(accessor),
-            new SetupSecretSessionService(),
             Substitute.For<ILogger<AccessTokenForwardingHandler>>());
         var terminal = new CaptureHandler();
         handler.InnerHandler = terminal;
@@ -188,20 +167,17 @@ public class CircuitAccessTokenServiceTests
     }
 
     [Test]
-    public async Task AccessTokenForwardingHandler_UsesSessionSecret_WhenCookieMissing()
+    public async Task AccessTokenForwardingHandler_DoesNotAddSetupSecret_WhenCookieMissing()
     {
+        // Setup-secret forwarding is now handled by SetupSecretForwardingHandler.
         ClearTokenStore();
 
         var userId = Guid.NewGuid().ToString();
         var context = CreateHttpContext(userId);
-        var sessionService = new SetupSecretSessionService();
-        sessionService.SetForUser(userId, "session-secret");
 
         var accessor = new HttpContextAccessor { HttpContext = context };
         var handler = new TestableAccessTokenForwardingHandler(
             accessor,
-            new TenantRouteContextAccessor(accessor),
-            sessionService,
             Substitute.For<ILogger<AccessTokenForwardingHandler>>());
         var terminal = new CaptureHandler();
         handler.InnerHandler = terminal;
@@ -209,20 +185,7 @@ public class CircuitAccessTokenServiceTests
         var request = new HttpRequestMessage(HttpMethod.Post, "https://localhost/api/InstanceOnboarding/complete");
         _ = await handler.InvokeAsync(request);
 
-        IEnumerable<string> values = Array.Empty<string>();
-        var hasHeader = terminal.Request?.Headers.Contains("X-Setup-Secret") == true;
-        if (hasHeader)
-        {
-            values = terminal.Request!.Headers.GetValues("X-Setup-Secret");
-        }
-
-        await Assert.That(hasHeader).IsTrue();
-        if (!hasHeader)
-        {
-            return;
-        }
-
-        await Assert.That(values.Single()).IsEqualTo("session-secret");
+        await Assert.That(terminal.Request?.Headers.Contains("X-Setup-Secret")).IsFalse();
     }
 
     private static DefaultHttpContext CreateHttpContext(string userId, string? authToken = null)
@@ -272,10 +235,8 @@ public class CircuitAccessTokenServiceTests
     {
         public TestableAccessTokenForwardingHandler(
             IHttpContextAccessor httpContextAccessor,
-            ITenantRouteContextAccessor tenantRouteContextAccessor,
-            ISetupSecretSessionService setupSecretSessionService,
             ILogger<AccessTokenForwardingHandler> logger)
-            : base(httpContextAccessor, tenantRouteContextAccessor, setupSecretSessionService, logger)
+            : base(httpContextAccessor, logger)
         {
         }
 

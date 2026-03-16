@@ -2,10 +2,11 @@
 // ABOUTME: Eliminates repeated ConfigurePrimaryHttpMessageHandler blocks for dev cert bypass.
 
 using Explore.Blazor.Client.Clients;
-using Explore.Blazor.Client.Contracts.Services.Events;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Services;
+using Microsoft.Extensions.Http.Resilience;
+using Polly;
 
 namespace Explore.Blazor.Extensions;
 
@@ -24,9 +25,12 @@ public static class HttpClientExtensions
             configuration["ExploreApi:BaseUrl"] ?? "https://localhost:7039/");
 
         services.AddTransient<AccessTokenForwardingHandler>();
+        services.AddTransient<TenantHeaderForwardingHandler>();
+        services.AddTransient<SetupSecretForwardingHandler>();
 
         // Named "BffClient" — used by raw HTTP services (InstanceOnboarding, TenantOnboarding, etc.)
-        services.AddApiClient("BffClient", apiBaseUrl, environment);
+        services.AddApiClient("BffClient", apiBaseUrl, environment)
+            .AddInteractiveResilience();
 
         // Named "BffSelfClient" — used by InteractiveServer components calling BFF endpoints on this server.
         // No BaseAddress here; components set it from NavigationManager.BaseUri at runtime.
@@ -37,21 +41,27 @@ public static class HttpClientExtensions
         services.AddHttpClient("S3Upload", client =>
         {
             client.Timeout = TimeSpan.FromMinutes(5);
-        });
+        })
+        .ConfigureDevCertBypass(environment)
+        .AddBackgroundResilience();
 
         // Typed NSwag-generated API client
-        services.AddTypedApiClient<IEventApiClient, EventApiClient>(apiBaseUrl, environment);
+        services.AddTypedApiClient<IEventApiClient, EventApiClient>(apiBaseUrl, environment)
+            .AddInteractiveResilience();
 
         // Typed services that need direct API access during InteractiveServer rendering
-        services.AddTypedApiClient<ITenantNavigationService, TenantNavigationService>(apiBaseUrl, environment);
-        services.AddTypedApiClient<IGroupService, GroupService>(apiBaseUrl, environment);
+        services.AddTypedApiClient<ITenantNavigationService, TenantNavigationService>(apiBaseUrl, environment)
+            .AddInteractiveResilience();
+        services.AddTypedApiClient<IGroupService, GroupService>(apiBaseUrl, environment)
+            .AddInteractiveResilience();
 
         // Admin claims transformation client (shorter timeout, no token forwarding handler)
         services.AddHttpClient(BffAdminClaimsTransformation.HttpClientName, client =>
         {
             client.BaseAddress = new Uri(apiBaseUrl);
             client.Timeout = TimeSpan.FromSeconds(5);
-        }).ConfigureDevCertBypass(environment);
+        }).ConfigureDevCertBypass(environment)
+          .AddAdminResilience();
 
         return services;
     }
@@ -67,6 +77,8 @@ public static class HttpClientExtensions
             client.BaseAddress = new Uri(baseUrl);
         })
         .AddHttpMessageHandler<AccessTokenForwardingHandler>()
+        .AddHttpMessageHandler<TenantHeaderForwardingHandler>()
+        .AddHttpMessageHandler<SetupSecretForwardingHandler>()
         .ConfigureDevCertBypass(environment);
     }
 
@@ -82,7 +94,63 @@ public static class HttpClientExtensions
             client.BaseAddress = new Uri(baseUrl);
         })
         .AddHttpMessageHandler<AccessTokenForwardingHandler>()
+        .AddHttpMessageHandler<TenantHeaderForwardingHandler>()
+        .AddHttpMessageHandler<SetupSecretForwardingHandler>()
         .ConfigureDevCertBypass(environment);
+    }
+
+    private static IHttpClientBuilder AddInteractiveResilience(this IHttpClientBuilder builder)
+    {
+        builder.AddStandardResilienceHandler(options =>
+        {
+            options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(15);
+            options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(5);
+            options.Retry.MaxRetryAttempts = 3;
+            options.Retry.Delay = TimeSpan.FromMilliseconds(250);
+            options.Retry.BackoffType = DelayBackoffType.Exponential;
+            options.Retry.DisableForUnsafeHttpMethods();
+            options.CircuitBreaker.MinimumThroughput = 5;
+            options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(30);
+            options.CircuitBreaker.FailureRatio = 0.5;
+        });
+
+        return builder;
+    }
+
+    private static IHttpClientBuilder AddAdminResilience(this IHttpClientBuilder builder)
+    {
+        builder.AddStandardResilienceHandler(options =>
+        {
+            options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(30);
+            options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(10);
+            options.Retry.MaxRetryAttempts = 3;
+            options.Retry.Delay = TimeSpan.FromMilliseconds(500);
+            options.Retry.BackoffType = DelayBackoffType.Exponential;
+            options.Retry.DisableForUnsafeHttpMethods();
+            options.CircuitBreaker.MinimumThroughput = 5;
+            options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(30);
+            options.CircuitBreaker.FailureRatio = 0.5;
+        });
+
+        return builder;
+    }
+
+    private static IHttpClientBuilder AddBackgroundResilience(this IHttpClientBuilder builder)
+    {
+        builder.AddStandardResilienceHandler(options =>
+        {
+            options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(60);
+            options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(20);
+            options.Retry.MaxRetryAttempts = 4;
+            options.Retry.Delay = TimeSpan.FromSeconds(1);
+            options.Retry.BackoffType = DelayBackoffType.Exponential;
+            options.Retry.DisableForUnsafeHttpMethods();
+            options.CircuitBreaker.MinimumThroughput = 5;
+            options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(60);
+            options.CircuitBreaker.FailureRatio = 0.5;
+        });
+
+        return builder;
     }
 
     /// <summary>
@@ -93,19 +161,24 @@ public static class HttpClientExtensions
         this IHttpClientBuilder builder,
         IWebHostEnvironment environment)
     {
-        if (environment.IsDevelopment())
+        builder.ConfigurePrimaryHttpMessageHandler(() =>
         {
-            builder.ConfigurePrimaryHttpMessageHandler(() =>
+            var handler = new HttpClientHandler
             {
-                var handler = new HttpClientHandler();
+                UseCookies = false
+            };
+
+            if (environment.IsDevelopment())
+            {
                 handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
                 {
                     var isLocalhost = message.RequestUri?.Host.Contains("localhost") ?? false;
                     return isLocalhost || errors == System.Net.Security.SslPolicyErrors.None;
                 };
-                return handler;
-            });
-        }
+            }
+
+            return handler;
+        });
 
         return builder;
     }

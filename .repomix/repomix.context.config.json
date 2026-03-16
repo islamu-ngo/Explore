@@ -1,0 +1,29 @@
+{
+  "include": [
+    "docs/**/*",
+    "README.md",
+    "CLAUDE.md",
+    ".claude",
+    ".claude/commands/dev-docs.md",
+    ".claude/commands/dev-docs-update.md",
+    ".claude/commands/plan.md",
+    ".claude/commands/task.md"
+  ],
+  "output": {
+    "style": "markdown",
+    "filePath": ".repomix/repomix-context.md",
+    "showLineNumbers": false,
+    "topFilesLength": 50,
+    "copyToClipboard": false
+  },
+  "ignore": {
+    "customPatterns": [
+      "docs/semantic_versioning/**/*",
+      "docs/docs-website/**/*",
+      ".claude/hooks/**/*",
+      ".claude/commands/"
+    ],
+    "useGitignore": true,
+    "useDefaultPatterns": true
+  }
+}

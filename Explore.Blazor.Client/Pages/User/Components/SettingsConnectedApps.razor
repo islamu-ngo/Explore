@@ -1,0 +1,198 @@
+@* ABOUTME: Settings page section for managing third-party access (contact sharing consents). *@
+@* ABOUTME: Shows organizations the user has shared their email with, with option to withdraw consent. *@
+@using MudBlazor
+@using Explore.Blazor.Client.Contracts.Services
+@inject IContactShareConsentService ConsentService
+@inject ISnackbar Snackbar
+
+<div class="settings-section">
+    <!-- Section Header -->
+    <div class="settings-section-header mb-6">
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Third-party Access</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            Manage organizations you've shared your contact information with
+        </MudText>
+    </div>
+
+    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-6" Dense="true">
+        When you register for events, you may optionally share your email with the organizing body for future communications.
+        You can withdraw access below, but this does not guarantee removal from external mailing lists the organization may have already added you to.
+    </MudAlert>
+
+    @if (_isLoading)
+    {
+        <div class="d-flex justify-center py-8">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        </div>
+    }
+    else if (_consents.Count == 0)
+    {
+        <MudPaper Elevation="0" Class="pa-8 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
+            <div class="d-flex flex-column align-center gap-3">
+                <MudIcon Icon="@Icons.Material.Filled.VerifiedUser" Size="Size.Large" Color="Color.Default" />
+                <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary">
+                    You haven't shared your email with any organizations yet.
+                </MudText>
+            </div>
+        </MudPaper>
+    }
+    else
+    {
+        <MudStack Spacing="3">
+            @foreach (var consent in _consents)
+            {
+                <MudPaper Elevation="0" Class="pa-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
+                    <div class="d-flex justify-space-between align-start">
+                        <div class="d-flex gap-3 align-start" style="flex: 1;">
+                            <MudAvatar Color="Color.Primary" Size="Size.Medium">
+                                @consent.OrganizationName[0]
+                            </MudAvatar>
+                            <div>
+                                <MudText Typo="Typo.body1" Style="font-weight: 600;">
+                                    @consent.OrganizationName
+                                </MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+                                    @FormatPurpose(consent.PurposeCode)
+                                </MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
+                                    Email shared: @consent.EmailSnapshot
+                                </MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    Granted: @consent.GrantedAt.ToLocalTime().ToString("MMMM d, yyyy")
+                                    @if (!string.IsNullOrEmpty(consent.SourceEventTitle))
+                                    {
+                                        <span> — via <em>@consent.SourceEventTitle</em></span>
+                                    }
+                                </MudText>
+                                @if (consent.Status == "Withdrawn" && consent.WithdrawnAt.HasValue)
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Warning">
+                                        Withdrawn: @consent.WithdrawnAt.Value.ToLocalTime().ToString("MMMM d, yyyy")
+                                    </MudText>
+                                }
+                            </div>
+                        </div>
+                        <div class="d-flex align-center gap-2">
+                            @if (consent.Status == "Granted")
+                            {
+                                <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Outlined">Active</MudChip>
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Error"
+                                           Size="Size.Small"
+                                           StartIcon="@Icons.Material.Filled.LinkOff"
+                                           OnClick="@(() => PromptWithdraw(consent))"
+                                           Disabled="_isWithdrawing">
+                                    Withdraw
+                                </MudButton>
+                            }
+                            else
+                            {
+                                <MudChip T="string" Color="Color.Warning" Size="Size.Small" Variant="Variant.Outlined">Withdrawn</MudChip>
+                            }
+                        </div>
+                    </div>
+                </MudPaper>
+            }
+        </MudStack>
+    }
+</div>
+
+<!-- Withdraw Confirmation Dialog -->
+<MudDialog @bind-Visible="_showWithdrawDialog" Options="new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true }">
+    <DialogContent>
+        <MudText Typo="Typo.body1" Class="mb-4">
+            Are you sure you want to withdraw email sharing with <strong>@_withdrawTarget?.OrganizationName</strong>?
+        </MudText>
+        <MudAlert Severity="Severity.Warning" Dense="true">
+            This will revoke future access. However, it does not guarantee removal from external mailing lists the organization may have already exported your email to.
+        </MudAlert>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CancelWithdraw" Variant="Variant.Text">Cancel</MudButton>
+        <MudButton OnClick="ConfirmWithdraw" Color="Color.Error" Variant="Variant.Filled" Disabled="_isWithdrawing">
+            @if (_isWithdrawing)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Withdraw Access
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<UserConsentViewModel> _consents = [];
+    private bool _isLoading = true;
+    private bool _isWithdrawing = false;
+    private bool _showWithdrawDialog = false;
+    private UserConsentViewModel? _withdrawTarget;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadConsentsAsync();
+    }
+
+    private async Task LoadConsentsAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _consents = await ConsentService.GetMyConsentsAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Failed to load third-party access data.", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void PromptWithdraw(UserConsentViewModel consent)
+    {
+        _withdrawTarget = consent;
+        _showWithdrawDialog = true;
+    }
+
+    private void CancelWithdraw()
+    {
+        _showWithdrawDialog = false;
+        _withdrawTarget = null;
+    }
+
+    private async Task ConfirmWithdraw()
+    {
+        if (_withdrawTarget == null) return;
+
+        _isWithdrawing = true;
+        try
+        {
+            var success = await ConsentService.WithdrawConsentAsync(_withdrawTarget.Id);
+            if (success)
+            {
+                Snackbar.Add($"Email sharing with {_withdrawTarget.OrganizationName} has been withdrawn.", Severity.Success);
+                await LoadConsentsAsync();
+            }
+            else
+            {
+                Snackbar.Add("Failed to withdraw consent. Please try again.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("An error occurred while withdrawing consent.", Severity.Error);
+        }
+        finally
+        {
+            _isWithdrawing = false;
+            _showWithdrawDialog = false;
+            _withdrawTarget = null;
+        }
+    }
+
+    private static string FormatPurpose(string purposeCode) => purposeCode switch
+    {
+        "ORGANIZER_FUTURE_COMMUNICATIONS" => "Future events and related updates",
+        _ => purposeCode
+    };
+}

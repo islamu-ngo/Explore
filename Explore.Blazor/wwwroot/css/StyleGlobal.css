@@ -482,6 +482,13 @@ ul {
     /* Dynamic width: at least 560px, scales with viewport, caps at 700px on large screens */
     max-width: clamp(560px, 35vw, 700px);
     width: clamp(560px, 35vw, 700px) !important;
+    transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1), visibility 300ms;
+}
+
+.event-list__detail-drawer:not(.mud-drawer--open) {
+    visibility: hidden !important;
+    pointer-events: none;
+    transform: translateX(105%) !important; /* Slide out slightly more than 100% to ensure shadow is hidden */
 }
 
 /* On small screens, allow the drawer to shrink to 90vw */

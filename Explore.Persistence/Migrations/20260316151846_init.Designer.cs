@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Explore.Persistence.Migrations
 {
     [DbContext(typeof(ExploreDbContext))]
-    [Migration("20260304180725_init")]
+    [Migration("20260316151846_init")]
     partial class init
     {
         /// <inheritdoc />
@@ -1182,9 +1182,17 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("event_format_id");
 
+                    b.Property<Guid?>("EventSeriesId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_series_id");
+
                     b.Property<int>("EventStatusId")
                         .HasColumnType("integer")
                         .HasColumnName("event_status_id");
+
+                    b.Property<string>("EventTimeZoneId")
+                        .HasColumnType("text")
+                        .HasColumnName("event_time_zone_id");
 
                     b.Property<int?>("EventTypeId")
                         .HasColumnType("integer")
@@ -1208,6 +1216,10 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("date")
                         .HasColumnName("first_session_date");
 
+                    b.Property<DateTimeOffset?>("FirstSessionStartUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("first_session_start_utc");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
@@ -1226,6 +1238,10 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("date")
                         .HasColumnName("last_session_date");
 
+                    b.Property<DateTimeOffset?>("LastSessionStartUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_session_start_utc");
+
                     b.Property<int?>("MadhabId")
                         .HasColumnType("integer")
                         .HasColumnName("madhab_id");
@@ -1234,6 +1250,10 @@ namespace Explore.Persistence.Migrations
                         .HasPrecision(19, 4)
                         .HasColumnType("numeric(19,4)")
                         .HasColumnName("price");
+
+                    b.Property<int?>("SeriesOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("series_order");
 
                     b.Property<int?>("SessionCount")
                         .HasColumnType("integer")
@@ -1302,6 +1322,9 @@ namespace Explore.Persistence.Migrations
 
                     b.HasIndex("EventFormatId")
                         .HasDatabaseName("ix_events_event_format_id");
+
+                    b.HasIndex("EventSeriesId")
+                        .HasDatabaseName("ix_events_event_series_id");
 
                     b.HasIndex("EventStatusId")
                         .HasDatabaseName("ix_events_event_status_id");
@@ -1390,6 +1413,200 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_event_categories_tenant_id");
 
                     b.ToTable("event_categories", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventContactShareConsent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<string>("ConsentTextSnapshot")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("consent_text_snapshot");
+
+                    b.Property<string>("ConsentUiVersion")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("consent_ui_version");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("EmailNormalizedSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("email_normalized_snapshot");
+
+                    b.Property<string>("EmailSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("email_snapshot");
+
+                    b.Property<DateTime>("GrantedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("granted_at");
+
+                    b.Property<string>("PurposeCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("purpose_code");
+
+                    b.Property<Guid>("RecipientActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recipient_actor_id");
+
+                    b.Property<Guid?>("SourceEventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_event_id");
+
+                    b.Property<Guid?>("SourceEventRegistrationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_event_registration_id");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<DateTime?>("WithdrawnAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("withdrawn_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_contact_share_consents");
+
+                    b.HasIndex("RecipientActorId")
+                        .HasDatabaseName("ix_event_contact_share_consents_recipient_actor_id");
+
+                    b.HasIndex("SourceEventId")
+                        .HasDatabaseName("ix_event_contact_share_consents_source_event_id");
+
+                    b.HasIndex("SourceEventRegistrationId")
+                        .HasDatabaseName("ix_event_contact_share_consents_source_event_registration_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_event_contact_share_consents_user_id");
+
+                    b.HasIndex("TenantId", "RecipientActorId", "Status")
+                        .HasDatabaseName("ix_eventcontactshareconsents_recipient_status");
+
+                    b.HasIndex("TenantId", "UserId", "Status")
+                        .HasDatabaseName("ix_eventcontactshareconsents_user_status");
+
+                    b.HasIndex("TenantId", "UserId", "RecipientActorId", "PurposeCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_eventcontactshareconsents_scope_unique");
+
+                    b.ToTable("event_contact_share_consents", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventContactShareExport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid>("ExportedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("exported_by_user_id");
+
+                    b.Property<string>("Format")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("format");
+
+                    b.Property<Guid>("RecipientActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recipient_actor_id");
+
+                    b.Property<int>("RowCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("row_count");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_contact_share_export");
+
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("ix_event_contact_share_export_event_id");
+
+                    b.HasIndex("ExportedByUserId")
+                        .HasDatabaseName("ix_event_contact_share_export_exported_by_user_id");
+
+                    b.HasIndex("RecipientActorId")
+                        .HasDatabaseName("ix_event_contact_share_export_recipient_actor_id");
+
+                    b.HasIndex("TenantId", "RecipientActorId", "CreatedAt")
+                        .HasDatabaseName("ix_eventcontactshareexports_recipient_date");
+
+                    b.ToTable("event_contact_share_export", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventContactShareExportItem", b =>
+                {
+                    b.Property<Guid>("ExportId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("export_id");
+
+                    b.Property<Guid>("ConsentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("consent_id");
+
+                    b.Property<string>("EmailSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("email_snapshot");
+
+                    b.HasKey("ExportId", "ConsentId")
+                        .HasName("pk_event_contact_share_export_item");
+
+                    b.HasIndex("ConsentId")
+                        .HasDatabaseName("ix_event_contact_share_export_item_consent_id");
+
+                    b.ToTable("event_contact_share_export_item", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventFormat", b =>
@@ -1543,6 +1760,119 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_eventregistrations_session_user");
 
                     b.ToTable("event_registrations", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSeries", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
+
+                    b.Property<DateTimeOffset?>("EndDateUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("end_date_utc");
+
+                    b.Property<Guid?>("FeaturedImageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("featured_image_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<bool>("IsPublished")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_published");
+
+                    b.Property<string>("Slug")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("slug");
+
+                    b.Property<DateTimeOffset?>("StartDateUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("start_date_utc");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<int>("TotalViews")
+                        .HasColumnType("integer")
+                        .HasColumnName("total_views");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("VisibilityTypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("visibility_type_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_series");
+
+                    b.HasIndex("ActorId")
+                        .HasDatabaseName("ix_event_series_actor_id");
+
+                    b.HasIndex("FeaturedImageId")
+                        .HasDatabaseName("ix_event_series_featured_image_id");
+
+                    b.HasIndex("VisibilityTypeId")
+                        .HasDatabaseName("ix_event_series_visibility_type_id");
+
+                    b.HasIndex("TenantId", "IsPublished")
+                        .HasDatabaseName("ix_event_series_tenant_id_is_published");
+
+                    b.HasIndex("TenantId", "Slug")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_series_tenant_id_slug");
+
+                    b.HasIndex("TenantId", "TotalViews")
+                        .HasDatabaseName("ix_event_series_tenant_id_total_views");
+
+                    b.ToTable("event_series", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSession", b =>
@@ -2010,6 +2340,100 @@ namespace Explore.Persistence.Migrations
                         .HasFilter("tenant_id IS NOT NULL");
 
                     b.ToTable("event_types", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.ExternalApiKey", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("KeyId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("key_id");
+
+                    b.Property<DateTime?>("LastUsedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_used_at");
+
+                    b.Property<string>("LastUsedIp")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("last_used_ip");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_id");
+
+                    b.Property<int>("OwnerType")
+                        .HasColumnType("integer")
+                        .HasColumnName("owner_type");
+
+                    b.Property<string>("Scopes")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("scopes");
+
+                    b.Property<string>("SecretHash")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("secret_hash");
+
+                    b.Property<int>("Status")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_external_api_keys");
+
+                    b.HasIndex("KeyId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_external_api_keys_key_id");
+
+                    b.HasIndex("TenantId", "Status")
+                        .HasDatabaseName("ix_external_api_keys_tenant_id_status");
+
+                    b.HasIndex("TenantId", "OwnerType", "OwnerId")
+                        .HasDatabaseName("ix_external_api_keys_tenant_id_owner_type_owner_id");
+
+                    b.ToTable("external_api_keys", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Federation.PdsSyncOutbox", b =>
@@ -5002,6 +5426,11 @@ namespace Explore.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_events_event_formats_event_format_id");
 
+                    b.HasOne("Explore.Domain.EventSeries", "EventSeries")
+                        .WithMany("Events")
+                        .HasForeignKey("EventSeriesId")
+                        .HasConstraintName("fk_events_event_series_event_series_id");
+
                     b.HasOne("Explore.Domain.EventStatus", "EventStatus")
                         .WithMany()
                         .HasForeignKey("EventStatusId")
@@ -5053,6 +5482,8 @@ namespace Explore.Persistence.Migrations
 
                     b.Navigation("EventFormat");
 
+                    b.Navigation("EventSeries");
+
                     b.Navigation("EventStatus");
 
                     b.Navigation("EventType");
@@ -5094,6 +5525,111 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Event");
 
                     b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventContactShareConsent", b =>
+                {
+                    b.HasOne("Explore.Domain.Actor", "RecipientActor")
+                        .WithMany()
+                        .HasForeignKey("RecipientActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_contact_share_consents_actors_recipient_actor_id");
+
+                    b.HasOne("Explore.Domain.Event", "SourceEvent")
+                        .WithMany()
+                        .HasForeignKey("SourceEventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_event_contact_share_consents_events_source_event_id");
+
+                    b.HasOne("Explore.Domain.EventRegistration", "SourceEventRegistration")
+                        .WithMany()
+                        .HasForeignKey("SourceEventRegistrationId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_event_contact_share_consents_event_registrations_source_eve");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_contact_share_consents_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_contact_share_consents_users_user_id");
+
+                    b.Navigation("RecipientActor");
+
+                    b.Navigation("SourceEvent");
+
+                    b.Navigation("SourceEventRegistration");
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventContactShareExport", b =>
+                {
+                    b.HasOne("Explore.Domain.Event", "Event")
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_event_contact_share_export_events_event_id");
+
+                    b.HasOne("Explore.Domain.User", "ExportedByUser")
+                        .WithMany()
+                        .HasForeignKey("ExportedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_contact_share_export_users_exported_by_user_id");
+
+                    b.HasOne("Explore.Domain.Actor", "RecipientActor")
+                        .WithMany()
+                        .HasForeignKey("RecipientActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_contact_share_export_actors_recipient_actor_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_contact_share_export_tenants_tenant_id");
+
+                    b.Navigation("Event");
+
+                    b.Navigation("ExportedByUser");
+
+                    b.Navigation("RecipientActor");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventContactShareExportItem", b =>
+                {
+                    b.HasOne("Explore.Domain.EventContactShareConsent", "Consent")
+                        .WithMany()
+                        .HasForeignKey("ConsentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_contact_share_export_item_event_contact_share_consent");
+
+                    b.HasOne("Explore.Domain.EventContactShareExport", "Export")
+                        .WithMany("Items")
+                        .HasForeignKey("ExportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_contact_share_export_item_event_contact_share_export_");
+
+                    b.Navigation("Consent");
+
+                    b.Navigation("Export");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventIslamicAspect", b =>
@@ -5166,6 +5702,43 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Tenant");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSeries", b =>
+                {
+                    b.HasOne("Explore.Domain.Actor", "Actor")
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_series_actors_actor_id");
+
+                    b.HasOne("Explore.Domain.StorageObject", "FeaturedImage")
+                        .WithMany()
+                        .HasForeignKey("FeaturedImageId")
+                        .HasConstraintName("fk_event_series_storage_objects_featured_image_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_series_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.VisibilityType", "VisibilityType")
+                        .WithMany()
+                        .HasForeignKey("VisibilityTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_series_visibility_types_visibility_type_id");
+
+                    b.Navigation("Actor");
+
+                    b.Navigation("FeaturedImage");
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("VisibilityType");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSession", b =>
@@ -5354,6 +5927,18 @@ namespace Explore.Persistence.Migrations
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_event_types_tenants_tenant_id");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.ExternalApiKey", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_external_api_keys_tenants_tenant_id");
 
                     b.Navigation("Tenant");
                 });
@@ -6086,6 +6671,16 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("IslamicAspect");
 
                     b.Navigation("TechAspect");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventContactShareExport", b =>
+                {
+                    b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSeries", b =>
+                {
+                    b.Navigation("Events");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSession", b =>

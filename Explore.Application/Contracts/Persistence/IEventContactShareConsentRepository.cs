@@ -1,0 +1,32 @@
+// ABOUTME: Repository interface for EventContactShareConsent entities.
+// ABOUTME: Provides scoped lookups by organizer, user, and the per-organizer unique scope query.
+
+using Explore.Domain;
+using Explore.Domain.Enums;
+
+namespace Explore.Application.Contracts.Persistence;
+
+public interface IEventContactShareConsentRepository : IGenericRepository<EventContactShareConsent, Guid>
+{
+    /// <summary>
+    /// Finds the unique consent row for a tenant + user + recipient actor + purpose scope.
+    /// Returns null if no consent exists for this scope.
+    /// </summary>
+    Task<EventContactShareConsent?> GetByScope(Guid tenantId, Guid userId, Guid recipientActorId, string purposeCode);
+
+    /// <summary>
+    /// Gets all granted consents for a specific recipient actor (organisation), optionally filtered by event.
+    /// </summary>
+    Task<(List<EventContactShareConsent> Items, int TotalCount)> GetGrantedForRecipient(
+        Guid tenantId, Guid recipientActorId, Guid? eventId, string? emailSearch, int pageNumber, int pageSize);
+
+    /// <summary>
+    /// Gets all consents (any status) for a specific user.
+    /// </summary>
+    Task<List<EventContactShareConsent>> GetByUser(Guid tenantId, Guid userId);
+
+    /// <summary>
+    /// Gets granted consents for a recipient, suitable for export (no pagination).
+    /// </summary>
+    Task<List<EventContactShareConsent>> GetGrantedForExport(Guid tenantId, Guid recipientActorId, Guid? eventId);
+}

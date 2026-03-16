@@ -36,9 +36,12 @@
                     <MudTextField T="string" Label="Client Secret" Variant="Variant.Outlined" InputType="InputType.Password" @bind-Value="Model.KeycloakClientSecret" />
                 }
 
+                @if (!IsSingleTenant)
+                {
                 <MudSwitch T="bool" @bind-Value="Model.LockKeycloakEnabled" Color="Color.Warning">
                     Lock Keycloak setting for tenants
                 </MudSwitch>
+                }
             </MudStack>
         </MudPaper>
 
@@ -56,9 +59,12 @@
                     <MudTextField T="string" Label="Public URL" Variant="Variant.Outlined" @bind-Value="Model.AtprotoPublicUrl" HelperText="Used to serve ATProto OAuth client metadata." />
                 }
 
+                @if (!IsSingleTenant)
+                {
                 <MudSwitch T="bool" @bind-Value="Model.LockAtprotoLoginEnabled" Color="Color.Warning">
                     Lock AT Protocol setting for tenants
                 </MudSwitch>
+                }
             </MudStack>
         </MudPaper>
 
@@ -77,9 +83,12 @@
                     <MudTextField T="string" Label="Client Secret" Variant="Variant.Outlined" InputType="InputType.Password" @bind-Value="Model.GoogleClientSecret" />
                 }
 
+                @if (!IsSingleTenant)
+                {
                 <MudSwitch T="bool" @bind-Value="Model.LockGoogleSsoEnabled" Color="Color.Warning">
                     Lock Google setting for tenants
                 </MudSwitch>
+                }
             </MudStack>
         </MudPaper>
     </MudStack>
@@ -88,6 +97,9 @@
 @code {
     [Parameter, EditorRequired]
     public AuthProviderConfigurationModel Model { get; set; } = null!;
+
+    [Parameter]
+    public bool IsSingleTenant { get; set; }
 
     private bool HasAnyProviderEnabled =>
         Model.KeycloakEnabled || Model.AtprotoLoginEnabled || Model.GoogleSsoEnabled;

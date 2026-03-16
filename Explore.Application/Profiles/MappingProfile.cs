@@ -206,12 +206,8 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.ActorId, opt => opt.Ignore()) // Resolved by handler
             .ForMember(dest => dest.TotalViews, opt => opt.Ignore())
             .ForMember(dest => dest.TenantId, opt => opt.Ignore())
-            .ForMember(dest => dest.FirstSessionDate, opt => opt.MapFrom(src =>
-                src.FirstSessionDate.HasValue ? DateOnly.FromDateTime(src.FirstSessionDate.Value.DateTime) : (DateOnly?)null))
-            .ForMember(dest => dest.LastSessionDate, opt => opt.MapFrom(src =>
-                src.LastSessionDate.HasValue ? DateOnly.FromDateTime(src.LastSessionDate.Value.DateTime) : (DateOnly?)null))
-            .ForMember(dest => dest.FirstSessionStartUtc, opt => opt.MapFrom(src => src.FirstSessionStartUtc ?? src.FirstSessionDate))
-            .ForMember(dest => dest.LastSessionStartUtc, opt => opt.MapFrom(src => src.LastSessionStartUtc ?? src.LastSessionDate))
+            .ForMember(dest => dest.FirstSessionStartUtc, opt => opt.MapFrom(src => src.FirstSessionStartUtc))
+            .ForMember(dest => dest.LastSessionStartUtc, opt => opt.MapFrom(src => src.LastSessionStartUtc))
             .ForMember(dest => dest.EventTimeZoneId, opt => opt.MapFrom(src => src.EventTimeZoneId ?? src.Timezone))
             .ForMember(dest => dest.Timezone, opt => opt.MapFrom(src => src.Timezone ?? src.EventTimeZoneId));
 

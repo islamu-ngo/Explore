@@ -394,4 +394,10 @@ public class ExploreDbContext : DbContext
 
     // ===== PDS Synchronization (Outbox Pattern) =====
     public DbSet<PdsSyncOutbox> PdsSyncOutbox { get; set; }
+
+    // ===== Event Series =====
+    public DbSet<EventSeries> EventSeries { get; set; }
+
+    // ===== Contact Share Consents =====
+    public DbSet<EventContactShareConsent> EventContactShareConsents { get; set; }
 }

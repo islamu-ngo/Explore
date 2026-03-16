@@ -157,6 +157,9 @@ builder.Services.AddApiMediaTypeVersioning();
 // Business metrics (OpenTelemetry)
 builder.Services.AddSingleton<BusinessMetrics>();
 
+// Deployment mode cache invalidation (bridges Application layer to API middleware)
+builder.Services.AddSingleton<IDeploymentModeCacheInvalidator, Explore.API.Services.DeploymentModeCacheInvalidator>();
+
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {

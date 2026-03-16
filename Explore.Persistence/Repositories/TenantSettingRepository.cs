@@ -5,6 +5,7 @@ namespace Explore.Persistence.Repositories;
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
 public class TenantSettingRepository : GenericRepository<TenantSetting, Guid>, ITenantSettingRepository
@@ -19,13 +20,14 @@ public class TenantSettingRepository : GenericRepository<TenantSetting, Guid>, I
     public async Task<TenantSetting?> GetByTenantAndKey(Guid tenantId, string key)
     {
         return await _dbContext.TenantSettingOverrides
-            .AsNoTracking()
+            .IgnoreTenantFilter()
             .FirstOrDefaultAsync(s => s.TenantId == tenantId && s.SettingKey == key);
     }
 
     public async Task<List<TenantSetting>> GetAllForTenant(Guid tenantId)
     {
         return await _dbContext.TenantSettingOverrides
+            .IgnoreTenantFilter()
             .AsNoTracking()
             .Where(s => s.TenantId == tenantId)
             .ToListAsync();
@@ -34,6 +36,7 @@ public class TenantSettingRepository : GenericRepository<TenantSetting, Guid>, I
     public async Task<bool> RemoveOverride(Guid tenantId, string key)
     {
         var setting = await _dbContext.TenantSettingOverrides
+            .IgnoreTenantFilter()
             .FirstOrDefaultAsync(s => s.TenantId == tenantId && s.SettingKey == key);
 
         if (setting == null)

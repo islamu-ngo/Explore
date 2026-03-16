@@ -1,11 +1,10 @@
+using Explore.Domain.Constants;
 using Explore.Persistence;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Event.Api.IntegrationTests.Fixtures;
 
@@ -31,7 +30,9 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 {"S3Settings:BucketName", "test-bucket"},
                 {"S3Settings:AccessKeyId", "test-key"},
                 {"S3Settings:SecretAccessKey", "test-secret"},
-                {"S3Settings:Endpoint", "https://s3.example.com"}
+                {"S3Settings:Endpoint", "https://s3.example.com"},
+                {"Deployment:Mode", "SingleTenant"},
+                {"Deployment:DefaultTenantId", PlatformDefaults.DefaultTenantId.ToString()}
             };
             config.AddInMemoryCollection(inMemoryConfig);
         });

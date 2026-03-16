@@ -146,5 +146,6 @@ public partial class NotificationBell : IDisposable
     public void Dispose()
     {
         _pollTimer?.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

@@ -1,5 +1,6 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
@@ -16,7 +17,7 @@ public class TenantSettingsRepository : GenericRepository<TenantSettings, Guid>,
     public async Task<TenantSettings?> GetByTenant(Guid tenantId)
     {
         return await _dbContext.TenantSettings
-            .AsNoTracking()
+            .IgnoreTenantFilter()
             .FirstOrDefaultAsync(ts => ts.TenantId == tenantId);
     }
 

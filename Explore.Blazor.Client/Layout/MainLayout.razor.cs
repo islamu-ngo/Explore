@@ -275,5 +275,6 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     {
         NavigationManager.LocationChanged -= OnLocationChanged;
         SidebarState.OnChange -= StateHasChanged;
+        GC.SuppressFinalize(this);
     }
 }

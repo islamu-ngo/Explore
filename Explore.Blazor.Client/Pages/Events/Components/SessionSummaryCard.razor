@@ -1,0 +1,139 @@
+@* ABOUTME: Compact session summary card shown as a horizontal row in multi-session mode. *@
+@* ABOUTME: Displays session image thumbnail, title, date/time, location, and action buttons (Edit, Duplicate, Delete). *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Pages.Events.Models
+
+<MudPaper Elevation="0" Class="@CardCssClass" @onclick="@(() => OnEdit.InvokeAsync())">
+    <div class="session-card">
+        @* Left: image thumbnail *@
+        <div class="session-card__image">
+            @if (!string.IsNullOrWhiteSpace(ImageUrl))
+            {
+                <MudImage Src="@ImageUrl"
+                          Alt="@(Session.Title ?? $"Session {Index + 1}")"
+                          ObjectFit="ObjectFit.Cover"
+                          Class="session-card__img rounded-lg" />
+            }
+            else
+            {
+                <div class="session-card__img-placeholder rounded-lg d-flex align-center justify-center">
+                    <MudIcon Icon="@Icons.Material.Filled.Image" Size="Size.Large" Color="Color.Secondary" />
+                </div>
+            }
+            @if (Session.UseEventImage && !string.IsNullOrWhiteSpace(ImageUrl))
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Default"
+                         Class="session-card__inherited-badge">
+                    Event Image
+                </MudChip>
+            }
+        </div>
+
+        @* Middle: session info *@
+        <div class="session-card__info">
+            <MudText Typo="Typo.subtitle2" Class="session-card__title">
+                @GetDisplayTitle()
+            </MudText>
+            <div class="session-card__meta">
+                <div class="d-flex align-center gap-1">
+                    <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Color="Color.Secondary" />
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        @Session.StartTime.ToString("ddd d MMM, HH:mm")–@Session.EndTime.ToString("HH:mm")
+                    </MudText>
+                </div>
+                @if (LocationName is not null)
+                {
+                    <div class="d-flex align-center gap-1">
+                        <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Color="Color.Secondary" />
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="text-truncate" Style="max-width: 200px;">
+                            @LocationName
+                        </MudText>
+                    </div>
+                }
+                @if (Session.MaxAudienceAttendees.HasValue)
+                {
+                    <div class="d-flex align-center gap-1">
+                        <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Small" Color="Color.Secondary" />
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            @Session.MaxAudienceAttendees seats
+                        </MudText>
+                    </div>
+                }
+            </div>
+            @if (HasValidationErrors)
+            {
+                <MudText Typo="Typo.caption" Color="Color.Error" Class="mt-1">
+                    <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" Class="mr-1" />
+                    @ValidationMessage
+                </MudText>
+            }
+        </div>
+
+        @* Right: action buttons *@
+        <div class="session-card__actions" @onclick:stopPropagation="true">
+            <MudTooltip Text="Edit Session">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                               Size="Size.Small"
+                               Color="Color.Primary"
+                               OnClick="@(() => OnEdit.InvokeAsync())" />
+            </MudTooltip>
+            <MudTooltip Text="Duplicate Session">
+                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                               Size="Size.Small"
+                               Color="Color.Default"
+                               OnClick="@(() => OnDuplicate.InvokeAsync())" />
+            </MudTooltip>
+            <MudTooltip Text="Delete Session">
+                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                               Size="Size.Small"
+                               Color="Color.Error"
+                               OnClick="@(() => OnDelete.InvokeAsync())" />
+            </MudTooltip>
+        </div>
+    </div>
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired]
+    public SessionEditorModel Session { get; set; } = null!;
+
+    [Parameter]
+    public int Index { get; set; }
+
+    [Parameter]
+    public string? LocationName { get; set; }
+
+    /// <summary>
+    /// Resolved image URL: session's own image or event image fallback.
+    /// </summary>
+    [Parameter]
+    public string? ImageUrl { get; set; }
+
+    [Parameter]
+    public bool HasValidationErrors { get; set; }
+
+    [Parameter]
+    public string? ValidationMessage { get; set; }
+
+    [Parameter]
+    public EventCallback OnEdit { get; set; }
+
+    [Parameter]
+    public EventCallback OnDuplicate { get; set; }
+
+    [Parameter]
+    public EventCallback OnDelete { get; set; }
+
+    private string GetDisplayTitle()
+    {
+        if (!string.IsNullOrWhiteSpace(Session.Title))
+            return Session.Title;
+
+        return $"Session {Index + 1}";
+    }
+
+    private string CardCssClass =>
+        $"session-card-wrapper pa-3 rounded-lg border-solid border-1 mud-border-lines-default{(HasValidationErrors ? " session-card-wrapper--error" : "")}";
+}

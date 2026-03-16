@@ -112,13 +112,13 @@ public class AuthenticationFlowTests
         // Act
         var cut = ctx.RenderMudComponent<NavMenu>();
 
-        // Assert - Should show some indication of logged-in state
+        // Assert - Should show the user dropdown trigger (avatar area) when authenticated.
+        // The dropdown content (Profile, Logout) is hidden until clicked.
         var markup = cut.Markup;
         await Assert.That(
-            markup.Contains("Test User", StringComparison.OrdinalIgnoreCase) ||
-            markup.Contains("Profile", StringComparison.OrdinalIgnoreCase) ||
-            markup.Contains("Logout", StringComparison.OrdinalIgnoreCase) ||
-            markup.Contains("Sign out", StringComparison.OrdinalIgnoreCase)
+            markup.Contains("navbar__user-dropdown", StringComparison.OrdinalIgnoreCase) ||
+            markup.Contains("navbar__user-avatar", StringComparison.OrdinalIgnoreCase) ||
+            markup.Contains("User menu", StringComparison.OrdinalIgnoreCase)
         ).IsTrue();
     }
 

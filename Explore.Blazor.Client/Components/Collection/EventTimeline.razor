@@ -1,0 +1,47 @@
+@using MudBlazor
+@using Explore.Blazor.Client.Clients
+
+<div class="event-timeline">
+    @if (Events == null || !Events.Any())
+    {
+            <MudPaper Elevation="0" Class="pa-12 d-flex flex-column align-center justify-center rounded-xl" style="border: 2px dashed var(--mud-palette-divider); background: transparent;">
+                <MudIcon Icon="@Icons.Material.Filled.EventBusy" Size="Size.Large" Color="Color.Secondary" Class="mb-4" />
+                <MudText Typo="Typo.h6" Color="Color.Secondary" Class="font-weight-bold">No events found</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Check back later for new updates.</MudText>
+            </MudPaper>
+    }
+    else
+    {
+        <MudTimeline TimelineAlign="TimelineAlign.Start" TimelinePosition="TimelinePosition.Left" Class="px-0">
+            @foreach (var group in GroupedEvents)
+            {
+                <EventTimelineGroup Date="group.Key" Events="group.Value" />
+            }
+        </MudTimeline>
+    }
+</div>
+
+@code {
+    [Parameter] public IEnumerable<EventListDto>? Events { get; set; }
+    [Parameter] public bool IsPast { get; set; }
+
+    private IEnumerable<KeyValuePair<DateTime, List<EventListDto>>> GroupedEvents
+    {
+        get
+        {
+            if (Events == null) return Enumerable.Empty<KeyValuePair<DateTime, List<EventListDto>>>();
+
+            var groups = Events.GroupBy(e => GetEventDate(e).Date);
+            
+            return IsPast 
+                ? groups.OrderByDescending(g => g.Key).Select(g => new KeyValuePair<DateTime, List<EventListDto>>(g.Key, g.ToList()))
+                : groups.OrderBy(g => g.Key).Select(g => new KeyValuePair<DateTime, List<EventListDto>>(g.Key, g.ToList()));
+        }
+    }
+
+    private DateTime GetEventDate(EventListDto evt)
+    {
+        var sessionDate = IsPast ? evt.LastSessionDate : evt.FirstSessionDate;
+        return (sessionDate ?? DateTimeOffset.UtcNow).LocalDateTime;
+    }
+}

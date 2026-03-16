@@ -1,0 +1,195 @@
+@* ABOUTME: Series section for Create/Edit Event pages — standalone vs part-of-series toggle. *@
+@* ABOUTME: Allows selecting existing series via autocomplete or creating a new one inline. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services.Events
+
+@inject IEventSeriesService EventSeriesService
+
+<div class="event-series-section">
+    <MudDivider Class="event-series-section__divider" />
+    <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="event-series-section__title">Series</MudText>
+
+    <MudRadioGroup T="SeriesChoice" @bind-Value="_seriesChoice">
+        <MudRadio T="SeriesChoice" Value="SeriesChoice.Standalone" Color="Color.Primary" Dense="true">
+            This is a standalone event
+        </MudRadio>
+        <MudRadio T="SeriesChoice" Value="SeriesChoice.ExistingSeries" Color="Color.Primary" Dense="true">
+            This event belongs to an existing series
+        </MudRadio>
+        <MudRadio T="SeriesChoice" Value="SeriesChoice.NewSeries" Color="Color.Primary" Dense="true">
+            Create a new series for this event
+        </MudRadio>
+    </MudRadioGroup>
+
+    @if (_seriesChoice == SeriesChoice.ExistingSeries)
+    {
+        <MudAutocomplete T="EventSeriesListDto"
+                         Label="Search series"
+                         @bind-Value="_selectedSeries"
+                         SearchFunc="SearchSeriesAsync"
+                         ToStringFunc="@(s => s?.Title ?? string.Empty)"
+                         Variant="Variant.Outlined"
+                         Dense="true"
+                         Class="mt-3"
+                         ShowProgressIndicator="true"
+                         ResetValueOnEmptyText="true"
+                         CoerceText="false">
+            <ItemTemplate Context="series">
+                <div class="d-flex flex-column">
+                    <MudText Typo="Typo.body1">@series.Title</MudText>
+                    @if (!string.IsNullOrWhiteSpace(series.Description))
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="text-truncate" Style="max-width: 350px;">
+                            @series.Description
+                        </MudText>
+                    }
+                </div>
+            </ItemTemplate>
+        </MudAutocomplete>
+
+        @if (_selectedSeries is not null)
+        {
+            <MudNumericField T="int?"
+                             @bind-Value="_seriesOrder"
+                             Label="Order in series (optional)"
+                             Variant="Variant.Outlined"
+                             Min="0"
+                             Class="mt-2"
+                             Style="max-width: 200px;" />
+        }
+    }
+
+    @if (_seriesChoice == SeriesChoice.NewSeries)
+    {
+        <MudPaper Elevation="0" Class="event-series-section__new-series-form pa-4 mt-3 rounded-lg border-solid border-1 mud-border-lines-default">
+            <MudText Typo="Typo.subtitle2" Class="mb-3">New Series</MudText>
+
+            <MudTextField @bind-Value="_newSeriesTitle"
+                          Label="Series Title"
+                          Required="true"
+                          RequiredError="Series title is required"
+                          Variant="Variant.Outlined"
+                          Class="mb-3" />
+
+            <MudTextField @bind-Value="_newSeriesDescription"
+                          Label="Description (optional)"
+                          Variant="Variant.Outlined"
+                          Lines="2"
+                          Class="mb-3" />
+
+            <MudNumericField T="int?"
+                             @bind-Value="_seriesOrder"
+                             Label="Order in series (optional)"
+                             Variant="Variant.Outlined"
+                             Min="0"
+                             Style="max-width: 200px;" />
+        </MudPaper>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Guid? EventSeriesId { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid?> EventSeriesIdChanged { get; set; }
+
+    [Parameter]
+    public int? SeriesOrder { get; set; }
+
+    [Parameter]
+    public EventCallback<int?> SeriesOrderChanged { get; set; }
+
+    private SeriesChoice _seriesChoice = SeriesChoice.Standalone;
+    private EventSeriesListDto? _selectedSeries;
+    private int? _seriesOrder;
+    private string? _newSeriesTitle;
+    private string? _newSeriesDescription;
+
+    protected override void OnInitialized()
+    {
+        _seriesOrder = SeriesOrder;
+
+        if (EventSeriesId.HasValue)
+        {
+            _seriesChoice = SeriesChoice.ExistingSeries;
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (EventSeriesId.HasValue && _selectedSeries?.Id != EventSeriesId.Value)
+        {
+            var detail = await EventSeriesService.GetSeriesDetailAsync(EventSeriesId.Value);
+            if (detail is not null)
+            {
+                _selectedSeries = new EventSeriesListDto
+                {
+                    Id = detail.Id,
+                    Title = detail.Title,
+                    Description = detail.Description
+                };
+                _seriesChoice = SeriesChoice.ExistingSeries;
+            }
+        }
+    }
+
+    private async Task<IEnumerable<EventSeriesListDto>> SearchSeriesAsync(string? value, CancellationToken token)
+    {
+        return await EventSeriesService.SearchSeriesAsync(value ?? string.Empty);
+    }
+
+    /// <summary>
+    /// Called by parent before submit to resolve the final EventSeriesId.
+    /// If user chose "New Series", creates it via API and returns the ID.
+    /// </summary>
+    public async Task<(Guid? SeriesId, int? Order)> ResolveSeriesAsync()
+    {
+        switch (_seriesChoice)
+        {
+            case SeriesChoice.Standalone:
+                return (null, null);
+
+            case SeriesChoice.ExistingSeries:
+                var seriesId = _selectedSeries?.Id;
+                if (seriesId.HasValue)
+                {
+                    await EventSeriesIdChanged.InvokeAsync(seriesId);
+                    await SeriesOrderChanged.InvokeAsync(_seriesOrder);
+                }
+                return (seriesId, _seriesOrder);
+
+            case SeriesChoice.NewSeries:
+                if (string.IsNullOrWhiteSpace(_newSeriesTitle))
+                    return (null, null);
+
+                var createDto = new CreateEventSeriesDto
+                {
+                    Title = _newSeriesTitle,
+                    Description = _newSeriesDescription
+                };
+
+                var result = await EventSeriesService.CreateSeriesAsync(createDto);
+                if (result?.Success == true)
+                {
+                    var newId = result.Id;
+                    await EventSeriesIdChanged.InvokeAsync(newId);
+                    await SeriesOrderChanged.InvokeAsync(_seriesOrder);
+                    return (newId, _seriesOrder);
+                }
+                return (null, null);
+
+            default:
+                return (null, null);
+        }
+    }
+
+    public enum SeriesChoice
+    {
+        Standalone,
+        ExistingSeries,
+        NewSeries
+    }
+}

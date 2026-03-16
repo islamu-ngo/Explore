@@ -18,10 +18,29 @@ public class LanguageContext
     /// <summary>Display name of the current language (e.g., "English", "Français", "العربية").</summary>
     public string LanguageName { get; set; } = "English";
 
+    /// <summary>Emoji flag representing the language.</summary>
+    public string Flag { get; set; } = "🇺🇸";
+
     /// <summary>RTL language codes.</summary>
     private static readonly HashSet<string> RtlLanguages = new(StringComparer.OrdinalIgnoreCase)
     {
         "ar", "he", "fa", "ur"
+    };
+
+    /// <summary>Well-known language flags.</summary>
+    private static readonly Dictionary<string, string> LanguageFlags = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["en"] = "🇺🇸",
+        ["fr"] = "🇫🇷",
+        ["ar"] = "🇸🇦",
+        ["he"] = "🇮🇱",
+        ["fa"] = "🇮🇷",
+        ["ur"] = "🇵🇰",
+        ["tr"] = "🇹🇷",
+        ["id"] = "🇮🇩",
+        ["ms"] = "🇲🇾",
+        ["de"] = "🇩🇪",
+        ["es"] = "🇪🇸"
     };
 
     /// <summary>Well-known language display names.</summary>
@@ -48,7 +67,8 @@ public class LanguageContext
         {
             LanguageCode = code,
             IsRtl = RtlLanguages.Contains(code),
-            LanguageName = LanguageNames.GetValueOrDefault(code, code.ToUpperInvariant())
+            LanguageName = LanguageNames.GetValueOrDefault(code, code.ToUpperInvariant()),
+            Flag = LanguageFlags.GetValueOrDefault(code, "🌐")
         };
     }
 }

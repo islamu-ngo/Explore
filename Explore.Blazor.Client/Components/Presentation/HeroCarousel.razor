@@ -1,0 +1,117 @@
+@using MudBlazor
+@using Explore.Blazor.Client.Clients
+
+<div class="hero-carousel-container rounded-xl overflow-hidden mud-elevation-6 mb-8">
+    <div class="hero-carousel-layout d-flex flex-column flex-md-row">
+        <!-- Main Carousel Area -->
+        <div class="hero-carousel-main">
+            <MudCarousel TData="object" 
+                         @bind-SelectedIndex="_selectedIndex"
+                         AutoCycle="true" 
+                         AutoCycleTime="@(TimeSpan.FromSeconds(10))" 
+                         ShowArrows="true" 
+                         ShowBullets="false" 
+                         Style="height: 100%;"
+                         Class="h-100">
+                @foreach (var evt in Events)
+                {
+                    <MudCarouselItem Transition="Transition.Fade" Color="Color.Transparent">
+                        <FeaturedEventHero Event="evt" />
+                    </MudCarouselItem>
+                }
+            </MudCarousel>
+        </div>
+
+        <!-- Sidebar Navigation (The "Drawer") -->
+        <div class="hero-carousel-sidebar d-none d-md-block">
+            <MudText Typo="Typo.overline" Class="pa-4 font-weight-bold" Style="background: rgba(0,0,0,0.05); letter-spacing: 1px;">FEATURED PREVIEW</MudText>
+            <div class="hero-carousel-sidebar__list hide-scrollbar">
+                @foreach (var (evt, index) in Events.Select((e, i) => (e, i)))
+                {
+                    <div class="hero-carousel-sidebar__item pa-4 d-flex gap-3 cursor-pointer @(_selectedIndex == index ? "active" : "")"
+                         @onclick="() => _selectedIndex = index">
+                        <div class="hero-carousel-sidebar__thumb rounded-lg overflow-hidden">
+                            <MudImage Src="@(string.IsNullOrEmpty(evt.FeaturedImageUri) ? "image/landing_placeholder.png" : evt.FeaturedImageUri)" 
+                                      ObjectFit="ObjectFit.Cover"
+                                      Style="width: 100%; height: 100%;" />
+                        </div>
+                        <div class="hero-carousel-sidebar__info d-flex flex-column justify-center overflow-hidden">
+                            <MudText Typo="Typo.subtitle2" Class="font-weight-bold text-truncate">@evt.Title</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="text-truncate">@evt.ActorDisplayName</MudText>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hero-carousel-container {
+        height: 600px;
+        background: var(--mud-palette-surface);
+    }
+
+    .hero-carousel-layout {
+        height: 100%;
+    }
+
+    .hero-carousel-main {
+        flex: 1;
+        min-width: 0;
+        height: 100%;
+    }
+
+    .hero-carousel-sidebar {
+        width: 320px;
+        height: 100%;
+        border-left: 1px solid var(--mud-palette-divider);
+        display: flex;
+        flex-column: column;
+    }
+
+    .hero-carousel-sidebar__list {
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .hero-carousel-sidebar__item {
+        transition: background 0.3s ease;
+        border-left: 4px solid transparent;
+    }
+
+    .hero-carousel-sidebar__item:hover {
+        background: rgba(var(--mud-palette-primary-rgb), 0.05);
+    }
+
+    .hero-carousel-sidebar__item.active {
+        background: rgba(var(--mud-palette-primary-rgb), 0.1);
+        border-left-color: var(--mud-palette-primary);
+    }
+
+    .hero-carousel-sidebar__thumb {
+        width: 60px;
+        height: 60px;
+        flex-shrink: 0;
+    }
+
+    @@media (max-width: 960px) {
+        .hero-carousel-container {
+            height: 500px;
+        }
+    }
+
+    .hide-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+    .hide-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+</style>
+
+@code {
+    [Parameter] public ICollection<EventListDto> Events { get; set; } = new List<EventListDto>();
+    
+    private int _selectedIndex = 0;
+}

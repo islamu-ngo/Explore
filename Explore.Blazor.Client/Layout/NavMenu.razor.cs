@@ -292,5 +292,6 @@ public partial class NavMenu : IDisposable
     public void Dispose()
     {
         SidebarState.OnChange -= StateHasChanged;
+        GC.SuppressFinalize(this);
     }
 }

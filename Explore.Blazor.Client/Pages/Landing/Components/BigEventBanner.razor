@@ -1,0 +1,78 @@
+@using MudBlazor
+@using Explore.Blazor.Client.Clients
+
+<div class="big-event-banner rounded-xl overflow-hidden relative mud-elevation-4" style="@GetBannerStyle()">
+    <div class="big-event-banner__overlay"></div>
+    
+    <div class="big-event-banner__content pa-8 pa-md-16 d-flex flex-column justify-end h-100 relative">
+        <MudStack Spacing="2" Class="mb-4">
+            <div class="d-flex gap-2 mb-2">
+                @if (!string.IsNullOrEmpty(Event.EventTypeFullName))
+                {
+                    <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Filled">@Event.EventTypeFullName</MudChip>
+                }
+                @if (Event.Price == 0 || Event.Price == null)
+                {
+                    <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Filled">FREE</MudChip>
+                }
+            </div>
+            <MudText Typo="Typo.h3" Class="big-event-banner__title" Style="font-weight: 900; text-shadow: 0 2px 10px rgba(0,0,0,0.5);">@Event.Title</MudText>
+            <MudText Typo="Typo.h6" Class="big-event-banner__subtitle d-none d-md-block" Style="max-width: 600px; opacity: 0.9; text-shadow: 0 1px 5px rgba(0,0,0,0.5);">
+                @Event.Description
+            </MudText>
+        </MudStack>
+
+        <div class="d-flex gap-4 align-center mt-4">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" Class="rounded-pill px-8 py-3" Href="@($"/event/detail/{Event.Id}")">
+                View Details
+            </MudButton>
+            <div class="d-flex align-center gap-2 px-4 py-2 rounded-pill" style="background: rgba(0,0,0,0.3); backdrop-filter: blur(4px);">
+                <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" />
+                <MudText Typo="Typo.body2">@Event.ActorDisplayName</MudText>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .big-event-banner {
+        height: 500px;
+        background-size: cover;
+        background-position: center;
+        transition: transform 0.3s ease;
+    }
+
+    .big-event-banner__overlay {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(0deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0) 100%);
+    }
+
+    .big-event-banner__title {
+        color: white;
+        line-height: 1.1;
+    }
+
+    .big-event-banner__subtitle {
+        color: white;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .big-event-banner__content {
+        z-index: 1;
+        color: white;
+    }
+</style>
+
+@code {
+    [Parameter] public EventListDto Event { get; set; } = default!;
+
+    private string GetBannerStyle()
+    {
+        var img = !string.IsNullOrEmpty(Event.FeaturedImageUri) ? Event.FeaturedImageUri : "image/landing_placeholder.png";
+        return $"background-image: url('{img}');";
+    }
+}

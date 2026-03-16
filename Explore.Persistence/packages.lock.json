@@ -45,6 +45,18 @@
           "Newtonsoft.Json": "13.0.3"
         }
       },
+      "Microsoft.EntityFrameworkCore.Relational": {
+        "type": "Direct",
+        "requested": "[10.0.2, )",
+        "resolved": "10.0.2",
+        "contentHash": "1fUeyNmqDNfMogJ2ut7OKO57/WGjjkHMYeX51SpA3PwP7ftbx8g/Z3fbErD+1q14DILrqJfsszYsYhGssBRfDg==",
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore": "10.0.2",
+          "Microsoft.Extensions.Caching.Memory": "10.0.2",
+          "Microsoft.Extensions.Configuration.Abstractions": "10.0.2",
+          "Microsoft.Extensions.Logging": "10.0.2"
+        }
+      },
       "Microsoft.Extensions.Configuration.EnvironmentVariables": {
         "type": "Direct",
         "requested": "[10.0.2, )",
@@ -550,18 +562,6 @@
         "dependencies": {
           "MediatR": "[11.0.0, 12.0.0)",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "7.0.0"
-        }
-      },
-      "Microsoft.EntityFrameworkCore.Relational": {
-        "type": "CentralTransitive",
-        "requested": "[10.0.2, )",
-        "resolved": "10.0.2",
-        "contentHash": "1fUeyNmqDNfMogJ2ut7OKO57/WGjjkHMYeX51SpA3PwP7ftbx8g/Z3fbErD+1q14DILrqJfsszYsYhGssBRfDg==",
-        "dependencies": {
-          "Microsoft.EntityFrameworkCore": "10.0.2",
-          "Microsoft.Extensions.Caching.Memory": "10.0.2",
-          "Microsoft.Extensions.Configuration.Abstractions": "10.0.2",
-          "Microsoft.Extensions.Logging": "10.0.2"
         }
       },
       "Microsoft.Extensions.Caching.Hybrid": {

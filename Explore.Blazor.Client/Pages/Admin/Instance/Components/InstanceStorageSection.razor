@@ -76,6 +76,17 @@
                 </MudAlert>
             }
         </MudStack>
+
+        @if (!IsSingleTenant)
+        {
+            <MudDivider Class="my-3" />
+            <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Tenant Delegation</MudText>
+            <MudSwitch T="bool" Value="LockForTenants"
+                       ValueChanged="LockForTenantsChanged"
+                       Color="Color.Warning">
+                Lock storage settings — tenants cannot configure their own object storage
+            </MudSwitch>
+        }
     </MudStack>
 </div>
 
@@ -85,6 +96,15 @@
 
     [Parameter]
     public IInstanceOnboardingService? OnboardingService { get; set; }
+
+    [Parameter]
+    public bool IsSingleTenant { get; set; }
+
+    [Parameter]
+    public bool LockForTenants { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> LockForTenantsChanged { get; set; }
 
     private bool _isTesting;
     private StorageConnectionTestResult? _testResult;

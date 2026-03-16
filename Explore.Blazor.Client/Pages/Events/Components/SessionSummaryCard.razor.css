@@ -1,0 +1,123 @@
+/* ===== Block: session-card (horizontal card with image) ===== */
+
+.session-card-wrapper {
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    cursor: pointer;
+}
+
+.session-card-wrapper:hover {
+    border-color: var(--mud-palette-primary) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.session-card-wrapper--error {
+    border-color: var(--mud-palette-error) !important;
+}
+
+.session-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* Image thumbnail */
+.session-card__image {
+    position: relative;
+    flex-shrink: 0;
+    width: 120px;
+    height: 80px;
+}
+
+.session-card__img {
+    width: 120px;
+    height: 80px;
+    object-fit: cover;
+}
+
+.session-card__img-placeholder {
+    width: 120px;
+    height: 80px;
+    background: var(--mud-palette-background-gray);
+}
+
+.session-card__inherited-badge {
+    position: absolute;
+    bottom: 4px;
+    left: 4px;
+    font-size: 0.65rem !important;
+    height: 18px !important;
+    opacity: 0.85;
+}
+
+/* Info section */
+.session-card__info {
+    flex: 1;
+    min-width: 0;
+}
+
+.session-card__title {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.session-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.25rem;
+}
+
+/* Action buttons */
+.session-card__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-shrink: 0;
+}
+
+/* ===== Responsive: Tablet ===== */
+@media (max-width: 960px) {
+    .session-card__image {
+        width: 96px;
+        height: 64px;
+    }
+
+    .session-card__img,
+    .session-card__img-placeholder {
+        width: 96px;
+        height: 64px;
+    }
+}
+
+/* ===== Responsive: Mobile ===== */
+@media (max-width: 600px) {
+    .session-card {
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+
+    .session-card__image {
+        width: 100%;
+        height: 140px;
+    }
+
+    .session-card__img,
+    .session-card__img-placeholder {
+        width: 100%;
+        height: 140px;
+    }
+
+    .session-card__info {
+        width: 100%;
+    }
+
+    .session-card__actions {
+        width: 100%;
+        justify-content: flex-end;
+        padding-top: 0.25rem;
+        border-top: 1px solid var(--mud-palette-lines-default);
+    }
+}

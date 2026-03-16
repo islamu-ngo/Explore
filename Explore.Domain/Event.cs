@@ -65,6 +65,17 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
     public DateOnly? LastSessionDate { get; set; }
     public string? Timezone { get; set; }
 
+    // Temporal fields (UTC-based, computed from sessions)
+    public DateTimeOffset? FirstSessionStartUtc { get; set; }
+    public DateTimeOffset? LastSessionStartUtc { get; set; }
+    public string? EventTimeZoneId { get; set; }
+
+    // Series
+    [ForeignKey("EventSeries")]
+    public Guid? EventSeriesId { get; set; }
+    public EventSeries? EventSeries { get; set; }
+    public int? SeriesOrder { get; set; }
+
     [ForeignKey("EventFormat")]
     public int EventFormatId { get; set; }
     public required EventFormat EventFormat { get; set; }

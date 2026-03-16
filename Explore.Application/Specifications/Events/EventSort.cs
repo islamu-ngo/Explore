@@ -32,4 +32,10 @@ public sealed class EventSort : ISortSpecification<Event>
     /// Sort by creation date.
     /// </summary>
     public static EventSort CreatedAt => new(e => e.CreatedAt);
+
+    /// <summary>
+    /// Temporal sort sentinel — not-past events first, then past.
+    /// Handled specially in EventQuerySpecification; KeySelector is not used.
+    /// </summary>
+    public static readonly EventSort Temporal = new(e => e.FirstSessionDate!);
 }

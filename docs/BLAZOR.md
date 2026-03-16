@@ -41,6 +41,26 @@ YARP transform behavior is security-sensitive:
 2. `X-Tenant-Slug` is forwarded when route context is available; the API resolves tenant identity authoritatively.
 3. incoming `X-Setup-Secret` is stripped first, then replaced using trusted sources (header, cookie, server session).
 
+## BFF Runtime Hardening
+
+1. Split BFF endpoint families live in dedicated files:
+   - `Explore.Blazor/Extensions/BffAuthEndpoints.cs`
+   - `Explore.Blazor/Extensions/BffPreferenceEndpoints.cs`
+   - `Explore.Blazor/Extensions/BffSetupSecretEndpoints.cs`
+   - `Explore.Blazor/Extensions/BffStorageEndpoints.cs`
+   - `Explore.Blazor/Extensions/BffEndpointExtensions.cs` is only the facade/orchestrator.
+2. Outbound server-side API clients use a three-handler chain in `Explore.Blazor/Extensions/HttpClientExtensions.cs`:
+   - `AccessTokenForwardingHandler` for bearer token forwarding only
+   - `TenantHeaderForwardingHandler` for tenant + forwarded-host headers
+   - `SetupSecretForwardingHandler` for setup-secret propagation on onboarding endpoints only
+3. Outbound server-side handlers set `UseCookies = false` to avoid pooled `CookieContainer` leakage between BFF HTTP clients.
+4. Server-side resilience profiles are scoped by usage class:
+   - interactive: short timeout, safe-method retries only
+   - admin: medium timeout, safe-method retries only
+   - background/upload: longer timeout, safe-method retries only
+5. The BFF setup-secret surface has its own named rate-limit policy (`BffSetupSecret`) keyed by authenticated user when available, then antiforgery/session cookie, and IP only as the last fallback.
+6. `traceparent` propagation relies on .NET/OpenTelemetry `Activity` flow for `HttpClient`; no custom correlation header should be introduced.
+
 ## Render Strategy
 1. Interactive rendering is configured through server + WASM render modes.
 2. Route-level rendering policy decisions are governed by runtime policy services (see `docs/RENDER_POLICIES.md`).
@@ -118,6 +138,19 @@ Privacy-first defaults:
 1. Use standard authorize patterns at page/route level.
 2. UI authorization is for UX gating; API remains the hard security boundary.
 3. Do not store access tokens in browser storage as an application design pattern.
+4. For the current BFF/onboarding model, setup-secret persistence remains server-controlled and the browser only receives the secure cookie/session view of that state.
+
+## Setup Secret Cookie And Onboarding Notes
+1. The setup-secret flow is a BFF-owned trust boundary, not a client storage workflow.
+2. Setup-secret persistence currently uses an `HttpOnly` cookie plus server-side `SetupSecretSessionService` fallback for authenticated bootstrap flows.
+3. `SameSite=Lax` is intentional for the setup-secret cookie because onboarding may bridge through top-level auth/login redirects before the first administrator completes setup; `Strict` would be riskier for that flow.
+4. Setup-secret validation requests are rate limited at the BFF edge and again at the API edge; this is deliberate defense in depth.
+5. The antiforgery cookie (`XSRF-TOKEN`) is also used as the anonymous-session partition key for the BFF setup-secret limiter when no authenticated user identity exists.
+
+## Token Lifecycle Constraints
+1. `CircuitAccessTokenService` captures access tokens from the authenticated BFF request/circuit and can also resolve persisted tokens for the current user.
+2. `AccessTokenForwardingHandler` must remain token-only; tenant and setup-secret forwarding belong in separate handlers.
+3. Any future token lifecycle work must explicitly consider render-mode transitions and circuit reconnection behavior before changing handler responsibilities.
 
 ## Styling Rules
 1. Prefer CSS isolation (`.razor.css`) per component.

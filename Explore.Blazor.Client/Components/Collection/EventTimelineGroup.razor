@@ -1,0 +1,38 @@
+@using MudBlazor
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Components.Presentation
+
+<MudTimelineItem Color="Color.Primary" Size="Size.Small">
+    <ItemDot>
+        <div class="date-bubble pa-2 rounded-lg mud-elevation-2 d-flex flex-column align-center justify-center" 
+             style="background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider); width: 70px; height: 70px; margin-left: -35px;">
+            <MudText Typo="Typo.h6" Class="font-weight-black line-height-1">@Date.ToString("dd")</MudText>
+            <MudText Typo="Typo.caption" Class="text-uppercase font-weight-medium">@Date.ToString("MMM")</MudText>
+        </div>
+    </ItemDot>
+    <ItemContent>
+        <div class="timeline-content-wrapper pl-4">
+            <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="font-weight-bold mb-4 ml-2">@Date.ToString("dddd, MMMM dd, yyyy").ToUpper()</MudText>
+            <MudStack Spacing="4">
+                @foreach (var evt in Events)
+                {
+                    <EventCard Event="evt" />
+                }
+            </MudStack>
+        </div>
+    </ItemContent>
+</MudTimelineItem>
+
+<style>
+    .line-height-1 { line-height: 1; }
+    
+    /* Align dot template properly in MudTimeline */
+    .mud-timeline-item-dot-inner {
+        overflow: visible !important;
+    }
+</style>
+
+@code {
+    [Parameter] public DateTime Date { get; set; }
+    [Parameter] public IEnumerable<EventListDto> Events { get; set; } = Enumerable.Empty<EventListDto>();
+}

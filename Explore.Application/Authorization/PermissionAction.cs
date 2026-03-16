@@ -13,5 +13,7 @@ public enum PermissionAction
     Create,
     Update,
     Delete,
-    ManageMembers
+    ManageMembers,
+    ViewSharedContacts,
+    ExportSharedContacts
 }

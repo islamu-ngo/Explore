@@ -13,36 +13,29 @@
     <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
         <!-- Header -->
         <div class="settings-header mb-8">
-            <MudText Typo="Typo.h4" Style="font-weight: 800;">Tenant Administration</MudText>
-            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">Manage tenant policies, domains, branding, organization approvals, and lookup tables</MudText>
-            @if (_isInstanceAdmin)
+            <MudText Typo="Typo.h4" Style="font-weight: 800;">
+                @(_isSingleTenantMode ? "Administration" : "Tenant Administration")
+            </MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">
+                @(_isSingleTenantMode
+                    ? "Manage policies, domains, branding, organization approvals, and lookup tables"
+                    : "Manage tenant policies, domains, branding, organization approvals, and lookup tables")
+            </MudText>
+            @if (_isInstanceAdmin && !_isSingleTenantMode)
             {
                 <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mt-4">
                     <MudChip T="string"
-                             Color="@(_isSingleTenantMode ? Color.Warning : Color.Info)"
+                             Color="Color.Info"
                              Variant="Variant.Outlined"
                              Icon="@Icons.Material.Filled.Apartment">
-                        @(_isSingleTenantMode ? "Single Tenant" : "Multi-Tenant")
+                        Multi-Tenant
                     </MudChip>
-
-                    @if (_isSingleTenantMode)
-                    {
-                        <MudButton Variant="Variant.Text"
-                                   Color="Color.Warning"
-                                   StartIcon="@Icons.Material.Filled.RocketLaunch"
-                                   OnClick="@(() => SelectSection("advanced"))">
-                            Enable SaaS Mode
-                        </MudButton>
-                    }
-                    else
-                    {
-                        <MudButton Variant="Variant.Text"
-                                   Color="Color.Primary"
-                                   StartIcon="@Icons.Material.Filled.Dns"
-                                   Href="/admin/instance/settings">
-                            Manage Platform
-                        </MudButton>
-                    }
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Dns"
+                               Href="/admin/instance/settings">
+                        Manage Platform
+                    </MudButton>
                 </MudStack>
             }
         </div>
@@ -97,6 +90,27 @@
                                          Text="Lookup Tables"
                                          Class="@GetNavItemClass("lookups")"
                                          OnClick="@(() => SelectSection("lookups"))" />
+                            @if (_model.CanOverrideSmtp)
+                            {
+                                <MudListItem Icon="@Icons.Material.Filled.Email"
+                                             Text="Email (SMTP)"
+                                             Class="@GetNavItemClass("smtp")"
+                                             OnClick="@(() => SelectSection("smtp"))" />
+                            }
+                            @if (_model.CanOverrideStorage)
+                            {
+                                <MudListItem Icon="@Icons.Material.Filled.Cloud"
+                                             Text="Object Storage"
+                                             Class="@GetNavItemClass("storage")"
+                                             OnClick="@(() => SelectSection("storage"))" />
+                            }
+                            @if (_model.CanOverrideAnalytics)
+                            {
+                                <MudListItem Icon="@Icons.Material.Filled.Analytics"
+                                             Text="Analytics & Privacy"
+                                             Class="@GetNavItemClass("analytics")"
+                                             OnClick="@(() => SelectSection("analytics"))" />
+                            }
                             @if (_isSingleTenantMode && _isInstanceAdmin)
                             {
                                 <MudListItem Icon="@Icons.Material.Filled.Engineering"
@@ -134,6 +148,51 @@
                         else if (_currentSection == "lookups")
                         {
                             <TenantLookupTablesSection />
+                        }
+                        else if (_currentSection == "smtp" && _model.CanOverrideSmtp)
+                        {
+                            <div class="settings-section">
+                                <div class="settings-section-header">
+                                    <MudText Typo="Typo.h5" Style="font-weight: 700;">Email (SMTP) Configuration</MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+                                        Configure SMTP settings for this tenant. When overridden, emails sent on behalf of this tenant will use these credentials instead of the platform defaults.
+                                    </MudText>
+                                </div>
+                                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-4">
+                                    Tenant-specific SMTP configuration is enabled by your platform administrator. Per-tenant override controls will be available in a future update.
+                                    Currently, emails are sent using the platform-level SMTP settings.
+                                </MudAlert>
+                            </div>
+                        }
+                        else if (_currentSection == "storage" && _model.CanOverrideStorage)
+                        {
+                            <div class="settings-section">
+                                <div class="settings-section-header">
+                                    <MudText Typo="Typo.h5" Style="font-weight: 700;">Object Storage</MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+                                        Configure S3-compatible object storage for this tenant. When overridden, file uploads for this tenant will use a dedicated storage bucket.
+                                    </MudText>
+                                </div>
+                                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-4">
+                                    Tenant-specific storage configuration is enabled by your platform administrator. Per-tenant override controls will be available in a future update.
+                                    Currently, files are stored using the platform-level storage settings.
+                                </MudAlert>
+                            </div>
+                        }
+                        else if (_currentSection == "analytics" && _model.CanOverrideAnalytics)
+                        {
+                            <div class="settings-section">
+                                <div class="settings-section-header">
+                                    <MudText Typo="Typo.h5" Style="font-weight: 700;">Analytics & Privacy</MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+                                        Configure analytics and privacy settings for this tenant. When overridden, tenant-specific analytics preferences take effect.
+                                    </MudText>
+                                </div>
+                                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-4">
+                                    Tenant-specific analytics configuration is enabled by your platform administrator. Per-tenant override controls will be available in a future update.
+                                    Currently, analytics settings are inherited from the platform configuration.
+                                </MudAlert>
+                            </div>
                         }
                         else if (_currentSection == "advanced" && _isSingleTenantMode && _isInstanceAdmin)
                         {

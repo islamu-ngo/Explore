@@ -37,6 +37,7 @@ public static class ApplicationServicesRegistration
         // Authorization: dynamic permission infrastructure
         services.AddScoped<ICapabilityCeilingService, CapabilityCeilingService>();
         services.AddScoped<IPermissionRegistryService, PermissionRegistryService>();
+        services.AddScoped<IContactShareConsentService, ContactShareConsentService>();
 
         return services;
     }

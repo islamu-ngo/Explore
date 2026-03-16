@@ -48,7 +48,8 @@ public static class ServiceRegistrationExtensions
         services.AddScoped<ICookieConsentInterop, ServerCookieConsentInterop>();
         services.AddScoped<Explore.Blazor.Client.Services.CookieConsentStateService>();
         services.AddScoped<ICircuitAccessTokenService, CircuitAccessTokenService>();
-        services.AddSingleton<ISetupSecretSessionService, SetupSecretSessionService>();
+        services.AddSingleton<SetupSecretSessionService>();
+        services.AddSingleton<ISetupSecretSessionService>(sp => sp.GetRequiredService<SetupSecretSessionService>());
         services.AddMemoryCache();
         RegisterResolverConfigDataServices(services, configuration);
         services.AddScoped<IResolverConfigService, ResolverConfigService>();

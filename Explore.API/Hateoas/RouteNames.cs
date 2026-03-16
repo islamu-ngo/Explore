@@ -253,4 +253,14 @@ public static class RouteNames
     public const string UpdateIndexedDid = "UpdateIndexedDid";
 
     #endregion
+
+    #region Contact Share Consent Routes
+
+    public const string GetUserContactShareConsents = "GetUserContactShareConsents";
+    public const string CheckConsentForOrganizer = "CheckConsentForOrganizer";
+    public const string WithdrawContactShareConsent = "WithdrawContactShareConsent";
+    public const string GetOrganizationSharedContacts = "GetOrganizationSharedContacts";
+    public const string ExportOrganizationSharedContacts = "ExportOrganizationSharedContacts";
+
+    #endregion
 }

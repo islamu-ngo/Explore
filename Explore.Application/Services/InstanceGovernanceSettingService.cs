@@ -84,6 +84,9 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         var brandingCustomCssUrl = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingCustomCssUrl);
         var authorizationProvider = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AuthorizationProvider);
         var decentralizationEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.FederationDecentralizationEnabled);
+        var lockTenantSmtp = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.GovernanceLockTenantSmtp);
+        var lockTenantStorage = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.GovernanceLockTenantStorage);
+        var lockTenantAnalytics = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.GovernanceLockTenantAnalytics);
         var resolvedDeploymentMode = DeserializeString(deploymentMode?.Value, "SingleTenant");
         var isMultiTenant = resolvedDeploymentMode.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
 
@@ -137,7 +140,10 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             LockTenantEventCardClickBehavior = eventCardClickOpensDetailPage?.IsLocked == true,
             AuthorizationProvider = NormalizeAuthorizationProvider(DeserializeString(authorizationProvider?.Value, "local")),
             DecentralizationEnabled = DeserializeBoolean(decentralizationEnabled?.Value, false),
-            LockDecentralizationEnabled = decentralizationEnabled?.IsLocked == true
+            LockDecentralizationEnabled = decentralizationEnabled?.IsLocked == true,
+            LockTenantSmtp = DeserializeBoolean(lockTenantSmtp?.Value, true),
+            LockTenantStorage = DeserializeBoolean(lockTenantStorage?.Value, true),
+            LockTenantAnalytics = DeserializeBoolean(lockTenantAnalytics?.Value, true)
         };
 
         NormalizeRenderPolicySettings(settings);
@@ -610,6 +616,33 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             "Federation",
             1,
             "Whether ATProto decentralization is enabled — event records are published to users' Personal Data Servers (PDS)");
+
+        await UpsertSystemSettingAsync(
+            GovernanceSettingKeys.GovernanceLockTenantSmtp,
+            JsonSerializer.Serialize(settings.LockTenantSmtp),
+            SettingValueType.Boolean,
+            false,
+            "TenantDelegation",
+            1,
+            "Whether tenant administrators can configure their own SMTP settings");
+
+        await UpsertSystemSettingAsync(
+            GovernanceSettingKeys.GovernanceLockTenantStorage,
+            JsonSerializer.Serialize(settings.LockTenantStorage),
+            SettingValueType.Boolean,
+            false,
+            "TenantDelegation",
+            2,
+            "Whether tenant administrators can configure their own object storage settings");
+
+        await UpsertSystemSettingAsync(
+            GovernanceSettingKeys.GovernanceLockTenantAnalytics,
+            JsonSerializer.Serialize(settings.LockTenantAnalytics),
+            SettingValueType.Boolean,
+            false,
+            "TenantDelegation",
+            3,
+            "Whether tenant administrators can configure their own analytics settings");
 
         if (defaultTenantId.HasValue)
         {

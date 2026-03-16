@@ -13,7 +13,7 @@
 
 /* Left branding panel with diagonal edge */
 .setup-left-panel {
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
     bottom: 0;
@@ -70,6 +70,7 @@
 .setup-right-panel {
     margin-left: auto;
     width: 50%;
+    min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;

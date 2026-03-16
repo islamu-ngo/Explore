@@ -1,5 +1,5 @@
 // ABOUTME: Handles first-run instance onboarding completion, role assignment, and governance persistence.
-// ABOUTME: Establishes the first instance admin and default tenant admin mapping for a clean database.
+// ABOUTME: Auto-creates the first user when not yet synced, then assigns instance admin and default tenant admin roles.
 
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
@@ -22,11 +22,14 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
     private readonly ITenantMemberRepository _tenantMemberRepository;
     private readonly IRoleRepository _roleRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IActorRepository _actorRepository;
+    private readonly IUserExternalLoginRepository _userExternalLoginRepository;
     private readonly ITenantRepository _tenantRepository;
     private readonly ITenantSettingsRepository _tenantSettingsRepository;
     private readonly IInstanceGovernanceSettingService _governanceSettingService;
     private readonly ISetupSecretProvider _setupSecretProvider;
     private readonly IAdminCacheInvalidator _adminCacheInvalidator;
+    private readonly IDeploymentModeCacheInvalidator? _deploymentModeCacheInvalidator;
 
     public CompleteInstanceOnboardingCommandHandler(
         IInstanceBootstrapStateRepository instanceBootstrapStateRepository,
@@ -34,22 +37,28 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         ITenantMemberRepository tenantMemberRepository,
         IRoleRepository roleRepository,
         IUserRepository userRepository,
+        IActorRepository actorRepository,
+        IUserExternalLoginRepository userExternalLoginRepository,
         ITenantRepository tenantRepository,
         ITenantSettingsRepository tenantSettingsRepository,
         IInstanceGovernanceSettingService governanceSettingService,
         ISetupSecretProvider setupSecretProvider,
-        IAdminCacheInvalidator adminCacheInvalidator)
+        IAdminCacheInvalidator adminCacheInvalidator,
+        IDeploymentModeCacheInvalidator? deploymentModeCacheInvalidator = null)
     {
         _instanceBootstrapStateRepository = instanceBootstrapStateRepository;
         _platformUserRoleRepository = platformUserRoleRepository;
         _tenantMemberRepository = tenantMemberRepository;
         _roleRepository = roleRepository;
         _userRepository = userRepository;
+        _actorRepository = actorRepository;
+        _userExternalLoginRepository = userExternalLoginRepository;
         _tenantRepository = tenantRepository;
         _tenantSettingsRepository = tenantSettingsRepository;
         _governanceSettingService = governanceSettingService;
         _setupSecretProvider = setupSecretProvider;
         _adminCacheInvalidator = adminCacheInvalidator;
+        _deploymentModeCacheInvalidator = deploymentModeCacheInvalidator;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(CompleteInstanceOnboardingCommand request, CancellationToken cancellationToken)
@@ -61,15 +70,6 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         {
             response.Success = false;
             response.Message = "Instance onboarding has already been completed.";
-            return response;
-        }
-
-        var user = await _userRepository.GetById(request.UserId);
-        if (user == null)
-        {
-            response.Success = false;
-            response.Message = "Current user is not synchronized in the local database.";
-            response.Errors = new List<string> { "Call /api/User/sync before completing onboarding." };
             return response;
         }
 
@@ -97,11 +97,28 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         var isSingleTenant = normalizedDeploymentMode.Equals("SingleTenant", StringComparison.OrdinalIgnoreCase);
         Guid? defaultTenantId = null;
 
+        // Create the default tenant BEFORE user sync so the Actor can reference a valid TenantId.
         if (isSingleTenant)
         {
             var defaultTenant = await EnsureDefaultTenantAsync();
             await EnsureDefaultTenantSettingsAsync(defaultTenant.Id);
             defaultTenantId = defaultTenant.Id;
+        }
+
+        // Auto-create the user if not yet synced. During onboarding the normal /api/User/sync
+        // endpoint cannot work because tenant resolution middleware blocks it (no tenant exists yet).
+        var user = await _userRepository.GetById(request.UserId);
+        if (user == null)
+        {
+            if (string.IsNullOrWhiteSpace(request.Email))
+            {
+                response.Success = false;
+                response.Message = "User identity data is required to complete onboarding.";
+                response.Errors = new List<string> { "No user found and no email claim available to create one." };
+                return response;
+            }
+
+            user = await CreateOnboardingUserAsync(request, defaultTenantId);
         }
 
         await _governanceSettingService.ApplySettingsAsync(defaultTenantId, request.Settings, request.UserId);
@@ -137,6 +154,10 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
             await _instanceBootstrapStateRepository.Update(bootstrap);
         }
 
+        // Invalidate the middleware's cached deployment mode so tenant resolution
+        // picks up the newly saved SingleTenant/MultiTenant mode immediately.
+        _deploymentModeCacheInvalidator?.Invalidate();
+
         // Lock the setup secret provider to prevent further setup mode access.
         // Once locked, all setup-gated endpoints return 410 Gone.
         _setupSecretProvider.Lock();
@@ -145,6 +166,116 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         response.Message = "Instance onboarding completed successfully.";
         response.Id = bootstrap.Id;
         return response;
+    }
+
+    /// <summary>
+    /// Creates the User, Actor, and UserExternalLogin records for the first onboarding user.
+    /// This bypasses the normal SyncUserCommand flow which requires tenant resolution middleware.
+    /// </summary>
+    private async Task<User> CreateOnboardingUserAsync(CompleteInstanceOnboardingCommand request, Guid? tenantId)
+    {
+        var email = request.Email!.Trim().ToLowerInvariant();
+        var firstName = string.IsNullOrWhiteSpace(request.FirstName) ? "User" : request.FirstName.Trim();
+        var lastName = string.IsNullOrWhiteSpace(request.LastName) ? string.Empty : request.LastName.Trim();
+        var provider = string.IsNullOrWhiteSpace(request.AuthProvider)
+            ? AuthSchemeNames.Keycloak.ToLowerInvariant()
+            : request.AuthProvider.Trim().ToLowerInvariant();
+        var providerUserId = string.IsNullOrWhiteSpace(request.AuthProviderId)
+            ? request.UserId.ToString()
+            : request.AuthProviderId.Trim();
+
+        var user = new User
+        {
+            Id = request.UserId,
+            Pii = new UserPii
+            {
+                Email = email,
+                FirstName = firstName,
+                LastName = lastName
+            },
+            ActorId = null,
+            AuthProvider = provider,
+            AuthProviderId = providerUserId,
+            EmailVerified = request.EmailVerified ?? (provider is "keycloak" or "google"),
+            DefaultActorId = null
+        };
+
+        user = await _userRepository.Create(user);
+
+        // Actor requires a TenantId. Use the default tenant if available (SingleTenant mode),
+        // otherwise use PlatformDefaults.DefaultTenantId as a placeholder for MultiTenant mode.
+        var actorTenantId = tenantId ?? PlatformDefaults.DefaultTenantId;
+        if (!tenantId.HasValue)
+        {
+            await EnsureDefaultTenantAsync();
+        }
+
+        var displayName = $"{firstName} {lastName}".Trim();
+        var handle = GenerateHandle(request.Username, email, providerUserId);
+
+        var actor = new Actor
+        {
+            ActorTypeId = (int)ActorTypeEnum.User,
+            ActorType = null!,
+            TenantId = actorTenantId,
+            Tenant = null!,
+            Pii = new ActorPii
+            {
+                DisplayName = displayName,
+                Handle = handle,
+                Did = provider == "atproto" ? providerUserId : null
+            },
+            Description = null,
+            UserId = user.Id,
+            OrganizationId = null,
+            DidCustodyTypeId = provider == "atproto"
+                ? (int)DidCustodyTypeEnum.SelfCustody
+                : (int)DidCustodyTypeEnum.Custodial
+        };
+
+        actor = await _actorRepository.Create(actor);
+        user.ActorId = actor.Id;
+        user.DefaultActorId = actor.Id;
+        await _userRepository.Update(user);
+
+        // Create the external login link
+        var externalLogin = new UserExternalLogin
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            User = user,
+            TenantId = actorTenantId,
+            Tenant = null!,
+            Provider = provider,
+            ProviderKey = providerUserId,
+            ProviderDisplayName = provider switch
+            {
+                "keycloak" => "Keycloak",
+                "google" => "Google",
+                "atproto" => "AT Protocol",
+                _ => provider
+            }
+        };
+
+        await _userExternalLoginRepository.Create(externalLogin);
+
+        return user;
+    }
+
+    private static string GenerateHandle(string? username, string email, string providerUserId)
+    {
+        if (!string.IsNullOrWhiteSpace(username))
+        {
+            return username.ToLowerInvariant().Replace(" ", "-");
+        }
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return providerUserId.Replace(":", "-").Replace(".", "-").ToLowerInvariant();
+        }
+
+        var emailPrefix = email.Split('@')[0];
+        return emailPrefix.ToLowerInvariant().Replace(".", "-").Replace(" ", "-");
     }
 
     private async Task<Tenant> EnsureDefaultTenantAsync()

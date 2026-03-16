@@ -42,7 +42,7 @@
             @* ── Keycloak ── *@
             <MudPaper Outlined="true" Class="pa-4 mb-4">
                 <MudStack Spacing="2">
-                    <MudStack Direction="Direction.Row" AlignItems="AlignItems.Center" Spacing="1">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
                         <MudSwitch T="bool"
                                    Value="_model.KeycloakEnabled"
                                    ValueChanged="OnKeycloakToggled"
@@ -98,7 +98,7 @@
             @* ── ATProto Login ── *@
             <MudPaper Outlined="true" Class="pa-4 mb-4">
                 <MudStack Spacing="2">
-                    <MudStack Direction="Direction.Row" AlignItems="AlignItems.Center" Spacing="1">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
                         <MudSwitch T="bool" @bind-Value="_model.AtprotoLoginEnabled" Color="Color.Primary">
                             AT Protocol Login
                         </MudSwitch>
@@ -131,7 +131,7 @@
             @* ── Google SSO ── *@
             <MudPaper Outlined="true" Class="pa-4 mb-4">
                 <MudStack Spacing="2">
-                    <MudStack Direction="Direction.Row" AlignItems="AlignItems.Center" Spacing="1">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
                         <MudSwitch T="bool" @bind-Value="_model.GoogleSsoEnabled" Color="Color.Primary">
                             Google SSO
                         </MudSwitch>
@@ -165,7 +165,7 @@
             }
 
             @* ── Actions ── *@
-            <MudStack Direction="Direction.Row" Spacing="2" Class="mt-2">
+            <MudStack Row="true" Spacing="2" Class="mt-2">
                 <MudButton Variant="Variant.Filled"
                            Color="Color.Primary"
                            Disabled="@(!CanSave)"

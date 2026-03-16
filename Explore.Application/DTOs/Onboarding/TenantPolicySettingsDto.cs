@@ -47,4 +47,9 @@ public class TenantPolicySettingsDto
     public bool CanOverridePublicSeoRenderPolicy { get; set; }
     public bool CanOverrideOperationalRenderPolicy { get; set; }
     public bool CanOverrideAdminRenderPolicy { get; set; }
+
+    // Category-level override flags (inverse of instance lock)
+    public bool CanOverrideSmtp { get; set; }
+    public bool CanOverrideStorage { get; set; }
+    public bool CanOverrideAnalytics { get; set; }
 }

@@ -119,6 +119,18 @@
     flex-shrink: 0;
 }
 
+/* Modifier: main-layout-root--hide-chrome
+   When chrome is hidden (setup/onboarding), remove all content gutters so pages
+   can implement their own full-bleed layouts (like split screens). */
+.main-layout-root--hide-chrome .main-layout__content-wrapper {
+    padding-inline: 0 !important;
+    padding-block-end: 0 !important;
+}
+
+.main-layout-root--hide-chrome ::deep .mud-main-content {
+    min-height: 100vh;
+}
+
 /* ==========================================================================
    Responsive Adjustments
    ========================================================================== */

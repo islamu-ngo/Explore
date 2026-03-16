@@ -54,15 +54,16 @@
             new RouteConfig { Path = "/event/detail/:eventId", Component = typeof(EventDetail), Transition = RouteTransition.Fade },
             new RouteConfig { Path = "/welcome", Component = typeof(LandingPageForNonUsers), Transition = RouteTransition.Fade },
             new RouteConfig { Path = "/home", Component = typeof(Home), Transition = RouteTransition.Fade },
-            new RouteConfig { Path = "/startup", Component = typeof(StartupGate), Transition = RouteTransition.None, EnableCache = false },
-            new RouteConfig { Path = "/setup", Component = typeof(Setup), Transition = RouteTransition.None, EnableCache = false },
-            new RouteConfig { Path = "/onboarding/auth-provider", Component = typeof(AuthProviderConfiguration), Transition = RouteTransition.None, EnableCache = false },
+            new RouteConfig { Path = "/startup", Component = typeof(StartupGate), Layout = typeof(SetupLayout), Transition = RouteTransition.None, EnableCache = false },
+            new RouteConfig { Path = "/setup", Component = typeof(Setup), Layout = typeof(SetupLayout), Transition = RouteTransition.None, EnableCache = false },
+            new RouteConfig { Path = "/onboarding/auth-provider", Component = typeof(AuthProviderConfiguration), Layout = typeof(SetupLayout), Transition = RouteTransition.None, EnableCache = false },
             new RouteConfig { Path = "/login", Component = typeof(LoginRedirect), Transition = RouteTransition.None, EnableCache = false },
             new RouteConfig { Path = "/logout", Component = typeof(LogoutRedirect), Transition = RouteTransition.None, EnableCache = false },
             new RouteConfig
             {
                 Path = "/onboarding/instance",
                 Component = typeof(InstanceOnboarding),
+                Layout = typeof(SetupLayout),
                 Transition = RouteTransition.Fade,
                 Guards = RequireAuthenticated()
             },
@@ -70,6 +71,7 @@
             {
                 Path = "/onboarding/tenant",
                 Component = typeof(TenantOnboarding),
+                Layout = typeof(SetupLayout),
                 Transition = RouteTransition.Fade,
                 Guards = RequireAuthenticated()
             },

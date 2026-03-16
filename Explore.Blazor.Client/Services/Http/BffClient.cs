@@ -1,23 +1,19 @@
 using System.Net.Http;
 using System.Net.Http.Json;
-using Microsoft.JSInterop;
 
 namespace Explore.Blazor.Client.Services.Http;
 
 /// <summary>
-/// BFF HTTP facade that adds XSRF tokens to mutating requests.
-/// All API calls from WASM route through the BFF reverse proxy (YARP).
+/// BFF HTTP facade for browser-side same-origin calls that rely on the shared WASM handler pipeline.
+/// BrowserCredentialsMessageHandler adds credentials and antiforgery headers for mutating requests.
 /// </summary>
 public sealed class BffClient
 {
     private readonly HttpClient _http;
-    private readonly IJSRuntime _js;
-    private IJSObjectReference? _mod;
 
-    public BffClient(HttpClient http, IJSRuntime js)
+    public BffClient(HttpClient http)
     {
         _http = http;
-        _js = js;
     }
 
     // ── GET ──────────────────────────────────────────────────────────────
@@ -29,6 +25,9 @@ public sealed class BffClient
 
     public Task<HttpResponseMessage> PostAsync<T>(string path, T body, CancellationToken ct = default) =>
         SendMutatingAsync(HttpMethod.Post, path, JsonContent.Create(body), ct);
+
+    public Task<HttpResponseMessage> PostAsync(string path, CancellationToken ct = default) =>
+        SendMutatingAsync(HttpMethod.Post, path, content: null, ct);
 
     public Task<HttpResponseMessage> PutAsync<T>(string path, T body, CancellationToken ct = default) =>
         SendMutatingAsync(HttpMethod.Put, path, JsonContent.Create(body), ct);
@@ -66,15 +65,7 @@ public sealed class BffClient
     private async Task<HttpResponseMessage> SendMutatingAsync(
         HttpMethod method, string path, HttpContent? content, CancellationToken ct)
     {
-        var token = await GetXsrfAsync();
         using var req = new HttpRequestMessage(method, path) { Content = content };
-        req.Headers.Add("X-CSRF-TOKEN", token);
         return await _http.SendAsync(req, ct);
-    }
-
-    private async Task<string> GetXsrfAsync()
-    {
-        _mod ??= await _js.InvokeAsync<IJSObjectReference>("import", "/js/bff.js");
-        return await _mod.InvokeAsync<string>("getCookie", "XSRF-TOKEN");
     }
 }

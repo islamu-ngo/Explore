@@ -1,6 +1,34 @@
 # Major Decisions
 
-Last Updated: 2026-02-27
+Last Updated: 2026-03-16 Europe/Brussels
+
+## 2026-03-16 Europe/Brussels - Event Scheduling Refactor: Registration Architecture
+
+- Decision: Do not redefine the current session-level `EventRegistration` rows as the abstract parent registration concept. Instead, add a new parent intent/group layer above them and keep the child/session rows as the concrete entitlement/access records.
+- Why: The existing platform semantics, UI, and capacity logic are already centered on session-level access. Keeping child rows concrete reduces migration pain, preserves understandable attendance/capacity behavior, and still allows event/day/session-selection policy-aware UX.
+- Consequence: Future implementation should choose a dedicated parent name such as `EventRegistrationIntent` or `EventRegistrationGroup`, preserve temporary compatibility for session-level contracts, and backfill intent semantics above existing session rows.
+
+## 2026-03-16 Europe/Brussels - Event Scheduling Refactor: Overlap Validation Strategy
+
+- Decision: Enforce “same room + overlapping time = invalid” first in create/update session DTO validators using async FluentValidation with repository-backed checks.
+- Why: This gives fail-fast behavior aligned with the repo’s validator-first patterns and avoids overcommitting to a database-only conflict strategy before the new room model is fully established.
+- Consequence: The first implementation slice should add the necessary repository/service checks for validator use, then optionally add stronger persistence hardening later if race conditions or scale demand it.
+
+## 2026-03-13 Europe/Brussels - HTTP Resilience Refactor: Tenant/Auth Ordering Decision
+
+- Decision: Keep the current API ordering assumption that authentication scheme selection does not depend on tenant resolution.
+- Why: Direct inspection of `Explore.API/Program.cs` showed the policy scheme switches only on the presence of `X-API-Key`; tenant context is not consulted to decide JWT vs API-key auth.
+- Consequence: Phase 3 middleware work should focus on forwarded-header trust, request logging placement, and cancellation propagation rather than forcing tenant resolution ahead of authentication.
+
+## 2026-03-13 Europe/Brussels - Forwarded Headers Trust Model
+
+- Decision: Configure forwarded-header trust explicitly in both API and BFF hosts via `ForwardedHeaders:KnownProxies` and `ForwardedHeaders:KnownNetworks`, with development-only trust-all fallback when the config is empty.
+- Why: The previous BFF behavior effectively trusted every proxy by clearing trust lists unconditionally, which is not acceptable as the long-term security baseline.
+- Implementation anchors:
+  - `Explore.API/Program.cs`
+  - `Explore.API/appsettings.json`
+  - `Explore.Blazor/Extensions/MiddlewareExtensions.cs`
+  - `Explore.Blazor/appsettings.json`
 
 ## 2026-02-23 18:12 Europe/Brussels - Admin Consolidation Handoff Scope
 

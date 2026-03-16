@@ -46,6 +46,11 @@ public class UpdateEventDto
     public DateOnly? LastSessionDate { get; set; }
     public string? Timezone { get; set; }
 
+    // Temporal fields (UTC-based)
+    public DateTimeOffset? FirstSessionStartUtc { get; set; }
+    public DateTimeOffset? LastSessionStartUtc { get; set; }
+    public string? EventTimeZoneId { get; set; }
+
     // Metadata
     public string? EventUrl { get; set; }
 

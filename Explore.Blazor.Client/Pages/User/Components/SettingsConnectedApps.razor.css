@@ -1,0 +1,10 @@
+/* ABOUTME: Scoped CSS for SettingsConnectedApps component. */
+/* ABOUTME: Follows existing settings section styling conventions. */
+
+.settings-section {
+    /* Uses same base class as other settings sections */
+}
+
+.settings-section-header {
+    /* Uses same header class as other settings sections */
+}

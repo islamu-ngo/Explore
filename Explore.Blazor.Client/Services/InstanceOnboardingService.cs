@@ -3,6 +3,7 @@
 // ABOUTME: Powers first-run startup gating and runtime instance settings updates from Blazor pages.
 
 using System.Net.Http.Json;
+using Explore.Blazor.Client.Services.Http;
 using Microsoft.JSInterop;
 
 namespace Explore.Blazor.Client.Services;
@@ -39,15 +40,18 @@ public class InstanceOnboardingService : IInstanceOnboardingService
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IJSRuntime _jsRuntime;
     private readonly ILogger<InstanceOnboardingService> _logger;
+    private readonly BffClient? _bffClient;
 
     public InstanceOnboardingService(
         IHttpClientFactory httpClientFactory,
         IJSRuntime jsRuntime,
-        ILogger<InstanceOnboardingService> logger)
+        ILogger<InstanceOnboardingService> logger,
+        BffClient? bffClient = null)
     {
         _httpClientFactory = httpClientFactory;
         _jsRuntime = jsRuntime;
         _logger = logger;
+        _bffClient = bffClient;
     }
 
     // ── Read operations ──────────────────────────────────────────────────
@@ -157,8 +161,9 @@ public class InstanceOnboardingService : IInstanceOnboardingService
     {
         try
         {
-            var client = _httpClientFactory.CreateClient("BffSelfClient");
-            var response = await client.PostAsync("/bff/auth/refresh-schemes", null);
+            using var response = _bffClient is not null
+                ? await _bffClient.PostAsync("/bff/auth/refresh-schemes")
+                : await _httpClientFactory.CreateClient("BffSelfClient").PostAsync("/bff/auth/refresh-schemes", null);
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("Failed to refresh auth schemes. Status: {StatusCode}", (int)response.StatusCode);
@@ -206,7 +211,6 @@ public class InstanceOnboardingService : IInstanceOnboardingService
                 Content = JsonContent.Create(body)
             };
 
-            await AddSetupSecretHeaderAsync(request);
             var response = await client.SendAsync(request);
 
             return await ReadCommandResponseAsync(response, path);
@@ -225,7 +229,6 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         {
             var client = CreateClient();
             using var request = new HttpRequestMessage(HttpMethod.Post, path);
-            await AddSetupSecretHeaderAsync(request);
 
             var response = await client.SendAsync(request);
             var result = await response.Content.ReadFromJsonAsync<TResult>();
@@ -263,56 +266,6 @@ public class InstanceOnboardingService : IInstanceOnboardingService
             Message = "Request failed.",
             Errors = [error]
         };
-
-    private async Task AddSetupSecretHeaderAsync(HttpRequestMessage request)
-    {
-        if (request.Headers.Contains("X-Setup-Secret"))
-        {
-            return;
-        }
-
-        var requestPath = GetRequestPath(request.RequestUri);
-        if (!RequiresSetupSecret(requestPath))
-        {
-            return;
-        }
-
-        try
-        {
-            var secret = await _jsRuntime.InvokeAsync<string?>("sessionStorage.getItem", "setup-secret");
-            if (!string.IsNullOrWhiteSpace(secret))
-            {
-                request.Headers.Add("X-Setup-Secret", secret.Trim());
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogDebug(ex, "Could not read setup-secret from sessionStorage for {Path}", requestPath);
-        }
-    }
-
-    private static string GetRequestPath(Uri? requestUri)
-    {
-        if (requestUri is null)
-        {
-            return string.Empty;
-        }
-
-        var path = requestUri.IsAbsoluteUri ? requestUri.PathAndQuery : requestUri.OriginalString;
-        if (!path.StartsWith('/'))
-        {
-            path = "/" + path;
-        }
-
-        return path;
-    }
-
-    private static bool RequiresSetupSecret(string pathAndQuery)
-    {
-        return pathAndQuery.Contains("/api/InstanceOnboarding/complete", StringComparison.OrdinalIgnoreCase)
-            || pathAndQuery.Contains("/api/InstanceOnboarding/validate-secret", StringComparison.OrdinalIgnoreCase)
-            || pathAndQuery.Contains("/api/InstanceOnboarding/auth-provider-configuration", StringComparison.OrdinalIgnoreCase);
-    }
 }
 
 public class InstanceOnboardingStatusModel
@@ -378,6 +331,10 @@ public class InstanceGovernanceSettingsModel
     // Federation
     public bool DecentralizationEnabled { get; set; }
     public bool LockDecentralizationEnabled { get; set; }
+    // Tenant delegation locks
+    public bool LockTenantSmtp { get; set; } = true;
+    public bool LockTenantStorage { get; set; } = true;
+    public bool LockTenantAnalytics { get; set; } = true;
 }
 
 public class InstanceCommandResponseModel

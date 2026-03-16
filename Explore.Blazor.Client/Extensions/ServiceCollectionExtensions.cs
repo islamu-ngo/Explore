@@ -53,6 +53,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IEventSessionAgendaItemService, EventSessionAgendaItemService>();
         services.AddScoped<IActorService, ActorService>();
         services.AddScoped<IEventCreationEligibilityService, EventCreationEligibilityService>();
+        services.AddScoped<IContactShareConsentService, ContactShareConsentService>();
 
         // Notification services
         services.AddScoped<INotificationService, NotificationService>();

@@ -152,4 +152,8 @@ public class TenantPolicySettingsModel
     public bool CanOverridePublicSeoRenderPolicy { get; set; }
     public bool CanOverrideOperationalRenderPolicy { get; set; }
     public bool CanOverrideAdminRenderPolicy { get; set; }
+    // Category-level override flags
+    public bool CanOverrideSmtp { get; set; }
+    public bool CanOverrideStorage { get; set; }
+    public bool CanOverrideAnalytics { get; set; }
 }

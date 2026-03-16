@@ -222,55 +222,21 @@ public class CreateEventTests : IDisposable
     }
 
     [Test]
-    public async Task CreateEvent_Initially_ShowsNextButton_AndHidesCreateButton()
+    public async Task CreateEvent_ShowsCreateButton()
     {
-        // Arrange
+        // The form is now a single-page layout (no multi-step wizard).
+        // The "Create Event" submit button should be visible immediately.
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
 
-        // Act
         var cut = _ctx.RenderMudComponent<CreateEvent>();
-        cut.WaitForState(() => cut.Markup.Contains("Next", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
 
-        // Assert
-        var buttons = cut.FindAll("button");
-        var hasNextButton = buttons.Any(b => b.TextContent.Contains("Next", StringComparison.OrdinalIgnoreCase));
-        var hasCreateButton = buttons.Any(b => b.TextContent.Contains("Create Event", StringComparison.OrdinalIgnoreCase));
-
-        await Assert.That(hasNextButton).IsTrue();
-        await Assert.That(hasCreateButton).IsFalse();
-    }
-
-    [Test]
-    public async Task CreateEvent_OnLastStep_ShowsCreateButton()
-    {
-        // Arrange
-        _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
-
-        // Act
-        var cut = _ctx.RenderMudComponent<CreateEvent>();
-        cut.WaitForState(() => cut.Markup.Contains("Next", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
-
-        for (var i = 0; i < 4; i++)
-        {
-            var nextButton = cut.FindAll("button")
-                .FirstOrDefault(b => b.TextContent.Contains("Next", StringComparison.OrdinalIgnoreCase));
-
-            if (nextButton == null)
-            {
-                break;
-            }
-
-            nextButton.Click();
-        }
-
-        // Assert
         cut.WaitForAssertion(() =>
         {
             var buttons = cut.FindAll("button");
             var hasCreateButton = buttons.Any(b => b.TextContent.Contains("Create Event", StringComparison.OrdinalIgnoreCase));
             if (!hasCreateButton)
             {
-                throw new InvalidOperationException("Create Event button was not rendered on the final wizard step.");
+                throw new InvalidOperationException("Create Event button was not rendered.");
             }
         }, TimeSpan.FromSeconds(3));
     }

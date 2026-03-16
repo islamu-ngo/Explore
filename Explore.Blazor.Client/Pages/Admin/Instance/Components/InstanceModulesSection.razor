@@ -28,13 +28,19 @@
             Require organization verification
         </MudSwitch>
 
+        @if (!IsSingleTenant)
+        {
         <MudSwitch T="bool" @bind-Value="Model.AllowTenantToOmitVerification" Color="Color.Primary">
             Allow tenant admins to omit organization verification
         </MudSwitch>
+        }
     </MudStack>
 </div>
 
 @code {
     [Parameter, EditorRequired]
     public InstanceGovernanceSettingsModel Model { get; set; } = null!;
+
+    [Parameter]
+    public bool IsSingleTenant { get; set; }
 }

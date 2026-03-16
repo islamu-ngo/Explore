@@ -11,6 +11,8 @@
 .event-list__main {
     flex: 1;
     min-width: 0;
+    position: relative;
+    min-height: calc(100vh - var(--mud-appbar-height, 4rem));
 }
 
 /* ══════════════════════════════════════════════

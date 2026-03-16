@@ -44,7 +44,7 @@
                 @foreach (var provider in _buttonProviders)
                 {
                     <MudStack Spacing="1">
-                        <MudStack Direction="Direction.Row" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
                             <MudText Typo="Typo.subtitle2">@provider.DisplayName</MudText>
                             @if (provider.Recommended)
                             {

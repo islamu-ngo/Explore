@@ -844,6 +844,7 @@
           "Explore.Application": "[1.0.0, )",
           "Explore.Secrets": "[1.0.0, )",
           "Microsoft.EntityFrameworkCore": "[10.0.2, )",
+          "Microsoft.EntityFrameworkCore.Relational": "[10.0.2, )",
           "Microsoft.Extensions.Configuration.EnvironmentVariables": "[10.0.2, )",
           "Microsoft.Extensions.Configuration.UserSecrets": "[10.0.2, )",
           "Microsoft.Extensions.Options.ConfigurationExtensions": "[10.0.2, )",

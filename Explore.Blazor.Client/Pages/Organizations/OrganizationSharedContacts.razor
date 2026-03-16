@@ -1,0 +1,104 @@
+@* ABOUTME: Page for organization members to view and export shared contact emails. *@
+@* ABOUTME: Only accessible to authorized members of approved organizations. *@
+@using MudBlazor
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Contracts.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components
+@using Blazouter.Services
+@using Microsoft.Extensions.Logging
+@using Microsoft.JSInterop
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Shared Contacts</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-8">
+    @if (_isLoading)
+    {
+        <div class="d-flex flex-column align-center justify-center py-16">
+            <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+            <MudText Typo="Typo.body1" Class="mt-4" Color="Color.Secondary">Loading shared contacts...</MudText>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+    }
+    else
+    {
+        <!-- Header -->
+        <div class="d-flex justify-space-between align-center mb-6">
+            <div>
+                <MudText Typo="Typo.h4" Style="font-weight: 800;">Shared Contacts</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+                    Registrants who opted to share their email with your organization
+                </MudText>
+            </div>
+            <div class="d-flex gap-2">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Download"
+                           OnClick="@(() => ExportAsync("csv"))"
+                           Disabled="_isExporting">
+                    Export CSV
+                </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Default"
+                           StartIcon="@Icons.Material.Filled.Download"
+                           OnClick="@(() => ExportAsync("tsv"))"
+                           Disabled="_isExporting">
+                    Export TSV
+                </MudButton>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <MudPaper Elevation="0" Class="pa-4 mb-4 bg-surface border-solid border-1 mud-border-lines-default rounded-lg">
+            <MudGrid Spacing="3">
+                <MudItem xs="12" sm="6" md="4">
+                    <MudTextField @bind-Value="_searchEmail"
+                                  Label="Search by email"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  DebounceInterval="300"
+                                  OnDebounceIntervalElapsed="OnSearchChanged" />
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <!-- Contacts Table -->
+        <MudTable Items="@_contacts"
+                  Dense="true"
+                  Hover="true"
+                  Striped="true"
+                  Loading="_isLoadingContacts"
+                  Elevation="0"
+                  Class="border-solid border-1 mud-border-lines-default rounded-lg">
+            <HeaderContent>
+                <MudTh>Email</MudTh>
+                <MudTh>Granted</MudTh>
+                <MudTh>Source Event</MudTh>
+                <MudTh>Purpose</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Email">@context.Email</MudTd>
+                <MudTd DataLabel="Granted">@context.GrantedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</MudTd>
+                <MudTd DataLabel="Source Event">@(context.SourceEventTitle ?? "—")</MudTd>
+                <MudTd DataLabel="Purpose">@FormatPurpose(context.PurposeCode)</MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText Typo="Typo.body1" Align="Align.Center" Class="py-8" Color="Color.Secondary">
+                    No shared contacts found.
+                </MudText>
+            </NoRecordsContent>
+        </MudTable>
+
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
+            @_contacts.Count contact(s) shown
+        </MudText>
+    }
+</MudContainer>

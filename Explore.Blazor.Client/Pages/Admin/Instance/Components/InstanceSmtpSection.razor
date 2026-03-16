@@ -83,6 +83,16 @@
                 </MudAlert>
             }
         </MudStack>
+        @if (!IsSingleTenant)
+        {
+            <MudDivider Class="my-3" />
+            <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Tenant Delegation</MudText>
+            <MudSwitch T="bool" Value="LockForTenants"
+                       ValueChanged="LockForTenantsChanged"
+                       Color="Color.Warning">
+                Lock SMTP settings — tenants cannot configure their own email delivery
+            </MudSwitch>
+        }
     </MudStack>
 </div>
 
@@ -92,6 +102,15 @@
 
     [Parameter]
     public IInstanceOnboardingService? OnboardingService { get; set; }
+
+    [Parameter]
+    public bool IsSingleTenant { get; set; }
+
+    [Parameter]
+    public bool LockForTenants { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> LockForTenantsChanged { get; set; }
 
     private bool _isTesting;
     private SmtpConnectionTestResult? _testResult;

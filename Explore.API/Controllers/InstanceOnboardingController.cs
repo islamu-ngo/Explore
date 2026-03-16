@@ -85,7 +85,6 @@ public class InstanceOnboardingController : ControllerBase
     [HttpPost("complete")]
     [Authorize]
     [SetupSecretRequired]
-    [EnableRateLimiting("SetupSecret")]
     [EndpointSummary("Complete Instance Onboarding")]
     [EndpointDescription("Completes first-run onboarding, assigns the current user as instance admin, and persists instance governance settings.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
@@ -105,7 +104,20 @@ public class InstanceOnboardingController : ControllerBase
         var command = new CompleteInstanceOnboardingCommand
         {
             UserId = currentUserId.Value,
-            Settings = settings
+            Settings = settings,
+            Email = User.FindFirst("email")?.Value
+                ?? User.FindFirst(ClaimTypes.Email)?.Value,
+            FirstName = User.FindFirst("given_name")?.Value
+                ?? User.FindFirst(ClaimTypes.GivenName)?.Value,
+            LastName = User.FindFirst("family_name")?.Value
+                ?? User.FindFirst(ClaimTypes.Surname)?.Value,
+            Username = User.FindFirst("preferred_username")?.Value
+                ?? User.FindFirst(ClaimTypes.Name)?.Value,
+            AuthProvider = User.FindFirst("idp")?.Value
+                ?? User.Identity?.AuthenticationType,
+            AuthProviderId = User.FindFirst("sub")?.Value
+                ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
+            EmailVerified = bool.TryParse(User.FindFirst("email_verified")?.Value, out var ev) ? ev : null
         };
 
         var response = await _mediator.Send(command, cancellationToken);

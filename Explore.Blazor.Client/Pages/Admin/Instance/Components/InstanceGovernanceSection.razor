@@ -310,6 +310,8 @@
                 </MudPaper>
             }
 
+            @if (!IsSingleTenant)
+            {
             @* ── Tenant Render Policy Delegation ──────────────────────────────── *@
             <MudDivider Class="my-2" />
             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
@@ -352,6 +354,7 @@
                         </MudAlert>
                     </MudStack>
                 </MudPaper>
+            }
             }
         </MudStack>
         }
@@ -415,7 +418,9 @@
 
     private string SectionDescription => DisplayMode switch
     {
-        "general" => "Configure tenant registration and general platform behavior.",
+        "general" => IsSingleTenant
+            ? "Configure event submission policies, self-registration, and general platform behavior."
+            : "Configure tenant registration and general platform behavior.",
         "render-policies" => "Choose a preset strategy for route rendering or configure per-route-group overrides.",
         "multi-tenancy" => "⚠️ Changing the deployment mode restructures how settings and tenants are managed.",
         _ => "Control deployment mode, tenant registration, and default home page behavior."

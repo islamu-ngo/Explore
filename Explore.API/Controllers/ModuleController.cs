@@ -104,7 +104,10 @@ public class ModuleController : ControllerBase
 
         if (schemaUrl == null)
         {
-            return NotFound(new { error = $"Module '{moduleKey}' not found or has no schema" });
+            return Problem(
+                detail: $"Module '{moduleKey}' not found or has no schema",
+                statusCode: StatusCodes.Status404NotFound,
+                title: "Resource not found");
         }
 
         return Ok(new ModuleSchemaResponse
@@ -143,7 +146,10 @@ public class ModuleController : ControllerBase
 
         if (!success)
         {
-            return BadRequest(new { error = $"Module '{moduleKey}' not found or not active" });
+            return Problem(
+                detail: $"Module '{moduleKey}' not found or not active",
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Bad request");
         }
 
         return Ok(new ModuleActionResponse
@@ -176,7 +182,10 @@ public class ModuleController : ControllerBase
 
         if (!success)
         {
-            return BadRequest(new { error = $"Module '{moduleKey}' is not enabled for this tenant" });
+            return Problem(
+                detail: $"Module '{moduleKey}' is not enabled for this tenant",
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Bad request");
         }
 
         return Ok(new ModuleActionResponse

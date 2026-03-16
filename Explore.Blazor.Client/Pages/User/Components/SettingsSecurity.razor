@@ -43,7 +43,7 @@
         }
         else
         {
-            <MudStack Direction="Direction.Row" Spacing="1" Class="mb-6" Wrap="Wrap.Wrap">
+            <MudStack Row="true" Spacing="1" Class="mb-6" Wrap="Wrap.Wrap">
                 @foreach (var provider in _linkedProviders)
                 {
                     <MudChip T="string" Color="Color.Primary" Variant="Variant.Outlined">@provider</MudChip>

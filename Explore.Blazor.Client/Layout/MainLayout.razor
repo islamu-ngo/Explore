@@ -6,7 +6,7 @@
 <MudSnackbarProvider />
 <AnalyticsInitializer />
 
-<div class="main-layout-root">
+<div class="main-layout-root @(_hideChrome ? "main-layout-root--hide-chrome" : "")">
     <MudLayout class="main-layout">
         @if (!_hideChrome)
         {
@@ -15,11 +15,11 @@
                 <NavMenu OnToggleTheme="DarkModeToggle" />
             </div>
 
-            <MudDrawer Open="@SidebarState.IsOpen"
+            <MudDrawer Open="@SidebarState.IsOpen"    
                        OpenChanged="@OnDrawerOpenChanged"
                        Anchor="Anchor.Start"
                        Variant="DrawerVariant.Responsive"
-                       Breakpoint="Breakpoint.Md"
+                       Breakpoint="Breakpoint.Md"     
                        ClipMode="DrawerClipMode.Always"
                        Elevation="0"
                        Class="main-layout__drawer">
@@ -28,7 +28,7 @@
                              Style="font-weight: 800; letter-spacing: -0.02em;">
                         Events
                     </MudText>
-                    <MudNavLink Href="/events"
+                    <MudNavLink Href="/events"        
                                 Icon="@Icons.Material.Filled.ManageSearch"
                                 Match="NavLinkMatch.All">
                         Advanced Search
@@ -43,6 +43,21 @@
                     </MudNavLink>
                 </MudNavMenu>
             </MudDrawer>
+        }
+        else
+        {
+            @* Floating switchers for onboarding/setup pages where navbar is hidden *@
+            <div style="position:fixed;top:20px;right:20px;z-index:9999;pointer-events:all;">
+                <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center" Class="pa-1 px-4 rounded-pill mud-elevation-6 mud-surface" Style="border:1px solid var(--mud-palette-lines-default); color: var(--mud-palette-text-primary);">
+                    <LanguagePicker />
+                    <MudDivider Vertical="true" FlexItem="true" Style="height:24px;margin:0 4px; border-color: var(--mud-palette-divider);" />
+                    <MudIconButton Icon="@DarkLightModeButtonIcon"
+                                   Color="Color.Inherit"
+                                   OnClick="DarkModeToggle"
+                                   Size="Size.Medium"
+                                   aria-label="Toggle dark mode" />
+                </MudStack>
+            </div>
         }
 
         <MudMainContent Class="main-layout__main" Style="padding-top: 0 !important;">

@@ -8,6 +8,6 @@
     "Domain": "Active (DDD)",
     "Infra": "Active (EF Core)"
   },
-  "RecentFocus": "Unknown (shared-entities-api-tasks.md)",
-  "LastUpdate": "2026-03-09 10:36:38"
+  "RecentFocus": "Application (CompleteInstanceOnboardingCommandHandler.cs)",
+  "LastUpdate": "2026-03-17 00:08:29"
 }

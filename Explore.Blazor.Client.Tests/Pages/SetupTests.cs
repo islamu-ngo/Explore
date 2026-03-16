@@ -1,13 +1,8 @@
 // ABOUTME: Component tests for Setup page setup-secret restoration and validation behavior.
-// ABOUTME: Verifies stale session secrets are rejected and valid secrets allow onboarding continuation.
+// ABOUTME: Verifies status display, secret input, provider quick actions, and BFF JS interop integration.
 
-using System.Net;
-using System.Net.Http.Json;
-using Bunit.TestDoubles;
-using Explore.Blazor.Client.Pages;
+using Explore.Blazor.Client.Models.Responses;
 using Explore.Blazor.Client.Pages.Events;
-using Microsoft.AspNetCore.Components;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Explore.Blazor.Client.Tests.Pages;
 
@@ -20,20 +15,70 @@ public class SetupTests : IDisposable
     {
         _ctx = new BlazorTestContext();
         _instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
-
         _ctx.Services.AddSingleton(_instanceOnboardingService);
-
-        var httpClientFactory = Substitute.For<IHttpClientFactory>();
-        httpClientFactory.CreateClient(Arg.Any<string>()).Returns(_ => new HttpClient(new OkHttpHandler())
-        {
-            BaseAddress = new Uri("https://localhost/")
-        });
-        _ctx.Services.AddSingleton(httpClientFactory);
     }
 
     public void Dispose()
     {
         _ctx.Dispose();
+    }
+
+    /// <summary>
+    /// Sets up JS interop for the /js/bff.js module used by Setup.razor.
+    /// All BFF calls go through browser fetch via JS interop.
+    /// </summary>
+    private void SetupBffJsModule(
+        bool hasPersistedSecret = false,
+        bool isValid = false,
+        string? error = null,
+        bool persistOk = true,
+        bool syncOk = true,
+        bool includeProviders = true)
+    {
+        var module = _ctx.JSInterop.SetupModule("/js/bff.js");
+
+        module.Setup<SetupSecretStatusResponse>("getSetupSecretStatus")
+            .SetResult(new SetupSecretStatusResponse
+            {
+                HasPersistedSecret = hasPersistedSecret,
+                IsValid = isValid,
+                Error = error
+            });
+
+        module.Setup<BffMutationResult>("persistSetupSecret", _ => true)
+            .SetResult(new BffMutationResult
+            {
+                Ok = persistOk,
+                Status = persistOk ? 200 : 400,
+                Error = persistOk ? null : "Persist failed."
+            });
+
+        module.Setup<BffMutationResult>("syncSetupSecret", _ => true)
+            .SetResult(new BffMutationResult
+            {
+                Ok = syncOk,
+                Status = syncOk ? 200 : 400,
+                Error = syncOk ? null : "Sync failed."
+            });
+
+        module.Setup<BffMutationResult>("deleteSetupSecret")
+            .SetResult(new BffMutationResult { Ok = true, Status = 200 });
+
+        if (includeProviders)
+        {
+            module.Setup<AuthProvidersResponse>("fetchJson", invocation =>
+                    invocation.Arguments.Count > 0 &&
+                    invocation.Arguments[0]?.ToString()?.Contains("/auth/providers") == true)
+                .SetResult(new AuthProvidersResponse
+                {
+                    Providers =
+                    [
+                        new() { Name = "Keycloak", DisplayName = "Keycloak", Type = "button" },
+                        new() { Name = "Google", DisplayName = "Google", Type = "button" },
+                        new() { Name = "Atproto", DisplayName = "AT Protocol", Type = "handle_input" }
+                    ]
+                });
+        }
     }
 
     private static Type GetPageComponentType(string componentName)
@@ -46,7 +91,7 @@ public class SetupTests : IDisposable
     }
 
     [Test]
-    public async Task RestoreSecretFromSession_WhenStoredSecretIsInvalid_ClearsStoredStateAndShowsError()
+    public async Task RestorePersistedSecret_WhenStoredSecretIsInvalid_ShowsError()
     {
         // Arrange
         _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
@@ -54,13 +99,7 @@ public class SetupTests : IDisposable
             IsCompleted = false,
             IsAuthenticated = true
         });
-        _instanceOnboardingService.ValidateSecretAsync("stale-secret").Returns(new SetupSecretValidationResult
-        {
-            Valid = false,
-            Error = "Invalid setup secret."
-        });
-
-        _ctx.JSInterop.Setup<string?>("sessionStorage.getItem", "setup-secret").SetResult("stale-secret");
+        SetupBffJsModule(hasPersistedSecret: false, isValid: false, error: "Invalid setup secret.");
 
         // Act
         var cut = _ctx.RenderComponent<DynamicComponent>(parameters =>
@@ -69,17 +108,15 @@ public class SetupTests : IDisposable
         // Assert
         cut.WaitForAssertion(() =>
         {
-            if (!cut.Markup.Contains("Stored setup secret is no longer valid. Please enter the current setup secret.", StringComparison.OrdinalIgnoreCase))
+            if (!cut.Markup.Contains("Invalid setup secret.", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Expected stale setup secret warning was not rendered.");
             }
         });
-
-        await _instanceOnboardingService.Received(1).ValidateSecretAsync("stale-secret");
     }
 
     [Test]
-    public async Task RestoreSecretFromSession_WhenStoredSecretIsValid_KeepsValidatedSessionState()
+    public async Task RestorePersistedSecret_WhenStoredSecretIsValid_KeepsValidatedSessionState()
     {
         // Arrange
         _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
@@ -87,12 +124,7 @@ public class SetupTests : IDisposable
             IsCompleted = false,
             IsAuthenticated = true
         });
-        _instanceOnboardingService.ValidateSecretAsync("valid-secret").Returns(new SetupSecretValidationResult
-        {
-            Valid = true
-        });
-
-        _ctx.JSInterop.Setup<string?>("sessionStorage.getItem", "setup-secret").SetResult("valid-secret");
+        SetupBffJsModule(hasPersistedSecret: true, isValid: true);
 
         // Act
         var cut = _ctx.RenderComponent<DynamicComponent>(parameters =>
@@ -106,12 +138,10 @@ public class SetupTests : IDisposable
                 throw new InvalidOperationException("Expected validated setup secret state was not rendered.");
             }
         });
-
-        await _instanceOnboardingService.Received(1).ValidateSecretAsync("valid-secret");
     }
 
     [Test]
-    public async Task RestoreSecretFromSession_WhenProvidersDetected_ShowsQuickActionsAndConfigureLast()
+    public async Task RestorePersistedSecret_WhenProvidersDetected_ShowsQuickActionsAndConfigureLast()
     {
         // Arrange
         _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
@@ -119,12 +149,7 @@ public class SetupTests : IDisposable
             IsCompleted = false,
             IsAuthenticated = false
         });
-        _instanceOnboardingService.ValidateSecretAsync("valid-secret").Returns(new SetupSecretValidationResult
-        {
-            Valid = true
-        });
-
-        _ctx.JSInterop.Setup<string?>("sessionStorage.getItem", "setup-secret").SetResult("valid-secret");
+        SetupBffJsModule(hasPersistedSecret: true, isValid: true);
 
         // Act
         var cut = _ctx.RenderComponent<DynamicComponent>(parameters =>
@@ -160,14 +185,9 @@ public class SetupTests : IDisposable
             IsCompleted = false,
             IsAuthenticated = false
         });
-        _instanceOnboardingService.ValidateSecretAsync("valid-secret").Returns(new SetupSecretValidationResult
-        {
-            Valid = true
-        });
+        SetupBffJsModule(hasPersistedSecret: true, isValid: true);
 
-        _ctx.JSInterop.Setup<string?>("sessionStorage.getItem", "setup-secret").SetResult("valid-secret");
-
-        var nav = _ctx.Services.GetRequiredService<FakeNavigationManager>();
+        var nav = _ctx.Services.GetRequiredService<Bunit.TestDoubles.FakeNavigationManager>();
         nav.NavigateTo("/setup");
 
         // Act
@@ -192,27 +212,51 @@ public class SetupTests : IDisposable
         await Assert.That(nav.Uri).EndsWith("/login?provider=keycloak&returnUrl=/setup");
     }
 
-    private sealed class OkHttpHandler : HttpMessageHandler
+    [Test]
+    public async Task Setup_WhenTimedOut_ShowsExpiredMessage()
     {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        // Arrange
+        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
         {
-            if (request.RequestUri?.AbsolutePath.Contains("/auth/providers", StringComparison.OrdinalIgnoreCase) == true)
-            {
-                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
-                {
-                    Content = JsonContent.Create(new
-                    {
-                        providers = new[]
-                        {
-                            new { name = "Keycloak", displayName = "Keycloak", type = "button", recommended = true },
-                            new { name = "Google", displayName = "Google", type = "button", recommended = false },
-                            new { name = "Atproto", displayName = "AT Protocol", type = "handle_input", recommended = false }
-                        }
-                    })
-                });
-            }
+            IsCompleted = false,
+            IsAuthenticated = false,
+            SetupTimedOut = true,
+            InstanceStartedAt = DateTime.UtcNow.AddMinutes(-70)
+        });
+        SetupBffJsModule();
 
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
-        }
+        // Act
+        var cut = _ctx.RenderComponent<DynamicComponent>(parameters =>
+            parameters.Add(x => x.Type, GetPageComponentType("Setup")));
+
+        // Assert
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Setup window expired", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Expected setup timeout message was not rendered.");
+            }
+        });
+    }
+
+    [Test]
+    public async Task Setup_WhenCompleted_RedirectsToHome()
+    {
+        // Arrange
+        _instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
+        {
+            IsCompleted = true,
+            IsAuthenticated = true
+        });
+        SetupBffJsModule();
+
+        var nav = _ctx.Services.GetRequiredService<Bunit.TestDoubles.FakeNavigationManager>();
+
+        // Act
+        var cut = _ctx.RenderComponent<DynamicComponent>(parameters =>
+            parameters.Add(x => x.Type, GetPageComponentType("Setup")));
+
+        // Assert
+        await Assert.That(nav.Uri).EndsWith("/");
     }
 }

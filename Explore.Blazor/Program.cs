@@ -61,6 +61,7 @@ builder.Services.AddOptions();
 
 builder.Services.AddBffAuthentication(builder.Configuration, builder.Environment);
 builder.Services.AddAntiforgery(o => o.HeaderName = "X-CSRF-TOKEN");
+builder.Services.AddBffRateLimiting(builder.Configuration, builder.Environment);
 builder.Services.AddBffReverseProxy(builder.Configuration, builder.Environment);
 
 builder.Services.AddAuthorizationBuilder();
@@ -112,6 +113,7 @@ app.UseAuthentication();
 app.UseAccessTokenCaptureMiddleware();
 app.UseBffDiagnosticsMiddleware();
 app.UseAuthorization();
+app.UseRateLimiter();
 app.UseAntiforgery();
 
 // ──────────────────────────────────────────────
@@ -127,8 +129,8 @@ if (app.Environment.IsDevelopment())
         .WithName("TestEndpoint");
 }
 
-app.MapAuthEndpoints();
-app.MapBffEndpoints();
+BffAuthEndpoints.MapAuthEndpoints(app);
+BffEndpointExtensions.MapBffEndpoints(app);
 app.MapStaticAssets();
 
 app.MapRazorComponents<App>()

@@ -40,9 +40,15 @@ public class BlockInSingleTenantAttribute : Attribute, IAsyncAuthorizationFilter
         if (deploymentSettings.HidePlatformAdminInSingleTenant
             && await DeploymentModeResolver.IsSingleTenantAsync(context.HttpContext.RequestServices, deploymentSettings))
         {
-            // Return 404 to hide the endpoint from discovery
-            // Using NotFoundResult instead of ForbidResult to prevent enumeration
-            context.Result = new NotFoundResult();
+            context.Result = new ObjectResult(new ProblemDetails
+            {
+                Title = "Endpoint unavailable in single-tenant mode",
+                Status = StatusCodes.Status404NotFound,
+                Type = "https://tools.ietf.org/html/rfc7231#section-6.5.4"
+            })
+            {
+                StatusCode = StatusCodes.Status404NotFound
+            };
         }
     }
 }
@@ -66,10 +72,12 @@ public class RequireMultiTenantAttribute : Attribute, IAsyncAuthorizationFilter
 
         if (await DeploymentModeResolver.IsSingleTenantAsync(context.HttpContext.RequestServices, deploymentSettings))
         {
-            context.Result = new ObjectResult(new
+            context.Result = new ObjectResult(new ProblemDetails
             {
-                error = "MultiTenantRequired",
-                message = "This endpoint is only available in multi-tenant deployments."
+                Title = "Multi-tenant required",
+                Detail = "This endpoint is only available in multi-tenant deployments.",
+                Status = StatusCodes.Status403Forbidden,
+                Type = "https://tools.ietf.org/html/rfc7231#section-6.5.3"
             })
             {
                 StatusCode = StatusCodes.Status403Forbidden

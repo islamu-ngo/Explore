@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
 using Explore.Domain.Enums;
+using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
@@ -20,7 +21,7 @@ public class TenantMemberRepository : GenericRepository<TenantMember, Guid>, ITe
     public async Task<TenantMember?> GetByTenantAndUser(Guid tenantId, Guid userId)
     {
         return await _dbContext.TenantMembers
-            .AsNoTracking()
+            .IgnoreTenantFilter()
             .Include(x => x.Role)
             .FirstOrDefaultAsync(x => x.TenantId == tenantId && x.UserId == userId);
     }
@@ -28,6 +29,7 @@ public class TenantMemberRepository : GenericRepository<TenantMember, Guid>, ITe
     public async Task<List<TenantMember>> GetByTenant(Guid tenantId)
     {
         return await _dbContext.TenantMembers
+            .IgnoreTenantFilter()
             .AsNoTracking()
             .Include(x => x.User)
                 .ThenInclude(u => u!.Pii)
@@ -39,6 +41,7 @@ public class TenantMemberRepository : GenericRepository<TenantMember, Guid>, ITe
     public async Task<List<TenantMember>> GetByUserId(Guid userId)
     {
         return await _dbContext.TenantMembers
+            .IgnoreTenantFilter()
             .AsNoTracking()
             .Include(x => x.Tenant)
             .Include(x => x.Role)
@@ -49,6 +52,7 @@ public class TenantMemberRepository : GenericRepository<TenantMember, Guid>, ITe
     public async Task<bool> IsTenantMember(Guid tenantId, Guid userId)
     {
         return await _dbContext.TenantMembers
+            .IgnoreTenantFilter()
             .AsNoTracking()
             .AnyAsync(x => x.TenantId == tenantId && x.UserId == userId);
     }
@@ -56,6 +60,7 @@ public class TenantMemberRepository : GenericRepository<TenantMember, Guid>, ITe
     public async Task<bool> IsTenantAdmin(Guid tenantId, Guid userId)
     {
         return await _dbContext.TenantMembers
+            .IgnoreTenantFilter()
             .AsNoTracking()
             .AnyAsync(x => x.TenantId == tenantId
                 && x.UserId == userId

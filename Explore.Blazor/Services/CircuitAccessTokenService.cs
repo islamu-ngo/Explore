@@ -3,7 +3,6 @@
 
 using System.Collections.Concurrent;
 using System.IdentityModel.Tokens.Jwt;
-using Explore.Application.Constants;
 using Explore.Application.Contracts.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
@@ -225,19 +224,13 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
 public class AccessTokenForwardingHandler : DelegatingHandler
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly ITenantRouteContextAccessor _tenantRouteContextAccessor;
-    private readonly ISetupSecretSessionService _setupSecretSessionService;
     private readonly ILogger<AccessTokenForwardingHandler> _logger;
 
     public AccessTokenForwardingHandler(
         IHttpContextAccessor httpContextAccessor,
-        ITenantRouteContextAccessor tenantRouteContextAccessor,
-        ISetupSecretSessionService setupSecretSessionService,
         ILogger<AccessTokenForwardingHandler> logger)
     {
         _httpContextAccessor = httpContextAccessor;
-        _tenantRouteContextAccessor = tenantRouteContextAccessor;
-        _setupSecretSessionService = setupSecretSessionService;
         _logger = logger;
     }
 
@@ -318,61 +311,16 @@ public class AccessTokenForwardingHandler : DelegatingHandler
             }
         }
 
-        var tenantSlug = _tenantRouteContextAccessor.TenantSlug;
-        if (!request.Headers.Contains(TenantHeaderNames.TenantSlug) &&
-            !string.IsNullOrWhiteSpace(tenantSlug))
-        {
-            request.Headers.Add(TenantHeaderNames.TenantSlug, tenantSlug);
-            _logger.LogDebug("[AccessTokenForwardingHandler] Forwarded tenant header {Header}: {TenantSlug} to {Path}",
-                TenantHeaderNames.TenantSlug, tenantSlug, request.RequestUri?.PathAndQuery);
-        }
-
-        var forwardedHost = httpContext?.Request.Headers["X-Forwarded-Host"].FirstOrDefault();
-        if (string.IsNullOrWhiteSpace(forwardedHost))
-        {
-            forwardedHost = httpContext?.Request.Host.Value;
-        }
-
-        if (!request.Headers.Contains("X-Forwarded-Host") && !string.IsNullOrWhiteSpace(forwardedHost))
-        {
-            request.Headers.Add("X-Forwarded-Host", forwardedHost);
-            _logger.LogDebug("[AccessTokenForwardingHandler] Forwarded host header X-Forwarded-Host: {Host} to {Path}",
-                forwardedHost, request.RequestUri?.PathAndQuery);
-        }
-
-        var pathAndQuery = request.RequestUri?.PathAndQuery ?? string.Empty;
-        var setupSecret = httpContext?.Request.Cookies["setup-secret"];
-        if (string.IsNullOrWhiteSpace(setupSecret))
-        {
-            var userId = httpContext?.User?.FindFirst("sub")?.Value
-                ?? httpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-
-            if (!string.IsNullOrWhiteSpace(userId))
-            {
-                setupSecret = _setupSecretSessionService.GetForUser(userId);
-            }
-        }
-
-        if (RequiresSetupSecret(pathAndQuery) &&
-            !request.Headers.Contains("X-Setup-Secret") &&
-            !string.IsNullOrWhiteSpace(setupSecret))
-        {
-            request.Headers.Add("X-Setup-Secret", setupSecret);
-            _logger.LogDebug("[AccessTokenForwardingHandler] Forwarded setup secret header for {Path}", pathAndQuery);
-        }
-
         return await base.SendAsync(request, cancellationToken);
     }
 
     private static bool IsAnonymousAllowedPath(string pathAndQuery)
     {
         return pathAndQuery.Contains("/api/PublicExperience/settings", StringComparison.OrdinalIgnoreCase)
-            || pathAndQuery.Contains("/api/InstanceOnboarding/status", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static bool RequiresSetupSecret(string pathAndQuery)
-    {
-        return pathAndQuery.Contains("/api/InstanceOnboarding/complete", StringComparison.OrdinalIgnoreCase)
-            || pathAndQuery.Contains("/api/InstanceOnboarding/validate-secret", StringComparison.OrdinalIgnoreCase);
+            || pathAndQuery.Contains("/api/InstanceOnboarding/status", StringComparison.OrdinalIgnoreCase)
+            || pathAndQuery.Contains("/api/InstanceOnboarding/validate-secret", StringComparison.OrdinalIgnoreCase)
+            || pathAndQuery.Contains("/api/InstanceOnboarding/auth-provider-configuration/internal", StringComparison.OrdinalIgnoreCase)
+            || pathAndQuery.Contains("/api/InstanceOnboarding/auth-provider-configuration", StringComparison.OrdinalIgnoreCase)
+            || pathAndQuery.Contains("/api/InstanceOnboarding/auth-provider-configured", StringComparison.OrdinalIgnoreCase);
     }
 }

@@ -141,6 +141,9 @@ public static class PersistenceServicesRegistration
         // Event Aspect Repositories
         services.AddScoped<IEventIslamicAspectRepository, EventIslamicAspectRepository>();
         services.AddScoped<IEventTechAspectRepository, EventTechAspectRepository>();
+        services.AddScoped<IEventSeriesRepository, EventSeriesRepository>();
+        services.AddScoped<IEventContactShareConsentRepository, EventContactShareConsentRepository>();
+        services.AddScoped<IEventContactShareExportRepository, EventContactShareExportRepository>();
 
         // Location Repository
         services.AddScoped<ILocationRepository, LocationRepository>();

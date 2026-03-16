@@ -1,0 +1,187 @@
+// ABOUTME: Service handling contact-sharing consent lifecycle during registration and user management.
+// ABOUTME: Resolves event→actor→organisation chain, validates approval, creates/reactivates consent records.
+
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.ContactShareConsent;
+using Explore.Domain;
+using Explore.Domain.Constants;
+using Explore.Domain.Enums;
+using Microsoft.Extensions.Logging;
+
+namespace Explore.Application.Services;
+
+public class ContactShareConsentService : IContactShareConsentService
+{
+    private readonly IEventContactShareConsentRepository _consentRepository;
+    private readonly IEventSessionRepository _eventSessionRepository;
+    private readonly IEventRepository _eventRepository;
+    private readonly IUserRepository _userRepository;
+    private readonly IActorRepository _actorRepository;
+    private readonly IOrganizationRepository _organizationRepository;
+    private readonly ILogger<ContactShareConsentService> _logger;
+
+    public ContactShareConsentService(
+        IEventContactShareConsentRepository consentRepository,
+        IEventSessionRepository eventSessionRepository,
+        IEventRepository eventRepository,
+        IUserRepository userRepository,
+        IActorRepository actorRepository,
+        IOrganizationRepository organizationRepository,
+        ILogger<ContactShareConsentService> logger)
+    {
+        _consentRepository = consentRepository;
+        _eventSessionRepository = eventSessionRepository;
+        _eventRepository = eventRepository;
+        _userRepository = userRepository;
+        _actorRepository = actorRepository;
+        _organizationRepository = organizationRepository;
+        _logger = logger;
+    }
+
+    public async Task<Guid?> ProcessRegistrationConsent(
+        Guid tenantId,
+        Guid userId,
+        Guid eventId,
+        Guid registrationId,
+        bool shareEmailWithOrganizer,
+        string? consentText,
+        string? consentUiVersion)
+    {
+        if (!shareEmailWithOrganizer)
+            return null;
+
+        // Resolve event → actor → organisation
+        var @event = await _eventRepository.GetById(eventId);
+        if (@event == null)
+        {
+            _logger.LogWarning("Cannot process consent: event {EventId} not found", eventId);
+            return null;
+        }
+
+        var actor = await _actorRepository.GetById(@event.ActorId);
+        if (actor?.OrganizationId == null)
+        {
+            _logger.LogWarning("Cannot process consent: event {EventId} actor {ActorId} has no organisation", eventId, @event.ActorId);
+            return null;
+        }
+
+        var organization = await _organizationRepository.GetById(actor.OrganizationId.Value);
+        if (organization == null || organization.ApprovalStatusId != (int)ApprovalStatusEnum.Approved)
+        {
+            _logger.LogWarning("Cannot process consent: organisation {OrgId} is not approved", actor.OrganizationId);
+            return null;
+        }
+
+        // Load user PII for email snapshot
+        var user = await _userRepository.GetUserWithDetails(userId);
+        if (user?.Pii == null || string.IsNullOrWhiteSpace(user.Pii.Email))
+        {
+            _logger.LogWarning("Cannot process consent: user {UserId} has no email", userId);
+            return null;
+        }
+
+        var email = user.Pii.Email;
+        var emailNormalized = email.ToLowerInvariant();
+        var purposeCode = ConsentPurposeCodes.OrganizerFutureCommunications;
+        var uiVersion = consentUiVersion ?? ConsentUiVersions.V1;
+        var text = consentText ?? $"Share my email address with {organization.FullName} so they can contact me about future events and related updates.";
+
+        // Check for existing consent (per-organizer scope)
+        var existing = await _consentRepository.GetByScope(tenantId, userId, @event.ActorId, purposeCode);
+
+        if (existing != null)
+        {
+            // Reactivate if withdrawn, or refresh snapshot if re-granting
+            existing.Status = ConsentStatus.Granted;
+            existing.EmailSnapshot = email;
+            existing.EmailNormalizedSnapshot = emailNormalized;
+            existing.ConsentTextSnapshot = text;
+            existing.ConsentUiVersion = uiVersion;
+            existing.GrantedAt = DateTime.UtcNow;
+            existing.WithdrawnAt = null;
+            existing.SourceEventId = eventId;
+            existing.SourceEventRegistrationId = registrationId;
+            await _consentRepository.Update(existing);
+
+            _logger.LogInformation(
+                "Reactivated contact share consent {ConsentId} for user {UserId} → actor {ActorId}",
+                existing.Id, userId, @event.ActorId);
+
+            return existing.Id;
+        }
+
+        // Create new consent
+        var consent = new EventContactShareConsent
+        {
+            TenantId = tenantId,
+            UserId = userId,
+            RecipientActorId = @event.ActorId,
+            SourceEventId = eventId,
+            SourceEventRegistrationId = registrationId,
+            PurposeCode = purposeCode,
+            Status = ConsentStatus.Granted,
+            EmailSnapshot = email,
+            EmailNormalizedSnapshot = emailNormalized,
+            ConsentTextSnapshot = text,
+            ConsentUiVersion = uiVersion,
+            GrantedAt = DateTime.UtcNow
+        };
+
+        consent = await _consentRepository.Create(consent);
+
+        _logger.LogInformation(
+            "Created contact share consent {ConsentId} for user {UserId} → actor {ActorId}",
+            consent.Id, userId, @event.ActorId);
+
+        return consent.Id;
+    }
+
+    public async Task<bool> HasGrantedConsentForOrganizer(Guid tenantId, Guid userId, Guid recipientActorId)
+    {
+        var existing = await _consentRepository.GetByScope(
+            tenantId, userId, recipientActorId, ConsentPurposeCodes.OrganizerFutureCommunications);
+        return existing?.Status == ConsentStatus.Granted;
+    }
+
+    public async Task WithdrawConsent(Guid tenantId, Guid userId, Guid consentId)
+    {
+        var consent = await _consentRepository.GetById(consentId);
+        if (consent == null)
+            throw new KeyNotFoundException($"Consent {consentId} not found");
+
+        if (consent.TenantId != tenantId || consent.UserId != userId)
+            throw new UnauthorizedAccessException("Cannot withdraw consent belonging to another user");
+
+        if (consent.Status == ConsentStatus.Withdrawn)
+            return; // Already withdrawn, idempotent
+
+        consent.Status = ConsentStatus.Withdrawn;
+        consent.WithdrawnAt = DateTime.UtcNow;
+        await _consentRepository.Update(consent);
+
+        _logger.LogInformation(
+            "Withdrawn contact share consent {ConsentId} for user {UserId}", consentId, userId);
+    }
+
+    public async Task<List<UserContactShareConsentDto>> GetUserConsents(Guid tenantId, Guid userId)
+    {
+        var consents = await _consentRepository.GetByUser(tenantId, userId);
+
+        return consents.Select(c => new UserContactShareConsentDto
+        {
+            Id = c.Id,
+            RecipientActorId = c.RecipientActorId,
+            OrganizationName = c.RecipientActor?.Organization?.FullName
+                            ?? c.RecipientActor?.Pii?.DisplayName,
+            SourceEventId = c.SourceEventId,
+            SourceEventTitle = c.SourceEvent?.Title,
+            PurposeCode = c.PurposeCode,
+            Status = (int)c.Status,
+            EmailSnapshot = c.EmailSnapshot,
+            GrantedAt = c.GrantedAt,
+            WithdrawnAt = c.WithdrawnAt
+        }).ToList();
+    }
+}

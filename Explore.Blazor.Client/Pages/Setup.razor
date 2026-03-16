@@ -1,5 +1,5 @@
 @* ABOUTME: Setup secret entry page for first-run bootstrap access control. *@
-@* ABOUTME: Validates secret, stores it in sessionStorage, then routes to onboarding/login flow. *@
+@* ABOUTME: Validates secret, persists it through the BFF, then routes to onboarding/login flow. *@
 @* ABOUTME: Split-screen login-style layout with branding panel and form panel. *@
 
 @page "/setup"
@@ -9,8 +9,8 @@
 @inject IInstanceOnboardingService InstanceOnboardingService
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
-@inject IHttpClientFactory HttpClientFactory
-@using System.Net.Http.Json
+@using Microsoft.JSInterop
+@using Explore.Blazor.Client.Models.Responses
 
 <div class="setup-page">
     @* Left branding panel *@
@@ -23,25 +23,25 @@
             <MudDivider Class="setup-divider mb-6" />
 
             <MudStack Spacing="3">
-                <MudStack Direction="Direction.Row" Spacing="2" AlignItems="AlignItems.Start">
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Start">
                     <MudIcon Icon="@Icons.Material.Filled.Rocket" Class="setup-feature-icon" />
                     <MudText Class="setup-feature-text">
                         Self-hostable, decentralized, multi-tenant event platform for any community or industry
                     </MudText>
                 </MudStack>
-                <MudStack Direction="Direction.Row" Spacing="2" AlignItems="AlignItems.Start">
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Start">
                     <MudIcon Icon="@Icons.Material.Filled.Palette" Class="setup-feature-icon" />
                     <MudText Class="setup-feature-text">
                         Fully white-label — rebrand and customize for your specific use case
                     </MudText>
                 </MudStack>
-                <MudStack Direction="Direction.Row" Spacing="2" AlignItems="AlignItems.Start">
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Start">
                     <MudIcon Icon="@Icons.Material.Filled.Security" Class="setup-feature-icon" />
                     <MudText Class="setup-feature-text">
                         Security-first with BFF pattern, verified organizations, and enterprise architecture
                     </MudText>
                 </MudStack>
-                <MudStack Direction="Direction.Row" Spacing="2" AlignItems="AlignItems.Start">
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Start">
                     <MudIcon Icon="@Icons.Material.Filled.Public" Class="setup-feature-icon" />
                     <MudText Class="setup-feature-text">
                         Federation-ready with ATProto data models and open-source AGPL-3.0 license
@@ -66,7 +66,7 @@
                     <MudSkeleton Width="80%" Height="20px" Class="mb-1" />
                     <MudSkeleton Width="100%" Height="56px" Class="mb-2" />
                     <MudSkeleton Width="50%" Height="16px" Class="mb-3" />
-                    <MudStack Direction="Direction.Row" Spacing="2">
+                    <MudStack Row="true" Spacing="2">
                         <MudSkeleton Width="100px" Height="40px" />
                         <MudSkeleton Width="120px" Height="40px" />
                     </MudStack>
@@ -92,7 +92,7 @@
                     @if (_instanceStartedAt.HasValue)
                     {
                         <MudAlert Severity="Severity.Info" Dense="true" Class="mb-4" NoIcon="true">
-                            <MudStack Direction="Direction.Row" Spacing="1" AlignItems="AlignItems.Center">
+                            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
                                 <MudIcon Icon="@Icons.Material.Filled.Timer" Size="Size.Small" />
                                 <MudText Typo="Typo.body2">
                                     Setup window: @_remainingTime remaining
@@ -215,7 +215,7 @@
     {
         if (firstRender)
         {
-            await RestoreSecretFromSessionAsync();
+            await RestorePersistedSecretAsync();
         }
 
         await EnsureSecretSyncedForAuthenticatedSessionAsync();
@@ -265,18 +265,19 @@
             return;
         }
 
-        var bffClient = CreateBffSelfClient();
-        var persistResponse = await bffClient.PostAsJsonAsync("/bff/setup-secret", new { Secret = _secret.Trim() });
-        if (!persistResponse.IsSuccessStatusCode)
+        // Persist via browser fetch so the setup-secret HttpOnly cookie is set on the browser.
+        var bffModule = await GetBffModuleAsync();
+        var persistResult = await bffModule.InvokeAsync<BffMutationResult>("persistSetupSecret", _secret.Trim());
+        if (persistResult is null || !persistResult.Ok)
         {
             _validationSucceeded = false;
-            _errorMessage = "Secret validated but could not persist onboarding session. Try again.";
+            _errorMessage = persistResult?.Error ?? "Secret validated but could not persist onboarding session. Try again.";
             return;
         }
 
-        await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", "setup-secret", _secret.Trim());
         _hasStoredSecret = true;
         _validationSucceeded = true;
+        _secret = string.Empty;
         _isSecretSyncedForAuthenticatedSession = false;
         await LoadDetectedProvidersAsync();
     }
@@ -298,29 +299,41 @@
         Navigation.NavigateTo($"/login?provider={Uri.EscapeDataString(providerQuery)}&returnUrl=/setup", forceLoad: true);
     }
 
-    private async Task RestoreSecretFromSessionAsync()
+    private async Task RestorePersistedSecretAsync()
     {
-        var storedSecret = (await JSRuntime.InvokeAsync<string?>("sessionStorage.getItem", "setup-secret"))?.Trim();
-        if (string.IsNullOrWhiteSpace(storedSecret))
+        var bffModule = await GetBffModuleAsync();
+        var status = await bffModule.InvokeAsync<SetupSecretStatusResponse>("getSetupSecretStatus");
+
+        if (status is null || !status.HasPersistedSecret)
         {
             _hasStoredSecret = false;
             _validationSucceeded = false;
             _secret = string.Empty;
+            _detectedProviders = [];
+            if (!string.IsNullOrWhiteSpace(status?.Error))
+            {
+                _errorMessage = status.Error;
+            }
+
             StateHasChanged();
             return;
         }
 
-        var validationResult = await InstanceOnboardingService.ValidateSecretAsync(storedSecret);
-        if (!validationResult.Valid)
+        if (!status.IsValid)
         {
-            await ClearStoredSecretAsync();
-            _errorMessage = "Stored setup secret is no longer valid. Please enter the current setup secret.";
+            _hasStoredSecret = false;
+            _validationSucceeded = false;
+            _secret = string.Empty;
+            _detectedProviders = [];
+            _errorMessage = string.IsNullOrWhiteSpace(status.Error)
+                ? "Stored setup secret is no longer valid. Please enter the current setup secret."
+                : status.Error;
             StateHasChanged();
             return;
         }
 
         _hasStoredSecret = true;
-        _secret = storedSecret;
+        _secret = string.Empty;
         _validationSucceeded = true;
         _isSecretSyncedForAuthenticatedSession = false;
         _errorMessage = null;
@@ -330,9 +343,8 @@
 
     private async Task ClearStoredSecretAsync()
     {
-        var bffClient = CreateBffSelfClient();
-        await bffClient.DeleteAsync("/bff/setup-secret");
-        await JSRuntime.InvokeVoidAsync("sessionStorage.removeItem", "setup-secret");
+        var bffModule = await GetBffModuleAsync();
+        await bffModule.InvokeAsync<BffMutationResult>("deleteSetupSecret");
         _hasStoredSecret = false;
         _validationSucceeded = false;
         _secret = string.Empty;
@@ -351,8 +363,8 @@
         _isDetectingProviders = true;
         try
         {
-            var bffClient = CreateBffSelfClient();
-            var response = await bffClient.GetFromJsonAsync<AuthProvidersResponse>("/auth/providers");
+            var bffModule = await GetBffModuleAsync();
+            var response = await bffModule.InvokeAsync<AuthProvidersResponse>("fetchJson", "/auth/providers");
             _detectedProviders = (response?.Providers ?? [])
                 .Where(provider => provider.Type.Equals("button", StringComparison.OrdinalIgnoreCase))
                 .Where(provider =>
@@ -372,12 +384,11 @@
 
     private async Task ContinueToOnboardingAsync()
     {
-        var secret = _secret.Trim();
-        if (!string.IsNullOrWhiteSpace(secret))
+        if (_hasStoredSecret)
         {
-            var bffClient = CreateBffSelfClient();
-            var syncResponse = await bffClient.PostAsJsonAsync("/bff/setup-secret/sync", new { Secret = secret });
-            if (syncResponse.IsSuccessStatusCode)
+            var bffModule = await GetBffModuleAsync();
+            var syncResult = await bffModule.InvokeAsync<BffMutationResult>("syncSetupSecret", _secret.Trim());
+            if (syncResult is { Ok: true })
             {
                 _isSecretSyncedForAuthenticatedSession = true;
             }
@@ -393,24 +404,12 @@
             return;
         }
 
-        var secret = _secret.Trim();
-        if (string.IsNullOrWhiteSpace(secret))
-        {
-            secret = (await JSRuntime.InvokeAsync<string?>("sessionStorage.getItem", "setup-secret"))?.Trim() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(secret))
-            {
-                return;
-            }
-
-            _secret = secret;
-        }
-
         _isSyncingSecret = true;
         try
         {
-            var bffClient = CreateBffSelfClient();
-            var response = await bffClient.PostAsJsonAsync("/bff/setup-secret/sync", new { Secret = secret });
-            if (response.IsSuccessStatusCode)
+            var bffModule = await GetBffModuleAsync();
+            var result = await bffModule.InvokeAsync<BffMutationResult>("syncSetupSecret", _secret.Trim());
+            if (result is { Ok: true })
             {
                 _isSecretSyncedForAuthenticatedSession = true;
             }
@@ -463,26 +462,17 @@
         _countdownTimer?.Dispose();
     }
 
-    /// <summary>
-    /// Creates an HttpClient targeting the Blazor BFF server itself (for /bff/* endpoints).
-    /// Uses "BffSelfClient" which has dev cert bypass configured on the server side.
-    /// </summary>
-    private HttpClient CreateBffSelfClient()
+    // ── JS interop ────────────────────────────────────────────────────
+    // All BFF calls go through browser fetch (via bff.js) so cookies
+    // flow correctly regardless of Blazor render mode.
+
+    private IJSObjectReference? _bffModule;
+
+    private async Task<IJSObjectReference> GetBffModuleAsync()
     {
-        var client = HttpClientFactory.CreateClient("BffSelfClient");
-        client.BaseAddress = new Uri(Navigation.BaseUri);
-        return client;
+        _bffModule ??= await JSRuntime.InvokeAsync<IJSObjectReference>("import", "/js/bff.js");
+        return _bffModule;
     }
 
-    private sealed class AuthProvidersResponse
-    {
-        public List<AuthProviderQuickAction> Providers { get; set; } = [];
-    }
-
-    private sealed class AuthProviderQuickAction
-    {
-        public string Name { get; set; } = string.Empty;
-        public string DisplayName { get; set; } = string.Empty;
-        public string Type { get; set; } = string.Empty;
-    }
+    // DTOs for JS interop are in Explore.Blazor.Client.Models.Responses.BffJsInteropResponses
 }

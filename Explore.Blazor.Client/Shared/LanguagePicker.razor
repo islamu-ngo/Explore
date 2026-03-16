@@ -6,29 +6,41 @@
 @inject IHttpClientFactory HttpClientFactory
 @inject ILogger<LanguagePicker> Logger
 
-<MudMenu Icon="@Icons.Material.Rounded.Language"
-         Color="Color.Inherit"
+<MudMenu @bind-Open="_isOpen"
          AnchorOrigin="Origin.BottomCenter"
          TransformOrigin="Origin.TopCenter"
          Dense="true"
          Class="language-picker">
-    @if (_languages.Count > 0)
-    {
-        @foreach (var lang in _languages)
+    <ActivatorContent>
+        <MudButton Variant="Variant.Text" 
+                   Color="Color.Inherit" 
+                   EndIcon="@(_isOpen ? Icons.Material.Filled.ArrowDropUp : Icons.Material.Filled.ArrowDropDown)"
+                   Style="text-transform: none; min-width: 0; padding: 4px 8px;">
+            <MudText Typo="Typo.body1">@LanguageContext.ForLanguage(_currentLang).Flag</MudText>
+        </MudButton>
+    </ActivatorContent>
+    <ChildContent>
+        @if (_languages.Count > 0)
         {
-            var ctx = LanguageContext.ForLanguage(lang);
-            <MudMenuItem OnClick="@(() => SelectLanguageAsync(lang))"
-                         Class="@(lang == _currentLang ? "language-picker__item--active" : "")">
-                <MudText Typo="Typo.body2">@ctx.LanguageName (@lang)</MudText>
+            @foreach (var lang in _languages)
+            {
+                var ctx = LanguageContext.ForLanguage(lang);
+                <MudMenuItem OnClick="@(() => SelectLanguageAsync(lang))"
+                             Class="@(lang == _currentLang ? "language-picker__item--active" : "")">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <MudText Typo="Typo.body2">@ctx.Flag</MudText>
+                        <MudText Typo="Typo.body2">@ctx.LanguageName (@lang.ToUpperInvariant())</MudText>
+                    </MudStack>
+                </MudMenuItem>
+            }
+        }
+        else
+        {
+            <MudMenuItem Disabled="true">
+                <MudText Typo="Typo.body2">Loading...</MudText>
             </MudMenuItem>
         }
-    }
-    else
-    {
-        <MudMenuItem Disabled="true">
-            <MudText Typo="Typo.body2">Loading...</MudText>
-        </MudMenuItem>
-    }
+    </ChildContent>
 </MudMenu>
 
 @code {
@@ -37,6 +49,7 @@
 
     private ICollection<string> _languages = new List<string>();
     private string _currentLang = "en";
+    private bool _isOpen;
 
     protected override async Task OnInitializedAsync()
     {

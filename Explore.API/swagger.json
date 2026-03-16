@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "https://localhost:55372/"
+      "url": "https://localhost:61259/"
     }
   ],
   "paths": {
@@ -2024,6 +2024,316 @@
                   "items": {
                     "$ref": "#/components/schemas/CategoryTypeWithCategoriesDto"
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/contactshareconsent/my": {
+      "get": {
+        "tags": [
+          "ContactShareConsent"
+        ],
+        "summary": "Get my contact sharing consents",
+        "description": "Retrieve all contact sharing consents for the current user (Connected Apps page).",
+        "operationId": "GetUserContactShareConsents",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserContactShareConsentDto"
+                  }
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserContactShareConsentDto"
+                  }
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserContactShareConsentDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/contactshareconsent/check/{recipientActorId}": {
+      "get": {
+        "tags": [
+          "ContactShareConsent"
+        ],
+        "summary": "Check if consent exists for organizer",
+        "description": "Check whether the current user has a granted consent for a specific organizer. Used by registration UI.",
+        "operationId": "CheckConsentForOrganizer",
+        "parameters": [
+          {
+            "name": "recipientActorId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "type": "boolean"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "type": "boolean"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/contactshareconsent/withdraw/{id}": {
+      "post": {
+        "tags": [
+          "ContactShareConsent"
+        ],
+        "summary": "Withdraw contact sharing consent",
+        "description": "Withdraw a previously granted contact sharing consent. The consent is marked as withdrawn, not deleted.",
+        "operationId": "WithdrawContactShareConsent",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/contactshareconsent/organization/{recipientActorId}": {
+      "get": {
+        "tags": [
+          "ContactShareConsent"
+        ],
+        "summary": "Get shared contacts for organization",
+        "description": "Retrieve paginated list of shared contacts for an organization. Requires ViewSharedContacts permission.",
+        "operationId": "GetOrganizationSharedContacts",
+        "parameters": [
+          {
+            "name": "recipientActorId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "eventId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "emailSearch",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResultOfSharedContactDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResultOfSharedContactDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResultOfSharedContactDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/contactshareconsent/organization/{recipientActorId}/export": {
+      "post": {
+        "tags": [
+          "ContactShareConsent"
+        ],
+        "summary": "Export shared contacts",
+        "description": "Export shared contacts as CSV or TSV. Records an audit trail of the export.",
+        "operationId": "ExportOrganizationSharedContacts",
+        "parameters": [
+          {
+            "name": "recipientActorId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "csv"
+            }
+          },
+          {
+            "name": "eventId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileContentResult"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileContentResult"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileContentResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -7606,6 +7916,141 @@
               },
               "text/json; v=0.1": {
                 "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/instanceonboarding/analytics-governance": {
+      "get": {
+        "tags": [
+          "InstanceOnboarding"
+        ],
+        "summary": "Get Analytics Governance Settings",
+        "description": "Returns analytics and cookie consent governance settings. Only instance admins can access.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsGovernanceSettingsDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsGovernanceSettingsDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsGovernanceSettingsDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "InstanceOnboarding"
+        ],
+        "summary": "Update Analytics Governance Settings",
+        "description": "Updates analytics and cookie consent governance settings. Requires instance administrator.",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalyticsGovernanceSettingsDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalyticsGovernanceSettingsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
               }
             }
           }
@@ -14644,6 +15089,367 @@
         }
       }
     },
+    "/api/eventseries": {
+      "get": {
+        "tags": [
+          "EventSeries"
+        ],
+        "parameters": [
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 10
+            }
+          },
+          {
+            "name": "actorId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=1.0": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResultOfEventSeriesListDto"
+                }
+              },
+              "application/hal\u002Bjson; v=1.0": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResultOfEventSeriesListDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "EventSeries"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=1.0": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventSeriesDto"
+              }
+            },
+            "text/json; v=1.0": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventSeriesDto"
+              }
+            },
+            "application/*\u002Bjson; v=1.0": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventSeriesDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json; v=1.0": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=1.0": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=1.0": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=1.0": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/eventseries/{id}": {
+      "get": {
+        "tags": [
+          "EventSeries"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=1.0": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventSeriesDto"
+                }
+              },
+              "application/hal\u002Bjson; v=1.0": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventSeriesDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=1.0": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=1.0": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "EventSeries"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=1.0": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventSeriesDto"
+              }
+            },
+            "text/json; v=1.0": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventSeriesDto"
+              }
+            },
+            "application/*\u002Bjson; v=1.0": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventSeriesDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=1.0": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=1.0": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=1.0": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=1.0": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=1.0": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=1.0": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "EventSeries"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=1.0": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfboolean"
+                }
+              },
+              "application/hal\u002Bjson; v=1.0": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfboolean"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=1.0": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=1.0": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/eventseries/top": {
+      "get": {
+        "tags": [
+          "EventSeries"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=1.0": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventSeriesDto"
+                }
+              },
+              "application/hal\u002Bjson; v=1.0": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventSeriesDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=1.0": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=1.0": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      }
+    },
     "/admin/migrate": {
       "post": {
         "tags": [
@@ -15150,6 +15956,108 @@
           },
           "hasAnyAuthority": {
             "type": "boolean"
+          }
+        }
+      },
+      "AnalyticsConsentBootstrapDto": {
+        "type": "object",
+        "properties": {
+          "cookieBannerEnabled": {
+            "type": "boolean"
+          },
+          "canRunBeforeConsent": {
+            "type": "boolean"
+          },
+          "declineBehavior": {
+            "type": "string"
+          },
+          "consentCookieKey": {
+            "type": "string"
+          },
+          "consentCookieLifetimeDays": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "analyticsProvider": {
+            "type": "string"
+          },
+          "posthog": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PosthogClientBootstrapDto"
+              }
+            ]
+          }
+        }
+      },
+      "AnalyticsGovernanceSettingsDto": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "endpointUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "hasApiKey": {
+            "type": "boolean"
+          },
+          "cookieConsentEnabled": {
+            "type": "boolean"
+          },
+          "declineBehavior": {
+            "$ref": "#/components/schemas/DeclineBehavior"
+          },
+          "consentCookieLifetimeDays": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "globalDisableClientTracking": {
+            "type": "boolean"
+          },
+          "posthogCookielessMode": {
+            "$ref": "#/components/schemas/PosthogCookielessMode"
+          },
+          "posthogPersonProfiles": {
+            "$ref": "#/components/schemas/PosthogPersonProfiles"
+          },
+          "posthogSessionReplay": {
+            "type": "boolean"
+          },
+          "posthogAutocapture": {
+            "type": "boolean"
+          },
+          "posthogHeatmaps": {
+            "type": "boolean"
+          },
+          "posthogToolbar": {
+            "type": "boolean"
+          },
+          "cookieBannerRequired": {
+            "type": "boolean"
+          },
+          "canRunBeforeConsent": {
+            "type": "boolean"
+          },
+          "storageProfile": {
+            "type": "string"
           }
         }
       },
@@ -16050,6 +16958,26 @@
               "string"
             ]
           },
+          "firstSessionStartUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "lastSessionStartUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "eventTimeZoneId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "eventUrl": {
             "type": [
               "null",
@@ -16107,6 +17035,43 @@
               "string"
             ],
             "format": "uuid"
+          }
+        }
+      },
+      "CreateEventSeriesDto": {
+        "required": [
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "slug": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "featuredImageId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "actorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isPublished": {
+            "type": "boolean"
           }
         }
       },
@@ -17096,6 +18061,9 @@
           }
         }
       },
+      "DeclineBehavior": {
+        "type": "integer"
+      },
       "DidCustodyTypeDto": {
         "required": [
           "masterCode",
@@ -17151,6 +18119,17 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "EntityTagHeaderValue": {
+        "type": "object",
+        "properties": {
+          "tag": {
+            "$ref": "#/components/schemas/StringSegment"
+          },
+          "isWeak": {
+            "type": "boolean"
           }
         }
       },
@@ -18005,6 +18984,15 @@
               "string"
             ]
           },
+          "eventSeriesTitle": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isPast": {
+            "type": "boolean"
+          },
           "totalViews": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
@@ -18184,6 +19172,144 @@
           "tenantId": {
             "type": "string",
             "format": "uuid"
+          }
+        }
+      },
+      "EventSeriesDto": {
+        "required": [
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "slug": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "featuredImageId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "featuredImageUri": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "actorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "actorDisplayName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isPublished": {
+            "type": "boolean"
+          },
+          "startDateUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "endDateUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventListDto"
+            }
+          }
+        }
+      },
+      "EventSeriesListDto": {
+        "required": [
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "slug": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "featuredImageUri": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "actorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "actorDisplayName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "startDateUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "endDateUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "eventCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -18971,6 +20097,47 @@
       },
       "ExternalApiKeyStatus": {
         "type": "integer"
+      },
+      "FileContentResult": {
+        "type": "object",
+        "properties": {
+          "fileContents": {
+            "type": "string",
+            "format": "byte"
+          },
+          "contentType": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "fileDownloadName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lastModified": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "entityTag": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EntityTagHeaderValue"
+              }
+            ]
+          },
+          "enableRangeProcessing": {
+            "type": "boolean"
+          }
+        }
       },
       "FileTypeDto": {
         "required": [
@@ -21198,6 +22365,15 @@
           "lockDecentralizationEnabled": {
             "type": "boolean"
           },
+          "lockTenantSmtp": {
+            "type": "boolean"
+          },
+          "lockTenantStorage": {
+            "type": "boolean"
+          },
+          "lockTenantAnalytics": {
+            "type": "boolean"
+          },
           "authorizationProvider": {
             "type": "string"
           }
@@ -22376,6 +23552,55 @@
           }
         }
       },
+      "PaginatedResultOfEventSeriesListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventSeriesListDto"
+            }
+          },
+          "pageNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalPages": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "hasPreviousPage": {
+            "type": "boolean"
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          }
+        }
+      },
       "PaginatedResultOfEventSessionAgendaItemListDto": {
         "type": "object",
         "properties": {
@@ -22474,6 +23699,55 @@
           }
         }
       },
+      "PaginatedResultOfSharedContactDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SharedContactDto"
+            }
+          },
+          "pageNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalPages": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "hasPreviousPage": {
+            "type": "boolean"
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          }
+        }
+      },
       "PaginatedResultOfStorageObjectListDto": {
         "type": "object",
         "properties": {
@@ -22522,6 +23796,35 @@
             "type": "boolean"
           }
         }
+      },
+      "PosthogClientBootstrapDto": {
+        "type": "object",
+        "properties": {
+          "cookielessMode": {
+            "type": "string"
+          },
+          "personProfiles": {
+            "type": "string"
+          },
+          "sessionReplay": {
+            "type": "boolean"
+          },
+          "autocapture": {
+            "type": "boolean"
+          },
+          "heatmaps": {
+            "type": "boolean"
+          },
+          "toolbar": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PosthogCookielessMode": {
+        "type": "integer"
+      },
+      "PosthogPersonProfiles": {
+        "type": "integer"
       },
       "PrayerTime": {
         "type": "integer"
@@ -22667,6 +23970,16 @@
           },
           "analyticsEndpointUrl": {
             "type": "string"
+          },
+          "analyticsConsent": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/AnalyticsConsentBootstrapDto"
+              }
+            ]
           },
           "renderPolicyVersion": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -22928,6 +24241,38 @@
       "SessionStartTimeType": {
         "type": "integer"
       },
+      "SharedContactDto": {
+        "type": "object",
+        "properties": {
+          "consentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string"
+          },
+          "grantedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sourceEventId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "sourceEventTitle": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "purposeCode": {
+            "type": "string"
+          }
+        }
+      },
       "SkillLevel": {
         "type": "integer"
       },
@@ -23080,6 +24425,42 @@
           "tenantId": {
             "type": "string",
             "format": "uuid"
+          }
+        }
+      },
+      "StringSegment": {
+        "type": "object",
+        "properties": {
+          "buffer": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "offset": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "length": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "value": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "hasValue": {
+            "type": "boolean"
           }
         }
       },
@@ -23638,6 +25019,15 @@
           },
           "canOverrideAdminRenderPolicy": {
             "type": "boolean"
+          },
+          "canOverrideSmtp": {
+            "type": "boolean"
+          },
+          "canOverrideStorage": {
+            "type": "boolean"
+          },
+          "canOverrideAnalytics": {
+            "type": "boolean"
           }
         }
       },
@@ -24096,6 +25486,26 @@
               "string"
             ]
           },
+          "firstSessionStartUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "lastSessionStartUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "eventTimeZoneId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "eventUrl": {
             "type": [
               "null",
@@ -24157,6 +25567,43 @@
               "string"
             ],
             "format": "uuid"
+          }
+        }
+      },
+      "UpdateEventSeriesDto": {
+        "required": [
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "slug": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "featuredImageId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "isPublished": {
+            "type": "boolean"
           }
         }
       },
@@ -25000,6 +26447,63 @@
           }
         }
       },
+      "UserContactShareConsentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "recipientActorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "organizationName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sourceEventId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "sourceEventTitle": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "purposeCode": {
+            "type": "string"
+          },
+          "status": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "emailSnapshot": {
+            "type": "string"
+          },
+          "grantedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "withdrawnAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
       "UserDto": {
         "required": [
           "email",
@@ -25252,6 +26756,9 @@
       "name": "CategoryType"
     },
     {
+      "name": "ContactShareConsent"
+    },
+    {
       "name": "DidCustodyType"
     },
     {
@@ -25373,6 +26880,9 @@
     },
     {
       "name": "VisibilityType"
+    },
+    {
+      "name": "EventSeries"
     },
     {
       "name": "Explore.API"

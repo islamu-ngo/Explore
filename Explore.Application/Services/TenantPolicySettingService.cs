@@ -55,6 +55,9 @@ public class TenantPolicySettingService : ITenantPolicySettingService
         var systemLockPublicSeo = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyLockTenantPublicSeo);
         var systemLockOperational = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyLockTenantOperational);
         var systemLockAdmin = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyLockTenantAdmin);
+        var systemLockSmtp = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.GovernanceLockTenantSmtp);
+        var systemLockStorage = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.GovernanceLockTenantStorage);
+        var systemLockAnalytics = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.GovernanceLockTenantAnalytics);
         var systemRenderPreset = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyPreset);
         var systemRenderAdvanced = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyAdvancedEnabled);
         var systemGlobalRenderMode = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyGlobalRenderMode);
@@ -251,7 +254,10 @@ public class TenantPolicySettingService : ITenantPolicySettingService
             CanOverrideRenderPolicy = allowTenantRenderOverride,
             CanOverridePublicSeoRenderPolicy = canOverridePublicSeo,
             CanOverrideOperationalRenderPolicy = canOverrideOperational,
-            CanOverrideAdminRenderPolicy = canOverrideAdmin
+            CanOverrideAdminRenderPolicy = canOverrideAdmin,
+            CanOverrideSmtp = !DeserializeBoolean(systemLockSmtp?.Value, true),
+            CanOverrideStorage = !DeserializeBoolean(systemLockStorage?.Value, true),
+            CanOverrideAnalytics = !DeserializeBoolean(systemLockAnalytics?.Value, true)
         };
     }
 

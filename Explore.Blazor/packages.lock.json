@@ -47,6 +47,16 @@
         "resolved": "10.0.2",
         "contentHash": "egUPC0xydb1ugCMcRyJ6zaOGOzx7N4coOVlGeLcIsXhUf1xHHwZeX+ob7JuG0dXExFduHYE/t+4/4y8BLlBKmw=="
       },
+      "Microsoft.Extensions.Http.Resilience": {
+        "type": "Direct",
+        "requested": "[9.4.0, )",
+        "resolved": "9.4.0",
+        "contentHash": "sml3XlyLrAnxYFTn96KaHzrzcnbkSZpxWzDffE9qs3QXloLepOa0nUjsgvhDg9InCNrd/KAuRLUzE6LCPa7r/g==",
+        "dependencies": {
+          "Microsoft.Extensions.Http.Diagnostics": "9.4.0",
+          "Microsoft.Extensions.Resilience": "9.4.0"
+        }
+      },
       "Microsoft.OpenApi": {
         "type": "Direct",
         "requested": "[2.4.1, )",
@@ -509,6 +519,7 @@
           "Explore.Application": "[1.0.0, )",
           "Explore.Secrets": "[1.0.0, )",
           "Microsoft.EntityFrameworkCore": "[10.0.2, )",
+          "Microsoft.EntityFrameworkCore.Relational": "[10.0.2, )",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.0, )"
         }
       },
@@ -661,10 +672,10 @@
       "Microsoft.EntityFrameworkCore.Relational": {
         "type": "CentralTransitive",
         "requested": "[10.0.2, )",
-        "resolved": "10.0.1",
-        "contentHash": "8/5kYGwKN6wtc89QqcPTOZDAJSMX8MzKCf5OmYjIfAHWTfsUEpGKYrdtfNk4X36rQ0BiU3n57Y4rbtnerzJN0Q==",
+        "resolved": "10.0.2",
+        "contentHash": "1fUeyNmqDNfMogJ2ut7OKO57/WGjjkHMYeX51SpA3PwP7ftbx8g/Z3fbErD+1q14DILrqJfsszYsYhGssBRfDg==",
         "dependencies": {
-          "Microsoft.EntityFrameworkCore": "10.0.1"
+          "Microsoft.EntityFrameworkCore": "10.0.2"
         }
       },
       "Microsoft.Extensions.Caching.Hybrid": {
@@ -678,16 +689,6 @@
         "requested": "[9.9.0, )",
         "resolved": "9.9.0",
         "contentHash": "9/bU4vuy7xu81BeiHazP0kmtOb3vAKSGdN+9s84/HfwVDvxAZOfPxDK7uPl6jEfiFdZvpHNF/YxWQqaISvYEUQ=="
-      },
-      "Microsoft.Extensions.Http.Resilience": {
-        "type": "CentralTransitive",
-        "requested": "[9.4.0, )",
-        "resolved": "9.4.0",
-        "contentHash": "sml3XlyLrAnxYFTn96KaHzrzcnbkSZpxWzDffE9qs3QXloLepOa0nUjsgvhDg9InCNrd/KAuRLUzE6LCPa7r/g==",
-        "dependencies": {
-          "Microsoft.Extensions.Http.Diagnostics": "9.4.0",
-          "Microsoft.Extensions.Resilience": "9.4.0"
-        }
       },
       "Microsoft.Extensions.ServiceDiscovery": {
         "type": "CentralTransitive",

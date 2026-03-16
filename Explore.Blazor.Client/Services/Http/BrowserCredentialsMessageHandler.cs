@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components.WebAssembly.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.JSInterop;
 
 namespace Explore.Blazor.Client.Services.Http;
 
@@ -10,6 +11,8 @@ namespace Explore.Blazor.Client.Services.Http;
 public class BrowserCredentialsMessageHandler : DelegatingHandler
 {
     private readonly ILogger<BrowserCredentialsMessageHandler>? _logger;
+    private readonly IJSRuntime? _jsRuntime;
+    private IJSObjectReference? _module;
 
     public BrowserCredentialsMessageHandler()
     {
@@ -21,6 +24,17 @@ public class BrowserCredentialsMessageHandler : DelegatingHandler
         _logger = logger;
     }
 
+    public BrowserCredentialsMessageHandler(IJSRuntime jsRuntime)
+    {
+        _jsRuntime = jsRuntime;
+    }
+
+    public BrowserCredentialsMessageHandler(ILogger<BrowserCredentialsMessageHandler> logger, IJSRuntime jsRuntime)
+    {
+        _logger = logger;
+        _jsRuntime = jsRuntime;
+    }
+
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
         CancellationToken cancellationToken)
@@ -30,6 +44,15 @@ public class BrowserCredentialsMessageHandler : DelegatingHandler
 
         // Ensure the request mode allows requests (SameOrigin for BFF)
         request.SetBrowserRequestMode(BrowserRequestMode.SameOrigin);
+
+        if (IsMutatingMethod(request.Method) && !request.Headers.Contains("X-CSRF-TOKEN"))
+        {
+            var token = await TryGetXsrfAsync(cancellationToken);
+            if (!string.IsNullOrWhiteSpace(token))
+            {
+                request.Headers.Add("X-CSRF-TOKEN", token);
+            }
+        }
 
         _logger?.LogDebug("[WASM HTTP] {Method} {Uri} - Credentials: Include, Mode: SameOrigin",
             request.Method, request.RequestUri?.PathAndQuery);
@@ -55,6 +78,28 @@ public class BrowserCredentialsMessageHandler : DelegatingHandler
             _logger?.LogError(ex, "[WASM HTTP] {Method} {Uri} - Request failed",
                 request.Method, request.RequestUri?.PathAndQuery);
             throw;
+        }
+    }
+
+    private static bool IsMutatingMethod(HttpMethod method)
+        => method == HttpMethod.Post || method == HttpMethod.Put || method == HttpMethod.Patch || method == HttpMethod.Delete;
+
+    private async Task<string?> TryGetXsrfAsync(CancellationToken cancellationToken)
+    {
+        if (_jsRuntime is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            _module ??= await _jsRuntime.InvokeAsync<IJSObjectReference>("import", cancellationToken, "/js/bff.js");
+            return await _module.InvokeAsync<string?>("getCookie", cancellationToken, "XSRF-TOKEN");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "[WASM HTTP] Could not read XSRF-TOKEN cookie for antiforgery header injection.");
+            return null;
         }
     }
 }

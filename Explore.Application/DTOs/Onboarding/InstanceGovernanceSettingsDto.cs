@@ -56,6 +56,11 @@ public class InstanceGovernanceSettingsDto
     public bool DecentralizationEnabled { get; set; }
     public bool LockDecentralizationEnabled { get; set; }
 
+    // Tenant delegation locks (category-level master locks)
+    public bool LockTenantSmtp { get; set; } = true;
+    public bool LockTenantStorage { get; set; } = true;
+    public bool LockTenantAnalytics { get; set; } = true;
+
     // Authorization
     public string AuthorizationProvider { get; set; } = "local";
 }

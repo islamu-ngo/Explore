@@ -199,6 +199,13 @@ public static class GovernanceSettingKeys
         public const string PosthogToolbar = "analytics.posthog_toolbar";
     }
 
+    public static class TenantDelegation
+    {
+        public const string LockSmtp = "governance.lock_tenant_smtp";
+        public const string LockStorage = "governance.lock_tenant_storage";
+        public const string LockAnalytics = "governance.lock_tenant_analytics";
+    }
+
     public static class Localization
     {
         public const string DefaultLanguage = "localization.default_language";
@@ -300,6 +307,10 @@ public static class GovernanceSettingKeys
     public const string AuthGoogleClientId = Authentication.GoogleClientId;
     public const string AuthGoogleClientSecret = InfrastructureSecretSettingKeys.Authentication.GoogleClientSecret;
     public const string FederationDecentralizationEnabled = Federation.DecentralizationEnabled;
+
+    public const string GovernanceLockTenantSmtp = TenantDelegation.LockSmtp;
+    public const string GovernanceLockTenantStorage = TenantDelegation.LockStorage;
+    public const string GovernanceLockTenantAnalytics = TenantDelegation.LockAnalytics;
 
     public const string LocalizationDefaultLanguage = Localization.DefaultLanguage;
     public const string LocalizationTmsProvider = Localization.TmsProvider;

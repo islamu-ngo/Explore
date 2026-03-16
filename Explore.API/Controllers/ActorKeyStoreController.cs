@@ -89,7 +89,7 @@ public class ActorKeyStoreController : ControllerBase
     {
         if (id != dto.Id)
         {
-            return BadRequest(new { error = "Actor Key Store ID mismatch" });
+            return Problem(detail: "Actor Key Store ID mismatch", statusCode: StatusCodes.Status400BadRequest, title: "Bad request");
         }
 
         var command = new UpdateActorKeyStoreCommand { ActorKeyStoreDto = dto };
@@ -117,7 +117,7 @@ public class ActorKeyStoreController : ControllerBase
 
         if (!result)
         {
-            return NotFound(new { error = "Actor Key Store not found" });
+            return Problem(detail: "Actor Key Store not found", statusCode: StatusCodes.Status404NotFound, title: "Resource not found");
         }
 
         return NoContent();

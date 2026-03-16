@@ -220,7 +220,7 @@
                         }
                         else if (_currentSection == "auth-providers")
                         {
-                            <InstanceAuthProviderSection Model="_authProviderModel" />
+                            <InstanceAuthProviderSection Model="_authProviderModel" IsSingleTenant="IsSingleTenantMode" />
                         }
                         else if (_currentSection == "appearance" && IsSingleTenantMode)
                         {
@@ -228,19 +228,28 @@
                         }
                         else if (_currentSection == "modules")
                         {
-                            <InstanceModulesSection Model="_model" />
+                            <InstanceModulesSection Model="_model" IsSingleTenant="IsSingleTenantMode" />
                         }
                         else if (_currentSection == "storage")
                         {
-                            <InstanceStorageSection Model="_storageModel" OnboardingService="InstanceOnboardingService" />
+                            <InstanceStorageSection Model="_storageModel" OnboardingService="InstanceOnboardingService"
+                                                   IsSingleTenant="IsSingleTenantMode"
+                                                   LockForTenants="_model.LockTenantStorage"
+                                                   LockForTenantsChanged="@(v => _model.LockTenantStorage = v)" />
                         }
                         else if (_currentSection == "smtp")
                         {
-                            <InstanceSmtpSection Model="_smtpModel" OnboardingService="InstanceOnboardingService" />
+                            <InstanceSmtpSection Model="_smtpModel" OnboardingService="InstanceOnboardingService"
+                                               IsSingleTenant="IsSingleTenantMode"
+                                               LockForTenants="_model.LockTenantSmtp"
+                                               LockForTenantsChanged="@(v => _model.LockTenantSmtp = v)" />
                         }
                         else if (_currentSection == "analytics-privacy")
                         {
-                            <InstanceAnalyticsPrivacySection Model="_analyticsModel" />
+                            <InstanceAnalyticsPrivacySection Model="_analyticsModel"
+                                                           IsSingleTenant="IsSingleTenantMode"
+                                                           LockForTenants="_model.LockTenantAnalytics"
+                                                           LockForTenantsChanged="@(v => _model.LockTenantAnalytics = v)" />
                         }
                         else if (_currentSection == "members" && IsSingleTenantMode)
                         {

@@ -1,0 +1,24 @@
+// ABOUTME: Shared cache tag names for HybridCache and output cache invalidation.
+// ABOUTME: Keeps invalidation logic consistent across API, Application, and query handlers.
+
+namespace Explore.Application.Caching;
+
+public static class CacheTags
+{
+    public const string Events = "events";
+    public const string EventLists = "events:list";
+    public const string EventDetails = "events:detail";
+    public const string Categories = "categories";
+    public const string CategoryLists = "categories:list";
+    public const string CategoryDetails = "categories:detail";
+    public const string Groups = "groups";
+    public const string GroupLists = "groups:list";
+    public const string GroupDetails = "groups:detail";
+    public const string Organizations = "organizations";
+    public const string OrganizationLists = "organizations:list";
+    public const string OrganizationDetails = "organizations:detail";
+
+    public static string Event(Guid eventId) => $"event:{eventId}";
+    public static string Group(Guid groupId) => $"group:{groupId}";
+    public static string Organization(Guid organizationId) => $"organization:{organizationId}";
+}
