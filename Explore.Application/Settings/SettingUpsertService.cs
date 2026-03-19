@@ -3,8 +3,11 @@
 
 namespace Explore.Application.Settings;
 
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Notifications;
 using Explore.Domain;
+using MediatR;
 
 /// <summary>
 /// Centralized service for upserting SystemSetting records.
@@ -13,10 +16,12 @@ using Explore.Domain;
 public class SettingUpsertService
 {
     private readonly ISystemSettingRepository _systemSettingRepository;
+    private readonly IMediator _mediator;
 
-    public SettingUpsertService(ISystemSettingRepository systemSettingRepository)
+    public SettingUpsertService(ISystemSettingRepository systemSettingRepository, IMediator mediator)
     {
         _systemSettingRepository = systemSettingRepository;
+        _mediator = mediator;
     }
 
     /// <summary>
@@ -34,6 +39,8 @@ public class SettingUpsertService
     {
         var existing = await _systemSettingRepository.GetByKey(settingKey);
 
+        var oldValue = existing?.Value;
+
         if (existing is null)
         {
             await _systemSettingRepository.Create(new SystemSetting
@@ -48,50 +55,67 @@ public class SettingUpsertService
                 CreatedAt = DateTime.UtcNow,
                 CreatedBy = actorId
             });
-            return;
+        }
+        else
+        {
+            existing.Value = value;
+            existing.ValueType = valueType;
+            existing.IsLocked = isLocked;
+            existing.Description = description;
+            existing.Category = category;
+            existing.DisplayOrder = displayOrder;
+            existing.UpdatedAt = DateTime.UtcNow;
+            existing.UpdatedBy = actorId;
+
+            await _systemSettingRepository.Update(existing);
         }
 
-        existing.Value = value;
-        existing.ValueType = valueType;
-        existing.IsLocked = isLocked;
-        existing.Description = description;
-        existing.Category = category;
-        existing.DisplayOrder = displayOrder;
-        existing.UpdatedAt = DateTime.UtcNow;
-        existing.UpdatedBy = actorId;
-
-        await _systemSettingRepository.Update(existing);
+        // Fire-and-forget: audit notification should not block the write path
+        _ = _mediator.Publish(new SettingChangedNotification(
+            settingKey, oldValue, value, SettingSource.SystemDefault, null, actorId, DateTime.UtcNow));
     }
 
     /// <summary>
     /// Upserts a system setting with minimal parameters (uses existing metadata if updating).
     /// </summary>
     public async Task UpsertValueAsync(string settingKey, string value, Guid? actorId = null)
+        => await UpsertValueAsync(settingKey, value, isLocked: false, actorId);
+
+    /// <summary>
+    /// Upserts a system setting with lock control. Pulls metadata from SettingRegistry (Guardrail 2).
+    /// </summary>
+    public async Task UpsertValueAsync(string settingKey, string value, bool isLocked, Guid? actorId)
     {
         var existing = await _systemSettingRepository.GetByKey(settingKey);
+        var oldValue = existing?.Value;
+        var definition = Domain.Settings.SettingRegistry.Get(settingKey);
 
         if (existing is null)
         {
-            var definition = Domain.Settings.SettingRegistry.Get(settingKey);
             await _systemSettingRepository.Create(new SystemSetting
             {
                 SettingKey = settingKey,
                 Value = value,
                 ValueType = definition?.ValueType ?? SettingValueType.String,
-                IsLocked = false,
+                IsLocked = isLocked,
                 Description = definition?.Description,
                 Category = definition?.Category ?? "Unknown",
                 DisplayOrder = 0,
                 CreatedAt = DateTime.UtcNow,
                 CreatedBy = actorId
             });
-            return;
+        }
+        else
+        {
+            existing.Value = value;
+            existing.IsLocked = isLocked;
+            existing.UpdatedAt = DateTime.UtcNow;
+            existing.UpdatedBy = actorId;
+
+            await _systemSettingRepository.Update(existing);
         }
 
-        existing.Value = value;
-        existing.UpdatedAt = DateTime.UtcNow;
-        existing.UpdatedBy = actorId;
-
-        await _systemSettingRepository.Update(existing);
+        _ = _mediator.Publish(new SettingChangedNotification(
+            settingKey, oldValue, value, SettingSource.SystemDefault, null, actorId, DateTime.UtcNow));
     }
 }

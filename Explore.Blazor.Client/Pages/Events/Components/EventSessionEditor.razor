@@ -2,6 +2,7 @@
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Helpers
+@using Explore.Blazor.Client.Pages.Events.Models
 
 <MudPaper Class="event-session-editor" Elevation="1">
     <div class="event-session-editor__header">
@@ -257,65 +258,5 @@
     private async Task OnRemoveClicked()
     {
         await OnRemove.InvokeAsync();
-    }
-
-    public class SessionEditorModel
-    {
-        public Guid? Id { get; set; }
-        public string? Title { get; set; }
-        public string? Description { get; set; }
-        public DateTime StartTime { get; set; } = DateTime.Today.AddHours(9);
-        public DateTime EndTime { get; set; } = DateTime.Today.AddHours(17);
-        public Guid? LocationId { get; set; }
-        public int? MaxAudienceAttendees { get; set; }
-        public int? RegistrationModeId { get; set; } = 1;
-        public IReadOnlyCollection<int> LanguageIds { get; set; } = new HashSet<int>();
-
-        public CreateEventSessionDto ToCreateDto(Guid eventId, Guid tenantId)
-        {
-            return new CreateEventSessionDto
-            {
-                EventId = eventId,
-                Title = Title ?? "Session",
-                Description = Description,
-                StartTime = DateTimeHelper.ConvertLocalToUtc(StartTime),
-                EndTime = DateTimeHelper.ConvertLocalToUtc(EndTime),
-                LocationId = LocationId,
-                MaxAudienceAttendees = MaxAudienceAttendees,
-                RegistrationModeId = RegistrationModeId,
-                TenantId = tenantId
-            };
-        }
-
-        public UpdateEventSessionDto ToUpdateDto(Guid eventId)
-        {
-            return new UpdateEventSessionDto
-            {
-                Id = Id ?? Guid.Empty,
-                EventId = eventId,
-                Title = Title ?? "Session",
-                Description = Description,
-                StartTime = DateTimeHelper.ConvertLocalToUtc(StartTime),
-                EndTime = DateTimeHelper.ConvertLocalToUtc(EndTime),
-                LocationId = LocationId,
-                MaxAudienceAttendees = MaxAudienceAttendees,
-                RegistrationModeId = RegistrationModeId
-            };
-        }
-
-        public static SessionEditorModel FromDto(EventSessionListDto dto)
-        {
-            return new SessionEditorModel
-            {
-                Id = dto.Id,
-                Title = dto.Title ?? dto.EventTitle,
-                Description = null,
-                StartTime = dto.StartTime?.LocalDateTime ?? DateTime.Now,
-                EndTime = dto.EndTime?.LocalDateTime ?? DateTime.Now.AddHours(1),
-                LocationId = dto.LocationId,
-                MaxAudienceAttendees = dto.MaxAudienceAttendees,
-                RegistrationModeId = dto.RegistrationModeId
-            };
-        }
     }
 }

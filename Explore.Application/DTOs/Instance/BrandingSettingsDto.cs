@@ -1,0 +1,16 @@
+// ABOUTME: Sub-resource DTO for instance-level branding defaults and lock flags.
+// ABOUTME: Controls default brand identity and whether tenants can override branding.
+
+namespace Explore.Application.DTOs.Instance;
+
+public class BrandingSettingsDto
+{
+    public string DefaultBrandDisplayName { get; set; } = "ISLAMU Explore";
+    public string DefaultBrandLogoUrl { get; set; } = string.Empty;
+    public string DefaultBrandFaviconUrl { get; set; } = string.Empty;
+    public string DefaultBrandCustomCssUrl { get; set; } = string.Empty;
+    public bool LockTenantBrandDisplayName { get; set; }
+    public bool LockTenantBrandLogoUrl { get; set; }
+    public bool LockTenantBrandFaviconUrl { get; set; }
+    public bool LockTenantBrandCustomCssUrl { get; set; }
+}

@@ -376,7 +376,8 @@
           "MediatR.Extensions.Microsoft.DependencyInjection": "[11.1.0, )",
           "Microsoft.Extensions.Caching.Hybrid": "[10.2.0, )",
           "Microsoft.Extensions.Configuration.Abstractions": "[10.0.2, )",
-          "Microsoft.Extensions.Logging.Abstractions": "[10.0.2, )"
+          "Microsoft.Extensions.Logging.Abstractions": "[10.0.2, )",
+          "OpenFeature": "[2.11.1, )"
         }
       },
       "explore.domain": {
@@ -593,6 +594,15 @@
           "Microsoft.EntityFrameworkCore": "[10.0.0, 11.0.0)",
           "Microsoft.EntityFrameworkCore.Relational": "[10.0.0, 11.0.0)",
           "Npgsql": "10.0.0"
+        }
+      },
+      "OpenFeature": {
+        "type": "CentralTransitive",
+        "requested": "[2.11.1, )",
+        "resolved": "2.11.1",
+        "contentHash": "cxm8fgi5I2UPguBK7TQgvSn5X/1KWI9ImpSjIL8EvTNVrK4c2d9a+r+EUEIED0cXJ2kWB01zInJ4ZOBoGIqysw==",
+        "dependencies": {
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.0"
         }
       },
       "Polly": {

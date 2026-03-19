@@ -27,7 +27,9 @@ When a task touches a topic covered by docs/skills/agents **you MUST open the fi
 - Only write inside this repo project folder — never in `C:\Users\**` or outside this repo.
 - When build errors appear: stop building, fix errors, then resume (limited retries).
 - **Never** run `rm -rf` or delete files/folders unless explicitly instructed (report candidates instead).
-- **Never** write or execute script files.
+- **Never** write or execute script files or scripts commands ! (no python, bash, PowerShell scripts without explicit instruction).
+- **Never** Assume or infer any rules, patterns, or conventions not explicitly documented in the referenced files.
+- **Never** do anything to preserve backwards compatibility at all! we are in development! Break things, fix them, iterate. Do not write code to support old versions of code ! Do not stay limited by old patterns or decisions — if they are no longer optimal, change them without hesitation.
 
 ### Non‑Inferable Technical Rules (Project‑Specific)
 1. Repositories return **entities**, never DTOs (map in handlers).

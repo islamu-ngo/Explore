@@ -475,7 +475,9 @@ ul {
    as position:absolute. We override to position:fixed so it covers
    the full viewport height and sits above every other layer
    (navbar z-index 1300, left drawer 1100). */
-.event-list__detail-drawer {
+.event-list__detail-drawer,
+.create-event__session-drawer,
+.edit-event__session-drawer {
     position: fixed !important;
     z-index: 1400 !important;
     overflow: hidden !important;
@@ -485,7 +487,9 @@ ul {
     transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1), visibility 300ms;
 }
 
-.event-list__detail-drawer:not(.mud-drawer--open) {
+.event-list__detail-drawer:not(.mud-drawer--open),
+.create-event__session-drawer:not(.mud-drawer--open),
+.edit-event__session-drawer:not(.mud-drawer--open) {
     visibility: hidden !important;
     pointer-events: none;
     transform: translateX(105%) !important; /* Slide out slightly more than 100% to ensure shadow is hidden */
@@ -499,9 +503,9 @@ ul {
     }
 }
 
-/* Gutter inset from top/right/bottom (Luma-style) — only when open.
-   When closed, MudBlazor slides the drawer off-screen with defaults. */
-.event-list__detail-drawer.mud-drawer--open {
+.event-list__detail-drawer.mud-drawer--open,
+.create-event__session-drawer.mud-drawer--open,
+.edit-event__session-drawer.mud-drawer--open {
     top: var(--isl-space-2) !important;
     right: var(--isl-space-2) !important;
     height: calc(100vh - var(--isl-space-4)) !important;

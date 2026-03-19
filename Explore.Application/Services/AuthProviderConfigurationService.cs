@@ -22,13 +22,13 @@ public class AuthProviderConfigurationService : IAuthProviderConfigurationServic
 
     public async Task<AuthProviderConfigurationDto> ReadConfigurationAsync()
     {
-        var keycloakEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AuthKeycloakEnabled);
-        var keycloakAuthority = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AuthKeycloakAuthority);
-        var keycloakClientId = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AuthKeycloakClientId);
-        var atprotoLoginEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AuthAtprotoLoginEnabled);
-        var atprotoPublicUrl = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AuthAtprotoPublicUrl);
-        var googleSsoEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AuthGoogleSsoEnabled);
-        var googleClientId = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AuthGoogleClientId);
+        var keycloakEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Authentication.KeycloakEnabled);
+        var keycloakAuthority = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Authentication.KeycloakAuthority);
+        var keycloakClientId = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Authentication.KeycloakClientId);
+        var atprotoLoginEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Authentication.AtprotoLoginEnabled);
+        var atprotoPublicUrl = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Authentication.AtprotoPublicUrl);
+        var googleSsoEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Authentication.GoogleSsoEnabled);
+        var googleClientId = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Authentication.GoogleClientId);
 
         return new AuthProviderConfigurationDto
         {
@@ -50,7 +50,7 @@ public class AuthProviderConfigurationService : IAuthProviderConfigurationServic
     public async Task ApplyConfigurationAsync(AuthProviderConfigurationDto configuration)
     {
         await UpsertSettingAsync(
-            GovernanceSettingKeys.AuthKeycloakEnabled,
+            GovernanceSettingKeys.Authentication.KeycloakEnabled,
             JsonSerializer.Serialize(configuration.KeycloakEnabled),
             SettingValueType.Boolean,
             configuration.LockKeycloakEnabled,
@@ -59,7 +59,7 @@ public class AuthProviderConfigurationService : IAuthProviderConfigurationServic
             "Whether Keycloak OIDC authentication is enabled");
 
         await UpsertSettingAsync(
-            GovernanceSettingKeys.AuthKeycloakAuthority,
+            GovernanceSettingKeys.Authentication.KeycloakAuthority,
             JsonSerializer.Serialize(configuration.KeycloakAuthority),
             SettingValueType.String,
             true,
@@ -68,7 +68,7 @@ public class AuthProviderConfigurationService : IAuthProviderConfigurationServic
             "Keycloak realm authority URL");
 
         await UpsertSettingAsync(
-            GovernanceSettingKeys.AuthKeycloakClientId,
+            GovernanceSettingKeys.Authentication.KeycloakClientId,
             JsonSerializer.Serialize(configuration.KeycloakClientId),
             SettingValueType.String,
             true,
@@ -79,7 +79,7 @@ public class AuthProviderConfigurationService : IAuthProviderConfigurationServic
         if (!string.IsNullOrEmpty(configuration.KeycloakClientSecret))
         {
             await UpsertSettingAsync(
-                GovernanceSettingKeys.AuthKeycloakClientSecret,
+                InfrastructureSecretSettingKeys.Authentication.KeycloakClientSecret,
                 JsonSerializer.Serialize(configuration.KeycloakClientSecret),
                 SettingValueType.String,
                 true,
@@ -89,7 +89,7 @@ public class AuthProviderConfigurationService : IAuthProviderConfigurationServic
         }
 
         await UpsertSettingAsync(
-            GovernanceSettingKeys.AuthAtprotoLoginEnabled,
+            GovernanceSettingKeys.Authentication.AtprotoLoginEnabled,
             JsonSerializer.Serialize(configuration.AtprotoLoginEnabled),
             SettingValueType.Boolean,
             configuration.LockAtprotoLoginEnabled,
@@ -98,7 +98,7 @@ public class AuthProviderConfigurationService : IAuthProviderConfigurationServic
             "Whether ATProto DID-based authentication is enabled");
 
         await UpsertSettingAsync(
-            GovernanceSettingKeys.AuthAtprotoPublicUrl,
+            GovernanceSettingKeys.Authentication.AtprotoPublicUrl,
             JsonSerializer.Serialize(configuration.AtprotoPublicUrl),
             SettingValueType.String,
             true,
@@ -107,7 +107,7 @@ public class AuthProviderConfigurationService : IAuthProviderConfigurationServic
             "Publicly accessible URL for ATProto OAuth client metadata");
 
         await UpsertSettingAsync(
-            GovernanceSettingKeys.AuthGoogleSsoEnabled,
+            GovernanceSettingKeys.Authentication.GoogleSsoEnabled,
             JsonSerializer.Serialize(configuration.GoogleSsoEnabled),
             SettingValueType.Boolean,
             configuration.LockGoogleSsoEnabled,
@@ -116,7 +116,7 @@ public class AuthProviderConfigurationService : IAuthProviderConfigurationServic
             "Whether Google SSO authentication is enabled");
 
         await UpsertSettingAsync(
-            GovernanceSettingKeys.AuthGoogleClientId,
+            GovernanceSettingKeys.Authentication.GoogleClientId,
             JsonSerializer.Serialize(configuration.GoogleClientId),
             SettingValueType.String,
             true,
@@ -127,7 +127,7 @@ public class AuthProviderConfigurationService : IAuthProviderConfigurationServic
         if (!string.IsNullOrEmpty(configuration.GoogleClientSecret))
         {
             await UpsertSettingAsync(
-                GovernanceSettingKeys.AuthGoogleClientSecret,
+                InfrastructureSecretSettingKeys.Authentication.GoogleClientSecret,
                 JsonSerializer.Serialize(configuration.GoogleClientSecret),
                 SettingValueType.String,
                 true,
@@ -139,9 +139,9 @@ public class AuthProviderConfigurationService : IAuthProviderConfigurationServic
 
     public async Task<bool> IsConfiguredAsync()
     {
-        var keycloakEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AuthKeycloakEnabled);
-        var atprotoEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AuthAtprotoLoginEnabled);
-        var googleEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AuthGoogleSsoEnabled);
+        var keycloakEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Authentication.KeycloakEnabled);
+        var atprotoEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Authentication.AtprotoLoginEnabled);
+        var googleEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Authentication.GoogleSsoEnabled);
 
         return DeserializeBoolean(keycloakEnabled?.Value, false)
                || DeserializeBoolean(atprotoEnabled?.Value, false)
@@ -152,8 +152,8 @@ public class AuthProviderConfigurationService : IAuthProviderConfigurationServic
     {
         var dto = await ReadConfigurationAsync();
 
-        var keycloakSecret = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AuthKeycloakClientSecret);
-        var googleSecret = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AuthGoogleClientSecret);
+        var keycloakSecret = await _systemSettingRepository.GetByKey(InfrastructureSecretSettingKeys.Authentication.KeycloakClientSecret);
+        var googleSecret = await _systemSettingRepository.GetByKey(InfrastructureSecretSettingKeys.Authentication.GoogleClientSecret);
 
         dto.KeycloakClientSecret = DeserializeString(keycloakSecret?.Value, string.Empty);
         dto.GoogleClientSecret = DeserializeString(googleSecret?.Value, string.Empty);

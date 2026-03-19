@@ -36,13 +36,13 @@ public class ResolverConfigService : IResolverConfigService
 
         var configuration = new ResolverConfigurationDto
         {
-            HeaderEnabled = DeserializeBoolean((await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingResolverHeaderEnabled))?.Value, true),
-            SubdomainEnabled = DeserializeBoolean((await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingResolverSubdomainEnabled))?.Value, false),
-            CustomDomainEnabled = DeserializeBoolean((await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingResolverCustomDomainEnabled))?.Value, false),
-            PathEnabled = DeserializeBoolean((await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingResolverPathEnabled))?.Value, true),
-            PathPrefix = NormalizePathPrefix(DeserializeString((await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingPathPrefix))?.Value, "/t")),
-            InstanceBaseDomain = NormalizeHost(DeserializeString((await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsInstanceBaseDomain))?.Value, string.Empty)),
-            AllowTenantCustomDomains = DeserializeBoolean((await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsAllowTenantCustomDomain))?.Value, true)
+            HeaderEnabled = DeserializeBoolean((await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.ResolverHeaderEnabled))?.Value, true),
+            SubdomainEnabled = DeserializeBoolean((await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.ResolverSubdomainEnabled))?.Value, false),
+            CustomDomainEnabled = DeserializeBoolean((await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.ResolverCustomDomainEnabled))?.Value, false),
+            PathEnabled = DeserializeBoolean((await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.ResolverPathEnabled))?.Value, true),
+            PathPrefix = NormalizePathPrefix(DeserializeString((await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.PathPrefix))?.Value, "/t")),
+            InstanceBaseDomain = NormalizeHost(DeserializeString((await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.InstanceBaseDomain))?.Value, string.Empty)),
+            AllowTenantCustomDomains = DeserializeBoolean((await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.AllowTenantCustomDomain))?.Value, true)
         };
 
         configuration.HeaderEnabled = true;
@@ -55,7 +55,7 @@ public class ResolverConfigService : IResolverConfigService
         var normalized = Normalize(configuration);
 
         await UpsertSystemSettingAsync(
-            GovernanceSettingKeys.RoutingResolverHeaderEnabled,
+            GovernanceSettingKeys.Routing.ResolverHeaderEnabled,
             JsonSerializer.Serialize(normalized.HeaderEnabled),
             SettingValueType.Boolean,
             true,
@@ -65,7 +65,7 @@ public class ResolverConfigService : IResolverConfigService
             actorUserId);
 
         await UpsertSystemSettingAsync(
-            GovernanceSettingKeys.RoutingResolverCustomDomainEnabled,
+            GovernanceSettingKeys.Routing.ResolverCustomDomainEnabled,
             JsonSerializer.Serialize(normalized.CustomDomainEnabled),
             SettingValueType.Boolean,
             false,
@@ -75,7 +75,7 @@ public class ResolverConfigService : IResolverConfigService
             actorUserId);
 
         await UpsertSystemSettingAsync(
-            GovernanceSettingKeys.RoutingResolverSubdomainEnabled,
+            GovernanceSettingKeys.Routing.ResolverSubdomainEnabled,
             JsonSerializer.Serialize(normalized.SubdomainEnabled),
             SettingValueType.Boolean,
             false,
@@ -85,7 +85,7 @@ public class ResolverConfigService : IResolverConfigService
             actorUserId);
 
         await UpsertSystemSettingAsync(
-            GovernanceSettingKeys.RoutingResolverPathEnabled,
+            GovernanceSettingKeys.Routing.ResolverPathEnabled,
             JsonSerializer.Serialize(normalized.PathEnabled),
             SettingValueType.Boolean,
             false,
@@ -95,7 +95,7 @@ public class ResolverConfigService : IResolverConfigService
             actorUserId);
 
         await UpsertSystemSettingAsync(
-            GovernanceSettingKeys.RoutingPathPrefix,
+            GovernanceSettingKeys.Routing.PathPrefix,
             JsonSerializer.Serialize(normalized.PathPrefix),
             SettingValueType.String,
             false,
@@ -105,7 +105,7 @@ public class ResolverConfigService : IResolverConfigService
             actorUserId);
 
         await UpsertSystemSettingAsync(
-            GovernanceSettingKeys.DomainsInstanceBaseDomain,
+            GovernanceSettingKeys.Domains.InstanceBaseDomain,
             JsonSerializer.Serialize(normalized.InstanceBaseDomain),
             SettingValueType.String,
             false,
@@ -115,7 +115,7 @@ public class ResolverConfigService : IResolverConfigService
             actorUserId);
 
         await UpsertSystemSettingAsync(
-            GovernanceSettingKeys.DomainsAllowTenantCustomDomain,
+            GovernanceSettingKeys.Domains.AllowTenantCustomDomain,
             JsonSerializer.Serialize(normalized.AllowTenantCustomDomains),
             SettingValueType.Boolean,
             false,

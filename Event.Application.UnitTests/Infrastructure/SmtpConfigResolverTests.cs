@@ -1,8 +1,9 @@
-// ABOUTME: Unit tests for SmtpConfigResolver verifying cascading settings resolution,
+// ABOUTME: Unit tests for SmtpConfigResolver verifying hierarchical settings resolution,
 // caching behavior, and null handling when SMTP is not configured.
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Models;
+using Explore.Application.Settings;
 using Explore.Domain.Constants;
 using Explore.Infrastructure.Mail;
 using Microsoft.Extensions.Caching.Memory;
@@ -13,7 +14,7 @@ namespace Event.Application.UnitTests.Infrastructure;
 
 public class SmtpConfigResolverTests : IDisposable
 {
-    private readonly ISettingsResolver _settingsResolver;
+    private readonly IHierarchicalSettingsResolver _settingsResolver;
     private readonly ITenantContext _tenantContext;
     private readonly MemoryCache _cache;
     private readonly ILogger<SmtpConfigResolver> _logger;
@@ -23,7 +24,7 @@ public class SmtpConfigResolverTests : IDisposable
 
     public SmtpConfigResolverTests()
     {
-        _settingsResolver = Substitute.For<ISettingsResolver>();
+        _settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
         _tenantContext = Substitute.For<ITenantContext>();
         _cache = new MemoryCache(new MemoryCacheOptions());
         _logger = Substitute.For<ILogger<SmtpConfigResolver>>();
@@ -41,7 +42,7 @@ public class SmtpConfigResolverTests : IDisposable
     [Test]
     public async Task ResolveAsync_EmptyHost_ReturnsNull()
     {
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.EmailSmtpHost, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Email.SmtpHost, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("");
 
         var result = await _resolver.ResolveAsync();
@@ -52,7 +53,7 @@ public class SmtpConfigResolverTests : IDisposable
     [Test]
     public async Task ResolveAsync_NullHost_ReturnsNull()
     {
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.EmailSmtpHost, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Email.SmtpHost, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns((string?)null);
 
         var result = await _resolver.ResolveAsync();
@@ -63,9 +64,9 @@ public class SmtpConfigResolverTests : IDisposable
     [Test]
     public async Task ResolveAsync_HostSetButEmptyFromAddress_ReturnsNull()
     {
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.EmailSmtpHost, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Email.SmtpHost, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("smtp.example.com");
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.EmailFromAddress, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Email.FromAddress, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("");
 
         var result = await _resolver.ResolveAsync();
@@ -149,7 +150,7 @@ public class SmtpConfigResolverTests : IDisposable
 
         // Settings resolver should have been called only once for the host key
         await _settingsResolver.Received(1)
-            .GetSettingAsync<string>(GovernanceSettingKeys.EmailSmtpHost, TestTenantId, Arg.Any<CancellationToken>());
+            .ResolveAsync<string>(GovernanceSettingKeys.Email.SmtpHost, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -170,23 +171,23 @@ public class SmtpConfigResolverTests : IDisposable
 
         // Host should be fetched twice now
         await _settingsResolver.Received(2)
-            .GetSettingAsync<string>(GovernanceSettingKeys.EmailSmtpHost, TestTenantId, Arg.Any<CancellationToken>());
+            .ResolveAsync<string>(GovernanceSettingKeys.Email.SmtpHost, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
     public async Task ResolveAsync_NullFromName_DefaultsToExplore()
     {
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.EmailSmtpHost, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Email.SmtpHost, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("smtp.example.com");
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.EmailFromAddress, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Email.FromAddress, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("noreply@example.com");
-        _settingsResolver.GetSettingAsync<int>(GovernanceSettingKeys.EmailSmtpPort, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<int>(GovernanceSettingKeys.Email.SmtpPort, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns(587);
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.EmailSmtpSecurity, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Email.SmtpSecurity, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("StartTls");
-        _settingsResolver.GetSettingAsync<int>(GovernanceSettingKeys.EmailSmtpTimeoutSeconds, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<int>(GovernanceSettingKeys.Email.SmtpTimeoutSeconds, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns(30);
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.EmailFromName, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Email.FromName, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns((string?)null);
 
         var result = await _resolver.ResolveAsync();
@@ -200,23 +201,23 @@ public class SmtpConfigResolverTests : IDisposable
         int timeout = 30,
         string security = "StartTls")
     {
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.EmailSmtpHost, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Email.SmtpHost, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("smtp.example.com");
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.EmailFromAddress, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Email.FromAddress, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("noreply@example.com");
-        _settingsResolver.GetSettingAsync<int>(GovernanceSettingKeys.EmailSmtpPort, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<int>(GovernanceSettingKeys.Email.SmtpPort, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns(port);
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.EmailSmtpSecurity, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Email.SmtpSecurity, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns(security);
-        _settingsResolver.GetSettingAsync<int>(GovernanceSettingKeys.EmailSmtpTimeoutSeconds, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<int>(GovernanceSettingKeys.Email.SmtpTimeoutSeconds, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns(timeout);
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.EmailSmtpUsername, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(InfrastructureSecretSettingKeys.Email.SmtpUsername, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("user@example.com");
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.EmailSmtpPassword, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(InfrastructureSecretSettingKeys.Email.SmtpPassword, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("secret123");
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.EmailFromName, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Email.FromName, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("Test Platform");
-        _settingsResolver.GetSettingAsync<bool>(GovernanceSettingKeys.EmailSmtpSkipCertValidation, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<bool>(GovernanceSettingKeys.Email.SmtpSkipCertValidation, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns(false);
     }
 }

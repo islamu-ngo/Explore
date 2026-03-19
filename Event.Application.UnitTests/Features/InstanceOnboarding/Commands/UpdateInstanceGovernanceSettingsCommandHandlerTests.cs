@@ -4,7 +4,7 @@
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
-using Explore.Application.DTOs.Onboarding;
+using Explore.Application.DTOs.Instance;
 using Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Domain;
@@ -22,7 +22,6 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
     private readonly IAdminContext _adminContext;
     private readonly IInstanceBootstrapStateRepository _bootstrapStateRepository;
     private readonly ITenantRepository _tenantRepository;
-    private readonly ITenantSettingsRepository _tenantSettingsRepository;
     private readonly IInstanceGovernanceSettingService _governanceSettingService;
     private readonly ILogger<UpdateInstanceGovernanceSettingsCommandHandler> _logger;
     private readonly UpdateInstanceGovernanceSettingsCommandHandler _handler;
@@ -32,7 +31,6 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
         _adminContext = Substitute.For<IAdminContext>();
         _bootstrapStateRepository = Substitute.For<IInstanceBootstrapStateRepository>();
         _tenantRepository = Substitute.For<ITenantRepository>();
-        _tenantSettingsRepository = Substitute.For<ITenantSettingsRepository>();
         _governanceSettingService = Substitute.For<IInstanceGovernanceSettingService>();
         _logger = Substitute.For<ILogger<UpdateInstanceGovernanceSettingsCommandHandler>>();
 
@@ -40,7 +38,6 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
             _adminContext,
             _bootstrapStateRepository,
             _tenantRepository,
-            _tenantSettingsRepository,
             _governanceSettingService,
             _logger);
     }
@@ -54,7 +51,7 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
 
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Message).Contains("Only instance administrators");
-        await _governanceSettingService.DidNotReceive().ApplySettingsAsync(Arg.Any<Guid>(), Arg.Any<InstanceGovernanceSettingsDto>(), Arg.Any<Guid?>());
+        await _governanceSettingService.DidNotReceive().ApplySettingsAsync(Arg.Any<Guid?>(), Arg.Any<InstanceGovernanceSettings>(), Arg.Any<Guid?>());
     }
 
     [Test]
@@ -71,20 +68,15 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
 
         var tenant = CreateDefaultTenant();
         _tenantRepository.GetById(PlatformDefaults.DefaultTenantId).Returns(tenant);
-        _tenantSettingsRepository.GetByTenant(PlatformDefaults.DefaultTenantId).Returns(new TenantSettings
-        {
-            TenantId = PlatformDefaults.DefaultTenantId,
-            Tenant = tenant
-        });
 
         var settings = CreateValidSettings();
-        settings.OnboardingRenderMode = "InteractiveServer";
-        settings.DisallowInteractiveServerOnOnboarding = false;
+        settings.RenderPolicy.OnboardingRenderMode = "InteractiveServer";
+        settings.RenderPolicy.DisallowInteractiveServerOnOnboarding = false;
 
         var result = await _handler.Handle(CreateCommand(settings), CancellationToken.None);
 
         await Assert.That(result.Success).IsTrue();
-        await _governanceSettingService.Received(1).ApplySettingsAsync(PlatformDefaults.DefaultTenantId, Arg.Any<InstanceGovernanceSettingsDto>(), TestUserId);
+        await _governanceSettingService.Received(1).ApplySettingsAsync(PlatformDefaults.DefaultTenantId, Arg.Any<InstanceGovernanceSettings>(), TestUserId);
     }
 
     [Test]
@@ -101,11 +93,6 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
 
         var tenant = CreateDefaultTenant();
         _tenantRepository.GetById(PlatformDefaults.DefaultTenantId).Returns(tenant);
-        _tenantSettingsRepository.GetByTenant(PlatformDefaults.DefaultTenantId).Returns(new TenantSettings
-        {
-            TenantId = PlatformDefaults.DefaultTenantId,
-            Tenant = tenant
-        });
 
         var settings = CreateValidSettings();
 
@@ -113,10 +100,10 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
 
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Id).IsEqualTo(existingBootstrapId);
-        await _governanceSettingService.Received(1).ApplySettingsAsync(PlatformDefaults.DefaultTenantId, Arg.Any<InstanceGovernanceSettingsDto>(), TestUserId);
+        await _governanceSettingService.Received(1).ApplySettingsAsync(PlatformDefaults.DefaultTenantId, Arg.Any<InstanceGovernanceSettings>(), TestUserId);
     }
 
-    private static UpdateInstanceGovernanceSettingsCommand CreateCommand(InstanceGovernanceSettingsDto settings)
+    private static UpdateInstanceGovernanceSettingsCommand CreateCommand(InstanceGovernanceSettings settings)
     {
         return new UpdateInstanceGovernanceSettingsCommand
         {
@@ -125,28 +112,41 @@ public class UpdateInstanceGovernanceSettingsCommandHandlerTests
         };
     }
 
-    private static InstanceGovernanceSettingsDto CreateValidSettings()
+    private static InstanceGovernanceSettings CreateValidSettings()
     {
-        return new InstanceGovernanceSettingsDto
+        return new InstanceGovernanceSettings
         {
-            DeploymentMode = "SingleTenant",
-            RenderPolicyVersion = 1,
-            RenderPolicyPreset = "AllInteractiveServer",
-            EnableAdvancedRenderPolicyOverrides = false,
-            GlobalRenderMode = "InteractiveServer",
-            GlobalPrerenderEnabled = false,
-            PublicSeoRenderMode = "InteractiveServer",
-            PublicSeoPrerenderEnabled = false,
-            OperationalRenderMode = "InteractiveServer",
-            OperationalPrerenderEnabled = false,
-            AdminRenderMode = "InteractiveServer",
-            AdminPrerenderEnabled = false,
-            OnboardingRenderMode = "InteractiveServer",
-            OnboardingPrerenderEnabled = false,
-            DisallowInteractiveServerOnOnboarding = false,
-            DefaultPublicHomePage = "EventList",
-            EnableIslamicModule = true,
-            EnableTechModule = true
+            DeploymentMode = new DeploymentModeDto { Mode = DeploymentMode.SingleTenant },
+            Modules = new ModuleSettingsDto
+            {
+                EnableIslamicModule = true,
+                EnableTechModule = true
+            },
+            EventPolicy = new EventPolicyDto(),
+            OrganizationPolicy = new OrganizationPolicyDto(),
+            Branding = new BrandingSettingsDto(),
+            Domains = new DomainSettingsDto(),
+            TenantDelegation = new TenantDelegationSettingsDto
+            {
+                DefaultPublicHomePage = "EventList"
+            },
+            RenderPolicy = new RenderPolicySettingsDto
+            {
+                RenderPolicyVersion = 1,
+                RenderPolicyPreset = "AllInteractiveServer",
+                EnableAdvancedRenderPolicyOverrides = false,
+                GlobalRenderMode = "InteractiveServer",
+                GlobalPrerenderEnabled = false,
+                PublicSeoRenderMode = "InteractiveServer",
+                PublicSeoPrerenderEnabled = false,
+                OperationalRenderMode = "InteractiveServer",
+                OperationalPrerenderEnabled = false,
+                AdminRenderMode = "InteractiveServer",
+                AdminPrerenderEnabled = false,
+                OnboardingRenderMode = "InteractiveServer",
+                OnboardingPrerenderEnabled = false,
+                DisallowInteractiveServerOnOnboarding = false
+            }
         };
     }
 

@@ -1,0 +1,51 @@
+// ABOUTME: EF Core configuration for event-local typed values with explicit ordinal semantics.
+// ABOUTME: Indexes support event-scoped reads and deterministic multi-value ordering.
+
+using Explore.Domain;
+using Explore.Persistence.ValueGenerators;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Explore.Persistence.Configurations.Entities;
+
+public class EventCustomPropertyValueConfiguration : IEntityTypeConfiguration<EventCustomPropertyValue>
+{
+    public void Configure(EntityTypeBuilder<EventCustomPropertyValue> builder)
+    {
+        builder.ToTable("event_custom_property_values");
+
+        builder.Property(e => e.Id)
+            .HasValueGenerator<GuidVersion7ValueGenerator>();
+
+        builder.Property(e => e.TextValue)
+            .HasMaxLength(4000);
+
+        builder.Property(e => e.NumberValue)
+            .HasPrecision(19, 4);
+
+        builder.Property(e => e.Ordinal)
+            .HasDefaultValue(0);
+
+        builder.HasOne(e => e.Event)
+            .WithMany()
+            .HasForeignKey(e => e.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(e => e.Tenant)
+            .WithMany()
+            .HasForeignKey(e => e.TenantId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(e => e.Option)
+            .WithMany()
+            .HasForeignKey(e => e.OptionId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasIndex(e => new { e.TenantId, e.EventId })
+            .HasDatabaseName("ix_ecpv_tenant_event");
+
+        builder.HasIndex(e => new { e.EventCustomPropertyDefinitionId, e.EventId, e.Ordinal })
+            .HasDatabaseName("ix_ecpv_definition_event_ordinal")
+            .IsUnique();
+    }
+}

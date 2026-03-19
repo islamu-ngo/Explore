@@ -10,13 +10,8 @@ namespace Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 public class CompleteInstanceOnboardingCommand : IRequest<BaseCommandResponse<Guid>>
 {
     public Guid UserId { get; set; }
-    public required InstanceGovernanceSettingsDto Settings { get; set; } = new();
+    public required CompleteInstanceOnboardingRequest Settings { get; set; }
 
-    /// <summary>
-    /// User identity data extracted from authentication claims.
-    /// Used to auto-create the user record during onboarding when the normal
-    /// /api/User/sync endpoint cannot work (tenant doesn't exist yet).
-    /// </summary>
     public string? Email { get; set; }
     public string? FirstName { get; set; }
     public string? LastName { get; set; }

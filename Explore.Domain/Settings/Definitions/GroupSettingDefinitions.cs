@@ -13,6 +13,14 @@ public static class GroupSettingDefinitions
         Description: "Whether users can self-register groups",
         MaxScope: SettingScope.Tenant);
 
+    public static readonly SettingDefinition RequireApproval = new(
+        Key: "groups.require_approval",
+        ValueType: SettingValueType.Boolean,
+        DefaultValue: "false",
+        Category: "Groups",
+        Description: "Whether new groups require admin approval before becoming active",
+        MaxScope: SettingScope.Tenant);
+
     public static IReadOnlyList<SettingDefinition> All =>
-        [SelfRegistrationEnabled];
+        [SelfRegistrationEnabled, RequireApproval];
 }

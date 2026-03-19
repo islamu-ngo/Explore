@@ -126,159 +126,25 @@
                     </MudStack>
                     </MudStep>
 
-                    <MudStep Title="Instance Settings">
+                    <MudStep Title="Instance Identity">
                     <MudStack Spacing="3">
-                        <MudText Typo="Typo.caption" Class="mb-1">Fields marked "(Required)" must be provided before completing onboarding.</MudText>
+                        <MudText Typo="Typo.h6">Name Your Instance</MudText>
+                        <MudText Typo="Typo.body2">
+                            This name appears in the platform header, emails, and public-facing pages.
+                            You can change it anytime in instance settings.
+                        </MudText>
 
-                        <MudSelect T="string"
-                                   Label="Default Public Home Page (Required)"
-                                   @bind-Value="_model.DefaultPublicHomePage"
-                                   Variant="Variant.Outlined"
-                                   Required="true"
-                                   RequiredError="Default public home page is required.">
-                            <MudSelectItem Value="@("EventList")">Event List</MudSelectItem>
-                            <MudSelectItem Value="@("LandingPage")">Landing Page</MudSelectItem>
-                        </MudSelect>
-
-                        @if (IsMultiTenantMode)
-                        {
-                            <MudDivider />
-                            <MudText Typo="Typo.h6">Tenant Governance</MudText>
-                            <MudSwitch T="bool" @bind-Value="_model.AllowTenantSelfServiceRegistration" Color="Color.Primary">
-                                Allow tenant self-service registration
-                            </MudSwitch>
-                            <MudSwitch T="bool" @bind-Value="_model.AllowTenantWhiteLabeling" Color="Color.Primary">
-                                Allow tenant white-label branding
-                            </MudSwitch>
-                            <MudSwitch T="bool" @bind-Value="_model.LockTenantHomePagePreference" Color="Color.Primary">
-                                Lock tenant home page preference
-                            </MudSwitch>
-
-                            <MudDivider />
-                            <MudText Typo="Typo.h6">Domain Governance</MudText>
-                            <MudTextField Label="Instance Base Domain (Optional)"
-                                          Variant="Variant.Outlined"
-                                          @bind-Value="_model.InstanceBaseDomain"
-                                          Placeholder="example.com"
-                                          HelperText="Used for tenant subdomains (e.g., tenant.example.com)." />
-                            <MudSwitch T="bool" @bind-Value="_model.AllowTenantCustomDomains" Color="Color.Primary">
-                                Allow tenant custom domains
-                            </MudSwitch>
-                            <MudSwitch T="bool" @bind-Value="_model.LockTenantSubdomain" Color="Color.Primary">
-                                Lock tenant subdomain changes
-                            </MudSwitch>
-                            <MudSwitch T="bool" @bind-Value="_model.LockTenantCustomDomain" Color="Color.Primary">
-                                Lock tenant custom domain changes
-                            </MudSwitch>
-                        }
-
-                        <MudDivider />
-                        <MudText Typo="Typo.h6">Policy Defaults</MudText>
-                        <MudSwitch T="bool" @bind-Value="_model.EnableIslamicModule" Color="Color.Primary">
-                            Enable Islamic module
-                        </MudSwitch>
-                        <MudSwitch T="bool" @bind-Value="_model.EnableTechModule" Color="Color.Primary">
-                            Enable Tech module
-                        </MudSwitch>
-                        <MudSwitch T="bool" @bind-Value="_model.AllowUserSubmittedEvents" Color="Color.Primary">
-                            Allow user-submitted events
-                        </MudSwitch>
-                        <MudSwitch T="bool" @bind-Value="_model.AllowOrganizationSubmittedEvents" Color="Color.Primary">
-                            Allow organization-submitted events
-                        </MudSwitch>
-                        <MudSwitch T="bool" @bind-Value="_model.AllowGroupSubmittedEvents" Color="Color.Primary">
-                            Allow group-submitted events
-                        </MudSwitch>
-
-                        @if (!_model.AllowUserSubmittedEvents && !_model.AllowOrganizationSubmittedEvents && !_model.AllowGroupSubmittedEvents)
-                        {
-                            <MudAlert Severity="Severity.Info" Dense="true">
-                                No entity types are allowed to submit events. Only administrators will be able to create events through entities they manage.
-                            </MudAlert>
-                        }
-
-                        <MudSwitch T="bool" @bind-Value="_model.AllowOrganizationSelfRegistration" Color="Color.Primary">
-                            Allow organization self-registration
-                        </MudSwitch>
-                        <MudSwitch T="bool" @bind-Value="_model.AllowGroupSelfRegistration" Color="Color.Primary">
-                            Allow group self-registration
-                        </MudSwitch>
-                        <MudSwitch T="bool" @bind-Value="_model.RequireOrganizationVerification" Color="Color.Primary">
-                            Require organization verification
-                        </MudSwitch>
-                        @if (IsMultiTenantMode)
-                        {
-                            <MudSwitch T="bool" @bind-Value="_model.AllowTenantToOmitVerification" Color="Color.Primary">
-                                Allow tenant admins to omit organization verification
-                            </MudSwitch>
-                        }
-                        <MudSwitch T="bool" @bind-Value="_model.EventCardClickOpensDetailPage" Color="Color.Primary">
-                            Event card click opens detail page (instead of sidebar)
-                        </MudSwitch>
-                        @if (IsMultiTenantMode)
-                        {
-                            <MudSwitch T="bool" @bind-Value="_model.LockTenantEventCardClickBehavior" Color="Color.Primary">
-                                Lock tenant event card click behavior
-                            </MudSwitch>
-                        }
-
-                        <MudDivider />
-                        <MudText Typo="Typo.h6">Default Branding</MudText>
-                        <MudTextField Label="Brand Display Name (Required)"
+                        <MudTextField Label="Instance Name (Required)"
                                       Variant="Variant.Outlined"
                                       Required="true"
-                                      RequiredError="Brand display name is required."
-                                      @bind-Value="_model.DefaultBrandDisplayName" />
-                        <MudTextField Label="Brand Logo URL (Optional)"
-                                      Variant="Variant.Outlined"
-                                      @bind-Value="_model.DefaultBrandLogoUrl" />
-                        <MudTextField Label="Brand Favicon URL (Optional)"
-                                      Variant="Variant.Outlined"
-                                      @bind-Value="_model.DefaultBrandFaviconUrl" />
-                        <MudTextField Label="Advanced: Custom CSS URL (Optional)"
-                                      Variant="Variant.Outlined"
-                                      @bind-Value="_model.DefaultBrandCustomCssUrl"
-                                      HelperText="Optional advanced override for platform-level custom stylesheet." />
-                        @if (IsMultiTenantMode)
-                        {
-                            <MudSwitch T="bool" @bind-Value="_model.LockTenantBrandDisplayName" Color="Color.Primary">
-                                Lock tenant brand display name
-                            </MudSwitch>
-                            <MudSwitch T="bool" @bind-Value="_model.LockTenantBrandLogoUrl" Color="Color.Primary">
-                                Lock tenant brand logo
-                            </MudSwitch>
-                            <MudSwitch T="bool" @bind-Value="_model.LockTenantBrandFaviconUrl" Color="Color.Primary">
-                                Lock tenant brand favicon
-                            </MudSwitch>
-                            <MudSwitch T="bool" @bind-Value="_model.LockTenantBrandCustomCssUrl" Color="Color.Primary">
-                                Lock tenant custom CSS URL
-                            </MudSwitch>
-                        }
+                                      RequiredError="Instance name is required."
+                                      @bind-Value="_instanceName"
+                                      Placeholder="e.g. ISLAMU Explore, My Community Events" />
 
-                        <MudDivider />
-                        <MudText Typo="Typo.h6">Federation</MudText>
-                        <MudStack Direction="Direction.Row" AlignItems="AlignItems.Center" Spacing="1">
-                            <MudSwitch T="bool"
-                                       Value="_model.DecentralizationEnabled"
-                                       ValueChanged="OnDecentralizationToggled"
-                                       Disabled="@(!_atprotoLoginEnabled)"
-                                       Color="Color.Primary">
-                                Enable ATProto decentralization
-                            </MudSwitch>
-                            <MudTooltip Text="When enabled, event records are published to users' Personal Data Servers (PDS) on the AT Protocol network. This makes event data publicly accessible and enables cross-instance discovery. Keep disabled if you want events to remain private to this instance.">
-                                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Default" />
-                            </MudTooltip>
-                        </MudStack>
-                        @if (!_atprotoLoginEnabled)
-                        {
-                            <MudText Typo="Typo.caption" Color="Color.Warning">ATProto Login must be enabled in the authentication provider configuration to use decentralization.</MudText>
-                        }
-                        @if (IsMultiTenantMode)
-                        {
-                            <MudSwitch T="bool" @bind-Value="_model.LockDecentralizationEnabled" Color="Color.Primary">
-                                Lock tenant decentralization override
-                            </MudSwitch>
-                        }
+                        <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text">
+                            All other settings (modules, policies, branding, domains, federation) can be configured
+                            after onboarding from the administration panel.
+                        </MudAlert>
                     </MudStack>
                     </MudStep>
 
@@ -350,17 +216,10 @@
                     <MudStack Spacing="2">
                         <MudText Typo="Typo.h6">Review</MudText>
                         <MudText Typo="Typo.body2"><strong>Tenant Mode:</strong> @(IsSingleTenantMode ? "Single Tenant" : "Multi Tenant")</MudText>
-                        <MudText Typo="Typo.body2"><strong>Default Public Home Page:</strong> @(_model.DefaultPublicHomePage)</MudText>
+                        <MudText Typo="Typo.body2"><strong>Instance Name:</strong> @(string.IsNullOrWhiteSpace(_instanceName) ? "(not set)" : _instanceName)</MudText>
                         @if (IsSingleTenantMode)
                         {
                             <MudText Typo="Typo.body2"><strong>First Host Choice:</strong> @GetFirstHostChoiceLabel()</MudText>
-                        }
-                        <MudText Typo="Typo.body2"><strong>Event Card Click Opens Detail Page:</strong> @(_model.EventCardClickOpensDetailPage ? "Yes" : "No")</MudText>
-                        <MudText Typo="Typo.body2"><strong>ATProto Decentralization:</strong> @(_model.DecentralizationEnabled ? "Enabled" : "Disabled")</MudText>
-                        @if (IsMultiTenantMode)
-                        {
-                            <MudText Typo="Typo.body2"><strong>Tenant Self-Registration:</strong> @(_model.AllowTenantSelfServiceRegistration ? "Allowed" : "Disabled")</MudText>
-                            <MudText Typo="Typo.body2"><strong>Tenant White-Labeling:</strong> @(_model.AllowTenantWhiteLabeling ? "Allowed" : "Disabled")</MudText>
                         }
 
                         <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
@@ -401,25 +260,6 @@
             </MudStepper>
         }
     </MudPaper>
-
-<MudDialog @bind-Visible="_showDecentralizationConfirmDialog">
-    <TitleContent>
-        <MudText Typo="Typo.h6">Enable ATProto Decentralization?</MudText>
-    </TitleContent>
-    <DialogContent>
-        <MudAlert Severity="Severity.Warning" Class="mb-3">
-            Enabling ATProto decentralization means event records will be published to users' Personal Data Servers (PDS).
-            This data becomes publicly accessible on the AT Protocol network.
-        </MudAlert>
-        <MudText Typo="Typo.body2">
-            Self-hosters wanting private events should keep this disabled. This setting can be changed later in instance settings.
-        </MudText>
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="CancelDecentralization" Color="Color.Default">Cancel</MudButton>
-        <MudButton OnClick="ConfirmDecentralization" Color="Color.Warning" Variant="Variant.Filled">Enable Decentralization</MudButton>
-    </DialogActions>
-</MudDialog>
 </MudContainer>
 
 @code {
@@ -433,7 +273,8 @@
     }
 
     private const int FirstHostStepIndex = 2;
-    private InstanceGovernanceSettingsModel _model = new();
+    private string _deploymentMode = "SingleTenant";
+    private string _instanceName = "ISLAMU Explore";
     private bool _isLoading = true;
     private bool _isSaving;
     private string? _errorMessage;
@@ -444,11 +285,9 @@
     private string _completeButtonLabel = "Complete Instance Onboarding";
     private string _stepperKey = "single";
 
-    private bool _atprotoLoginEnabled;
-    private bool _showDecentralizationConfirmDialog;
-    private bool IsSingleTenantMode => _model.DeploymentMode.Equals("SingleTenant", StringComparison.OrdinalIgnoreCase);
-    private bool IsMultiTenantMode => _model.DeploymentMode.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
-    // Steps: 0=TenantMode, 1=InstanceSettings, 2=FirstHost(single)/Review(multi), 3=Review(single)
+    private bool IsSingleTenantMode => _deploymentMode.Equals("SingleTenant", StringComparison.OrdinalIgnoreCase);
+    private bool IsMultiTenantMode => _deploymentMode.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
+    // Steps: 0=TenantMode, 1=InstanceIdentity, 2=FirstHost(single)/Review(multi), 3=Review(single)
     private int LastStepIndex => IsSingleTenantMode ? 3 : 2;
     private bool IsFirstHostSelectionMissing => IsSingleTenantMode && _firstHostSetupChoice == FirstHostSetupChoice.None;
     private bool IsCompleteDisabled => IsFirstHostSelectionMissing;
@@ -472,25 +311,24 @@
             return;
         }
 
-        _model = await InstanceOnboardingService.GetSettingsAsync();
-        if (IsSingleTenantMode)
-        {
-            ApplySingleTenantDefaults();
-        }
-
-        _stepperKey = IsSingleTenantMode ? "single" : "multi";
-
-        // Load auth provider config to check if ATProto Login is enabled.
+        // Pre-populate from existing settings if available (e.g. restart after partial setup)
         try
         {
-            var authConfig = await InstanceOnboardingService.GetAuthProviderConfigurationAsync();
-            _atprotoLoginEnabled = authConfig.AtprotoLoginEnabled;
+            var deploymentModeResult = await InstanceOnboardingService.GetDeploymentModeAsync();
+            _deploymentMode = deploymentModeResult.Mode;
+
+            var brandingResult = await InstanceOnboardingService.GetBrandingSettingsAsync();
+            if (!string.IsNullOrWhiteSpace(brandingResult.DefaultBrandDisplayName))
+            {
+                _instanceName = brandingResult.DefaultBrandDisplayName;
+            }
         }
         catch (Exception ex)
         {
-            Logger.LogWarning(ex, "Could not load auth provider configuration during instance onboarding.");
+            Logger.LogWarning(ex, "Could not load existing settings during instance onboarding. Using defaults.");
         }
 
+        _stepperKey = IsSingleTenantMode ? "single" : "multi";
         _isLoading = false;
     }
 
@@ -536,26 +374,7 @@
     private void OnDeploymentModeChanged(string deploymentMode)
     {
         var wasSingleTenantMode = IsSingleTenantMode;
-
-        _model.DeploymentMode = string.IsNullOrWhiteSpace(deploymentMode) ? "SingleTenant" : deploymentMode.Trim();
-
-        if (IsSingleTenantMode)
-        {
-            // Single-tenant: everything allowed, nothing locked
-            _model.AllowTenantSelfServiceRegistration = false;
-            _model.AllowTenantWhiteLabeling = false;
-            _model.AllowTenantCustomDomains = true;
-            _model.AllowTenantToOmitVerification = false;
-            _model.LockTenantHomePagePreference = false;
-            _model.LockTenantSubdomain = false;
-            _model.LockTenantCustomDomain = false;
-            _model.LockTenantBrandDisplayName = false;
-            _model.LockTenantBrandLogoUrl = false;
-            _model.LockTenantBrandFaviconUrl = false;
-            _model.LockTenantBrandCustomCssUrl = false;
-            _model.LockTenantEventCardClickBehavior = false;
-            _model.LockDecentralizationEnabled = false;
-        }
+        _deploymentMode = string.IsNullOrWhiteSpace(deploymentMode) ? "SingleTenant" : deploymentMode.Trim();
 
         if (wasSingleTenantMode != IsSingleTenantMode)
         {
@@ -637,12 +456,13 @@
         _completeButtonLabel = "Saving...";
         _errorMessage = null;
 
-        if (IsSingleTenantMode)
+        var completion = new OnboardingCompletionModel
         {
-            ApplySingleTenantDefaults();
-        }
+            DeploymentMode = _deploymentMode,
+            InstanceName = string.IsNullOrWhiteSpace(_instanceName) ? null : _instanceName.Trim()
+        };
 
-        var response = await InstanceOnboardingService.CompleteAsync(_model);
+        var response = await InstanceOnboardingService.CompleteAsync(completion);
         _isSaving = false;
         _completeButtonLabel = "Complete Instance Onboarding";
 
@@ -736,51 +556,9 @@
         return client;
     }
 
-    private void OnDecentralizationToggled(bool newValue)
-    {
-        if (newValue)
-        {
-            // Show confirmation dialog before enabling
-            _showDecentralizationConfirmDialog = true;
-        }
-        else
-        {
-            _model.DecentralizationEnabled = false;
-        }
-    }
-
-    private void ConfirmDecentralization()
-    {
-        _model.DecentralizationEnabled = true;
-        _showDecentralizationConfirmDialog = false;
-    }
-
-    private void CancelDecentralization()
-    {
-        _model.DecentralizationEnabled = false;
-        _showDecentralizationConfirmDialog = false;
-    }
-
-    private void ApplySingleTenantDefaults()
-    {
-        _model.AllowTenantSelfServiceRegistration = false;
-        _model.AllowTenantWhiteLabeling = false;
-        _model.AllowTenantCustomDomains = true;
-        _model.AllowTenantToOmitVerification = false;
-        _model.LockTenantHomePagePreference = false;
-        _model.LockTenantSubdomain = false;
-        _model.LockTenantCustomDomain = false;
-        _model.LockTenantBrandDisplayName = false;
-        _model.LockTenantBrandLogoUrl = false;
-        _model.LockTenantBrandFaviconUrl = false;
-        _model.LockTenantBrandCustomCssUrl = false;
-        _model.LockTenantEventCardClickBehavior = false;
-        _model.LockDecentralizationEnabled = false;
-    }
-
     private string GetTenantModeCardClass(string mode)
     {
-        var isSelected = _model.DeploymentMode.Equals(mode, StringComparison.OrdinalIgnoreCase);
+        var isSelected = _deploymentMode.Equals(mode, StringComparison.OrdinalIgnoreCase);
         return isSelected ? "border-solid border-2 mud-border-primary" : "";
     }
 }

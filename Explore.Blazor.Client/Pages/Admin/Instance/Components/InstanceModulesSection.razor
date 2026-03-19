@@ -20,17 +20,17 @@
             Enable Tech module
         </MudSwitch>
 
-        <MudSwitch T="bool" @bind-Value="Model.AllowUserSubmittedEvents" Color="Color.Primary">
+        <MudSwitch T="bool" @bind-Value="EventPolicy.AllowUserSubmittedEvents" Color="Color.Primary">
             Allow user-submitted events
         </MudSwitch>
 
-        <MudSwitch T="bool" @bind-Value="Model.RequireOrganizationVerification" Color="Color.Primary">
+        <MudSwitch T="bool" @bind-Value="OrganizationPolicy.RequireOrganizationVerification" Color="Color.Primary">
             Require organization verification
         </MudSwitch>
 
         @if (!IsSingleTenant)
         {
-        <MudSwitch T="bool" @bind-Value="Model.AllowTenantToOmitVerification" Color="Color.Primary">
+        <MudSwitch T="bool" @bind-Value="OrganizationPolicy.AllowTenantToOmitVerification" Color="Color.Primary">
             Allow tenant admins to omit organization verification
         </MudSwitch>
         }
@@ -39,7 +39,13 @@
 
 @code {
     [Parameter, EditorRequired]
-    public InstanceGovernanceSettingsModel Model { get; set; } = null!;
+    public ModuleSettingsModel Model { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public EventPolicyModel EventPolicy { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public OrganizationPolicyModel OrganizationPolicy { get; set; } = null!;
 
     [Parameter]
     public bool IsSingleTenant { get; set; }

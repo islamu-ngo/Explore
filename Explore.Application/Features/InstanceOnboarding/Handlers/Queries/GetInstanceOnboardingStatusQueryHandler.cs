@@ -38,7 +38,7 @@ public class GetInstanceOnboardingStatusQueryHandler : IRequestHandler<GetInstan
     public async Task<InstanceOnboardingStatusDto> Handle(GetInstanceOnboardingStatusQuery request, CancellationToken cancellationToken)
     {
         var bootstrap = await _instanceBootstrapStateRepository.GetCurrent();
-        var deploymentModeSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DeploymentMode);
+        var deploymentModeSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Deployment.Mode);
         var selectedDeploymentMode = !string.IsNullOrWhiteSpace(bootstrap?.SelectedDeploymentMode)
             ? bootstrap!.SelectedDeploymentMode
             : DeserializeString(deploymentModeSetting?.Value, "SingleTenant");

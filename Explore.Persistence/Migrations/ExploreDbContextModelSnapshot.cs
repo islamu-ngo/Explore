@@ -2896,6 +2896,11 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_instance_bootstrap_states");
 
+                    b.HasIndex("IsCompleted")
+                        .IsUnique()
+                        .HasDatabaseName("ix_instance_bootstrap_state_completed_unique")
+                        .HasFilter("\"is_completed\" = true");
+
                     b.ToTable("instance_bootstrap_states", (string)null);
                 });
 
@@ -3908,6 +3913,189 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_platform_user_roles_user_id_role_id");
 
                     b.ToTable("platform_user_roles", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.Policies.InstancePolicySet", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_instance_policy_sets");
+
+                    b.ToTable("instance_policy_sets", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.Policies.OrganizationPolicySet", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_organization_policy_sets");
+
+                    b.HasIndex("OrganizationId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_organization_policy_sets_organization_id");
+
+                    b.ToTable("organization_policy_sets", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.Policies.PolicyChangeOutbox", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("last_error");
+
+                    b.Property<DateTime?>("NextRetryAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_retry_at");
+
+                    b.Property<int>("Operation")
+                        .HasColumnType("integer")
+                        .HasColumnName("operation");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processed_at");
+
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("retry_count");
+
+                    b.Property<int>("Scope")
+                        .HasColumnType("integer")
+                        .HasColumnName("scope");
+
+                    b.Property<Guid?>("ScopeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("scope_id");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_policy_change_outbox");
+
+                    b.HasIndex("Status", "NextRetryAt")
+                        .HasDatabaseName("ix_policy_change_outbox_status_retry");
+
+                    b.ToTable("policy_change_outbox", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.Policies.TenantPolicySet", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tenant_policy_sets");
+
+                    b.HasIndex("TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tenant_policy_sets_tenant_id");
+
+                    b.ToTable("tenant_policy_sets", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.RegistrationMode", b =>
@@ -6320,6 +6508,2160 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Role");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Explore.Domain.Policies.InstancePolicySet", b =>
+                {
+                    b.OwnsOne("Explore.Domain.Policies.DomainPolicy", "Domains", b1 =>
+                        {
+                            b1.Property<Guid>("InstancePolicySetId");
+
+                            b1.HasKey("InstancePolicySetId");
+
+                            b1.ToTable("instance_policy_sets");
+
+                            b1
+                                .ToJson("domains_policy")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("InstancePolicySetId")
+                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowTenantCustomDomains", b2 =>
+                                {
+                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("DomainPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("domains_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "InstanceBaseDomain", b2 =>
+                                {
+                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId");
+
+                                    b2.Property<string>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("DomainPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("domains_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantCustomDomain", b2 =>
+                                {
+                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("DomainPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("domains_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantSubdomain", b2 =>
+                                {
+                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("DomainPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("domains_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("DomainPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.Navigation("AllowTenantCustomDomains")
+                                .IsRequired();
+
+                            b1.Navigation("InstanceBaseDomain")
+                                .IsRequired();
+
+                            b1.Navigation("LockTenantCustomDomain")
+                                .IsRequired();
+
+                            b1.Navigation("LockTenantSubdomain")
+                                .IsRequired();
+                        });
+
+                    b.OwnsOne("Explore.Domain.Policies.BrandingPolicy", "Branding", b1 =>
+                        {
+                            b1.Property<Guid>("InstancePolicySetId");
+
+                            b1.HasKey("InstancePolicySetId")
+                                .HasName("pk_instance_policy_sets");
+
+                            b1.ToTable("instance_policy_sets");
+
+                            b1
+                                .ToJson("branding_policy")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("InstancePolicySetId")
+                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_instance_policy_set");
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "CustomCssUrl", b2 =>
+                                {
+                                    b2.Property<Guid>("BrandingPolicyInstancePolicySetId");
+
+                                    b2.Property<string>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("BrandingPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("branding_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("BrandingPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_branding_policy_ins");
+                                });
+
+                            b1.OwnsOne("PolicySlot", "DisplayName", b2 =>
+                                {
+                                    b2.Property<Guid>("BrandingPolicyInstancePolicySetId");
+
+                                    b2.Property<string>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("BrandingPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("branding_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("BrandingPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_branding_policy_ins");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "FaviconUrl", b2 =>
+                                {
+                                    b2.Property<Guid>("BrandingPolicyInstancePolicySetId");
+
+                                    b2.Property<string>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("BrandingPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("branding_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("BrandingPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_branding_policy_ins");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "LogoUrl", b2 =>
+                                {
+                                    b2.Property<Guid>("BrandingPolicyInstancePolicySetId");
+
+                                    b2.Property<string>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("BrandingPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("branding_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("BrandingPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_branding_policy_ins");
+                                });
+
+                            b1.Navigation("CustomCssUrl")
+                                .IsRequired();
+
+                            b1.Navigation("DisplayName")
+                                .IsRequired();
+
+                            b1.Navigation("FaviconUrl")
+                                .IsRequired();
+
+                            b1.Navigation("LogoUrl")
+                                .IsRequired();
+                        });
+
+                    b.OwnsOne("Explore.Domain.Policies.EventPolicy", "Events", b1 =>
+                        {
+                            b1.Property<Guid>("InstancePolicySetId");
+
+                            b1.HasKey("InstancePolicySetId")
+                                .HasName("pk_instance_policy_sets");
+
+                            b1.ToTable("instance_policy_sets");
+
+                            b1
+                                .ToJson("events_policy")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("InstancePolicySetId")
+                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_instance_policy_set");
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowGroupSubmittedEvents", b2 =>
+                                {
+                                    b2.Property<Guid>("EventPolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("EventPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("events_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("EventPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_event_policy_instan");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowOrganizationSubmittedEvents", b2 =>
+                                {
+                                    b2.Property<Guid>("EventPolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("EventPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("events_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("EventPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_event_policy_instan");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowUserSubmittedEvents", b2 =>
+                                {
+                                    b2.Property<Guid>("EventPolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("EventPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("events_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("EventPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_event_policy_instan");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "EventCardClickOpensDetailPage", b2 =>
+                                {
+                                    b2.Property<Guid>("EventPolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("EventPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("events_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("EventPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_event_policy_instan");
+                                });
+
+                            b1.Navigation("AllowGroupSubmittedEvents")
+                                .IsRequired();
+
+                            b1.Navigation("AllowOrganizationSubmittedEvents")
+                                .IsRequired();
+
+                            b1.Navigation("AllowUserSubmittedEvents")
+                                .IsRequired();
+
+                            b1.Navigation("EventCardClickOpensDetailPage")
+                                .IsRequired();
+                        });
+
+                    b.OwnsOne("Explore.Domain.Policies.OrganizationPolicy", "Organizations", b1 =>
+                        {
+                            b1.Property<Guid>("InstancePolicySetId");
+
+                            b1.HasKey("InstancePolicySetId")
+                                .HasName("pk_instance_policy_sets");
+
+                            b1.ToTable("instance_policy_sets");
+
+                            b1
+                                .ToJson("organizations_policy")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("InstancePolicySetId")
+                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_instance_policy_set");
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowGroupSelfRegistration", b2 =>
+                                {
+                                    b2.Property<Guid>("OrganizationPolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("OrganizationPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("organizations_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("OrganizationPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_organization_polic");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowSelfRegistration", b2 =>
+                                {
+                                    b2.Property<Guid>("OrganizationPolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("OrganizationPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("organizations_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("OrganizationPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_organization_polic");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowTenantToOmitVerification", b2 =>
+                                {
+                                    b2.Property<Guid>("OrganizationPolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("OrganizationPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("organizations_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("OrganizationPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_organization_polic");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "RequireVerification", b2 =>
+                                {
+                                    b2.Property<Guid>("OrganizationPolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("OrganizationPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("organizations_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("OrganizationPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_organization_polic");
+                                });
+
+                            b1.Navigation("AllowGroupSelfRegistration")
+                                .IsRequired();
+
+                            b1.Navigation("AllowSelfRegistration")
+                                .IsRequired();
+
+                            b1.Navigation("AllowTenantToOmitVerification")
+                                .IsRequired();
+
+                            b1.Navigation("RequireVerification")
+                                .IsRequired();
+                        });
+
+                    b.OwnsOne("Explore.Domain.Policies.RenderPolicy", "RenderPolicy", b1 =>
+                        {
+                            b1.Property<Guid>("InstancePolicySetId");
+
+                            b1.HasKey("InstancePolicySetId")
+                                .HasName("pk_instance_policy_sets");
+
+                            b1.ToTable("instance_policy_sets");
+
+                            b1
+                                .ToJson("render_policy")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("InstancePolicySetId")
+                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_instance_policy_set");
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AdminPrerenderEnabled", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "AdminRenderMode", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
+
+                                    b2.Property<string>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowTenantOverride", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "DisallowInteractiveServerOnOnboarding", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "EnableAdvancedOverrides", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "GlobalPrerenderEnabled", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "GlobalRenderMode", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
+
+                                    b2.Property<string>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantAdmin", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantOperational", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantPublicSeo", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "OnboardingPrerenderEnabled", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "OnboardingRenderMode", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
+
+                                    b2.Property<string>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "OperationalPrerenderEnabled", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "OperationalRenderMode", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
+
+                                    b2.Property<string>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "Preset", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
+
+                                    b2.Property<string>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "PublicSeoPrerenderEnabled", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "PublicSeoRenderMode", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
+
+                                    b2.Property<string>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
+                                });
+
+                            b1.OwnsOne("PolicySlot", "Version", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
+
+                                    b2.Property<int>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
+                                });
+
+                            b1.Navigation("AdminPrerenderEnabled")
+                                .IsRequired();
+
+                            b1.Navigation("AdminRenderMode")
+                                .IsRequired();
+
+                            b1.Navigation("AllowTenantOverride")
+                                .IsRequired();
+
+                            b1.Navigation("DisallowInteractiveServerOnOnboarding")
+                                .IsRequired();
+
+                            b1.Navigation("EnableAdvancedOverrides")
+                                .IsRequired();
+
+                            b1.Navigation("GlobalPrerenderEnabled")
+                                .IsRequired();
+
+                            b1.Navigation("GlobalRenderMode")
+                                .IsRequired();
+
+                            b1.Navigation("LockTenantAdmin")
+                                .IsRequired();
+
+                            b1.Navigation("LockTenantOperational")
+                                .IsRequired();
+
+                            b1.Navigation("LockTenantPublicSeo")
+                                .IsRequired();
+
+                            b1.Navigation("OnboardingPrerenderEnabled")
+                                .IsRequired();
+
+                            b1.Navigation("OnboardingRenderMode")
+                                .IsRequired();
+
+                            b1.Navigation("OperationalPrerenderEnabled")
+                                .IsRequired();
+
+                            b1.Navigation("OperationalRenderMode")
+                                .IsRequired();
+
+                            b1.Navigation("Preset")
+                                .IsRequired();
+
+                            b1.Navigation("PublicSeoPrerenderEnabled")
+                                .IsRequired();
+
+                            b1.Navigation("PublicSeoRenderMode")
+                                .IsRequired();
+
+                            b1.Navigation("Version")
+                                .IsRequired();
+                        });
+
+                    b.OwnsOne("Explore.Domain.Policies.ModulePolicy", "Modules", b1 =>
+                        {
+                            b1.Property<Guid>("InstancePolicySetId");
+
+                            b1.HasKey("InstancePolicySetId");
+
+                            b1.ToTable("instance_policy_sets");
+
+                            b1
+                                .ToJson("modules_policy")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("InstancePolicySetId")
+                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+
+                            b1.OwnsOne("PolicySlot", "EnableIslamicModule", b2 =>
+                                {
+                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("ModulePolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("modules_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("ModulePolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "EnableTechModule", b2 =>
+                                {
+                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("ModulePolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("modules_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("ModulePolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.Navigation("EnableIslamicModule")
+                                .IsRequired();
+
+                            b1.Navigation("EnableTechModule")
+                                .IsRequired();
+                        });
+
+                    b.OwnsOne("Explore.Domain.Policies.TenantDelegationPolicy", "TenantDelegation", b1 =>
+                        {
+                            b1.Property<Guid>("InstancePolicySetId");
+
+                            b1.HasKey("InstancePolicySetId");
+
+                            b1.ToTable("instance_policy_sets");
+
+                            b1
+                                .ToJson("tenant_delegation_policy")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("InstancePolicySetId")
+                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowSelfServiceRegistration", b2 =>
+                                {
+                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("tenant_delegation_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowWhiteLabeling", b2 =>
+                                {
+                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("tenant_delegation_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "AuthorizationProvider", b2 =>
+                                {
+                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId");
+
+                                    b2.Property<string>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("tenant_delegation_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "DecentralizationEnabled", b2 =>
+                                {
+                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("tenant_delegation_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "DefaultPublicHomePage", b2 =>
+                                {
+                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId");
+
+                                    b2.Property<string>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("tenant_delegation_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantAnalytics", b2 =>
+                                {
+                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("tenant_delegation_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantSmtp", b2 =>
+                                {
+                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("tenant_delegation_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantStorage", b2 =>
+                                {
+                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("tenant_delegation_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.Navigation("AllowSelfServiceRegistration")
+                                .IsRequired();
+
+                            b1.Navigation("AllowWhiteLabeling")
+                                .IsRequired();
+
+                            b1.Navigation("AuthorizationProvider")
+                                .IsRequired();
+
+                            b1.Navigation("DecentralizationEnabled")
+                                .IsRequired();
+
+                            b1.Navigation("DefaultPublicHomePage")
+                                .IsRequired();
+
+                            b1.Navigation("LockTenantAnalytics")
+                                .IsRequired();
+
+                            b1.Navigation("LockTenantSmtp")
+                                .IsRequired();
+
+                            b1.Navigation("LockTenantStorage")
+                                .IsRequired();
+                        });
+
+                    b.Navigation("Branding")
+                        .IsRequired();
+
+                    b.Navigation("Domains")
+                        .IsRequired();
+
+                    b.Navigation("Events")
+                        .IsRequired();
+
+                    b.Navigation("Modules")
+                        .IsRequired();
+
+                    b.Navigation("Organizations")
+                        .IsRequired();
+
+                    b.Navigation("RenderPolicy")
+                        .IsRequired();
+
+                    b.Navigation("TenantDelegation")
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Explore.Domain.Policies.OrganizationPolicySet", b =>
+                {
+                    b.OwnsOne("Explore.Domain.Policies.EventPolicy", "Events", b1 =>
+                        {
+                            b1.Property<Guid>("OrganizationPolicySetId");
+
+                            b1.HasKey("OrganizationPolicySetId");
+
+                            b1.ToTable("organization_policy_sets");
+
+                            b1
+                                .ToJson("events_policy")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("OrganizationPolicySetId")
+                                .HasConstraintName("fk_organization_policy_sets_organization_policy_sets_id");
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowGroupSubmittedEvents", b2 =>
+                                {
+                                    b2.Property<Guid>("EventPolicyOrganizationPolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("EventPolicyOrganizationPolicySetId");
+
+                                    b2.ToTable("organization_policy_sets");
+
+                                    b2
+                                        .ToJson("events_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("EventPolicyOrganizationPolicySetId")
+                                        .HasConstraintName("fk_organization_policy_sets_organization_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowOrganizationSubmittedEvents", b2 =>
+                                {
+                                    b2.Property<Guid>("EventPolicyOrganizationPolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("EventPolicyOrganizationPolicySetId");
+
+                                    b2.ToTable("organization_policy_sets");
+
+                                    b2
+                                        .ToJson("events_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("EventPolicyOrganizationPolicySetId")
+                                        .HasConstraintName("fk_organization_policy_sets_organization_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowUserSubmittedEvents", b2 =>
+                                {
+                                    b2.Property<Guid>("EventPolicyOrganizationPolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("EventPolicyOrganizationPolicySetId");
+
+                                    b2.ToTable("organization_policy_sets");
+
+                                    b2
+                                        .ToJson("events_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("EventPolicyOrganizationPolicySetId")
+                                        .HasConstraintName("fk_organization_policy_sets_organization_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "EventCardClickOpensDetailPage", b2 =>
+                                {
+                                    b2.Property<Guid>("EventPolicyOrganizationPolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("EventPolicyOrganizationPolicySetId");
+
+                                    b2.ToTable("organization_policy_sets");
+
+                                    b2
+                                        .ToJson("events_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("EventPolicyOrganizationPolicySetId")
+                                        .HasConstraintName("fk_organization_policy_sets_organization_policy_sets_id");
+                                });
+
+                            b1.Navigation("AllowGroupSubmittedEvents")
+                                .IsRequired();
+
+                            b1.Navigation("AllowOrganizationSubmittedEvents")
+                                .IsRequired();
+
+                            b1.Navigation("AllowUserSubmittedEvents")
+                                .IsRequired();
+
+                            b1.Navigation("EventCardClickOpensDetailPage")
+                                .IsRequired();
+                        });
+
+                    b.Navigation("Events")
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Explore.Domain.Policies.TenantPolicySet", b =>
+                {
+                    b.OwnsOne("Explore.Domain.Policies.BrandingPolicy", "Branding", b1 =>
+                        {
+                            b1.Property<Guid>("TenantPolicySetId");
+
+                            b1.HasKey("TenantPolicySetId");
+
+                            b1.ToTable("tenant_policy_sets");
+
+                            b1
+                                .ToJson("branding_policy")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("TenantPolicySetId")
+                                .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "CustomCssUrl", b2 =>
+                                {
+                                    b2.Property<Guid>("BrandingPolicyTenantPolicySetId");
+
+                                    b2.Property<string>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("BrandingPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("branding_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("BrandingPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "DisplayName", b2 =>
+                                {
+                                    b2.Property<Guid>("BrandingPolicyTenantPolicySetId");
+
+                                    b2.Property<string>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("BrandingPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("branding_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("BrandingPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "FaviconUrl", b2 =>
+                                {
+                                    b2.Property<Guid>("BrandingPolicyTenantPolicySetId");
+
+                                    b2.Property<string>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("BrandingPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("branding_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("BrandingPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "LogoUrl", b2 =>
+                                {
+                                    b2.Property<Guid>("BrandingPolicyTenantPolicySetId");
+
+                                    b2.Property<string>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("BrandingPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("branding_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("BrandingPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.Navigation("CustomCssUrl")
+                                .IsRequired();
+
+                            b1.Navigation("DisplayName")
+                                .IsRequired();
+
+                            b1.Navigation("FaviconUrl")
+                                .IsRequired();
+
+                            b1.Navigation("LogoUrl")
+                                .IsRequired();
+                        });
+
+                    b.OwnsOne("Explore.Domain.Policies.EventPolicy", "Events", b1 =>
+                        {
+                            b1.Property<Guid>("TenantPolicySetId");
+
+                            b1.HasKey("TenantPolicySetId");
+
+                            b1.ToTable("tenant_policy_sets");
+
+                            b1
+                                .ToJson("events_policy")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("TenantPolicySetId")
+                                .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowGroupSubmittedEvents", b2 =>
+                                {
+                                    b2.Property<Guid>("EventPolicyTenantPolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("EventPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("events_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("EventPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowOrganizationSubmittedEvents", b2 =>
+                                {
+                                    b2.Property<Guid>("EventPolicyTenantPolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("EventPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("events_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("EventPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowUserSubmittedEvents", b2 =>
+                                {
+                                    b2.Property<Guid>("EventPolicyTenantPolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("EventPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("events_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("EventPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "EventCardClickOpensDetailPage", b2 =>
+                                {
+                                    b2.Property<Guid>("EventPolicyTenantPolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("EventPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("events_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("EventPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.Navigation("AllowGroupSubmittedEvents")
+                                .IsRequired();
+
+                            b1.Navigation("AllowOrganizationSubmittedEvents")
+                                .IsRequired();
+
+                            b1.Navigation("AllowUserSubmittedEvents")
+                                .IsRequired();
+
+                            b1.Navigation("EventCardClickOpensDetailPage")
+                                .IsRequired();
+                        });
+
+                    b.OwnsOne("Explore.Domain.Policies.OrganizationPolicy", "Organizations", b1 =>
+                        {
+                            b1.Property<Guid>("TenantPolicySetId");
+
+                            b1.HasKey("TenantPolicySetId");
+
+                            b1.ToTable("tenant_policy_sets");
+
+                            b1
+                                .ToJson("organizations_policy")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("TenantPolicySetId")
+                                .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowGroupSelfRegistration", b2 =>
+                                {
+                                    b2.Property<Guid>("OrganizationPolicyTenantPolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("OrganizationPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("organizations_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("OrganizationPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowSelfRegistration", b2 =>
+                                {
+                                    b2.Property<Guid>("OrganizationPolicyTenantPolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("OrganizationPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("organizations_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("OrganizationPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowTenantToOmitVerification", b2 =>
+                                {
+                                    b2.Property<Guid>("OrganizationPolicyTenantPolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("OrganizationPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("organizations_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("OrganizationPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "RequireVerification", b2 =>
+                                {
+                                    b2.Property<Guid>("OrganizationPolicyTenantPolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("OrganizationPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("organizations_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("OrganizationPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.Navigation("AllowGroupSelfRegistration")
+                                .IsRequired();
+
+                            b1.Navigation("AllowSelfRegistration")
+                                .IsRequired();
+
+                            b1.Navigation("AllowTenantToOmitVerification")
+                                .IsRequired();
+
+                            b1.Navigation("RequireVerification")
+                                .IsRequired();
+                        });
+
+                    b.OwnsOne("Explore.Domain.Policies.RenderPolicy", "RenderPolicy", b1 =>
+                        {
+                            b1.Property<Guid>("TenantPolicySetId");
+
+                            b1.HasKey("TenantPolicySetId");
+
+                            b1.ToTable("tenant_policy_sets");
+
+                            b1
+                                .ToJson("render_policy")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("TenantPolicySetId")
+                                .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AdminPrerenderEnabled", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "AdminRenderMode", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+
+                                    b2.Property<string>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowTenantOverride", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "DisallowInteractiveServerOnOnboarding", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "EnableAdvancedOverrides", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "GlobalPrerenderEnabled", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "GlobalRenderMode", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+
+                                    b2.Property<string>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantAdmin", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantOperational", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantPublicSeo", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "OnboardingPrerenderEnabled", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "OnboardingRenderMode", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+
+                                    b2.Property<string>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "OperationalPrerenderEnabled", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "OperationalRenderMode", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+
+                                    b2.Property<string>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "Preset", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+
+                                    b2.Property<string>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "PublicSeoPrerenderEnabled", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+
+                                    b2.Property<bool>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "PublicSeoRenderMode", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+
+                                    b2.Property<string>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<int>", "Version", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+
+                                    b2.Property<int>("LocalValue");
+
+                                    b2.Property<int>("OverrideMode");
+
+                                    b2.HasKey("RenderPolicyTenantPolicySetId");
+
+                                    b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyTenantPolicySetId")
+                                        .HasConstraintName("fk_tenant_policy_sets_tenant_policy_sets_id");
+                                });
+
+                            b1.Navigation("AdminPrerenderEnabled")
+                                .IsRequired();
+
+                            b1.Navigation("AdminRenderMode")
+                                .IsRequired();
+
+                            b1.Navigation("AllowTenantOverride")
+                                .IsRequired();
+
+                            b1.Navigation("DisallowInteractiveServerOnOnboarding")
+                                .IsRequired();
+
+                            b1.Navigation("EnableAdvancedOverrides")
+                                .IsRequired();
+
+                            b1.Navigation("GlobalPrerenderEnabled")
+                                .IsRequired();
+
+                            b1.Navigation("GlobalRenderMode")
+                                .IsRequired();
+
+                            b1.Navigation("LockTenantAdmin")
+                                .IsRequired();
+
+                            b1.Navigation("LockTenantOperational")
+                                .IsRequired();
+
+                            b1.Navigation("LockTenantPublicSeo")
+                                .IsRequired();
+
+                            b1.Navigation("OnboardingPrerenderEnabled")
+                                .IsRequired();
+
+                            b1.Navigation("OnboardingRenderMode")
+                                .IsRequired();
+
+                            b1.Navigation("OperationalPrerenderEnabled")
+                                .IsRequired();
+
+                            b1.Navigation("OperationalRenderMode")
+                                .IsRequired();
+
+                            b1.Navigation("Preset")
+                                .IsRequired();
+
+                            b1.Navigation("PublicSeoPrerenderEnabled")
+                                .IsRequired();
+
+                            b1.Navigation("PublicSeoRenderMode")
+                                .IsRequired();
+
+                            b1.Navigation("Version")
+                                .IsRequired();
+                        });
+
+                    b.Navigation("Branding")
+                        .IsRequired();
+
+                    b.Navigation("Events")
+                        .IsRequired();
+
+                    b.Navigation("Organizations")
+                        .IsRequired();
+
+                    b.Navigation("RenderPolicy")
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Explore.Domain.RolePermission", b =>

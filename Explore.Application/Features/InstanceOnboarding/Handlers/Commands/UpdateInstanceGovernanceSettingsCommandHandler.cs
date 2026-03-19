@@ -4,8 +4,8 @@
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
-using Explore.Application.DTOs.Onboarding;
-using Explore.Application.DTOs.Onboarding.Validators;
+using Explore.Application.DTOs.Instance;
+using Explore.Application.DTOs.Instance.Validators;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
@@ -13,7 +13,6 @@ using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Logging;
-using TenantSettingsEntity = Explore.Domain.TenantSettings;
 
 namespace Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 
@@ -22,7 +21,6 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
     private readonly IAdminContext _adminContext;
     private readonly IInstanceBootstrapStateRepository _instanceBootstrapStateRepository;
     private readonly ITenantRepository _tenantRepository;
-    private readonly ITenantSettingsRepository _tenantSettingsRepository;
     private readonly IInstanceGovernanceSettingService _governanceSettingService;
     private readonly ILogger<UpdateInstanceGovernanceSettingsCommandHandler> _logger;
 
@@ -30,14 +28,12 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
         IAdminContext adminContext,
         IInstanceBootstrapStateRepository instanceBootstrapStateRepository,
         ITenantRepository tenantRepository,
-        ITenantSettingsRepository tenantSettingsRepository,
         IInstanceGovernanceSettingService governanceSettingService,
         ILogger<UpdateInstanceGovernanceSettingsCommandHandler> logger)
     {
         _adminContext = adminContext;
         _instanceBootstrapStateRepository = instanceBootstrapStateRepository;
         _tenantRepository = tenantRepository;
-        _tenantSettingsRepository = tenantSettingsRepository;
         _governanceSettingService = governanceSettingService;
         _logger = logger;
     }
@@ -54,20 +50,8 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
             return response;
         }
 
-        var validator = new InstanceGovernanceSettingsDtoValidator();
-        var validationResult = await validator.ValidateAsync(request.Settings, cancellationToken);
-        if (!validationResult.IsValid)
-        {
-            LogOnboardingGuardrailRejectionIfNeeded(request.UserId, request.Settings);
-
-            response.Success = false;
-            response.Message = "Invalid instance governance settings.";
-            response.Errors = validationResult.Errors.Select(x => x.ErrorMessage).ToList();
-            return response;
-        }
-
-        var normalizedDeploymentMode = NormalizeDeploymentMode(request.Settings.DeploymentMode);
-        if (normalizedDeploymentMode == null)
+        var deploymentMode = request.Settings.DeploymentMode.Mode;
+        if (!Enum.IsDefined(deploymentMode))
         {
             response.Success = false;
             response.Message = "Invalid deployment mode.";
@@ -75,13 +59,21 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
             return response;
         }
 
-        request.Settings.DeploymentMode = normalizedDeploymentMode;
+        var renderPolicyValidator = new RenderPolicySettingsDtoValidator();
+        var renderPolicyValidation = await renderPolicyValidator.ValidateAsync(request.Settings.RenderPolicy, cancellationToken);
+        if (!renderPolicyValidation.IsValid)
+        {
+            response.Success = false;
+            response.Message = "Invalid instance governance settings.";
+            response.Errors = renderPolicyValidation.Errors.Select(e => e.ErrorMessage).ToList();
+            return response;
+        }
 
         var bootstrap = await _instanceBootstrapStateRepository.GetCurrent();
         var currentMode = bootstrap?.SelectedDeploymentMode;
 
         if (string.Equals(currentMode, "MultiTenant", StringComparison.OrdinalIgnoreCase)
-            && string.Equals(normalizedDeploymentMode, "SingleTenant", StringComparison.OrdinalIgnoreCase))
+            && deploymentMode == DeploymentMode.SingleTenant)
         {
             var tenantCount = await _tenantRepository.GetActiveTenantCountAsync();
             if (tenantCount > 1)
@@ -96,21 +88,22 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
             }
         }
 
-        var isSingleTenant = normalizedDeploymentMode.Equals("SingleTenant", StringComparison.OrdinalIgnoreCase);
+        var isSingleTenant = deploymentMode == DeploymentMode.SingleTenant;
         Guid? defaultTenantId = null;
 
         if (isSingleTenant)
         {
             var defaultTenant = await EnsureDefaultTenantAsync();
-            await EnsureDefaultTenantSettingsAsync(defaultTenant.Id);
             defaultTenantId = defaultTenant.Id;
         }
+
+        LogOnboardingGuardrailRejectionIfNeeded(request.UserId, request.Settings.RenderPolicy);
 
         await _governanceSettingService.ApplySettingsAsync(defaultTenantId, request.Settings, request.UserId);
 
         if (bootstrap != null)
         {
-            bootstrap.SelectedDeploymentMode = request.Settings.DeploymentMode;
+            bootstrap.SelectedDeploymentMode = deploymentMode.ToString();
             await _instanceBootstrapStateRepository.Update(bootstrap);
             response.Id = bootstrap.Id;
         }
@@ -127,10 +120,7 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
     private async Task<Tenant> EnsureDefaultTenantAsync()
     {
         var tenant = await _tenantRepository.GetById(PlatformDefaults.DefaultTenantId);
-        if (tenant != null)
-        {
-            return tenant;
-        }
+        if (tenant != null) return tenant;
 
         return await _tenantRepository.Create(new Tenant
         {
@@ -148,57 +138,18 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
         });
     }
 
-    private async Task EnsureDefaultTenantSettingsAsync(Guid tenantId)
-    {
-        var existing = await _tenantSettingsRepository.GetByTenant(tenantId);
-        if (existing != null)
-        {
-            return;
-        }
-
-        await _tenantSettingsRepository.Create(new TenantSettingsEntity
-        {
-            TenantId = tenantId,
-            Tenant = null!
-        });
-    }
-
-    private static string? NormalizeDeploymentMode(string? deploymentMode)
-    {
-        if (string.IsNullOrWhiteSpace(deploymentMode))
-        {
-            return null;
-        }
-
-        if (deploymentMode.Equals("SingleTenant", StringComparison.OrdinalIgnoreCase))
-        {
-            return "SingleTenant";
-        }
-
-        if (deploymentMode.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase))
-        {
-            return "MultiTenant";
-        }
-
-        return null;
-    }
-
-    private void LogOnboardingGuardrailRejectionIfNeeded(Guid userId, InstanceGovernanceSettingsDto settings)
+    private void LogOnboardingGuardrailRejectionIfNeeded(Guid userId, RenderPolicySettingsDto rp)
     {
         var usesInteractiveServerOnOnboarding = string.Equals(
-            settings.OnboardingRenderMode,
+            rp.OnboardingRenderMode,
             RenderModeOptionEnum.InteractiveServer.ToString(),
             StringComparison.OrdinalIgnoreCase);
 
-        if (!usesInteractiveServerOnOnboarding && settings.DisallowInteractiveServerOnOnboarding)
-        {
+        if (!usesInteractiveServerOnOnboarding && rp.DisallowInteractiveServerOnOnboarding)
             return;
-        }
 
         _logger.LogWarning(
             "Rejected instance governance update due to onboarding render-policy guardrail violation. UserId: {UserId}, OnboardingRenderMode: {OnboardingRenderMode}, DisallowInteractiveServerOnOnboarding: {DisallowInteractiveServerOnOnboarding}",
-            userId,
-            settings.OnboardingRenderMode,
-            settings.DisallowInteractiveServerOnOnboarding);
+            userId, rp.OnboardingRenderMode, rp.DisallowInteractiveServerOnOnboarding);
     }
 }

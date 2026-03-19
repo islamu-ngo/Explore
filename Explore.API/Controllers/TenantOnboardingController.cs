@@ -4,6 +4,7 @@
 using System.Security.Claims;
 using Asp.Versioning;
 using Explore.Application.DTOs.Onboarding;
+using Explore.Application.DTOs.TenantPolicy;
 using Explore.Application.Features.TenantOnboarding.Requests.Commands;
 using Explore.Application.Features.TenantOnboarding.Requests.Queries;
 using Explore.Application.Responses;
@@ -54,7 +55,7 @@ public class TenantOnboardingController : ControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Complete([FromBody] TenantPolicySettingsDto settings, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Complete([FromBody] UpdateTenantPolicyRequest settings, CancellationToken cancellationToken = default)
     {
         var currentUserId = GetCurrentUserId();
         if (!currentUserId.HasValue)
@@ -92,7 +93,7 @@ public class TenantOnboardingController : ControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateSettings([FromBody] TenantPolicySettingsDto settings, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateSettings([FromBody] UpdateTenantPolicyRequest settings, CancellationToken cancellationToken = default)
     {
         var currentUserId = GetCurrentUserId();
         if (!currentUserId.HasValue)

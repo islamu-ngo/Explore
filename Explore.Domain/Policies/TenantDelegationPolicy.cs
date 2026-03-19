@@ -1,0 +1,16 @@
+// ABOUTME: Typed policy for tenant delegation — controls what tenants can self-manage.
+// ABOUTME: Covers self-service registration, white-labeling, SMTP/storage/analytics delegation.
+
+namespace Explore.Domain.Policies;
+
+public sealed class TenantDelegationPolicy
+{
+    public PolicySlot<bool> AllowSelfServiceRegistration { get; set; } = new(false);
+    public PolicySlot<bool> AllowWhiteLabeling { get; set; } = new(false);
+    public PolicySlot<string> DefaultPublicHomePage { get; set; } = new("EventList");
+    public PolicySlot<bool> LockTenantSmtp { get; set; } = new(true, ChildOverrideMode.Deny);
+    public PolicySlot<bool> LockTenantStorage { get; set; } = new(true, ChildOverrideMode.Deny);
+    public PolicySlot<bool> LockTenantAnalytics { get; set; } = new(true, ChildOverrideMode.Deny);
+    public PolicySlot<bool> DecentralizationEnabled { get; set; } = new(false);
+    public PolicySlot<string> AuthorizationProvider { get; set; } = new("local", ChildOverrideMode.Deny);
+}

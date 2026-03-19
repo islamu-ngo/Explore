@@ -6,6 +6,7 @@ using Explore.Application.Analytics;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.Instance;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.PublicExperience.Requests.Queries;
 using Explore.Application.Settings;
@@ -59,7 +60,7 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
         var governanceSettings = await _instanceGovernanceSettingService.ReadEffectiveSettingsForTenantAsync(tenantId);
         var analyticsConfiguration = await _analyticsConfigResolver.ResolveAsync(cancellationToken);
 
-        var deploymentModeSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DeploymentMode);
+        var deploymentModeSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Deployment.Mode);
         var deploymentMode = DeserializeString(deploymentModeSetting?.Value, "SingleTenant");
         var analyticsProvider = analyticsConfiguration.Provider.ToString().ToLowerInvariant();
         var analyticsPublicApiKey = analyticsConfiguration.ApiKey;
@@ -109,20 +110,20 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
             AnalyticsPublicApiKey = analyticsPublicApiKey ?? string.Empty,
             AnalyticsEndpointUrl = analyticsEndpointUrl ?? string.Empty,
             AnalyticsConsent = consentBootstrap,
-            RenderPolicyVersion = governanceSettings.RenderPolicyVersion,
-            RenderPolicyPreset = governanceSettings.RenderPolicyPreset,
-            EnableAdvancedRenderPolicyOverrides = governanceSettings.EnableAdvancedRenderPolicyOverrides,
-            GlobalRenderMode = governanceSettings.GlobalRenderMode,
-            GlobalPrerenderEnabled = governanceSettings.GlobalPrerenderEnabled,
-            PublicSeoRenderMode = governanceSettings.PublicSeoRenderMode,
-            PublicSeoPrerenderEnabled = governanceSettings.PublicSeoPrerenderEnabled,
-            OperationalRenderMode = governanceSettings.OperationalRenderMode,
-            OperationalPrerenderEnabled = governanceSettings.OperationalPrerenderEnabled,
-            AdminRenderMode = governanceSettings.AdminRenderMode,
-            AdminPrerenderEnabled = governanceSettings.AdminPrerenderEnabled,
-            OnboardingRenderMode = governanceSettings.OnboardingRenderMode,
-            OnboardingPrerenderEnabled = governanceSettings.OnboardingPrerenderEnabled,
-            DisallowInteractiveServerOnOnboarding = governanceSettings.DisallowInteractiveServerOnOnboarding
+            RenderPolicyVersion = governanceSettings.RenderPolicy.RenderPolicyVersion,
+            RenderPolicyPreset = governanceSettings.RenderPolicy.RenderPolicyPreset,
+            EnableAdvancedRenderPolicyOverrides = governanceSettings.RenderPolicy.EnableAdvancedRenderPolicyOverrides,
+            GlobalRenderMode = governanceSettings.RenderPolicy.GlobalRenderMode,
+            GlobalPrerenderEnabled = governanceSettings.RenderPolicy.GlobalPrerenderEnabled,
+            PublicSeoRenderMode = governanceSettings.RenderPolicy.PublicSeoRenderMode,
+            PublicSeoPrerenderEnabled = governanceSettings.RenderPolicy.PublicSeoPrerenderEnabled,
+            OperationalRenderMode = governanceSettings.RenderPolicy.OperationalRenderMode,
+            OperationalPrerenderEnabled = governanceSettings.RenderPolicy.OperationalPrerenderEnabled,
+            AdminRenderMode = governanceSettings.RenderPolicy.AdminRenderMode,
+            AdminPrerenderEnabled = governanceSettings.RenderPolicy.AdminPrerenderEnabled,
+            OnboardingRenderMode = governanceSettings.RenderPolicy.OnboardingRenderMode,
+            OnboardingPrerenderEnabled = governanceSettings.RenderPolicy.OnboardingPrerenderEnabled,
+            DisallowInteractiveServerOnOnboarding = governanceSettings.RenderPolicy.DisallowInteractiveServerOnOnboarding
         };
     }
 

@@ -14,6 +14,71 @@ public static class RoutingSettingDefinitions
         MaxScope: SettingScope.Tenant,
         AllowedValues: ["EventList", "LandingPage"]);
 
+    // Tenant resolution
+    public static readonly SettingDefinition ResolverHeaderEnabled = new(
+        Key: "routing.resolver_header_enabled",
+        ValueType: SettingValueType.Boolean,
+        DefaultValue: "true",
+        Category: "Routing",
+        Description: "Enable tenant resolution via X-Tenant-ID header");
+
+    public static readonly SettingDefinition ResolverSubdomainEnabled = new(
+        Key: "routing.resolver_subdomain_enabled",
+        ValueType: SettingValueType.Boolean,
+        DefaultValue: "true",
+        Category: "Routing",
+        Description: "Enable tenant resolution via subdomain");
+
+    public static readonly SettingDefinition ResolverCustomDomainEnabled = new(
+        Key: "routing.resolver_custom_domain_enabled",
+        ValueType: SettingValueType.Boolean,
+        DefaultValue: "false",
+        Category: "Routing",
+        Description: "Enable tenant resolution via custom domain mapping");
+
+    public static readonly SettingDefinition ResolverPathEnabled = new(
+        Key: "routing.resolver_path_enabled",
+        ValueType: SettingValueType.Boolean,
+        DefaultValue: "false",
+        Category: "Routing",
+        Description: "Enable tenant resolution via URL path prefix");
+
+    public static readonly SettingDefinition PathPrefix = new(
+        Key: "routing.path_prefix",
+        ValueType: SettingValueType.String,
+        DefaultValue: "\"\"",
+        Category: "Routing",
+        Description: "URL path prefix for path-based tenant resolution (e.g., /t/{tenant})");
+
+    // Render Policy Tenant Override Controls
+    public static readonly SettingDefinition RenderPolicyAllowTenantOverride = new(
+        Key: "routing.render_policy.allow_tenant_override",
+        ValueType: SettingValueType.Boolean,
+        DefaultValue: "false",
+        Category: "Routing",
+        Description: "Whether tenants can override render policy settings");
+
+    public static readonly SettingDefinition RenderPolicyLockTenantPublicSeo = new(
+        Key: "routing.render_policy.lock_tenant_public_seo",
+        ValueType: SettingValueType.Boolean,
+        DefaultValue: "false",
+        Category: "Routing",
+        Description: "Lock tenant public SEO render policy to instance value");
+
+    public static readonly SettingDefinition RenderPolicyLockTenantOperational = new(
+        Key: "routing.render_policy.lock_tenant_operational",
+        ValueType: SettingValueType.Boolean,
+        DefaultValue: "false",
+        Category: "Routing",
+        Description: "Lock tenant operational render policy to instance value");
+
+    public static readonly SettingDefinition RenderPolicyLockTenantAdmin = new(
+        Key: "routing.render_policy.lock_tenant_admin",
+        ValueType: SettingValueType.Boolean,
+        DefaultValue: "false",
+        Category: "Routing",
+        Description: "Lock tenant admin render policy to instance value");
+
     // Render Policy
     public static readonly SettingDefinition RenderPolicyVersion = new(
         Key: "routing.render_policy.version",
@@ -121,6 +186,10 @@ public static class RoutingSettingDefinitions
     public static IReadOnlyList<SettingDefinition> All =>
     [
         DefaultPublicHomePage,
+        ResolverHeaderEnabled, ResolverSubdomainEnabled, ResolverCustomDomainEnabled,
+        ResolverPathEnabled, PathPrefix,
+        RenderPolicyAllowTenantOverride, RenderPolicyLockTenantPublicSeo,
+        RenderPolicyLockTenantOperational, RenderPolicyLockTenantAdmin,
         RenderPolicyVersion, RenderPolicyPreset, RenderPolicyAdvancedEnabled,
         RenderPolicyDisallowInteractiveServerOnOnboarding,
         FallbackRenderMode, FallbackPrerenderEnabled,

@@ -15,7 +15,7 @@
         <MudText Typo="Typo.h6" Style="font-weight: 600;">Landing Page</MudText>
         <MudSelect T="string"
                    Label="Default Public Home Page"
-                   @bind-Value="Model.DefaultPublicHomePage"
+                   @bind-Value="Delegation.DefaultPublicHomePage"
                    Variant="Variant.Outlined"
                    HelperText="Choose which page visitors see when they first arrive.">
             <MudSelectItem Value="@("EventList")">Event List</MudSelectItem>
@@ -39,18 +39,24 @@
 
 @code {
     [Parameter, EditorRequired]
-    public InstanceGovernanceSettingsModel Model { get; set; } = null!;
+    public RenderPolicyModel Model { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public TenantDelegationModel Delegation { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public EventPolicyModel EventPolicy { get; set; } = null!;
 
     private string _eventCardClickAction = "Sidebar";
 
     protected override void OnParametersSet()
     {
-        _eventCardClickAction = Model.EventCardClickOpensDetailPage ? "Navigate" : "Sidebar";
+        _eventCardClickAction = EventPolicy.EventCardClickOpensDetailPage ? "Navigate" : "Sidebar";
     }
 
     private void OnEventCardClickActionChanged(string value)
     {
         _eventCardClickAction = value;
-        Model.EventCardClickOpensDetailPage = value == "Navigate";
+        EventPolicy.EventCardClickOpensDetailPage = value == "Navigate";
     }
 }

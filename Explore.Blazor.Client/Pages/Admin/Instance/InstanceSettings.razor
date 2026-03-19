@@ -1,162 +1,16 @@
-@* Replaced by InstanceAdminSettings.razor — kept for reference only *@
+@* ABOUTME: Legacy standalone settings page — replaced by InstanceAdminSettingsLayout sidebar. *@
+@* ABOUTME: Kept as a simple redirect to the new admin settings layout. *@
+
+@page "/admin/instance/settings-legacy"
 @using MudBlazor
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @rendermode InteractiveServer
-@inject IInstanceOnboardingService InstanceOnboardingService
-@inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 
-<MudContainer MaxWidth="MaxWidth.Medium" Class="py-8">
-    <MudPaper Class="pa-6">
-        <MudText Typo="Typo.h4" Class="mb-2">Instance Settings</MudText>
-        <MudText Typo="Typo.body2" Class="mb-4">
-            Runtime governance controls for deployment mode and instance-level policy defaults.
-        </MudText>
-
-        @if (!string.IsNullOrWhiteSpace(_errorMessage))
-        {
-            <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
-        }
-
-        @if (_isLoading)
-        {
-            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
-        }
-        else if (!_canEdit)
-        {
-            <MudAlert Severity="Severity.Warning">
-                You do not have instance administrator permissions.
-            </MudAlert>
-        }
-        else
-        {
-            <MudStack Spacing="3">
-                <MudText Typo="Typo.h6">Platform Governance</MudText>
-                <MudSelect T="string" Label="Deployment Mode" @bind-Value="_model.DeploymentMode" Variant="Variant.Outlined">
-                    <MudSelectItem Value="@("SingleTenant")">Single Tenant</MudSelectItem>
-                    <MudSelectItem Value="@("MultiTenant")">Multi Tenant</MudSelectItem>
-                </MudSelect>
-
-                <MudSwitch T="bool" @bind-Value="_model.AllowTenantSelfServiceRegistration" Color="Color.Primary">
-                    Allow tenant self-service registration
-                </MudSwitch>
-                <MudSelect T="string" Label="Default Public Home Page" @bind-Value="_model.DefaultPublicHomePage" Variant="Variant.Outlined">
-                    <MudSelectItem Value="@("EventList")">Event List</MudSelectItem>
-                    <MudSelectItem Value="@("LandingPage")">Landing Page</MudSelectItem>
-                </MudSelect>
-                <MudSwitch T="bool" @bind-Value="_model.LockTenantHomePagePreference" Color="Color.Primary">
-                    Lock tenant home page preference
-                </MudSwitch>
-
-                <MudDivider />
-                <MudText Typo="Typo.h6">Domain Governance</MudText>
-                <MudTextField Label="Instance Base Domain"
-                              Variant="Variant.Outlined"
-                              @bind-Value="_model.InstanceBaseDomain"
-                              Placeholder="example.com" />
-                <MudSwitch T="bool" @bind-Value="_model.AllowTenantCustomDomains" Color="Color.Primary">
-                    Allow tenant custom domains
-                </MudSwitch>
-                <MudSwitch T="bool" @bind-Value="_model.LockTenantSubdomain" Color="Color.Primary">
-                    Lock tenant subdomain changes
-                </MudSwitch>
-                <MudSwitch T="bool" @bind-Value="_model.LockTenantCustomDomain" Color="Color.Primary">
-                    Lock tenant custom domain changes
-                </MudSwitch>
-
-                <MudDivider />
-                <MudText Typo="Typo.h6">Policy Defaults</MudText>
-                <MudSwitch T="bool" @bind-Value="_model.EnableIslamicModule" Color="Color.Primary">
-                    Enable Islamic module
-                </MudSwitch>
-                <MudSwitch T="bool" @bind-Value="_model.EnableTechModule" Color="Color.Primary">
-                    Enable Tech module
-                </MudSwitch>
-                <MudSwitch T="bool" @bind-Value="_model.AllowUserSubmittedEvents" Color="Color.Primary">
-                    Allow user-submitted events
-                </MudSwitch>
-                <MudSwitch T="bool" @bind-Value="_model.RequireOrganizationVerification" Color="Color.Primary">
-                    Require organization verification
-                </MudSwitch>
-                <MudSwitch T="bool" @bind-Value="_model.AllowTenantToOmitVerification" Color="Color.Primary">
-                    Allow tenant admins to omit organization verification
-                </MudSwitch>
-
-                <MudDivider />
-                <MudText Typo="Typo.h6">Default Branding</MudText>
-                <MudTextField Label="Brand Display Name"
-                              Variant="Variant.Outlined"
-                              @bind-Value="_model.DefaultBrandDisplayName" />
-                <MudTextField Label="Brand Logo URL"
-                              Variant="Variant.Outlined"
-                              @bind-Value="_model.DefaultBrandLogoUrl" />
-                <MudTextField Label="Brand Favicon URL"
-                              Variant="Variant.Outlined"
-                              @bind-Value="_model.DefaultBrandFaviconUrl" />
-                <MudTextField Label="Advanced: Custom CSS URL (Optional)"
-                              Variant="Variant.Outlined"
-                              @bind-Value="_model.DefaultBrandCustomCssUrl" />
-                <MudSwitch T="bool" @bind-Value="_model.LockTenantBrandDisplayName" Color="Color.Primary">
-                    Lock tenant brand display name
-                </MudSwitch>
-                <MudSwitch T="bool" @bind-Value="_model.LockTenantBrandLogoUrl" Color="Color.Primary">
-                    Lock tenant brand logo
-                </MudSwitch>
-                <MudSwitch T="bool" @bind-Value="_model.LockTenantBrandFaviconUrl" Color="Color.Primary">
-                    Lock tenant brand favicon
-                </MudSwitch>
-                <MudSwitch T="bool" @bind-Value="_model.LockTenantBrandCustomCssUrl" Color="Color.Primary">
-                    Lock tenant custom CSS URL
-                </MudSwitch>
-
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync" Disabled="_isSaving">
-                    Save Instance Settings
-                </MudButton>
-            </MudStack>
-        }
-    </MudPaper>
-</MudContainer>
-
 @code {
-    private InstanceGovernanceSettingsModel _model = new();
-    private bool _isLoading = true;
-    private bool _isSaving;
-    private bool _canEdit;
-    private string? _errorMessage;
-
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        var status = await InstanceOnboardingService.GetStatusAsync();
-        _canEdit = status?.IsCurrentUserInstanceAdmin == true;
-
-        if (!_canEdit)
-        {
-            _isLoading = false;
-            return;
-        }
-
-        _model = await InstanceOnboardingService.GetSettingsAsync();
-        _isLoading = false;
-    }
-
-    private async Task SaveAsync()
-    {
-        _isSaving = true;
-        _errorMessage = null;
-
-        var response = await InstanceOnboardingService.UpdateSettingsAsync(_model);
-        _isSaving = false;
-
-        if (response.Success)
-        {
-            Snackbar.Add("Instance settings saved.", Severity.Success);
-            Navigation.NavigateTo("/", forceLoad: true);
-            return;
-        }
-
-        _errorMessage = string.IsNullOrWhiteSpace(response.Message)
-            ? "Failed to save instance settings."
-            : response.Message;
+        Navigation.NavigateTo("/admin/instance/settings", replace: true);
     }
 }

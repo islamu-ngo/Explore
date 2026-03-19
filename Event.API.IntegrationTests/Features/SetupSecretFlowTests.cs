@@ -7,6 +7,7 @@ using Event.Api.IntegrationTests.Fixtures;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Responses;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -188,28 +189,12 @@ public class SetupSecretFlowTests
         return request;
     }
 
-    private static InstanceGovernanceSettingsDto CreateValidSettings()
+    private static CompleteInstanceOnboardingRequest CreateValidSettings()
     {
-        return new InstanceGovernanceSettingsDto
+        return new CompleteInstanceOnboardingRequest
         {
-            DeploymentMode = "SingleTenant",
-            AllowTenantSelfServiceRegistration = false,
-            DefaultPublicHomePage = "EventList",
-            LockTenantHomePagePreference = false,
-            RenderPolicyVersion = 1,
-            RenderPolicyPreset = "SeoBalanced",
-            EnableAdvancedRenderPolicyOverrides = false,
-            GlobalRenderMode = "InteractiveAuto",
-            GlobalPrerenderEnabled = false,
-            PublicSeoRenderMode = "InteractiveAuto",
-            PublicSeoPrerenderEnabled = true,
-            OperationalRenderMode = "InteractiveAuto",
-            OperationalPrerenderEnabled = false,
-            AdminRenderMode = "InteractiveAuto",
-            AdminPrerenderEnabled = false,
-            OnboardingRenderMode = "InteractiveAuto",
-            OnboardingPrerenderEnabled = false,
-            DisallowInteractiveServerOnOnboarding = true
+            DeploymentMode = DeploymentMode.SingleTenant,
+            InstanceName = "Test Instance"
         };
     }
 

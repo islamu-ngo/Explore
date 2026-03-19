@@ -1,8 +1,8 @@
-// ABOUTME: Client service for instance onboarding status, governance, and auth provider configuration endpoints.
-// ABOUTME: Powers first-run startup gating, auth provider setup, and runtime instance settings updates from Blazor pages.
-// ABOUTME: Powers first-run startup gating and runtime instance settings updates from Blazor pages.
+// ABOUTME: Client service for instance onboarding and governance settings via sub-resource endpoints.
+// ABOUTME: Powers first-run wizard, instance admin settings, and infrastructure config from Blazor pages.
 
 using System.Net.Http.Json;
+using System.Text.Json;
 using Explore.Blazor.Client.Services.Http;
 using Microsoft.JSInterop;
 
@@ -10,11 +10,32 @@ namespace Explore.Blazor.Client.Services;
 
 public interface IInstanceOnboardingService
 {
+    // Onboarding
     Task<InstanceOnboardingStatusModel?> GetStatusAsync();
     Task<SetupSecretValidationResult> ValidateSecretAsync(string secret);
-    Task<InstanceGovernanceSettingsModel> GetSettingsAsync();
-    Task<InstanceCommandResponseModel> CompleteAsync(InstanceGovernanceSettingsModel settings);
-    Task<InstanceCommandResponseModel> UpdateSettingsAsync(InstanceGovernanceSettingsModel settings);
+    Task<InstanceCommandResponseModel> CompleteAsync(OnboardingCompletionModel completion);
+
+    // Governance sub-resource reads
+    Task<DeploymentModeModel> GetDeploymentModeAsync();
+    Task<ModuleSettingsModel> GetModuleSettingsAsync();
+    Task<EventPolicyModel> GetEventPolicyAsync();
+    Task<OrganizationPolicyModel> GetOrganizationPolicyAsync();
+    Task<BrandingSettingsModel> GetBrandingSettingsAsync();
+    Task<DomainSettingsModel> GetDomainSettingsAsync();
+    Task<TenantDelegationModel> GetTenantDelegationAsync();
+    Task<RenderPolicyModel> GetRenderPolicyAsync();
+
+    // Governance sub-resource writes
+    Task<InstanceCommandResponseModel> UpdateDeploymentModeAsync(string deploymentMode);
+    Task<InstanceCommandResponseModel> UpdateModuleSettingsAsync(ModuleSettingsModel settings);
+    Task<InstanceCommandResponseModel> UpdateEventPolicyAsync(EventPolicyModel settings);
+    Task<InstanceCommandResponseModel> UpdateOrganizationPolicyAsync(OrganizationPolicyModel settings);
+    Task<InstanceCommandResponseModel> UpdateBrandingSettingsAsync(BrandingSettingsModel settings);
+    Task<InstanceCommandResponseModel> UpdateDomainSettingsAsync(DomainSettingsModel settings);
+    Task<InstanceCommandResponseModel> UpdateTenantDelegationAsync(TenantDelegationModel settings);
+    Task<InstanceCommandResponseModel> UpdateRenderPolicyAsync(RenderPolicyModel settings);
+
+    // Infrastructure settings
     Task<InstanceStorageSettingsModel> GetStorageSettingsAsync();
     Task<InstanceCommandResponseModel> UpdateStorageSettingsAsync(InstanceStorageSettingsModel settings);
     Task<StorageConnectionTestResult> TestStorageConnectionAsync();
@@ -54,22 +75,111 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         _bffClient = bffClient;
     }
 
-    // ── Read operations ──────────────────────────────────────────────────
+    // ── Onboarding ───────────────────────────────────────────────────────
 
     public async Task<InstanceOnboardingStatusModel?> GetStatusAsync() =>
         await GetAsync<InstanceOnboardingStatusModel>("api/InstanceOnboarding/status");
 
-    public async Task<InstanceGovernanceSettingsModel> GetSettingsAsync() =>
-        await GetAsync<InstanceGovernanceSettingsModel>("api/InstanceOnboarding/settings")
-        ?? new InstanceGovernanceSettingsModel();
+    public async Task<SetupSecretValidationResult> ValidateSecretAsync(string secret)
+    {
+        try
+        {
+            var client = CreateClient();
+            var response = await client.PostAsJsonAsync("api/InstanceOnboarding/validate-secret", new { secret });
+            var result = await response.Content.ReadFromJsonAsync<SetupSecretValidationResult>();
+            return result ?? new SetupSecretValidationResult { Valid = false };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to validate setup secret.");
+            return new SetupSecretValidationResult { Valid = false };
+        }
+    }
+
+    public Task<InstanceCommandResponseModel> CompleteAsync(OnboardingCompletionModel completion) =>
+        SendCommandAsync(HttpMethod.Post, "api/InstanceOnboarding/complete", completion);
+
+    // ── Governance Sub-Resource Reads ─────────────────────────────────────
+
+    public async Task<DeploymentModeModel> GetDeploymentModeAsync() =>
+        await GetAsync<DeploymentModeModel>("api/instance/settings/deployment-mode")
+        ?? new DeploymentModeModel();
+
+    public async Task<ModuleSettingsModel> GetModuleSettingsAsync() =>
+        await GetAsync<ModuleSettingsModel>("api/instance/settings/modules")
+        ?? new ModuleSettingsModel();
+
+    public async Task<EventPolicyModel> GetEventPolicyAsync() =>
+        await GetAsync<EventPolicyModel>("api/instance/settings/events")
+        ?? new EventPolicyModel();
+
+    public async Task<OrganizationPolicyModel> GetOrganizationPolicyAsync() =>
+        await GetAsync<OrganizationPolicyModel>("api/instance/settings/organizations")
+        ?? new OrganizationPolicyModel();
+
+    public async Task<BrandingSettingsModel> GetBrandingSettingsAsync() =>
+        await GetAsync<BrandingSettingsModel>("api/instance/settings/branding")
+        ?? new BrandingSettingsModel();
+
+    public async Task<DomainSettingsModel> GetDomainSettingsAsync() =>
+        await GetAsync<DomainSettingsModel>("api/instance/settings/domains")
+        ?? new DomainSettingsModel();
+
+    public async Task<TenantDelegationModel> GetTenantDelegationAsync() =>
+        await GetAsync<TenantDelegationModel>("api/instance/settings/tenant-delegation")
+        ?? new TenantDelegationModel();
+
+    public async Task<RenderPolicyModel> GetRenderPolicyAsync() =>
+        await GetAsync<RenderPolicyModel>("api/instance/settings/render-policy")
+        ?? new RenderPolicyModel();
+
+    // ── Governance Sub-Resource Writes ────────────────────────────────────
+
+    public Task<InstanceCommandResponseModel> UpdateDeploymentModeAsync(string deploymentMode) =>
+        SendCommandAsync(HttpMethod.Post, "api/instance/settings/deployment-mode", new { DeploymentMode = deploymentMode });
+
+    public Task<InstanceCommandResponseModel> UpdateModuleSettingsAsync(ModuleSettingsModel settings) =>
+        SendCommandAsync(HttpMethod.Put, "api/instance/settings/modules", settings);
+
+    public Task<InstanceCommandResponseModel> UpdateEventPolicyAsync(EventPolicyModel settings) =>
+        SendCommandAsync(HttpMethod.Put, "api/instance/settings/events", settings);
+
+    public Task<InstanceCommandResponseModel> UpdateOrganizationPolicyAsync(OrganizationPolicyModel settings) =>
+        SendCommandAsync(HttpMethod.Put, "api/instance/settings/organizations", settings);
+
+    public Task<InstanceCommandResponseModel> UpdateBrandingSettingsAsync(BrandingSettingsModel settings) =>
+        SendCommandAsync(HttpMethod.Put, "api/instance/settings/branding", settings);
+
+    public Task<InstanceCommandResponseModel> UpdateDomainSettingsAsync(DomainSettingsModel settings) =>
+        SendCommandAsync(HttpMethod.Put, "api/instance/settings/domains", settings);
+
+    public Task<InstanceCommandResponseModel> UpdateTenantDelegationAsync(TenantDelegationModel settings) =>
+        SendCommandAsync(HttpMethod.Put, "api/instance/settings/tenant-delegation", settings);
+
+    public Task<InstanceCommandResponseModel> UpdateRenderPolicyAsync(RenderPolicyModel settings) =>
+        SendCommandAsync(HttpMethod.Put, "api/instance/settings/render-policy", settings);
+
+    // ── Infrastructure Settings ──────────────────────────────────────────
 
     public async Task<InstanceStorageSettingsModel> GetStorageSettingsAsync() =>
-        await GetAsync<InstanceStorageSettingsModel>("api/InstanceOnboarding/storage-settings")
+        await GetAsync<InstanceStorageSettingsModel>("api/instance/settings/storage")
         ?? new InstanceStorageSettingsModel();
 
+    public Task<InstanceCommandResponseModel> UpdateStorageSettingsAsync(InstanceStorageSettingsModel settings) =>
+        SendCommandAsync(HttpMethod.Put, "api/instance/settings/storage", settings);
+
+    public Task<StorageConnectionTestResult> TestStorageConnectionAsync() =>
+        SendTestAsync<StorageConnectionTestResult>("api/instance/settings/storage/test");
+
     public async Task<InstanceSmtpSettingsModel> GetSmtpSettingsAsync() =>
-        await GetAsync<InstanceSmtpSettingsModel>("api/InstanceOnboarding/smtp-settings")
+        await GetAsync<InstanceSmtpSettingsModel>("api/instance/settings/smtp")
         ?? new InstanceSmtpSettingsModel();
+
+    public Task<InstanceCommandResponseModel> UpdateSmtpSettingsAsync(InstanceSmtpSettingsModel settings) =>
+        SendCommandAsync(HttpMethod.Put, "api/instance/settings/smtp", settings);
+
+    public Task<SmtpConnectionTestResult> TestSmtpConnectionAsync() =>
+        SendTestAsync<SmtpConnectionTestResult>("api/instance/settings/smtp/test");
 
     public async Task<int> GetActiveTenantCountAsync()
     {
@@ -88,64 +198,24 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         }
     }
 
-    // ── Validation ───────────────────────────────────────────────────────
-
-    public async Task<SetupSecretValidationResult> ValidateSecretAsync(string secret)
-    {
-        try
-        {
-            var client = CreateClient();
-            var response = await client.PostAsJsonAsync("api/InstanceOnboarding/validate-secret", new { secret });
-            var result = await response.Content.ReadFromJsonAsync<SetupSecretValidationResult>();
-            return result ?? new SetupSecretValidationResult { Valid = false };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to validate setup secret.");
-            return new SetupSecretValidationResult { Valid = false };
-        }
-    }
-
-    // ── Write operations ─────────────────────────────────────────────────
-
-    public Task<InstanceCommandResponseModel> CompleteAsync(InstanceGovernanceSettingsModel settings) =>
-        SendCommandAsync(HttpMethod.Post, "api/InstanceOnboarding/complete", settings);
-
-    public Task<InstanceCommandResponseModel> UpdateSettingsAsync(InstanceGovernanceSettingsModel settings) =>
-        SendCommandAsync(HttpMethod.Put, "api/InstanceOnboarding/settings", settings);
-
-    public Task<InstanceCommandResponseModel> UpdateStorageSettingsAsync(InstanceStorageSettingsModel settings) =>
-        SendCommandAsync(HttpMethod.Put, "api/InstanceOnboarding/storage-settings", settings);
-
-    public Task<InstanceCommandResponseModel> UpdateSmtpSettingsAsync(InstanceSmtpSettingsModel settings) =>
-        SendCommandAsync(HttpMethod.Put, "api/InstanceOnboarding/smtp-settings", settings);
-
-    // ── Test operations ──────────────────────────────────────────────────
-
-    public Task<StorageConnectionTestResult> TestStorageConnectionAsync() =>
-        SendTestAsync<StorageConnectionTestResult>("api/InstanceOnboarding/test-storage");
-
-    public Task<SmtpConnectionTestResult> TestSmtpConnectionAsync() =>
-        SendTestAsync<SmtpConnectionTestResult>("api/InstanceOnboarding/test-smtp");
-
-    // ── Auth provider configuration ──────────────────────────────────
+    // ── Auth Provider Configuration ──────────────────────────────────────
 
     public async Task<AuthProviderConfigurationModel> GetAuthProviderConfigurationAsync() =>
-        await GetAsync<AuthProviderConfigurationModel>("api/InstanceOnboarding/auth-provider-configuration")
+        await GetAsync<AuthProviderConfigurationModel>("api/instance/settings/auth-provider")
         ?? new AuthProviderConfigurationModel();
 
     public Task<InstanceCommandResponseModel> SaveAuthProviderConfigurationAsync(AuthProviderConfigurationModel config) =>
         SendCommandAsync(HttpMethod.Put, "api/InstanceOnboarding/auth-provider-configuration", config);
 
     public Task<InstanceCommandResponseModel> UpdateAuthProviderConfigurationAsAdminAsync(AuthProviderConfigurationModel config) =>
-        SendCommandAsync(HttpMethod.Put, "api/InstanceOnboarding/admin/auth-provider-configuration", config);
+        SendCommandAsync(HttpMethod.Put, "api/instance/settings/auth-provider", config);
 
     public async Task<bool> IsAuthProviderConfiguredAsync()
     {
         try
         {
             var client = CreateClient();
-            var response = await client.GetAsync("api/InstanceOnboarding/auth-provider-configured");
+            var response = await client.GetAsync("api/instance/settings/auth-provider/status");
             response.EnsureSuccessStatusCode();
             var result = await response.Content.ReadFromJsonAsync<AuthProviderConfiguredResult>();
             return result?.Configured ?? false;
@@ -175,15 +245,16 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         }
     }
 
-    public async Task<Models.Analytics.AnalyticsGovernanceSettingsModel> GetAnalyticsGovernanceSettingsAsync()
-    {
-        var result = await GetAsync<Models.Analytics.AnalyticsGovernanceSettingsModel>("api/InstanceOnboarding/analytics-governance");
-        return result ?? new Models.Analytics.AnalyticsGovernanceSettingsModel();
-    }
+    // ── Analytics Governance ─────────────────────────────────────────────
+
+    public async Task<Models.Analytics.AnalyticsGovernanceSettingsModel> GetAnalyticsGovernanceSettingsAsync() =>
+        await GetAsync<Models.Analytics.AnalyticsGovernanceSettingsModel>("api/instance/settings/analytics-governance")
+        ?? new Models.Analytics.AnalyticsGovernanceSettingsModel();
 
     public Task<InstanceCommandResponseModel> UpdateAnalyticsGovernanceSettingsAsync(Models.Analytics.AnalyticsGovernanceSettingsModel settings) =>
-        SendCommandAsync(HttpMethod.Put, "api/InstanceOnboarding/analytics-governance", settings);
-    // ── Shared helpers ───────────────────────────────────────────────────
+        SendCommandAsync(HttpMethod.Put, "api/instance/settings/analytics-governance", settings);
+
+    // ── Shared Helpers ───────────────────────────────────────────────────
 
     private HttpClient CreateClient() => _httpClientFactory.CreateClient("BffClient");
 
@@ -212,12 +283,11 @@ public class InstanceOnboardingService : IInstanceOnboardingService
             };
 
             var response = await client.SendAsync(request);
-
-            return await ReadCommandResponseAsync(response, path);
+            return await ReadCommandResponseAsync(response);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to call instance onboarding endpoint {Path}.", path);
+            _logger.LogError(ex, "Failed to call endpoint {Path}.", path);
             return FailedCommandResponse(ex.Message);
         }
     }
@@ -241,22 +311,87 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         }
     }
 
-    private static async Task<InstanceCommandResponseModel> ReadCommandResponseAsync(
-        HttpResponseMessage response, string path)
+    /// <summary>
+    /// Reads a command response, handling both BaseCommandResponse{Guid} and ASP.NET ProblemDetails formats.
+    /// </summary>
+    private static async Task<InstanceCommandResponseModel> ReadCommandResponseAsync(HttpResponseMessage response)
     {
-        var payload = await response.Content.ReadFromJsonAsync<InstanceCommandResponseModel>();
-        if (payload is not null)
+        try
         {
-            return payload;
-        }
+            var json = await response.Content.ReadAsStringAsync();
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return new InstanceCommandResponseModel
+                {
+                    Success = response.IsSuccessStatusCode,
+                    Message = response.IsSuccessStatusCode ? "OK" : $"Failed with status {(int)response.StatusCode}."
+                };
+            }
 
-        return new InstanceCommandResponseModel
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            // BaseCommandResponse<Guid> format: { success, id, message, errors: string[] }
+            if (root.TryGetProperty("success", out var successProp))
+            {
+                var model = new InstanceCommandResponseModel
+                {
+                    Success = successProp.GetBoolean(),
+                    Message = root.TryGetProperty("message", out var msgProp) ? msgProp.GetString() ?? "" : "",
+                    Id = root.TryGetProperty("id", out var idProp) && idProp.TryGetGuid(out var id) ? id : Guid.Empty
+                };
+
+                if (root.TryGetProperty("errors", out var errorsProp) && errorsProp.ValueKind == JsonValueKind.Array)
+                {
+                    model.Errors = errorsProp.EnumerateArray()
+                        .Where(e => e.ValueKind == JsonValueKind.String)
+                        .Select(e => e.GetString()!)
+                        .ToList();
+                }
+
+                return model;
+            }
+
+            // ASP.NET ProblemDetails format: { title, status, errors: { field: [msgs] } }
+            if (root.TryGetProperty("title", out var titleProp))
+            {
+                var errors = new List<string>();
+                if (root.TryGetProperty("errors", out var pdErrors) && pdErrors.ValueKind == JsonValueKind.Object)
+                {
+                    foreach (var field in pdErrors.EnumerateObject())
+                    {
+                        if (field.Value.ValueKind == JsonValueKind.Array)
+                        {
+                            foreach (var msg in field.Value.EnumerateArray())
+                            {
+                                errors.Add(msg.GetString() ?? field.Name);
+                            }
+                        }
+                    }
+                }
+
+                return new InstanceCommandResponseModel
+                {
+                    Success = false,
+                    Message = titleProp.GetString() ?? "Validation failed.",
+                    Errors = errors
+                };
+            }
+
+            return new InstanceCommandResponseModel
+            {
+                Success = response.IsSuccessStatusCode,
+                Message = response.IsSuccessStatusCode ? "OK" : $"Failed with status {(int)response.StatusCode}."
+            };
+        }
+        catch
         {
-            Success = response.IsSuccessStatusCode,
-            Message = response.IsSuccessStatusCode
-                ? "Operation completed successfully."
-                : $"Operation failed with status {(int)response.StatusCode}."
-        };
+            return new InstanceCommandResponseModel
+            {
+                Success = response.IsSuccessStatusCode,
+                Message = response.IsSuccessStatusCode ? "OK" : $"Failed with status {(int)response.StatusCode}."
+            };
+        }
     }
 
     private static InstanceCommandResponseModel FailedCommandResponse(string error) =>
@@ -267,6 +402,8 @@ public class InstanceOnboardingService : IInstanceOnboardingService
             Errors = [error]
         };
 }
+
+// ── Onboarding Models ────────────────────────────────────────────────────
 
 public class InstanceOnboardingStatusModel
 {
@@ -280,12 +417,78 @@ public class InstanceOnboardingStatusModel
     public DateTime? InstanceStartedAt { get; set; }
 }
 
-public class InstanceGovernanceSettingsModel
+public class OnboardingCompletionModel
 {
     public string DeploymentMode { get; set; } = "SingleTenant";
+    public string? InstanceName { get; set; }
+}
+
+// ── Governance Sub-Resource Models ───────────────────────────────────────
+
+public class DeploymentModeModel
+{
+    public string Mode { get; set; } = "SingleTenant";
+}
+
+public class ModuleSettingsModel
+{
+    public bool EnableIslamicModule { get; set; } = true;
+    public bool EnableTechModule { get; set; } = true;
+}
+
+public class EventPolicyModel
+{
+    public bool AllowUserSubmittedEvents { get; set; } = true;
+    public bool AllowOrganizationSubmittedEvents { get; set; } = true;
+    public bool AllowGroupSubmittedEvents { get; set; } = true;
+    public bool EventCardClickOpensDetailPage { get; set; }
+    public bool LockTenantEventCardClickBehavior { get; set; }
+}
+
+public class OrganizationPolicyModel
+{
+    public bool RequireOrganizationVerification { get; set; } = true;
+    public bool AllowTenantToOmitVerification { get; set; }
+    public bool AllowOrganizationSelfRegistration { get; set; } = true;
+    public bool AllowGroupSelfRegistration { get; set; } = true;
+}
+
+public class BrandingSettingsModel
+{
+    public string DefaultBrandDisplayName { get; set; } = "ISLAMU Explore";
+    public string DefaultBrandLogoUrl { get; set; } = string.Empty;
+    public string DefaultBrandFaviconUrl { get; set; } = string.Empty;
+    public string DefaultBrandCustomCssUrl { get; set; } = string.Empty;
+    public bool LockTenantBrandDisplayName { get; set; }
+    public bool LockTenantBrandLogoUrl { get; set; }
+    public bool LockTenantBrandFaviconUrl { get; set; }
+    public bool LockTenantBrandCustomCssUrl { get; set; }
+}
+
+public class DomainSettingsModel
+{
+    public string InstanceBaseDomain { get; set; } = string.Empty;
+    public bool AllowTenantCustomDomains { get; set; } = true;
+    public bool LockTenantSubdomain { get; set; }
+    public bool LockTenantCustomDomain { get; set; }
+}
+
+public class TenantDelegationModel
+{
     public bool AllowTenantSelfServiceRegistration { get; set; }
     public bool AllowTenantWhiteLabeling { get; set; }
     public string DefaultPublicHomePage { get; set; } = "EventList";
+    public bool LockTenantHomePagePreference { get; set; }
+    public bool LockTenantSmtp { get; set; } = true;
+    public bool LockTenantStorage { get; set; } = true;
+    public bool LockTenantAnalytics { get; set; } = true;
+    public bool DecentralizationEnabled { get; set; }
+    public bool LockDecentralizationEnabled { get; set; }
+    public string AuthorizationProvider { get; set; } = "local";
+}
+
+public class RenderPolicyModel
+{
     public int RenderPolicyVersion { get; set; } = 1;
     public string RenderPolicyPreset { get; set; } = "AllInteractiveServer";
     public bool EnableAdvancedRenderPolicyOverrides { get; set; }
@@ -304,38 +507,9 @@ public class InstanceGovernanceSettingsModel
     public bool LockTenantPublicSeoRenderPolicy { get; set; }
     public bool LockTenantOperationalRenderPolicy { get; set; }
     public bool LockTenantAdminRenderPolicy { get; set; }
-    public bool EnableIslamicModule { get; set; } = true;
-    public bool EnableTechModule { get; set; } = true;
-    public bool AllowUserSubmittedEvents { get; set; } = true;
-    public bool AllowOrganizationSubmittedEvents { get; set; } = true;
-    public bool AllowGroupSubmittedEvents { get; set; } = true;
-    public bool AllowOrganizationSelfRegistration { get; set; } = true;
-    public bool AllowGroupSelfRegistration { get; set; } = true;
-    public bool EventCardClickOpensDetailPage { get; set; }
-    public bool RequireOrganizationVerification { get; set; } = true;
-    public bool AllowTenantToOmitVerification { get; set; }
-    public string InstanceBaseDomain { get; set; } = string.Empty;
-    public bool AllowTenantCustomDomains { get; set; } = true;
-    public string DefaultBrandDisplayName { get; set; } = "ISLAMU Explore";
-    public string DefaultBrandLogoUrl { get; set; } = string.Empty;
-    public string DefaultBrandFaviconUrl { get; set; } = string.Empty;
-    public string DefaultBrandCustomCssUrl { get; set; } = string.Empty;
-    public bool LockTenantHomePagePreference { get; set; }
-    public bool LockTenantSubdomain { get; set; }
-    public bool LockTenantCustomDomain { get; set; }
-    public bool LockTenantBrandDisplayName { get; set; }
-    public bool LockTenantBrandLogoUrl { get; set; }
-    public bool LockTenantBrandFaviconUrl { get; set; }
-    public bool LockTenantBrandCustomCssUrl { get; set; }
-    public bool LockTenantEventCardClickBehavior { get; set; }
-    // Federation
-    public bool DecentralizationEnabled { get; set; }
-    public bool LockDecentralizationEnabled { get; set; }
-    // Tenant delegation locks
-    public bool LockTenantSmtp { get; set; } = true;
-    public bool LockTenantStorage { get; set; } = true;
-    public bool LockTenantAnalytics { get; set; } = true;
 }
+
+// ── Command Response Model ───────────────────────────────────────────────
 
 public class InstanceCommandResponseModel
 {
@@ -344,6 +518,8 @@ public class InstanceCommandResponseModel
     public string Message { get; set; } = string.Empty;
     public List<string> Errors { get; set; } = new();
 }
+
+// ── Infrastructure Models ────────────────────────────────────────────────
 
 public class InstanceStorageSettingsModel
 {
@@ -388,26 +564,20 @@ public class SetupSecretValidationResult
     public string? Error { get; set; }
 }
 
+// ── Auth Provider Models ─────────────────────────────────────────────────
 
 public class AuthProviderConfigurationModel
 {
-    // Keycloak
     public bool KeycloakEnabled { get; set; }
     public string KeycloakAuthority { get; set; } = string.Empty;
     public string KeycloakClientId { get; set; } = string.Empty;
     public string KeycloakClientSecret { get; set; } = string.Empty;
     public bool KeycloakDetectedFromEnvironment { get; set; }
-
-    // ATProto Login
     public bool AtprotoLoginEnabled { get; set; }
     public string AtprotoPublicUrl { get; set; } = string.Empty;
-
-    // Google SSO
     public bool GoogleSsoEnabled { get; set; }
     public string GoogleClientId { get; set; } = string.Empty;
     public string GoogleClientSecret { get; set; } = string.Empty;
-
-    // Lock flags (for multi-tenant override control)
     public bool LockKeycloakEnabled { get; set; }
     public bool LockAtprotoLoginEnabled { get; set; }
     public bool LockGoogleSsoEnabled { get; set; }

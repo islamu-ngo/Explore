@@ -21,15 +21,15 @@ public class InstanceSmtpSettingService : IInstanceSmtpSettingService
 
     public async Task<InstanceSmtpSettingsDto> ReadSettingsAsync()
     {
-        var host = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EmailSmtpHost);
-        var port = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EmailSmtpPort);
+        var host = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Email.SmtpHost);
+        var port = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Email.SmtpPort);
         var username = await _systemSettingRepository.GetByKey(InfrastructureSecretSettingKeys.Email.SmtpUsername);
         var password = await _systemSettingRepository.GetByKey(InfrastructureSecretSettingKeys.Email.SmtpPassword);
-        var security = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EmailSmtpSecurity);
-        var fromAddress = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EmailFromAddress);
-        var fromName = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EmailFromName);
-        var timeout = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EmailSmtpTimeoutSeconds);
-        var skipCertValidation = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EmailSmtpSkipCertValidation);
+        var security = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Email.SmtpSecurity);
+        var fromAddress = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Email.FromAddress);
+        var fromName = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Email.FromName);
+        var timeout = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Email.SmtpTimeoutSeconds);
+        var skipCertValidation = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Email.SmtpSkipCertValidation);
 
         return new InstanceSmtpSettingsDto
         {
@@ -48,7 +48,7 @@ public class InstanceSmtpSettingService : IInstanceSmtpSettingService
     public async Task ApplySettingsAsync(InstanceSmtpSettingsDto settings)
     {
         await UpsertSystemSettingAsync(
-            GovernanceSettingKeys.EmailSmtpHost,
+            GovernanceSettingKeys.Email.SmtpHost,
             JsonSerializer.Serialize(settings.Host.Trim()),
             SettingValueType.String,
             false,
@@ -57,7 +57,7 @@ public class InstanceSmtpSettingService : IInstanceSmtpSettingService
             "SMTP host server name");
 
         await UpsertSystemSettingAsync(
-            GovernanceSettingKeys.EmailSmtpPort,
+            GovernanceSettingKeys.Email.SmtpPort,
             JsonSerializer.Serialize(settings.Port > 0 ? settings.Port : 587),
             SettingValueType.Integer,
             false,
@@ -84,7 +84,7 @@ public class InstanceSmtpSettingService : IInstanceSmtpSettingService
             "SMTP password or app token");
 
         await UpsertSystemSettingAsync(
-            GovernanceSettingKeys.EmailSmtpSecurity,
+            GovernanceSettingKeys.Email.SmtpSecurity,
             JsonSerializer.Serialize(settings.Security.Trim()),
             SettingValueType.String,
             false,
@@ -93,7 +93,7 @@ public class InstanceSmtpSettingService : IInstanceSmtpSettingService
             "SMTP security mode: None, StartTls, SslOnConnect, or Auto");
 
         await UpsertSystemSettingAsync(
-            GovernanceSettingKeys.EmailFromAddress,
+            GovernanceSettingKeys.Email.FromAddress,
             JsonSerializer.Serialize(settings.FromAddress.Trim()),
             SettingValueType.String,
             false,
@@ -102,7 +102,7 @@ public class InstanceSmtpSettingService : IInstanceSmtpSettingService
             "Default sender email address");
 
         await UpsertSystemSettingAsync(
-            GovernanceSettingKeys.EmailFromName,
+            GovernanceSettingKeys.Email.FromName,
             JsonSerializer.Serialize(settings.FromName.Trim()),
             SettingValueType.String,
             false,
@@ -111,7 +111,7 @@ public class InstanceSmtpSettingService : IInstanceSmtpSettingService
             "Default sender display name");
 
         await UpsertSystemSettingAsync(
-            GovernanceSettingKeys.EmailSmtpTimeoutSeconds,
+            GovernanceSettingKeys.Email.SmtpTimeoutSeconds,
             JsonSerializer.Serialize(settings.TimeoutSeconds > 0 ? settings.TimeoutSeconds : 30),
             SettingValueType.Integer,
             false,
@@ -120,7 +120,7 @@ public class InstanceSmtpSettingService : IInstanceSmtpSettingService
             "SMTP connection timeout in seconds");
 
         await UpsertSystemSettingAsync(
-            GovernanceSettingKeys.EmailSmtpSkipCertValidation,
+            GovernanceSettingKeys.Email.SmtpSkipCertValidation,
             JsonSerializer.Serialize(settings.SkipCertificateValidation),
             SettingValueType.Boolean,
             false,

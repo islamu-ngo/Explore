@@ -1,5 +1,5 @@
-// ABOUTME: EAV entity representing a selectable option for Option-type custom properties.
-// ABOUTME: Supports hierarchical options via self-referencing ParentOptionId.
+// ABOUTME: Shared Layer 3 custom-property option for a tenant-scoped definition.
+// ABOUTME: Uses namespaced machine keys so labels can change without breaking semantics.
 
 using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
@@ -14,7 +14,9 @@ public class CustomPropertyOption : IAuditableEntity, ISoftDeletable
     public Guid CustomPropertyDefinitionId { get; set; }
     public CustomPropertyDefinition? Definition { get; set; }
 
-    public required string Name { get; set; }
+    public required string Namespace { get; set; }
+    public required string Key { get; set; }
+    public required string DisplayName { get; set; }
     public string? Description { get; set; }
     public required string Value { get; set; }
 

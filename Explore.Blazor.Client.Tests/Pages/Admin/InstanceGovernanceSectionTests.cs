@@ -21,15 +21,15 @@ public class InstanceGovernanceSectionTests : IDisposable
     [Test]
     public async Task RenderPolicyPreset_DefaultsToRecommendedAndHighlightsCard()
     {
-        var model = new InstanceGovernanceSettingsModel
+        var renderPolicy = new RenderPolicyModel
         {
             RenderPolicyPreset = string.Empty,
             EnableAdvancedRenderPolicyOverrides = false
         };
 
-        var cut = RenderGovernanceSection(model);
+        var cut = RenderGovernanceSection(renderPolicy: renderPolicy);
 
-        await Assert.That(model.RenderPolicyPreset).IsEqualTo("AllInteractiveServer");
+        await Assert.That(renderPolicy.RenderPolicyPreset).IsEqualTo("AllInteractiveServer");
 
         var selectedCard = cut.FindAll(".instance-governance__preset-card--selected")
             .Single(x => x.TextContent.Contains("All Interactive Server", StringComparison.OrdinalIgnoreCase));
@@ -41,41 +41,46 @@ public class InstanceGovernanceSectionTests : IDisposable
     [Test]
     public async Task RenderPolicyPreset_SelectCustomAdvanced_EnablesAdvancedPanel()
     {
-        var model = new InstanceGovernanceSettingsModel
+        var renderPolicy = new RenderPolicyModel
         {
             RenderPolicyPreset = "SeoBalanced",
             EnableAdvancedRenderPolicyOverrides = false
         };
 
-        var cut = RenderGovernanceSection(model);
+        var cut = RenderGovernanceSection(renderPolicy: renderPolicy);
 
         var customAdvancedCard = cut.FindAll(".instance-governance__preset-card")
             .Single(x => x.TextContent.Contains("Custom Advanced", StringComparison.OrdinalIgnoreCase));
 
         customAdvancedCard.Click();
 
-        await Assert.That(model.RenderPolicyPreset).IsEqualTo("CustomAdvanced");
-        await Assert.That(model.EnableAdvancedRenderPolicyOverrides).IsTrue();
+        await Assert.That(renderPolicy.RenderPolicyPreset).IsEqualTo("CustomAdvanced");
+        await Assert.That(renderPolicy.EnableAdvancedRenderPolicyOverrides).IsTrue();
         await Assert.That(cut.FindAll(".instance-governance__advanced-panel").Count).IsEqualTo(1);
     }
 
     [Test]
     public async Task RenderPolicyPreset_RendersPresetHelpTooltipTriggers()
     {
-        var model = new InstanceGovernanceSettingsModel
+        var renderPolicy = new RenderPolicyModel
         {
             RenderPolicyPreset = "SeoBalanced",
             EnableAdvancedRenderPolicyOverrides = false
         };
 
-        var cut = RenderGovernanceSection(model);
+        var cut = RenderGovernanceSection(renderPolicy: renderPolicy);
 
         await Assert.That(cut.FindAll(".instance-governance__preset-card .mud-tooltip-root").Count).IsEqualTo(5);
         await Assert.That(cut.FindAll(".mud-tooltip-root").Count).IsGreaterThanOrEqualTo(5);
         await Assert.That(cut.Markup).Contains("Runtime Render Policy");
     }
 
-    private IRenderedComponent<DynamicComponent> RenderGovernanceSection(InstanceGovernanceSettingsModel model)
+    private IRenderedComponent<DynamicComponent> RenderGovernanceSection(
+        TenantDelegationModel? delegation = null,
+        EventPolicyModel? eventPolicy = null,
+        OrganizationPolicyModel? orgPolicy = null,
+        RenderPolicyModel? renderPolicy = null,
+        string deploymentMode = "SingleTenant")
     {
         var componentType = typeof(IInstanceOnboardingService).Assembly.GetType("Explore.Blazor.Client.Pages.Admin.Instance.Components.InstanceGovernanceSection")
                             ?? throw new InvalidOperationException("InstanceGovernanceSection component type not found");
@@ -84,7 +89,11 @@ public class InstanceGovernanceSectionTests : IDisposable
              p.Add(x => x.Type, componentType)
              .Add(x => x.Parameters, new Dictionary<string, object>
              {
-                 ["Model"] = model
+                 ["Delegation"] = delegation ?? new TenantDelegationModel(),
+                 ["EventPolicy"] = eventPolicy ?? new EventPolicyModel(),
+                 ["OrganizationPolicy"] = orgPolicy ?? new OrganizationPolicyModel(),
+                 ["RenderPolicy"] = renderPolicy ?? new RenderPolicyModel(),
+                 ["DeploymentMode"] = deploymentMode
              }));
     }
 }

@@ -1,7 +1,8 @@
-// ABOUTME: Resolves TMS configuration from the cascading settings engine with short-lived cache.
-// ABOUTME: Uses system defaults with tenant overrides through ISettingsResolver (mirrors AnalyticsConfigResolver).
+// ABOUTME: Resolves TMS configuration from the hierarchical settings engine with short-lived cache.
+// ABOUTME: Uses system defaults with tenant overrides through IHierarchicalSettingsResolver.
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Settings;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Microsoft.Extensions.Caching.Memory;
@@ -14,7 +15,7 @@ namespace Explore.Infrastructure.Localization;
 /// </summary>
 public class TranslationConfigResolver : ITranslationConfigResolver
 {
-    private readonly ISettingsResolver _settingsResolver;
+    private readonly IHierarchicalSettingsResolver _resolver;
     private readonly ITenantContext _tenantContext;
     private readonly IMemoryCache _cache;
     private readonly ILogger<TranslationConfigResolver> _logger;
@@ -23,12 +24,12 @@ public class TranslationConfigResolver : ITranslationConfigResolver
     private const string CacheKeyPrefix = "TranslationConfig:";
 
     public TranslationConfigResolver(
-        ISettingsResolver settingsResolver,
+        IHierarchicalSettingsResolver resolver,
         ITenantContext tenantContext,
         IMemoryCache cache,
         ILogger<TranslationConfigResolver> logger)
     {
-        _settingsResolver = settingsResolver;
+        _resolver = resolver;
         _tenantContext = tenantContext;
         _cache = cache;
         _logger = logger;
@@ -62,11 +63,13 @@ public class TranslationConfigResolver : ITranslationConfigResolver
 
     private async Task<TranslationConfiguration> ResolveFromSettingsAsync(Guid tenantId, CancellationToken ct)
     {
-        var providerStr = await _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.LocalizationTmsProvider, tenantId, ct);
-        var apiUrl = await _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.LocalizationTmsApiUrl, tenantId, ct);
-        var projectId = await _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.LocalizationTmsProjectId, tenantId, ct);
-        var component = await _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.LocalizationTmsComponent, tenantId, ct);
-        var defaultLanguage = await _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.LocalizationDefaultLanguage, tenantId, ct);
+        var ctx = new SettingContext(TenantId: tenantId);
+
+        var providerStr = await _resolver.ResolveAsync<string>(GovernanceSettingKeys.Localization.TmsProvider, ctx, ct);
+        var apiUrl = await _resolver.ResolveAsync<string>(GovernanceSettingKeys.Localization.TmsApiUrl, ctx, ct);
+        var projectId = await _resolver.ResolveAsync<string>(GovernanceSettingKeys.Localization.TmsProjectId, ctx, ct);
+        var component = await _resolver.ResolveAsync<string>(GovernanceSettingKeys.Localization.TmsComponent, ctx, ct);
+        var defaultLanguage = await _resolver.ResolveAsync<string>(GovernanceSettingKeys.Localization.DefaultLanguage, ctx, ct);
 
         var provider = ParseProvider(providerStr);
 

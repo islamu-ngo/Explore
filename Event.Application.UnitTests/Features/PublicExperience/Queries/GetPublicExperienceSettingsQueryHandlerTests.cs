@@ -1,7 +1,11 @@
+// ABOUTME: Unit tests for GetPublicExperienceSettingsQueryHandler covering modules, deployment mode, and analytics bootstrap.
+// ABOUTME: Verifies correct tenant-scoped public experience settings resolution and analytics configuration.
+
 using Explore.Application.Analytics;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.Instance;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.PublicExperience.Handlers.Queries;
 using Explore.Application.Features.PublicExperience.Requests.Queries;
@@ -44,7 +48,7 @@ public class GetPublicExperienceSettingsQueryHandlerTests
         _hierarchicalSettingsResolver.ResolveGroupAsync<AnalyticsSettingGroup>(
             Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns(new AnalyticsSettingGroup());
-        _instanceGovernanceSettingService.ReadEffectiveSettingsForTenantAsync(Arg.Any<Guid>()).Returns(new InstanceGovernanceSettingsDto());
+        _instanceGovernanceSettingService.ReadEffectiveSettingsForTenantAsync(Arg.Any<Guid>()).Returns(CreateDefaultGovernanceSettings());
         _analyticsConfigResolver.ResolveAsync(Arg.Any<CancellationToken>()).Returns(new AnalyticsConfiguration());
 
         _handler = new GetPublicExperienceSettingsQueryHandler(
@@ -80,9 +84,9 @@ public class GetPublicExperienceSettingsQueryHandlerTests
                 new() { ModuleKey = "Mod_Other", Name = "Other" }
             });
 
-        _systemSettingRepository.GetByKey(GovernanceSettingKeys.DeploymentMode).Returns(new SystemSetting
+        _systemSettingRepository.GetByKey(GovernanceSettingKeys.Deployment.Mode).Returns(new SystemSetting
         {
-            SettingKey = GovernanceSettingKeys.DeploymentMode,
+            SettingKey = GovernanceSettingKeys.Deployment.Mode,
             Value = "\"MultiTenant\""
         });
 
@@ -112,7 +116,7 @@ public class GetPublicExperienceSettingsQueryHandlerTests
         _policySettingService.ReadEffectiveTenantSettingsAsync(tenantId).Returns(new TenantPolicySettingsDto());
         _moduleService.GetEnabledModulesAsync(tenantId, Arg.Any<CancellationToken>())
             .Returns(new List<ModuleInfo>());
-        _systemSettingRepository.GetByKey(GovernanceSettingKeys.DeploymentMode).Returns((SystemSetting?)null);
+        _systemSettingRepository.GetByKey(GovernanceSettingKeys.Deployment.Mode).Returns((SystemSetting?)null);
 
         // Act
         var result = await _handler.Handle(new GetPublicExperienceSettingsQuery(), CancellationToken.None);
@@ -135,9 +139,9 @@ public class GetPublicExperienceSettingsQueryHandlerTests
         _moduleService.GetEnabledModulesAsync(tenantId, Arg.Any<CancellationToken>())
             .Returns(new List<ModuleInfo> { new() { ModuleKey = "Mod_Islamic", Name = "Islamic" } });
 
-        _systemSettingRepository.GetByKey(GovernanceSettingKeys.DeploymentMode).Returns(new SystemSetting
+        _systemSettingRepository.GetByKey(GovernanceSettingKeys.Deployment.Mode).Returns(new SystemSetting
         {
-            SettingKey = GovernanceSettingKeys.DeploymentMode,
+            SettingKey = GovernanceSettingKeys.Deployment.Mode,
             Value = "SingleTenant"
         });
 
@@ -255,22 +259,32 @@ public class GetPublicExperienceSettingsQueryHandlerTests
         _moduleService.GetEnabledModulesAsync(tenantId, Arg.Any<CancellationToken>())
             .Returns(new List<ModuleInfo>());
 
-        _instanceGovernanceSettingService.ReadEffectiveSettingsForTenantAsync(tenantId).Returns(new InstanceGovernanceSettingsDto
+        _instanceGovernanceSettingService.ReadEffectiveSettingsForTenantAsync(tenantId).Returns(new InstanceGovernanceSettings
         {
-            RenderPolicyVersion = 4,
-            RenderPolicyPreset = "CustomAdvanced",
-            EnableAdvancedRenderPolicyOverrides = true,
-            GlobalRenderMode = "InteractiveWebAssembly",
-            GlobalPrerenderEnabled = true,
-            PublicSeoRenderMode = "InteractiveAuto",
-            PublicSeoPrerenderEnabled = true,
-            OperationalRenderMode = "InteractiveServer",
-            OperationalPrerenderEnabled = false,
-            AdminRenderMode = "InteractiveServer",
-            AdminPrerenderEnabled = false,
-            OnboardingRenderMode = "InteractiveAuto",
-            OnboardingPrerenderEnabled = false,
-            DisallowInteractiveServerOnOnboarding = true
+            DeploymentMode = new DeploymentModeDto { Mode = Explore.Domain.Enums.DeploymentMode.SingleTenant },
+            Modules = new ModuleSettingsDto(),
+            EventPolicy = new EventPolicyDto(),
+            OrganizationPolicy = new OrganizationPolicyDto(),
+            Branding = new BrandingSettingsDto(),
+            Domains = new DomainSettingsDto(),
+            TenantDelegation = new TenantDelegationSettingsDto(),
+            RenderPolicy = new RenderPolicySettingsDto
+            {
+                RenderPolicyVersion = 4,
+                RenderPolicyPreset = "CustomAdvanced",
+                EnableAdvancedRenderPolicyOverrides = true,
+                GlobalRenderMode = "InteractiveWebAssembly",
+                GlobalPrerenderEnabled = true,
+                PublicSeoRenderMode = "InteractiveAuto",
+                PublicSeoPrerenderEnabled = true,
+                OperationalRenderMode = "InteractiveServer",
+                OperationalPrerenderEnabled = false,
+                AdminRenderMode = "InteractiveServer",
+                AdminPrerenderEnabled = false,
+                OnboardingRenderMode = "InteractiveAuto",
+                OnboardingPrerenderEnabled = false,
+                DisallowInteractiveServerOnOnboarding = true
+            }
         });
 
         // Act
@@ -284,5 +298,20 @@ public class GetPublicExperienceSettingsQueryHandlerTests
         await Assert.That(result.GlobalPrerenderEnabled).IsTrue();
         await Assert.That(result.OperationalRenderMode).IsEqualTo("InteractiveServer");
         await Assert.That(result.DisallowInteractiveServerOnOnboarding).IsTrue();
+    }
+
+    private static InstanceGovernanceSettings CreateDefaultGovernanceSettings()
+    {
+        return new InstanceGovernanceSettings
+        {
+            DeploymentMode = new DeploymentModeDto { Mode = Explore.Domain.Enums.DeploymentMode.SingleTenant },
+            Modules = new ModuleSettingsDto(),
+            EventPolicy = new EventPolicyDto(),
+            OrganizationPolicy = new OrganizationPolicyDto(),
+            Branding = new BrandingSettingsDto(),
+            Domains = new DomainSettingsDto(),
+            TenantDelegation = new TenantDelegationSettingsDto(),
+            RenderPolicy = new RenderPolicySettingsDto()
+        };
     }
 }

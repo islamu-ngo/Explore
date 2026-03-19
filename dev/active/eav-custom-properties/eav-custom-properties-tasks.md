@@ -1,141 +1,212 @@
-ABOUTME: Checklist for tracking EAV custom properties implementation progress.
-ABOUTME: Each task maps to a specific file change with clear acceptance criteria.
+ABOUTME: Checklist for tracking the enterprise-grade EAV custom properties implementation.
+ABOUTME: Reflects extension-layer boundaries, namespaced machine keys, projections, and event template instantiation.
 
-# EAV Custom Properties — Task Checklist
+# EAV Custom Properties - Task Checklist
 
-**Last Updated: 2026-03-04**
+**Last Updated: 2026-03-19**
+
+---
+
+## Phase 0: Architecture Lock ✅ COMPLETE
+
+- [x] **0.1** Lock EAV as an extension/configuration layer rather than the universal semantic contract
+- [x] **0.1A** Lock the 3-layer event model: Layer 1 universal core, Layer 2 typed sector profile, Layer 3 local custom extension
+- [x] **0.1B** Lock the rule that sector-standard semantics must use first-class typed schema, not Layer 3 EAV
+- [x] **0.2** Replace live event-definition inheritance with blueprint/template instantiation
+- [x] **0.3** Define explicit template sync as a version-aware, operator-driven workflow
+- [x] **0.4** Lock machine identity on `Namespace + Key` rather than mutable names
+- [x] **0.5** Lock explicit multi-value semantics with one row per value plus `Ordinal`
+- [x] **0.6** Replace opaque validation strings with typed governed validation metadata
+- [x] **0.7** Lock exposure/publication/search/filter/export/moderation semantics into the model
+- [x] **0.8** Lock projection/read-model strategy for discovery-critical properties
+- [x] **0.9** Lock delete-retention and provenance/versioning rules
+- [x] **0.10** Update active dev docs so there is no lingering deferred architecture language
 
 ---
 
 ## Phase 1: Domain Layer ⏳ NOT STARTED
 
-- [ ] **1.1** Create `PropertyType` enum (`Explore.Domain/Enums/PropertyType.cs`)
-  - Text=1, Number=2, Option=3, Boolean=4, DateTime=5, Url=6
-- [ ] **1.2** Create `EntityTypeName` enum (`Explore.Domain/Enums/EntityTypeName.cs`)
-  - Event=1, Organization=2, Group=3
-- [ ] **1.3** Create `CustomPropertyDefinition` entity (`Explore.Domain/CustomPropertyDefinition.cs`)
-  - ITenantEntity, IAuditableEntity, ISoftDeletable
-  - All properties per plan, IReadOnlyCollection navigations
-- [ ] **1.4** Create `CustomPropertyOption` entity (`Explore.Domain/CustomPropertyOption.cs`)
-  - IAuditableEntity, ISoftDeletable
-  - Self-referencing ParentOptionId
-- [ ] **1.5** Create `CustomPropertyValue` entity (`Explore.Domain/CustomPropertyValue.cs`)
-  - ITenantEntity, IAuditableEntity, ISoftDeletable
-  - Typed value columns, polymorphic EntityId
-- [ ] **1.6** Add appearance columns to `Event.cs`, remove MetadataJson
-  - BackgroundColor, BackgroundMediaUrl, BackgroundEffect (all string?)
-- [ ] **1.7** Add appearance columns to `Organization.cs`, remove MetadataJson
-  - ProfileImageUrl, BackgroundColor, BackgroundMediaUrl, BackgroundEffect
-- [ ] **1.8** Add branding columns to `Group.cs`, remove MetadataJson
-  - PictureUrl, BannerColor, BannerMediaUrl, BannerEffect
+- [x] **1.1** Create core enums
+  - `PropertyType`
+  - `EntityTypeName`
+  - `ExposureLevel`
+- [x] **1.1A** Audit existing Layer 2 aspect/profile families (`EventIslamicAspect`, `EventTechAspect`, `EventSessionIslamicAspect`) and document what already belongs outside Layer 3
+- [ ] **1.1B** Add any missing sector-standard fields to typed aspect/profile schema instead of routing them into EAV
+- [x] **1.2** Create shared definition entities for Organization / Group
+  - namespaced `Namespace + Key`
+  - typed validation fields
+  - exposure/search/filter/export flags
+  - `Ordinal`-aware value rows
+- [x] **1.3** Create event template entities
+  - `EventTemplate`
+  - `EventTemplateCustomPropertyDefinition`
+  - `EventTemplateCustomPropertyOption`
+  - includes `TemplateKey`, `Version`, publish state, and namespaced keys
+- [x] **1.4** Create event runtime entities
+  - `EventCustomPropertyDefinition`
+  - `EventCustomPropertyOption`
+  - `EventCustomPropertyValue`
+  - includes provenance/version/sync fields
+- [x] **1.5** Create projection entities/value objects for searchable/filterable/exportable custom-property reads
+- [x] **1.6** Audit existing appearance / branding fields in `Event.cs`, `Organization.cs`, and `Group.cs` against the new governance model
+- [x] **1.6A** Lock reserved namespace constants and Layer 2 semantic reservations in domain constants
+- [x] **1.6B** Add machine-identity normalization helpers for `Namespace + Key`
+- [ ] **1.7** Add only genuinely missing first-class appearance / branding fields; do not recreate metadata-blob storage
+- [ ] **1.8** Remove stale metadata assumptions from the domain design baseline
 
 ---
 
-## Phase 2: Persistence — EF Configurations ⏳ NOT STARTED
+## Phase 2: Persistence - EF Configurations ⏳ NOT STARTED
 
-- [ ] **2.1** Create `CustomPropertyDefinitionConfiguration.cs`
-  - Table: custom_property_definitions
-  - Unique index: (TenantId, EntityTypeName, EventTypeId, Name)
-  - Listing index: (TenantId, EntityTypeName, IsActive)
-  - SoftDelete query filter
-- [ ] **2.2** Create `CustomPropertyOptionConfiguration.cs`
-  - Table: custom_property_options
-  - Index: (DefinitionId, SortOrder)
-  - Self-ref FK for ParentOptionId
-- [ ] **2.3** Create `CustomPropertyValueConfiguration.cs`
-  - Table: custom_property_values
-  - Index: (DefinitionId, EntityId)
-  - Index: (EntityId)
-  - Index: (TenantId, DefinitionId)
-  - FK cascade from Definition
-- [ ] **2.4** Update `EventConfiguration.cs` — remove jsonb, add appearance columns
-- [ ] **2.5** Update `OrganizationConfiguration.cs` — remove jsonb, add appearance columns
-- [ ] **2.6** Update `GroupConfiguration.cs` — remove jsonb, add branding columns
-- [ ] **2.7** Add DbSets + query filters to `ExploreDbContext.cs`
-- [ ] **2.8** Create EF migration
-
----
-
-## Phase 3: Persistence — Repositories ⏳ NOT STARTED
-
-- [ ] **3.1** Create `ICustomPropertyDefinitionRepository.cs`
-  - GetByEntityType, GetWithOptions, NameExists
-- [ ] **3.2** Create `ICustomPropertyValueRepository.cs`
-  - GetByEntity, GetByDefinitionAndEntity, GetByDefinition, DeleteByEntity
-- [ ] **3.3** Implement `CustomPropertyDefinitionRepository.cs`
-- [ ] **3.4** Implement `CustomPropertyValueRepository.cs`
-- [ ] **3.5** Register repos in `PersistenceServicesRegistration.cs`
+- [x] **2.0** Reconcile existing Layer 2 aspect/profile configurations with the 3-layer architecture
+- [x] **2.1** Configure shared custom-property tables
+  - namespaced uniqueness
+  - ordinal constraints
+  - typed validation columns
+  - exposure/indexing columns
+- [x] **2.2** Configure event template tables
+  - `(TenantId, TemplateKey, Version)` uniqueness
+  - namespaced uniqueness for definitions/options
+- [x] **2.3** Configure event runtime tables
+  - `(EventId, Namespace, Key)` uniqueness
+  - provenance/version mapping
+  - value-row ordering constraints
+- [x] **2.4** Configure projection/read-model tables with discovery-oriented indexes
+- [x] **2.4A** Redesign projection row shape to be atomic per projected value row rather than merged per property
+- [ ] **2.5** Reconcile `EventConfiguration.cs` with the hardened plan and preserve current first-class appearance mapping
+- [ ] **2.6** Update `OrganizationConfiguration.cs` only where this initiative introduces real new fields/constraints
+- [ ] **2.7** Update `GroupConfiguration.cs` only where this initiative introduces real new fields/constraints
+- [x] **2.8** Add all new DbSets + query filters to `ExploreDbContext.cs`
+- [ ] **2.9** Create EF migration for the new schema
 
 ---
 
-## Phase 4: Application — DTOs ⏳ NOT STARTED
+## Phase 3: Persistence - Repositories, Sync, And Projection Support ⏳ NOT STARTED
 
-- [ ] **4.1** Create custom property definition DTOs (4 files)
-- [ ] **4.2** Create custom property option DTOs (3 files)
-- [ ] **4.3** Create custom property value DTOs (2 files)
-- [ ] **4.4** Remove MetadataJson from Event DTOs, add appearance (3 files)
-- [ ] **4.5** Remove MetadataJson from Organization DTOs, add appearance (4 files)
-- [ ] **4.6** Remove MetadataJson from Group DTOs, add branding (4 files)
-- [ ] **4.7** Update `MappingProfile.cs` for new entities + appearance columns
-
----
-
-## Phase 5: Application — CQRS Commands & Queries ⏳ NOT STARTED
-
-- [ ] **5.1** CreateCustomPropertyDefinition command + handler + validator
-- [ ] **5.2** UpdateCustomPropertyDefinition command + handler + validator
-- [ ] **5.3** DeleteCustomPropertyDefinition command + handler
-- [ ] **5.4** CreateCustomPropertyOption command + handler + validator
-- [ ] **5.5** UpdateCustomPropertyOption command + handler + validator
-- [ ] **5.6** DeleteCustomPropertyOption command + handler
-- [ ] **5.7** SetCustomPropertyValue command + handler + validator (upsert, type validation)
-- [ ] **5.8** RemoveCustomPropertyValue command + handler
-- [ ] **5.9** GetCustomPropertyDefinitions query + handler (list by entity type)
-- [ ] **5.10** GetCustomPropertyDefinitionDetail query + handler (single with options)
-- [ ] **5.11** GetCustomPropertyValues query + handler (values for entity)
+- [x] **3.1** Create shared-definition repository interfaces and implementations
+- [ ] **3.2** Create event template repository interfaces and implementations
+- [ ] **3.3** Create event runtime repository interfaces and implementations
+- [ ] **3.4** Add transactional template-instantiation support for event creation
+- [ ] **3.5** Add template diff / sync repository and service support
+- [ ] **3.6** Add projection updater / rebuilder persistence support
+- [ ] **3.7** Register repositories and services in `PersistenceServicesRegistration.cs`
+- [ ] **3.8** Add source-id-first provenance matching with `Namespace + Key` fallback only for repair/backfill
 
 ---
 
-## Phase 6: Remove MetadataJson from Application Layer ⏳ NOT STARTED
+## Phase 4: Application - DTOs And Mapping ⏳ NOT STARTED
 
-- [ ] **6.1** Remove JSONB filters from `EventSubqueryFilter.cs` (lines 132-204)
-- [ ] **6.2** Remove JSONB filtering from `EventRepository.cs` (lines 279-287)
-- [ ] **6.3** Remove MetadataJson from `GetEventListRequest.cs` + handler
-- [ ] **6.4** Update Event create/update handlers for appearance columns
-- [ ] **6.5** Update `UpdateOrganizationDetailsCommandHandler.cs` (line 76)
-- [ ] **6.6** Update `UpdateGroupCommandHandler.cs` (line 77)
-
----
-
-## Phase 7: API Layer ⏳ NOT STARTED
-
-- [ ] **7.1** Create `CustomPropertyDefinitionController.cs` (CRUD, 5 endpoints)
-- [ ] **7.2** Create `CustomPropertyOptionController.cs` (nested CRUD, 3 endpoints)
-- [ ] **7.3** Create `CustomPropertyValueController.cs` (get/set/remove, 3 endpoints)
-- [ ] **7.4** Update `EventController.cs` — remove MetadataJson query params
+- [x] **4.1** Create DTOs for shared Organization / Group custom properties
+- [ ] **4.2** Create DTOs for event templates, template definitions, and template options
+- [ ] **4.3** Create DTOs for event runtime definitions, options, and values
+- [ ] **4.4** Create DTOs for template diff / sync workflows
+- [ ] **4.5** Create projection DTOs for discovery/search/export-oriented reads
+- [ ] **4.6** Re-audit Event DTOs / generated contracts and remove any stale metadata-blob assumptions
+- [ ] **4.7** Re-audit Organization DTOs / generated contracts and remove any stale metadata-blob assumptions
+- [ ] **4.8** Re-audit Group DTOs / generated contracts and remove any stale metadata-blob assumptions
+- [x] **4.9** Update mapping profiles for the first shared-definition CQRS slice
 
 ---
 
-## Phase 8: Blazor Client ⏳ NOT STARTED
+## Phase 5: Application - CQRS For Definitions, Templates, Values, Sync, And Projections ⏳ NOT STARTED
 
-- [ ] **8.1** Refactor `EventAppearanceMetadataHelper.cs` — use dedicated columns
-- [ ] **8.2** Refactor `OrganizationAppearanceMetadataHelper.cs` — use dedicated columns
-- [ ] **8.3** Refactor `GroupBrandingMetadataHelper.cs` — use dedicated columns
-- [ ] **8.4** Update Event pages (CreateEvent, EventEdit, EventDetail)
-- [ ] **8.5** Update Organization pages (CreateOrg, OrgDetails, OrgProfile, OrgProfileSection)
-- [ ] **8.6** Update Group pages (GroupAdminSettingsLayout, GroupService)
-- [ ] **8.7** Regenerate `EventApiClient.g.cs` from OpenAPI spec
+- [ ] **5.0** Preserve distinct CQRS paths for Layer 2 typed sector schema vs Layer 3 custom-property flows
+- [ ] **5.0A** Add application-layer rejection for reserved namespaces and reserved Layer 2 semantic collisions
+- [x] **5.0A** Add reusable application-layer governance policy for reserved namespaces and reserved Layer 2 semantic collisions
+- [x] **5.1** Add first create/list/details CQRS slice for shared Organization / Group definitions
+- [x] **5.1A** Add update/delete CQRS for shared Organization / Group definitions
+- [x] **5.1B** Add option-edit semantics and duplicate-normalized-option-key rejection for shared definitions
+- [ ] **5.2** Add CRUD commands / handlers / validators for event templates
+- [ ] **5.3** Add CRUD commands / handlers / validators for event template options
+- [ ] **5.4** Add queries for event runtime definitions and values
+- [ ] **5.5** Add commands for setting event runtime values with explicit single vs multi rules
+- [ ] **5.6** Add commands for editing event-local definitions after instantiation
+- [ ] **5.7** Add commands / queries for template diff and sync
+- [ ] **5.8** Add commands / jobs for projection updates and rebuilds
+- [ ] **5.9** Add promotion/projection rules for discovery-critical properties
+- [ ] **5.10** Add promotion rules that move sector-standard Layer 3 candidates into Layer 2 typed schema instead of expanding EAV dependence
 
 ---
 
-## Phase 9: Testing & Documentation ⏳ NOT STARTED
+## Phase 6: Event Creation, Template Instantiation, And Event Editing Flow ⏳ NOT STARTED
 
-- [ ] **9.1** Architecture tests — new entities follow layer rules
-- [ ] **9.2** Unit tests — command handlers (create/update/delete definition, option, value)
-- [ ] **9.3** Unit tests — query handlers (list definitions, detail, values)
-- [ ] **9.4** Integration tests — repositories (CRUD, constraints, cascade, tenant isolation)
-- [ ] **9.5** Integration tests — API endpoints (full roundtrip)
-- [ ] **9.6** Update docs: DOMAIN.md, ARCHITECTURE.md, EXTENSIBILITY.md
+- [ ] **6.1** Extend event creation contracts to accept optional template selection
+- [ ] **6.2** Instantiate event-local definitions/options/default values transactionally
+- [ ] **6.3** Support events created without a template
+- [ ] **6.4** Ensure event edit flows read event-local configuration only
+- [ ] **6.5** Add explicit event admin workflow for template diff and sync decisions
+- [ ] **6.6** Keep Layer 2 aspect/profile creation and editing distinct from Layer 3 custom-property creation and editing during event workflows
+
+---
+
+## Phase 7: Remove Stale Metadata Assumptions ⏳ NOT STARTED
+
+- [ ] **7.1** Re-audit the source tree for actual remaining runtime `MetadataJson` / JSONB coupling
+- [ ] **7.2** Remove stale comments, docs, or contracts that still assume metadata-blob storage
+- [ ] **7.3** Align event list/query contracts with the current non-blob architecture if any stale parameters remain
+- [ ] **7.4** Align Event write handlers with the first-class appearance model
+- [ ] **7.5** Align Organization write handlers with the first-class appearance model
+- [ ] **7.6** Align Group write handlers with the first-class branding model
+
+---
+
+## Phase 8: API Layer ⏳ NOT STARTED
+
+- [ ] **8.1** Create API endpoints for shared Organization / Group custom-property governance
+- [ ] **8.2** Create API endpoints for event template management
+- [ ] **8.3** Create API endpoints for event runtime definition/value management
+- [ ] **8.4** Create API endpoints for template diff / sync workflows
+- [ ] **8.5** Create projection admin / rebuild endpoints if needed
+- [ ] **8.6** Reconcile `EventController.cs` and related API contracts with template-aware event creation and remove any stale metadata query assumptions
+- [ ] **8.7** Implement authorization categories
+  - template admin
+  - event editor
+  - property governance admin
+  - platform/system namespace editor
+
+---
+
+## Phase 9: Blazor Client ⏳ NOT STARTED
+
+- [ ] **9.1** Reconcile `EventAppearanceMetadataHelper.cs` and related utilities with the existing first-class appearance model
+- [ ] **9.2** Refactor `OrganizationAppearanceMetadataHelper.cs` to use dedicated columns
+- [ ] **9.3** Refactor `GroupBrandingMetadataHelper.cs` to use dedicated columns
+- [ ] **9.4** Add shared definition governance UI for Organization / Group
+- [ ] **9.5** Add event template management UI
+- [ ] **9.6** Add template selection to event creation UI
+- [ ] **9.7** Build event runtime custom-property editor against event-local definitions/values
+- [ ] **9.8** Add template diff / sync UI
+- [ ] **9.9** Add governance UI for exposure/search/filter/export flags
+- [ ] **9.10** Update Organization and Group pages to remove any stale metadata-blob assumptions
+- [ ] **9.11** Regenerate generated API clients after contract changes
+
+---
+
+## Phase 10: Search, Projection, Moderation, And Export Integration ⏳ NOT STARTED
+
+- [ ] **10.0** Integrate Layer 2 typed sector fields directly into discovery, policy, moderation, and export paths without routing them through Layer 3 first
+- [ ] **10.1** Populate custom-property projections on writes and sync operations
+- [ ] **10.2** Integrate filterable/searchable projections into event discovery query paths
+- [ ] **10.3** Integrate public/exportable projections into export/publication payloads
+- [ ] **10.4** Integrate moderation-relevant projections into governance workflows
+- [ ] **10.5** Integrate analytics-relevant projections into analytics payload composition
+
+---
+
+## Phase 11: Testing And Documentation ⏳ NOT STARTED
+
+- [ ] **11.1** Add architecture tests for the new entity families and boundaries
+- [x] **11.1A** Add unit tests for namespace normalization and Layer 2 semantic reservation helpers
+- [x] **11.1B** Add application-unit tests for reserved namespace rejection and Layer 2 semantic collision blocking
+- [ ] **11.2** Add unit tests proving display-name renames do not break machine-key identity
+- [ ] **11.3** Add unit tests for multi-value semantics, ordering, and duplicate rules
+- [x] **11.4** Add first unit tests for shared-definition validator enforcement and create/update/delete handler behavior
+- [ ] **11.5** Add unit tests for exposure/search/filter/export/moderation flags
+- [ ] **11.6** Add unit tests for template instantiation, provenance, versioning, and sync
+- [ ] **11.7** Add unit tests for retired definitions/options with historical values
+- [ ] **11.8** Add integration tests for persistence constraints and tenant isolation
+- [ ] **11.9** Add integration tests for API roundtrips (template -> event -> sync -> projections)
+- [x] **11.10** Update docs: `docs/DOMAIN.md`, `docs/ARCHITECTURE.md`, `docs/EXTENSIBILITY.md`, `docs/MODULAR_EVENTS.md`, `docs/CUSTOM_PROPERTIES.md`
 
 ---
 
@@ -143,13 +214,16 @@ ABOUTME: Each task maps to a specific file change with clear acceptance criteria
 
 | Phase | Tasks | Status |
 |-------|-------|--------|
-| 1. Domain | 8 | ⏳ |
-| 2. EF Configs | 8 | ⏳ |
-| 3. Repositories | 5 | ⏳ |
-| 4. DTOs | 7 | ⏳ |
+| 0. Architecture Lock | 12 | ✅ |
+| 1. Domain | 10 | ⏳ |
+| 2. EF Configs | 10 | ⏳ |
+| 3. Repositories / Sync / Projection | 7 | ⏳ |
+| 4. DTOs / Mapping | 9 | ⏳ |
 | 5. CQRS | 11 | ⏳ |
-| 6. Remove MetadataJson | 6 | ⏳ |
-| 7. API | 4 | ⏳ |
-| 8. Blazor | 7 | ⏳ |
-| 9. Tests & Docs | 6 | ⏳ |
-| **Total** | **62** | |
+| 6. Event Creation / Editing | 6 | ⏳ |
+| 7. Remove Stale Metadata Assumptions | 6 | ⏳ |
+| 8. API | 7 | ⏳ |
+| 9. Blazor | 11 | ⏳ |
+| 10. Projection Integration | 6 | ⏳ |
+| 11. Tests / Docs | 10 | ⏳ |
+| **Total** | **104** | |

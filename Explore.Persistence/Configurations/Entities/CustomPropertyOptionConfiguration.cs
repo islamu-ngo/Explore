@@ -1,5 +1,5 @@
-// ABOUTME: EF Core configuration for CustomPropertyOption with self-referencing hierarchy.
-// ABOUTME: Indexed by (DefinitionId, SortOrder) for ordered option listing.
+// ABOUTME: EF Core configuration for shared tenant-scoped Layer 3 option rows.
+// ABOUTME: Enforces namespaced machine-key uniqueness within each definition.
 
 using Explore.Domain;
 using Explore.Persistence.ValueGenerators;
@@ -17,7 +17,15 @@ public class CustomPropertyOptionConfiguration : IEntityTypeConfiguration<Custom
         builder.Property(e => e.Id)
             .HasValueGenerator<GuidVersion7ValueGenerator>();
 
-        builder.Property(e => e.Name)
+        builder.Property(e => e.Namespace)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        builder.Property(e => e.Key)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        builder.Property(e => e.DisplayName)
             .HasMaxLength(200)
             .IsRequired();
 
@@ -37,5 +45,9 @@ public class CustomPropertyOptionConfiguration : IEntityTypeConfiguration<Custom
         // Ordered options within a definition
         builder.HasIndex(e => new { e.CustomPropertyDefinitionId, e.SortOrder })
             .HasDatabaseName("ix_cpo_definition_sort");
+
+        builder.HasIndex(e => new { e.CustomPropertyDefinitionId, e.Namespace, e.Key })
+            .HasDatabaseName("ix_cpo_definition_namespace_key")
+            .IsUnique();
     }
 }

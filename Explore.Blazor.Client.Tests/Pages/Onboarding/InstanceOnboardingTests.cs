@@ -1,11 +1,7 @@
 // ABOUTME: Component tests for InstanceOnboarding wizard completion flow and redirect outcomes.
 // ABOUTME: Verifies single-tenant host choice behavior and multi-tenant admin redirect behavior.
 
-using Bunit.TestDoubles;
-using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Pages.Onboarding;
-using Explore.Blazor.Client.Tests.Common;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Explore.Blazor.Client.Tests.Pages.Onboarding;
 
@@ -54,7 +50,7 @@ public class InstanceOnboardingTests : IDisposable
             IsAuthenticated = true
         });
 
-        _instanceOnboardingService.CompleteAsync(Arg.Any<InstanceGovernanceSettingsModel>())
+        _instanceOnboardingService.CompleteAsync(Arg.Any<OnboardingCompletionModel>())
             .Returns(new InstanceCommandResponseModel
             {
                 Success = true,
@@ -70,38 +66,17 @@ public class InstanceOnboardingTests : IDisposable
     }
 
     [Test]
-    public async Task DeploymentStep_SingleTenant_HidesTenantSelfServiceRegistrationOption()
+    public async Task DeploymentStep_SingleTenant_DoesNotShowMultiTenantGovernance()
     {
         // Arrange
         var cut = RenderForDeploymentMode("SingleTenant");
 
-        // Assert
+        // Assert — multi-tenant-only governance fields should not appear on the tenant mode step
         cut.WaitForAssertion(() =>
         {
             if (cut.Markup.Contains("Allow tenant self-service registration", StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException("Tenant self-service option should be hidden in single-tenant mode.");
-            }
-        });
-
-        await Task.CompletedTask;
-    }
-
-    [Test]
-    public async Task DeploymentStep_MultiTenant_ShowsTenantSelfServiceRegistrationOption()
-    {
-        // Arrange
-        var cut = RenderForDeploymentMode("MultiTenant");
-
-        // Act — navigate to Instance Settings step where tenant governance now lives
-        ClickButton(cut, "Next");
-
-        // Assert
-        cut.WaitForAssertion(() =>
-        {
-            if (!cut.Markup.Contains("Allow tenant self-service registration", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("Tenant self-service option should be visible in multi-tenant mode.");
+                throw new InvalidOperationException("Tenant self-service option should not be visible in single-tenant mode.");
             }
         });
 
@@ -207,10 +182,13 @@ public class InstanceOnboardingTests : IDisposable
 
     private IRenderedComponent<InstanceOnboarding> RenderForDeploymentMode(string deploymentMode)
     {
-        _instanceOnboardingService.GetSettingsAsync().Returns(new InstanceGovernanceSettingsModel
+        _instanceOnboardingService.GetDeploymentModeAsync().Returns(new DeploymentModeModel
         {
-            DeploymentMode = deploymentMode,
-            DefaultPublicHomePage = "EventList",
+            Mode = deploymentMode
+        });
+
+        _instanceOnboardingService.GetBrandingSettingsAsync().Returns(new BrandingSettingsModel
+        {
             DefaultBrandDisplayName = "ISLAMU Explore"
         });
 

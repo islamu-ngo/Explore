@@ -119,6 +119,31 @@ public class ExploreDbContext : DbContext
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
             .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
 
+        modelBuilder.Entity<EventTemplate>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
+        modelBuilder.Entity<EventTemplateCustomPropertyDefinition>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
+        modelBuilder.Entity<EventTemplateCustomPropertyOption>()
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
+        modelBuilder.Entity<EventCustomPropertyDefinition>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
+        modelBuilder.Entity<EventCustomPropertyOption>()
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
+        modelBuilder.Entity<EventCustomPropertyValue>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
+        modelBuilder.Entity<EventCustomPropertyProjection>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+
         // ===== Actor Entities =====
         // Entities with both Tenant and Soft Delete filters
         modelBuilder.Entity<Actor>()
@@ -287,6 +312,12 @@ public class ExploreDbContext : DbContext
     public DbSet<TenantNavigationLink> TenantNavigationLinks { get; set; }
     public DbSet<InstanceBootstrapState> InstanceBootstrapStates { get; set; }
 
+    // ===== Governance Policy Aggregates =====
+    public DbSet<Explore.Domain.Policies.InstancePolicySet> InstancePolicySets { get; set; }
+    public DbSet<Explore.Domain.Policies.TenantPolicySet> TenantPolicySets { get; set; }
+    public DbSet<Explore.Domain.Policies.OrganizationPolicySet> OrganizationPolicySets { get; set; }
+    public DbSet<Explore.Domain.Policies.PolicyChangeOutbox> PolicyChangeOutbox { get; set; }
+
     // ===== Users & Authentication =====
     public DbSet<User> Users { get; set; }
     public DbSet<UserPii> UserPii { get; set; }
@@ -322,6 +353,13 @@ public class ExploreDbContext : DbContext
     public DbSet<CustomPropertyDefinition> CustomPropertyDefinitions { get; set; }
     public DbSet<CustomPropertyOption> CustomPropertyOptions { get; set; }
     public DbSet<CustomPropertyValue> CustomPropertyValues { get; set; }
+    public DbSet<EventTemplate> EventTemplates { get; set; }
+    public DbSet<EventTemplateCustomPropertyDefinition> EventTemplateCustomPropertyDefinitions { get; set; }
+    public DbSet<EventTemplateCustomPropertyOption> EventTemplateCustomPropertyOptions { get; set; }
+    public DbSet<EventCustomPropertyDefinition> EventCustomPropertyDefinitions { get; set; }
+    public DbSet<EventCustomPropertyOption> EventCustomPropertyOptions { get; set; }
+    public DbSet<EventCustomPropertyValue> EventCustomPropertyValues { get; set; }
+    public DbSet<EventCustomPropertyProjection> EventCustomPropertyProjections { get; set; }
 
     // ===== Events =====
     public DbSet<Event> Events { get; set; }

@@ -7,7 +7,7 @@ namespace Explore.Blazor.Client.Pages.Events.Workflows;
 
 public sealed class SessionEditorWorkflow
 {
-    public bool IsDrawerOpen { get; private set; }
+    public bool IsDrawerOpen { get; set; }
 
     public bool IsNewSession { get; private set; }
 

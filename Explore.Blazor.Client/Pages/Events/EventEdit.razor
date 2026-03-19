@@ -285,35 +285,30 @@
                     @if (sessions.Count > 1)
                     {
                         <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mt-4 mb-2">Additional Sessions</MudText>
-                        @for (int i = 1; i < sessions.Count; i++)
-                        {
-                            var idx = i;
-                            <MudPaper Elevation="0" Class="pa-4 mb-3 rounded-lg border-solid border-1 mud-border-lines-default">
-                                <div class="d-flex justify-space-between align-center mb-3">
-                                    <MudText Typo="Typo.subtitle2" Style="font-weight: 600;">Session @(idx + 1)</MudText>
-                                    <MudIconButton Icon="@Icons.Material.Filled.Close"
-                                                   Size="Size.Small"
-                                                   Color="Color.Error"
-                                                   OnClick="@(() => RemoveSession(idx))" />
-                                </div>
-                                <EventSessionEditor Session="sessions[idx]"
-                                                    SessionChanged="@((s) => OnSessionChanged(idx, s))"
+                        <div class="edit-event__sessions-list mb-3">
+                            @for (int i = 1; i < sessions.Count; i++)
+                            {
+                                var idx = i;
+                                var session = sessions[idx];
+                                var locationName = locations?.FirstOrDefault(l => l.Id == session.LocationId)?.FullName;
+                                var imageUrl = session.UseEventImage ? imagePreviewUrl : session.FeaturedImagePreviewUrl;
+
+                                <SessionSummaryCard Session="session"
                                                     Index="idx"
-                                                    ShowRemoveButton="false"
-                                                    ShowLocationSelector="true"
-                                                    Locations="locations"
-                                                    RegistrationModes="registrationModes"
-                                                    ShowLanguageSelector="true"
-                                                    Languages="languages" />
-                            </MudPaper>
-                        }
+                                                    LocationName="@locationName"
+                                                    ImageUrl="@imageUrl"
+                                                    OnEdit="@(() => _sessionWorkflow.OpenForEdit(sessions, idx))"
+                                                    OnDuplicate="@(() => _sessionWorkflow.DuplicateSession(sessions, idx))"
+                                                    OnDelete="@(() => RemoveSession(idx))" />
+                            }
+                        </div>
                     }
 
                     <MudButton StartIcon="@Icons.Material.Filled.Add"
                                Variant="Variant.Outlined"
                                Color="Color.Primary"
                                FullWidth="true"
-                               OnClick="AddSession"
+                               OnClick="@(() => _sessionWorkflow.OpenForCreate(sessions, imagePreviewUrl))"
                                Class="mt-2 mb-4 rounded-lg">
                         Add Session
                     </MudButton>
@@ -543,6 +538,50 @@
             </MudButton>
         </EditForm>
         </div>
+
+        @* ===== SESSION EDITOR DRAWER ===== *@
+        <MudDrawer @bind-Open="_sessionWorkflow.IsDrawerOpen"
+                   Anchor="Anchor.End"
+                   Variant="DrawerVariant.Temporary"
+                   Width="400px"
+                   Elevation="1"
+                   Class="edit-event__session-drawer">
+            <MudDrawerHeader Class="pa-4 border-b">
+                <div class="d-flex align-center justify-space-between w-100">
+                    <MudText Typo="Typo.h6">@(_sessionWorkflow.IsNewSession ? "Add Session" : "Edit Session")</MudText>
+                    <div class="d-flex align-center gap-1">
+                        <MudIconButton Icon="@Icons.Material.Filled.NavigateBefore"
+                                       Size="Size.Small"
+                                       Disabled="@(!_sessionWorkflow.CanNavigatePrevious(sessions))"
+                                       OnClick="@(() => _sessionWorkflow.NavigatePrevious(sessions, imagePreviewUrl))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.NavigateNext"
+                                       Size="Size.Small"
+                                       Disabled="@(!_sessionWorkflow.CanNavigateNext(sessions))"
+                                       OnClick="@(() => _sessionWorkflow.NavigateNext(sessions, imagePreviewUrl))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Add"
+                                       Size="Size.Small"
+                                       Color="Color.Primary"
+                                       OnClick="@(() => _sessionWorkflow.AddFromDrawer(sessions, imagePreviewUrl))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                       Size="Size.Small"
+                                       OnClick="@(() => _sessionWorkflow.Close())" />
+                    </div>
+                </div>
+            </MudDrawerHeader>
+            <div class="pa-4">
+                @if (_sessionWorkflow.DrawerModel != null)
+                {
+                    <SessionEditorPanel Session="_sessionWorkflow.DrawerModel"
+                                        IsNew="_sessionWorkflow.IsNewSession"
+                                        EventImageUrl="@imagePreviewUrl"
+                                        Locations="locations"
+                                        RegistrationModes="registrationModes"
+                                        Languages="languages"
+                                        OnSave="HandleSessionSave"
+                                        OnCancel="@(() => _sessionWorkflow.Close())" />
+                }
+            </div>
+        </MudDrawer>
     }
 
     <TagCategoryManagerPopup

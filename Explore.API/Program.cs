@@ -28,6 +28,8 @@ using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using OpenFeature;
+using OpenFeature.Hosting.Providers.Memory;
 using Scalar.AspNetCore;
 using Serilog;
 using static Microsoft.AspNetCore.Http.StatusCodes;
@@ -54,6 +56,7 @@ builder.Host.ConfigureHostOptions(options =>
 });
 
 builder.AddServiceDefaults();
+builder.AddRedisDistributedCache(connectionName: "cache");
 builder.Configuration.AddInfisicalCompatibility();
 
 // Add secret management services (refresh service, health checks, metrics, audit logging)
@@ -157,8 +160,6 @@ builder.Services.AddApiMediaTypeVersioning();
 // Business metrics (OpenTelemetry)
 builder.Services.AddSingleton<BusinessMetrics>();
 
-// Deployment mode cache invalidation (bridges Application layer to API middleware)
-builder.Services.AddSingleton<IDeploymentModeCacheInvalidator, Explore.API.Services.DeploymentModeCacheInvalidator>();
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -468,6 +469,13 @@ builder.Services.AddApiRequestTimeouts(builder.Configuration);
 // Tiered rate limiting: global (IP), authenticated (user), write (stricter)
 // Supports X-Forwarded-For for reverse proxy deployments (ngrok, Cloudflare)
 builder.Services.AddApiRateLimiting(builder.Configuration, builder.Environment);
+
+// Feature flags: OpenFeature with in-memory provider as default.
+// Swap to FeatBit, Unleash, or PostHog by replacing the provider registration.
+builder.Services.AddOpenFeature(featureBuilder =>
+{
+    featureBuilder.AddInMemoryProvider(flags => { });
+});
 
 var app = builder.Build();
 

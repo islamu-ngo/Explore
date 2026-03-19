@@ -3,8 +3,10 @@ using Explore.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Event.Api.IntegrationTests.Fixtures;
 
@@ -46,6 +48,10 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 options.UseInMemoryDatabase("InMemoryDbForTesting");
                 options.ConfigureWarnings(x => x.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning));
             });
+
+            // Override Redis with in-memory distributed cache for tests
+            services.RemoveAll<IDistributedCache>();
+            services.AddDistributedMemoryCache();
         });
     }
 }

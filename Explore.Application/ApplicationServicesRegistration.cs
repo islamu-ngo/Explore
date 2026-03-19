@@ -7,6 +7,7 @@ using Explore.Application.Authorization;
 using Explore.Application.Behaviors;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Services;
+using Explore.Application.Settings;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,12 +31,15 @@ public static class ApplicationServicesRegistration
         services.AddScoped<IInstanceSmtpSettingService, InstanceSmtpSettingService>();
         services.AddScoped<IAuthProviderConfigurationService, AuthProviderConfigurationService>();
         services.AddScoped<IAnalyticsGovernanceService, AnalyticsGovernanceService>();
+        services.AddScoped<IModuleCapabilityService, ModuleCapabilityService>();
+        services.AddScoped<SettingUpsertService>();
 
         // Analytics consent / runtime profile resolution
         services.AddScoped<IAnalyticsRuntimeProfileResolver, AnalyticsRuntimeProfileResolver>();
 
         // Authorization: dynamic permission infrastructure
         services.AddScoped<ICapabilityCeilingService, CapabilityCeilingService>();
+        services.AddScoped<ICustomPropertyGovernancePolicy, CustomPropertyGovernancePolicy>();
         services.AddScoped<IPermissionRegistryService, PermissionRegistryService>();
         services.AddScoped<IContactShareConsentService, ContactShareConsentService>();
 

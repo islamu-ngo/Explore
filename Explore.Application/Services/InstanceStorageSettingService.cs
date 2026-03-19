@@ -21,14 +21,14 @@ public class InstanceStorageSettingService : IInstanceStorageSettingService
 
     public async Task<InstanceStorageSettingsDto> ReadSettingsAsync()
     {
-        var endpoint = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.S3Endpoint);
-        var publicEndpoint = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.S3PublicEndpoint);
-        var bucketName = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.S3BucketName);
+        var endpoint = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.Endpoint);
+        var publicEndpoint = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.PublicEndpoint);
+        var bucketName = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.BucketName);
         var accessKeyId = await _systemSettingRepository.GetByKey(InfrastructureSecretSettingKeys.Storage.AccessKeyId);
         var secretAccessKey = await _systemSettingRepository.GetByKey(InfrastructureSecretSettingKeys.Storage.SecretAccessKey);
-        var region = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.S3Region);
-        var forcePathStyle = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.S3ForcePathStyle);
-        var uploadExpiration = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.S3UploadUrlExpirationMinutes);
+        var region = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.Region);
+        var forcePathStyle = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.ForcePathStyle);
+        var uploadExpiration = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Storage.UploadUrlExpirationMinutes);
 
         return new InstanceStorageSettingsDto
         {
@@ -45,15 +45,15 @@ public class InstanceStorageSettingService : IInstanceStorageSettingService
 
     public async Task ApplySettingsAsync(InstanceStorageSettingsDto settings)
     {
-        await UpsertSystemSettingAsync(GovernanceSettingKeys.S3Endpoint,
+        await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.Endpoint,
             JsonSerializer.Serialize(settings.S3Endpoint.Trim()), SettingValueType.String, false,
             "ObjectStorage", 1, "S3-compatible endpoint URL (e.g., https://fsn1.your-objectstorage.com)");
 
-        await UpsertSystemSettingAsync(GovernanceSettingKeys.S3PublicEndpoint,
+        await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.PublicEndpoint,
             JsonSerializer.Serialize(settings.S3PublicEndpoint.Trim()), SettingValueType.String, false,
             "ObjectStorage", 2, "Public endpoint for presigned URLs (if different from internal endpoint)");
 
-        await UpsertSystemSettingAsync(GovernanceSettingKeys.S3BucketName,
+        await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.BucketName,
             JsonSerializer.Serialize(settings.S3BucketName.Trim()), SettingValueType.String, false,
             "ObjectStorage", 3, "S3 bucket name for object storage");
 
@@ -65,15 +65,15 @@ public class InstanceStorageSettingService : IInstanceStorageSettingService
             JsonSerializer.Serialize(settings.S3SecretAccessKey.Trim()), SettingValueType.String, false,
             "ObjectStorage", 5, "S3 secret access key for authentication");
 
-        await UpsertSystemSettingAsync(GovernanceSettingKeys.S3Region,
+        await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.Region,
             JsonSerializer.Serialize(settings.S3Region.Trim()), SettingValueType.String, false,
             "ObjectStorage", 6, "S3 region identifier (e.g., fsn1 for Hetzner, us-east-1 for AWS)");
 
-        await UpsertSystemSettingAsync(GovernanceSettingKeys.S3ForcePathStyle,
+        await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.ForcePathStyle,
             JsonSerializer.Serialize(settings.S3ForcePathStyle), SettingValueType.Boolean, false,
             "ObjectStorage", 7, "Use path-style URLs (required by most non-AWS S3 providers)");
 
-        await UpsertSystemSettingAsync(GovernanceSettingKeys.S3UploadUrlExpirationMinutes,
+        await UpsertSystemSettingAsync(GovernanceSettingKeys.Storage.UploadUrlExpirationMinutes,
             JsonSerializer.Serialize(settings.S3UploadUrlExpirationMinutes > 0 ? settings.S3UploadUrlExpirationMinutes : 60),
             SettingValueType.Integer, false,
             "ObjectStorage", 8, "Presigned upload URL expiration time in minutes");

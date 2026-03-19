@@ -27,5 +27,12 @@ public class InstanceBootstrapStateConfiguration : IEntityTypeConfiguration<Inst
 
         builder.Property(e => e.SelectedDeploymentMode)
             .HasMaxLength(32);
+
+        // Filtered unique index: at most one row can have IsCompleted = true.
+        // Prevents concurrent onboarding attempts from both succeeding.
+        builder.HasIndex(e => e.IsCompleted)
+            .IsUnique()
+            .HasFilter("\"is_completed\" = true")
+            .HasDatabaseName("ix_instance_bootstrap_state_completed_unique");
     }
 }

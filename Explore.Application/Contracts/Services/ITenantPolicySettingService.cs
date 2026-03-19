@@ -2,6 +2,7 @@
 // ABOUTME: Resolves tenant overrides against instance defaults for onboarding and runtime configuration.
 
 using Explore.Application.DTOs.Onboarding;
+using Explore.Application.DTOs.TenantPolicy;
 
 namespace Explore.Application.Contracts.Services;
 
@@ -12,16 +13,13 @@ public interface ITenantPolicySettingService
 {
     /// <summary>
     /// Reads effective tenant policy settings by merging tenant overrides with instance defaults.
+    /// Includes read-only CanOverride* flags derived from instance governance locks.
     /// </summary>
-    /// <param name="tenantId">The tenant ID to read settings for.</param>
-    /// <returns>Effective tenant policy settings DTO with delegation capabilities.</returns>
     Task<TenantPolicySettingsDto> ReadEffectiveTenantSettingsAsync(Guid tenantId);
 
     /// <summary>
     /// Applies tenant policy setting overrides while enforcing instance-level delegation constraints.
+    /// Only writable fields from UpdateTenantPolicyRequest are persisted.
     /// </summary>
-    /// <param name="tenantId">The tenant ID to apply settings for.</param>
-    /// <param name="actorUserId">The user ID performing the update (for audit trail).</param>
-    /// <param name="settings">The tenant policy settings to apply.</param>
-    Task ApplyTenantSettingsAsync(Guid tenantId, Guid? actorUserId, TenantPolicySettingsDto settings);
+    Task ApplyTenantSettingsAsync(Guid tenantId, Guid? actorUserId, UpdateTenantPolicyRequest settings);
 }

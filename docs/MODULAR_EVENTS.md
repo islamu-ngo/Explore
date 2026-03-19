@@ -54,6 +54,16 @@ Aspect-specific endpoints live under `EventController`:
 
 Aspect updates require authorization; read endpoints are anonymous.
 
+## Layer Boundary
+
+These aspect families are Layer 2 typed schema, not flexible Layer 3 metadata.
+
+- they are first-class relational tables
+- they participate directly in filtering and module-guarded query behavior
+- they are the correct home for sector-standard semantics
+
+Layer 3 custom properties must not redefine these meanings later through `Namespace + Key` extension fields.
+
 ## List Filtering And Module Guards
 
 `GET /api/event` supports aspect filters (Islamic and Tech), but they are guarded by module enablement:
@@ -86,5 +96,6 @@ Current seeded module keys:
 ## Related
 
 - [EXTENSIBILITY.md](EXTENSIBILITY.md)
+- [CUSTOM_PROPERTIES.md](CUSTOM_PROPERTIES.md)
 - [API.md](API.md)
 - [DOMAIN.md](DOMAIN.md)

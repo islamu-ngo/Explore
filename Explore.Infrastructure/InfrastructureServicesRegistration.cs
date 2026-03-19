@@ -46,8 +46,11 @@ public static class InfrastructureServicesRegistration
         // Memory cache for settings and module governance
         services.AddMemoryCache();
 
+        // Distributed cache: default in-memory fallback.
+        // Production overrides this with Redis via Aspire in Program.cs.
+        services.AddDistributedMemoryCache();
+
         // Settings and Module Governance services
-        services.AddScoped<ISettingsResolver, SettingsResolver>();
         services.AddScoped<IHierarchicalSettingsResolver, HierarchicalSettingsResolver>();
         services.AddScoped<IResolverConfigService, ResolverConfigService>();
         services.AddScoped<ITenantContextAccessor, TenantContextAccessor>();
@@ -168,8 +171,15 @@ public static class InfrastructureServicesRegistration
         services.AddHttpClient("PdsService");
         services.AddScoped<IPdsService, PdsService>();
 
+        // Feature flag service: wraps OpenFeature IFeatureClient for Application layer consumption
+        services.AddScoped<IFeatureFlagService, OpenFeatureFlagService>();
+
         // Deployment mode configuration (single-tenant vs multi-tenant)
         services.Configure<DeploymentSettings>(configuration.GetSection(DeploymentSettings.SectionName));
+
+        // Deployment mode provider: singleton that resolves mode from config → cache → DB.
+        // Uses IOptionsMonitor for live config reload and IServiceScopeFactory for scoped DB access.
+        services.AddSingleton<IDeploymentModeProvider, DeploymentModeProvider>();
 
         // Setup secret provider: singleton that manages the bootstrap setup secret lifecycle.
         // Must be singleton because the secret is resolved once at startup and locked after onboarding completion.

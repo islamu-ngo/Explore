@@ -1,88 +1,141 @@
-ABOUTME: Context file for EAV custom properties refactor — tracks progress, key files, and decisions.
-ABOUTME: Read this first when resuming work on this task.
+ABOUTME: Context file for the enterprise-grade EAV custom properties redesign.
+ABOUTME: Read this first when resuming so implementation follows the hardened extension-layer architecture.
 
-# EAV Custom Properties — Context
+# EAV Custom Properties - Context
 
-**Last Updated: 2026-03-04**
+**Last Updated: 2026-03-19**
 
 ---
 
-## SESSION PROGRESS (2026-03-04)
+## SESSION PROGRESS (2026-03-19)
 
 ### ✅ COMPLETED
-- Research: Plane custom properties architecture (EAV with 4 tables)
-- Audit: Full MetadataJson usage across all layers (Domain, DTOs, Handlers, Specs, Repos, Controllers, Blazor)
-- Decision: Appearance settings → dedicated columns (not EAV)
-- Decision: EAV scoped by EntityTypeName + optional EventTypeId + TenantId
-- Decision: Typed value columns (not single-string)
-- Plan: Complete dev-docs plan created
+- Re-reviewed the active EAV dev docs after the first blueprint/template revision.
+- Incorporated senior-architect feedback that hardens EAV beyond storage normalization.
+- Repositioned EAV as an **internal extension/configuration layer**, not the canonical home of discovery/policy-critical semantics.
+- Strengthened the plan with namespaced machine keys, explicit multi-value semantics, typed validation fields, exposure/publication flags, projection strategy, provenance/versioning, delete-retention rules, and governance categories.
+- Revised the plan to explicitly use a 3-layer event architecture: Layer 1 universal event core, Layer 2 typed sector profiles/aspects, Layer 3 local custom extensions.
+- Locked the rule that sector-standard semantics must use first-class typed relational schema, not Layer 3 EAV.
+- Removed deferral language that conflicted with the requirement to plan the stronger model for direct implementation now.
+- Gathered supporting signals from repo architecture plus AT Protocol guidance on separating canonical contracts, metadata overlays, and app-view aggregation.
+- Verified that parts of the old baseline were stale: the current domain already has some first-class appearance fields and no longer exposes `MetadataJson` on `Event`, `Organization`, or `Group`.
+- Started implementation in `Explore.Domain` and `Explore.Persistence` rather than only revising docs.
+- Refactored the existing shared Layer 3 custom-property model to use `Namespace + Key`, typed validation columns, explicit exposure flags, default typed values, and `Ordinal` on value rows.
+- Added new Layer 3 event template entities: `EventTemplate`, `EventTemplateCustomPropertyDefinition`, and `EventTemplateCustomPropertyOption`.
+- Added new Layer 3 event-runtime entities: `EventCustomPropertyDefinition`, `EventCustomPropertyOption`, and `EventCustomPropertyValue` with template provenance fields.
+- Added `EventCustomPropertyProjection` as the first projection/read-model entity for searchable/filterable/exportable/moderation-aware custom-property reads.
+- Added EF Core configurations for the new template/runtime/projection entities and updated existing custom-property configurations to the new namespaced machine-key model.
+- Updated `Explore.Persistence/ExploreDbContext.cs` with DbSets and named tenant/soft-delete query filters for the new Layer 3 entities.
+- Verified the first implementation slice with `dotnet build --configuration Release --verbosity quiet`, `dotnet test --project Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet`, and `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet`.
+- Added a dedicated docs file at `docs/CUSTOM_PROPERTIES.md` and updated `docs/ARCHITECTURE.md`, `docs/DOMAIN.md`, `docs/EXTENSIBILITY.md`, and `docs/MODULAR_EVENTS.md` so Layer 2/Layer 3 rules live outside `dev/active/`.
+- Added `Explore.Domain/Constants/CustomPropertyNamespaces.cs`, `Explore.Domain/Constants/CustomPropertySemanticReservations.cs`, and `Explore.Domain/Constants/CustomPropertyIdentity.cs` to lock reserved roots, Layer 2 semantic reservations, and lowercase machine-identity normalization.
+- Tightened the projection contract so `EventCustomPropertyProjection` is now one atomic row per projected value row instead of one merged row per property.
+- Added `Event.Domain.UnitTests/CustomProperties/CustomPropertyGovernanceTests.cs` to verify normalization and governance-reservation behavior.
+- Added `Explore.Application/Contracts/Services/ICustomPropertyGovernancePolicy.cs`, `Explore.Application/Contracts/Services/CustomPropertyGovernanceEvaluation.cs`, and `Explore.Application/Services/CustomPropertyGovernancePolicy.cs` as the reusable application-layer enforcement point for reserved roots and Layer 2 collision rejection.
+- Registered the governance policy in `Explore.Application/ApplicationServicesRegistration.cs` so future CQRS handlers can consume one central boundary service.
+- Added `Event.Application.UnitTests/Features/CustomProperties/CustomPropertyGovernancePolicyTests.cs` to verify reserved-namespace rejection, normalization, and Layer 2 semantic collision blocking.
+- Added the first real shared-definition vertical slice:
+  - `Explore.Application/Contracts/Persistence/ICustomPropertyDefinitionRepository.cs`
+  - `Explore.Persistence/Repositories/CustomPropertyDefinitionRepository.cs`
+  - `Explore.Application/DTOs/CustomPropertyDefinition/*`
+  - `Explore.Application/Features/CustomPropertyDefinitions/*`
+- Implemented create/list/details CQRS for shared `Organization` / `Group` custom-property definitions.
+- Wired create flow through `ICustomPropertyGovernancePolicy`, scoped machine-key duplicate checks, and transactional option persistence.
+- Updated `Explore.Application/Profiles/MappingProfile.cs` and `Explore.Persistence/PersistenceServicesRegistration.cs` for the new slice.
+- Added `Event.Application.UnitTests/Features/CustomPropertyDefinitions/Commands/CreateCustomPropertyDefinitionCommandHandlerTests.cs` and `Event.Application.UnitTests/Features/CustomPropertyDefinitions/Validators/CreateCustomPropertyDefinitionDtoValidatorTests.cs`.
+- Extended the shared-definition slice to full admin CRUD foundation with:
+  - `UpdateCustomPropertyDefinitionDto` and `UpdateCustomPropertyDefinitionDtoValidator`
+  - `UpdateCustomPropertyDefinitionCommand` / handler
+  - `DeleteCustomPropertyDefinitionCommand` / handler
+- Added repository support for tracked reads, duplicate checks excluding the current row, transactional option replacement, and feature-specific hard delete semantics.
+- Updated the details query to throw `NotFoundException` when the definition is missing instead of silently mapping null.
+- Added `Event.Application.UnitTests/Features/CustomPropertyDefinitions/Commands/UpdateCustomPropertyDefinitionCommandHandlerTests.cs` and `Event.Application.UnitTests/Features/CustomPropertyDefinitions/Commands/DeleteCustomPropertyDefinitionCommandHandlerTests.cs`.
 
 ### 🟡 IN PROGRESS
-- Nothing — planning complete, implementation not started
+- Application/API/Blazor integration has not started yet.
+- EF migration has not been generated yet for the new Layer 3 schema.
+- Application-layer validator/handler enforcement for reserved namespaces and collision rejection has not been wired yet.
+- CQRS handlers do not yet call the governance policy; the service is ready but not yet attached to create/update custom-property flows.
+- Shared-definition create CQRS now calls the governance policy; update/delete flows and event-template/runtime flows still do not.
+- Shared-definition create and update CQRS now call the governance policy; template/runtime flows still do not.
+- Shared-definition delete uses feature-specific delete semantics so machine-key recreation is not blocked by stale soft-deleted rows.
 
 ### ⚠️ BLOCKERS
-- None
+- Workspace is still dirty with many unrelated user changes, so follow-up implementation must keep edits isolated.
 
 ---
 
 ## Quick Resume
 
-1. Read this file → understand current state
-2. Read `eav-custom-properties-tasks.md` → see what's next
-3. Read `eav-custom-properties-plan.md` → understand full design if needed
-4. Start with Phase 1 (Domain entities) — no dependencies
-5. Build after each phase to verify compilation
+1. Read this file first.
+2. Read `dev/active/eav-custom-properties/eav-custom-properties-plan.md` for the hardened architecture.
+3. Read `dev/active/eav-custom-properties/eav-custom-properties-tasks.md` for the updated phase breakdown.
+4. Start implementation from **Phase 1** only after preserving the Phase 0 architecture lock decisions already documented.
+5. Do **not** treat raw EAV tables as the final discovery/search/publication query model.
+6. Do **not** reintroduce live runtime inheritance for events.
+7. Do **not** use Layer 3 custom properties as the default home for sector-standard semantics.
 
 ---
 
-## Key Files
+## Key Architectural Position
 
-### New Files to Create
+### What EAV Is
 
-| File | Purpose | Status |
-|------|---------|--------|
-| `Explore.Domain/Enums/PropertyType.cs` | Property data type enum | ⏳ |
-| `Explore.Domain/Enums/EntityTypeName.cs` | Entity type discriminator enum | ⏳ |
-| `Explore.Domain/CustomPropertyDefinition.cs` | Property definition entity | ⏳ |
-| `Explore.Domain/CustomPropertyOption.cs` | Dropdown option entity | ⏳ |
-| `Explore.Domain/CustomPropertyValue.cs` | Property value entity | ⏳ |
-| `Explore.Persistence/Configurations/Entities/CustomPropertyDefinitionConfiguration.cs` | EF config | ⏳ |
-| `Explore.Persistence/Configurations/Entities/CustomPropertyOptionConfiguration.cs` | EF config | ⏳ |
-| `Explore.Persistence/Configurations/Entities/CustomPropertyValueConfiguration.cs` | EF config | ⏳ |
-| `Explore.Application/Contracts/Persistence/ICustomPropertyDefinitionRepository.cs` | Repo interface | ⏳ |
-| `Explore.Application/Contracts/Persistence/ICustomPropertyValueRepository.cs` | Repo interface | ⏳ |
-| `Explore.Persistence/Repositories/CustomPropertyDefinitionRepository.cs` | Repo impl | ⏳ |
-| `Explore.Persistence/Repositories/CustomPropertyValueRepository.cs` | Repo impl | ⏳ |
+EAV is the platform's:
 
-### Existing Files to Modify
+- tenant customization layer
+- long-tail extension mechanism
+- UI-flexible configuration model
+- local metadata / extension surface
 
-| File | Change | Status |
-|------|--------|--------|
-| `Explore.Domain/Event.cs:109` | Remove MetadataJson, add appearance columns | ⏳ |
-| `Explore.Domain/Organization.cs:60` | Remove MetadataJson, add appearance columns | ⏳ |
-| `Explore.Domain/Group.cs:33` | Remove MetadataJson, add branding columns | ⏳ |
-| `Explore.Persistence/.../EventConfiguration.cs:99-101` | Remove jsonb config, add appearance columns | ⏳ |
-| `Explore.Persistence/.../OrganizationConfiguration.cs:31` | Remove jsonb config, add appearance columns | ⏳ |
-| `Explore.Persistence/.../GroupConfiguration.cs:30` | Remove jsonb config, add branding columns | ⏳ |
-| `Explore.Persistence/ExploreDbContext.cs` | Add 3 DbSets + query filters | ⏳ |
-| `Explore.Persistence/PersistenceServicesRegistration.cs` | Register new repos | ⏳ |
-| `Explore.Application/DTOs/Event/CreateEventDto.cs:63` | Remove MetadataJson, add appearance | ⏳ |
-| `Explore.Application/DTOs/Event/UpdateEventDto.cs:51` | Remove MetadataJson, add appearance | ⏳ |
-| `Explore.Application/DTOs/Event/EventDto.cs:100` | Remove MetadataJson, add appearance | ⏳ |
-| `Explore.Application/DTOs/Organization/*.cs` | Remove MetadataJson (4 files) | ⏳ |
-| `Explore.Application/DTOs/Group/*.cs` | Remove MetadataJson (4 files) | ⏳ |
-| `Explore.Application/Specifications/Events/EventSubqueryFilter.cs:132-204` | Remove JSONB filters | ⏳ |
-| `Explore.Persistence/Repositories/EventRepository.cs:279-287` | Remove JSONB cases | ⏳ |
-| `Explore.Application/Features/Events/.../GetEventListRequest.cs:225-234` | Remove MetadataJson params | ⏳ |
-| `Explore.Application/Features/Events/.../GetEventListRequestHandler.cs:157-161` | Remove MetadataJson dispatch | ⏳ |
-| `Explore.Application/Features/Organizations/.../UpdateOrganizationDetailsCommandHandler.cs:76` | Use appearance columns | ⏳ |
-| `Explore.Application/Features/Groups/.../UpdateGroupCommandHandler.cs:77` | Use branding columns | ⏳ |
-| `Explore.API/Controllers/EventController.cs:151-152` | Remove MetadataJson query params | ⏳ |
-| `Explore.Blazor.Client/Helpers/EventAppearanceMetadataHelper.cs` | Refactor: no more JSON parse | ⏳ |
-| `Explore.Blazor.Client/Helpers/OrganizationAppearanceMetadataHelper.cs` | Refactor | ⏳ |
-| `Explore.Blazor.Client/Helpers/GroupBrandingMetadataHelper.cs` | Refactor | ⏳ |
-| Blazor pages (9 files) | Use appearance columns | ⏳ |
-| `Explore.Application/Profiles/MappingProfile.cs` | Add EAV mappings | ⏳ |
+### What EAV Is Not
+
+EAV is **not** the sole persistence model for:
+
+- discovery-critical event semantics
+- ranking logic
+- moderation/trust contracts
+- publication/export contracts
+- cross-instance stable semantics
+- analytics-critical canonical fields
+
+If a property becomes central to those areas, it must be:
+
+- promoted to a first-class field, or
+- projected into a governed read model with explicit semantics
+
+---
+
+## Approved Runtime Model
+
+### Layer 1 - Universal Event Core
+
+- universal event semantics stay on `Event` and related core relational entities
+- this remains the shared model across all sectors/domains
+
+### Layer 2 - Typed Sector Profiles / Aspects
+
+- sector-standard semantics belong in first-class typed schema
+- current repo precedent already exists via `EventIslamicAspect`, `EventTechAspect`, and `EventSessionIslamicAspect`
+- Layer 2 stays directly queryable, indexable, and policy-friendly
+
+### Organization + Group
+
+- tenant-scoped shared custom-property definitions remain in scope
+- still typed, normalized, namespaced, and governed
+
+### Event
+
+- event templates define reusable versioned blueprints
+- event creation instantiates event-local definitions/options/initial values
+- event runtime reads use only event-local state
+- template sync is explicit, version-aware, and operator-driven
+- this is Layer 3 behavior, not a replacement for Layer 2 typed schema
+
+### Projection Layer
+
+- searchable/filterable/exportable/moderation-relevant custom properties are projected into dedicated read models
+- discovery and hot query paths must not depend on raw EAV joins alone
 
 ---
 
@@ -90,82 +143,183 @@ ABOUTME: Read this first when resuming work on this task.
 
 | # | Decision | Rationale |
 |---|----------|-----------|
-| 1 | **EAV, not JSONB** | Plane uses normalized tables. Enables typed queries, validation, schema evolution |
-| 2 | **3 entities** (Definition, Option, Value) | Minimal viable model; Options are separate for dropdown/select property types |
-| 3 | **EntityTypeName enum** as discriminator | Allows same EAV system for Event, Organization, Group without separate tables |
-| 4 | **Optional EventTypeId scoping** | Conference events can have different custom props than Workshops (like Plane's IssueType) |
-| 5 | **Typed value columns** | TextValue/NumberValue/BooleanValue/DateTimeValue/OptionId — better indexing and querying vs string |
-| 6 | **Polymorphic EntityId** (no DB FK) | One value table for all entity types; discriminated by definition's EntityTypeName |
-| 7 | **Appearance → dedicated columns** | System-defined visual settings don't belong in user-defined custom fields |
-| 8 | **No feature toggle** | Per user: EAV is always active, no settings to enable |
-| 9 | **No data migration** | Project is in development; old MetadataJson data is discarded |
+| 1 | **EAV is an extension layer** | Prevents custom properties from quietly becoming the canonical semantic contract |
+| 2 | **Layer 2 typed schema is first-class** | Sector-standard semantics need relational fields, FKs, indexes, and direct moderation/policy support |
+| 3 | **Events use template instantiation + explicit sync** | Runtime behavior stays deterministic while still allowing controlled evolution |
+| 4 | **Machine identity uses `Namespace + Key`** | Display labels can change without breaking integrations, sync, or governance |
+| 5 | **Display text is mutable** | Supports localization and admin renaming without semantic drift |
+| 6 | **Multi-value semantics are explicit** | One row per value plus `Ordinal` avoids ambiguity for ordering and uniqueness |
+| 7 | **Validation is typed and governed** | Avoids opaque validation strings and accidental rule DSLs |
+| 8 | **Exposure/publication semantics are first-class** | Visibility, searchability, exportability, moderation relevance, and analytics relevance are explicit |
+| 9 | **Projection strategy is in scope now** | Raw EAV is not sufficient for hot discovery/filter/search paths |
+| 10 | **Template provenance is versioned** | Support/debugging must explain which template version created or synced an event |
+| 11 | **Historical values survive retirement** | Enterprise supportability requires explainable historical state |
+| 12 | **Dedicated appearance/branding columns stay outside EAV** | These are first-class product concepts, not arbitrary metadata |
+| 13 | **Platform and tenant semantics can coexist via namespaces** | Enables system-owned property packs without breaking tenant flexibility |
+
+---
+
+## Repo And Research Signals
+
+### Repo Signals
+
+- `Explore.Domain/Settings/SettingRegistry.cs`
+  - stable machine keys and explicit configuration governance already exist in the repo
+- `Explore.Domain/Settings/SettingDefinition.cs`
+  - typed settings metadata and constrained configuration are already familiar concepts here
+- `docs/ARCHITECTURE.md`
+  - supports separation between canonical persistence, application orchestration, and read-model serving
+- `docs/EXTENSIBILITY.md`
+  - existing extensibility model already prefers explicit composition, not magical inheritance
+- `docs/MODULAR_EVENTS.md`
+  - current repo already models Layer 2 through typed 1:1 aspect tables with direct filters and module guards
+- `Explore.Domain/Event.cs`
+  - current code already uses first-class event appearance fields and a `StorageObject` reference instead of a metadata blob
+
+### AT Protocol Signals
+
+- canonical records are the interoperable contract, not arbitrary metadata bags
+- labels/metadata overlays are separate from canonical records
+- app-view aggregation sits above the canonical layer
+- namespaced ownership is explicit
+
+### Translation To This Plan
+
+- raw custom-property rows are internal extension/configuration data
+- publication/discovery/search/export behavior must flow through governed projections
+- machine keys and namespaces are mandatory so local extensions do not masquerade as global semantics
+- sector-standard semantics should follow the repo's existing typed aspect/profile pattern instead of deepening Layer 3 EAV
+
+---
+
+## New Entity Families Planned
+
+| Family | Purpose |
+|--------|---------|
+| Shared custom-property entities | Tenant-scoped Organization / Group extensions with namespaced identity and typed governance |
+| Typed sector profile/aspect entities | First-class Layer 2 schema for domain-standard event semantics |
+| Event template entities | Versioned reusable event blueprints |
+| Event runtime entities | Event-owned definitions/options/values after instantiation or sync |
+| Projection entities | Read-optimized searchable/filterable/exportable event custom-property views |
+
+## Implemented In Current Slice
+
+### Updated Existing Files
+
+- `Explore.Domain/CustomPropertyDefinition.cs`
+- `Explore.Domain/CustomPropertyOption.cs`
+- `Explore.Domain/CustomPropertyValue.cs`
+- `Explore.Persistence/Configurations/Entities/CustomPropertyDefinitionConfiguration.cs`
+- `Explore.Persistence/Configurations/Entities/CustomPropertyOptionConfiguration.cs`
+- `Explore.Persistence/Configurations/Entities/CustomPropertyValueConfiguration.cs`
+- `Explore.Persistence/ExploreDbContext.cs`
+
+### New Files Added
+
+- `Explore.Domain/Enums/ExposureLevel.cs`
+- `Explore.Domain/EventTemplate.cs`
+- `Explore.Domain/EventTemplateCustomPropertyDefinition.cs`
+- `Explore.Domain/EventTemplateCustomPropertyOption.cs`
+- `Explore.Domain/EventCustomPropertyDefinition.cs`
+- `Explore.Domain/EventCustomPropertyOption.cs`
+- `Explore.Domain/EventCustomPropertyValue.cs`
+- `Explore.Domain/EventCustomPropertyProjection.cs`
+- `Explore.Persistence/Configurations/Entities/EventTemplateConfiguration.cs`
+- `Explore.Persistence/Configurations/Entities/EventTemplateCustomPropertyDefinitionConfiguration.cs`
+- `Explore.Persistence/Configurations/Entities/EventTemplateCustomPropertyOptionConfiguration.cs`
+- `Explore.Persistence/Configurations/Entities/EventCustomPropertyDefinitionConfiguration.cs`
+- `Explore.Persistence/Configurations/Entities/EventCustomPropertyOptionConfiguration.cs`
+- `Explore.Persistence/Configurations/Entities/EventCustomPropertyValueConfiguration.cs`
+- `Explore.Persistence/Configurations/Entities/EventCustomPropertyProjectionConfiguration.cs`
+
+---
+
+## Required Model Features
+
+### Identity And Namespace
+
+- `Namespace`
+- `Key`
+- normalized lowercase machine identity via `CustomPropertyIdentity`
+- mutable `DisplayName`
+- optional system-ownership marker
+
+### Value And Validation
+
+- typed value columns
+- `Ordinal` on value rows
+- explicit typed validation metadata (`MinLength`, `MaxLength`, `RegexPattern`, `MinNumber`, `MaxNumber`, `MinDateTime`, `MaxDateTime`, `AllowedUrlSchemes`)
+
+### Exposure / Governance
+
+- `ExposureLevel`
+- `IsSearchable`
+- `IsFilterable`
+- `IsExportable`
+- `IsModerationRelevant`
+- `IsAnalyticsRelevant`
+- `IsSystemOwned`
+
+### Provenance / Lifecycle
+
+- `TemplateKey`
+- `Version`
+- `SourceTemplateVersion`
+- `InstantiatedAt`
+- `LastSyncedFromTemplateAt`
+- source-id-first sync matching with `Namespace + Key` fallback only for repair/backfill
 
 ---
 
 ## Technical Constraints
 
-- **Repositories return entities, never DTOs** — mapping in handlers
-- **Validators manually instantiated** — no DI
-- **Commands return `BaseCommandResponse<Guid>`**
-- **File-scoped namespaces** for all new files
-- **ABOUTME headers** on all new files
-- **Audit fields** (CreatedAt/By, UpdatedAt/By) via `IAuditableEntity`
-- **Soft delete** (IsDeleted, DeletedAt/By) via `ISoftDeletable`
-- **Named query filter**: `.HasQueryFilter(name: "SoftDelete", predicate: e => !e.IsDeleted)`
-- **Guid PK** for new entities (core aggregates)
-- **int PK** for lookups only (EventType already exists as int)
-- **ConcurrencyStamp** not required for EAV entities (high-write, last-write-wins is acceptable)
+- Repositories return entities, never DTOs.
+- Validators are manually instantiated, not injected.
+- Commands return `BaseCommandResponse<Guid>` where that convention applies.
+- File-scoped namespaces for new C# files.
+- ABOUTME header on all new files.
+- New entities follow audit + soft-delete interfaces where appropriate.
+- Use named soft-delete query filters.
+- Avoid generic abstractions that blur the boundary between template rows, event runtime rows, and projection rows.
+- Do not use raw EAV-only queries for discovery-critical reads.
+- Do not route sector-standard fields into Layer 3 when the repo already has a typed Layer 2 pattern.
 
 ---
 
-## Entity Interface Signatures (For Reference)
+## Implementation Guardrails
 
-```csharp
-public interface ITenantEntity { Guid TenantId { get; set; } }
-public interface IAuditableEntity {
-    DateTime CreatedAt { get; set; }
-    Guid? CreatedBy { get; set; }
-    DateTime? UpdatedAt { get; set; }
-    Guid? UpdatedBy { get; set; }
-}
-public interface ISoftDeletable {
-    bool IsDeleted { get; set; }
-    DateTime? DeletedAt { get; set; }
-    Guid? DeletedBy { get; set; }
-}
-```
+### Must Do
 
-```csharp
-public interface IGenericRepository<T, TKey> where T : class {
-    Task<T?> GetById(TKey id);
-    Task<IReadOnlyList<T>> GetAll();
-    Task<(IReadOnlyList<T> Items, int TotalCount)> GetAllPaged(int pageNumber, int pageSize);
-    Task<bool> Exists(TKey id);
-    Task<T> Create(T entity);
-    Task Update(T entity);
-    Task Delete(T entity);
-    Task HardDelete(T entity);
-}
-```
+- Preserve the rule that EAV is extension/configuration, not the universal semantic contract.
+- Preserve the 3-layer split: universal core, typed sector profile, and local custom extension.
+- Make event creation + template instantiation transactional.
+- Make template diff/sync explicit and version-aware.
+- Use namespaced machine keys in all uniqueness rules and APIs.
+- Route all future Layer 3 create/update handlers through `ICustomPropertyGovernancePolicy` before persistence.
+- Keep the first shared-definition slice limited to `Organization` / `Group` until update/delete and option-edit semantics are stable.
+- Reuse the shared-definition repository transaction pattern for future event-template and event-runtime option replacement flows.
+- Keep projection updates part of the implementation, not an afterthought.
+- Preserve historical values when definitions/options are retired.
 
-```csharp
-public class BaseCommandResponse<TKey> {
-    public TKey? Id { get; set; }
-    public bool Success { get; set; }
-    public string? Message { get; set; }
-    public List<string>? Errors { get; set; }
-}
-```
+### Must Not Do
+
+- No runtime merge engine for event definitions.
+- No opaque `ValidationRules` string/DSL.
+- No reliance on mutable display labels for machine identity.
+- No hidden exposure semantics inferred from type.
+- No fallback to `MetadataJson` compatibility paths.
+- No raw EAV-heavy search/discovery path as the long-term production design.
+- No sector-standard fields in Layer 3 EAV as the first destination.
 
 ---
 
 ## Related Docs
 
-- `CLAUDE.md` — Project rules
-- `docs/DOMAIN.md` — Domain model (must update after implementation)
-- `docs/ARCHITECTURE.md` — Architecture (must update)
-- `docs/EXTENSIBILITY.md` — Extensibility model (must update — currently references MetadataJson)
-- `docs/GOVERNANCE.md` — Naming conventions and patterns
+- `CLAUDE.md`
+- `docs/ARCHITECTURE.md`
+- `docs/EXTENSIBILITY.md`
+- `docs/DOMAIN.md`
+- `docs/QUICK_REFERENCE.md`
 - `.claude/skills/clean-architecture-rules/SKILL.md`
 - `.claude/skills/cqrs-mediatr-guidelines/SKILL.md`
 - `.claude/skills/dotnet-efcore-guidelines/SKILL.md`

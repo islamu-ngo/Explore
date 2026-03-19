@@ -1,9 +1,10 @@
 // ABOUTME: Strongly-typed Branding setting group resolved via batch loading.
-// ABOUTME: Groups all tenant-overridable branding settings (display name, logos, CSS).
+// ABOUTME: Keys align to BrandingSettingDefinitions via GovernanceSettingKeys.Branding.
 
 namespace Explore.Application.Settings.Groups;
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Domain.Constants;
 
 /// <summary>
 /// Strongly-typed group for white-label branding settings.
@@ -17,19 +18,21 @@ public class BrandingSettingGroup : ISettingGroup
 
     public static IEnumerable<string> SettingKeys =>
     [
-        "branding.display_name", "branding.logo_url",
-        "branding.favicon_url", "branding.custom_css_url"
+        GovernanceSettingKeys.Branding.DisplayName,
+        GovernanceSettingKeys.Branding.LogoUrl,
+        GovernanceSettingKeys.Branding.FaviconUrl,
+        GovernanceSettingKeys.Branding.CustomCssUrl
     ];
 
     public void Populate(IReadOnlyDictionary<string, ResolvedSetting> settings)
     {
-        if (settings.TryGetValue("branding.display_name", out var name))
+        if (settings.TryGetValue(GovernanceSettingKeys.Branding.DisplayName, out var name))
             DisplayName = SettingValueSerializer.Deserialize(name.Value, "ISLAMU Explore");
-        if (settings.TryGetValue("branding.logo_url", out var logo))
+        if (settings.TryGetValue(GovernanceSettingKeys.Branding.LogoUrl, out var logo))
             LogoUrl = SettingValueSerializer.DeserializeString(logo.Value);
-        if (settings.TryGetValue("branding.favicon_url", out var favicon))
+        if (settings.TryGetValue(GovernanceSettingKeys.Branding.FaviconUrl, out var favicon))
             FaviconUrl = SettingValueSerializer.DeserializeString(favicon.Value);
-        if (settings.TryGetValue("branding.custom_css_url", out var css))
+        if (settings.TryGetValue(GovernanceSettingKeys.Branding.CustomCssUrl, out var css))
             CustomCssUrl = SettingValueSerializer.DeserializeString(css.Value);
     }
 }

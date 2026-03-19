@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Text;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Settings;
 using Explore.Infrastructure.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -16,7 +17,7 @@ namespace Event.Application.UnitTests.Behaviors;
 public class CerbosAuthorizationServiceTests : IDisposable
 {
     private readonly IAdminContext _adminContext;
-    private readonly ISettingsResolver _settingsResolver;
+    private readonly IHierarchicalSettingsResolver _settingsResolver;
     private readonly ITenantContext _tenantContext;
     private readonly ILogger<CerbosAuthorizationService> _logger;
     private readonly FakeHttpClientFactory _httpClientFactory;
@@ -25,7 +26,7 @@ public class CerbosAuthorizationServiceTests : IDisposable
     public CerbosAuthorizationServiceTests()
     {
         _adminContext = Substitute.For<IAdminContext>();
-        _settingsResolver = Substitute.For<ISettingsResolver>();
+        _settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
         _tenantContext = Substitute.For<ITenantContext>();
         _logger = Substitute.For<ILogger<CerbosAuthorizationService>>();
 
@@ -132,7 +133,8 @@ public class CerbosAuthorizationServiceTests : IDisposable
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.GetAdminTenantIdsAsync(Arg.Any<CancellationToken>()).Returns([tenantId]);
         _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns([]);
-        _settingsResolver.CanOverrideAsync("events.require_approval", Arg.Any<CancellationToken>()).Returns(false);
+        _settingsResolver.ResolveWithMetadataAsync("events.require_approval", Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
+            .Returns(new ResolvedSetting { Key = "events.require_approval", IsLocked = true });
 
         _handler.ResponseFactory = _ => new HttpResponseMessage(HttpStatusCode.OK)
         {

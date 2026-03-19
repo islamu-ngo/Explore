@@ -2,7 +2,6 @@
 // ABOUTME: Uses slug and host hints to set the shared tenant accessor before application code touches tenant-scoped data.
 
 using Explore.Application.Constants;
-using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Infrastructure;
@@ -16,13 +15,6 @@ public sealed class ApiTenantResolutionMiddleware
     private static readonly Guid FallbackDefaultTenantId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000001");
     internal const string RequestedTenantIdItemKey = "__requested_tenant_id";
 
-    /// <summary>
-    /// Cached deployment mode from InstanceBootstrapState. Once onboarding completes
-    /// and sets a deployment mode, the middleware uses this instead of re-querying the DB.
-    /// Null = not yet checked; empty = checked but no completed onboarding found.
-    /// </summary>
-    private static volatile string? _cachedBootstrapDeploymentMode;
-
     private readonly RequestDelegate _next;
     private readonly DeploymentSettings _deploymentSettings;
 
@@ -32,16 +24,7 @@ public sealed class ApiTenantResolutionMiddleware
         _deploymentSettings = deploymentSettings.Value;
     }
 
-    /// <summary>
-    /// Invalidates the cached bootstrap deployment mode so the next request re-reads from DB.
-    /// Called by CompleteInstanceOnboardingCommandHandler after saving the deployment mode.
-    /// </summary>
-    public static void InvalidateBootstrapCache()
-    {
-        _cachedBootstrapDeploymentMode = null;
-    }
-
-    public async Task InvokeAsync(HttpContext context, IResolverConfigService resolverConfigService, ITenantSlugCache tenantSlugCache, ITenantContextAccessor tenantContextAccessor, IProblemDetailsService problemDetailsService, IInstanceBootstrapStateRepository bootstrapStateRepository)
+    public async Task InvokeAsync(HttpContext context, IResolverConfigService resolverConfigService, ITenantSlugCache tenantSlugCache, ITenantContextAccessor tenantContextAccessor, IProblemDetailsService problemDetailsService, IDeploymentModeProvider deploymentModeProvider)
     {
         if (!context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))
         {
@@ -61,7 +44,7 @@ public sealed class ApiTenantResolutionMiddleware
             return;
         }
 
-        if (IsSingleTenantMode(bootstrapStateRepository))
+        if (await deploymentModeProvider.IsSingleTenantAsync(context.RequestAborted))
         {
             var defaultTenantId = _deploymentSettings.DefaultTenantId != Guid.Empty
                 ? _deploymentSettings.DefaultTenantId
@@ -194,31 +177,4 @@ public sealed class ApiTenantResolutionMiddleware
         return prefix.Split('.', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?.Trim().ToLowerInvariant();
     }
 
-    /// <summary>
-    /// Checks if the deployment is in single-tenant mode by first checking config,
-    /// then falling back to the persisted InstanceBootstrapState from the database.
-    /// The DB result is cached statically to avoid repeated queries.
-    /// </summary>
-    private bool IsSingleTenantMode(IInstanceBootstrapStateRepository bootstrapStateRepository)
-    {
-        if (_deploymentSettings.IsSingleTenant)
-        {
-            return true;
-        }
-
-        var cached = _cachedBootstrapDeploymentMode;
-        if (cached != null)
-        {
-            return cached.Equals("SingleTenant", StringComparison.OrdinalIgnoreCase);
-        }
-
-        // Synchronous DB check — runs once per app lifetime (until cache is invalidated).
-        // Using GetAwaiter().GetResult() because middleware InvokeAsync is already async
-        // but this method is called in a sync context for the branching logic.
-        var bootstrap = bootstrapStateRepository.GetCurrent().GetAwaiter().GetResult();
-        var mode = bootstrap?.IsCompleted == true ? bootstrap.SelectedDeploymentMode : string.Empty;
-        _cachedBootstrapDeploymentMode = mode ?? string.Empty;
-
-        return (mode ?? string.Empty).Equals("SingleTenant", StringComparison.OrdinalIgnoreCase);
-    }
 }

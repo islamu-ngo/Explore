@@ -1,19 +1,22 @@
-ABOUTME: Extensibility model implemented in this codebase (modules + event aspects).
-ABOUTME: Focuses on what exists today and explicitly calls out partial or non-wired parts.
+ABOUTME: Extensibility model implemented in this codebase (modules, typed sector schema, and Layer 3 custom properties).
+ABOUTME: Focuses on what exists today and documents the boundary between typed sector semantics and governed custom extensions.
 
 # Extensibility
 
 ## Implemented Building Blocks
 
-1. Aspect entities for events:
+1. Layer 2 typed schema for events:
    - `EventIslamicAspect` (1:1 with `Event` via shared PK `Id`)
    - `EventTechAspect` (1:1 with `Event` via shared PK `Id`)
    - `EventSessionIslamicAspect` (1:1 with `EventSession` via shared key `EventSessionId`)
 2. Module governance entities:
    - `ModuleDefinition` (global catalog)
    - `TenantCapability` (tenant-level enable/disable state)
-3. Optional flexible metadata:
-   - `Event.MetadataJson` (`jsonb`) for ad hoc key/value data.
+3. Layer 3 governed custom-property entities:
+   - `CustomPropertyDefinition`, `CustomPropertyOption`, `CustomPropertyValue` for shared Organization / Group extension catalogs
+   - `EventTemplate`, `EventTemplateCustomPropertyDefinition`, `EventTemplateCustomPropertyOption` for versioned event blueprints
+   - `EventCustomPropertyDefinition`, `EventCustomPropertyOption`, `EventCustomPropertyValue` for event-local runtime extension state
+   - `EventCustomPropertyProjection` for derived read/query optimization
 
 ## Module Keys And Defaults
 
@@ -61,10 +64,32 @@ Blazor event list uses these flags to control filter/UI exposure.
 2. `TechEventStrategy.IsApplicable` currently returns `false`, so strategy-based tech logic is not active in create flow.
 3. `WizardSchemaUrl` and `/api/module/{moduleKey}/schema` exist, but there is no full schema-driven dynamic form pipeline wired in the current Blazor app.
 4. Modules are compile-time application modules, not runtime plugin loading.
+5. Layer 3 custom properties are now modeled strongly enough that they need explicit governance: reserved namespaces, collision rules, projection lifecycle, and provenance/version support are part of the architecture.
+
+## Layer Boundary
+
+The platform uses three layers for event semantics:
+
+1. Layer 1 universal core fields.
+2. Layer 2 typed sector schema (`EventIslamicAspect`, `EventTechAspect`, `EventSessionIslamicAspect`).
+3. Layer 3 custom properties for local long-tail extension.
+
+Layer 3 must not redefine Layer 2 meaning. If a field is standard across a sector or is required for filtering, moderation, policy, ranking, publication, or export, it must not live only in Layer 3.
+
+## Projection Lifecycle
+
+`EventCustomPropertyProjection` exists only as a derived read model.
+
+- source of truth remains event-local custom-property rows plus Layer 1/Layer 2 typed schema
+- projection rows are atomic per projected value, not one merged row per property
+- only projection-relevant properties are copied into projection rows
+- projection rows are rebuildable and invalidated when source definitions, flags, options, or values change
+- projections optimize discovery/filter/export/moderation reads; they do not replace typed policy truth
 
 ## Related
 
 - [MODULAR_EVENTS.md](MODULAR_EVENTS.md)
+- [CUSTOM_PROPERTIES.md](CUSTOM_PROPERTIES.md)
 - [DOMAIN.md](DOMAIN.md)
 - [MULTI_TENANCY.md](MULTI_TENANCY.md)
 

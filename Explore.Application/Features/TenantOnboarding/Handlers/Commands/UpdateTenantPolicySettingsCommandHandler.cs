@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.TenantPolicy;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.TenantOnboarding.Requests.Commands;
 using Explore.Application.Responses;
@@ -65,7 +66,7 @@ public class UpdateTenantPolicySettingsCommandHandler : IRequestHandler<UpdateTe
         return await _adminContext.IsInstanceAdminAsync(cancellationToken);
     }
 
-    private async Task EnsureLockedSettingsAreNotModifiedAsync(Guid tenantId, DTOs.Onboarding.TenantPolicySettingsDto requestSettings)
+    private async Task EnsureLockedSettingsAreNotModifiedAsync(Guid tenantId, UpdateTenantPolicyRequest requestSettings)
     {
         var effectiveSettings = await _policySettingService.ReadEffectiveTenantSettingsAsync(tenantId);
         var failures = new List<ValidationFailure>();

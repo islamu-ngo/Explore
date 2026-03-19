@@ -21,38 +21,38 @@ internal static class TenantPolicySettingHelpers
         ITenantRepository tenantRepository,
         Guid tenantId)
     {
-        var systemUserSubmission = await systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsUserSubmissionEnabled);
-        var systemOrgSubmission = await systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsOrganizationSubmissionEnabled);
-        var systemGroupSubmission = await systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsGroupSubmissionEnabled);
-        var systemRequireApproval = await systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsRequireApproval);
-        var systemRequireVerification = await systemSettingRepository.GetByKey(GovernanceSettingKeys.OrganizationsVerificationRequired);
-        var systemTenantCanOmitVerification = await systemSettingRepository.GetByKey(GovernanceSettingKeys.OrganizationsTenantCanOmitVerification);
-        var systemOrgSelfRegistration = await systemSettingRepository.GetByKey(GovernanceSettingKeys.OrganizationsSelfRegistrationEnabled);
-        var systemGroupSelfRegistration = await systemSettingRepository.GetByKey(GovernanceSettingKeys.GroupsSelfRegistrationEnabled);
-        var systemHomePage = await systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingDefaultPublicHomePage);
-        var systemInstanceBaseDomain = await systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsInstanceBaseDomain);
-        var systemAllowCustomDomain = await systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsAllowTenantCustomDomain);
-        var systemTenantSubdomain = await systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsTenantSubdomain);
-        var systemTenantCustomDomain = await systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsTenantCustomDomain);
-        var systemBrandDisplayName = await systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingDisplayName);
-        var systemBrandLogoUrl = await systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingLogoUrl);
-        var systemBrandFaviconUrl = await systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingFaviconUrl);
-        var systemBrandCustomCssUrl = await systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingCustomCssUrl);
+        var systemUserSubmission = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Events.UserSubmissionEnabled);
+        var systemOrgSubmission = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Events.OrganizationSubmissionEnabled);
+        var systemGroupSubmission = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Events.GroupSubmissionEnabled);
+        var systemRequireApproval = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Events.RequireApproval);
+        var systemRequireVerification = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Organizations.VerificationRequired);
+        var systemTenantCanOmitVerification = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Organizations.TenantCanOmitVerification);
+        var systemOrgSelfRegistration = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Organizations.SelfRegistrationEnabled);
+        var systemGroupSelfRegistration = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Groups.SelfRegistrationEnabled);
+        var systemHomePage = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.DefaultPublicHomePage);
+        var systemInstanceBaseDomain = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.InstanceBaseDomain);
+        var systemAllowCustomDomain = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.AllowTenantCustomDomain);
+        var systemTenantSubdomain = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.TenantSubdomain);
+        var systemTenantCustomDomain = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.TenantCustomDomain);
+        var systemBrandDisplayName = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.DisplayName);
+        var systemBrandLogoUrl = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.LogoUrl);
+        var systemBrandFaviconUrl = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.FaviconUrl);
+        var systemBrandCustomCssUrl = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.CustomCssUrl);
 
-        var tenantUserSubmission = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.EventsUserSubmissionEnabled);
-        var tenantOrgSubmission = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.EventsOrganizationSubmissionEnabled);
-        var tenantGroupSubmission = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.EventsGroupSubmissionEnabled);
-        var tenantRequireApproval = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.EventsRequireApproval);
-        var tenantRequireVerification = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.OrganizationsVerificationRequired);
-        var tenantOrgSelfRegistration = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.OrganizationsSelfRegistrationEnabled);
-        var tenantGroupSelfRegistration = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.GroupsSelfRegistrationEnabled);
-        var tenantHomePage = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.RoutingDefaultPublicHomePage);
-        var tenantSubdomain = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.DomainsTenantSubdomain);
-        var tenantCustomDomain = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.DomainsTenantCustomDomain);
-        var tenantBrandDisplayName = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.BrandingDisplayName);
-        var tenantBrandLogoUrl = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.BrandingLogoUrl);
-        var tenantBrandFaviconUrl = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.BrandingFaviconUrl);
-        var tenantBrandCustomCssUrl = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.BrandingCustomCssUrl);
+        var tenantUserSubmission = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Events.UserSubmissionEnabled);
+        var tenantOrgSubmission = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Events.OrganizationSubmissionEnabled);
+        var tenantGroupSubmission = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Events.GroupSubmissionEnabled);
+        var tenantRequireApproval = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Events.RequireApproval);
+        var tenantRequireVerification = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Organizations.VerificationRequired);
+        var tenantOrgSelfRegistration = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Organizations.SelfRegistrationEnabled);
+        var tenantGroupSelfRegistration = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Groups.SelfRegistrationEnabled);
+        var tenantHomePage = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Routing.DefaultPublicHomePage);
+        var tenantSubdomain = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Domains.TenantSubdomain);
+        var tenantCustomDomain = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Domains.TenantCustomDomain);
+        var tenantBrandDisplayName = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Branding.DisplayName);
+        var tenantBrandLogoUrl = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Branding.LogoUrl);
+        var tenantBrandFaviconUrl = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Branding.FaviconUrl);
+        var tenantBrandCustomCssUrl = await tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Branding.CustomCssUrl);
 
         var tenant = await tenantRepository.GetById(tenantId);
         var fallbackSubdomain = NormalizeSubdomain(tenant?.Slug) ?? "default";
@@ -156,29 +156,29 @@ internal static class TenantPolicySettingHelpers
         Guid? actorUserId,
         TenantPolicySettingsDto settings)
     {
-        var userSubmissionSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsUserSubmissionEnabled);
-        var orgSubmissionSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsOrganizationSubmissionEnabled);
-        var groupSubmissionSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsGroupSubmissionEnabled);
-        var requireApprovalSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsRequireApproval);
-        var requireVerificationSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.OrganizationsVerificationRequired);
-        var canOmitVerificationSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.OrganizationsTenantCanOmitVerification);
-        var orgSelfRegSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.OrganizationsSelfRegistrationEnabled);
-        var groupSelfRegSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.GroupsSelfRegistrationEnabled);
-        var homePageSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingDefaultPublicHomePage);
-        var allowCustomDomainSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsAllowTenantCustomDomain);
-        var subdomainSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsTenantSubdomain);
-        var customDomainSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsTenantCustomDomain);
-        var brandDisplayNameSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingDisplayName);
-        var brandLogoUrlSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingLogoUrl);
-        var brandFaviconUrlSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingFaviconUrl);
-        var brandCustomCssUrlSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingCustomCssUrl);
+        var userSubmissionSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Events.UserSubmissionEnabled);
+        var orgSubmissionSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Events.OrganizationSubmissionEnabled);
+        var groupSubmissionSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Events.GroupSubmissionEnabled);
+        var requireApprovalSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Events.RequireApproval);
+        var requireVerificationSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Organizations.VerificationRequired);
+        var canOmitVerificationSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Organizations.TenantCanOmitVerification);
+        var orgSelfRegSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Organizations.SelfRegistrationEnabled);
+        var groupSelfRegSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Groups.SelfRegistrationEnabled);
+        var homePageSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.DefaultPublicHomePage);
+        var allowCustomDomainSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.AllowTenantCustomDomain);
+        var subdomainSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.TenantSubdomain);
+        var customDomainSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.TenantCustomDomain);
+        var brandDisplayNameSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.DisplayName);
+        var brandLogoUrlSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.LogoUrl);
+        var brandFaviconUrlSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.FaviconUrl);
+        var brandCustomCssUrlSetting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.CustomCssUrl);
         var tenant = await tenantRepository.GetById(tenantId);
         var fallbackSubdomain = NormalizeSubdomain(tenant?.Slug) ?? "default";
 
         await SetBooleanTenantOverrideAsync(
             tenantSettingRepository,
             tenantId,
-            GovernanceSettingKeys.EventsUserSubmissionEnabled,
+            GovernanceSettingKeys.Events.UserSubmissionEnabled,
             settings.AllowUserSubmittedEvents,
             userSubmissionSetting?.IsLocked != true,
             actorUserId);
@@ -186,7 +186,7 @@ internal static class TenantPolicySettingHelpers
         await SetBooleanTenantOverrideAsync(
             tenantSettingRepository,
             tenantId,
-            GovernanceSettingKeys.EventsOrganizationSubmissionEnabled,
+            GovernanceSettingKeys.Events.OrganizationSubmissionEnabled,
             settings.AllowOrganizationSubmittedEvents,
             orgSubmissionSetting?.IsLocked != true,
             actorUserId);
@@ -194,7 +194,7 @@ internal static class TenantPolicySettingHelpers
         await SetBooleanTenantOverrideAsync(
             tenantSettingRepository,
             tenantId,
-            GovernanceSettingKeys.EventsGroupSubmissionEnabled,
+            GovernanceSettingKeys.Events.GroupSubmissionEnabled,
             settings.AllowGroupSubmittedEvents,
             groupSubmissionSetting?.IsLocked != true,
             actorUserId);
@@ -202,7 +202,7 @@ internal static class TenantPolicySettingHelpers
         await SetBooleanTenantOverrideAsync(
             tenantSettingRepository,
             tenantId,
-            GovernanceSettingKeys.OrganizationsSelfRegistrationEnabled,
+            GovernanceSettingKeys.Organizations.SelfRegistrationEnabled,
             settings.AllowOrganizationSelfRegistration,
             orgSelfRegSetting?.IsLocked != true,
             actorUserId);
@@ -210,7 +210,7 @@ internal static class TenantPolicySettingHelpers
         await SetBooleanTenantOverrideAsync(
             tenantSettingRepository,
             tenantId,
-            GovernanceSettingKeys.GroupsSelfRegistrationEnabled,
+            GovernanceSettingKeys.Groups.SelfRegistrationEnabled,
             settings.AllowGroupSelfRegistration,
             groupSelfRegSetting?.IsLocked != true,
             actorUserId);
@@ -218,7 +218,7 @@ internal static class TenantPolicySettingHelpers
         await SetBooleanTenantOverrideAsync(
             tenantSettingRepository,
             tenantId,
-            GovernanceSettingKeys.EventsRequireApproval,
+            GovernanceSettingKeys.Events.RequireApproval,
             settings.RequireEventApproval,
             requireApprovalSetting?.IsLocked != true,
             actorUserId);
@@ -232,7 +232,7 @@ internal static class TenantPolicySettingHelpers
         await SetBooleanTenantOverrideAsync(
             tenantSettingRepository,
             tenantId,
-            GovernanceSettingKeys.OrganizationsVerificationRequired,
+            GovernanceSettingKeys.Organizations.VerificationRequired,
             effectiveRequireVerification,
             canTenantOmitVerification,
             actorUserId);
@@ -240,7 +240,7 @@ internal static class TenantPolicySettingHelpers
         await SetStringTenantOverrideAsync(
             tenantSettingRepository,
             tenantId,
-            GovernanceSettingKeys.RoutingDefaultPublicHomePage,
+            GovernanceSettingKeys.Routing.DefaultPublicHomePage,
             NormalizeHomePage(settings.PreferredHomePage),
             homePageSetting?.IsLocked != true,
             actorUserId);
@@ -248,7 +248,7 @@ internal static class TenantPolicySettingHelpers
         await SetStringTenantOverrideAsync(
             tenantSettingRepository,
             tenantId,
-            GovernanceSettingKeys.DomainsTenantSubdomain,
+            GovernanceSettingKeys.Domains.TenantSubdomain,
             NormalizeSubdomain(settings.Subdomain) ?? fallbackSubdomain,
             subdomainSetting?.IsLocked != true,
             actorUserId);
@@ -256,7 +256,7 @@ internal static class TenantPolicySettingHelpers
         await SetStringTenantOverrideAsync(
             tenantSettingRepository,
             tenantId,
-            GovernanceSettingKeys.DomainsTenantCustomDomain,
+            GovernanceSettingKeys.Domains.TenantCustomDomain,
             NormalizeOptionalHost(settings.CustomDomain),
             customDomainSetting?.IsLocked != true && DeserializeBoolean(allowCustomDomainSetting?.Value, true),
             actorUserId);
@@ -264,7 +264,7 @@ internal static class TenantPolicySettingHelpers
         await SetStringTenantOverrideAsync(
             tenantSettingRepository,
             tenantId,
-            GovernanceSettingKeys.BrandingDisplayName,
+            GovernanceSettingKeys.Branding.DisplayName,
             settings.BrandDisplayName,
             brandDisplayNameSetting?.IsLocked != true,
             actorUserId);
@@ -272,7 +272,7 @@ internal static class TenantPolicySettingHelpers
         await SetStringTenantOverrideAsync(
             tenantSettingRepository,
             tenantId,
-            GovernanceSettingKeys.BrandingLogoUrl,
+            GovernanceSettingKeys.Branding.LogoUrl,
             settings.BrandLogoUrl,
             brandLogoUrlSetting?.IsLocked != true,
             actorUserId);
@@ -280,7 +280,7 @@ internal static class TenantPolicySettingHelpers
         await SetStringTenantOverrideAsync(
             tenantSettingRepository,
             tenantId,
-            GovernanceSettingKeys.BrandingFaviconUrl,
+            GovernanceSettingKeys.Branding.FaviconUrl,
             settings.BrandFaviconUrl,
             brandFaviconUrlSetting?.IsLocked != true,
             actorUserId);
@@ -288,7 +288,7 @@ internal static class TenantPolicySettingHelpers
         await SetStringTenantOverrideAsync(
             tenantSettingRepository,
             tenantId,
-            GovernanceSettingKeys.BrandingCustomCssUrl,
+            GovernanceSettingKeys.Branding.CustomCssUrl,
             settings.BrandCustomCssUrl,
             brandCustomCssUrlSetting?.IsLocked != true,
             actorUserId);

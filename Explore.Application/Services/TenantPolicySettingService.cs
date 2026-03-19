@@ -2,11 +2,15 @@
 // ABOUTME: Applies tenant overrides with enforcement of instance-level delegation constraints.
 
 using System.Text.Json;
+using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
+using Explore.Application.DTOs.TenantPolicy;
+using Explore.Application.Notifications;
 using Explore.Domain;
 using Explore.Domain.Constants;
+using MediatR;
 
 namespace Explore.Application.Services;
 
@@ -18,72 +22,75 @@ public class TenantPolicySettingService : ITenantPolicySettingService
     private readonly ISystemSettingRepository _systemSettingRepository;
     private readonly ITenantSettingRepository _tenantSettingRepository;
     private readonly ITenantRepository _tenantRepository;
+    private readonly IMediator _mediator;
 
     public TenantPolicySettingService(
         ISystemSettingRepository systemSettingRepository,
         ITenantSettingRepository tenantSettingRepository,
-        ITenantRepository tenantRepository)
+        ITenantRepository tenantRepository,
+        IMediator mediator)
     {
         _systemSettingRepository = systemSettingRepository;
         _tenantSettingRepository = tenantSettingRepository;
         _tenantRepository = tenantRepository;
+        _mediator = mediator;
     }
 
     public async Task<TenantPolicySettingsDto> ReadEffectiveTenantSettingsAsync(Guid tenantId)
     {
-        var systemUserSubmission = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsUserSubmissionEnabled);
-        var systemOrgSubmission = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsOrganizationSubmissionEnabled);
-        var systemGroupSubmission = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsGroupSubmissionEnabled);
-        var systemRequireApproval = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsRequireApproval);
-        var systemEventCardClickOpensDetailPage = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsCardClickOpensDetailPage);
-        var systemRequireVerification = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.OrganizationsVerificationRequired);
-        var systemTenantCanOmitVerification = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.OrganizationsTenantCanOmitVerification);
-        var systemOrgSelfRegistration = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.OrganizationsSelfRegistrationEnabled);
-        var systemGroupSelfRegistration = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.GroupsSelfRegistrationEnabled);
-        var systemDeploymentMode = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DeploymentMode);
-        var systemTenantWhiteLabeling = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantWhiteLabelingEnabled);
-        var systemHomePage = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingDefaultPublicHomePage);
-        var systemInstanceBaseDomain = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsInstanceBaseDomain);
-        var systemAllowCustomDomain = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsAllowTenantCustomDomain);
-        var systemTenantSubdomain = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsTenantSubdomain);
-        var systemTenantCustomDomain = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsTenantCustomDomain);
-        var systemBrandDisplayName = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingDisplayName);
-        var systemBrandLogoUrl = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingLogoUrl);
-        var systemBrandFaviconUrl = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingFaviconUrl);
-        var systemBrandCustomCssUrl = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingCustomCssUrl);
-        var systemAllowTenantRenderOverride = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyAllowTenantOverride);
-        var systemLockPublicSeo = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyLockTenantPublicSeo);
-        var systemLockOperational = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyLockTenantOperational);
-        var systemLockAdmin = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyLockTenantAdmin);
-        var systemLockSmtp = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.GovernanceLockTenantSmtp);
-        var systemLockStorage = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.GovernanceLockTenantStorage);
-        var systemLockAnalytics = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.GovernanceLockTenantAnalytics);
-        var systemRenderPreset = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyPreset);
-        var systemRenderAdvanced = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyAdvancedEnabled);
-        var systemGlobalRenderMode = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyGlobalRenderMode);
-        var systemGlobalPrerender = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyGlobalPrerenderEnabled);
-        var systemPublicSeoRenderMode = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyPublicSeoRenderMode);
-        var systemPublicSeoPrerender = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyPublicSeoPrerenderEnabled);
-        var systemOperationalRenderMode = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyOperationalRenderMode);
-        var systemOperationalPrerender = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyOperationalPrerenderEnabled);
-        var systemAdminRenderMode = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyAdminRenderMode);
-        var systemAdminPrerender = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyAdminPrerenderEnabled);
+        var systemUserSubmission = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Events.UserSubmissionEnabled);
+        var systemOrgSubmission = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Events.OrganizationSubmissionEnabled);
+        var systemGroupSubmission = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Events.GroupSubmissionEnabled);
+        var systemRequireApproval = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Events.RequireApproval);
+        var systemEventCardClickOpensDetailPage = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Events.CardClickOpensDetailPage);
+        var systemRequireVerification = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Organizations.VerificationRequired);
+        var systemTenantCanOmitVerification = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Organizations.TenantCanOmitVerification);
+        var systemOrgSelfRegistration = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Organizations.SelfRegistrationEnabled);
+        var systemGroupSelfRegistration = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Groups.SelfRegistrationEnabled);
+        var systemDeploymentMode = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Deployment.Mode);
+        var systemTenantWhiteLabeling = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Tenants.WhiteLabelingEnabled);
+        var systemHomePage = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.DefaultPublicHomePage);
+        var systemInstanceBaseDomain = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.InstanceBaseDomain);
+        var systemAllowCustomDomain = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.AllowTenantCustomDomain);
+        var systemTenantSubdomain = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.TenantSubdomain);
+        var systemTenantCustomDomain = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.TenantCustomDomain);
+        var systemBrandDisplayName = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.DisplayName);
+        var systemBrandLogoUrl = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.LogoUrl);
+        var systemBrandFaviconUrl = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.FaviconUrl);
+        var systemBrandCustomCssUrl = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.CustomCssUrl);
+        var systemAllowTenantRenderOverride = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.AllowTenantOverride);
+        var systemLockPublicSeo = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.LockTenantPublicSeo);
+        var systemLockOperational = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.LockTenantOperational);
+        var systemLockAdmin = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.LockTenantAdmin);
+        var systemLockSmtp = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockSmtp);
+        var systemLockStorage = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockStorage);
+        var systemLockAnalytics = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockAnalytics);
+        var systemRenderPreset = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.Preset);
+        var systemRenderAdvanced = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.AdvancedEnabled);
+        var systemGlobalRenderMode = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.Fallback.RenderMode);
+        var systemGlobalPrerender = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.Fallback.PrerenderEnabled);
+        var systemPublicSeoRenderMode = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.PublicSeo.RenderMode);
+        var systemPublicSeoPrerender = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.PublicSeo.PrerenderEnabled);
+        var systemOperationalRenderMode = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.Operational.RenderMode);
+        var systemOperationalPrerender = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.Operational.PrerenderEnabled);
+        var systemAdminRenderMode = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.Admin.RenderMode);
+        var systemAdminPrerender = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.Admin.PrerenderEnabled);
 
-        var tenantUserSubmission = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.EventsUserSubmissionEnabled);
-        var tenantOrgSubmission = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.EventsOrganizationSubmissionEnabled);
-        var tenantGroupSubmission = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.EventsGroupSubmissionEnabled);
-        var tenantRequireApproval = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.EventsRequireApproval);
-        var tenantEventCardClickOpensDetailPage = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.EventsCardClickOpensDetailPage);
-        var tenantRequireVerification = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.OrganizationsVerificationRequired);
-        var tenantOrgSelfRegistration = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.OrganizationsSelfRegistrationEnabled);
-        var tenantGroupSelfRegistration = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.GroupsSelfRegistrationEnabled);
-        var tenantHomePage = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.RoutingDefaultPublicHomePage);
-        var tenantSubdomain = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.DomainsTenantSubdomain);
-        var tenantCustomDomain = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.DomainsTenantCustomDomain);
-        var tenantBrandDisplayName = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.BrandingDisplayName);
-        var tenantBrandLogoUrl = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.BrandingLogoUrl);
-        var tenantBrandFaviconUrl = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.BrandingFaviconUrl);
-        var tenantBrandCustomCssUrl = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.BrandingCustomCssUrl);
+        var tenantUserSubmission = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Events.UserSubmissionEnabled);
+        var tenantOrgSubmission = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Events.OrganizationSubmissionEnabled);
+        var tenantGroupSubmission = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Events.GroupSubmissionEnabled);
+        var tenantRequireApproval = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Events.RequireApproval);
+        var tenantEventCardClickOpensDetailPage = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Events.CardClickOpensDetailPage);
+        var tenantRequireVerification = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Organizations.VerificationRequired);
+        var tenantOrgSelfRegistration = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Organizations.SelfRegistrationEnabled);
+        var tenantGroupSelfRegistration = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Groups.SelfRegistrationEnabled);
+        var tenantHomePage = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Routing.DefaultPublicHomePage);
+        var tenantSubdomain = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Domains.TenantSubdomain);
+        var tenantCustomDomain = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Domains.TenantCustomDomain);
+        var tenantBrandDisplayName = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Branding.DisplayName);
+        var tenantBrandLogoUrl = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Branding.LogoUrl);
+        var tenantBrandFaviconUrl = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Branding.FaviconUrl);
+        var tenantBrandCustomCssUrl = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Branding.CustomCssUrl);
 
         var allowTenantRenderOverride = DeserializeBoolean(systemAllowTenantRenderOverride?.Value, false);
         var canOverridePublicSeo = allowTenantRenderOverride && !DeserializeBoolean(systemLockPublicSeo?.Value, false);
@@ -192,61 +199,61 @@ public class TenantPolicySettingService : ITenantPolicySettingService
             CanOverrideBrandCustomCssUrl = isTenantWhiteLabelingEnabled && systemBrandCustomCssUrl?.IsLocked != true,
             CanOverrideEventCardClickBehavior = canOverrideEventCardClickBehavior,
             RenderPolicyPreset = ResolveString(
-                allowTenantRenderOverride ? (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.RoutingRenderPolicyPreset))?.Value : null,
+                allowTenantRenderOverride ? (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Routing.RenderPolicy.Preset))?.Value : null,
                 systemRenderPreset?.Value,
                 "AllInteractiveServer",
                 allowTenantRenderOverride),
             EnableAdvancedRenderPolicyOverrides = allowTenantRenderOverride
                 ? ResolveBoolean(
-                    (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.RoutingRenderPolicyAdvancedEnabled))?.Value,
+                    (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Routing.RenderPolicy.AdvancedEnabled))?.Value,
                     systemRenderAdvanced?.Value,
                     false,
                     true)
                 : DeserializeBoolean(systemRenderAdvanced?.Value, false),
             GlobalRenderMode = ResolveString(
-                allowTenantRenderOverride ? (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.RoutingRenderPolicyGlobalRenderMode))?.Value : null,
+                allowTenantRenderOverride ? (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Routing.RenderPolicy.Fallback.RenderMode))?.Value : null,
                 systemGlobalRenderMode?.Value,
                 "InteractiveServer",
                 allowTenantRenderOverride),
             GlobalPrerenderEnabled = allowTenantRenderOverride
                 ? ResolveBoolean(
-                    (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.RoutingRenderPolicyGlobalPrerenderEnabled))?.Value,
+                    (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Routing.RenderPolicy.Fallback.PrerenderEnabled))?.Value,
                     systemGlobalPrerender?.Value,
                     false,
                     true)
                 : DeserializeBoolean(systemGlobalPrerender?.Value, false),
             PublicSeoRenderMode = ResolveString(
-                canOverridePublicSeo ? (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.RoutingRenderPolicyPublicSeoRenderMode))?.Value : null,
+                canOverridePublicSeo ? (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Routing.RenderPolicy.PublicSeo.RenderMode))?.Value : null,
                 systemPublicSeoRenderMode?.Value,
                 string.Empty,
                 canOverridePublicSeo),
             PublicSeoPrerenderEnabled = canOverridePublicSeo
                 ? ResolveBoolean(
-                    (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.RoutingRenderPolicyPublicSeoPrerenderEnabled))?.Value,
+                    (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Routing.RenderPolicy.PublicSeo.PrerenderEnabled))?.Value,
                     systemPublicSeoPrerender?.Value,
                     false,
                     true)
                 : DeserializeBoolean(systemPublicSeoPrerender?.Value, false),
             OperationalRenderMode = ResolveString(
-                canOverrideOperational ? (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.RoutingRenderPolicyOperationalRenderMode))?.Value : null,
+                canOverrideOperational ? (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Routing.RenderPolicy.Operational.RenderMode))?.Value : null,
                 systemOperationalRenderMode?.Value,
                 string.Empty,
                 canOverrideOperational),
             OperationalPrerenderEnabled = canOverrideOperational
                 ? ResolveBoolean(
-                    (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.RoutingRenderPolicyOperationalPrerenderEnabled))?.Value,
+                    (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Routing.RenderPolicy.Operational.PrerenderEnabled))?.Value,
                     systemOperationalPrerender?.Value,
                     false,
                     true)
                 : DeserializeBoolean(systemOperationalPrerender?.Value, false),
             AdminRenderMode = ResolveString(
-                canOverrideAdmin ? (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.RoutingRenderPolicyAdminRenderMode))?.Value : null,
+                canOverrideAdmin ? (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Routing.RenderPolicy.Admin.RenderMode))?.Value : null,
                 systemAdminRenderMode?.Value,
                 string.Empty,
                 canOverrideAdmin),
             AdminPrerenderEnabled = canOverrideAdmin
                 ? ResolveBoolean(
-                    (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.RoutingRenderPolicyAdminPrerenderEnabled))?.Value,
+                    (await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Routing.RenderPolicy.Admin.PrerenderEnabled))?.Value,
                     systemAdminPrerender?.Value,
                     false,
                     true)
@@ -261,31 +268,31 @@ public class TenantPolicySettingService : ITenantPolicySettingService
         };
     }
 
-    public async Task ApplyTenantSettingsAsync(Guid tenantId, Guid? actorUserId, TenantPolicySettingsDto settings)
+    public async Task ApplyTenantSettingsAsync(Guid tenantId, Guid? actorUserId, UpdateTenantPolicyRequest settings)
     {
-        var userSubmissionSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsUserSubmissionEnabled);
-        var orgSubmissionSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsOrganizationSubmissionEnabled);
-        var groupSubmissionSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsGroupSubmissionEnabled);
-        var requireApprovalSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsRequireApproval);
-        var eventCardClickSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.EventsCardClickOpensDetailPage);
-        var requireVerificationSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.OrganizationsVerificationRequired);
-        var canOmitVerificationSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.OrganizationsTenantCanOmitVerification);
-        var orgSelfRegSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.OrganizationsSelfRegistrationEnabled);
-        var groupSelfRegSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.GroupsSelfRegistrationEnabled);
-        var deploymentModeSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DeploymentMode);
-        var tenantWhiteLabelingSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantWhiteLabelingEnabled);
-        var homePageSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingDefaultPublicHomePage);
-        var allowCustomDomainSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsAllowTenantCustomDomain);
-        var subdomainSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsTenantSubdomain);
-        var customDomainSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.DomainsTenantCustomDomain);
-        var brandDisplayNameSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingDisplayName);
-        var brandLogoUrlSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingLogoUrl);
-        var brandFaviconUrlSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingFaviconUrl);
-        var brandCustomCssUrlSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.BrandingCustomCssUrl);
-        var allowTenantRenderOverrideSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyAllowTenantOverride);
-        var lockPublicSeoSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyLockTenantPublicSeo);
-        var lockOperationalSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyLockTenantOperational);
-        var lockAdminSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.RoutingRenderPolicyLockTenantAdmin);
+        var userSubmissionSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Events.UserSubmissionEnabled);
+        var orgSubmissionSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Events.OrganizationSubmissionEnabled);
+        var groupSubmissionSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Events.GroupSubmissionEnabled);
+        var requireApprovalSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Events.RequireApproval);
+        var eventCardClickSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Events.CardClickOpensDetailPage);
+        var requireVerificationSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Organizations.VerificationRequired);
+        var canOmitVerificationSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Organizations.TenantCanOmitVerification);
+        var orgSelfRegSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Organizations.SelfRegistrationEnabled);
+        var groupSelfRegSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Groups.SelfRegistrationEnabled);
+        var deploymentModeSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Deployment.Mode);
+        var tenantWhiteLabelingSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Tenants.WhiteLabelingEnabled);
+        var homePageSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.DefaultPublicHomePage);
+        var allowCustomDomainSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.AllowTenantCustomDomain);
+        var subdomainSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.TenantSubdomain);
+        var customDomainSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Domains.TenantCustomDomain);
+        var brandDisplayNameSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.DisplayName);
+        var brandLogoUrlSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.LogoUrl);
+        var brandFaviconUrlSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.FaviconUrl);
+        var brandCustomCssUrlSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.CustomCssUrl);
+        var allowTenantRenderOverrideSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.AllowTenantOverride);
+        var lockPublicSeoSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.LockTenantPublicSeo);
+        var lockOperationalSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.LockTenantOperational);
+        var lockAdminSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.LockTenantAdmin);
         var tenant = await _tenantRepository.GetById(tenantId);
         var fallbackSubdomain = NormalizeSubdomain(tenant?.Slug) ?? "default";
         var isMultiTenant = DeserializeString(deploymentModeSetting?.Value, "SingleTenant").Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
@@ -293,35 +300,35 @@ public class TenantPolicySettingService : ITenantPolicySettingService
 
         await SetBooleanTenantOverrideAsync(
             tenantId,
-            GovernanceSettingKeys.EventsUserSubmissionEnabled,
+            GovernanceSettingKeys.Events.UserSubmissionEnabled,
             settings.AllowUserSubmittedEvents,
             userSubmissionSetting?.IsLocked != true,
             actorUserId);
 
         await SetBooleanTenantOverrideAsync(
             tenantId,
-            GovernanceSettingKeys.EventsOrganizationSubmissionEnabled,
+            GovernanceSettingKeys.Events.OrganizationSubmissionEnabled,
             settings.AllowOrganizationSubmittedEvents,
             orgSubmissionSetting?.IsLocked != true,
             actorUserId);
 
         await SetBooleanTenantOverrideAsync(
             tenantId,
-            GovernanceSettingKeys.EventsGroupSubmissionEnabled,
+            GovernanceSettingKeys.Events.GroupSubmissionEnabled,
             settings.AllowGroupSubmittedEvents,
             groupSubmissionSetting?.IsLocked != true,
             actorUserId);
 
         await SetBooleanTenantOverrideAsync(
             tenantId,
-            GovernanceSettingKeys.EventsRequireApproval,
+            GovernanceSettingKeys.Events.RequireApproval,
             settings.RequireEventApproval,
             requireApprovalSetting?.IsLocked != true,
             actorUserId);
 
         await SetBooleanTenantOverrideAsync(
             tenantId,
-            GovernanceSettingKeys.EventsCardClickOpensDetailPage,
+            GovernanceSettingKeys.Events.CardClickOpensDetailPage,
             settings.EventCardClickOpensDetailPage,
             eventCardClickSetting?.IsLocked != true,
             actorUserId);
@@ -334,70 +341,70 @@ public class TenantPolicySettingService : ITenantPolicySettingService
 
         await SetBooleanTenantOverrideAsync(
             tenantId,
-            GovernanceSettingKeys.OrganizationsVerificationRequired,
+            GovernanceSettingKeys.Organizations.VerificationRequired,
             effectiveRequireVerification,
             canTenantOmitVerification,
             actorUserId);
 
         await SetBooleanTenantOverrideAsync(
             tenantId,
-            GovernanceSettingKeys.OrganizationsSelfRegistrationEnabled,
+            GovernanceSettingKeys.Organizations.SelfRegistrationEnabled,
             settings.AllowOrganizationSelfRegistration,
             orgSelfRegSetting?.IsLocked != true,
             actorUserId);
 
         await SetBooleanTenantOverrideAsync(
             tenantId,
-            GovernanceSettingKeys.GroupsSelfRegistrationEnabled,
+            GovernanceSettingKeys.Groups.SelfRegistrationEnabled,
             settings.AllowGroupSelfRegistration,
             groupSelfRegSetting?.IsLocked != true,
             actorUserId);
 
         await SetStringTenantOverrideAsync(
             tenantId,
-            GovernanceSettingKeys.RoutingDefaultPublicHomePage,
+            GovernanceSettingKeys.Routing.DefaultPublicHomePage,
             NormalizeHomePage(settings.PreferredHomePage),
             homePageSetting?.IsLocked != true,
             actorUserId);
 
         await SetStringTenantOverrideAsync(
             tenantId,
-            GovernanceSettingKeys.DomainsTenantSubdomain,
+            GovernanceSettingKeys.Domains.TenantSubdomain,
             NormalizeSubdomain(settings.Subdomain) ?? fallbackSubdomain,
             subdomainSetting?.IsLocked != true,
             actorUserId);
 
         await SetStringTenantOverrideAsync(
             tenantId,
-            GovernanceSettingKeys.DomainsTenantCustomDomain,
+            GovernanceSettingKeys.Domains.TenantCustomDomain,
             NormalizeOptionalHost(settings.CustomDomain),
             customDomainSetting?.IsLocked != true && DeserializeBoolean(allowCustomDomainSetting?.Value, true),
             actorUserId);
 
         await SetStringTenantOverrideAsync(
             tenantId,
-            GovernanceSettingKeys.BrandingDisplayName,
+            GovernanceSettingKeys.Branding.DisplayName,
             settings.BrandDisplayName,
             isTenantWhiteLabelingEnabled && brandDisplayNameSetting?.IsLocked != true,
             actorUserId);
 
         await SetStringTenantOverrideAsync(
             tenantId,
-            GovernanceSettingKeys.BrandingLogoUrl,
+            GovernanceSettingKeys.Branding.LogoUrl,
             settings.BrandLogoUrl,
             isTenantWhiteLabelingEnabled && brandLogoUrlSetting?.IsLocked != true,
             actorUserId);
 
         await SetStringTenantOverrideAsync(
             tenantId,
-            GovernanceSettingKeys.BrandingFaviconUrl,
+            GovernanceSettingKeys.Branding.FaviconUrl,
             settings.BrandFaviconUrl,
             isTenantWhiteLabelingEnabled && brandFaviconUrlSetting?.IsLocked != true,
             actorUserId);
 
         await SetStringTenantOverrideAsync(
             tenantId,
-            GovernanceSettingKeys.BrandingCustomCssUrl,
+            GovernanceSettingKeys.Branding.CustomCssUrl,
             settings.BrandCustomCssUrl,
             isTenantWhiteLabelingEnabled && brandCustomCssUrlSetting?.IsLocked != true,
             actorUserId);
@@ -409,70 +416,70 @@ public class TenantPolicySettingService : ITenantPolicySettingService
 
         await SetStringTenantOverrideAsync(
             tenantId,
-            GovernanceSettingKeys.RoutingRenderPolicyPreset,
+            GovernanceSettingKeys.Routing.RenderPolicy.Preset,
             settings.RenderPolicyPreset,
             allowTenantRenderOverride,
             actorUserId);
 
         await SetBooleanTenantOverrideAsync(
             tenantId,
-            GovernanceSettingKeys.RoutingRenderPolicyAdvancedEnabled,
+            GovernanceSettingKeys.Routing.RenderPolicy.AdvancedEnabled,
             settings.EnableAdvancedRenderPolicyOverrides,
             allowTenantRenderOverride,
             actorUserId);
 
         await SetStringTenantOverrideAsync(
             tenantId,
-            GovernanceSettingKeys.RoutingRenderPolicyGlobalRenderMode,
+            GovernanceSettingKeys.Routing.RenderPolicy.Fallback.RenderMode,
             settings.GlobalRenderMode,
             allowTenantRenderOverride,
             actorUserId);
 
         await SetBooleanTenantOverrideAsync(
             tenantId,
-            GovernanceSettingKeys.RoutingRenderPolicyGlobalPrerenderEnabled,
+            GovernanceSettingKeys.Routing.RenderPolicy.Fallback.PrerenderEnabled,
             settings.GlobalPrerenderEnabled,
             allowTenantRenderOverride,
             actorUserId);
 
         await SetStringTenantOverrideAsync(
             tenantId,
-            GovernanceSettingKeys.RoutingRenderPolicyPublicSeoRenderMode,
+            GovernanceSettingKeys.Routing.RenderPolicy.PublicSeo.RenderMode,
             settings.PublicSeoRenderMode,
             canOverridePublicSeo,
             actorUserId);
 
         await SetBooleanTenantOverrideAsync(
             tenantId,
-            GovernanceSettingKeys.RoutingRenderPolicyPublicSeoPrerenderEnabled,
+            GovernanceSettingKeys.Routing.RenderPolicy.PublicSeo.PrerenderEnabled,
             settings.PublicSeoPrerenderEnabled,
             canOverridePublicSeo,
             actorUserId);
 
         await SetStringTenantOverrideAsync(
             tenantId,
-            GovernanceSettingKeys.RoutingRenderPolicyOperationalRenderMode,
+            GovernanceSettingKeys.Routing.RenderPolicy.Operational.RenderMode,
             settings.OperationalRenderMode,
             canOverrideOperational,
             actorUserId);
 
         await SetBooleanTenantOverrideAsync(
             tenantId,
-            GovernanceSettingKeys.RoutingRenderPolicyOperationalPrerenderEnabled,
+            GovernanceSettingKeys.Routing.RenderPolicy.Operational.PrerenderEnabled,
             settings.OperationalPrerenderEnabled,
             canOverrideOperational,
             actorUserId);
 
         await SetStringTenantOverrideAsync(
             tenantId,
-            GovernanceSettingKeys.RoutingRenderPolicyAdminRenderMode,
+            GovernanceSettingKeys.Routing.RenderPolicy.Admin.RenderMode,
             settings.AdminRenderMode,
             canOverrideAdmin,
             actorUserId);
 
         await SetBooleanTenantOverrideAsync(
             tenantId,
-            GovernanceSettingKeys.RoutingRenderPolicyAdminPrerenderEnabled,
+            GovernanceSettingKeys.Routing.RenderPolicy.Admin.PrerenderEnabled,
             settings.AdminPrerenderEnabled,
             canOverrideAdmin,
             actorUserId);
@@ -525,6 +532,8 @@ public class TenantPolicySettingService : ITenantPolicySettingService
         Guid? actorUserId)
     {
         var existing = await _tenantSettingRepository.GetByTenantAndKey(tenantId, settingKey);
+        var oldValue = existing?.Value;
+
         if (existing == null)
         {
             await _tenantSettingRepository.Create(new TenantSetting
@@ -536,14 +545,18 @@ public class TenantPolicySettingService : ITenantPolicySettingService
                 CreatedAt = DateTime.UtcNow,
                 CreatedBy = actorUserId
             });
-
-            return;
+        }
+        else
+        {
+            existing.Value = value;
+            existing.UpdatedAt = DateTime.UtcNow;
+            existing.UpdatedBy = actorUserId;
+            await _tenantSettingRepository.Update(existing);
         }
 
-        existing.Value = value;
-        existing.UpdatedAt = DateTime.UtcNow;
-        existing.UpdatedBy = actorUserId;
-        await _tenantSettingRepository.Update(existing);
+        // Fire-and-forget: audit notification should not block the write path
+        _ = _mediator.Publish(new SettingChangedNotification(
+            settingKey, oldValue, value, SettingSource.TenantOverride, tenantId, actorUserId, DateTime.UtcNow));
     }
 
     private static bool ResolveBoolean(string? tenantOverrideValue, string? systemValue, bool fallback, bool allowTenantOverride)

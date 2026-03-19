@@ -1,9 +1,7 @@
 // ABOUTME: Authorization filter that blocks endpoints in single-tenant deployment mode.
 // ABOUTME: Returns 404 to hide platform-admin endpoints from discovery in simplified deployments.
 
-using System.Text.Json;
-using Explore.Application.Contracts.Persistence;
-using Explore.Domain.Constants;
+using Explore.Application.Contracts.Services;
 using Explore.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -36,9 +34,13 @@ public class BlockInSingleTenantAttribute : Attribute, IAsyncAuthorizationFilter
         var deploymentSettings = context.HttpContext.RequestServices
             .GetRequiredService<IOptions<DeploymentSettings>>().Value;
 
-        // Only block if in single-tenant mode AND hiding is enabled
-        if (deploymentSettings.HidePlatformAdminInSingleTenant
-            && await DeploymentModeResolver.IsSingleTenantAsync(context.HttpContext.RequestServices, deploymentSettings))
+        if (!deploymentSettings.HidePlatformAdminInSingleTenant)
+            return;
+
+        var provider = context.HttpContext.RequestServices
+            .GetRequiredService<IDeploymentModeProvider>();
+
+        if (await provider.IsSingleTenantAsync(context.HttpContext.RequestAborted))
         {
             context.Result = new ObjectResult(new ProblemDetails
             {
@@ -67,10 +69,10 @@ public class RequireMultiTenantAttribute : Attribute, IAsyncAuthorizationFilter
     /// </summary>
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {
-        var deploymentSettings = context.HttpContext.RequestServices
-            .GetRequiredService<IOptions<DeploymentSettings>>().Value;
+        var provider = context.HttpContext.RequestServices
+            .GetRequiredService<IDeploymentModeProvider>();
 
-        if (await DeploymentModeResolver.IsSingleTenantAsync(context.HttpContext.RequestServices, deploymentSettings))
+        if (await provider.IsSingleTenantAsync(context.HttpContext.RequestAborted))
         {
             context.Result = new ObjectResult(new ProblemDetails
             {
@@ -82,55 +84,6 @@ public class RequireMultiTenantAttribute : Attribute, IAsyncAuthorizationFilter
             {
                 StatusCode = StatusCodes.Status403Forbidden
             };
-        }
-    }
-}
-
-internal static class DeploymentModeResolver
-{
-    internal static async Task<bool> IsSingleTenantAsync(IServiceProvider services, DeploymentSettings deploymentSettings)
-    {
-        try
-        {
-            var systemSettingRepository = services.GetService<ISystemSettingRepository>();
-            if (systemSettingRepository != null)
-            {
-                var setting = await systemSettingRepository.GetByKey(GovernanceSettingKeys.DeploymentMode);
-                var runtimeMode = DeserializeString(setting?.Value);
-
-                if (string.Equals(runtimeMode, "SingleTenant", StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-
-                if (string.Equals(runtimeMode, "MultiTenant", StringComparison.OrdinalIgnoreCase))
-                {
-                    return false;
-                }
-            }
-        }
-        catch
-        {
-            // Fall back to static configuration when runtime settings cannot be read.
-        }
-
-        return deploymentSettings.IsSingleTenant;
-    }
-
-    private static string? DeserializeString(string? rawValue)
-    {
-        if (string.IsNullOrWhiteSpace(rawValue))
-        {
-            return null;
-        }
-
-        try
-        {
-            return JsonSerializer.Deserialize<string>(rawValue);
-        }
-        catch
-        {
-            return rawValue.Trim('"');
         }
     }
 }

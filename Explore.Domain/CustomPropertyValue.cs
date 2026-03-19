@@ -1,5 +1,5 @@
-// ABOUTME: EAV entity storing a custom property value for a specific entity instance.
-// ABOUTME: Uses typed columns (TextValue, NumberValue, etc.) with polymorphic EntityId (no DB FK).
+// ABOUTME: Shared Layer 3 custom-property value for an organization or group entity instance.
+// ABOUTME: Uses one row per value with Ordinal for deterministic multi-value ordering.
 
 using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Interfaces;
@@ -19,6 +19,8 @@ public class CustomPropertyValue : ITenantEntity, IAuditableEntity, ISoftDeletab
     /// Discriminated by the parent definition's EntityTypeName. No DB FK constraint.
     /// </summary>
     public Guid EntityId { get; set; }
+
+    public int Ordinal { get; set; }
 
     // Typed value columns — only one is populated per row, determined by Definition.PropertyType
     public string? TextValue { get; set; }

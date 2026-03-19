@@ -1,8 +1,9 @@
-// ABOUTME: Unit tests for S3ConfigResolver verifying cascading settings resolution,
+// ABOUTME: Unit tests for S3ConfigResolver verifying hierarchical settings resolution,
 // IConfiguration fallback, caching behavior, and null handling when S3 storage is not configured.
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Models;
+using Explore.Application.Settings;
 using Explore.Domain.Constants;
 using Explore.Infrastructure.Storage;
 using Microsoft.Extensions.Caching.Memory;
@@ -14,7 +15,7 @@ namespace Event.Application.UnitTests.Infrastructure;
 
 public class S3ConfigResolverTests : IDisposable
 {
-    private readonly ISettingsResolver _settingsResolver;
+    private readonly IHierarchicalSettingsResolver _settingsResolver;
     private readonly ITenantContext _tenantContext;
     private readonly MemoryCache _cache;
     private readonly IConfiguration _configuration;
@@ -25,7 +26,7 @@ public class S3ConfigResolverTests : IDisposable
 
     public S3ConfigResolverTests()
     {
-        _settingsResolver = Substitute.For<ISettingsResolver>();
+        _settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
         _tenantContext = Substitute.For<ITenantContext>();
         _cache = new MemoryCache(new MemoryCacheOptions());
         _configuration = new ConfigurationBuilder().Build();
@@ -44,7 +45,7 @@ public class S3ConfigResolverTests : IDisposable
     [Test]
     public async Task ResolveAsync_EmptyEndpoint_ReturnsNull()
     {
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.S3Endpoint, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Storage.Endpoint, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("");
 
         var result = await _resolver.ResolveAsync();
@@ -55,7 +56,7 @@ public class S3ConfigResolverTests : IDisposable
     [Test]
     public async Task ResolveAsync_NullEndpoint_ReturnsNull()
     {
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.S3Endpoint, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Storage.Endpoint, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns((string?)null);
 
         var result = await _resolver.ResolveAsync();
@@ -66,9 +67,9 @@ public class S3ConfigResolverTests : IDisposable
     [Test]
     public async Task ResolveAsync_EndpointSetButEmptyBucketName_ReturnsNull()
     {
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.S3Endpoint, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Storage.Endpoint, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("https://fsn1.your-objectstorage.com");
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.S3BucketName, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Storage.BucketName, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("");
 
         var result = await _resolver.ResolveAsync();
@@ -79,11 +80,11 @@ public class S3ConfigResolverTests : IDisposable
     [Test]
     public async Task ResolveAsync_EndpointSetButEmptyAccessKey_ReturnsNull()
     {
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.S3Endpoint, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Storage.Endpoint, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("https://fsn1.your-objectstorage.com");
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.S3BucketName, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Storage.BucketName, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("my-bucket");
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.S3AccessKeyId, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(InfrastructureSecretSettingKeys.Storage.AccessKeyId, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("");
 
         var result = await _resolver.ResolveAsync();
@@ -94,13 +95,13 @@ public class S3ConfigResolverTests : IDisposable
     [Test]
     public async Task ResolveAsync_EndpointSetButEmptySecretKey_ReturnsNull()
     {
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.S3Endpoint, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Storage.Endpoint, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("https://fsn1.your-objectstorage.com");
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.S3BucketName, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Storage.BucketName, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("my-bucket");
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.S3AccessKeyId, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(InfrastructureSecretSettingKeys.Storage.AccessKeyId, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("AKIAIOSFODNN7EXAMPLE");
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.S3SecretAccessKey, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(InfrastructureSecretSettingKeys.Storage.SecretAccessKey, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("");
 
         var result = await _resolver.ResolveAsync();
@@ -131,7 +132,7 @@ public class S3ConfigResolverTests : IDisposable
         var result = await _resolver.ResolveAsync();
 
         await Assert.That(result).IsNotNull();
-        // When GetSettingAsync<bool> returns false, ForcePathStyle should be false
+        // When ResolveAsync<bool> returns false, ForcePathStyle should be false
         await Assert.That(result!.ForcePathStyle).IsEqualTo(false);
     }
 
@@ -173,7 +174,7 @@ public class S3ConfigResolverTests : IDisposable
 
         // Settings resolver should have been called only once for the endpoint key
         await _settingsResolver.Received(1)
-            .GetSettingAsync<string>(GovernanceSettingKeys.S3Endpoint, TestTenantId, Arg.Any<CancellationToken>());
+            .ResolveAsync<string>(GovernanceSettingKeys.Storage.Endpoint, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -194,7 +195,7 @@ public class S3ConfigResolverTests : IDisposable
 
         // Endpoint should be fetched twice now
         await _settingsResolver.Received(2)
-            .GetSettingAsync<string>(GovernanceSettingKeys.S3Endpoint, TestTenantId, Arg.Any<CancellationToken>());
+            .ResolveAsync<string>(GovernanceSettingKeys.Storage.Endpoint, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -223,11 +224,11 @@ public class S3ConfigResolverTests : IDisposable
     public async Task ResolveAsync_DbEmpty_FallsBackToIConfiguration()
     {
         // DB returns empty values for all settings
-        _settingsResolver.GetSettingAsync<string>(Arg.Any<string>(), TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(Arg.Any<string>(), Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("");
-        _settingsResolver.GetSettingAsync<bool>(Arg.Any<string>(), TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<bool>(Arg.Any<string>(), Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns(true);
-        _settingsResolver.GetSettingAsync<int>(Arg.Any<string>(), TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<int>(Arg.Any<string>(), Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns(60);
 
         // IConfiguration has values (simulating Infisical/env vars)
@@ -283,21 +284,21 @@ public class S3ConfigResolverTests : IDisposable
         string? publicEndpoint = "https://s3-public.example.com",
         string? region = "fsn1")
     {
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.S3Endpoint, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Storage.Endpoint, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("https://fsn1.your-objectstorage.com");
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.S3BucketName, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Storage.BucketName, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("my-bucket");
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.S3AccessKeyId, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(InfrastructureSecretSettingKeys.Storage.AccessKeyId, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("AKIAIOSFODNN7EXAMPLE");
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.S3SecretAccessKey, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(InfrastructureSecretSettingKeys.Storage.SecretAccessKey, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.S3Region, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Storage.Region, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns(region);
-        _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.S3PublicEndpoint, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Storage.PublicEndpoint, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns(publicEndpoint);
-        _settingsResolver.GetSettingAsync<bool>(GovernanceSettingKeys.S3ForcePathStyle, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<bool>(GovernanceSettingKeys.Storage.ForcePathStyle, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns(forcePathStyle);
-        _settingsResolver.GetSettingAsync<int>(GovernanceSettingKeys.S3UploadUrlExpirationMinutes, TestTenantId, Arg.Any<CancellationToken>())
+        _settingsResolver.ResolveAsync<int>(GovernanceSettingKeys.Storage.UploadUrlExpirationMinutes, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns(uploadExpiration);
     }
 }

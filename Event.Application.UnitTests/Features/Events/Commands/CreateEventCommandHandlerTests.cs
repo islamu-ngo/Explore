@@ -7,6 +7,7 @@ using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Events.Handlers.Commands;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Settings;
 using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Constants;
@@ -26,7 +27,7 @@ public class CreateEventCommandHandlerTests
     private readonly IOrganizationMemberRepository _organizationMemberRepository;
     private readonly IGroupRepository _groupRepository;
     private readonly IGroupMemberRepository _groupMemberRepository;
-    private readonly ITenantSettingsRepository _tenantSettingsRepository;
+    private readonly IHierarchicalSettingsResolver _settingsResolver;
     private readonly IAudienceAgeRepository _audienceAgeRepository;
     private readonly IAudienceGenderRepository _audienceGenderRepository;
     private readonly IEventTypeRepository _eventTypeRepository;
@@ -46,7 +47,8 @@ public class CreateEventCommandHandlerTests
         _organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
         _groupRepository = Substitute.For<IGroupRepository>();
         _groupMemberRepository = Substitute.For<IGroupMemberRepository>();
-        _tenantSettingsRepository = Substitute.For<ITenantSettingsRepository>();
+        _settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
+        _settingsResolver.ResolveAsync<bool>("events.user_submission_enabled", Arg.Any<SettingContext>(), Arg.Any<CancellationToken>()).Returns(true);
         _audienceAgeRepository = Substitute.For<IAudienceAgeRepository>();
         _audienceGenderRepository = Substitute.For<IAudienceGenderRepository>();
         _eventTypeRepository = Substitute.For<IEventTypeRepository>();
@@ -67,7 +69,7 @@ public class CreateEventCommandHandlerTests
             _organizationMemberRepository,
             _groupRepository,
             _groupMemberRepository,
-            _tenantSettingsRepository,
+            _settingsResolver,
             _audienceAgeRepository,
             _audienceGenderRepository,
             _eventTypeRepository,

@@ -48,6 +48,8 @@ csharp-ls.exe
 # Repomix
 .repomix/*.md
 
+build_output.txt
+
 # sisyphus
 .sisyphus/
 # Build results

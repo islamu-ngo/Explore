@@ -1,9 +1,10 @@
 // ABOUTME: Database-driven authorization service used when Cerbos PDP is unavailable.
-// Evaluates access control using IAdminContext and ISettingsResolver for lock semantics.
+// Evaluates access control using IAdminContext and IHierarchicalSettingsResolver for lock semantics.
 
 using System.Diagnostics;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Settings;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Infrastructure.Services;
@@ -16,7 +17,7 @@ namespace Explore.Infrastructure.Services;
 public class FallbackAuthorizationService : IAuthorizationProvider
 {
     private readonly IAdminContext _adminContext;
-    private readonly ISettingsResolver _settingsResolver;
+    private readonly IHierarchicalSettingsResolver _resolver;
     private readonly ITenantContext _tenantContext;
     private readonly ILogger<FallbackAuthorizationService> _logger;
 
@@ -29,12 +30,12 @@ public class FallbackAuthorizationService : IAuthorizationProvider
 
     public FallbackAuthorizationService(
         IAdminContext adminContext,
-        ISettingsResolver settingsResolver,
+        IHierarchicalSettingsResolver resolver,
         ITenantContext tenantContext,
         ILogger<FallbackAuthorizationService> logger)
     {
         _adminContext = adminContext;
-        _settingsResolver = settingsResolver;
+        _resolver = resolver;
         _tenantContext = tenantContext;
         _logger = logger;
     }
@@ -158,8 +159,8 @@ public class FallbackAuthorizationService : IAuthorizationProvider
             attributes["tenantId"] = tenantId.Value.ToString();
 
             // Check if the setting is locked by instance
-            var canOverride = await _settingsResolver.CanOverrideAsync(settingKey, cancellationToken);
-            attributes["isLockedByInstance"] = !canOverride;
+            var metadata = await _resolver.ResolveWithMetadataAsync(settingKey, new SettingContext(), cancellationToken);
+            attributes["isLockedByInstance"] = metadata?.IsLocked == true;
         }
         else
         {

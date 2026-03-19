@@ -72,6 +72,9 @@ public static class PersistenceServicesRegistration
             });
         }
 
+        // Unit of Work (wraps EF Core transactions)
+        services.AddScoped<IUnitOfWork, EfCoreUnitOfWork>();
+
         // Generic Repository
         services.AddScoped(typeof(IGenericRepository<,>), typeof(GenericRepository<,>));
 
@@ -128,6 +131,7 @@ public static class PersistenceServicesRegistration
         // Group Repositories
         services.AddScoped<IGroupRepository, GroupRepository>();
         services.AddScoped<IGroupMemberRepository, GroupMemberRepository>();
+        services.AddScoped<ICustomPropertyDefinitionRepository, CustomPropertyDefinitionRepository>();
 
         // Event Repositories
         services.AddScoped<IEventRepository, EventRepository>();
@@ -187,6 +191,9 @@ public static class PersistenceServicesRegistration
 
         // Configuration Audit Repositories
         services.AddScoped<IConfigurationChangeLogRepository, ConfigurationChangeLogRepository>();
+
+        // Governance Policy Resolver (deterministic hierarchy walk: Instance → Tenant → Organization)
+        services.AddScoped<IPolicyResolver, Services.PolicyResolver>();
 
         // Notification Repository
         services.AddScoped<INotificationRepository, NotificationRepository>();

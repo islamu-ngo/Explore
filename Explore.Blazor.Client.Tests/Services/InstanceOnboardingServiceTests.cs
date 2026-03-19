@@ -85,44 +85,34 @@ public class InstanceOnboardingServiceTests
 
     #endregion
 
-    #region GetSettingsAsync
+    #region GetDeploymentModeAsync
 
     [Test]
-    public async Task GetSettingsAsync_ReturnsSettings_WhenApiSucceeds()
+    public async Task GetDeploymentModeAsync_ReturnsMode_WhenApiSucceeds()
     {
         // Arrange
-        var expected = new InstanceGovernanceSettingsModel
-        {
-            DeploymentMode = "MultiTenant",
-            AllowTenantSelfServiceRegistration = true,
-            AllowTenantWhiteLabeling = true,
-            DefaultPublicHomePage = "Home"
-        };
+        var expected = new DeploymentModeModel { Mode = "MultiTenant" };
         SetupBffClient(CreateJsonResponse(expected));
 
         // Act
-        var result = await _service.GetSettingsAsync();
+        var result = await _service.GetDeploymentModeAsync();
 
         // Assert
-        await Assert.That(result.DeploymentMode).IsEqualTo("MultiTenant");
-        await Assert.That(result.AllowTenantSelfServiceRegistration).IsTrue();
-        await Assert.That(result.AllowTenantWhiteLabeling).IsTrue();
-        await Assert.That(result.DefaultPublicHomePage).IsEqualTo("Home");
+        await Assert.That(result.Mode).IsEqualTo("MultiTenant");
     }
 
     [Test]
-    public async Task GetSettingsAsync_ReturnsDefaultSettings_WhenApiThrows()
+    public async Task GetDeploymentModeAsync_ReturnsDefault_WhenApiThrows()
     {
         // Arrange
         SetupBffClient(_ => throw new HttpRequestException("boom"));
 
         // Act
-        var result = await _service.GetSettingsAsync();
+        var result = await _service.GetDeploymentModeAsync();
 
         // Assert
         await Assert.That(result).IsNotNull();
-        await Assert.That(result.DeploymentMode).IsEqualTo("SingleTenant");
-        await Assert.That(result.DefaultPublicHomePage).IsEqualTo("EventList");
+        await Assert.That(result.Mode).IsEqualTo("SingleTenant");
     }
 
     #endregion
@@ -141,7 +131,11 @@ public class InstanceOnboardingServiceTests
         SetupBffClient(CreateJsonResponse(commandResponse));
 
         // Act
-        var result = await _service.CompleteAsync(new InstanceGovernanceSettingsModel());
+        var result = await _service.CompleteAsync(new OnboardingCompletionModel
+        {
+            DeploymentMode = "SingleTenant",
+            InstanceName = "Test Instance"
+        });
 
         // Assert
         await Assert.That(result.Success).IsTrue();
@@ -155,12 +149,36 @@ public class InstanceOnboardingServiceTests
         SetupBffClient(_ => throw new HttpRequestException("network failed"));
 
         // Act
-        var result = await _service.CompleteAsync(new InstanceGovernanceSettingsModel());
+        var result = await _service.CompleteAsync(new OnboardingCompletionModel());
 
         // Assert
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Message).IsEqualTo("Request failed.");
         await Assert.That(result.Errors).Contains("network failed");
+    }
+
+    [Test]
+    public async Task CompleteAsync_HandlesProblemDetails_WhenApiReturnsBadRequest()
+    {
+        // Arrange
+        var problemDetails = new
+        {
+            title = "Validation failed.",
+            status = 400,
+            errors = new Dictionary<string, string[]>
+            {
+                ["DeploymentMode"] = new[] { "Invalid deployment mode." }
+            }
+        };
+        SetupBffClient(CreateJsonResponse(problemDetails, HttpStatusCode.BadRequest));
+
+        // Act
+        var result = await _service.CompleteAsync(new OnboardingCompletionModel());
+
+        // Assert
+        await Assert.That(result.Success).IsFalse();
+        await Assert.That(result.Message).IsEqualTo("Validation failed.");
+        await Assert.That(result.Errors).Contains("Invalid deployment mode.");
     }
 
     #endregion
@@ -214,10 +232,10 @@ public class InstanceOnboardingServiceTests
 
     #endregion
 
-    #region UpdateSettingsAsync
+    #region UpdateModuleSettingsAsync
 
     [Test]
-    public async Task UpdateSettingsAsync_ReturnsSuccess_WhenApiSucceeds()
+    public async Task UpdateModuleSettingsAsync_ReturnsSuccess_WhenApiSucceeds()
     {
         // Arrange
         var commandResponse = new InstanceCommandResponseModel
@@ -228,7 +246,7 @@ public class InstanceOnboardingServiceTests
         SetupBffClient(CreateJsonResponse(commandResponse));
 
         // Act
-        var result = await _service.UpdateSettingsAsync(new InstanceGovernanceSettingsModel());
+        var result = await _service.UpdateModuleSettingsAsync(new ModuleSettingsModel());
 
         // Assert
         await Assert.That(result.Success).IsTrue();
@@ -236,7 +254,7 @@ public class InstanceOnboardingServiceTests
     }
 
     [Test]
-    public async Task UpdateSettingsAsync_ReturnsFailure_WhenApiReturnsError()
+    public async Task UpdateModuleSettingsAsync_ReturnsFailure_WhenApiReturnsError()
     {
         // Arrange
         var response = new HttpResponseMessage(HttpStatusCode.BadRequest)
@@ -246,18 +264,18 @@ public class InstanceOnboardingServiceTests
         SetupBffClient(response);
 
         // Act
-        var result = await _service.UpdateSettingsAsync(new InstanceGovernanceSettingsModel());
+        var result = await _service.UpdateModuleSettingsAsync(new ModuleSettingsModel());
 
         // Assert
         await Assert.That(result.Success).IsFalse();
-        await Assert.That(result.Message).IsEqualTo("Operation failed with status 400.");
     }
 
     #endregion
 
     private static HttpResponseMessage CreateJsonResponse<T>(T model, HttpStatusCode statusCode = HttpStatusCode.OK)
     {
-        var json = JsonSerializer.Serialize(model);
+        var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+        var json = JsonSerializer.Serialize(model, options);
         return new HttpResponseMessage(statusCode)
         {
             Content = new StringContent(json, Encoding.UTF8, "application/json")

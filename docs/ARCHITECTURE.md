@@ -58,6 +58,13 @@ Complex filtering uses a custom Specification Pattern:
 3. Filters are applied to `IQueryable<T>` in the repository — module-specific filters are silently ignored when modules are disabled.
 4. `ToCacheKeySuffix()` generates deterministic cache keys from active filter/sort state.
 
+## Event Data Layers
+1. Layer 1 stores universal event semantics directly on `Event` and other first-class related entities.
+2. Layer 2 stores sector-standard semantics in typed 1:1 schema such as `EventIslamicAspect`, `EventTechAspect`, and `EventSessionIslamicAspect`.
+3. Layer 3 stores tenant-specific long-tail extensions through governed custom-property entities and event-template/event-runtime rows.
+4. Layer 3 must not redefine or replace Layer 2 semantics; reserved namespaces and collision rules are part of the custom-properties architecture.
+5. `EventCustomPropertyProjection` and similar rows are derived read models for query optimization only; source of truth remains typed schema plus event-local custom-property rows.
+
 ## Caching Architecture (3 Layers)
 1. **Output Cache** (HTTP response level): `LookupData` (1h), `ListData` (30s), `DetailData` (60s). Applied via `[OutputCache]` on endpoints.
 2. **HybridCache** (application level, L1 in-memory + L2 distributed): 30min default expiration, 5min local, 10MB max payload. Used in MediatR handlers with read-through and explicit invalidation patterns.
@@ -81,3 +88,6 @@ Not fully implemented today:
 - Blazor dev: `https://localhost:7177`
 - Docker API: `http://localhost:7039`
 - Docker Blazor: `http://localhost:7002`
+
+## Related
+- `CUSTOM_PROPERTIES.md`

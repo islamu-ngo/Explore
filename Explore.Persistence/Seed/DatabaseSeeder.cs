@@ -145,7 +145,7 @@ public static class DatabaseSeeder
         CancellationToken ct)
     {
         var hostSetting = await context.Set<SystemSetting>()
-            .FirstOrDefaultAsync(s => s.SettingKey == GovernanceSettingKeys.EmailSmtpHost, ct);
+            .FirstOrDefaultAsync(s => s.SettingKey == GovernanceSettingKeys.Email.SmtpHost, ct);
 
         if (hostSetting is null)
             return;
@@ -156,11 +156,11 @@ public static class DatabaseSeeder
 
         var now = DateTime.UtcNow;
 
-        await UpdateSettingValueAsync(context, GovernanceSettingKeys.EmailSmtpHost, "\"mailpit.openislamu.org\"", now, ct);
-        await UpdateSettingValueAsync(context, GovernanceSettingKeys.EmailSmtpPort, "1025", now, ct);
-        await UpdateSettingValueAsync(context, GovernanceSettingKeys.EmailSmtpSecurity, "\"None\"", now, ct);
-        await UpdateSettingValueAsync(context, GovernanceSettingKeys.EmailFromAddress, "\"noreply@explore.dev\"", now, ct);
-        await UpdateSettingValueAsync(context, GovernanceSettingKeys.EmailFromName, "\"Explore Dev\"", now, ct);
+        await UpdateSettingValueAsync(context, GovernanceSettingKeys.Email.SmtpHost, "\"mailpit.openislamu.org\"", now, ct);
+        await UpdateSettingValueAsync(context, GovernanceSettingKeys.Email.SmtpPort, "1025", now, ct);
+        await UpdateSettingValueAsync(context, GovernanceSettingKeys.Email.SmtpSecurity, "\"None\"", now, ct);
+        await UpdateSettingValueAsync(context, GovernanceSettingKeys.Email.FromAddress, "\"noreply@explore.dev\"", now, ct);
+        await UpdateSettingValueAsync(context, GovernanceSettingKeys.Email.FromName, "\"Explore Dev\"", now, ct);
 
         await context.SaveChangesAsync(ct);
     }

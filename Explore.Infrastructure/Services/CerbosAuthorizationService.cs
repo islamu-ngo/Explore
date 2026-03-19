@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Settings;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -23,7 +24,7 @@ public class CerbosAuthorizationService : IAuthorizationProvider
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly CerbosPrincipalBuilder _principalBuilder;
     private readonly IAdminContext _adminContext;
-    private readonly ISettingsResolver _settingsResolver;
+    private readonly IHierarchicalSettingsResolver _resolver;
     private readonly ITenantContext _tenantContext;
     private readonly ILogger<CerbosAuthorizationService> _logger;
     private readonly CerbosSettings _settings;
@@ -38,7 +39,7 @@ public class CerbosAuthorizationService : IAuthorizationProvider
         IHttpClientFactory httpClientFactory,
         CerbosPrincipalBuilder principalBuilder,
         IAdminContext adminContext,
-        ISettingsResolver settingsResolver,
+        IHierarchicalSettingsResolver resolver,
         ITenantContext tenantContext,
         IOptions<CerbosSettings> settings,
         ILogger<CerbosAuthorizationService> logger)
@@ -47,7 +48,7 @@ public class CerbosAuthorizationService : IAuthorizationProvider
         _httpClient = httpClientFactory.CreateClient("CerbosClient");
         _principalBuilder = principalBuilder;
         _adminContext = adminContext;
-        _settingsResolver = settingsResolver;
+        _resolver = resolver;
         _tenantContext = tenantContext;
         _logger = logger;
         _settings = settings.Value;
@@ -276,8 +277,8 @@ public class CerbosAuthorizationService : IAuthorizationProvider
         {
             resourceKind = "tenant_setting";
             attributes["tenantId"] = tenantId.Value.ToString();
-            var canOverride = await _settingsResolver.CanOverrideAsync(settingKey, cancellationToken);
-            attributes["isLockedByInstance"] = !canOverride;
+            var metadata = await _resolver.ResolveWithMetadataAsync(settingKey, new SettingContext(), cancellationToken);
+            attributes["isLockedByInstance"] = metadata?.IsLocked == true;
         }
         else
         {

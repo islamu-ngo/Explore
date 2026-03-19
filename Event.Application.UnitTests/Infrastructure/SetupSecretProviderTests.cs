@@ -18,8 +18,8 @@ public class SetupSecretProviderTests
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?> { ["SETUP_SECRET"] = "my-test-secret" })
             .Build();
-        var serviceProvider = CreateServiceProvider(null);
-        var provider = new SetupSecretProvider(config, serviceProvider);
+        var scopeFactory = CreateScopeFactory(null);
+        var provider = new SetupSecretProvider(config, scopeFactory);
 
         await Assert.That(provider.IsFromEnvironmentVariable).IsEqualTo(true);
         await Assert.That(provider.ValidateSecret("my-test-secret")).IsEqualTo(true);
@@ -130,11 +130,11 @@ public class SetupSecretProviderTests
     private static SetupSecretProvider CreateProvider(InstanceBootstrapState? state = null)
     {
         var configuration = new ConfigurationBuilder().Build();
-        var serviceProvider = CreateServiceProvider(state);
-        return new SetupSecretProvider(configuration, serviceProvider);
+        var scopeFactory = CreateScopeFactory(state);
+        return new SetupSecretProvider(configuration, scopeFactory);
     }
 
-    private static IServiceProvider CreateServiceProvider(InstanceBootstrapState? bootstrapState)
+    private static IServiceScopeFactory CreateScopeFactory(InstanceBootstrapState? bootstrapState)
     {
         var repository = Substitute.For<IInstanceBootstrapStateRepository>();
         repository.GetCurrent().Returns(Task.FromResult(bootstrapState));
@@ -145,9 +145,6 @@ public class SetupSecretProviderTests
         var scopeFactory = Substitute.For<IServiceScopeFactory>();
         scopeFactory.CreateScope().Returns(scope);
 
-        var serviceProvider = Substitute.For<IServiceProvider>();
-        serviceProvider.GetService(typeof(IServiceScopeFactory)).Returns(scopeFactory);
-
-        return serviceProvider;
+        return scopeFactory;
     }
 }

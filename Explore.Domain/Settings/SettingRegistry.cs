@@ -34,6 +34,7 @@ public static class SettingRegistry
         all.AddRange(SecuritySettingDefinitions.All);
         all.AddRange(CerbosSettingDefinitions.All);
         all.AddRange(AnalyticsSettingDefinitions.All);
+        all.AddRange(TenantDelegationSettingDefinitions.All);
 
         DefinitionsByKey = all.ToFrozenDictionary(d => d.Key);
         ByCategory = all

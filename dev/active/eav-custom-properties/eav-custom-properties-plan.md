@@ -1,634 +1,1021 @@
-ABOUTME: Strategic plan for replacing JSONB MetadataJson with normalized EAV custom properties.
-ABOUTME: Covers all Clean Architecture layers, from domain to Blazor, with Plane-inspired design.
+ABOUTME: Strategic plan for a 3-layer event architecture: universal core, typed sector profiles, and custom extensions.
+ABOUTME: Treats EAV as the Layer 3 extension system only, with governed semantics, template instantiation, and projection support.
 
-# EAV Custom Properties — Implementation Plan
+# EAV Custom Properties - Implementation Plan
 
-**Last Updated: 2026-03-04**
+**Last Updated: 2026-03-19**
 
 ---
 
 ## Executive Summary
 
-Replace the untyped JSONB `MetadataJson` column on `Event`, `Organization`, and `Group` entities
-with a **fully normalized Entity-Attribute-Value (EAV)** system inspired by
-[Plane's custom properties architecture](https://developers.plane.so/api-reference/custom-properties).
+Replace the remaining ad hoc metadata coupling and stale `MetadataJson` assumptions across docs/contracts with an enterprise-grade 3-layer event architecture where the custom-properties system serves only the extension layer.
 
-Plane uses 4 tables: type definitions → property definitions → property options → property values.
-We adapt this to our Clean Architecture + CQRS stack with 3 new domain entities, 2 new enums,
-and dedicated appearance columns to replace the current MetadataJson-embedded visual settings.
+- normalized and typed
+- deterministic and debuggable for self-hosted deployments
+- explicit about machine identity, validation, exposure, and provenance
+- safe for multi-tenant extensibility without becoming the canonical home of core product semantics
 
-**Constraints:**
-- No backward compatibility — project is in active development
-- No data migration — MetadataJson is dropped, EAV is the replacement
-- No feature toggle — EAV is always active
-- Appearance settings move to dedicated columns (not EAV)
+The prior revision correctly moved events away from live shared-definition inheritance and toward template-based instantiation. This revision hardens the plan further by making the missing middle layer explicit:
+
+- **Layer 1 is the universal event core**
+- **Layer 2 is first-class typed sector schema**
+- **Layer 3 is the EAV/custom-properties extension layer**
+- **EAV is the extension/configuration layer, not the product's universal or sector-standard semantic contract**
+- **event custom properties use blueprint/template instantiation plus explicit sync workflows**
+- **definitions and options have stable namespaced machine keys distinct from display labels**
+- **multi-value storage semantics are explicit and testable**
+- **validation is typed and governed, not an opaque rule string**
+- **custom properties carry exposure/publication/search flags**
+- **filterable/searchable properties are projected into dedicated read models**
+- **template provenance is versioned and reproducible**
+
+This aligns the custom-properties architecture with the platform's long-term need to separate:
+
+- interoperability contracts
+- curation / policy logic
+- internal persistence / configuration
+
+---
+
+## Core Architecture Decision
+
+### Product-Level Positioning
+
+The event model is intentionally split into three layers:
+
+1. **Layer 1 - Universal event core**
+   - fields shared by all events regardless of sector/domain
+   - modeled directly on `Event` and related first-class relational entities
+
+2. **Layer 2 - Sector-standard typed schema**
+   - structured fields shared across all events in a domain/vertical
+   - modeled as first-class typed relational schema, usually 1:1 aspect/profile tables plus lookups and indexes
+
+3. **Layer 3 - Local custom extensions**
+   - tenant/organizer-specific long-tail extension fields
+   - modeled by the EAV/custom-properties system in this plan
+
+Custom properties exist to support Layer 3 only:
+
+- tenant customization
+- long-tail optional fields
+- UI-driven flexibility
+- local extension packs
+
+Custom properties do **not** become the sole persistence model for fields that are central to:
+
+- discovery
+- ranking
+- moderation
+- trust / policy
+- export
+- cross-instance semantic consistency
+- analytics
+
+Those fields must be either:
+
+- promoted to first-class domain fields, or
+- implemented as sector-standard typed schema, or
+- projected into dedicated read / publication models with governed semantics
+
+### Layer Rule
+
+If a field is required across all events in a sector, or is used in filtering, moderation, ranking, policy, export, federation, trust workflows, or stable sector semantics, it must not live only in EAV.
+
+### Final Direction
+
+Use three complementary layers:
+
+1. **Layer 1 - Universal event core** on `Event` and core relational entities
+2. **Layer 2 - Typed sector profiles/aspects** for domain-standard structured semantics
+3. **Layer 3 - Shared and event-local custom-property catalogs** for local extensions
+
+### Non-Negotiable Lifecycle Rules
+
+1. Universal event semantics stay on Layer 1.
+2. Sector-standard semantics stay on Layer 2 typed schema.
+3. Event runtime reads use event-local Layer 3 definitions and values directly.
+4. Template changes never silently change existing events.
+5. Template-to-event sync exists, but it is explicit, version-aware, auditable, and operator-driven.
+6. Machine identity is stable even when labels/localization/display copy changes.
+7. Historical values survive retirement of definitions/options.
+8. Search/filter/publication-critical custom properties are projected into dedicated read models.
+9. EAV remains an internal extension layer, not the canonical interoperability contract.
 
 ---
 
 ## Current State Analysis
 
-### MetadataJson Usage (Verified)
+### Current Runtime Reality
 
-| Entity | Property | Line | Type |
-|--------|----------|------|------|
-| `Explore.Domain/Event.cs` | `MetadataJson` | 109 | `string?` → `jsonb` |
-| `Explore.Domain/Organization.cs` | `MetadataJson` | 60 | `string?` → `jsonb` |
-| `Explore.Domain/Group.cs` | `MetadataJson` | 33 | `string?` → `jsonb` |
+- `Explore.Domain/Event.cs` already has dedicated appearance fields (`BackgroundColor`, `BackgroundEffect`, `BackgroundImageId`).
+- `Explore.Persistence/Configurations/Entities/EventConfiguration.cs` already maps those event appearance fields.
+- `Explore.Domain/Organization.cs` and `Explore.Domain/Group.cs` no longer expose `MetadataJson` in the current codebase.
+- `MetadataJson` now survives mainly as stale documentation/planning language and as a conceptual placeholder for "flexible metadata," not as an active domain design worth preserving.
 
-### EF Configurations (Verified)
+### Current Technical Problems
 
-| File | MetadataJson Config |
-|------|---------------------|
-| `Explore.Persistence/Configurations/Entities/EventConfiguration.cs` | Lines 99–101: `HasColumnType("jsonb")` |
-| `Explore.Persistence/Configurations/Entities/OrganizationConfiguration.cs` | Line 31: `HasColumnType("jsonb")` |
-| `Explore.Persistence/Configurations/Entities/GroupConfiguration.cs` | Line 30: `HasColumnType("jsonb")` |
+1. The historical `MetadataJson` pattern was untyped and weakly governed, and stale references still distort current planning.
+2. Existing plan revisions fixed event inheritance, but still left the Layer 2 sector-standard schema under-modeled.
+3. Current plan still relies on mutable `Name` / `DisplayName` rather than stable namespaced machine identity.
+4. `ValidationRules string?` invites an opaque mini-rules engine.
+5. `IsMulti` exists without fully specified storage semantics.
+6. Exposure and discovery semantics are not modeled strongly enough.
+7. Raw EAV storage is still too close to becoming the hot query model for search/discovery.
 
-### DTOs with MetadataJson (Verified — 11 files)
+### Existing Repo Signals That Support The Harder Model
 
-**Event:**
-- `CreateEventDto.cs` (line 63)
-- `UpdateEventDto.cs` (line 51)
-- `EventDto.cs` (line 100)
-- `EventListDto.cs` — comment only (line 68), no property
+- `SettingRegistry` and governance keys already favor stable machine keys and explicit config shape.
+- module enablement already uses explicit visibility/availability semantics.
+- the architecture favors deterministic reads and supportable persistence over magical runtime resolution.
+- ATProto-related architecture in this repo already separates interoperable resources from internal application concerns.
 
-**Organization:**
-- `CreateOrganizationDto.cs` (line 28)
-- `UpdateOrganizationDto.cs` (line 14)
-- `OrganizationDto.cs` (line 15)
-- `OrganizationListDto.cs` (line 20)
+---
 
-**Group:**
-- `CreateGroupDto.cs` (line 10)
-- `UpdateGroupDto.cs` (line 9)
-- `GroupDto.cs` (line 10)
-- `GroupListDto.cs` (line 11)
+## Design Principles
 
-### Handlers with MetadataJson (Verified — 2 files)
+1. **The event architecture is 3-layer: universal core, typed sector profile, and local extensions.**
+2. **EAV is an extension model, not the primary home of core or sector-standard discovery/policy semantics.**
+3. **Every custom property has a stable machine key distinct from display text.**
+4. **Custom-property identity is namespaced so platform-owned and tenant-owned semantics can coexist.**
+5. **Multi-value storage semantics are explicit, ordered, and testable.**
+6. **Validation is governed and typed, not hidden in opaque strings.**
+7. **Every custom property has explicit exposure/publication semantics.**
+8. **Search/filter-critical Layer 3 properties are projected into dedicated read models rather than queried directly from raw EAV tables.**
+9. **Historical values and provenance remain explainable after retirement, rename, or template evolution.**
+10. **Template instantiation and template sync are both explicit workflows, never implicit runtime inheritance.**
+11. **Layer 2 sector-standard fields are first-class typed relational schema with direct query and policy support.**
 
-| File | Usage |
-|------|-------|
-| `UpdateOrganizationDetailsCommandHandler.cs` | Line 76: assigns MetadataJson |
-| `UpdateGroupCommandHandler.cs` | Line 77: assigns MetadataJson |
+---
 
-### Query Filters (Verified — 3 files)
+## AT Protocol Alignment
 
-| File | Usage |
-|------|-------|
-| `EventSubqueryFilter.cs` | Lines 132–204: `JsonContains` and `JsonKeyExists` filter types |
-| `EventRepository.cs` | Lines 279–287: JSONB `@>` and `?` operator expressions |
-| `GetEventListRequestHandler.cs` | Lines 157–161: dispatches MetadataJsonContains/KeyExists |
-| `GetEventListRequest.cs` | Lines 225–234: query properties |
+The target platform should mirror the same separation of concerns that makes AT Protocol scalable:
 
-### API Controllers (Verified — 1 file)
+- **interoperable contracts** are not the same thing as local persistence tables
+- **app-specific aggregation and curation** are not the same thing as raw schema definitions
+- **labels / metadata / moderation state** are separate from base content contracts
+- **hosting / redistribution decisions** are controlled by downstream services, not by stuffing everything into one generic data bucket
 
-| File | Usage |
-|------|-------|
-| `EventController.cs` | Lines 151–152: `metadataJsonContains`, `metadataJsonKeyExists` params |
+Applied here:
 
-### Blazor Helpers (Verified — 3 files)
-
-| File | Settings Parsed from MetadataJson |
-|------|-----------------------------------|
-| `EventAppearanceMetadataHelper.cs` | BackgroundColor, BackgroundMediaUrl, BackgroundEffect |
-| `OrganizationAppearanceMetadataHelper.cs` | ProfileImageUrl, BackgroundColor, BackgroundMediaUrl, BackgroundEffect |
-| `GroupBrandingMetadataHelper.cs` | PictureUrl, BannerColor, BannerMediaUrl, BannerEffect |
-
-### Blazor Pages (Verified — 9 files)
-
-- `CreateEvent.razor.cs` (line 557)
-- `EventEdit.razor.cs` (lines 185, 188, 432)
-- `EventDetail.razor.cs` (line 96)
-- `CreateOrganization.razor.cs` (line 51)
-- `OrganizationDetails.razor.cs` (lines 78, 81, 162)
-- `OrganizationProfile.razor.cs` (lines 57, 111)
-- `OrganizationProfileSection.razor` (lines 186, 188, 217)
-- `GroupAdminSettingsLayout.razor` (lines 119, 121, 146)
-- `GroupService.cs` (lines 129, 275)
-
-### Generated Client (Auto-Generated — no manual changes)
-
-- `EventApiClient.g.cs` — 11 occurrences (will regenerate after API changes)
+- custom-property definitions are **internal extension/configuration structures**
+- publication/discovery views are **projections / app views**, not raw EAV scans
+- trust/moderation/search behavior must not depend solely on arbitrary custom-property rows
 
 ---
 
 ## Proposed Future State
 
-### New Domain Model
+## Model Layers
+
+### Layer 1 - Universal Event Core
+
+Layer 1 remains the universally shared event model.
+
+Examples already modeled in the repo include:
+
+- title / description / slug
+- start and end time
+- organizer / actor relationships
+- visibility and publishing state
+- event format and registration basics
+- core pricing and capacity basics
+
+These remain first-class fields on `Event` and related normal entities.
+
+### Layer 2 - Typed Sector Profiles / Aspects
+
+Layer 2 is the currently missing explicit piece in the planning docs.
+
+Sector-standard structured semantics must be modeled as typed relational schema, not EAV. In this repo, the strongest current precedent is the existing aspect pattern:
+
+- `EventIslamicAspect`
+- `EventTechAspect`
+- `EventSessionIslamicAspect`
+
+These already demonstrate the preferred Layer 2 approach:
+
+- 1:1 profile/aspect tables
+- shared key relationship to the base aggregate
+- typed columns
+- foreign keys to lookup tables where needed
+- indexes and direct SQL filtering support
+- direct moderation/policy/query support
+
+#### Layer 2 Rule
+
+If a field is standard across all events in a sector, it belongs in a typed profile/aspect family, not in Layer 3 custom properties.
+
+#### Layer 2 Direction For This Plan
+
+This plan must explicitly preserve and extend the typed aspect/profile approach for sector-standard event semantics.
+
+- current Islamic and Tech aspect families remain Layer 2
+- future sector-standard families should follow the same typed 1:1 pattern
+- Layer 3 must not be used as the first destination for domain-standard sector fields
+
+### Layer 3A - Shared Definition Catalog For Organization And Group
+
+These remain tenant-scoped shared catalogs, but with stronger machine identity, exposure control, and governed validation.
 
 ```
 PropertyType enum: Text, Number, Option, Boolean, DateTime, Url
 
-EntityTypeName enum: Event, Organization, Group
+ExposureLevel enum: Internal, OrganizerOnly, TenantAdminOnly, Public
 
-CustomPropertyDefinition (Guid PK) ─── ITenantEntity, IAuditableEntity, ISoftDeletable
-├── EntityTypeName          enum    — which entity this property applies to
-├── EventTypeId (int?)      FK      — optional scoping for Events (like Plane's IssueType)
-├── TenantId (Guid)         FK      — tenant-scoped
-├── Name (string)                   — internal key (unique per entity-type + tenant + event-type)
-├── DisplayName (string)            — user-facing label
-├── Description (string?)           — help text
-├── PropertyType            enum    — data type
-├── IsRequired (bool)
-├── IsMulti (bool)                  — allows multiple values per entity
-├── IsActive (bool)
-├── SortOrder (int)
-├── DefaultValue (string?)          — string, interpreted by PropertyType
-├── ValidationRules (string?)       — JSON (min/max/regex/etc.)
-├── Audit + SoftDelete fields
-│
-└── Options: IReadOnlyCollection<CustomPropertyOption>
+CustomPropertyDefinition (Guid PK) -- ITenantEntity, IAuditableEntity, ISoftDeletable
+|- EntityTypeName              enum      -- Organization or Group
+|- TenantId                    Guid
+|- Namespace                   string    -- e.g. "tenant", "platform", "pack.tech"
+|- Key                         string    -- stable machine key
+|- DisplayName                 string    -- mutable UI label
+|- Description                 string?
+|- PropertyType                enum
+|- IsRequired                  bool
+|- IsMulti                     bool
+|- IsActive                    bool
+|- SortOrder                   int
+|- ExposureLevel               enum
+|- IsSearchable                bool
+|- IsFilterable                bool
+|- IsExportable                bool
+|- IsModerationRelevant        bool
+|- IsAnalyticsRelevant         bool
+|- DefaultTextValue            string?
+|- DefaultNumberValue          decimal?
+|- DefaultBooleanValue         bool?
+|- DefaultDateTimeValue        DateTimeOffset?
+|- DefaultOptionId             Guid?
+|- MinLength                   int?
+|- MaxLength                   int?
+|- RegexPattern                string?
+|- MinNumber                   decimal?
+|- MaxNumber                   decimal?
+|- MinDateTime                 DateTimeOffset?
+|- MaxDateTime                 DateTimeOffset?
+|- AllowedUrlSchemes           string?   -- serialized constrained list or child rows
+|- IsSystemOwned               bool
+|- Audit + SoftDelete fields
+`- Options: IReadOnlyCollection<CustomPropertyOption>
 
-CustomPropertyOption (Guid PK) ─── IAuditableEntity, ISoftDeletable
-├── CustomPropertyDefinitionId (Guid, FK)
-├── Name (string)                   — display name
-├── Description (string?)
-├── Value (string)                  — stored value
-├── IsDefault (bool)
-├── IsActive (bool)
-├── SortOrder (int)
-├── ParentOptionId (Guid?, FK)      — hierarchical options
-├── Audit + SoftDelete fields
+CustomPropertyOption (Guid PK) -- IAuditableEntity, ISoftDeletable
+|- CustomPropertyDefinitionId  Guid
+|- Namespace                   string
+|- Key                         string
+|- DisplayName                 string
+|- Description                 string?
+|- Value                       string
+|- IsDefault                   bool
+|- IsActive                    bool
+|- SortOrder                   int
+|- ParentOptionId              Guid?
+|- Audit + SoftDelete fields
 
-CustomPropertyValue (Guid PK) ─── ITenantEntity, IAuditableEntity, ISoftDeletable
-├── CustomPropertyDefinitionId (Guid, FK)
-├── EntityId (Guid)                 — polymorphic (Event/Org/Group ID, NO DB FK)
-├── TextValue (string?)             — TEXT, URL
-├── NumberValue (decimal?)          — NUMBER
-├── BooleanValue (bool?)            — BOOLEAN
-├── DateTimeValue (DateTimeOffset?) — DATETIME
-├── OptionId (Guid?, FK)            — OPTION type → CustomPropertyOption
-├── Audit + SoftDelete fields
+CustomPropertyValue (Guid PK) -- ITenantEntity, IAuditableEntity, ISoftDeletable
+|- CustomPropertyDefinitionId  Guid
+|- EntityId                    Guid
+|- Ordinal                     int       -- explicit order for multi values
+|- TextValue                   string?
+|- NumberValue                 decimal?
+|- BooleanValue                bool?
+|- DateTimeValue               DateTimeOffset?
+|- OptionId                    Guid?
+|- Audit + SoftDelete fields
 ```
 
-### Appearance Columns (Replacing MetadataJson-Embedded Settings)
+### Layer 3B - Event Blueprint / Template Layer
 
-**Event** — new columns:
-- `BackgroundColor` (string?, max 50)
-- `BackgroundMediaUrl` (string?, max 500)
-- `BackgroundEffect` (string?, max 50)
+Templates are reusable event blueprints and carry versioned, namespaced custom-property definitions.
 
-**Organization** — new columns:
-- `ProfileImageUrl` (string?, max 500)
-- `BackgroundColor` (string?, max 50)
-- `BackgroundMediaUrl` (string?, max 500)
-- `BackgroundEffect` (string?, max 50)
+```
+EventTemplate (Guid PK) -- ITenantEntity, IAuditableEntity, ISoftDeletable
+|- TenantId                    Guid
+|- TemplateKey                 string
+|- DisplayName                 string
+|- Description                 string?
+|- EventTypeId                 int?
+|- Version                     int
+|- IsPublished                 bool
+|- IsActive                    bool
+|- SortOrder                   int
+|- Audit + SoftDelete fields
+`- Definitions: IReadOnlyCollection<EventTemplateCustomPropertyDefinition>
 
-**Group** — new columns:
-- `PictureUrl` (string?, max 500)
-- `BannerColor` (string?, max 50)
-- `BannerMediaUrl` (string?, max 500)
-- `BannerEffect` (string?, max 50)
+EventTemplateCustomPropertyDefinition (Guid PK) -- ITenantEntity, IAuditableEntity, ISoftDeletable
+|- EventTemplateId             Guid
+|- Namespace                   string
+|- Key                         string
+|- DisplayName                 string
+|- Description                 string?
+|- PropertyType                enum
+|- IsRequired                  bool
+|- IsMulti                     bool
+|- IsActive                    bool
+|- SortOrder                   int
+|- ExposureLevel               enum
+|- IsSearchable                bool
+|- IsFilterable                bool
+|- IsExportable                bool
+|- IsModerationRelevant        bool
+|- IsAnalyticsRelevant         bool
+|- DefaultTextValue            string?
+|- DefaultNumberValue          decimal?
+|- DefaultBooleanValue         bool?
+|- DefaultDateTimeValue        DateTimeOffset?
+|- DefaultOptionId             Guid?
+|- MinLength                   int?
+|- MaxLength                   int?
+|- RegexPattern                string?
+|- MinNumber                   decimal?
+|- MaxNumber                   decimal?
+|- MinDateTime                 DateTimeOffset?
+|- MaxDateTime                 DateTimeOffset?
+|- AllowedUrlSchemes           string?
+|- IsSystemOwned               bool
+`- Options: IReadOnlyCollection<EventTemplateCustomPropertyOption>
 
-### Key Design Decisions
+EventTemplateCustomPropertyOption (Guid PK) -- IAuditableEntity, ISoftDeletable
+|- EventTemplateCustomPropertyDefinitionId Guid
+|- Namespace                               string
+|- Key                                     string
+|- DisplayName                             string
+|- Description                             string?
+|- Value                                   string
+|- IsDefault                               bool
+|- IsActive                                bool
+|- SortOrder                               int
+|- ParentOptionId                          Guid?
+|- Audit + SoftDelete fields
+```
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Property scope | EntityTypeName + optional EventTypeId | Like Plane: properties per type, but extended to Org/Group via EntityTypeName discriminator |
-| Value storage | Typed columns (TextValue/NumberValue/BooleanValue/DateTimeValue/OptionId) | Better querying, type safety, indexing vs single-string approach |
-| EntityId FK | Polymorphic Guid, no DB FK constraint | Entity could be Event, Org, or Group — discriminated by Definition.EntityTypeName |
-| Appearance fields | Dedicated columns on entities | They're system-defined visual settings, not user-defined custom fields |
-| Option hierarchy | ParentOptionId self-reference | Like Plane — supports cascading dropdowns |
-| Multi-value | IsMulti flag on definition | Single unique constraint when IsMulti=false; multiple rows when true |
-| Tenant isolation | TenantId on Definition + Value | Definitions are tenant-scoped; Options inherit through Definition |
+### Layer 3C - Event-Local Runtime Layer
+
+Events own their runtime configuration after instantiation or sync.
+
+```
+EventCustomPropertyDefinition (Guid PK) -- ITenantEntity, IAuditableEntity, ISoftDeletable
+|- EventId                     Guid
+|- Namespace                   string
+|- Key                         string
+|- DisplayName                 string
+|- Description                 string?
+|- PropertyType                enum
+|- IsRequired                  bool
+|- IsMulti                     bool
+|- IsActive                    bool
+|- SortOrder                   int
+|- ExposureLevel               enum
+|- IsSearchable                bool
+|- IsFilterable                bool
+|- IsExportable                bool
+|- IsModerationRelevant        bool
+|- IsAnalyticsRelevant         bool
+|- DefaultTextValue            string?
+|- DefaultNumberValue          decimal?
+|- DefaultBooleanValue         bool?
+|- DefaultDateTimeValue        DateTimeOffset?
+|- DefaultOptionId             Guid?
+|- MinLength                   int?
+|- MaxLength                   int?
+|- RegexPattern                string?
+|- MinNumber                   decimal?
+|- MaxNumber                   decimal?
+|- MinDateTime                 DateTimeOffset?
+|- MaxDateTime                 DateTimeOffset?
+|- AllowedUrlSchemes           string?
+|- IsSystemOwned               bool
+|- SourceTemplateId            Guid?
+|- SourceTemplateKey           string?
+|- SourceTemplateVersion       int?
+|- SourceTemplateDefinitionId  Guid?
+|- InstantiatedAt              DateTimeOffset
+|- LastSyncedFromTemplateAt    DateTimeOffset?
+|- Audit + SoftDelete fields
+`- Options: IReadOnlyCollection<EventCustomPropertyOption>
+
+EventCustomPropertyOption (Guid PK) -- IAuditableEntity, ISoftDeletable
+|- EventCustomPropertyDefinitionId Guid
+|- Namespace                       string
+|- Key                             string
+|- DisplayName                     string
+|- Description                     string?
+|- Value                           string
+|- IsDefault                       bool
+|- IsActive                        bool
+|- SortOrder                       int
+|- ParentOptionId                  Guid?
+|- SourceTemplateOptionId          Guid?
+|- SourceTemplateVersion           int?
+|- Audit + SoftDelete fields
+
+EventCustomPropertyValue (Guid PK) -- ITenantEntity, IAuditableEntity, ISoftDeletable
+|- EventCustomPropertyDefinitionId Guid
+|- EventId                         Guid
+|- Ordinal                         int
+|- TextValue                       string?
+|- NumberValue                     decimal?
+|- BooleanValue                    bool?
+|- DateTimeValue                   DateTimeOffset?
+|- OptionId                        Guid?
+|- Audit + SoftDelete fields
+```
+
+### Layer 3D - Projection / Read-Model Layer
+
+Raw EAV tables are not the long-term discovery/read model for hot query paths.
+
+```
+EventCustomPropertyProjection
+|- EventId
+|- Namespace
+|- Key
+|- PropertyType
+|- ExposureLevel
+|- SearchToken / SearchValue columns
+|- FilterFacetValue columns
+|- ExportValue columns
+|- ModerationValue columns
+|- UpdatedAt
+
+EventSearchDocument / equivalent projection payload
+|- canonical event fields
+|- promoted custom-property facets
+|- public/exportable custom-property payload
+```
+
+This projection layer is implemented as part of this plan, not deferred.
+
+### Appearance Columns (Still Not EAV)
+
+**Event**
+- `BackgroundColor`
+- `BackgroundMediaUrl`
+- `BackgroundEffect`
+
+**Organization**
+- `ProfileImageUrl`
+- `BackgroundColor`
+- `BackgroundMediaUrl`
+- `BackgroundEffect`
+
+**Group**
+- `PictureUrl`
+- `BannerColor`
+- `BannerMediaUrl`
+- `BannerEffect`
+
+---
+
+## Machine Identity, Namespacing, And Uniqueness
+
+### Identity Rules
+
+- `DisplayName` is mutable and localizable.
+- `Namespace + Key` is stable and machine-oriented.
+- `Name` is removed from the design; use `Key` plus `DisplayName`.
+
+### Namespace Rules
+
+Supported namespace categories:
+
+- `platform` for platform-owned semantic properties
+- `sector.{name}` reserved for sector/domain semantic bridges and collision prevention
+- `tenant` for tenant-local custom semantics
+- `pack.{name}` for curated property packs/templates shipped with the platform
+- reserved future namespaces can be introduced without schema redesign
+
+Namespaces and keys are normalized to lowercase machine identifiers before persistence so case-style differences never create distinct semantic identities.
+
+### Uniqueness Rules
+
+- shared definitions: `(TenantId, EntityTypeName, Namespace, Key)`
+- shared options: `(CustomPropertyDefinitionId, Namespace, Key)`
+- event templates: `(TenantId, TemplateKey, Version)` and `(EventTemplateId, Namespace, Key)`
+- event-local definitions: `(EventId, Namespace, Key)`
+- event-local options: `(EventCustomPropertyDefinitionId, Namespace, Key)`
+- single-value properties: max one value row with `Ordinal = 0`
+- multi-value properties: one row per selected/entered value with unique ordinal per definition/entity scope
+
+---
+
+## Layer 2 Sector Profile Rules
+
+Layer 2 is first-class typed relational schema.
+
+### What Belongs In Layer 2
+
+- sector-standard event semantics
+- direct filter fields for sector views/list pages
+- moderation/policy-critical sector fields
+- fields that require foreign keys to lookups or constrained enums
+- fields expected across most or all events in a sector
+
+### What Must Not Go Into Layer 3 EAV
+
+- standard Islamic event semantics already modeled by `EventIslamicAspect`
+- standard Tech event semantics already modeled by `EventTechAspect`
+- future sector-profile fields that need direct filter/query/index support
+
+### Current Repo-Aligned Implementation Choice
+
+For this codebase, the preferred Layer 2 implementation is the existing typed aspect/profile pattern rather than pushing more columns directly onto `Event`:
+
+- universal data stays on `Event`
+- sector-standard data lives in 1:1 aspect/profile tables
+- local extensions live in Layer 3 custom properties
+
+This keeps `Event` universal while preserving strong relational modeling for sector-standard data.
+
+### Collision Rule
+
+Layer 3 definitions must be rejected when they attempt to reuse a reserved Layer 2 semantic identity.
+
+---
+
+## Multi-Value Semantics
+
+`IsMulti` must be explicit in storage and behavior.
+
+### Baseline Rules
+
+1. One value row per selected or entered value.
+2. `Ordinal` defines order whenever `IsMulti = true`.
+3. `IsMulti = false` enforces max one value row.
+4. For option properties:
+   - single-select -> max one row
+   - multi-select -> one row per selected option
+5. For primitive properties:
+   - single -> one row
+   - multi -> one row per primitive value
+6. Duplicates are disallowed by default for the same `(DefinitionId, normalized value)` within one entity scope unless a future rule explicitly allows them.
+
+### Required Tests
+
+- multi-select option values
+- multi-text values
+- ordinal ordering behavior
+- single-value uniqueness enforcement
+- duplicate rejection behavior
+
+---
+
+## Validation Model
+
+`ValidationRules string?` is removed from the design.
+
+### Supported Validation In This Plan
+
+- string: `MinLength`, `MaxLength`, `RegexPattern`
+- number: `MinNumber`, `MaxNumber`
+- datetime: `MinDateTime`, `MaxDateTime`
+- url: `AllowedUrlSchemes`
+
+### Rule
+
+Validation is limited to explicitly modeled, typed constraints in this implementation. No opaque rule DSL and no free-form JSON validation blob.
+
+---
+
+## Exposure, Publication, And Governance Semantics
+
+Every custom property must declare how it can be surfaced and governed.
+
+### Definition-Level Exposure Fields
+
+- `ExposureLevel`
+- `IsSearchable`
+- `IsFilterable`
+- `IsExportable`
+- `IsModerationRelevant`
+- `IsAnalyticsRelevant`
+- `IsSystemOwned`
+
+### Rules
+
+1. Visibility is never inferred.
+2. Search/filter/export behavior is never inferred from type alone.
+3. Platform-owned / system-owned properties are governed more strictly than tenant-owned local fields.
+4. Properties marked searchable/filterable must participate in projection updates.
+5. `IsSystemOwned` controls ownership/editability, not visibility.
+6. `ExposureLevel` is the maximum audience ceiling; search/filter/export flags only enable pipelines inside that ceiling.
+
+---
+
+## Template Lifecycle And Sync
+
+### Creation Flow
+
+1. Admin creates `EventTemplate` with explicit `TemplateKey` and `Version`.
+2. Admin defines versioned template custom properties and options.
+3. Organizer creates an event with an optional template selection.
+4. In one transaction, the system persists the event and materializes event-local definitions/options/initial values.
+5. Event runtime behavior uses only event-local rows.
+
+### Edit Flow
+
+- editing a template creates/updates a specific versioned template state
+- editing an event changes only event-local state
+
+### Sync Flow (Implemented In This Plan)
+
+Sync is explicit and version-aware.
+
+1. System compares an event's current provenance version with the selected template version.
+2. System builds a diff:
+   - added definitions/options
+   - changed display labels
+   - changed validation/exposure flags
+   - retired options/definitions
+3. Authorized operator chooses what to apply.
+4. Sync updates event-local rows and stamps `LastSyncedFromTemplateAt` plus `SourceTemplateVersion`.
+5. No automatic sync on template save.
+
+### Provenance Rules
+
+Support must be able to answer:
+
+- which template created this event?
+- which version?
+- when was it instantiated?
+- was it synced later?
+
+Sync matching must prefer stored source identifiers first and fall back to `Namespace + Key` only for repair or backfill scenarios.
+
+---
+
+## Delete, Retirement, And Historical Behavior
+
+### Rules
+
+1. Definitions/options with historical values are retired/deactivated, not hard-deleted in normal workflows.
+2. Historical values remain readable after definition or option retirement.
+3. Option retirement does not invalidate existing historical value rows.
+4. Template changes do not rewrite historical provenance references.
+5. Hard delete is reserved for safe admin cleanup cases with no dependent historical state.
+6. Sync operations must preserve auditability of source version lineage.
+
+---
+
+## Query And Projection Strategy
+
+### Runtime Read Rules
+
+- event form reads -> event-local definitions + event-local values
+- organization/group runtime reads -> shared definitions + scoped values
+- discovery/filtering/search -> read projections, not ad hoc EAV-heavy query composition
+
+### Projection Rules
+
+1. Searchable or filterable custom properties are projected at write/sync time.
+2. Public/exportable projections only include properties whose exposure rules allow it.
+3. Moderation-relevant properties are projected into moderation-aware read models.
+4. Projection rebuild tooling is part of the implementation plan.
+5. Projection rows are atomic per projected value row, not one merged row per property.
+6. Raw event-local definitions and values remain the source of truth; projections are rebuildable read models only.
+
+---
+
+## Required Phase 0 ADR Before Implementation
+
+Implementation should not begin until these decisions are locked in the plan and supporting docs.
+
+### Phase 0: Architecture And Governance Lock
+
+#### Task 0.1: Lock EAV As Extension Layer, Not Core Semantic Contract
+- **Acceptance Criteria:**
+  - plan explicitly forbids using custom properties as the sole persistence model for discovery/policy/publication-critical semantics
+  - promotion/projection rule is documented
+
+#### Task 0.1A: Lock The 3-Layer Event Model
+- **Acceptance Criteria:**
+  - plan explicitly distinguishes Layer 1 universal core, Layer 2 typed sector profile, and Layer 3 custom extensions
+  - Layer 2 is described as first-class typed relational schema, not EAV
+
+#### Task 0.1B: Lock Layer 2 Boundaries
+- **Acceptance Criteria:**
+  - plan explicitly forbids placing sector-standard semantics into Layer 3 custom properties
+  - current aspect/profile families are identified as Layer 2 precedents
+
+#### Task 0.2: Lock Stable Machine-Key Strategy
+- **Acceptance Criteria:**
+  - `Namespace + Key` replaces mutable `Name` as machine identity
+  - uniqueness constraints use namespaced keys
+
+#### Task 0.3: Lock Multi-Value Storage Semantics
+- **Acceptance Criteria:**
+  - `Ordinal` is required on value rows
+  - one-row-per-value semantics are documented for primitive and option types
+
+#### Task 0.4: Lock Validation Model
+- **Acceptance Criteria:**
+  - `ValidationRules string?` is removed
+  - only typed governed validation metadata remains
+
+#### Task 0.5: Lock Exposure / Publication Semantics
+- **Acceptance Criteria:**
+  - exposure/search/filter/export/moderation fields are required in the model
+  - visibility rules are explicit
+
+#### Task 0.6: Lock Projection Strategy
+- **Acceptance Criteria:**
+  - plan states that raw EAV is not the long-term discovery query model
+  - projection entities and rebuild/update flows are in scope now
+
+#### Task 0.7: Lock Template Provenance And Sync Model
+- **Acceptance Criteria:**
+  - template versioning, provenance stamping, and explicit sync workflow are documented
+
+#### Task 0.8: Lock Delete / Retirement Semantics
+- **Acceptance Criteria:**
+  - plan documents retirement vs hard delete behavior and historical retention rules
+
+#### Task 0.9: Lock Governance / Authorization Categories
+- **Acceptance Criteria:**
+  - platform/system namespace editing, property governance, template admin, and event editing are distinguished
 
 ---
 
 ## Implementation Phases
 
 ### Phase 1: Domain Layer
-**Effort: M** | **Related Skills:** `clean-architecture-rules`
+**Effort: XXL** | **Related Skills:** `clean-architecture-rules`
 
-#### Task 1.1: Create PropertyType Enum
-- **File:** `Explore.Domain/Enums/PropertyType.cs`
+#### Task 1.1: Create Core Enums
+- `PropertyType`
+- `EntityTypeName`
+- `ExposureLevel`
+
+#### Task 1.1A: Audit Existing Layer 2 Sector Aspect Families
 - **Acceptance Criteria:**
-  - Enum with values: Text=1, Number=2, Option=3, Boolean=4, DateTime=5, Url=6
-  - File-scoped namespace
-  - ABOUTME header
-- **Effort:** S
+  - identify which existing aspect/profile entities are already Layer 2
+  - document which sector-standard semantics remain outside Layer 3 scope
 
-#### Task 1.2: Create EntityTypeName Enum
-- **File:** `Explore.Domain/Enums/EntityTypeName.cs`
+#### Task 1.1B: Add Missing Typed Sector Profile Fields/Entities Only Where The Current Layer 2 Model Is Incomplete
 - **Acceptance Criteria:**
-  - Enum with values: Event=1, Organization=2, Group=3
-  - File-scoped namespace
-  - ABOUTME header
-- **Effort:** S
+  - missing sector-standard fields are added to typed aspect/profile schema, not EAV
+  - no new sector-standard requirement is routed into custom-property definitions by default
 
-#### Task 1.3: Create CustomPropertyDefinition Entity
-- **File:** `Explore.Domain/CustomPropertyDefinition.cs`
-- **Acceptance Criteria:**
-  - Implements `ITenantEntity`, `IAuditableEntity`, `ISoftDeletable`
-  - All properties as specified in model above
-  - `IReadOnlyCollection<CustomPropertyOption>` navigation (backed by private list)
-  - `IReadOnlyCollection<CustomPropertyValue>` navigation (backed by private list)
-  - Guid PK, file-scoped namespace, ABOUTME header
-  - No default values in properties (set in handlers/EF config per CLAUDE.md rule)
-- **Effort:** S
+#### Task 1.2: Create Shared Definition Entities
+- `CustomPropertyDefinition`
+- `CustomPropertyOption`
+- `CustomPropertyValue`
+- **Acceptance Criteria:** namespaced keys, typed validation fields, exposure flags, ordinal support
 
-#### Task 1.4: Create CustomPropertyOption Entity
-- **File:** `Explore.Domain/CustomPropertyOption.cs`
-- **Acceptance Criteria:**
-  - Implements `IAuditableEntity`, `ISoftDeletable`
-  - All properties as specified: DefinitionId FK, Name, Description, Value, IsDefault, IsActive, SortOrder, ParentOptionId
-  - Navigation: `CustomPropertyDefinition` (parent), `CustomPropertyOption?` (parent option), `IReadOnlyCollection<CustomPropertyOption>` (children)
-  - Guid PK, file-scoped namespace, ABOUTME header
-- **Effort:** S
+#### Task 1.3: Create Event Template Entities
+- `EventTemplate`
+- `EventTemplateCustomPropertyDefinition`
+- `EventTemplateCustomPropertyOption`
+- **Acceptance Criteria:** versioned template identity and namespaced keys
 
-#### Task 1.5: Create CustomPropertyValue Entity
-- **File:** `Explore.Domain/CustomPropertyValue.cs`
-- **Acceptance Criteria:**
-  - Implements `ITenantEntity`, `IAuditableEntity`, `ISoftDeletable`
-  - All typed value columns: TextValue, NumberValue, BooleanValue, DateTimeValue, OptionId
-  - EntityId (Guid, polymorphic — no nav prop to Event/Org/Group)
-  - Navigation: `CustomPropertyDefinition`, `CustomPropertyOption?`
-  - Guid PK, file-scoped namespace, ABOUTME header
-- **Effort:** S
+#### Task 1.4: Create Event-Local Runtime Entities
+- `EventCustomPropertyDefinition`
+- `EventCustomPropertyOption`
+- `EventCustomPropertyValue`
+- **Acceptance Criteria:** event-local ownership, provenance/version fields, ordinal support
 
-#### Task 1.6: Add Appearance Columns to Event
-- **File:** `Explore.Domain/Event.cs`
-- **Changes:** Add `BackgroundColor`, `BackgroundMediaUrl`, `BackgroundEffect` (all `string?`). Remove `MetadataJson`.
-- **Effort:** S
+#### Task 1.5: Create Projection Entities / Value Objects
+- `EventCustomPropertyProjection` or equivalent domain-side representation
+- **Acceptance Criteria:** enough shape to support searchable/filterable/exportable projections
 
-#### Task 1.7: Add Appearance Columns to Organization
-- **File:** `Explore.Domain/Organization.cs`
-- **Changes:** Add `ProfileImageUrl`, `BackgroundColor`, `BackgroundMediaUrl`, `BackgroundEffect`. Remove `MetadataJson`.
-- **Effort:** S
+#### Task 1.6: Audit Existing Appearance / Branding Fields And Align Them To The New Governance Model
+- **Acceptance Criteria:** preserve current first-class appearance approach; reconcile existing `StorageObject`-style media references with the custom-properties plan rather than reintroducing URL-in-EAV patterns
 
-#### Task 1.8: Add Appearance Columns to Group
-- **File:** `Explore.Domain/Group.cs`
-- **Changes:** Add `PictureUrl`, `BannerColor`, `BannerMediaUrl`, `BannerEffect`. Remove `MetadataJson`.
-- **Effort:** S
+#### Task 1.7: Add Missing First-Class Appearance / Branding Fields Only Where The Current Domain Is Still Incomplete
+
+#### Task 1.8: Remove Stale Metadata Assumptions From The Domain Design Baseline
 
 ---
 
-### Phase 2: Persistence Layer — EF Configurations
-**Effort: L** | **Related Skills:** `dotnet-efcore-guidelines`
+### Phase 2: Persistence Layer - EF Configurations
+**Effort: XXL** | **Related Skills:** `dotnet-efcore-guidelines`
 
-#### Task 2.1: Create CustomPropertyDefinitionConfiguration
-- **File:** `Explore.Persistence/Configurations/Entities/CustomPropertyDefinitionConfiguration.cs`
+#### Task 2.0: Reconcile Existing Layer 2 Aspect Configurations With The 3-Layer Plan
 - **Acceptance Criteria:**
-  - Table name: `custom_property_definitions`
-  - Name: required, max 100
-  - DisplayName: required, max 200
-  - Description: max 500
-  - DefaultValue: max 1000
-  - ValidationRules: max 2000
-  - PropertyType + EntityTypeName stored as string (or int, consistent with codebase)
-  - Unique index: (TenantId, EntityTypeName, EventTypeId, Name) — `ix_cpd_tenant_entity_type_name`
-  - Index: (TenantId, EntityTypeName, IsActive) — `ix_cpd_tenant_entity_active`
-  - SoftDelete named query filter
-  - Relationship: HasMany(Options), HasMany(Values)
-  - EventType FK config (optional)
-- **Effort:** M
+  - Layer 2 aspect/profile configurations remain first-class and queryable
+  - filtering/indexing expectations for sector-standard fields are preserved or improved
 
-#### Task 2.2: Create CustomPropertyOptionConfiguration
-- **File:** `Explore.Persistence/Configurations/Entities/CustomPropertyOptionConfiguration.cs`
+#### Task 2.1: Configure Shared Definition Tables
+- **Acceptance Criteria:** namespaced uniqueness, indexes for exposure/search flags, typed validation columns, ordinal constraints
+
+#### Task 2.2: Configure Event Template Tables
+- **Acceptance Criteria:** `(TenantId, TemplateKey, Version)` uniqueness and definition/option namespaced uniqueness
+
+#### Task 2.3: Configure Event Runtime Tables
+- **Acceptance Criteria:** `(EventId, Namespace, Key)` uniqueness and provenance/version columns mapped
+
+#### Task 2.4: Configure Projection Tables
+- **Acceptance Criteria:** indexes optimized for event discovery/search/filter reads
+
+#### Task 2.5: Reconcile `EventConfiguration.cs` With The Hardened Plan
+
+#### Task 2.6: Add Or Adjust `OrganizationConfiguration.cs` And `GroupConfiguration.cs` Only For Real New Fields Introduced By This Initiative
+
+#### Task 2.7: Keep Existing First-Class Appearance Mappings And Avoid Regressing To Metadata-Blob Storage
+
+#### Task 2.8: Update `ExploreDbContext.cs`
+- add DbSets and query filters for all new entities
+
+#### Task 2.9: Create EF Migration
+
+---
+
+### Phase 3: Persistence Layer - Repositories, Sync, And Projection Support
+**Effort: XXL** | **Related Skills:** `dotnet-efcore-guidelines`, `clean-architecture-rules`
+
+#### Task 3.1: Create Shared Definition Repositories
+
+#### Task 3.2: Create Event Template Repositories
+
+#### Task 3.3: Create Event Runtime Repositories
+
+#### Task 3.4: Create Template Instantiation Service
+
+#### Task 3.5: Create Template Diff / Sync Service
+
+#### Task 3.6: Create Projection Updater / Rebuilder Service
+
+#### Task 3.7: Register Repositories And Services In DI
+
+---
+
+### Phase 4: Application Layer - DTOs And Contracts
+**Effort: XXL** | **Related Skills:** `cqrs-mediatr-guidelines`
+
+#### Task 4.1: Create Shared Definition DTOs
+
+#### Task 4.2: Create Event Template DTOs
+
+#### Task 4.3: Create Event Runtime Definition / Value DTOs
+
+#### Task 4.4: Create Template Diff / Sync DTOs
+
+#### Task 4.5: Create Projection/Admin DTOs As Needed
+
+#### Task 4.6: Re-audit Event DTOs / Generated Contracts And Remove Any Stale Metadata-Blob Assumptions
+
+#### Task 4.7: Re-audit Organization DTOs / Generated Contracts And Remove Any Stale Metadata-Blob Assumptions
+
+#### Task 4.8: Re-audit Group DTOs / Generated Contracts And Remove Any Stale Metadata-Blob Assumptions
+
+#### Task 4.9: Update Mapping Profiles
+
+---
+
+### Phase 5: Application Layer - CQRS For Definitions, Templates, Runtime Values, Sync, And Projections
+**Effort: XXXL** | **Related Skills:** `cqrs-mediatr-guidelines`
+
+#### Task 5.0: Preserve Layer 2 CQRS Paths For Sector-Standard Schema
 - **Acceptance Criteria:**
-  - Table name: `custom_property_options`
-  - Name: required, max 200
-  - Value: required, max 500
-  - Description: max 500
-  - Index: (DefinitionId, SortOrder) — `ix_cpo_definition_sort`
-  - Self-referencing FK for ParentOptionId (SetNull on delete)
-  - SoftDelete named query filter
-- **Effort:** S
+  - sector-standard typed aspect/profile commands and queries remain distinct from Layer 3 custom-property flows
+  - Layer 2 filtering/moderation/policy logic does not depend on EAV handlers
 
-#### Task 2.3: Create CustomPropertyValueConfiguration
-- **File:** `Explore.Persistence/Configurations/Entities/CustomPropertyValueConfiguration.cs`
-- **Acceptance Criteria:**
-  - Table name: `custom_property_values`
-  - TextValue: max 4000
-  - NumberValue: precision (19,4)
-  - Unique index: (DefinitionId, EntityId) when IsMulti=false — `ix_cpv_definition_entity` (non-unique to handle both cases; uniqueness enforced in handler)
-  - Index: (EntityId) — `ix_cpv_entity` (for "get all values for entity X")
-  - Index: (TenantId, DefinitionId) — `ix_cpv_tenant_definition` (for "all values of property Y")
-  - FK to CustomPropertyDefinition (Cascade delete)
-  - FK to CustomPropertyOption (SetNull on delete)
-  - SoftDelete named query filter
-- **Effort:** M
+#### Task 5.1: CRUD Commands / Queries For Shared Organization / Group Definitions
 
-#### Task 2.4: Update EventConfiguration
-- **File:** `Explore.Persistence/Configurations/Entities/EventConfiguration.cs`
-- **Changes:**
-  - Remove lines 99–101 (MetadataJson jsonb config)
-  - Add appearance column configs: BackgroundColor (max 50), BackgroundMediaUrl (max 500), BackgroundEffect (max 50)
-- **Effort:** S
+#### Task 5.2: CRUD Commands / Queries For Event Templates
 
-#### Task 2.5: Update OrganizationConfiguration
-- **File:** `Explore.Persistence/Configurations/Entities/OrganizationConfiguration.cs`
-- **Changes:**
-  - Remove MetadataJson jsonb config (line 31)
-  - Add appearance column configs
-- **Effort:** S
+#### Task 5.3: CRUD Commands / Queries For Template Options
 
-#### Task 2.6: Update GroupConfiguration
-- **File:** `Explore.Persistence/Configurations/Entities/GroupConfiguration.cs`
-- **Changes:**
-  - Remove MetadataJson jsonb config (line 30)
-  - Add appearance column configs
-- **Effort:** S
+#### Task 5.4: Queries For Event-Local Definitions And Values
 
-#### Task 2.7: Add DbSets to ExploreDbContext
-- **File:** `Explore.Persistence/ExploreDbContext.cs`
-- **Changes:**
-  - Add `DbSet<CustomPropertyDefinition>`
-  - Add `DbSet<CustomPropertyOption>`
-  - Add `DbSet<CustomPropertyValue>`
-  - Add query filter registrations for new entities in `ApplyGlobalQueryFilters`
-- **Effort:** S
+#### Task 5.5: Commands For Setting Event-Local Values With Explicit Multi-Value Rules
 
-#### Task 2.8: Create EF Migration
-- **Command:** `dotnet ef migrations add AddEavCustomProperties`
-- **Acceptance:** Migration compiles, applies cleanly to empty DB
-- **Effort:** S
+#### Task 5.6: Commands For Editing Event-Local Definitions
+
+#### Task 5.7: Commands / Queries For Template Diff And Sync
+
+#### Task 5.8: Commands / Jobs For Projection Updates And Rebuilds
+
+#### Task 5.9: Promotion Rules For Discovery-Critical Properties
+- **Acceptance Criteria:** plan and handlers support moving properties toward first-class/projection-backed semantics when they become central
+
+#### Task 5.10: Promotion Rules For Sector-Standard Properties
+- **Acceptance Criteria:** if a Layer 3 field proves to be sector-standard, the implementation path promotes it into a Layer 2 typed profile/aspect instead of deepening EAV dependence
 
 ---
 
-### Phase 3: Persistence Layer — Repositories
-**Effort: M** | **Related Skills:** `dotnet-efcore-guidelines`, `clean-architecture-rules`
+### Phase 6: Event Creation, Template Instantiation, And Event Editing Flow
+**Effort: XXL** | **Related Skills:** `cqrs-mediatr-guidelines`
 
-#### Task 3.1: Create ICustomPropertyDefinitionRepository
-- **File:** `Explore.Application/Contracts/Persistence/ICustomPropertyDefinitionRepository.cs`
-- **Interface extends:** `IGenericRepository<CustomPropertyDefinition, Guid>`
-- **Custom methods:**
-  - `Task<List<CustomPropertyDefinition>> GetByEntityType(EntityTypeName entityType, int? eventTypeId = null)`
-  - `Task<CustomPropertyDefinition?> GetWithOptions(Guid id)`
-  - `Task<bool> NameExists(Guid tenantId, EntityTypeName entityType, int? eventTypeId, string name, Guid? excludeId = null)`
-- **Effort:** S
+#### Task 6.1: Extend Event Creation Contract With Optional Template Selection
 
-#### Task 3.2: Create ICustomPropertyValueRepository
-- **File:** `Explore.Application/Contracts/Persistence/ICustomPropertyValueRepository.cs`
-- **Interface extends:** `IGenericRepository<CustomPropertyValue, Guid>`
-- **Custom methods:**
-  - `Task<List<CustomPropertyValue>> GetByEntity(Guid entityId)`
-  - `Task<CustomPropertyValue?> GetByDefinitionAndEntity(Guid definitionId, Guid entityId)`
-  - `Task<List<CustomPropertyValue>> GetByDefinition(Guid definitionId)`
-  - `Task DeleteByEntity(Guid entityId)` — bulk cleanup
-- **Effort:** S
+#### Task 6.2: Instantiate Event-Local Definitions/Options/Defaults Transactionally
 
-#### Task 3.3: Implement CustomPropertyDefinitionRepository
-- **File:** `Explore.Persistence/Repositories/CustomPropertyDefinitionRepository.cs`
-- **Acceptance:** Include eager loading of Options in GetWithOptions, apply active filter in GetByEntityType
-- **Effort:** M
+#### Task 6.3: Support Event Creation Without Template
 
-#### Task 3.4: Implement CustomPropertyValueRepository
-- **File:** `Explore.Persistence/Repositories/CustomPropertyValueRepository.cs`
-- **Acceptance:** Include eager loading of Definition + Option in GetByEntity
-- **Effort:** M
+#### Task 6.4: Ensure Event Edit Reads Event-Local Configuration Only
 
-#### Task 3.5: Register Repositories in DI
-- **File:** `Explore.Persistence/PersistenceServicesRegistration.cs`
-- **Changes:** Add `AddScoped<ICustomPropertyDefinitionRepository, ...>` and value repo
-- **Effort:** S
+#### Task 6.5: Add Template Sync Decision Flow To Event Administration
+
+#### Task 6.6: Keep Layer 2 Editing Separate From Layer 3 Editing
+- **Acceptance Criteria:** typed sector-profile editing remains distinct from custom-property editing in contracts and workflows
 
 ---
 
-### Phase 4: Application Layer — DTOs
-**Effort: M** | **Related Skills:** `cqrs-mediatr-guidelines`
-
-#### Task 4.1: Create Custom Property Definition DTOs
-- **Files:**
-  - `Explore.Application/DTOs/CustomProperty/CustomPropertyDefinitionDto.cs`
-  - `Explore.Application/DTOs/CustomProperty/CustomPropertyDefinitionListDto.cs`
-  - `Explore.Application/DTOs/CustomProperty/CreateCustomPropertyDefinitionDto.cs`
-  - `Explore.Application/DTOs/CustomProperty/UpdateCustomPropertyDefinitionDto.cs`
-- **Effort:** S
-
-#### Task 4.2: Create Custom Property Option DTOs
-- **Files:**
-  - `Explore.Application/DTOs/CustomProperty/CustomPropertyOptionDto.cs`
-  - `Explore.Application/DTOs/CustomProperty/CreateCustomPropertyOptionDto.cs`
-  - `Explore.Application/DTOs/CustomProperty/UpdateCustomPropertyOptionDto.cs`
-- **Effort:** S
-
-#### Task 4.3: Create Custom Property Value DTOs
-- **Files:**
-  - `Explore.Application/DTOs/CustomProperty/CustomPropertyValueDto.cs`
-  - `Explore.Application/DTOs/CustomProperty/SetCustomPropertyValueDto.cs`
-- **Effort:** S
-
-#### Task 4.4: Remove MetadataJson from Event DTOs + Add Appearance
-- **Files:** `CreateEventDto.cs`, `UpdateEventDto.cs`, `EventDto.cs`
-- **Changes:** Remove `MetadataJson` property; add `BackgroundColor`, `BackgroundMediaUrl`, `BackgroundEffect`
-- **Effort:** S
-
-#### Task 4.5: Remove MetadataJson from Organization DTOs + Add Appearance
-- **Files:** `CreateOrganizationDto.cs`, `UpdateOrganizationDto.cs`, `OrganizationDto.cs`, `OrganizationListDto.cs`
-- **Changes:** Remove `MetadataJson`; add appearance properties
-- **Effort:** S
-
-#### Task 4.6: Remove MetadataJson from Group DTOs + Add Appearance
-- **Files:** `CreateGroupDto.cs`, `UpdateGroupDto.cs`, `GroupDto.cs`, `GroupListDto.cs`
-- **Changes:** Remove `MetadataJson`; add branding properties
-- **Effort:** S
-
-#### Task 4.7: Update AutoMapper Profile
-- **File:** `Explore.Application/Profiles/MappingProfile.cs`
-- **Changes:** Add mappings for new EAV DTOs; update Event/Org/Group mappings for appearance columns
-- **Effort:** S
-
----
-
-### Phase 5: Application Layer — CQRS Commands & Queries
-**Effort: XL** | **Related Skills:** `cqrs-mediatr-guidelines`
-
-#### Task 5.1: CreateCustomPropertyDefinition Command + Handler + Validator
-- **Files:**
-  - `Features/CustomProperties/Requests/Commands/CreateCustomPropertyDefinitionCommand.cs`
-  - `Features/CustomProperties/Handlers/Commands/CreateCustomPropertyDefinitionCommandHandler.cs`
-  - `DTOs/CustomProperty/Validators/CreateCustomPropertyDefinitionDtoValidator.cs`
-- **Acceptance:** Returns `BaseCommandResponse<Guid>`, validates name uniqueness, validates PropertyType
-- **Effort:** M
-
-#### Task 5.2: UpdateCustomPropertyDefinition Command + Handler + Validator
-- **Files:** Same pattern as 5.1 but for Update
-- **Acceptance:** Cannot change PropertyType after values exist, validates name uniqueness excluding self
-- **Effort:** M
-
-#### Task 5.3: DeleteCustomPropertyDefinition Command + Handler
-- **Files:** Request + Handler
-- **Acceptance:** Soft-deletes definition + cascades to options/values
-- **Effort:** S
-
-#### Task 5.4: CreateCustomPropertyOption Command + Handler + Validator
-- **Files:** Request + Handler + Validator
-- **Acceptance:** Validates definition exists and is Option type, validates unique value within definition
-- **Effort:** M
-
-#### Task 5.5: UpdateCustomPropertyOption Command + Handler + Validator
-- **Effort:** S
-
-#### Task 5.6: DeleteCustomPropertyOption Command + Handler
-- **Effort:** S
-
-#### Task 5.7: SetCustomPropertyValue Command + Handler + Validator
-- **Files:** Request + Handler + Validator
-- **Acceptance:** Upsert behavior (create or update), validates value type matches property type, enforces IsRequired, enforces single-value uniqueness when IsMulti=false
-- **Effort:** L
-
-#### Task 5.8: RemoveCustomPropertyValue Command + Handler
-- **Effort:** S
-
-#### Task 5.9: GetCustomPropertyDefinitions Query + Handler
-- **Files:** Request + Handler
-- **Acceptance:** Filter by EntityTypeName, optional EventTypeId, include Options, paginated
-- **Effort:** M
-
-#### Task 5.10: GetCustomPropertyDefinitionDetail Query + Handler
-- **Files:** Request + Handler
-- **Acceptance:** Single definition with all options, used for definition editing
-- **Effort:** S
-
-#### Task 5.11: GetCustomPropertyValues Query + Handler
-- **Files:** Request + Handler
-- **Acceptance:** Get all custom property values for a specific entity (by EntityId), includes definition display info
-- **Effort:** M
-
----
-
-### Phase 6: Remove MetadataJson from Existing Application Layer
-**Effort: M**
-
-#### Task 6.1: Remove JSONB Filters from EventSubqueryFilter
-- **File:** `Explore.Application/Specifications/Events/EventSubqueryFilter.cs`
-- **Changes:** Remove `JsonContains` and `JsonKeyExists` filter types and factory methods (lines 132–204)
-- **Effort:** S
-
-#### Task 6.2: Remove JSONB Filtering from EventRepository
-- **File:** `Explore.Persistence/Repositories/EventRepository.cs`
-- **Changes:** Remove JSONB case handlers (lines 279–287)
-- **Effort:** S
-
-#### Task 6.3: Remove MetadataJson from GetEventListRequest + Handler
-- **File:** `GetEventListRequest.cs` — remove MetadataJsonContains/MetadataJsonKeyExists (lines 225–234)
-- **File:** `GetEventListRequestHandler.cs` — remove MetadataJson filter dispatch (lines 157–161)
-- **Changes:** Also update handler mappings for new appearance columns
-- **Effort:** S
-
-#### Task 6.4: Update Event Create/Update Handlers for Appearance
-- **Files:** `CreateEventCommandHandler.cs`, `UpdateEventCommandHandler.cs`
-- **Changes:** Map appearance columns from DTO to entity (instead of MetadataJson)
-- **Effort:** S
-
-#### Task 6.5: Update Organization Handler for Appearance
-- **File:** `UpdateOrganizationDetailsCommandHandler.cs`
-- **Changes:** Replace `organization.MetadataJson = request.OrganizationDto.MetadataJson` (line 76) with appearance column mapping
-- **Effort:** S
-
-#### Task 6.6: Update Group Handler for Appearance
-- **File:** `UpdateGroupCommandHandler.cs`
-- **Changes:** Replace `group.MetadataJson = request.GroupDto.MetadataJson` (line 77) with branding column mapping
-- **Effort:** S
-
----
-
-### Phase 7: API Layer
-**Effort: L** | **Related Skills:** `auth-patterns`
-
-#### Task 7.1: Create CustomPropertyDefinitionController
-- **File:** `Explore.API/Controllers/CustomPropertyDefinitionController.cs`
-- **Endpoints:**
-  - `GET /api/custom-property-definitions?entityType={}&eventTypeId={}` — list definitions
-  - `GET /api/custom-property-definitions/{id}` — detail with options
-  - `POST /api/custom-property-definitions` — create (Authorize)
-  - `PUT /api/custom-property-definitions/{id}` — update (Authorize)
-  - `DELETE /api/custom-property-definitions/{id}` — delete (Authorize)
-- **Acceptance:** HAL wrapping, proper OpenAPI attributes, authorization
-- **Effort:** M
-
-#### Task 7.2: Create CustomPropertyOptionController
-- **File:** `Explore.API/Controllers/CustomPropertyOptionController.cs`
-- **Endpoints:**
-  - `POST /api/custom-property-definitions/{definitionId}/options` — create
-  - `PUT /api/custom-property-definitions/{definitionId}/options/{id}` — update
-  - `DELETE /api/custom-property-definitions/{definitionId}/options/{id}` — delete
-- **Effort:** M
-
-#### Task 7.3: Create CustomPropertyValueController
-- **File:** `Explore.API/Controllers/CustomPropertyValueController.cs`
-- **Endpoints:**
-  - `GET /api/custom-property-values?entityId={}` — get all values for entity
-  - `PUT /api/custom-property-values` — set value (upsert)
-  - `DELETE /api/custom-property-values/{id}` — remove value
-- **Effort:** M
-
-#### Task 7.4: Update EventController
-- **File:** `Explore.API/Controllers/EventController.cs`
-- **Changes:** Remove `metadataJsonContains` and `metadataJsonKeyExists` query parameters (lines 151–152)
-- **Effort:** S
-
----
-
-### Phase 8: Blazor Client Updates
-**Effort: L** | **Related Skills:** `blazor-ui-conventions`, `blazor-css-isolation`
-
-#### Task 8.1: Refactor EventAppearanceMetadataHelper
-- **File:** `Explore.Blazor.Client/Helpers/EventAppearanceMetadataHelper.cs`
-- **Changes:** Remove MetadataJson parsing/upsert; read/write from dedicated DTO properties. Keep `BuildHeroStyle()` method.
-- **Effort:** M
-
-#### Task 8.2: Refactor OrganizationAppearanceMetadataHelper
-- **File:** `Explore.Blazor.Client/Helpers/OrganizationAppearanceMetadataHelper.cs`
-- **Changes:** Same pattern — remove JSON parsing, use dedicated columns
-- **Effort:** M
-
-#### Task 8.3: Refactor GroupBrandingMetadataHelper
-- **File:** `Explore.Blazor.Client/Helpers/GroupBrandingMetadataHelper.cs`
-- **Changes:** Same pattern
-- **Effort:** M
-
-#### Task 8.4: Update Event Pages
-- **Files:** `CreateEvent.razor.cs`, `EventEdit.razor.cs`, `EventDetail.razor.cs`
-- **Changes:** Use appearance columns instead of MetadataJson + helper parse/upsert
-- **Effort:** M
-
-#### Task 8.5: Update Organization Pages
-- **Files:** `CreateOrganization.razor.cs`, `OrganizationDetails.razor.cs`, `OrganizationProfile.razor.cs`, `OrganizationProfileSection.razor`
-- **Changes:** Use appearance columns instead of MetadataJson
-- **Effort:** M
-
-#### Task 8.6: Update Group Pages
-- **Files:** `GroupAdminSettingsLayout.razor`, `GroupService.cs`
-- **Changes:** Use branding columns instead of MetadataJson
-- **Effort:** M
-
-#### Task 8.7: Regenerate API Client
-- **Command:** Regenerate `EventApiClient.g.cs` from OpenAPI spec after API changes
-- **Effort:** S
-
----
-
-### Phase 9: Testing & Documentation
+### Phase 7: Remove Stale Metadata Assumptions And Legacy Planning Drift
 **Effort: L**
 
-#### Task 9.1: Architecture Tests
-- **File:** `Event.Architecture.Tests/`
-- **Acceptance:** New entities follow layer dependency rules, implement correct interfaces
-- **Effort:** S
+#### Task 7.1: Re-audit Remaining Source References To `MetadataJson` And Remove Any Actual Runtime Coupling If Found
 
-#### Task 9.2: Unit Tests — Command Handlers
-- **File:** `Event.Application.UnitTests/`
-- **Acceptance:** Tests for all create/update/delete handlers, validation scenarios, edge cases (duplicate name, type mismatch, IsMulti)
-- **Effort:** L
+#### Task 7.2: Clean Up Stale Comments, Docs, And Contracts That Still Assume JSONB Metadata Storage
 
-#### Task 9.3: Unit Tests — Query Handlers
-- **Acceptance:** Tests for list/detail/values queries
-- **Effort:** M
+#### Task 7.3: Align Event / Organization / Group Write Paths With The Current First-Class Appearance/Branding Model
 
-#### Task 9.4: Integration Tests — Repositories
-- **File:** `Event.Persistence.IntegrationTests/`
-- **Acceptance:** CRUD operations, unique constraint enforcement, cascade behavior, tenant isolation
-- **Effort:** M
+#### Task 7.4: Ensure No New Runtime Query Path Depends On Generic Metadata Blobs
 
-#### Task 9.5: Integration Tests — API Endpoints
-- **File:** `Event.API.IntegrationTests/`
-- **Acceptance:** Full roundtrip: create definition → add options → set value → query values
-- **Effort:** M
+---
 
-#### Task 9.6: Update Documentation
-- **Files:** `docs/DOMAIN.md`, `docs/ARCHITECTURE.md`, `docs/EXTENSIBILITY.md`
-- **Changes:** Document new EAV entities, remove MetadataJson references, update diagram
-- **Effort:** M
+### Phase 8: API Layer
+**Effort: XXL** | **Related Skills:** `auth-patterns`
+
+#### Task 8.1: Shared Definition Controllers For Organization / Group Custom Properties
+
+#### Task 8.2: Event Template Controllers
+
+#### Task 8.3: Event Runtime Definition / Value Controllers
+
+#### Task 8.4: Template Diff / Sync Controllers
+
+#### Task 8.5: Projection Admin / Rebuild Endpoints If Required
+
+#### Task 8.6: Reconcile `EventController.cs` And Related API Contracts With Template-Aware Event Creation And Remove Any Stale Metadata Query Assumptions
+
+#### Task 8.7: Add Governance-Oriented Authorization Policies
+- template admin
+- event editor
+- property governance admin
+- platform/system namespace editor
+
+---
+
+### Phase 9: Blazor Client Updates
+**Effort: XXXL** | **Related Skills:** `blazor-ui-conventions`, `blazor-css-isolation`
+
+#### Task 9.1: Reconcile Appearance Helpers And UI Utilities With The Existing First-Class Appearance Model
+
+#### Task 9.2: Add Shared Definition Governance UI For Organization / Group
+
+#### Task 9.3: Add Event Template Management UI
+
+#### Task 9.4: Add Template Selection To Event Creation UI
+
+#### Task 9.5: Add Event Runtime Custom-Property Editor Against Event-Local Definitions
+
+#### Task 9.6: Add Template Diff / Sync UX
+
+#### Task 9.7: Add Exposure / Searchability / Exportability Governance UX
+
+#### Task 9.8: Update Organization And Group Pages To Remove Any Stale Metadata-Blob Assumptions
+
+#### Task 9.9: Regenerate Generated API Client
+
+---
+
+### Phase 10: Search, Projection, Moderation, And Export Integration
+**Effort: XXL**
+
+#### Task 10.0: Integrate Layer 2 Sector Fields Directly Into Discovery And Governance Paths
+- **Acceptance Criteria:** sector-standard typed fields participate in filtering/policy/export without passing through Layer 3 projections first
+
+#### Task 10.1: Populate Event Custom-Property Projections On Writes And Sync
+
+#### Task 10.2: Integrate Filterable/Searchable Projections Into Discovery Query Paths
+
+#### Task 10.3: Integrate Exportable/Public Projections Into Publication / Export Paths
+
+#### Task 10.4: Integrate Moderation-Relevant Projections Into Governance Workflows
+
+#### Task 10.5: Integrate Analytics-Relevant Projections Into Analytics Payload Composition
+
+---
+
+### Phase 11: Testing And Documentation
+**Effort: XXL**
+
+#### Task 11.1: Architecture Tests
+
+#### Task 11.2: Unit Tests For Namespaced Key Uniqueness And DisplayName Renames
+
+#### Task 11.3: Unit Tests For Multi-Value Semantics And Ordering
+
+#### Task 11.4: Unit Tests For Typed Validation Rules
+
+#### Task 11.5: Unit Tests For Exposure / Search / Filter / Export Flags
+
+#### Task 11.6: Unit Tests For Template Instantiation, Versioning, And Sync Provenance
+
+#### Task 11.7: Unit Tests For Retired Definitions / Options With Historical Values
+
+#### Task 11.8: Integration Tests For Persistence Constraints And Tenant Isolation
+
+#### Task 11.9: Integration Tests For API Roundtrips (template -> event -> sync -> projections)
+
+#### Task 11.10: Update Documentation
+- `docs/DOMAIN.md`
+- `docs/ARCHITECTURE.md`
+- `docs/EXTENSIBILITY.md`
+- any relevant publication / search / governance docs
 
 ---
 
@@ -636,25 +1023,51 @@ CustomPropertyValue (Guid PK) ─── ITenantEntity, IAuditableEntity, ISoftDe
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
-| Polymorphic EntityId queries slow without proper indexes | Medium | High | Add composite indexes on (EntityId), (TenantId, DefinitionId); monitor query plans |
-| N+1 queries when fetching entity + all custom values | Medium | Medium | Repository includes eager loading; consider batched value retrieval |
-| PropertyType change after values exist | Low | High | Block type changes when values exist (handler validation) |
-| Blazor client regeneration breaks due to MetadataJson removal | Medium | Low | Regenerate client after all API changes complete |
-| Cascading soft-delete across definition → options → values | Medium | Medium | Test cascade behavior thoroughly in integration tests |
+| EAV grows into a semantic dumping ground | Medium | High | explicit extension-layer rule plus promotion/projection rules |
+| Machine identity breaks due to mutable labels | High | High | namespaced `Key` replaces mutable `Name` |
+| Multi-value behavior becomes inconsistent across API/UI | Medium | High | explicit ordinal semantics and dedicated tests |
+| Validation devolves into a hidden DSL | Medium | High | typed governed validation model only |
+| Search/discovery queries become EAV-heavy and brittle | High | High | implement projection layer in the same initiative |
+| Template provenance becomes insufficient for support | Medium | High | versioned provenance fields and sync audit trail |
+| Soft deletion causes historical data loss or confusion | Medium | High | explicit retirement rules and historical retention behavior |
+| Governance rules are too weak for public/searchable fields | Medium | High | add exposure flags and authorization categories now |
 
 ---
 
 ## Success Metrics
 
-1. **All MetadataJson references removed** from Domain, Application, Persistence, API, Blazor layers
-2. **New EAV tables** created with proper indexes and constraints
-3. **CRUD operations** for definitions, options, values work end-to-end
-4. **Appearance settings** function via dedicated columns (no regression)
-5. **All existing tests pass** after changes
-6. **New tests cover** all EAV handlers, validators, and repositories
+1. All stale `MetadataJson` assumptions are removed from active runtime, API, UI, and planning surfaces.
+2. Event runtime behavior uses only event-local instantiated/synced definitions and values.
+3. Custom-property identity survives display-name changes and localization changes.
+4. Multi-value semantics are consistent across storage, API, and UI.
+5. Validation is enforced from typed metadata with no opaque rule blobs.
+6. Searchable/filterable/exportable properties flow through projections, not raw EAV-only discovery queries.
+7. Template version provenance and sync history are explainable in support scenarios.
+8. Historical values remain readable after definition or option retirement.
+9. Platform-owned and tenant-owned namespaced properties can coexist without collisions.
+10. Sector-standard semantics are modeled through Layer 2 typed schema, not Layer 3 EAV rows.
 
 ---
 
-## Potential Risks & Unknowns
+## Final Recommendation
 
-The **most likely complexity point** is Task 5.7 (SetCustomPropertyValue) — upsert behavior with type validation, IsMulti enforcement, and value type coercion across 5 different typed columns. This handler needs the most careful testing. The polymorphic EntityId design also means we cannot use database-level FK constraints for referential integrity, so orphaned values could accumulate if entity deletion doesn't trigger value cleanup — this must be handled explicitly in Event/Org/Group delete handlers or via a background cleanup job. Finally, the EAV filtering replacement for EventSubqueryFilter's JSONB queries will require careful SQL generation testing with EF Core to ensure the JOIN-based filters produce efficient query plans comparable to the current JSONB operators.
+Keep the normalized typed custom-property system and keep the event template-instantiation model.
+
+But do **not** let raw EAV become:
+
+- the only semantic home of important product concepts
+- a stringly typed rules engine
+- the hot query path for discovery
+- or the only way support understands event state
+
+The right implementation for this platform is:
+
+- Layer 1 universal core on `Event`
+- Layer 2 typed sector profiles/aspects for domain-standard semantics
+- EAV as a governed extension/configuration layer
+- namespaced machine keys and typed validation
+- explicit exposure and governance semantics
+- event template instantiation plus versioned sync
+- projection-backed discovery/search/export/moderation reads
+
+That is the enterprise-grade, self-hostable, multi-tenant direction this plan should implement now.

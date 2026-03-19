@@ -1,8 +1,9 @@
-// ABOUTME: Resolves S3 storage configuration from cascading settings (DB) with IConfiguration fallback.
+// ABOUTME: Resolves S3 storage configuration from hierarchical settings (DB) with IConfiguration fallback.
 // ABOUTME: Supports secret manager (Infisical/env vars) as base layer and DB overrides for UI-configured values.
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Models;
+using Explore.Application.Settings;
 using Explore.Domain.Constants;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
@@ -25,7 +26,7 @@ namespace Explore.Infrastructure.Storage;
 /// </summary>
 public class S3ConfigResolver : IS3ConfigResolver
 {
-    private readonly ISettingsResolver _settingsResolver;
+    private readonly IHierarchicalSettingsResolver _resolver;
     private readonly ITenantContext _tenantContext;
     private readonly IMemoryCache _cache;
     private readonly IConfiguration _configuration;
@@ -35,13 +36,13 @@ public class S3ConfigResolver : IS3ConfigResolver
     private const string CacheKeyPrefix = "S3Config:";
 
     public S3ConfigResolver(
-        ISettingsResolver settingsResolver,
+        IHierarchicalSettingsResolver resolver,
         ITenantContext tenantContext,
         IMemoryCache cache,
         IConfiguration configuration,
         ILogger<S3ConfigResolver> logger)
     {
-        _settingsResolver = settingsResolver;
+        _resolver = resolver;
         _tenantContext = tenantContext;
         _cache = cache;
         _configuration = configuration;
@@ -91,14 +92,14 @@ public class S3ConfigResolver : IS3ConfigResolver
         // 2. IConfiguration fallback (Infisical / env vars) — secret manager values
         // This means DB-configured values always take precedence over secret manager values.
 
-        var endpoint = await ResolveStringAsync(GovernanceSettingKeys.S3Endpoint, "S3Settings:Endpoint", tenantId, cancellationToken);
+        var endpoint = await ResolveStringAsync(GovernanceSettingKeys.Storage.Endpoint, "S3Settings:Endpoint", tenantId, cancellationToken);
         if (string.IsNullOrWhiteSpace(endpoint))
         {
             _logger.LogDebug("S3 not configured for tenant {TenantId}: endpoint is empty", tenantId);
             return null;
         }
 
-        var bucketName = await ResolveStringAsync(GovernanceSettingKeys.S3BucketName, "S3Settings:BucketName", tenantId, cancellationToken);
+        var bucketName = await ResolveStringAsync(GovernanceSettingKeys.Storage.BucketName, "S3Settings:BucketName", tenantId, cancellationToken);
         if (string.IsNullOrWhiteSpace(bucketName))
         {
             _logger.LogDebug("S3 not configured for tenant {TenantId}: bucket_name is empty", tenantId);
@@ -119,11 +120,11 @@ public class S3ConfigResolver : IS3ConfigResolver
             return null;
         }
 
-        var uploadExpiration = await _settingsResolver.GetSettingAsync<int>(GovernanceSettingKeys.S3UploadUrlExpirationMinutes, tenantId, cancellationToken);
-        var forcePathStyle = await _settingsResolver.GetSettingAsync<bool>(GovernanceSettingKeys.S3ForcePathStyle, tenantId, cancellationToken);
+        var uploadExpiration = await _resolver.ResolveAsync<int>(GovernanceSettingKeys.Storage.UploadUrlExpirationMinutes, new SettingContext(TenantId: tenantId), cancellationToken);
+        var forcePathStyle = await _resolver.ResolveAsync<bool>(GovernanceSettingKeys.Storage.ForcePathStyle, new SettingContext(TenantId: tenantId), cancellationToken);
 
-        var region = await ResolveStringAsync(GovernanceSettingKeys.S3Region, "S3Settings:Region", tenantId, cancellationToken);
-        var publicEndpoint = await ResolveStringAsync(GovernanceSettingKeys.S3PublicEndpoint, "S3Settings:PublicEndpoint", tenantId, cancellationToken);
+        var region = await ResolveStringAsync(GovernanceSettingKeys.Storage.Region, "S3Settings:Region", tenantId, cancellationToken);
+        var publicEndpoint = await ResolveStringAsync(GovernanceSettingKeys.Storage.PublicEndpoint, "S3Settings:PublicEndpoint", tenantId, cancellationToken);
 
         return new S3Configuration
         {
@@ -146,7 +147,7 @@ public class S3ConfigResolver : IS3ConfigResolver
     private async Task<string?> ResolveStringAsync(
         string settingKey, string configKey, Guid tenantId, CancellationToken cancellationToken)
     {
-        var dbValue = await _settingsResolver.GetSettingAsync<string>(settingKey, tenantId, cancellationToken);
+        var dbValue = await _resolver.ResolveAsync<string>(settingKey, new SettingContext(TenantId: tenantId), cancellationToken);
         if (!string.IsNullOrWhiteSpace(dbValue))
         {
             return dbValue;

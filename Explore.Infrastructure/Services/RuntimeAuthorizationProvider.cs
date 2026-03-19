@@ -193,7 +193,7 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider
 
             try
             {
-                var setting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AuthorizationProvider);
+                var setting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Security.AuthorizationProvider);
                 var value = setting?.Value?.Trim().ToLowerInvariant();
 
                 if (value is "cerbos")

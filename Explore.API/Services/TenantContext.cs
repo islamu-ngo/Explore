@@ -157,7 +157,7 @@ public class TenantContext : ITenantContext
         {
             var rawSetting = dbContext.SystemSettings
                 .AsNoTracking()
-                .Where(s => s.SettingKey == GovernanceSettingKeys.DeploymentMode)
+                .Where(s => s.SettingKey == GovernanceSettingKeys.Deployment.Mode)
                 .Select(s => s.Value)
                 .FirstOrDefault();
 
@@ -199,7 +199,7 @@ public class TenantContext : ITenantContext
 
         var allowCustomDomainsRaw = dbContext.SystemSettings
             .AsNoTracking()
-            .Where(s => s.SettingKey == GovernanceSettingKeys.DomainsAllowTenantCustomDomain)
+            .Where(s => s.SettingKey == GovernanceSettingKeys.Domains.AllowTenantCustomDomain)
             .Select(s => s.Value)
             .FirstOrDefault();
 
@@ -212,7 +212,7 @@ public class TenantContext : ITenantContext
         var tenantId = dbContext.TenantSettingOverrides
             .AsNoTracking()
             .IgnoreQueryFilters()
-            .Where(s => s.SettingKey == GovernanceSettingKeys.DomainsTenantCustomDomain && s.Value == serializedHost)
+            .Where(s => s.SettingKey == GovernanceSettingKeys.Domains.TenantCustomDomain && s.Value == serializedHost)
             .Select(s => s.TenantId)
             .FirstOrDefault();
 
@@ -235,7 +235,7 @@ public class TenantContext : ITenantContext
 
         var baseDomainRaw = dbContext.SystemSettings
             .AsNoTracking()
-            .Where(s => s.SettingKey == GovernanceSettingKeys.DomainsInstanceBaseDomain)
+            .Where(s => s.SettingKey == GovernanceSettingKeys.Domains.InstanceBaseDomain)
             .Select(s => s.Value)
             .FirstOrDefault();
 
@@ -250,7 +250,7 @@ public class TenantContext : ITenantContext
         var tenantId = dbContext.TenantSettingOverrides
             .AsNoTracking()
             .IgnoreQueryFilters()
-            .Where(s => s.SettingKey == GovernanceSettingKeys.DomainsTenantSubdomain && s.Value == serializedSubdomain)
+            .Where(s => s.SettingKey == GovernanceSettingKeys.Domains.TenantSubdomain && s.Value == serializedSubdomain)
             .Select(s => s.TenantId)
             .FirstOrDefault();
 

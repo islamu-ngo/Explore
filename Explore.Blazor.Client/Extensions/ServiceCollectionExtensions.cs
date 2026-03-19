@@ -76,6 +76,10 @@ public static class ServiceCollectionExtensions
         // UI state
         services.AddScoped<SidebarState>();
 
+        // Feature flags (hydrated from API, no OpenFeature SDK dependency)
+        services.AddScoped<FeatureStateContainer>();
+        services.AddScoped<IFeatureFlagClientService, FeatureFlagClientService>();
+
         return services;
     }
 }

@@ -1,8 +1,9 @@
-// ABOUTME: Resolves SMTP configuration from the cascading settings engine.
+// ABOUTME: Resolves SMTP configuration from the hierarchical settings engine.
 // Supports SaaS multi-tenant hierarchy: instance admin can lock settings or let tenants override.
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Models;
+using Explore.Application.Settings;
 using Explore.Domain.Constants;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -20,7 +21,7 @@ namespace Explore.Infrastructure.Mail;
 /// </summary>
 public class SmtpConfigResolver : ISmtpConfigResolver
 {
-    private readonly ISettingsResolver _settingsResolver;
+    private readonly IHierarchicalSettingsResolver _resolver;
     private readonly ITenantContext _tenantContext;
     private readonly IMemoryCache _cache;
     private readonly ILogger<SmtpConfigResolver> _logger;
@@ -29,12 +30,12 @@ public class SmtpConfigResolver : ISmtpConfigResolver
     private const string CacheKeyPrefix = "SmtpConfig:";
 
     public SmtpConfigResolver(
-        ISettingsResolver settingsResolver,
+        IHierarchicalSettingsResolver resolver,
         ITenantContext tenantContext,
         IMemoryCache cache,
         ILogger<SmtpConfigResolver> logger)
     {
-        _settingsResolver = settingsResolver;
+        _resolver = resolver;
         _tenantContext = tenantContext;
         _cache = cache;
         _logger = logger;
@@ -78,42 +79,44 @@ public class SmtpConfigResolver : ISmtpConfigResolver
         Guid tenantId,
         CancellationToken cancellationToken)
     {
-        // ISettingsResolver handles the cascade:
+        // IHierarchicalSettingsResolver handles the cascade:
         // 1. If setting is IsLocked at system level → uses system value (instance admin control)
         // 2. If tenant has an override → uses tenant value (tenant brings own SMTP)
         // 3. Falls back to system default
 
-        var host = await _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.EmailSmtpHost, tenantId, cancellationToken);
+        var ctx = new SettingContext(TenantId: tenantId);
+
+        var host = await _resolver.ResolveAsync<string>(GovernanceSettingKeys.Email.SmtpHost, ctx, cancellationToken);
         if (string.IsNullOrWhiteSpace(host))
         {
             _logger.LogDebug("SMTP not configured for tenant {TenantId}: host is empty", tenantId);
             return null;
         }
 
-        var fromAddress = await _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.EmailFromAddress, tenantId, cancellationToken);
+        var fromAddress = await _resolver.ResolveAsync<string>(GovernanceSettingKeys.Email.FromAddress, ctx, cancellationToken);
         if (string.IsNullOrWhiteSpace(fromAddress))
         {
             _logger.LogDebug("SMTP not configured for tenant {TenantId}: from_address is empty", tenantId);
             return null;
         }
 
-        var port = await _settingsResolver.GetSettingAsync<int>(GovernanceSettingKeys.EmailSmtpPort, tenantId, cancellationToken);
-        var securityStr = await _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.EmailSmtpSecurity, tenantId, cancellationToken);
-        var timeout = await _settingsResolver.GetSettingAsync<int>(GovernanceSettingKeys.EmailSmtpTimeoutSeconds, tenantId, cancellationToken);
+        var port = await _resolver.ResolveAsync<int>(GovernanceSettingKeys.Email.SmtpPort, ctx, cancellationToken);
+        var securityStr = await _resolver.ResolveAsync<string>(GovernanceSettingKeys.Email.SmtpSecurity, ctx, cancellationToken);
+        var timeout = await _resolver.ResolveAsync<int>(GovernanceSettingKeys.Email.SmtpTimeoutSeconds, ctx, cancellationToken);
 
         return new SmtpConfiguration
         {
             Host = host,
             Port = port > 0 ? port : 587,
-            Username = await _settingsResolver.GetSettingAsync<string>(InfrastructureSecretSettingKeys.Email.SmtpUsername, tenantId, cancellationToken),
-            Password = await _settingsResolver.GetSettingAsync<string>(InfrastructureSecretSettingKeys.Email.SmtpPassword, tenantId, cancellationToken),
+            Username = await _resolver.ResolveAsync<string>(InfrastructureSecretSettingKeys.Email.SmtpUsername, ctx, cancellationToken),
+            Password = await _resolver.ResolveAsync<string>(InfrastructureSecretSettingKeys.Email.SmtpPassword, ctx, cancellationToken),
             Security = Enum.TryParse<SmtpSecurityMode>(securityStr, ignoreCase: true, out var security)
                 ? security
                 : SmtpSecurityMode.StartTls,
             FromAddress = fromAddress,
-            FromName = await _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.EmailFromName, tenantId, cancellationToken) ?? "Explore",
+            FromName = await _resolver.ResolveAsync<string>(GovernanceSettingKeys.Email.FromName, ctx, cancellationToken) ?? "Explore",
             TimeoutSeconds = timeout > 0 ? timeout : 30,
-            SkipCertificateValidation = await _settingsResolver.GetSettingAsync<bool>(GovernanceSettingKeys.EmailSmtpSkipCertValidation, tenantId, cancellationToken)
+            SkipCertificateValidation = await _resolver.ResolveAsync<bool>(GovernanceSettingKeys.Email.SmtpSkipCertValidation, ctx, cancellationToken)
         };
     }
 }

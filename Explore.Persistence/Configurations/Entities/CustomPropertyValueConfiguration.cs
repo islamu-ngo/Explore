@@ -1,5 +1,5 @@
-// ABOUTME: EF Core configuration for CustomPropertyValue with typed value columns and polymorphic EntityId.
-// ABOUTME: Indexed for efficient per-entity and per-definition lookups.
+// ABOUTME: EF Core configuration for shared Layer 3 values attached to organization or group instances.
+// ABOUTME: Enforces deterministic ordinal ordering for explicit multi-value semantics.
 
 using Explore.Domain;
 using Explore.Persistence.ValueGenerators;
@@ -23,6 +23,9 @@ public class CustomPropertyValueConfiguration : IEntityTypeConfiguration<CustomP
         builder.Property(e => e.NumberValue)
             .HasPrecision(19, 4);
 
+        builder.Property(e => e.Ordinal)
+            .HasDefaultValue(0);
+
         // Relationships
         builder.HasOne(e => e.Definition)
             .WithMany(d => d.Values)
@@ -39,15 +42,13 @@ public class CustomPropertyValueConfiguration : IEntityTypeConfiguration<CustomP
             .HasForeignKey(e => e.TenantId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Per-entity value lookup (get all custom values for an Event/Org/Group)
-        builder.HasIndex(e => e.EntityId)
-            .HasDatabaseName("ix_cpv_entity");
+        builder.HasIndex(e => new { e.TenantId, e.EntityId })
+            .HasDatabaseName("ix_cpv_tenant_entity");
 
-        // Per-definition lookup (all values of a specific property across entities)
-        builder.HasIndex(e => new { e.CustomPropertyDefinitionId, e.EntityId })
-            .HasDatabaseName("ix_cpv_definition_entity");
+        builder.HasIndex(e => new { e.CustomPropertyDefinitionId, e.EntityId, e.Ordinal })
+            .HasDatabaseName("ix_cpv_definition_entity_ordinal")
+            .IsUnique();
 
-        // Tenant + definition query
         builder.HasIndex(e => new { e.TenantId, e.CustomPropertyDefinitionId })
             .HasDatabaseName("ix_cpv_tenant_definition");
     }

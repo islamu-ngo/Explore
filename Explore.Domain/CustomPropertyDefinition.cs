@@ -1,5 +1,5 @@
-// ABOUTME: EAV entity defining a custom property that can be attached to Event, Organization, or Group.
-// ABOUTME: Scoped by EntityTypeName + optional EventTypeId + TenantId, inspired by Plane's custom properties.
+// ABOUTME: Shared Layer 3 custom-property definition for tenant-scoped organization and group extensions.
+// ABOUTME: Uses namespaced machine keys, typed validation metadata, and explicit exposure/governance flags.
 
 using System.ComponentModel.DataAnnotations.Schema;
 using Explore.Domain.Enums;
@@ -13,15 +13,12 @@ public class CustomPropertyDefinition : ITenantEntity, IAuditableEntity, ISoftDe
 
     public EntityTypeName EntityTypeName { get; set; }
 
-    [ForeignKey(nameof(EventType))]
-    public int? EventTypeId { get; set; }
-    public EventType? EventType { get; set; }
-
     [ForeignKey(nameof(Tenant))]
     public Guid TenantId { get; set; }
     public Tenant? Tenant { get; set; }
 
-    public required string Name { get; set; }
+    public required string Namespace { get; set; }
+    public required string Key { get; set; }
     public required string DisplayName { get; set; }
     public string? Description { get; set; }
 
@@ -31,9 +28,31 @@ public class CustomPropertyDefinition : ITenantEntity, IAuditableEntity, ISoftDe
     public bool IsMulti { get; set; }
     public bool IsActive { get; set; }
     public int SortOrder { get; set; }
+    public ExposureLevel ExposureLevel { get; set; }
+    public bool IsSearchable { get; set; }
+    public bool IsFilterable { get; set; }
+    public bool IsExportable { get; set; }
+    public bool IsModerationRelevant { get; set; }
+    public bool IsAnalyticsRelevant { get; set; }
+    public bool IsSystemOwned { get; set; }
 
-    public string? DefaultValue { get; set; }
-    public string? ValidationRules { get; set; }
+    public string? DefaultTextValue { get; set; }
+    public decimal? DefaultNumberValue { get; set; }
+    public bool? DefaultBooleanValue { get; set; }
+    public DateTimeOffset? DefaultDateTimeValue { get; set; }
+
+    [ForeignKey(nameof(DefaultOption))]
+    public Guid? DefaultOptionId { get; set; }
+    public CustomPropertyOption? DefaultOption { get; set; }
+
+    public int? MinLength { get; set; }
+    public int? MaxLength { get; set; }
+    public string? RegexPattern { get; set; }
+    public decimal? MinNumber { get; set; }
+    public decimal? MaxNumber { get; set; }
+    public DateTimeOffset? MinDateTime { get; set; }
+    public DateTimeOffset? MaxDateTime { get; set; }
+    public string? AllowedUrlSchemes { get; set; }
 
     // Audit fields
     public DateTime CreatedAt { get; set; }

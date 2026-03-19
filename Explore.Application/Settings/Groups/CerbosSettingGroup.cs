@@ -1,45 +1,50 @@
 // ABOUTME: Strongly-typed Cerbos authorization setting group resolved via batch loading.
-// ABOUTME: Replaces the N+1 pattern in CerbosConfigResolver with a single ResolveGroupAsync call.
+// ABOUTME: Keys align to CerbosSettingDefinitions and InfrastructureSecretSettingKeys.Cerbos.
 
 namespace Explore.Application.Settings.Groups;
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Domain.Constants;
 
 /// <summary>
 /// Strongly-typed group for Cerbos authorization service settings.
 /// </summary>
 public class CerbosSettingGroup : ISettingGroup
 {
-    public string? Endpoint { get; private set; }
-    public int Port { get; private set; } = 3593;
-    public bool UseTls { get; private set; }
-    public string? TlsCertPath { get; private set; }
-    public string? TlsKeyPath { get; private set; }
-    public int TimeoutSeconds { get; private set; } = 5;
-    public string? AdminApiKey { get; private set; }
+    public bool TenantCustomizationEnabled { get; private set; }
+    public string Mode { get; private set; } = "shared";
+    public string? CustomEndpoint { get; private set; }
+    public string FailureMode { get; private set; } = "deny";
+    public string? CustomAdminEndpoint { get; private set; }
+    public string? CustomAdminUsername { get; private set; }
+    public string? CustomAdminPassword { get; private set; }
 
     public static IEnumerable<string> SettingKeys =>
     [
-        "cerbos.endpoint", "cerbos.port", "cerbos.use_tls",
-        "cerbos.tls_cert_path", "cerbos.tls_key_path",
-        "cerbos.timeout_seconds", "cerbos.admin_api_key"
+        GovernanceSettingKeys.Cerbos.TenantCustomizationEnabled,
+        GovernanceSettingKeys.Cerbos.Mode,
+        GovernanceSettingKeys.Cerbos.CustomEndpoint,
+        GovernanceSettingKeys.Cerbos.FailureMode,
+        GovernanceSettingKeys.Cerbos.CustomAdminEndpoint,
+        InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername,
+        InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword
     ];
 
     public void Populate(IReadOnlyDictionary<string, ResolvedSetting> settings)
     {
-        if (settings.TryGetValue("cerbos.endpoint", out var ep))
-            Endpoint = SettingValueSerializer.DeserializeString(ep.Value);
-        if (settings.TryGetValue("cerbos.port", out var port))
-            Port = SettingValueSerializer.Deserialize(port.Value, 3593);
-        if (settings.TryGetValue("cerbos.use_tls", out var tls))
-            UseTls = SettingValueSerializer.Deserialize(tls.Value, false);
-        if (settings.TryGetValue("cerbos.tls_cert_path", out var cert))
-            TlsCertPath = SettingValueSerializer.DeserializeString(cert.Value);
-        if (settings.TryGetValue("cerbos.tls_key_path", out var key))
-            TlsKeyPath = SettingValueSerializer.DeserializeString(key.Value);
-        if (settings.TryGetValue("cerbos.timeout_seconds", out var timeout))
-            TimeoutSeconds = SettingValueSerializer.Deserialize(timeout.Value, 5);
-        if (settings.TryGetValue("cerbos.admin_api_key", out var apiKey))
-            AdminApiKey = SettingValueSerializer.DeserializeString(apiKey.Value);
+        if (settings.TryGetValue(GovernanceSettingKeys.Cerbos.TenantCustomizationEnabled, out var tce))
+            TenantCustomizationEnabled = SettingValueSerializer.Deserialize(tce.Value, false);
+        if (settings.TryGetValue(GovernanceSettingKeys.Cerbos.Mode, out var mode))
+            Mode = SettingValueSerializer.Deserialize(mode.Value, "shared");
+        if (settings.TryGetValue(GovernanceSettingKeys.Cerbos.CustomEndpoint, out var ep))
+            CustomEndpoint = SettingValueSerializer.DeserializeString(ep.Value);
+        if (settings.TryGetValue(GovernanceSettingKeys.Cerbos.FailureMode, out var fm))
+            FailureMode = SettingValueSerializer.Deserialize(fm.Value, "deny");
+        if (settings.TryGetValue(GovernanceSettingKeys.Cerbos.CustomAdminEndpoint, out var aep))
+            CustomAdminEndpoint = SettingValueSerializer.DeserializeString(aep.Value);
+        if (settings.TryGetValue(InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername, out var user))
+            CustomAdminUsername = SettingValueSerializer.DeserializeString(user.Value);
+        if (settings.TryGetValue(InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword, out var pass))
+            CustomAdminPassword = SettingValueSerializer.DeserializeString(pass.Value);
     }
 }

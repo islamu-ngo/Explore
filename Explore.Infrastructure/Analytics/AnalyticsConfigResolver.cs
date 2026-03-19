@@ -1,9 +1,10 @@
-// ABOUTME: Resolves analytics configuration from the cascading settings engine with short-lived cache.
-// ABOUTME: Uses system defaults with tenant overrides and lock semantics through ISettingsResolver.
+// ABOUTME: Resolves analytics configuration from the hierarchical settings engine with short-lived cache.
+// ABOUTME: Uses system defaults with tenant overrides and lock semantics through IHierarchicalSettingsResolver.
 
 using Explore.Application.Analytics;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Models;
+using Explore.Application.Settings;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Microsoft.Extensions.Caching.Memory;
@@ -22,7 +23,7 @@ namespace Explore.Infrastructure.Analytics;
 /// </summary>
 public class AnalyticsConfigResolver : IAnalyticsConfigResolver
 {
-    private readonly ISettingsResolver _settingsResolver;
+    private readonly IHierarchicalSettingsResolver _resolver;
     private readonly ITenantContext _tenantContext;
     private readonly IMemoryCache _cache;
     private readonly ILogger<AnalyticsConfigResolver> _logger;
@@ -31,12 +32,12 @@ public class AnalyticsConfigResolver : IAnalyticsConfigResolver
     private const string CacheKeyPrefix = "AnalyticsConfig:";
 
     public AnalyticsConfigResolver(
-        ISettingsResolver settingsResolver,
+        IHierarchicalSettingsResolver resolver,
         ITenantContext tenantContext,
         IMemoryCache cache,
         ILogger<AnalyticsConfigResolver> logger)
     {
-        _settingsResolver = settingsResolver;
+        _resolver = resolver;
         _tenantContext = tenantContext;
         _cache = cache;
         _logger = logger;
@@ -70,18 +71,20 @@ public class AnalyticsConfigResolver : IAnalyticsConfigResolver
 
     private async Task<AnalyticsConfiguration> ResolveFromSettingsAsync(Guid tenantId, CancellationToken cancellationToken)
     {
-        // ISettingsResolver handles the cascade:
+        // IHierarchicalSettingsResolver handles the cascade:
         // 1. If setting is IsLocked at system level -> uses system value (instance admin control)
         // 2. If tenant has an override -> uses tenant value (tenant chooses own provider)
         // 3. Falls back to system default
 
-        var providerStr = await _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsProvider, tenantId, cancellationToken);
-        var enabled = await _settingsResolver.GetSettingAsync<bool>(GovernanceSettingKeys.AnalyticsEnabled, tenantId, cancellationToken);
-        var consentMode = await _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsConsentMode, tenantId, cancellationToken);
-        var transportMode = await _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsTransportMode, tenantId, cancellationToken);
-        var apiKey = await _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsApiKey, tenantId, cancellationToken);
-        var endpointUrl = await _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsEndpointUrl, tenantId, cancellationToken);
-        var personalApiKey = await _settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsPersonalApiKey, tenantId, cancellationToken);
+        var ctx = new SettingContext(TenantId: tenantId);
+
+        var providerStr = await _resolver.ResolveAsync<string>(GovernanceSettingKeys.Analytics.Provider, ctx, cancellationToken);
+        var enabled = await _resolver.ResolveAsync<bool>(GovernanceSettingKeys.Analytics.Enabled, ctx, cancellationToken);
+        var consentMode = await _resolver.ResolveAsync<string>(GovernanceSettingKeys.Analytics.ConsentMode, ctx, cancellationToken);
+        var transportMode = await _resolver.ResolveAsync<string>(GovernanceSettingKeys.Analytics.TransportMode, ctx, cancellationToken);
+        var apiKey = await _resolver.ResolveAsync<string>(GovernanceSettingKeys.Analytics.ApiKey, ctx, cancellationToken);
+        var endpointUrl = await _resolver.ResolveAsync<string>(GovernanceSettingKeys.Analytics.EndpointUrl, ctx, cancellationToken);
+        var personalApiKey = await _resolver.ResolveAsync<string>(GovernanceSettingKeys.Analytics.PersonalApiKey, ctx, cancellationToken);
 
         var provider = ParseProvider(providerStr);
 

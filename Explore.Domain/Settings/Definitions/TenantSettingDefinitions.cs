@@ -19,6 +19,22 @@ public static class TenantSettingDefinitions
         Category: "Tenant",
         Description: "Whether tenant-level white-label branding overrides are enabled in multi-tenant mode");
 
+    public static readonly SettingDefinition DefaultOrganizationId = new(
+        Key: "tenants.default_organization_id",
+        ValueType: SettingValueType.String,
+        DefaultValue: "",
+        Category: "Tenant",
+        Description: "Default organization for a tenant (GUID or empty)",
+        MaxScope: SettingScope.Tenant);
+
+    public static readonly SettingDefinition DefaultGroupId = new(
+        Key: "tenants.default_group_id",
+        ValueType: SettingValueType.String,
+        DefaultValue: "",
+        Category: "Tenant",
+        Description: "Default group for a tenant (GUID or empty)",
+        MaxScope: SettingScope.Tenant);
+
     public static IReadOnlyList<SettingDefinition> All =>
-        [SelfServiceRegistration, WhiteLabelingEnabled];
+        [SelfServiceRegistration, WhiteLabelingEnabled, DefaultOrganizationId, DefaultGroupId];
 }

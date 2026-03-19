@@ -19,6 +19,9 @@ var startAfter = DateTime.Now.AddSeconds(20);
 builder.Services.AddHealthChecks().AddCheck("startup-delay", () =>
     DateTime.Now > startAfter ? HealthCheckResult.Healthy() : HealthCheckResult.Unhealthy());
 
+// Redis for distributed cache (deployment mode, settings)
+var cache = builder.AddRedis("cache");
+
 // Migration service runs first
 // It loads its own connection string via AddInfisicalCompatibility() in its Program.cs
 var migrations = builder.AddProject<Projects.Event_MigrationService>("event-migrationservice");
@@ -27,7 +30,9 @@ var migrations = builder.AddProject<Projects.Event_MigrationService>("event-migr
 // No need to pass environment variables - it reads from Infisical using bootstrap credentials in user secrets
 var exploreAPI = builder.AddProject<Projects.Explore_API>("explore-api")
     .WithReference(migrations)
-    .WaitForCompletion(migrations);
+    .WaitForCompletion(migrations)
+    .WithReference(cache)
+    .WaitFor(cache);
 
 // Explore Blazor - loads its own secrets via AddInfisicalCompatibility()
 // Only pass the API URL since that's orchestration-specific (localhost during development)
@@ -36,6 +41,8 @@ var exploreBlazor = builder.AddProject<Projects.Explore_Blazor>("explore-blazor"
     .WithReference(migrations)
     .WaitForCompletion(migrations)
     .WithReference(exploreAPI)
-    .WaitFor(exploreAPI);
+    .WaitFor(exploreAPI)
+    .WithReference(cache)
+    .WaitFor(cache);
 
 await builder.Build().RunAsync();

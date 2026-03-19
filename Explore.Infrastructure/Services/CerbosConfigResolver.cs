@@ -1,8 +1,9 @@
-// ABOUTME: Resolves Cerbos PDP configuration from the cascading settings engine.
+// ABOUTME: Resolves Cerbos PDP configuration from the hierarchical settings engine.
 // Supports BYO (Bring Your Own) Cerbos per tenant and instance-managed scope isolation.
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Models;
+using Explore.Application.Settings;
 using Explore.Domain.Constants;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -21,7 +22,7 @@ namespace Explore.Infrastructure.Services;
 /// </summary>
 public class CerbosConfigResolver : ICerbosConfigResolver
 {
-    private readonly ISettingsResolver _settingsResolver;
+    private readonly IHierarchicalSettingsResolver _resolver;
     private readonly ITenantContext _tenantContext;
     private readonly IMemoryCache _cache;
     private readonly CerbosSettings _instanceSettings;
@@ -31,13 +32,13 @@ public class CerbosConfigResolver : ICerbosConfigResolver
     private const string CacheKeyPrefix = "CerbosConfig:";
 
     public CerbosConfigResolver(
-        ISettingsResolver settingsResolver,
+        IHierarchicalSettingsResolver resolver,
         ITenantContext tenantContext,
         IMemoryCache cache,
         IOptions<CerbosSettings> instanceSettings,
         ILogger<CerbosConfigResolver> logger)
     {
-        _settingsResolver = settingsResolver;
+        _resolver = resolver;
         _tenantContext = tenantContext;
         _cache = cache;
         _instanceSettings = instanceSettings.Value;
@@ -78,15 +79,17 @@ public class CerbosConfigResolver : ICerbosConfigResolver
     {
         // Check if tenant customization is enabled at instance level.
         // When disabled (or locked), all tenants use the instance PDP.
-        var customizationEnabled = await _settingsResolver.GetSettingAsync<bool>(
-            GovernanceSettingKeys.Cerbos.TenantCustomizationEnabled, tenantId, cancellationToken);
+        var ctx = new SettingContext(TenantId: tenantId);
+
+        var customizationEnabled = await _resolver.ResolveAsync<bool>(
+            GovernanceSettingKeys.Cerbos.TenantCustomizationEnabled, ctx, cancellationToken);
 
         if (!customizationEnabled)
             return BuildInstanceDefault();
 
         // Resolve per-tenant Cerbos mode
-        var modeStr = await _settingsResolver.GetSettingAsync<string>(
-            GovernanceSettingKeys.Cerbos.Mode, tenantId, cancellationToken);
+        var modeStr = await _resolver.ResolveAsync<string>(
+            GovernanceSettingKeys.Cerbos.Mode, ctx, cancellationToken);
 
         var mode = ParseCerbosMode(modeStr);
 
@@ -94,8 +97,8 @@ public class CerbosConfigResolver : ICerbosConfigResolver
             return BuildInstanceDefault();
 
         // BYO: resolve custom endpoint
-        var customEndpoint = await _settingsResolver.GetSettingAsync<string>(
-            GovernanceSettingKeys.Cerbos.CustomEndpoint, tenantId, cancellationToken);
+        var customEndpoint = await _resolver.ResolveAsync<string>(
+            GovernanceSettingKeys.Cerbos.CustomEndpoint, ctx, cancellationToken);
 
         if (string.IsNullOrWhiteSpace(customEndpoint))
         {
@@ -106,17 +109,17 @@ public class CerbosConfigResolver : ICerbosConfigResolver
         }
 
         // Resolve failure mode
-        var failureModeStr = await _settingsResolver.GetSettingAsync<string>(
-            GovernanceSettingKeys.Cerbos.FailureMode, tenantId, cancellationToken);
+        var failureModeStr = await _resolver.ResolveAsync<string>(
+            GovernanceSettingKeys.Cerbos.FailureMode, ctx, cancellationToken);
         var failureMode = ParseFailureMode(failureModeStr);
 
         // Resolve optional Admin API config
-        var adminEndpoint = await _settingsResolver.GetSettingAsync<string>(
-            GovernanceSettingKeys.Cerbos.CustomAdminEndpoint, tenantId, cancellationToken);
-        var adminUsername = await _settingsResolver.GetSettingAsync<string>(
-            InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername, tenantId, cancellationToken);
-        var adminPassword = await _settingsResolver.GetSettingAsync<string>(
-            InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword, tenantId, cancellationToken);
+        var adminEndpoint = await _resolver.ResolveAsync<string>(
+            GovernanceSettingKeys.Cerbos.CustomAdminEndpoint, ctx, cancellationToken);
+        var adminUsername = await _resolver.ResolveAsync<string>(
+            InfrastructureSecretSettingKeys.Cerbos.CustomAdminUsername, ctx, cancellationToken);
+        var adminPassword = await _resolver.ResolveAsync<string>(
+            InfrastructureSecretSettingKeys.Cerbos.CustomAdminPassword, ctx, cancellationToken);
 
         _logger.LogDebug(
             "Resolved BYO Cerbos for tenant {TenantId}: endpoint={Endpoint}, failureMode={FailureMode}",

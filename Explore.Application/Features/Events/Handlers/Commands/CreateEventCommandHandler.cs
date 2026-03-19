@@ -9,6 +9,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Settings;
 using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Constants;
@@ -27,7 +28,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     private readonly IOrganizationMemberRepository _organizationMemberRepository;
     private readonly IGroupRepository _groupRepository;
     private readonly IGroupMemberRepository _groupMemberRepository;
-    private readonly ITenantSettingsRepository _tenantSettingsRepository;
+    private readonly IHierarchicalSettingsResolver _settingsResolver;
     private readonly IAudienceAgeRepository _audienceAgeRepository;
     private readonly IAudienceGenderRepository _audienceGenderRepository;
     private readonly IEventTypeRepository _eventTypeRepository;
@@ -46,7 +47,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         IOrganizationMemberRepository organizationMemberRepository,
         IGroupRepository groupRepository,
         IGroupMemberRepository groupMemberRepository,
-        ITenantSettingsRepository tenantSettingsRepository,
+        IHierarchicalSettingsResolver settingsResolver,
         IAudienceAgeRepository audienceAgeRepository,
         IAudienceGenderRepository audienceGenderRepository,
         IEventTypeRepository eventTypeRepository,
@@ -64,7 +65,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         _organizationMemberRepository = organizationMemberRepository;
         _groupRepository = groupRepository;
         _groupMemberRepository = groupMemberRepository;
-        _tenantSettingsRepository = tenantSettingsRepository;
+        _settingsResolver = settingsResolver;
         _audienceAgeRepository = audienceAgeRepository;
         _audienceGenderRepository = audienceGenderRepository;
         _eventTypeRepository = eventTypeRepository;
@@ -104,10 +105,11 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         // Resolve the ActorId based on context
         Guid actorId;
 
-        var tenantSettings = await _tenantSettingsRepository.GetByTenant(_tenantContext.TenantId);
-        var publishingPolicy = tenantSettings?.EventPublishingPolicy == (int)EventPublishingPolicyEnum.OrganizationAndGroupOnly
-            ? EventPublishingPolicyEnum.OrganizationAndGroupOnly
-            : EventPublishingPolicyEnum.OrganizationGroupAndUserReported;
+        var userSubmissionEnabled = await _settingsResolver.ResolveAsync<bool>(
+            "events.user_submission_enabled", new SettingContext(TenantId: _tenantContext.TenantId), cancellationToken);
+        var publishingPolicy = userSubmissionEnabled
+            ? EventPublishingPolicyEnum.OrganizationGroupAndUserReported
+            : EventPublishingPolicyEnum.OrganizationAndGroupOnly;
 
         if (request.EventDto.OrganizationId.HasValue)
         {

@@ -144,24 +144,24 @@
         {
         @if (ShowHomePage)
         {
-            <MudSwitch T="bool" @bind-Value="Model.AllowTenantSelfServiceRegistration" Color="Color.Primary">
+            <MudSwitch T="bool" @bind-Value="Delegation.AllowTenantSelfServiceRegistration" Color="Color.Primary">
                 Allow tenant self-service registration
             </MudSwitch>
         }
 
         <MudDivider Class="my-2" />
         <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Event Submission Policies</MudText>
-        <MudSwitch T="bool" @bind-Value="Model.AllowUserSubmittedEvents" Color="Color.Primary">
+        <MudSwitch T="bool" @bind-Value="EventPolicy.AllowUserSubmittedEvents" Color="Color.Primary">
             Allow user-submitted events
         </MudSwitch>
-        <MudSwitch T="bool" @bind-Value="Model.AllowOrganizationSubmittedEvents" Color="Color.Primary">
+        <MudSwitch T="bool" @bind-Value="EventPolicy.AllowOrganizationSubmittedEvents" Color="Color.Primary">
             Allow organization-submitted events
         </MudSwitch>
-        <MudSwitch T="bool" @bind-Value="Model.AllowGroupSubmittedEvents" Color="Color.Primary">
+        <MudSwitch T="bool" @bind-Value="EventPolicy.AllowGroupSubmittedEvents" Color="Color.Primary">
             Allow group-submitted events
         </MudSwitch>
 
-        @if (!Model.AllowUserSubmittedEvents && !Model.AllowOrganizationSubmittedEvents && !Model.AllowGroupSubmittedEvents)
+        @if (!EventPolicy.AllowUserSubmittedEvents && !EventPolicy.AllowOrganizationSubmittedEvents && !EventPolicy.AllowGroupSubmittedEvents)
         {
             <MudAlert Severity="Severity.Info" Dense="true">
                 No entity types are allowed to submit events. Only administrators will be able to create events through entities they manage.
@@ -170,10 +170,10 @@
 
         <MudDivider Class="my-2" />
         <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Self-Registration Controls</MudText>
-        <MudSwitch T="bool" @bind-Value="Model.AllowOrganizationSelfRegistration" Color="Color.Primary">
+        <MudSwitch T="bool" @bind-Value="OrganizationPolicy.AllowOrganizationSelfRegistration" Color="Color.Primary">
             Allow organization self-registration
         </MudSwitch>
-        <MudSwitch T="bool" @bind-Value="Model.AllowGroupSelfRegistration" Color="Color.Primary">
+        <MudSwitch T="bool" @bind-Value="OrganizationPolicy.AllowGroupSelfRegistration" Color="Color.Primary">
             Allow group self-registration
         </MudSwitch>
 
@@ -181,13 +181,13 @@
         {
             <MudSelect T="string"
                        Label="Default Public Home Page"
-                       @bind-Value="Model.DefaultPublicHomePage"
+                       @bind-Value="Delegation.DefaultPublicHomePage"
                        Variant="Variant.Outlined">
                 <MudSelectItem Value="@("EventList")">Event List</MudSelectItem>
                 <MudSelectItem Value="@("LandingPage")">Landing Page</MudSelectItem>
             </MudSelect>
 
-            <MudSwitch T="bool" @bind-Value="Model.LockTenantHomePagePreference" Color="Color.Primary">
+            <MudSwitch T="bool" @bind-Value="Delegation.LockTenantHomePagePreference" Color="Color.Primary">
                 Lock tenant home page preference
             </MudSwitch>
         }
@@ -237,13 +237,13 @@
             </div>
 
             <MudSwitch T="bool"
-                       Value="Model.EnableAdvancedRenderPolicyOverrides"
+                       Value="RenderPolicy.EnableAdvancedRenderPolicyOverrides"
                        ValueChanged="OnAdvancedOverridesChanged"
                        Color="Color.Primary">
                 Enable advanced render-policy overrides
             </MudSwitch>
 
-            @if (Model.EnableAdvancedRenderPolicyOverrides)
+            @if (RenderPolicy.EnableAdvancedRenderPolicyOverrides)
             {
                 <MudPaper Class="instance-governance__advanced-panel pa-4" Elevation="0">
                     <MudStack Spacing="2">
@@ -258,7 +258,7 @@
                             <MudItem xs="12" md="6">
                                 <MudSelect T="string"
                                            Label="Global Render Mode"
-                                           @bind-Value="Model.GlobalRenderMode"
+                                           @bind-Value="RenderPolicy.GlobalRenderMode"
                                            Variant="Variant.Outlined">
                                     @foreach (var mode in RenderModeOptions)
                                     {
@@ -267,7 +267,7 @@
                                 </MudSelect>
                             </MudItem>
                             <MudItem xs="12" md="6">
-                                <MudSwitch T="bool" @bind-Value="Model.GlobalPrerenderEnabled" Color="Color.Primary">
+                                <MudSwitch T="bool" @bind-Value="RenderPolicy.GlobalPrerenderEnabled" Color="Color.Primary">
                                     Global Prerender Enabled
                                 </MudSwitch>
                             </MudItem>
@@ -322,12 +322,12 @@
             </MudStack>
 
             <MudSwitch T="bool"
-                       @bind-Value="Model.AllowTenantRenderPolicyOverride"
+                       @bind-Value="RenderPolicy.AllowTenantRenderPolicyOverride"
                        Color="Color.Primary">
                 Allow tenants to override render policy
             </MudSwitch>
 
-            @if (Model.AllowTenantRenderPolicyOverride)
+            @if (RenderPolicy.AllowTenantRenderPolicyOverride)
             {
                 <MudPaper Class="pa-4" Elevation="0" Style="border: 1px solid var(--mud-palette-lines-default);">
                     <MudStack Spacing="2">
@@ -335,17 +335,17 @@
                             Lock specific route groups to prevent tenant overrides. Locked groups use the instance-level setting.
                         </MudText>
                         <MudSwitch T="bool"
-                                   @bind-Value="Model.LockTenantPublicSeoRenderPolicy"
+                                   @bind-Value="RenderPolicy.LockTenantPublicSeoRenderPolicy"
                                    Color="Color.Warning">
                             Lock Public/SEO render policy
                         </MudSwitch>
                         <MudSwitch T="bool"
-                                   @bind-Value="Model.LockTenantOperationalRenderPolicy"
+                                   @bind-Value="RenderPolicy.LockTenantOperationalRenderPolicy"
                                    Color="Color.Warning">
                             Lock Operational render policy
                         </MudSwitch>
                         <MudSwitch T="bool"
-                                   @bind-Value="Model.LockTenantAdminRenderPolicy"
+                                   @bind-Value="RenderPolicy.LockTenantAdminRenderPolicy"
                                    Color="Color.Warning">
                             Lock Admin render policy
                         </MudSwitch>
@@ -389,7 +389,19 @@
     ];
 
     [Parameter, EditorRequired]
-    public InstanceGovernanceSettingsModel Model { get; set; } = null!;
+    public TenantDelegationModel Delegation { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public EventPolicyModel EventPolicy { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public OrganizationPolicyModel OrganizationPolicy { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public RenderPolicyModel RenderPolicy { get; set; } = null!;
+
+    [Parameter]
+    public string DeploymentMode { get; set; } = "SingleTenant";
 
     [Parameter]
     public int TenantCount { get; set; }
@@ -431,8 +443,8 @@
     private bool _showSingleTenantDialog;
     private string _multiTenantConfirmText = string.Empty;
     private bool IsMultiTenantConfirmValid => string.Equals(_multiTenantConfirmText?.Trim(), "ENABLE MULTI-TENANCY", StringComparison.OrdinalIgnoreCase);
-    private bool IsSingleTenant => string.Equals(Model.DeploymentMode, "SingleTenant", StringComparison.OrdinalIgnoreCase)
-                                   || string.IsNullOrWhiteSpace(Model.DeploymentMode);
+    private bool IsSingleTenant => string.Equals(DeploymentMode, "SingleTenant", StringComparison.OrdinalIgnoreCase)
+                                   || string.IsNullOrWhiteSpace(DeploymentMode);
 
     private string _deploymentModeCardStyle => DisplayMode == "multi-tenancy"
         ? "border: 2px solid var(--mud-palette-error); border-radius: var(--mud-default-borderradius);"
@@ -459,7 +471,7 @@
     {
         _showMultiTenantDialog = false;
         _multiTenantConfirmText = string.Empty;
-        Model.DeploymentMode = "MultiTenant";
+        DeploymentMode = "MultiTenant";
         await DeploymentModeChanged.InvokeAsync("MultiTenant");
     }
 
@@ -471,26 +483,26 @@
     private async Task ConfirmSingleTenant()
     {
         _showSingleTenantDialog = false;
-        Model.DeploymentMode = "SingleTenant";
+        DeploymentMode = "SingleTenant";
         await DeploymentModeChanged.InvokeAsync("SingleTenant");
     }
 
     private void EnsurePresetDefaults()
     {
-        if (string.IsNullOrWhiteSpace(Model.RenderPolicyPreset))
+        if (string.IsNullOrWhiteSpace(RenderPolicy.RenderPolicyPreset))
         {
             SelectPreset(RecommendedPreset);
             return;
         }
 
-        if (!PresetOptions.Any(x => x.Value.Equals(Model.RenderPolicyPreset, StringComparison.OrdinalIgnoreCase)))
+        if (!PresetOptions.Any(x => x.Value.Equals(RenderPolicy.RenderPolicyPreset, StringComparison.OrdinalIgnoreCase)))
         {
             SelectPreset(RecommendedPreset);
             return;
         }
 
-        Model.RenderPolicyPreset = PresetOptions.First(x => x.Value.Equals(Model.RenderPolicyPreset, StringComparison.OrdinalIgnoreCase)).Value;
-        Model.EnableAdvancedRenderPolicyOverrides = Model.RenderPolicyPreset.Equals("CustomAdvanced", StringComparison.OrdinalIgnoreCase);
+        RenderPolicy.RenderPolicyPreset = PresetOptions.First(x => x.Value.Equals(RenderPolicy.RenderPolicyPreset, StringComparison.OrdinalIgnoreCase)).Value;
+        RenderPolicy.EnableAdvancedRenderPolicyOverrides = RenderPolicy.RenderPolicyPreset.Equals("CustomAdvanced", StringComparison.OrdinalIgnoreCase);
     }
 
     private string GetPresetCardClass(string preset)
@@ -502,7 +514,7 @@
             className += " instance-governance__preset-card--recommended";
         }
 
-        if (Model.RenderPolicyPreset.Equals(preset, StringComparison.OrdinalIgnoreCase))
+        if (RenderPolicy.RenderPolicyPreset.Equals(preset, StringComparison.OrdinalIgnoreCase))
         {
             className += " instance-governance__preset-card--selected";
         }
@@ -517,42 +529,42 @@
 
     private void SelectPreset(string preset)
     {
-        Model.RenderPolicyPreset = preset;
+        RenderPolicy.RenderPolicyPreset = preset;
 
         switch (preset)
         {
             case "AllInteractiveServer":
-                Model.EnableAdvancedRenderPolicyOverrides = false;
-                Model.GlobalRenderMode = "InteractiveServer";
-                Model.GlobalPrerenderEnabled = false;
+                RenderPolicy.EnableAdvancedRenderPolicyOverrides = false;
+                RenderPolicy.GlobalRenderMode = "InteractiveServer";
+                RenderPolicy.GlobalPrerenderEnabled = false;
                 break;
             case "AllPrerendered":
-                Model.EnableAdvancedRenderPolicyOverrides = false;
-                Model.GlobalRenderMode = "InteractiveAuto";
-                Model.GlobalPrerenderEnabled = true;
+                RenderPolicy.EnableAdvancedRenderPolicyOverrides = false;
+                RenderPolicy.GlobalRenderMode = "InteractiveAuto";
+                RenderPolicy.GlobalPrerenderEnabled = true;
                 break;
             case "AllInteractiveAutoNoPrerender":
-                Model.EnableAdvancedRenderPolicyOverrides = false;
-                Model.GlobalRenderMode = "InteractiveAuto";
-                Model.GlobalPrerenderEnabled = false;
+                RenderPolicy.EnableAdvancedRenderPolicyOverrides = false;
+                RenderPolicy.GlobalRenderMode = "InteractiveAuto";
+                RenderPolicy.GlobalPrerenderEnabled = false;
                 break;
             case "CustomAdvanced":
-                Model.EnableAdvancedRenderPolicyOverrides = true;
-                Model.GlobalRenderMode = NormalizeRenderMode(Model.GlobalRenderMode);
+                RenderPolicy.EnableAdvancedRenderPolicyOverrides = true;
+                RenderPolicy.GlobalRenderMode = NormalizeRenderMode(RenderPolicy.GlobalRenderMode);
                 break;
             default:
-                Model.EnableAdvancedRenderPolicyOverrides = false;
-                Model.GlobalRenderMode = "InteractiveServer";
-                Model.GlobalPrerenderEnabled = false;
+                RenderPolicy.EnableAdvancedRenderPolicyOverrides = false;
+                RenderPolicy.GlobalRenderMode = "InteractiveServer";
+                RenderPolicy.GlobalPrerenderEnabled = false;
                 break;
         }
 
-        if (!Model.EnableAdvancedRenderPolicyOverrides)
+        if (!RenderPolicy.EnableAdvancedRenderPolicyOverrides)
         {
             ApplyGlobalFallbackToAllGroups();
-            if (Model.RenderPolicyPreset.Equals("SeoBalanced", StringComparison.OrdinalIgnoreCase))
+            if (RenderPolicy.RenderPolicyPreset.Equals("SeoBalanced", StringComparison.OrdinalIgnoreCase))
             {
-                Model.PublicSeoPrerenderEnabled = true;
+                RenderPolicy.PublicSeoPrerenderEnabled = true;
             }
         }
 
@@ -574,10 +586,10 @@
     {
         return group switch
         {
-            "public-seo" => NormalizeRenderMode(Model.PublicSeoRenderMode),
-            "operational" => NormalizeRenderMode(Model.OperationalRenderMode),
-            "admin" => NormalizeRenderMode(Model.AdminRenderMode),
-            "onboarding" => NormalizeOnboardingRenderMode(Model.OnboardingRenderMode),
+            "public-seo" => NormalizeRenderMode(RenderPolicy.PublicSeoRenderMode),
+            "operational" => NormalizeRenderMode(RenderPolicy.OperationalRenderMode),
+            "admin" => NormalizeRenderMode(RenderPolicy.AdminRenderMode),
+            "onboarding" => NormalizeOnboardingRenderMode(RenderPolicy.OnboardingRenderMode),
             _ => "InteractiveAuto"
         };
     }
@@ -589,16 +601,16 @@
         switch (group)
         {
             case "public-seo":
-                Model.PublicSeoRenderMode = normalizedMode;
+                RenderPolicy.PublicSeoRenderMode = normalizedMode;
                 break;
             case "operational":
-                Model.OperationalRenderMode = normalizedMode;
+                RenderPolicy.OperationalRenderMode = normalizedMode;
                 break;
             case "admin":
-                Model.AdminRenderMode = normalizedMode;
+                RenderPolicy.AdminRenderMode = normalizedMode;
                 break;
             case "onboarding":
-                Model.OnboardingRenderMode = NormalizeOnboardingRenderMode(normalizedMode);
+                RenderPolicy.OnboardingRenderMode = NormalizeOnboardingRenderMode(normalizedMode);
                 break;
         }
 
@@ -609,10 +621,10 @@
     {
         return group switch
         {
-            "public-seo" => Model.PublicSeoPrerenderEnabled,
-            "operational" => Model.OperationalPrerenderEnabled,
-            "admin" => Model.AdminPrerenderEnabled,
-            "onboarding" => Model.OnboardingPrerenderEnabled,
+            "public-seo" => RenderPolicy.PublicSeoPrerenderEnabled,
+            "operational" => RenderPolicy.OperationalPrerenderEnabled,
+            "admin" => RenderPolicy.AdminPrerenderEnabled,
+            "onboarding" => RenderPolicy.OnboardingPrerenderEnabled,
             _ => false
         };
     }
@@ -622,16 +634,16 @@
         switch (group)
         {
             case "public-seo":
-                Model.PublicSeoPrerenderEnabled = enabled;
+                RenderPolicy.PublicSeoPrerenderEnabled = enabled;
                 break;
             case "operational":
-                Model.OperationalPrerenderEnabled = enabled;
+                RenderPolicy.OperationalPrerenderEnabled = enabled;
                 break;
             case "admin":
-                Model.AdminPrerenderEnabled = enabled;
+                RenderPolicy.AdminPrerenderEnabled = enabled;
                 break;
             case "onboarding":
-                Model.OnboardingPrerenderEnabled = enabled;
+                RenderPolicy.OnboardingPrerenderEnabled = enabled;
                 break;
         }
     }
@@ -644,24 +656,24 @@
 
     private void ApplyGlobalFallbackToAllGroups()
     {
-        var mode = NormalizeRenderMode(Model.GlobalRenderMode);
-        var prerender = Model.GlobalPrerenderEnabled;
+        var mode = NormalizeRenderMode(RenderPolicy.GlobalRenderMode);
+        var prerender = RenderPolicy.GlobalPrerenderEnabled;
 
-        Model.PublicSeoRenderMode = mode;
-        Model.PublicSeoPrerenderEnabled = prerender;
-        Model.OperationalRenderMode = mode;
-        Model.OperationalPrerenderEnabled = prerender;
-        Model.AdminRenderMode = mode;
-        Model.AdminPrerenderEnabled = prerender;
-        Model.OnboardingRenderMode = NormalizeOnboardingRenderMode(mode);
-        Model.OnboardingPrerenderEnabled = prerender;
+        RenderPolicy.PublicSeoRenderMode = mode;
+        RenderPolicy.PublicSeoPrerenderEnabled = prerender;
+        RenderPolicy.OperationalRenderMode = mode;
+        RenderPolicy.OperationalPrerenderEnabled = prerender;
+        RenderPolicy.AdminRenderMode = mode;
+        RenderPolicy.AdminPrerenderEnabled = prerender;
+        RenderPolicy.OnboardingRenderMode = NormalizeOnboardingRenderMode(mode);
+        RenderPolicy.OnboardingPrerenderEnabled = prerender;
     }
 
     private void EnsureOnboardingGuardrail()
     {
         // Onboarding is always InteractiveServer for best first-impression UX.
-        Model.DisallowInteractiveServerOnOnboarding = false;
-        Model.OnboardingRenderMode = "InteractiveServer";
+        RenderPolicy.DisallowInteractiveServerOnOnboarding = false;
+        RenderPolicy.OnboardingRenderMode = "InteractiveServer";
     }
 
     private static string NormalizeRenderMode(string? mode)

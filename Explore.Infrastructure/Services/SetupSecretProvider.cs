@@ -10,11 +10,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Explore.Infrastructure.Services;
 
-public class SetupSecretProvider : ISetupSecretProvider
+public class SetupSecretProvider : ISetupSecretProvider, IDisposable
 {
     private readonly string _secret;
-    private readonly IServiceProvider _serviceProvider;
-    private readonly object _bootstrapCheckLock = new();
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly SemaphoreSlim _bootstrapCheckSemaphore = new(1, 1);
     private bool _isLocked;
     private bool? _isBootstrapComplete;
 
@@ -30,13 +30,16 @@ public class SetupSecretProvider : ISetupSecretProvider
             if (_isLocked)
                 return false;
 
-            return !IsBootstrapComplete();
+            if (_isBootstrapComplete.HasValue)
+                return !_isBootstrapComplete.Value;
+
+            return !IsBootstrapCompleteBlocking();
         }
     }
 
-    public SetupSecretProvider(IConfiguration configuration, IServiceProvider serviceProvider)
+    public SetupSecretProvider(IConfiguration configuration, IServiceScopeFactory scopeFactory)
     {
-        _serviceProvider = serviceProvider;
+        _scopeFactory = scopeFactory;
         InstanceStartedAt = DateTime.UtcNow;
 
         var envSecret = configuration["SETUP_SECRET"];
@@ -72,6 +75,7 @@ public class SetupSecretProvider : ISetupSecretProvider
     public void Lock()
     {
         _isLocked = true;
+        _isBootstrapComplete = true;
     }
 
     /// <summary>
@@ -80,19 +84,25 @@ public class SetupSecretProvider : ISetupSecretProvider
     /// </summary>
     internal string GetSecretForLogging() => _secret;
 
-    private bool IsBootstrapComplete()
+    public void Dispose()
+    {
+        _bootstrapCheckSemaphore.Dispose();
+    }
+
+    private bool IsBootstrapCompleteBlocking()
     {
         if (_isBootstrapComplete.HasValue)
             return _isBootstrapComplete.Value;
 
-        lock (_bootstrapCheckLock)
+        _bootstrapCheckSemaphore.Wait();
+        try
         {
             if (_isBootstrapComplete.HasValue)
                 return _isBootstrapComplete.Value;
 
             try
             {
-                using var scope = _serviceProvider.CreateScope();
+                using var scope = _scopeFactory.CreateScope();
                 var repository = scope.ServiceProvider.GetRequiredService<IInstanceBootstrapStateRepository>();
                 var bootstrapState = repository.GetCurrent().GetAwaiter().GetResult();
                 _isBootstrapComplete = bootstrapState?.IsCompleted == true;
@@ -104,6 +114,10 @@ public class SetupSecretProvider : ISetupSecretProvider
             }
 
             return _isBootstrapComplete.Value;
+        }
+        finally
+        {
+            _bootstrapCheckSemaphore.Release();
         }
     }
 

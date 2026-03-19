@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "https://localhost:61259/"
+      "url": "https://localhost:57695/"
     }
   ],
   "paths": {
@@ -5657,6 +5657,44 @@
         }
       }
     },
+    "/api/features/my-flags": {
+      "get": {
+        "tags": [
+          "Features"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/filetype": {
       "get": {
         "tags": [
@@ -6804,308 +6842,28 @@
         }
       }
     },
-    "/api/instanceonboarding/settings": {
-      "get": {
-        "tags": [
-          "InstanceOnboarding"
-        ],
-        "summary": "Get Instance Governance Settings",
-        "description": "Returns instance governance settings. If onboarding is already complete, only instance admins can access this endpoint.",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/InstanceGovernanceSettingsDto"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/InstanceGovernanceSettingsDto"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/InstanceGovernanceSettingsDto"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "InstanceOnboarding"
-        ],
-        "summary": "Update Instance Governance Settings",
-        "description": "Updates instance governance settings at runtime. Requires instance administrator membership.",
-        "requestBody": {
-          "content": {
-            "application/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/InstanceGovernanceSettingsDto"
-              }
-            },
-            "text/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/InstanceGovernanceSettingsDto"
-              }
-            },
-            "application/*\u002Bjson; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/InstanceGovernanceSettingsDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/instanceonboarding/resolver-config": {
-      "get": {
-        "tags": [
-          "InstanceOnboarding"
-        ],
-        "summary": "Get Tenant Resolver Configuration",
-        "description": "Returns instance-level tenant resolver configuration stored directly in system settings.",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ResolverConfigurationDto"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ResolverConfigurationDto"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ResolverConfigurationDto"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "InstanceOnboarding"
-        ],
-        "summary": "Update Tenant Resolver Configuration",
-        "description": "Updates instance-level tenant resolver configuration stored directly in system settings.",
-        "requestBody": {
-          "content": {
-            "application/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/ResolverConfigurationDto"
-              }
-            },
-            "text/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/ResolverConfigurationDto"
-              }
-            },
-            "application/*\u002Bjson; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/ResolverConfigurationDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/instanceonboarding/complete": {
       "post": {
         "tags": [
           "InstanceOnboarding"
         ],
         "summary": "Complete Instance Onboarding",
-        "description": "Completes first-run onboarding, assigns the current user as instance admin, and persists instance governance settings.",
+        "description": "Completes first-run onboarding, assigns the current user as instance admin, and persists deployment mode.",
         "requestBody": {
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/InstanceGovernanceSettingsDto"
+                "$ref": "#/components/schemas/CompleteInstanceOnboardingRequest"
               }
             },
             "text/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/InstanceGovernanceSettingsDto"
+                "$ref": "#/components/schemas/CompleteInstanceOnboardingRequest"
               }
             },
             "application/*\u002Bjson; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/InstanceGovernanceSettingsDto"
+                "$ref": "#/components/schemas/CompleteInstanceOnboardingRequest"
               }
             }
           },
@@ -7148,457 +6906,6 @@
               "text/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/instanceonboarding/deployment-mode": {
-      "post": {
-        "tags": [
-          "InstanceOnboarding"
-        ],
-        "summary": "Switch Deployment Mode",
-        "description": "Switches the instance between SingleTenant and MultiTenant mode. Reverting to SingleTenant requires exactly one active tenant.",
-        "requestBody": {
-          "content": {
-            "application/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateDeploymentModeRequest"
-              }
-            },
-            "text/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateDeploymentModeRequest"
-              }
-            },
-            "application/*\u002Bjson; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateDeploymentModeRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/instanceonboarding/storage-settings": {
-      "get": {
-        "tags": [
-          "InstanceOnboarding"
-        ],
-        "summary": "Get Instance Storage Settings",
-        "description": "Returns instance S3 storage settings. Only instance admins can access this endpoint.",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/InstanceStorageSettingsDto"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/InstanceStorageSettingsDto"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/InstanceStorageSettingsDto"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "InstanceOnboarding"
-        ],
-        "summary": "Update Instance Storage Settings",
-        "description": "Updates instance S3 storage settings. Requires instance administrator membership.",
-        "requestBody": {
-          "content": {
-            "application/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/InstanceStorageSettingsDto"
-              }
-            },
-            "application/*\u002Bjson; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/InstanceStorageSettingsDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/instanceonboarding/test-storage": {
-      "post": {
-        "tags": [
-          "InstanceOnboarding"
-        ],
-        "summary": "Test Storage Connection",
-        "description": "Tests the S3 storage connection using current settings. Returns success or failure with message.",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {}
-              },
-              "application/json; v=0.1": {
-                "schema": {}
-              },
-              "text/json; v=0.1": {
-                "schema": {}
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/instanceonboarding/smtp-settings": {
-      "get": {
-        "tags": [
-          "InstanceOnboarding"
-        ],
-        "summary": "Get Instance SMTP Settings",
-        "description": "Returns instance SMTP settings. Only instance admins can access this endpoint.",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/InstanceSmtpSettingsDto"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/InstanceSmtpSettingsDto"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/InstanceSmtpSettingsDto"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "InstanceOnboarding"
-        ],
-        "summary": "Update Instance SMTP Settings",
-        "description": "Updates instance SMTP settings. Requires instance administrator membership.",
-        "requestBody": {
-          "content": {
-            "application/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/InstanceSmtpSettingsDto"
-              }
-            },
-            "application/*\u002Bjson; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/InstanceSmtpSettingsDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/instanceonboarding/test-smtp": {
-      "post": {
-        "tags": [
-          "InstanceOnboarding"
-        ],
-        "summary": "Test SMTP Connection",
-        "description": "Tests the SMTP connection using current settings. Returns success or failure with message.",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {}
-              },
-              "application/json; v=0.1": {
-                "schema": {}
-              },
-              "text/json; v=0.1": {
-                "schema": {}
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -7685,13 +6992,13 @@
         }
       }
     },
-    "/api/instanceonboarding/auth-provider-configuration": {
+    "/api/instanceonboarding/auth-provider-configuration/internal": {
       "get": {
         "tags": [
           "InstanceOnboarding"
         ],
-        "summary": "Get Auth Provider Configuration",
-        "description": "Returns current auth provider configuration. Secrets are redacted. Accessible during setup (anonymous) and by instance admins after onboarding.",
+        "summary": "Get Auth Provider Configuration (Internal)",
+        "description": "Returns auth provider configuration including secrets. For BFF internal use only. Protected by setup token.",
         "responses": {
           "200": {
             "description": "OK",
@@ -7714,12 +7021,14 @@
             }
           }
         }
-      },
+      }
+    },
+    "/api/instanceonboarding/auth-provider-configuration": {
       "put": {
         "tags": [
           "InstanceOnboarding"
         ],
-        "summary": "Save Auth Provider Configuration",
+        "summary": "Save Auth Provider Configuration (Setup)",
         "description": "Saves auth provider configuration during instance setup. Protected by setup token. At least one provider must be enabled.",
         "requestBody": {
           "content": {
@@ -7780,54 +7089,77 @@
         }
       }
     },
-    "/api/instanceonboarding/auth-provider-configuration/internal": {
+    "/api/instance/settings/modules": {
       "get": {
         "tags": [
-          "InstanceOnboarding"
+          "InstanceSettings"
         ],
-        "summary": "Get Auth Provider Configuration (Internal)",
-        "description": "Returns auth provider configuration including secrets. For BFF internal use only. Protected by setup token.",
+        "summary": "Get Module Settings",
+        "description": "Returns instance module enablement flags.",
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "text/plain; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+                  "$ref": "#/components/schemas/ModuleSettingsDto"
                 }
               },
               "application/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+                  "$ref": "#/components/schemas/ModuleSettingsDto"
                 }
               },
               "text/json; v=0.1": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+                  "$ref": "#/components/schemas/ModuleSettingsDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
           }
         }
-      }
-    },
-    "/api/instanceonboarding/admin/auth-provider-configuration": {
+      },
       "put": {
         "tags": [
-          "InstanceOnboarding"
+          "InstanceSettings"
         ],
-        "summary": "Update Auth Provider Configuration",
-        "description": "Updates auth provider configuration after onboarding. Requires instance administrator membership and blocks self-lockout.",
+        "summary": "Update Module Settings",
+        "description": "Updates instance module enablement flags. Requires instance administrator.",
         "requestBody": {
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+                "$ref": "#/components/schemas/ModuleSettingsDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ModuleSettingsDto"
               }
             },
             "application/*\u002Bjson; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+                "$ref": "#/components/schemas/ModuleSettingsDto"
               }
             }
           },
@@ -7897,13 +7229,1128 @@
         }
       }
     },
-    "/api/instanceonboarding/auth-provider-configured": {
+    "/api/instance/settings/events": {
       "get": {
         "tags": [
-          "InstanceOnboarding"
+          "InstanceSettings"
         ],
-        "summary": "Check Auth Provider Configuration Status",
-        "description": "Returns whether any auth provider has been configured. Used by the setup flow to determine if the auth provider configuration step should be shown.",
+        "summary": "Get Event Policy",
+        "description": "Returns instance event lifecycle policy settings.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventPolicyDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventPolicyDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventPolicyDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Update Event Policy",
+        "description": "Updates instance event lifecycle policy. Requires instance administrator.",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/EventPolicyDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/EventPolicyDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/EventPolicyDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/instance/settings/organizations": {
+      "get": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Get Organization Policy",
+        "description": "Returns instance organization registration policy settings.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationPolicyDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationPolicyDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationPolicyDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Update Organization Policy",
+        "description": "Updates instance organization policy. Requires instance administrator.",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/OrganizationPolicyDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/OrganizationPolicyDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/OrganizationPolicyDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/instance/settings/branding": {
+      "get": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Get Branding Settings",
+        "description": "Returns instance branding and identity settings.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandingSettingsDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandingSettingsDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandingSettingsDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Update Branding Settings",
+        "description": "Updates instance branding settings. Requires instance administrator.",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/BrandingSettingsDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/BrandingSettingsDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/BrandingSettingsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/instance/settings/domains": {
+      "get": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Get Domain Settings",
+        "description": "Returns instance domain and auth provider settings.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainSettingsDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainSettingsDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainSettingsDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Update Domain Settings",
+        "description": "Updates instance domain settings. Requires instance administrator.",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/DomainSettingsDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/DomainSettingsDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/DomainSettingsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/instance/settings/tenant-delegation": {
+      "get": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Get Tenant Delegation Settings",
+        "description": "Returns instance tenant delegation and override lock settings.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantDelegationSettingsDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantDelegationSettingsDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantDelegationSettingsDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Update Tenant Delegation Settings",
+        "description": "Updates instance tenant delegation settings. Requires instance administrator.",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantDelegationSettingsDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantDelegationSettingsDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/TenantDelegationSettingsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/instance/settings/render-policy": {
+      "get": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Get Render Policy Settings",
+        "description": "Returns instance render policy and UI mode settings.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenderPolicySettingsDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenderPolicySettingsDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenderPolicySettingsDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Update Render Policy Settings",
+        "description": "Updates instance render policy settings. Requires instance administrator.",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/RenderPolicySettingsDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/RenderPolicySettingsDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/RenderPolicySettingsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/instance/settings/deployment-mode": {
+      "get": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Get Deployment Mode",
+        "description": "Returns the current instance deployment mode.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeploymentModeDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeploymentModeDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeploymentModeDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Switch Deployment Mode",
+        "description": "Switches the instance between SingleTenant and MultiTenant mode. Requires instance administrator.",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDeploymentModeRequest"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDeploymentModeRequest"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDeploymentModeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/instance/settings/storage": {
+      "get": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Get Instance Storage Settings",
+        "description": "Returns instance S3 storage settings. Only instance admins can access.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceStorageSettingsDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceStorageSettingsDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceStorageSettingsDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Update Instance Storage Settings",
+        "description": "Updates instance S3 storage settings. Requires instance administrator.",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/InstanceStorageSettingsDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/InstanceStorageSettingsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/instance/settings/storage/test": {
+      "post": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Test Storage Connection",
+        "description": "Tests the S3 storage connection using current settings.",
         "responses": {
           "200": {
             "description": "OK",
@@ -7918,17 +8365,357 @@
                 "schema": {}
               }
             }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
     },
-    "/api/instanceonboarding/analytics-governance": {
+    "/api/instance/settings/smtp": {
       "get": {
         "tags": [
-          "InstanceOnboarding"
+          "InstanceSettings"
+        ],
+        "summary": "Get Instance SMTP Settings",
+        "description": "Returns instance SMTP settings. Only instance admins can access.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceSmtpSettingsDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceSmtpSettingsDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceSmtpSettingsDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Update Instance SMTP Settings",
+        "description": "Updates instance SMTP settings. Requires instance administrator.",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/InstanceSmtpSettingsDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/InstanceSmtpSettingsDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/instance/settings/smtp/test": {
+      "post": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Test SMTP Connection",
+        "description": "Tests the SMTP connection using current settings.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {}
+              },
+              "application/json; v=0.1": {
+                "schema": {}
+              },
+              "text/json; v=0.1": {
+                "schema": {}
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/instance/settings/resolver-config": {
+      "get": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Get Tenant Resolver Configuration",
+        "description": "Returns instance-level tenant resolver configuration.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolverConfigurationDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolverConfigurationDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolverConfigurationDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Update Tenant Resolver Configuration",
+        "description": "Updates instance-level tenant resolver configuration. Requires instance administrator.",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolverConfigurationDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolverConfigurationDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolverConfigurationDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/instance/settings/analytics-governance": {
+      "get": {
+        "tags": [
+          "InstanceSettings"
         ],
         "summary": "Get Analytics Governance Settings",
-        "description": "Returns analytics and cookie consent governance settings. Only instance admins can access.",
+        "description": "Returns analytics and cookie consent governance settings.",
         "responses": {
           "200": {
             "description": "OK",
@@ -7974,7 +8761,7 @@
       },
       "put": {
         "tags": [
-          "InstanceOnboarding"
+          "InstanceSettings"
         ],
         "summary": "Update Analytics Governance Settings",
         "description": "Updates analytics and cookie consent governance settings. Requires instance administrator.",
@@ -8051,6 +8838,166 @@
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/instance/settings/auth-provider": {
+      "get": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Get Auth Provider Configuration",
+        "description": "Returns current auth provider configuration. Secrets are redacted.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Update Auth Provider Configuration",
+        "description": "Updates auth provider configuration. Requires instance administrator and blocks self-lockout.",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/instance/settings/auth-provider/status": {
+      "get": {
+        "tags": [
+          "InstanceSettings"
+        ],
+        "summary": "Check Auth Provider Configuration Status",
+        "description": "Returns whether any auth provider has been configured.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {}
+              },
+              "application/json; v=0.1": {
+                "schema": {}
+              },
+              "text/json; v=0.1": {
+                "schema": {}
               }
             }
           }
@@ -13510,17 +14457,17 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/TenantPolicySettingsDto"
+                "$ref": "#/components/schemas/UpdateTenantPolicyRequest"
               }
             },
             "text/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/TenantPolicySettingsDto"
+                "$ref": "#/components/schemas/UpdateTenantPolicyRequest"
               }
             },
             "application/*\u002Bjson; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/TenantPolicySettingsDto"
+                "$ref": "#/components/schemas/UpdateTenantPolicyRequest"
               }
             }
           },
@@ -13601,17 +14548,17 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/TenantPolicySettingsDto"
+                "$ref": "#/components/schemas/UpdateTenantPolicyRequest"
               }
             },
             "text/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/TenantPolicySettingsDto"
+                "$ref": "#/components/schemas/UpdateTenantPolicyRequest"
               }
             },
             "application/*\u002Bjson; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/TenantPolicySettingsDto"
+                "$ref": "#/components/schemas/UpdateTenantPolicyRequest"
               }
             }
           },
@@ -13745,320 +14692,6 @@
               "text/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/tenantsettings": {
-      "get": {
-        "tags": [
-          "TenantSettings"
-        ],
-        "summary": "Get all Tenant Settings",
-        "description": "Retrieve a list of all tenant settings",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/TenantSettingsListDto"
-                  }
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/TenantSettingsListDto"
-                  }
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/TenantSettingsListDto"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "TenantSettings"
-        ],
-        "summary": "Create new Tenant Settings",
-        "description": "Create new tenant settings",
-        "requestBody": {
-          "content": {
-            "application/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateTenantSettingsDto"
-              }
-            },
-            "text/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateTenantSettingsDto"
-              }
-            },
-            "application/*\u002Bjson; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateTenantSettingsDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/tenantsettings/{id}": {
-      "get": {
-        "tags": [
-          "TenantSettings"
-        ],
-        "summary": "Get Tenant Settings by ID",
-        "description": "Retrieve details of specific tenant settings",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantSettingsDto"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantSettingsDto"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/TenantSettingsDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "TenantSettings"
-        ],
-        "summary": "Update Tenant Settings",
-        "description": "Update existing tenant settings",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateTenantSettingsDto"
-              }
-            },
-            "text/json; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateTenantSettingsDto"
-              }
-            },
-            "application/*\u002Bjson; v=0.1": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateTenantSettingsDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "TenantSettings"
-        ],
-        "summary": "Delete Tenant Settings",
-        "description": "Delete tenant settings",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -16442,6 +17075,35 @@
           }
         }
       },
+      "BrandingSettingsDto": {
+        "type": "object",
+        "properties": {
+          "defaultBrandDisplayName": {
+            "type": "string"
+          },
+          "defaultBrandLogoUrl": {
+            "type": "string"
+          },
+          "defaultBrandFaviconUrl": {
+            "type": "string"
+          },
+          "defaultBrandCustomCssUrl": {
+            "type": "string"
+          },
+          "lockTenantBrandDisplayName": {
+            "type": "boolean"
+          },
+          "lockTenantBrandLogoUrl": {
+            "type": "boolean"
+          },
+          "lockTenantBrandFaviconUrl": {
+            "type": "boolean"
+          },
+          "lockTenantBrandCustomCssUrl": {
+            "type": "boolean"
+          }
+        }
+      },
       "CategoryDto": {
         "required": [
           "masterCode",
@@ -16591,6 +17253,20 @@
             "items": {
               "$ref": "#/components/schemas/CategoryListDto"
             }
+          }
+        }
+      },
+      "CompleteInstanceOnboardingRequest": {
+        "type": "object",
+        "properties": {
+          "deploymentMode": {
+            "$ref": "#/components/schemas/DeploymentMode"
+          },
+          "instanceName": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -17855,35 +18531,6 @@
           }
         }
       },
-      "CreateTenantSettingsDto": {
-        "type": "object",
-        "properties": {
-          "tenantId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "eventPublishingPolicy": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "allowPublicOrganizationRegistration": {
-            "type": "boolean"
-          },
-          "requireOrganizationVerification": {
-            "type": "boolean"
-          },
-          "allowPublicGroupCreation": {
-            "type": "boolean"
-          },
-          "requireGroupApproval": {
-            "type": "boolean"
-          }
-        }
-      },
       "CreateUpdateIslamicAspectDto": {
         "type": "object",
         "properties": {
@@ -18064,6 +18711,20 @@
       "DeclineBehavior": {
         "type": "integer"
       },
+      "DeploymentMode": {
+        "enum": [
+          "SingleTenant",
+          "MultiTenant"
+        ]
+      },
+      "DeploymentModeDto": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/DeploymentMode"
+          }
+        }
+      },
       "DidCustodyTypeDto": {
         "required": [
           "masterCode",
@@ -18119,6 +18780,23 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "DomainSettingsDto": {
+        "type": "object",
+        "properties": {
+          "instanceBaseDomain": {
+            "type": "string"
+          },
+          "allowTenantCustomDomains": {
+            "type": "boolean"
+          },
+          "lockTenantSubdomain": {
+            "type": "boolean"
+          },
+          "lockTenantCustomDomain": {
+            "type": "boolean"
           }
         }
       },
@@ -19013,6 +19691,26 @@
           "tenantId": {
             "type": "string",
             "format": "uuid"
+          }
+        }
+      },
+      "EventPolicyDto": {
+        "type": "object",
+        "properties": {
+          "allowUserSubmittedEvents": {
+            "type": "boolean"
+          },
+          "allowOrganizationSubmittedEvents": {
+            "type": "boolean"
+          },
+          "allowGroupSubmittedEvents": {
+            "type": "boolean"
+          },
+          "eventCardClickOpensDetailPage": {
+            "type": "boolean"
+          },
+          "lockTenantEventCardClickBehavior": {
+            "type": "boolean"
           }
         }
       },
@@ -22213,172 +22911,6 @@
           }
         }
       },
-      "InstanceGovernanceSettingsDto": {
-        "type": "object",
-        "properties": {
-          "deploymentMode": {
-            "type": "string"
-          },
-          "allowTenantSelfServiceRegistration": {
-            "type": "boolean"
-          },
-          "allowTenantWhiteLabeling": {
-            "type": "boolean"
-          },
-          "defaultPublicHomePage": {
-            "type": "string"
-          },
-          "renderPolicyVersion": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "renderPolicyPreset": {
-            "type": "string"
-          },
-          "enableAdvancedRenderPolicyOverrides": {
-            "type": "boolean"
-          },
-          "globalRenderMode": {
-            "type": "string"
-          },
-          "globalPrerenderEnabled": {
-            "type": "boolean"
-          },
-          "publicSeoRenderMode": {
-            "type": "string"
-          },
-          "publicSeoPrerenderEnabled": {
-            "type": "boolean"
-          },
-          "operationalRenderMode": {
-            "type": "string"
-          },
-          "operationalPrerenderEnabled": {
-            "type": "boolean"
-          },
-          "adminRenderMode": {
-            "type": "string"
-          },
-          "adminPrerenderEnabled": {
-            "type": "boolean"
-          },
-          "onboardingRenderMode": {
-            "type": "string"
-          },
-          "onboardingPrerenderEnabled": {
-            "type": "boolean"
-          },
-          "disallowInteractiveServerOnOnboarding": {
-            "type": "boolean"
-          },
-          "allowTenantRenderPolicyOverride": {
-            "type": "boolean"
-          },
-          "lockTenantPublicSeoRenderPolicy": {
-            "type": "boolean"
-          },
-          "lockTenantOperationalRenderPolicy": {
-            "type": "boolean"
-          },
-          "lockTenantAdminRenderPolicy": {
-            "type": "boolean"
-          },
-          "enableIslamicModule": {
-            "type": "boolean"
-          },
-          "enableTechModule": {
-            "type": "boolean"
-          },
-          "allowUserSubmittedEvents": {
-            "type": "boolean"
-          },
-          "allowOrganizationSubmittedEvents": {
-            "type": "boolean"
-          },
-          "allowGroupSubmittedEvents": {
-            "type": "boolean"
-          },
-          "allowOrganizationSelfRegistration": {
-            "type": "boolean"
-          },
-          "allowGroupSelfRegistration": {
-            "type": "boolean"
-          },
-          "eventCardClickOpensDetailPage": {
-            "type": "boolean"
-          },
-          "requireOrganizationVerification": {
-            "type": "boolean"
-          },
-          "allowTenantToOmitVerification": {
-            "type": "boolean"
-          },
-          "instanceBaseDomain": {
-            "type": "string"
-          },
-          "allowTenantCustomDomains": {
-            "type": "boolean"
-          },
-          "defaultBrandDisplayName": {
-            "type": "string"
-          },
-          "defaultBrandLogoUrl": {
-            "type": "string"
-          },
-          "defaultBrandFaviconUrl": {
-            "type": "string"
-          },
-          "defaultBrandCustomCssUrl": {
-            "type": "string"
-          },
-          "lockTenantHomePagePreference": {
-            "type": "boolean"
-          },
-          "lockTenantSubdomain": {
-            "type": "boolean"
-          },
-          "lockTenantCustomDomain": {
-            "type": "boolean"
-          },
-          "lockTenantBrandDisplayName": {
-            "type": "boolean"
-          },
-          "lockTenantBrandLogoUrl": {
-            "type": "boolean"
-          },
-          "lockTenantBrandFaviconUrl": {
-            "type": "boolean"
-          },
-          "lockTenantBrandCustomCssUrl": {
-            "type": "boolean"
-          },
-          "lockTenantEventCardClickBehavior": {
-            "type": "boolean"
-          },
-          "decentralizationEnabled": {
-            "type": "boolean"
-          },
-          "lockDecentralizationEnabled": {
-            "type": "boolean"
-          },
-          "lockTenantSmtp": {
-            "type": "boolean"
-          },
-          "lockTenantStorage": {
-            "type": "boolean"
-          },
-          "lockTenantAnalytics": {
-            "type": "boolean"
-          },
-          "authorizationProvider": {
-            "type": "string"
-          }
-        }
-      },
       "InstanceOnboardingStatusDto": {
         "type": "object",
         "properties": {
@@ -22826,6 +23358,17 @@
           },
           "schemaUrl": {
             "type": "string"
+          }
+        }
+      },
+      "ModuleSettingsDto": {
+        "type": "object",
+        "properties": {
+          "enableIslamicModule": {
+            "type": "boolean"
+          },
+          "enableTechModule": {
+            "type": "boolean"
           }
         }
       },
@@ -23395,6 +23938,23 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "OrganizationPolicyDto": {
+        "type": "object",
+        "properties": {
+          "requireOrganizationVerification": {
+            "type": "boolean"
+          },
+          "allowTenantToOmitVerification": {
+            "type": "boolean"
+          },
+          "allowOrganizationSelfRegistration": {
+            "type": "boolean"
+          },
+          "allowGroupSelfRegistration": {
+            "type": "boolean"
           }
         }
       },
@@ -24111,6 +24671,70 @@
           }
         }
       },
+      "RenderPolicySettingsDto": {
+        "type": "object",
+        "properties": {
+          "renderPolicyVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "renderPolicyPreset": {
+            "type": "string"
+          },
+          "enableAdvancedRenderPolicyOverrides": {
+            "type": "boolean"
+          },
+          "globalRenderMode": {
+            "type": "string"
+          },
+          "globalPrerenderEnabled": {
+            "type": "boolean"
+          },
+          "publicSeoRenderMode": {
+            "type": "string"
+          },
+          "publicSeoPrerenderEnabled": {
+            "type": "boolean"
+          },
+          "operationalRenderMode": {
+            "type": "string"
+          },
+          "operationalPrerenderEnabled": {
+            "type": "boolean"
+          },
+          "adminRenderMode": {
+            "type": "string"
+          },
+          "adminPrerenderEnabled": {
+            "type": "boolean"
+          },
+          "onboardingRenderMode": {
+            "type": "string"
+          },
+          "onboardingPrerenderEnabled": {
+            "type": "boolean"
+          },
+          "disallowInteractiveServerOnOnboarding": {
+            "type": "boolean"
+          },
+          "allowTenantRenderPolicyOverride": {
+            "type": "boolean"
+          },
+          "lockTenantPublicSeoRenderPolicy": {
+            "type": "boolean"
+          },
+          "lockTenantOperationalRenderPolicy": {
+            "type": "boolean"
+          },
+          "lockTenantAdminRenderPolicy": {
+            "type": "boolean"
+          }
+        }
+      },
       "ResolverConfigurationDto": {
         "type": "object",
         "properties": {
@@ -24658,6 +25282,41 @@
           }
         }
       },
+      "TenantDelegationSettingsDto": {
+        "type": "object",
+        "properties": {
+          "allowTenantSelfServiceRegistration": {
+            "type": "boolean"
+          },
+          "allowTenantWhiteLabeling": {
+            "type": "boolean"
+          },
+          "defaultPublicHomePage": {
+            "type": "string"
+          },
+          "lockTenantHomePagePreference": {
+            "type": "boolean"
+          },
+          "lockTenantSmtp": {
+            "type": "boolean"
+          },
+          "lockTenantStorage": {
+            "type": "boolean"
+          },
+          "lockTenantAnalytics": {
+            "type": "boolean"
+          },
+          "decentralizationEnabled": {
+            "type": "boolean"
+          },
+          "lockDecentralizationEnabled": {
+            "type": "boolean"
+          },
+          "authorizationProvider": {
+            "type": "string"
+          }
+        }
+      },
       "TenantDto": {
         "required": [
           "fullName",
@@ -25027,84 +25686,6 @@
             "type": "boolean"
           },
           "canOverrideAnalytics": {
-            "type": "boolean"
-          }
-        }
-      },
-      "TenantSettingsDto": {
-        "required": [
-          "tenantFullName"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "tenantId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "tenantFullName": {
-            "type": "string"
-          },
-          "eventPublishingPolicy": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "allowPublicOrganizationRegistration": {
-            "type": "boolean"
-          },
-          "requireOrganizationVerification": {
-            "type": "boolean"
-          },
-          "allowPublicGroupCreation": {
-            "type": "boolean"
-          },
-          "requireGroupApproval": {
-            "type": "boolean"
-          }
-        }
-      },
-      "TenantSettingsListDto": {
-        "required": [
-          "tenantFullName"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "tenantId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "tenantFullName": {
-            "type": "string"
-          },
-          "eventPublishingPolicy": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "allowPublicOrganizationRegistration": {
-            "type": "boolean"
-          },
-          "requireOrganizationVerification": {
-            "type": "boolean"
-          },
-          "allowPublicGroupCreation": {
-            "type": "boolean"
-          },
-          "requireGroupApproval": {
             "type": "boolean"
           }
         }
@@ -26154,35 +26735,82 @@
           }
         }
       },
-      "UpdateTenantSettingsDto": {
+      "UpdateTenantPolicyRequest": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
+          "allowUserSubmittedEvents": {
+            "type": "boolean"
           },
-          "tenantId": {
-            "type": "string",
-            "format": "uuid"
+          "allowOrganizationSubmittedEvents": {
+            "type": "boolean"
           },
-          "eventPublishingPolicy": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
+          "allowGroupSubmittedEvents": {
+            "type": "boolean"
           },
-          "allowPublicOrganizationRegistration": {
+          "allowOrganizationSelfRegistration": {
+            "type": "boolean"
+          },
+          "allowGroupSelfRegistration": {
+            "type": "boolean"
+          },
+          "eventCardClickOpensDetailPage": {
+            "type": "boolean"
+          },
+          "requireEventApproval": {
             "type": "boolean"
           },
           "requireOrganizationVerification": {
             "type": "boolean"
           },
-          "allowPublicGroupCreation": {
+          "preferredHomePage": {
+            "type": "string"
+          },
+          "subdomain": {
+            "type": "string"
+          },
+          "customDomain": {
+            "type": "string"
+          },
+          "brandDisplayName": {
+            "type": "string"
+          },
+          "brandLogoUrl": {
+            "type": "string"
+          },
+          "brandFaviconUrl": {
+            "type": "string"
+          },
+          "brandCustomCssUrl": {
+            "type": "string"
+          },
+          "renderPolicyPreset": {
+            "type": "string"
+          },
+          "enableAdvancedRenderPolicyOverrides": {
             "type": "boolean"
           },
-          "requireGroupApproval": {
+          "globalRenderMode": {
+            "type": "string"
+          },
+          "globalPrerenderEnabled": {
+            "type": "boolean"
+          },
+          "publicSeoRenderMode": {
+            "type": "string"
+          },
+          "publicSeoPrerenderEnabled": {
+            "type": "boolean"
+          },
+          "operationalRenderMode": {
+            "type": "string"
+          },
+          "operationalPrerenderEnabled": {
+            "type": "boolean"
+          },
+          "adminRenderMode": {
+            "type": "string"
+          },
+          "adminPrerenderEnabled": {
             "type": "boolean"
           }
         }
@@ -26786,6 +27414,9 @@
       "name": "ExternalApiKey"
     },
     {
+      "name": "Features"
+    },
+    {
       "name": "FileType"
     },
     {
@@ -26802,6 +27433,9 @@
     },
     {
       "name": "InstanceOnboarding"
+    },
+    {
+      "name": "InstanceSettings"
     },
     {
       "name": "Language"
@@ -26862,9 +27496,6 @@
     },
     {
       "name": "TenantOnboarding"
-    },
-    {
-      "name": "TenantSettings"
     },
     {
       "name": "Translation"

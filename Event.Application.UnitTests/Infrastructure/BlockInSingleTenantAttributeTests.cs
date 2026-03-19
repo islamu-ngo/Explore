@@ -2,8 +2,8 @@
 // ABOUTME: Verifies deployment-mode gating returns RFC 7807 ProblemDetails instead of empty status results.
 
 using Explore.API.Filters;
-using Explore.Application.Contracts.Persistence;
-using Explore.Domain.Constants;
+using Explore.Application.Contracts.Services;
+using Explore.Domain.Enums;
 using Explore.Infrastructure;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -23,7 +23,7 @@ public class BlockInSingleTenantAttributeTests
     {
         var context = CreateAuthorizationContext(
             new DeploymentSettings { HidePlatformAdminInSingleTenant = true, Mode = DeploymentMode.SingleTenant },
-            runtimeMode: "SingleTenant");
+            isSingleTenant: true);
 
         var attribute = new BlockInSingleTenantAttribute();
 
@@ -44,7 +44,7 @@ public class BlockInSingleTenantAttributeTests
     {
         var context = CreateAuthorizationContext(
             new DeploymentSettings { Mode = DeploymentMode.SingleTenant },
-            runtimeMode: "SingleTenant");
+            isSingleTenant: true);
 
         var attribute = new RequireMultiTenantAttribute();
 
@@ -65,7 +65,7 @@ public class BlockInSingleTenantAttributeTests
     {
         var context = CreateAuthorizationContext(
             new DeploymentSettings { HidePlatformAdminInSingleTenant = true, Mode = DeploymentMode.MultiTenant },
-            runtimeMode: "MultiTenant");
+            isSingleTenant: false);
 
         var attribute = new BlockInSingleTenantAttribute();
 
@@ -74,27 +74,23 @@ public class BlockInSingleTenantAttributeTests
         await Assert.That(context.Result).IsNull();
     }
 
-    private static AuthorizationFilterContext CreateAuthorizationContext(DeploymentSettings settings, string? runtimeMode)
+    private static AuthorizationFilterContext CreateAuthorizationContext(DeploymentSettings settings, bool isSingleTenant)
     {
         var services = new ServiceCollection();
         services.AddSingleton<IOptions<DeploymentSettings>>(Options.Create(settings));
 
-        var repository = Substitute.For<ISystemSettingRepository>();
-        repository.GetByKey(GovernanceSettingKeys.DeploymentMode)
-            .Returns(runtimeMode is null
-                ? null
-                : new Explore.Domain.SystemSetting
-                {
-                    SettingKey = GovernanceSettingKeys.DeploymentMode,
-                    Value = $"\"{runtimeMode}\""
-                });
-        services.AddSingleton(repository);
+        var provider = Substitute.For<IDeploymentModeProvider>();
+        provider.IsSingleTenantAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(isSingleTenant));
+        provider.GetCurrentModeAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(isSingleTenant ? DeploymentMode.SingleTenant : DeploymentMode.MultiTenant));
+        services.AddSingleton(provider);
 
-        var provider = services.BuildServiceProvider();
+        var serviceProvider = services.BuildServiceProvider();
 
         var httpContext = new DefaultHttpContext
         {
-            RequestServices = provider
+            RequestServices = serviceProvider
         };
 
         var actionContext = new ActionContext(httpContext, new RouteData(), new ActionDescriptor());

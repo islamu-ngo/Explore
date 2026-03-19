@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Settings;
 using Explore.Infrastructure.Services;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -12,7 +13,7 @@ namespace Event.Application.UnitTests.Behaviors;
 public class FallbackAuthorizationServiceTests
 {
     private readonly IAdminContext _adminContext;
-    private readonly ISettingsResolver _settingsResolver;
+    private readonly IHierarchicalSettingsResolver _settingsResolver;
     private readonly ITenantContext _tenantContext;
     private readonly ILogger<FallbackAuthorizationService> _logger;
     private readonly FallbackAuthorizationService _service;
@@ -23,7 +24,7 @@ public class FallbackAuthorizationServiceTests
     public FallbackAuthorizationServiceTests()
     {
         _adminContext = Substitute.For<IAdminContext>();
-        _settingsResolver = Substitute.For<ISettingsResolver>();
+        _settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
         _tenantContext = Substitute.For<ITenantContext>();
         _logger = Substitute.For<ILogger<FallbackAuthorizationService>>();
 
@@ -189,7 +190,8 @@ public class FallbackAuthorizationServiceTests
     {
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
-        _settingsResolver.CanOverrideAsync("events.require_approval", Arg.Any<CancellationToken>()).Returns(true);
+        _settingsResolver.ResolveWithMetadataAsync("events.require_approval", Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
+            .Returns(new ResolvedSetting { Key = "events.require_approval", IsLocked = false });
 
         var result = await _service.CheckSettingAccessAsync("events.require_approval", "update", tenantId: TestTenantId);
 
@@ -201,7 +203,8 @@ public class FallbackAuthorizationServiceTests
     {
         _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
         _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
-        _settingsResolver.CanOverrideAsync("deployment.mode", Arg.Any<CancellationToken>()).Returns(false);
+        _settingsResolver.ResolveWithMetadataAsync("deployment.mode", Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
+            .Returns(new ResolvedSetting { Key = "deployment.mode", IsLocked = true });
 
         var result = await _service.CheckSettingAccessAsync("deployment.mode", "update", tenantId: TestTenantId);
 

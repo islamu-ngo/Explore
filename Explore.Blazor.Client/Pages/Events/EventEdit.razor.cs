@@ -5,12 +5,13 @@ using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Pages.Events.Components;
+using Explore.Blazor.Client.Pages.Events.Models;
+using Explore.Blazor.Client.Pages.Events.Workflows;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.Logging;
 using MudBlazor;
-using static Explore.Blazor.Client.Pages.Events.Components.EventSessionEditor;
 
 namespace Explore.Blazor.Client.Pages.Events;
 
@@ -66,6 +67,7 @@ public partial class EventEdit
 
     // Sessions
     private List<SessionEditorModel> sessions = new();
+    private readonly SessionEditorWorkflow _sessionWorkflow = new();
     private EventAppearanceSettings _appearance = new();
 
     // UI toggles
@@ -342,22 +344,7 @@ public partial class EventEdit
 
     private void AddSession()
     {
-        var defaultStart = DateTime.Today.AddDays(1).AddHours(9);
-        var defaultEnd = DateTime.Today.AddDays(1).AddHours(17);
-
-        if (sessions.Any())
-        {
-            var last = sessions.Last();
-            defaultStart = last.StartTime.AddDays(1);
-            defaultEnd = last.EndTime.AddDays(1);
-        }
-
-        sessions.Add(new SessionEditorModel
-        {
-            StartTime = defaultStart,
-            EndTime = defaultEnd,
-            RegistrationModeId = sessions.FirstOrDefault()?.RegistrationModeId ?? 1
-        });
+        _sessionWorkflow.OpenForCreate(sessions, imagePreviewUrl);
     }
 
     private async void RemoveSession(int index)
@@ -399,12 +386,10 @@ public partial class EventEdit
         }
     }
 
-    private void OnSessionChanged(int index, SessionEditorModel session)
+    private void HandleSessionSave(SessionEditorModel model)
     {
-        if (index >= 0 && index < sessions.Count)
-        {
-            sessions[index] = session;
-        }
+        _sessionWorkflow.SaveSession(sessions, model);
+        StateHasChanged();
     }
 
     // ========== Validation & Submission ==========

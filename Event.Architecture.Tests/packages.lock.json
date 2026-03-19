@@ -40,6 +40,34 @@
           "Asp.Versioning.Abstractions": "8.1.0"
         }
       },
+      "Aspire.StackExchange.Redis": {
+        "type": "Transitive",
+        "resolved": "13.1.2",
+        "contentHash": "zFM5TRuz44cjU/epvHjv+F+QLQSXTnq/IQvUC3b55/rXdSCbeDRJ8UBl95LstudRlHr+DrqvHcv1TbotmLQusg==",
+        "dependencies": {
+          "AspNetCore.HealthChecks.Redis": "9.0.0",
+          "Microsoft.Extensions.Configuration.Abstractions": "10.0.1",
+          "Microsoft.Extensions.Configuration.Binder": "10.0.1",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.1",
+          "Microsoft.Extensions.DependencyInjection.AutoActivation": "10.1.0",
+          "Microsoft.Extensions.Diagnostics.HealthChecks": "10.0.1",
+          "Microsoft.Extensions.Hosting.Abstractions": "10.0.1",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.1",
+          "Microsoft.Extensions.Options": "10.0.1",
+          "Microsoft.Extensions.Primitives": "10.0.1",
+          "OpenTelemetry.Extensions.Hosting": "1.14.0",
+          "StackExchange.Redis": "2.9.32"
+        }
+      },
+      "AspNetCore.HealthChecks.Redis": {
+        "type": "Transitive",
+        "resolved": "9.0.0",
+        "contentHash": "yNH0h8GLRbAf+PU5HNVLZ5hNeyq9mDVmRKO9xuZsme/znUYoBJlQvI0gq45gaZNlLncCHkMhR4o90MuT+gxxPw==",
+        "dependencies": {
+          "Microsoft.Extensions.Diagnostics.HealthChecks": "8.0.11",
+          "StackExchange.Redis": "2.7.4"
+        }
+      },
       "AutoMapper": {
         "type": "Transitive",
         "resolved": "12.0.1",
@@ -116,6 +144,17 @@
           "Microsoft.Extensions.Primitives": "10.0.2"
         }
       },
+      "Microsoft.Extensions.Caching.StackExchangeRedis": {
+        "type": "Transitive",
+        "resolved": "10.0.1",
+        "contentHash": "M7+349/EtaszydCxz/vtj4fUgbwE6NfDAfh98+oeWHPdBthgWKDCdnFV92p9UtyFN8Ln0e0w1ZzJvvbNzpMtaQ==",
+        "dependencies": {
+          "Microsoft.Extensions.Caching.Abstractions": "10.0.1",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.1",
+          "Microsoft.Extensions.Options": "10.0.1",
+          "StackExchange.Redis": "2.7.27"
+        }
+      },
       "Microsoft.Extensions.Configuration": {
         "type": "Transitive",
         "resolved": "10.0.2",
@@ -172,10 +211,10 @@
       },
       "Microsoft.Extensions.DependencyInjection.AutoActivation": {
         "type": "Transitive",
-        "resolved": "9.4.0",
-        "contentHash": "dg2VeBxiwqAszJkMRQT1k1jefeTneN+M8v/EkWwebR9OvLXzykP9CVE2+bWMuPvXIdHM04/ffWgo5Bl+0jKi/Q==",
+        "resolved": "10.1.0",
+        "contentHash": "O052pqWkdVNXaj3n9E4x6nLL7sG860434gLh7XHhFp/KpyAY9/rCk9NJUinYfQnDkAA8UgCHimVZz+lTjnEwzQ==",
         "dependencies": {
-          "Microsoft.Extensions.Hosting.Abstractions": "9.0.4"
+          "Microsoft.Extensions.Hosting.Abstractions": "10.0.1"
         }
       },
       "Microsoft.Extensions.DependencyModel": {
@@ -482,6 +521,11 @@
           "OpenTelemetry.Api": "1.14.0"
         }
       },
+      "Pipelines.Sockets.Unofficial": {
+        "type": "Transitive",
+        "resolved": "2.2.8",
+        "contentHash": "zG2FApP5zxSx6OcdJQLbZDk2AVlN2BNQD6MorwIfV6gVj0RRxWPEp2LXAxqDGZqeNV1Zp0BNPcNaey/GXmTdvQ=="
+      },
       "Polly.Core": {
         "type": "Transitive",
         "resolved": "8.6.5",
@@ -587,6 +631,15 @@
         "contentHash": "fKL7mXv7qaiNBUC71ssvn/dU0k9t0o45+qm2XgKAlSt19xF+ijjxyA3R6HmCgfKEKwfcfkwWjayuQtRueZFkYw==",
         "dependencies": {
           "Serilog": "4.2.0"
+        }
+      },
+      "StackExchange.Redis": {
+        "type": "Transitive",
+        "resolved": "2.9.32",
+        "contentHash": "j5Rjbf7gWz5izrn0UWQy9RlQY4cQDPkwJfVqATnVsOa/+zzJrps12LOgacMsDl/Vit2f01cDiDkG/Rst8v2iGw==",
+        "dependencies": {
+          "Microsoft.Extensions.Logging.Abstractions": "8.0.0",
+          "Pipelines.Sockets.Unofficial": "2.2.8"
         }
       },
       "Swashbuckle.AspNetCore.Swagger": {
@@ -704,6 +757,7 @@
           "Asp.Versioning.Mvc": "[8.1.0, )",
           "Asp.Versioning.Mvc.ApiExplorer": "[8.1.0, )",
           "Aspire.Keycloak.Authentication": "[13.1.0-preview.1.25616.3, )",
+          "Aspire.StackExchange.Redis.DistributedCaching": "[13.1.2, )",
           "Explore.Application": "[1.0.0, )",
           "Explore.Infrastructure": "[1.0.0, )",
           "Explore.Persistence": "[1.0.0, )",
@@ -719,6 +773,7 @@
           "Microsoft.IdentityModel.Tokens": "[8.14.0, )",
           "Microsoft.VisualStudio.Azure.Containers.Tools.Targets": "[1.23.0, )",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.0, )",
+          "OpenFeature.Hosting": "[2.11.1, )",
           "OpenTelemetry": "[1.14.0, )",
           "OpenTelemetry.Exporter.Console": "[1.14.0, )",
           "OpenTelemetry.Extensions.Hosting": "[1.14.0, )",
@@ -745,7 +800,8 @@
           "MediatR.Extensions.Microsoft.DependencyInjection": "[11.1.0, )",
           "Microsoft.Extensions.Caching.Hybrid": "[10.2.0, )",
           "Microsoft.Extensions.Configuration.Abstractions": "[10.0.2, )",
-          "Microsoft.Extensions.Logging.Abstractions": "[10.0.2, )"
+          "Microsoft.Extensions.Logging.Abstractions": "[10.0.2, )",
+          "OpenFeature": "[2.11.1, )"
         }
       },
       "explore.domain": {
@@ -761,6 +817,7 @@
           "Explore.Application": "[1.0.0, )",
           "MailKit": "[4.14.1, )",
           "Microsoft.Extensions.Http.Resilience": "[9.4.0, )",
+          "OpenFeature": "[2.11.1, )",
           "Polly": "[8.6.5, )"
         }
       },
@@ -825,6 +882,28 @@
         "dependencies": {
           "Microsoft.AspNetCore.Authentication.JwtBearer": "10.0.1",
           "Microsoft.AspNetCore.Authentication.OpenIdConnect": "10.0.1"
+        }
+      },
+      "Aspire.StackExchange.Redis.DistributedCaching": {
+        "type": "CentralTransitive",
+        "requested": "[13.1.2, )",
+        "resolved": "13.1.2",
+        "contentHash": "zT3rV/HqBbB0Ybkt7CCU1k7PKwpQlT3H0B9K3OTNgVXyRYXH3JaBUtawSqvK9J7jvGm2ql1V13ALvYveU6BStQ==",
+        "dependencies": {
+          "AspNetCore.HealthChecks.Redis": "9.0.0",
+          "Aspire.StackExchange.Redis": "13.1.2",
+          "Microsoft.Extensions.Caching.StackExchangeRedis": "10.0.1",
+          "Microsoft.Extensions.Configuration.Abstractions": "10.0.1",
+          "Microsoft.Extensions.Configuration.Binder": "10.0.1",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.1",
+          "Microsoft.Extensions.DependencyInjection.AutoActivation": "10.1.0",
+          "Microsoft.Extensions.Diagnostics.HealthChecks": "10.0.1",
+          "Microsoft.Extensions.Hosting.Abstractions": "10.0.1",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.1",
+          "Microsoft.Extensions.Options": "10.0.1",
+          "Microsoft.Extensions.Primitives": "10.0.1",
+          "OpenTelemetry.Extensions.Hosting": "1.14.0",
+          "StackExchange.Redis": "2.9.32"
         }
       },
       "AutoMapper.Extensions.Microsoft.DependencyInjection": {
@@ -1167,6 +1246,25 @@
           "Microsoft.EntityFrameworkCore": "[10.0.0, 11.0.0)",
           "Microsoft.EntityFrameworkCore.Relational": "[10.0.0, 11.0.0)",
           "Npgsql": "10.0.0"
+        }
+      },
+      "OpenFeature": {
+        "type": "CentralTransitive",
+        "requested": "[2.11.1, )",
+        "resolved": "2.11.1",
+        "contentHash": "cxm8fgi5I2UPguBK7TQgvSn5X/1KWI9ImpSjIL8EvTNVrK4c2d9a+r+EUEIED0cXJ2kWB01zInJ4ZOBoGIqysw==",
+        "dependencies": {
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.0"
+        }
+      },
+      "OpenFeature.Hosting": {
+        "type": "CentralTransitive",
+        "requested": "[2.11.1, )",
+        "resolved": "2.11.1",
+        "contentHash": "YAgwBkGp3eLARW4BSAPdDLb52bbn4FpCp7LiWeGmuTG4aMMJDcUwUoMxnhJ+6n8GLfwT7ZfZyN/ueg/NwuJHOQ==",
+        "dependencies": {
+          "Microsoft.Extensions.Hosting.Abstractions": "10.0.0",
+          "OpenFeature": "2.11.1"
         }
       },
       "OpenTelemetry": {

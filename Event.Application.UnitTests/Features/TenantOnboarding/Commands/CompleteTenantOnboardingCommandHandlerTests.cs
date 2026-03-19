@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
+using Explore.Application.DTOs.TenantPolicy;
 using Explore.Application.Features.TenantOnboarding.Handlers.Commands;
 using Explore.Application.Features.TenantOnboarding.Requests.Commands;
 using Explore.Domain;
@@ -45,7 +46,7 @@ public class CompleteTenantOnboardingCommandHandlerTests
     private static CompleteTenantOnboardingCommand CreateCommand() => new()
     {
         UserId = TestUserId,
-        Settings = new TenantPolicySettingsDto()
+        Settings = new UpdateTenantPolicyRequest()
     };
 
     [Test]
@@ -81,7 +82,7 @@ public class CompleteTenantOnboardingCommandHandlerTests
 
         // Assert
         await Assert.That(result.Success).IsTrue();
-        await _policySettingService.Received(1).ApplyTenantSettingsAsync(TestTenantId, TestUserId, Arg.Any<TenantPolicySettingsDto>());
+        await _policySettingService.Received(1).ApplyTenantSettingsAsync(TestTenantId, TestUserId, Arg.Any<UpdateTenantPolicyRequest>());
     }
 
     [Test]
@@ -117,7 +118,7 @@ public class CompleteTenantOnboardingCommandHandlerTests
 
         // Assert: settings should NOT be applied
         await _policySettingService.DidNotReceive().ApplyTenantSettingsAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<TenantPolicySettingsDto>());
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<UpdateTenantPolicyRequest>());
     }
 
     [Test]

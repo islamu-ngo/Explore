@@ -43,8 +43,8 @@ public class TenantLookupSource : ITenantLookupSource
             .IgnoreQueryFilters([QueryFilterNames.Tenant])
             .AsNoTracking()
             .Where(setting => tenantIds.Contains(setting.TenantId)
-                && (setting.SettingKey == GovernanceSettingKeys.DomainsTenantSubdomain
-                    || setting.SettingKey == GovernanceSettingKeys.DomainsTenantCustomDomain))
+                && (setting.SettingKey == GovernanceSettingKeys.Domains.TenantSubdomain
+                    || setting.SettingKey == GovernanceSettingKeys.Domains.TenantCustomDomain))
             .Select(setting => new TenantDomainSetting
             {
                 TenantId = setting.TenantId,
@@ -64,8 +64,8 @@ public class TenantLookupSource : ITenantLookupSource
                 continue;
             }
 
-            tenant.Subdomain = GetSettingValue(tenantSettings, GovernanceSettingKeys.DomainsTenantSubdomain);
-            tenant.CustomDomain = GetSettingValue(tenantSettings, GovernanceSettingKeys.DomainsTenantCustomDomain);
+            tenant.Subdomain = GetSettingValue(tenantSettings, GovernanceSettingKeys.Domains.TenantSubdomain);
+            tenant.CustomDomain = GetSettingValue(tenantSettings, GovernanceSettingKeys.Domains.TenantCustomDomain);
         }
 
         return tenants;

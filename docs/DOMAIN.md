@@ -35,7 +35,7 @@ Some entities keep sensitive fields in dedicated PII tables and expose convenien
 
 `EnsurePii()` helper methods create PII objects lazily when mapped properties are set.
 
-### 2) Optional Event Aspects (vertical partitioning)
+### 2) Optional Event Aspects (vertical partitioning / Layer 2 typed schema)
 
 Base event data stays in `Event`. Optional modules add 1:1 aspect records:
 
@@ -45,7 +45,24 @@ Base event data stays in `Event`. Optional modules add 1:1 aspect records:
 
 Aspects are optional; an event/session can exist without aspect rows.
 
-### 3) Tenant and soft-delete interfaces
+These aspect families are the current Layer 2 precedent. Sector-standard semantics belong here, not only in Layer 3 custom properties.
+
+### 3) Layer 3 custom-property extension model
+
+The repo now contains a strengthened Layer 3 custom-property family:
+
+- shared definitions for `Organization` and `Group` via `CustomPropertyDefinition`, `CustomPropertyOption`, and `CustomPropertyValue`
+- event template entities via `EventTemplate`, `EventTemplateCustomPropertyDefinition`, and `EventTemplateCustomPropertyOption`
+- event-local runtime entities via `EventCustomPropertyDefinition`, `EventCustomPropertyOption`, and `EventCustomPropertyValue`
+- derived read-side projection rows via `EventCustomPropertyProjection`
+
+Important boundary rule:
+
+- Layer 3 exists for tenant-specific and organizer-specific long-tail extensions.
+- Layer 3 must not become the only home of filtering, moderation, policy, or sector-standard semantics.
+- `Namespace + Key` is the machine identity; `DisplayName` is mutable UI text.
+
+### 4) Tenant and soft-delete interfaces
 
 Key interfaces:
 
@@ -65,7 +82,7 @@ These are enforced at database/model level today.
 ## Event rules
 
 - `Event.Title` required, max length 200.
-- `Event.MetadataJson` stored as PostgreSQL `jsonb`.
+- `Event` uses dedicated first-class appearance fields such as `BackgroundColor`, `BackgroundEffect`, and `BackgroundImageId`; current architecture should not reintroduce `MetadataJson` as the event extension model.
 - `Event.Price` uses precision `(19,4)` and check constraint `price >= 0` when not null.
 - Indexes include:
   - tenant + soft-delete + status (`ix_events_tenant_active_status`)
@@ -120,5 +137,6 @@ Notable exception:
 ## Related
 
 - [ARCHITECTURE.md](ARCHITECTURE.md)
+- [CUSTOM_PROPERTIES.md](CUSTOM_PROPERTIES.md)
 - [CODEBASE_INSIGHTS.md](CODEBASE_INSIGHTS.md)
 - [MULTI_TENANCY.md](MULTI_TENANCY.md)

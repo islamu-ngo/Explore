@@ -1,5 +1,5 @@
-// ABOUTME: EF Core configuration for CustomPropertyDefinition with indexes and constraints.
-// ABOUTME: Enforces unique (TenantId, EntityTypeName, EventTypeId, Name) for property definitions.
+// ABOUTME: EF Core configuration for shared tenant-scoped Layer 3 custom-property definitions.
+// ABOUTME: Enforces namespaced machine-key uniqueness plus typed validation and exposure metadata.
 
 using Explore.Domain;
 using Explore.Persistence.ValueGenerators;
@@ -17,7 +17,11 @@ public class CustomPropertyDefinitionConfiguration : IEntityTypeConfiguration<Cu
         builder.Property(e => e.Id)
             .HasValueGenerator<GuidVersion7ValueGenerator>();
 
-        builder.Property(e => e.Name)
+        builder.Property(e => e.Namespace)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        builder.Property(e => e.Key)
             .HasMaxLength(100)
             .IsRequired();
 
@@ -28,11 +32,23 @@ public class CustomPropertyDefinitionConfiguration : IEntityTypeConfiguration<Cu
         builder.Property(e => e.Description)
             .HasMaxLength(500);
 
-        builder.Property(e => e.DefaultValue)
+        builder.Property(e => e.DefaultTextValue)
             .HasMaxLength(1000);
 
-        builder.Property(e => e.ValidationRules)
-            .HasMaxLength(2000);
+        builder.Property(e => e.RegexPattern)
+            .HasMaxLength(1000);
+
+        builder.Property(e => e.AllowedUrlSchemes)
+            .HasMaxLength(500);
+
+        builder.Property(e => e.DefaultNumberValue)
+            .HasPrecision(19, 4);
+
+        builder.Property(e => e.MinNumber)
+            .HasPrecision(19, 4);
+
+        builder.Property(e => e.MaxNumber)
+            .HasPrecision(19, 4);
 
         builder.Property(e => e.EntityTypeName)
             .HasConversion<string>()
@@ -42,15 +58,19 @@ public class CustomPropertyDefinitionConfiguration : IEntityTypeConfiguration<Cu
             .HasConversion<string>()
             .HasMaxLength(50);
 
-        // Relationships
-        builder.HasOne(e => e.EventType)
-            .WithMany()
-            .HasForeignKey(e => e.EventTypeId)
-            .OnDelete(DeleteBehavior.Restrict);
+        builder.Property(e => e.ExposureLevel)
+            .HasConversion<string>()
+            .HasMaxLength(50);
 
+        // Relationships
         builder.HasOne(e => e.Tenant)
             .WithMany()
             .HasForeignKey(e => e.TenantId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(e => e.DefaultOption)
+            .WithMany()
+            .HasForeignKey(e => e.DefaultOptionId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasMany(e => e.Options)
@@ -63,13 +83,14 @@ public class CustomPropertyDefinitionConfiguration : IEntityTypeConfiguration<Cu
             .HasForeignKey(v => v.CustomPropertyDefinitionId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Unique constraint: one property name per entity type scope
-        builder.HasIndex(e => new { e.TenantId, e.EntityTypeName, e.EventTypeId, e.Name })
-            .HasDatabaseName("ix_cpd_tenant_entity_type_name")
+        builder.HasIndex(e => new { e.TenantId, e.EntityTypeName, e.Namespace, e.Key })
+            .HasDatabaseName("ix_cpd_tenant_entity_namespace_key")
             .IsUnique();
 
-        // Listing query: active definitions by entity type
         builder.HasIndex(e => new { e.TenantId, e.EntityTypeName, e.IsActive })
             .HasDatabaseName("ix_cpd_tenant_entity_active");
+
+        builder.HasIndex(e => new { e.TenantId, e.EntityTypeName, e.IsSearchable, e.IsFilterable })
+            .HasDatabaseName("ix_cpd_tenant_entity_search_filter");
     }
 }

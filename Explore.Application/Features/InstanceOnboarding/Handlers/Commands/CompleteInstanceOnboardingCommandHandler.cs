@@ -1,4 +1,4 @@
-// ABOUTME: Handles first-run instance onboarding completion, role assignment, and governance persistence.
+// ABOUTME: Handles first-run instance onboarding completion, role assignment, and deployment mode persistence.
 // ABOUTME: Auto-creates the first user when not yet synced, then assigns instance admin and default tenant admin roles.
 
 using Explore.Application.Contracts.Identity;
@@ -11,7 +11,6 @@ using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using MediatR;
-using TenantSettingsEntity = Explore.Domain.TenantSettings;
 
 namespace Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 
@@ -25,11 +24,11 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
     private readonly IActorRepository _actorRepository;
     private readonly IUserExternalLoginRepository _userExternalLoginRepository;
     private readonly ITenantRepository _tenantRepository;
-    private readonly ITenantSettingsRepository _tenantSettingsRepository;
-    private readonly IInstanceGovernanceSettingService _governanceSettingService;
+    private readonly ISystemSettingRepository _systemSettingRepository;
     private readonly ISetupSecretProvider _setupSecretProvider;
     private readonly IAdminCacheInvalidator _adminCacheInvalidator;
-    private readonly IDeploymentModeCacheInvalidator? _deploymentModeCacheInvalidator;
+    private readonly IDeploymentModeProvider _deploymentModeProvider;
+    private readonly IUnitOfWork _unitOfWork;
 
     public CompleteInstanceOnboardingCommandHandler(
         IInstanceBootstrapStateRepository instanceBootstrapStateRepository,
@@ -40,11 +39,11 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         IActorRepository actorRepository,
         IUserExternalLoginRepository userExternalLoginRepository,
         ITenantRepository tenantRepository,
-        ITenantSettingsRepository tenantSettingsRepository,
-        IInstanceGovernanceSettingService governanceSettingService,
+        ISystemSettingRepository systemSettingRepository,
         ISetupSecretProvider setupSecretProvider,
         IAdminCacheInvalidator adminCacheInvalidator,
-        IDeploymentModeCacheInvalidator? deploymentModeCacheInvalidator = null)
+        IDeploymentModeProvider deploymentModeProvider,
+        IUnitOfWork unitOfWork)
     {
         _instanceBootstrapStateRepository = instanceBootstrapStateRepository;
         _platformUserRoleRepository = platformUserRoleRepository;
@@ -54,11 +53,11 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         _actorRepository = actorRepository;
         _userExternalLoginRepository = userExternalLoginRepository;
         _tenantRepository = tenantRepository;
-        _tenantSettingsRepository = tenantSettingsRepository;
-        _governanceSettingService = governanceSettingService;
+        _systemSettingRepository = systemSettingRepository;
         _setupSecretProvider = setupSecretProvider;
         _adminCacheInvalidator = adminCacheInvalidator;
-        _deploymentModeCacheInvalidator = deploymentModeCacheInvalidator;
+        _deploymentModeProvider = deploymentModeProvider;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(CompleteInstanceOnboardingCommand request, CancellationToken cancellationToken)
@@ -73,93 +72,84 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
             return response;
         }
 
-        var validator = new InstanceGovernanceSettingsDtoValidator();
-        var validationResult = await validator.ValidateAsync(request.Settings, cancellationToken);
-        if (!validationResult.IsValid)
+        var validator = new CompleteInstanceOnboardingRequestValidator();
+        var validation = await validator.ValidateAsync(request.Settings, cancellationToken);
+        if (!validation.IsValid)
         {
             response.Success = false;
-            response.Message = "Invalid instance governance settings.";
-            response.Errors = validationResult.Errors.Select(x => x.ErrorMessage).ToList();
+            response.Message = "Invalid onboarding request.";
+            response.Errors = validation.Errors.Select(e => e.ErrorMessage).ToList();
             return response;
         }
 
-        var normalizedDeploymentMode = NormalizeDeploymentMode(request.Settings.DeploymentMode);
-        if (normalizedDeploymentMode == null)
+        // Pre-validate user before opening the transaction — avoids early-return inside tx scope
+        var existingUserCheck = await _userRepository.GetById(request.UserId);
+        if (existingUserCheck == null && string.IsNullOrWhiteSpace(request.Email))
         {
             response.Success = false;
-            response.Message = "Invalid deployment mode.";
-            response.Errors = new List<string> { "DeploymentMode must be SingleTenant or MultiTenant." };
+            response.Message = "User identity data is required to complete onboarding.";
+            response.Errors = new List<string> { "No user found and no email claim available to create one." };
             return response;
         }
 
-        request.Settings.DeploymentMode = normalizedDeploymentMode;
-
-        var isSingleTenant = normalizedDeploymentMode.Equals("SingleTenant", StringComparison.OrdinalIgnoreCase);
+        var deploymentMode = request.Settings.DeploymentMode;
+        var isSingleTenant = deploymentMode == DeploymentMode.SingleTenant;
         Guid? defaultTenantId = null;
 
-        // Create the default tenant BEFORE user sync so the Actor can reference a valid TenantId.
-        if (isSingleTenant)
+        await _unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
-            var defaultTenant = await EnsureDefaultTenantAsync();
-            await EnsureDefaultTenantSettingsAsync(defaultTenant.Id);
-            defaultTenantId = defaultTenant.Id;
-        }
-
-        // Auto-create the user if not yet synced. During onboarding the normal /api/User/sync
-        // endpoint cannot work because tenant resolution middleware blocks it (no tenant exists yet).
-        var user = await _userRepository.GetById(request.UserId);
-        if (user == null)
-        {
-            if (string.IsNullOrWhiteSpace(request.Email))
+            if (isSingleTenant)
             {
-                response.Success = false;
-                response.Message = "User identity data is required to complete onboarding.";
-                response.Errors = new List<string> { "No user found and no email claim available to create one." };
-                return response;
+                var defaultTenant = await EnsureDefaultTenantAsync();
+                defaultTenantId = defaultTenant.Id;
             }
 
-            user = await CreateOnboardingUserAsync(request, defaultTenantId);
-        }
-
-        await _governanceSettingService.ApplySettingsAsync(defaultTenantId, request.Settings, request.UserId);
-
-        await EnsurePlatformAdministratorRoleAsync(request.UserId);
-
-        if (isSingleTenant && defaultTenantId.HasValue)
-        {
-            await EnsureDefaultTenantAdministratorAsync(defaultTenantId.Value, request.UserId);
-        }
-
-        // Invalidate cached admin status so the new roles are recognized immediately
-        // without waiting for the 5-minute sliding cache expiration.
-        _adminCacheInvalidator.InvalidateUser(request.UserId);
-
-        if (bootstrap == null)
-        {
-            bootstrap = await _instanceBootstrapStateRepository.Create(new InstanceBootstrapState
+            var user = await _userRepository.GetById(request.UserId);
+            if (user == null)
             {
-                IsCompleted = true,
-                CreatedAt = DateTime.UtcNow,
-                CompletedAt = DateTime.UtcNow,
-                CompletedByUserId = request.UserId,
-                SelectedDeploymentMode = request.Settings.DeploymentMode
-            });
-        }
-        else
-        {
-            bootstrap.IsCompleted = true;
-            bootstrap.CompletedAt = DateTime.UtcNow;
-            bootstrap.CompletedByUserId = request.UserId;
-            bootstrap.SelectedDeploymentMode = request.Settings.DeploymentMode;
-            await _instanceBootstrapStateRepository.Update(bootstrap);
-        }
+                user = await CreateOnboardingUserAsync(request, defaultTenantId);
+            }
 
-        // Invalidate the middleware's cached deployment mode so tenant resolution
-        // picks up the newly saved SingleTenant/MultiTenant mode immediately.
-        _deploymentModeCacheInvalidator?.Invalidate();
+            await PersistDeploymentModeSettingAsync(deploymentMode);
 
-        // Lock the setup secret provider to prevent further setup mode access.
-        // Once locked, all setup-gated endpoints return 410 Gone.
+            if (!string.IsNullOrWhiteSpace(request.Settings.InstanceName))
+            {
+                await PersistInstanceNameSettingAsync(request.Settings.InstanceName.Trim());
+            }
+
+            await EnsurePlatformAdministratorRoleAsync(request.UserId);
+
+            if (isSingleTenant && defaultTenantId.HasValue)
+            {
+                await EnsureDefaultTenantAdministratorAsync(defaultTenantId.Value, request.UserId);
+            }
+
+            var selectedMode = deploymentMode.ToString();
+
+            if (bootstrap == null)
+            {
+                bootstrap = await _instanceBootstrapStateRepository.Create(new InstanceBootstrapState
+                {
+                    IsCompleted = true,
+                    CreatedAt = DateTime.UtcNow,
+                    CompletedAt = DateTime.UtcNow,
+                    CompletedByUserId = request.UserId,
+                    SelectedDeploymentMode = selectedMode
+                });
+            }
+            else
+            {
+                bootstrap.IsCompleted = true;
+                bootstrap.CompletedAt = DateTime.UtcNow;
+                bootstrap.CompletedByUserId = request.UserId;
+                bootstrap.SelectedDeploymentMode = selectedMode;
+                await _instanceBootstrapStateRepository.Update(bootstrap);
+            }
+        }, cancellationToken);
+
+        // Post-commit side effects
+        _adminCacheInvalidator.InvalidateUser(request.UserId);
+        await _deploymentModeProvider.InvalidateCacheAsync();
         _setupSecretProvider.Lock();
 
         response.Success = true;
@@ -168,10 +158,6 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         return response;
     }
 
-    /// <summary>
-    /// Creates the User, Actor, and UserExternalLogin records for the first onboarding user.
-    /// This bypasses the normal SyncUserCommand flow which requires tenant resolution middleware.
-    /// </summary>
     private async Task<User> CreateOnboardingUserAsync(CompleteInstanceOnboardingCommand request, Guid? tenantId)
     {
         var email = request.Email!.Trim().ToLowerInvariant();
@@ -202,8 +188,6 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
 
         user = await _userRepository.Create(user);
 
-        // Actor requires a TenantId. Use the default tenant if available (SingleTenant mode),
-        // otherwise use PlatformDefaults.DefaultTenantId as a placeholder for MultiTenant mode.
         var actorTenantId = tenantId ?? PlatformDefaults.DefaultTenantId;
         if (!tenantId.HasValue)
         {
@@ -238,7 +222,6 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         user.DefaultActorId = actor.Id;
         await _userRepository.Update(user);
 
-        // Create the external login link
         var externalLogin = new UserExternalLogin
         {
             Id = Guid.NewGuid(),
@@ -265,14 +248,10 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
     private static string GenerateHandle(string? username, string email, string providerUserId)
     {
         if (!string.IsNullOrWhiteSpace(username))
-        {
             return username.ToLowerInvariant().Replace(" ", "-");
-        }
 
         if (string.IsNullOrWhiteSpace(email))
-        {
             return providerUserId.Replace(":", "-").Replace(".", "-").ToLowerInvariant();
-        }
 
         var emailPrefix = email.Split('@')[0];
         return emailPrefix.ToLowerInvariant().Replace(".", "-").Replace(" ", "-");
@@ -281,10 +260,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
     private async Task<Tenant> EnsureDefaultTenantAsync()
     {
         var tenant = await _tenantRepository.GetById(PlatformDefaults.DefaultTenantId);
-        if (tenant != null)
-        {
-            return tenant;
-        }
+        if (tenant != null) return tenant;
 
         return await _tenantRepository.Create(new Tenant
         {
@@ -302,36 +278,15 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         });
     }
 
-    private async Task EnsureDefaultTenantSettingsAsync(Guid tenantId)
-    {
-        var existing = await _tenantSettingsRepository.GetByTenant(tenantId);
-        if (existing != null)
-        {
-            return;
-        }
-
-        await _tenantSettingsRepository.Create(new TenantSettingsEntity
-        {
-            TenantId = tenantId,
-            Tenant = null!
-        });
-    }
-
     private async Task EnsurePlatformAdministratorRoleAsync(Guid userId)
     {
         var platformAdminRole = await _roleRepository.GetByMasterCodeAsync("platform.admin")
             ?? await _roleRepository.GetByIdAsync((int)RoleEnum.Admin);
 
-        if (platformAdminRole == null || platformAdminRole.Scope != RoleScopeEnum.Platform)
-        {
-            return;
-        }
+        if (platformAdminRole == null || platformAdminRole.Scope != RoleScopeEnum.Platform) return;
 
         var existing = await _platformUserRoleRepository.GetByUserAndRole(userId, platformAdminRole.Id);
-        if (existing != null)
-        {
-            return;
-        }
+        if (existing != null) return;
 
         await _platformUserRoleRepository.Create(new PlatformUserRole
         {
@@ -344,16 +299,70 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         });
     }
 
+    private async Task PersistDeploymentModeSettingAsync(DeploymentMode mode)
+    {
+        var key = GovernanceSettingKeys.Deployment.Mode;
+        var value = System.Text.Json.JsonSerializer.Serialize(mode.ToString());
+        var existing = await _systemSettingRepository.GetByKey(key);
+
+        if (existing == null)
+        {
+            await _systemSettingRepository.Create(new SystemSetting
+            {
+                SettingKey = key,
+                Value = value,
+                ValueType = SettingValueType.String,
+                IsLocked = true,
+                Category = "System",
+                DisplayOrder = 1,
+                Description = "Deployment mode of the application",
+                AllowedValues = "[\"SingleTenant\", \"MultiTenant\"]",
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            existing.Value = value;
+            existing.UpdatedAt = DateTime.UtcNow;
+            await _systemSettingRepository.Update(existing);
+        }
+    }
+
+    private async Task PersistInstanceNameSettingAsync(string instanceName)
+    {
+        var key = GovernanceSettingKeys.Branding.DisplayName;
+        var value = System.Text.Json.JsonSerializer.Serialize(instanceName);
+        var existing = await _systemSettingRepository.GetByKey(key);
+
+        if (existing == null)
+        {
+            await _systemSettingRepository.Create(new SystemSetting
+            {
+                SettingKey = key,
+                Value = value,
+                ValueType = SettingValueType.String,
+                IsLocked = false,
+                Category = "Branding",
+                DisplayOrder = 1,
+                Description = "Instance brand display name",
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            existing.Value = value;
+            existing.UpdatedAt = DateTime.UtcNow;
+            await _systemSettingRepository.Update(existing);
+        }
+    }
+
     private async Task EnsureDefaultTenantAdministratorAsync(Guid tenantId, Guid userId)
     {
         var tenantMember = await _tenantMemberRepository.GetByTenantAndUser(tenantId, userId);
         var tenantAdminRole = await _roleRepository.GetByMasterCodeAsync("tenant.admin")
             ?? await _roleRepository.GetByIdAsync((int)RoleEnum.TenantAdmin);
 
-        if (tenantAdminRole == null)
-        {
-            return;
-        }
+        if (tenantAdminRole == null) return;
 
         if (tenantMember == null)
         {
@@ -368,36 +377,11 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
                 GrantedAt = DateTime.UtcNow,
                 GrantedBy = userId
             });
-
             return;
         }
 
-        if (tenantMember.RoleId == tenantAdminRole.Id)
-        {
-            return;
-        }
-
+        if (tenantMember.RoleId == tenantAdminRole.Id) return;
         tenantMember.RoleId = tenantAdminRole.Id;
         await _tenantMemberRepository.Update(tenantMember);
-    }
-
-    private static string? NormalizeDeploymentMode(string? deploymentMode)
-    {
-        if (string.IsNullOrWhiteSpace(deploymentMode))
-        {
-            return null;
-        }
-
-        if (deploymentMode.Equals("SingleTenant", StringComparison.OrdinalIgnoreCase))
-        {
-            return "SingleTenant";
-        }
-
-        if (deploymentMode.Equals("MultiTenant", StringComparison.OrdinalIgnoreCase))
-        {
-            return "MultiTenant";
-        }
-
-        return null;
     }
 }

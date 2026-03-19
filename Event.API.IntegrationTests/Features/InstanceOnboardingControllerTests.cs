@@ -4,10 +4,12 @@
 using System.Net;
 using System.Net.Http.Json;
 using Event.Api.IntegrationTests.Fixtures;
+using Explore.Application.DTOs.Instance;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Responses;
 using Explore.Domain;
 using Explore.Domain.Constants;
+using Explore.Domain.Enums;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,6 +19,7 @@ namespace Event.Api.IntegrationTests.Features;
 public class InstanceOnboardingControllerTests
 {
     private const string BaseUrl = "/api/instanceonboarding";
+    private const string SettingsBaseUrl = "/api/instance/settings";
     private const string SetupSecret = "integration-setup-secret";
 
     [Test]
@@ -31,7 +34,7 @@ public class InstanceOnboardingControllerTests
     }
 
     [Test]
-    public async Task CompleteThenGetSettings_WithValidSetupSecret_ShouldSaveAndRetrieve()
+    public async Task Complete_WithValidPayload_ShouldSucceedAndPersistDeploymentMode()
     {
         using var factory = CreateFactoryWithSetupSecret();
         using var client = factory.CreateClient();
@@ -39,10 +42,7 @@ public class InstanceOnboardingControllerTests
         var userId = Guid.NewGuid();
         await EnsureUserExistsAsync(factory, userId);
 
-        var completePayload = CreateValidSettings();
-        completePayload.RenderPolicyPreset = "CustomAdvanced";
-        completePayload.EnableAdvancedRenderPolicyOverrides = true;
-        completePayload.PublicSeoPrerenderEnabled = true;
+        var completePayload = CreateValidOnboardingRequest();
 
         using var completeRequest = CreateInstanceAdminRequest(HttpMethod.Post, $"{BaseUrl}/complete", userId, completePayload, includeSetupSecret: true);
         var completeResponse = await client.SendAsync(completeRequest);
@@ -53,31 +53,34 @@ public class InstanceOnboardingControllerTests
         await Assert.That(completeBody).IsNotNull();
         await Assert.That(completeBody!.Success).IsTrue();
 
-        using var getRequest = CreateInstanceAdminRequest(HttpMethod.Get, $"{BaseUrl}/settings", userId, body: null, includeSetupSecret: false);
+        using var getRequest = CreateInstanceAdminRequest(HttpMethod.Get, $"{SettingsBaseUrl}/deployment-mode", userId, body: null, includeSetupSecret: false);
         var getResponse = await client.SendAsync(getRequest);
 
         await Assert.That(getResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
-        var settings = await getResponse.Content.ReadFromJsonAsync<InstanceGovernanceSettingsDto>();
-        await Assert.That(settings).IsNotNull();
-        await Assert.That(settings!.RenderPolicyPreset).IsEqualTo("CustomAdvanced");
-        await Assert.That(settings.EnableAdvancedRenderPolicyOverrides).IsTrue();
+        var deploymentMode = await getResponse.Content.ReadFromJsonAsync<DeploymentModeDto>();
+        await Assert.That(deploymentMode).IsNotNull();
+        await Assert.That(deploymentMode!.Mode).IsEqualTo(DeploymentMode.SingleTenant);
     }
 
     [Test]
-    public async Task UpdateSettings_WithMissingSetupSecret_ShouldReturnForbidden()
+    public async Task UpdateModuleSettings_WhenUserIsNotInstanceAdmin_ShouldReturnForbidden()
     {
         using var factory = CreateFactoryWithSetupSecret();
         using var client = factory.CreateClient();
 
-        using var request = CreateInstanceAdminRequest(HttpMethod.Put, $"{BaseUrl}/settings", Guid.NewGuid(), CreateValidSettings(), includeSetupSecret: false);
+        var nonAdminUserId = Guid.NewGuid();
+        await EnsureUserExistsAsync(factory, nonAdminUserId);
+
+        using var request = CreateInstanceAdminRequest(HttpMethod.Put, $"{SettingsBaseUrl}/modules", nonAdminUserId,
+            new ModuleSettingsDto { EnableIslamicModule = true, EnableTechModule = true }, includeSetupSecret: false);
         var response = await client.SendAsync(request);
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
     }
 
     [Test]
-    public async Task Complete_WithCustomAdvancedPresetAndOverridesDisabled_ShouldReturnBadRequest()
+    public async Task Complete_WithInvalidDeploymentMode_ShouldReturnBadRequest()
     {
         using var factory = CreateFactoryWithSetupSecret();
         using var client = factory.CreateClient();
@@ -85,9 +88,10 @@ public class InstanceOnboardingControllerTests
         var userId = Guid.NewGuid();
         await EnsureUserExistsAsync(factory, userId);
 
-        var invalidPayload = CreateValidSettings();
-        invalidPayload.RenderPolicyPreset = "CustomAdvanced";
-        invalidPayload.EnableAdvancedRenderPolicyOverrides = false;
+        var invalidPayload = new CompleteInstanceOnboardingRequest
+        {
+            DeploymentMode = (DeploymentMode)999
+        };
 
         using var completeRequest = CreateInstanceAdminRequest(HttpMethod.Post, $"{BaseUrl}/complete", userId, invalidPayload, includeSetupSecret: true);
         var completeResponse = await client.SendAsync(completeRequest);
@@ -97,8 +101,7 @@ public class InstanceOnboardingControllerTests
         var responseBody = await completeResponse.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
         await Assert.That(responseBody).IsNotNull();
         await Assert.That(responseBody!.Success).IsFalse();
-        await Assert.That(responseBody.Message).IsEqualTo("Invalid instance governance settings.");
-        await Assert.That((responseBody.Errors ?? new List<string>()).Any(e => e.Contains("EnableAdvancedRenderPolicyOverrides must be true when RenderPolicyPreset is CustomAdvanced", StringComparison.Ordinal))).IsTrue();
+        await Assert.That(responseBody.Message).IsEqualTo("Invalid onboarding request.");
     }
 
     [Test]
@@ -107,7 +110,7 @@ public class InstanceOnboardingControllerTests
         using var factory = CreateFactoryWithSetupSecret();
         using var client = factory.CreateClient();
 
-        var response = await client.PutAsJsonAsync($"{BaseUrl}/admin/auth-provider-configuration", CreateGoogleOnlyAuthProviderConfiguration());
+        var response = await client.PutAsJsonAsync($"{SettingsBaseUrl}/auth-provider", CreateGoogleOnlyAuthProviderConfiguration());
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
@@ -123,7 +126,7 @@ public class InstanceOnboardingControllerTests
 
         using var request = CreateInstanceAdminRequest(
             HttpMethod.Put,
-            $"{BaseUrl}/admin/auth-provider-configuration",
+            $"{SettingsBaseUrl}/auth-provider",
             userId,
             CreateGoogleOnlyAuthProviderConfiguration(),
             includeSetupSecret: false);
@@ -145,7 +148,7 @@ public class InstanceOnboardingControllerTests
 
         using var request = CreateInstanceAdminRequest(
             HttpMethod.Put,
-            $"{BaseUrl}/admin/auth-provider-configuration",
+            $"{SettingsBaseUrl}/auth-provider",
             userId,
             CreateGoogleOnlyAuthProviderConfiguration(),
             includeSetupSecret: false);
@@ -173,7 +176,7 @@ public class InstanceOnboardingControllerTests
 
         using var updateRequest = CreateInstanceAdminRequest(
             HttpMethod.Put,
-            $"{BaseUrl}/admin/auth-provider-configuration",
+            $"{SettingsBaseUrl}/auth-provider",
             userId,
             CreateGoogleOnlyAuthProviderConfiguration(),
             includeSetupSecret: false);
@@ -187,7 +190,7 @@ public class InstanceOnboardingControllerTests
 
         using var getRequest = CreateInstanceAdminRequest(
             HttpMethod.Get,
-            $"{BaseUrl}/auth-provider-configuration",
+            $"{SettingsBaseUrl}/auth-provider",
             userId,
             body: null,
             includeSetupSecret: false);
@@ -219,13 +222,13 @@ public class InstanceOnboardingControllerTests
         var saveResponse = await client.SendAsync(saveRequest);
         await Assert.That(saveResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
-        var configuredResponse = await client.GetAsync($"{BaseUrl}/auth-provider-configured");
+        var configuredResponse = await client.GetAsync($"{SettingsBaseUrl}/auth-provider/status");
         await Assert.That(configuredResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var configuredPayload = await configuredResponse.Content.ReadFromJsonAsync<AuthProviderConfiguredResponse>();
         await Assert.That(configuredPayload).IsNotNull();
         await Assert.That(configuredPayload!.Configured).IsTrue();
 
-        var completePayload = CreateValidSettings();
+        var completePayload = CreateValidOnboardingRequest();
         using var completeRequest = CreateInstanceAdminRequest(
             HttpMethod.Post,
             $"{BaseUrl}/complete",
@@ -235,12 +238,12 @@ public class InstanceOnboardingControllerTests
         var completeResponse = await client.SendAsync(completeRequest);
         await Assert.That(completeResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
-        var anonymousGetResponse = await client.GetAsync($"{BaseUrl}/auth-provider-configuration");
-        await Assert.That(anonymousGetResponse.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+        var anonymousGetResponse = await client.GetAsync($"{SettingsBaseUrl}/auth-provider");
+        await Assert.That(anonymousGetResponse.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
 
         using var adminGetRequest = CreateInstanceAdminRequest(
             HttpMethod.Get,
-            $"{BaseUrl}/auth-provider-configuration",
+            $"{SettingsBaseUrl}/auth-provider",
             userId,
             body: null,
             includeSetupSecret: false);
@@ -253,13 +256,14 @@ public class InstanceOnboardingControllerTests
     }
 
     [Test]
-    public async Task GetAuthProviderConfigurationInternal_WithSetupSecret_ShouldReturnSecretsWhilePublicEndpointRedacts()
+    public async Task GetAuthProviderConfigurationInternal_WithSetupSecret_ShouldReturnSecretsWhileAdminEndpointRedacts()
     {
         using var factory = CreateFactoryWithSetupSecret();
         using var client = factory.CreateClient();
 
         var userId = Guid.NewGuid();
         await EnsureUserExistsAsync(factory, userId);
+        await EnsureInstanceAdminRoleAsync(factory, userId);
 
         using var saveRequest = CreateInstanceAdminRequest(
             HttpMethod.Put,
@@ -270,11 +274,17 @@ public class InstanceOnboardingControllerTests
         var saveResponse = await client.SendAsync(saveRequest);
         await Assert.That(saveResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
-        var publicResponse = await client.GetAsync($"{BaseUrl}/auth-provider-configuration");
-        await Assert.That(publicResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        var publicConfig = await publicResponse.Content.ReadFromJsonAsync<AuthProviderConfigurationDto>();
-        await Assert.That(publicConfig).IsNotNull();
-        await Assert.That(publicConfig!.GoogleClientSecret).IsEqualTo(string.Empty);
+        using var adminGetRequest = CreateInstanceAdminRequest(
+            HttpMethod.Get,
+            $"{SettingsBaseUrl}/auth-provider",
+            userId,
+            body: null,
+            includeSetupSecret: false);
+        var adminResponse = await client.SendAsync(adminGetRequest);
+        await Assert.That(adminResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        var adminConfig = await adminResponse.Content.ReadFromJsonAsync<AuthProviderConfigurationDto>();
+        await Assert.That(adminConfig).IsNotNull();
+        await Assert.That(adminConfig!.GoogleClientSecret).IsEqualTo(string.Empty);
 
         using var internalWithoutSecretRequest = new HttpRequestMessage(HttpMethod.Get, $"{BaseUrl}/auth-provider-configuration/internal");
         var internalWithoutSecretResponse = await client.SendAsync(internalWithoutSecretRequest);
@@ -411,28 +421,12 @@ public class InstanceOnboardingControllerTests
         return request;
     }
 
-    private static InstanceGovernanceSettingsDto CreateValidSettings()
+    private static CompleteInstanceOnboardingRequest CreateValidOnboardingRequest()
     {
-        return new InstanceGovernanceSettingsDto
+        return new CompleteInstanceOnboardingRequest
         {
-            DeploymentMode = "SingleTenant",
-            AllowTenantSelfServiceRegistration = false,
-            DefaultPublicHomePage = "EventList",
-            LockTenantHomePagePreference = false,
-            RenderPolicyVersion = 1,
-            RenderPolicyPreset = "SeoBalanced",
-            EnableAdvancedRenderPolicyOverrides = false,
-            GlobalRenderMode = "InteractiveAuto",
-            GlobalPrerenderEnabled = false,
-            PublicSeoRenderMode = "InteractiveAuto",
-            PublicSeoPrerenderEnabled = true,
-            OperationalRenderMode = "InteractiveAuto",
-            OperationalPrerenderEnabled = false,
-            AdminRenderMode = "InteractiveAuto",
-            AdminPrerenderEnabled = false,
-            OnboardingRenderMode = "InteractiveAuto",
-            OnboardingPrerenderEnabled = false,
-            DisallowInteractiveServerOnOnboarding = true
+            DeploymentMode = DeploymentMode.SingleTenant,
+            InstanceName = "Integration Test Instance"
         };
     }
 

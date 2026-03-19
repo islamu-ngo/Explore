@@ -3,6 +3,7 @@
 
 using Explore.Application.Analytics;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Settings;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Infrastructure.Analytics;
@@ -17,23 +18,23 @@ public class AnalyticsConfigResolverTests
     [Test]
     public async Task ResolveAsync_ValidSettings_ReturnsResolvedConfiguration()
     {
-        var settingsResolver = Substitute.For<ISettingsResolver>();
+        var settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
         var tenantContext = Substitute.For<ITenantContext>();
         tenantContext.TenantId.Returns(Guid.Parse("018e4e5c-7f00-7000-8000-000000009001"));
 
-        settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsProvider, tenantContext.TenantId, Arg.Any<CancellationToken>())
+        settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Analytics.Provider, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("posthog");
-        settingsResolver.GetSettingAsync<bool>(GovernanceSettingKeys.AnalyticsEnabled, tenantContext.TenantId, Arg.Any<CancellationToken>())
+        settingsResolver.ResolveAsync<bool>(GovernanceSettingKeys.Analytics.Enabled, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns(true);
-        settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsConsentMode, tenantContext.TenantId, Arg.Any<CancellationToken>())
+        settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Analytics.ConsentMode, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("identified");
-        settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsTransportMode, tenantContext.TenantId, Arg.Any<CancellationToken>())
+        settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Analytics.TransportMode, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("relay");
-        settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsApiKey, tenantContext.TenantId, Arg.Any<CancellationToken>())
+        settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Analytics.ApiKey, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("pk_test");
-        settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsEndpointUrl, tenantContext.TenantId, Arg.Any<CancellationToken>())
+        settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Analytics.EndpointUrl, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("https://analytics.example.com");
-        settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsPersonalApiKey, tenantContext.TenantId, Arg.Any<CancellationToken>())
+        settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Analytics.PersonalApiKey, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("ph_personal_test");
 
         using var cache = new MemoryCache(new MemoryCacheOptions());
@@ -54,19 +55,19 @@ public class AnalyticsConfigResolverTests
     [Test]
     public async Task ResolveAsync_InvalidProviderValue_FallsBackToNone()
     {
-        var settingsResolver = Substitute.For<ISettingsResolver>();
+        var settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
         var tenantContext = Substitute.For<ITenantContext>();
         tenantContext.TenantId.Returns(Guid.Parse("018e4e5c-7f00-7000-8000-000000009002"));
 
-        settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsProvider, tenantContext.TenantId, Arg.Any<CancellationToken>())
+        settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Analytics.Provider, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("unknown-provider");
-        settingsResolver.GetSettingAsync<bool>(GovernanceSettingKeys.AnalyticsEnabled, tenantContext.TenantId, Arg.Any<CancellationToken>())
+        settingsResolver.ResolveAsync<bool>(GovernanceSettingKeys.Analytics.Enabled, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns(true);
-        settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsConsentMode, tenantContext.TenantId, Arg.Any<CancellationToken>())
+        settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Analytics.ConsentMode, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("unexpected");
-        settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsTransportMode, tenantContext.TenantId, Arg.Any<CancellationToken>())
+        settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Analytics.TransportMode, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("unexpected");
-        settingsResolver.GetSettingAsync<string>(GovernanceSettingKeys.AnalyticsApiKey, tenantContext.TenantId, Arg.Any<CancellationToken>())
+        settingsResolver.ResolveAsync<string>(GovernanceSettingKeys.Analytics.ApiKey, Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns("pk_test");
 
         using var cache = new MemoryCache(new MemoryCacheOptions());
