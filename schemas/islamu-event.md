@@ -77,8 +77,8 @@ Table "event_statuses" {
 
 Table "event_types" {
   "id" int [pk, not null]
-  "full_name" varchar(200) [not null]
-  "master_code" varchar(100) [not null]
+  "full_name" varchar(500) [not null]
+  "master_code" varchar(500) [not null]
   "description" varchar(500)
   "tenant_id" uuid
 }
@@ -421,6 +421,10 @@ Table "tenant_setting_overrides"{
   "created_by" uuid
   "updated_at" timestamptz
   "updated_by" uuid
+
+  indexes {
+    (tenant_id, setting_key) [unique, name: 'ix_tenant_setting_overrides_tenant_id_setting_key']
+  }
 }
 
 Table "tenant_navigation_links" {
@@ -558,8 +562,8 @@ Table "external_api_keys" {
 
 Table "categories" {
   "id" uuid [pk, not null, note: 'uuidv7 app-side']
-  "master_code" varchar(500) [not null]
-  "full_name" varchar(500) [not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
   "parent_id" uuid
   "tenant_id" uuid [not null]
 
@@ -577,8 +581,8 @@ Table "category_type_categories" {
 
 Table "tags" {
   "id" uuid [pk, not null, note: 'uuidv7 app-side']
-  "master_code" varchar(500) [not null]
-  "full_name" varchar(500) [not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
   "tenant_id" uuid [not null]
 
   Indexes {
@@ -841,6 +845,10 @@ Table "user_preferences" {
   "created_by" uuid
   "updated_at" timestamptz
   "updated_by" uuid
+
+  indexes {
+    (tenant_id, user_id, setting_key) [unique, name: 'ix_user_preferences_tenant_id_user_id_setting_key']
+  }
 }
 
 // ============================================================
@@ -927,6 +935,10 @@ Table "organization_setting_overrides" {
   "created_by" uuid
   "updated_at" timestamptz
   "updated_by" uuid
+
+  indexes {
+    (organization_id, setting_key) [unique]
+  }
 }
 
 // ============================================================
@@ -1017,6 +1029,10 @@ Table "group_setting_overrides" {
   "created_by" uuid
   "updated_at" timestamptz
   "updated_by" uuid
+
+  indexes {
+    (group_id, setting_key) [unique]
+  }
 }
 
 // ============================================================
@@ -1548,7 +1564,7 @@ Ref: "tenants"."tenant_status_id" > "tenant_statuses"."id" [delete: restrict]
 Ref: "tenant_settings"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "tenant_settings"."default_group_id" > "groups"."id" [delete: restrict]
 Ref: "tenant_settings"."default_organization_id" > "organizations"."id" [delete: restrict]
-Ref: "tenant_setting_overrides"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "tenant_setting_overrides"."tenant_id" > "tenants"."id" [delete: cascade]
 Ref: "tenant_navigation_links"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "tenant_onboarding_states"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "tenant_policy_sets"."tenant_id" > "tenants"."id" [delete: cascade]
@@ -1567,12 +1583,12 @@ Ref: "external_api_keys"."tenant_id" > "tenants"."id" [delete: restrict]
 // Taxonomy relationships
 Ref: "categories"."parent_id" > "categories"."id" [delete: restrict]
 Ref: "categories"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "category_type_categories"."category_id" > "categories"."id" [delete: restrict]
-Ref: "category_type_categories"."category_type_id" > "category_types"."id" [delete: restrict]
+Ref: "category_type_categories"."category_id" > "categories"."id" [delete: cascade]
+Ref: "category_type_categories"."category_type_id" > "category_types"."id" [delete: cascade]
 Ref: "category_type_categories"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "tags"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "tag_type_tags"."tag_id" > "tags"."id" [delete: restrict]
-Ref: "tag_type_tags"."tag_type_id" > "tag_types"."id" [delete: restrict]
+Ref: "tag_type_tags"."tag_id" > "tags"."id" [delete: cascade]
+Ref: "tag_type_tags"."tag_type_id" > "tag_types"."id" [delete: cascade]
 Ref: "tag_type_tags"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "custom_property_definitions"."event_type_id" > "event_types"."id" [delete: restrict]
 Ref: "custom_property_definitions"."tenant_id" > "tenants"."id" [delete: restrict]
@@ -1608,7 +1624,7 @@ Ref: "user_authentication_tokens"."user_id" > "users"."id" [delete: restrict]
 Ref: "user_authentication_tokens"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "user_external_logins"."user_id" > "users"."id" [delete: restrict]
 Ref: "user_external_logins"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "user_preferences"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "user_preferences"."tenant_id" > "tenants"."id" [delete: cascade]
 Ref: "user_preferences"."user_id" > "users"."id" [delete: cascade]
 
 // Organization relationships
@@ -1625,8 +1641,8 @@ Ref: "organization_reviews"."organization_id" > "organizations"."id" [delete: re
 Ref: "organization_reviews"."event_id" > "events"."id" [delete: restrict]
 Ref: "organization_reviews"."user_id" > "users"."id" [delete: restrict]
 Ref: "organization_reviews"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "organization_setting_overrides"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "organization_setting_overrides"."organization_id" > "organizations"."id" [delete: restrict]
+Ref: "organization_setting_overrides"."tenant_id" > "tenants"."id" [delete: cascade]
+Ref: "organization_setting_overrides"."organization_id" > "organizations"."id" [delete: cascade]
 Ref: "organization_policy_sets"."tenant_id" > "tenants"."id" [delete: cascade]
 Ref: "organization_policy_sets"."organization_id" > "organizations"."id" [delete: cascade]
 
@@ -1640,8 +1656,8 @@ Ref: "group_members"."user_id" > "users"."id" [delete: restrict]
 Ref: "group_members"."role_id" > "roles"."id" [delete: restrict]
 Ref: "group_members"."group_position_id" > "group_positions"."id" [delete: restrict]
 Ref: "group_members"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "group_setting_overrides"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "group_setting_overrides"."group_id" > "groups"."id" [delete: restrict]
+Ref: "group_setting_overrides"."tenant_id" > "tenants"."id" [delete: cascade]
+Ref: "group_setting_overrides"."group_id" > "groups"."id" [delete: cascade]
 
 // Storage relationships
 Ref: "storage_objects"."file_type_id" > "file_types"."id" [delete: restrict]

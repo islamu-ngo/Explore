@@ -77,7 +77,7 @@ ABOUTME: Reflects extension-layer boundaries, namespaced machine keys, projectio
 - [ ] **2.6** Update `OrganizationConfiguration.cs` only where this initiative introduces real new fields/constraints
 - [ ] **2.7** Update `GroupConfiguration.cs` only where this initiative introduces real new fields/constraints
 - [x] **2.8** Add all new DbSets + query filters to `ExploreDbContext.cs`
-- [ ] **2.9** Create EF migration for the new schema
+- [x] **2.9** Create EF migration for the new schema
 
 ---
 

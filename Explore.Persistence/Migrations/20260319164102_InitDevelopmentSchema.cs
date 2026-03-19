@@ -7,7 +7,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Explore.Persistence.Migrations
 {
     /// <inheritdoc />
-    public partial class init : Migration
+    public partial class InitDevelopmentSchema : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -1062,23 +1062,19 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "custom_property_definitions",
+                name: "event_templates",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
-                    entity_type_name = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    event_type_id = table.Column<int>(type: "integer", nullable: true),
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    template_key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     display_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    property_type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
-                    is_required = table.Column<bool>(type: "boolean", nullable: false),
-                    is_multi = table.Column<bool>(type: "boolean", nullable: false),
+                    event_type_id = table.Column<int>(type: "integer", nullable: true),
+                    version = table.Column<int>(type: "integer", nullable: false),
+                    is_published = table.Column<bool>(type: "boolean", nullable: false),
                     is_active = table.Column<bool>(type: "boolean", nullable: false),
                     sort_order = table.Column<int>(type: "integer", nullable: false),
-                    default_value = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
-                    validation_rules = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     created_by = table.Column<Guid>(type: "uuid", nullable: true),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
@@ -1089,15 +1085,15 @@ namespace Explore.Persistence.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("pk_custom_property_definitions", x => x.id);
+                    table.PrimaryKey("pk_event_templates", x => x.id);
                     table.ForeignKey(
-                        name: "fk_custom_property_definitions_event_types_event_type_id",
+                        name: "fk_event_templates_event_types_event_type_id",
                         column: x => x.event_type_id,
                         principalTable: "event_types",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "fk_custom_property_definitions_tenants_tenant_id",
+                        name: "fk_event_templates_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalTable: "tenants",
                         principalColumn: "id",
@@ -1151,88 +1147,6 @@ namespace Explore.Persistence.Migrations
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "fk_tag_type_tags_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "custom_property_options",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    custom_property_definition_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    value = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    is_default = table.Column<bool>(type: "boolean", nullable: false),
-                    is_active = table.Column<bool>(type: "boolean", nullable: false),
-                    sort_order = table.Column<int>(type: "integer", nullable: false),
-                    parent_option_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_custom_property_options", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_custom_property_options_custom_property_definitions_custom_",
-                        column: x => x.custom_property_definition_id,
-                        principalTable: "custom_property_definitions",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_custom_property_options_custom_property_options_parent_opti",
-                        column: x => x.parent_option_id,
-                        principalTable: "custom_property_options",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "custom_property_values",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    custom_property_definition_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    entity_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    text_value = table.Column<string>(type: "character varying(4000)", maxLength: 4000, nullable: true),
-                    number_value = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: true),
-                    boolean_value = table.Column<bool>(type: "boolean", nullable: true),
-                    date_time_value = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
-                    option_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_custom_property_values", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_custom_property_values_custom_property_definitions_custom_p",
-                        column: x => x.custom_property_definition_id,
-                        principalTable: "custom_property_definitions",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_custom_property_values_custom_property_options_option_id",
-                        column: x => x.option_id,
-                        principalTable: "custom_property_options",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "fk_custom_property_values_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalTable: "tenants",
                         principalColumn: "id",
@@ -2666,6 +2580,475 @@ namespace Explore.Persistence.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "custom_property_definitions",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    entity_type_name = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    @namespace = table.Column<string>(name: "namespace", type: "character varying(100)", maxLength: 100, nullable: false),
+                    key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    display_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    property_type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    is_required = table.Column<bool>(type: "boolean", nullable: false),
+                    is_multi = table.Column<bool>(type: "boolean", nullable: false),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false),
+                    sort_order = table.Column<int>(type: "integer", nullable: false),
+                    exposure_level = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    is_searchable = table.Column<bool>(type: "boolean", nullable: false),
+                    is_filterable = table.Column<bool>(type: "boolean", nullable: false),
+                    is_exportable = table.Column<bool>(type: "boolean", nullable: false),
+                    is_moderation_relevant = table.Column<bool>(type: "boolean", nullable: false),
+                    is_analytics_relevant = table.Column<bool>(type: "boolean", nullable: false),
+                    is_system_owned = table.Column<bool>(type: "boolean", nullable: false),
+                    default_text_value = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    default_number_value = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: true),
+                    default_boolean_value = table.Column<bool>(type: "boolean", nullable: true),
+                    default_date_time_value = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    default_option_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    min_length = table.Column<int>(type: "integer", nullable: true),
+                    max_length = table.Column<int>(type: "integer", nullable: true),
+                    regex_pattern = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    min_number = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: true),
+                    max_number = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: true),
+                    min_date_time = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    max_date_time = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    allowed_url_schemes = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_custom_property_definitions", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_custom_property_definitions_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "custom_property_options",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    custom_property_definition_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    @namespace = table.Column<string>(name: "namespace", type: "character varying(100)", maxLength: 100, nullable: false),
+                    key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    display_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    value = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    is_default = table.Column<bool>(type: "boolean", nullable: false),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false),
+                    sort_order = table.Column<int>(type: "integer", nullable: false),
+                    parent_option_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_custom_property_options", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_custom_property_options_custom_property_definitions_custom_",
+                        column: x => x.custom_property_definition_id,
+                        principalTable: "custom_property_definitions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_custom_property_options_custom_property_options_parent_opti",
+                        column: x => x.parent_option_id,
+                        principalTable: "custom_property_options",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "custom_property_values",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    custom_property_definition_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    entity_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ordinal = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    text_value = table.Column<string>(type: "character varying(4000)", maxLength: 4000, nullable: true),
+                    number_value = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: true),
+                    boolean_value = table.Column<bool>(type: "boolean", nullable: true),
+                    date_time_value = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    option_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_custom_property_values", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_custom_property_values_custom_property_definitions_custom_p",
+                        column: x => x.custom_property_definition_id,
+                        principalTable: "custom_property_definitions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_custom_property_values_custom_property_options_option_id",
+                        column: x => x.option_id,
+                        principalTable: "custom_property_options",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_custom_property_values_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_custom_property_definitions",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    @namespace = table.Column<string>(name: "namespace", type: "character varying(100)", maxLength: 100, nullable: false),
+                    key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    display_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    property_type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    is_required = table.Column<bool>(type: "boolean", nullable: false),
+                    is_multi = table.Column<bool>(type: "boolean", nullable: false),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false),
+                    sort_order = table.Column<int>(type: "integer", nullable: false),
+                    exposure_level = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    is_searchable = table.Column<bool>(type: "boolean", nullable: false),
+                    is_filterable = table.Column<bool>(type: "boolean", nullable: false),
+                    is_exportable = table.Column<bool>(type: "boolean", nullable: false),
+                    is_moderation_relevant = table.Column<bool>(type: "boolean", nullable: false),
+                    is_analytics_relevant = table.Column<bool>(type: "boolean", nullable: false),
+                    is_system_owned = table.Column<bool>(type: "boolean", nullable: false),
+                    default_text_value = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    default_number_value = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: true),
+                    default_boolean_value = table.Column<bool>(type: "boolean", nullable: true),
+                    default_date_time_value = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    default_option_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    min_length = table.Column<int>(type: "integer", nullable: true),
+                    max_length = table.Column<int>(type: "integer", nullable: true),
+                    regex_pattern = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    min_number = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: true),
+                    max_number = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: true),
+                    min_date_time = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    max_date_time = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    allowed_url_schemes = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    source_template_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    source_template_key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    source_template_version = table.Column<int>(type: "integer", nullable: true),
+                    source_template_definition_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    instantiated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    last_synced_from_template_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_custom_property_definitions", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_event_custom_property_definitions_event_templates_source_te",
+                        column: x => x.source_template_id,
+                        principalTable: "event_templates",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_custom_property_definitions_events_event_id",
+                        column: x => x.event_id,
+                        principalTable: "events",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_custom_property_definitions_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_custom_property_options",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_custom_property_definition_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    @namespace = table.Column<string>(name: "namespace", type: "character varying(100)", maxLength: 100, nullable: false),
+                    key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    display_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    value = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    is_default = table.Column<bool>(type: "boolean", nullable: false),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false),
+                    sort_order = table.Column<int>(type: "integer", nullable: false),
+                    parent_option_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    source_template_option_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    source_template_version = table.Column<int>(type: "integer", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_custom_property_options", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_ecpo_definition",
+                        column: x => x.event_custom_property_definition_id,
+                        principalTable: "event_custom_property_definitions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_ecpo_parent_option",
+                        column: x => x.parent_option_id,
+                        principalTable: "event_custom_property_options",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_custom_property_values",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_custom_property_definition_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ordinal = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    text_value = table.Column<string>(type: "character varying(4000)", maxLength: 4000, nullable: true),
+                    number_value = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: true),
+                    boolean_value = table.Column<bool>(type: "boolean", nullable: true),
+                    date_time_value = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    option_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_custom_property_values", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_event_custom_property_values_event_custom_property_definiti",
+                        column: x => x.event_custom_property_definition_id,
+                        principalTable: "event_custom_property_definitions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_custom_property_values_event_custom_property_options_",
+                        column: x => x.option_id,
+                        principalTable: "event_custom_property_options",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_event_custom_property_values_events_event_id",
+                        column: x => x.event_id,
+                        principalTable: "events",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_custom_property_values_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_custom_property_projections",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_custom_property_definition_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_custom_property_value_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    @namespace = table.Column<string>(name: "namespace", type: "character varying(100)", maxLength: 100, nullable: false),
+                    key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    property_type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    exposure_level = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    is_searchable = table.Column<bool>(type: "boolean", nullable: false),
+                    is_filterable = table.Column<bool>(type: "boolean", nullable: false),
+                    is_exportable = table.Column<bool>(type: "boolean", nullable: false),
+                    is_moderation_relevant = table.Column<bool>(type: "boolean", nullable: false),
+                    is_analytics_relevant = table.Column<bool>(type: "boolean", nullable: false),
+                    ordinal = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    option_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    text_value = table.Column<string>(type: "character varying(4000)", maxLength: 4000, nullable: true),
+                    number_value = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: true),
+                    boolean_value = table.Column<bool>(type: "boolean", nullable: true),
+                    date_time_value = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    normalized_value = table.Column<string>(type: "character varying(4000)", maxLength: 4000, nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_custom_property_projections", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_event_custom_property_projections_event_custom_property_def",
+                        column: x => x.event_custom_property_definition_id,
+                        principalTable: "event_custom_property_definitions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_custom_property_projections_event_custom_property_opt",
+                        column: x => x.option_id,
+                        principalTable: "event_custom_property_options",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_event_custom_property_projections_event_custom_property_val",
+                        column: x => x.event_custom_property_value_id,
+                        principalTable: "event_custom_property_values",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_custom_property_projections_events_event_id",
+                        column: x => x.event_id,
+                        principalTable: "events",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_custom_property_projections_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_template_custom_property_definitions",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_template_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    @namespace = table.Column<string>(name: "namespace", type: "character varying(100)", maxLength: 100, nullable: false),
+                    key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    display_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    property_type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    is_required = table.Column<bool>(type: "boolean", nullable: false),
+                    is_multi = table.Column<bool>(type: "boolean", nullable: false),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false),
+                    sort_order = table.Column<int>(type: "integer", nullable: false),
+                    exposure_level = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    is_searchable = table.Column<bool>(type: "boolean", nullable: false),
+                    is_filterable = table.Column<bool>(type: "boolean", nullable: false),
+                    is_exportable = table.Column<bool>(type: "boolean", nullable: false),
+                    is_moderation_relevant = table.Column<bool>(type: "boolean", nullable: false),
+                    is_analytics_relevant = table.Column<bool>(type: "boolean", nullable: false),
+                    is_system_owned = table.Column<bool>(type: "boolean", nullable: false),
+                    default_text_value = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    default_number_value = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: true),
+                    default_boolean_value = table.Column<bool>(type: "boolean", nullable: true),
+                    default_date_time_value = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    default_option_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    min_length = table.Column<int>(type: "integer", nullable: true),
+                    max_length = table.Column<int>(type: "integer", nullable: true),
+                    regex_pattern = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    min_number = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: true),
+                    max_number = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: true),
+                    min_date_time = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    max_date_time = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    allowed_url_schemes = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_template_custom_property_definitions", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_event_template_custom_property_definitions_event_templates_",
+                        column: x => x.event_template_id,
+                        principalTable: "event_templates",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_template_custom_property_definitions_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_template_custom_property_options",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_template_custom_property_definition_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    @namespace = table.Column<string>(name: "namespace", type: "character varying(100)", maxLength: 100, nullable: false),
+                    key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    display_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    value = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    is_default = table.Column<bool>(type: "boolean", nullable: false),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false),
+                    sort_order = table.Column<int>(type: "integer", nullable: false),
+                    parent_option_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_template_custom_property_options", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_etcpo_definition",
+                        column: x => x.event_template_custom_property_definition_id,
+                        principalTable: "event_template_custom_property_definitions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_etcpo_parent_option",
+                        column: x => x.parent_option_id,
+                        principalTable: "event_template_custom_property_options",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
             migrationBuilder.CreateIndex(
                 name: "ix_actor_key_stores_actor_id",
                 table: "actor_key_stores",
@@ -2822,15 +3205,26 @@ namespace Explore.Persistence.Migrations
                 columns: new[] { "tenant_id", "entity_type_name", "is_active" });
 
             migrationBuilder.CreateIndex(
-                name: "ix_cpd_tenant_entity_type_name",
+                name: "ix_cpd_tenant_entity_namespace_key",
                 table: "custom_property_definitions",
-                columns: new[] { "tenant_id", "entity_type_name", "event_type_id", "name" },
+                columns: new[] { "tenant_id", "entity_type_name", "namespace", "key" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "ix_custom_property_definitions_event_type_id",
+                name: "ix_cpd_tenant_entity_search_filter",
                 table: "custom_property_definitions",
-                column: "event_type_id");
+                columns: new[] { "tenant_id", "entity_type_name", "is_searchable", "is_filterable" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_custom_property_definitions_default_option_id",
+                table: "custom_property_definitions",
+                column: "default_option_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_cpo_definition_namespace_key",
+                table: "custom_property_options",
+                columns: new[] { "custom_property_definition_id", "namespace", "key" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_cpo_definition_sort",
@@ -2843,19 +3237,20 @@ namespace Explore.Persistence.Migrations
                 column: "parent_option_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_cpv_definition_entity",
+                name: "ix_cpv_definition_entity_ordinal",
                 table: "custom_property_values",
-                columns: new[] { "custom_property_definition_id", "entity_id" });
-
-            migrationBuilder.CreateIndex(
-                name: "ix_cpv_entity",
-                table: "custom_property_values",
-                column: "entity_id");
+                columns: new[] { "custom_property_definition_id", "entity_id", "ordinal" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_cpv_tenant_definition",
                 table: "custom_property_values",
                 columns: new[] { "tenant_id", "custom_property_definition_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_cpv_tenant_entity",
+                table: "custom_property_values",
+                columns: new[] { "tenant_id", "entity_id" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_custom_property_values_option_id",
@@ -2937,6 +3332,100 @@ namespace Explore.Persistence.Migrations
                 name: "ix_event_contact_share_export_item_consent_id",
                 table: "event_contact_share_export_item",
                 column: "consent_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ecpd_event_namespace_key",
+                table: "event_custom_property_definitions",
+                columns: new[] { "event_id", "namespace", "key" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ecpd_tenant_event_search_filter",
+                table: "event_custom_property_definitions",
+                columns: new[] { "tenant_id", "event_id", "is_searchable", "is_filterable" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_custom_property_definitions_default_option_id",
+                table: "event_custom_property_definitions",
+                column: "default_option_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_custom_property_definitions_source_template_id",
+                table: "event_custom_property_definitions",
+                column: "source_template_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ecpo_definition_namespace_key",
+                table: "event_custom_property_options",
+                columns: new[] { "event_custom_property_definition_id", "namespace", "key" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ecpo_definition_sort",
+                table: "event_custom_property_options",
+                columns: new[] { "event_custom_property_definition_id", "sort_order" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_custom_property_options_parent_option_id",
+                table: "event_custom_property_options",
+                column: "parent_option_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ecpp_tenant_event_namespace_key_ordinal",
+                table: "event_custom_property_projections",
+                columns: new[] { "tenant_id", "event_id", "namespace", "key", "ordinal" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ecpp_tenant_exposure",
+                table: "event_custom_property_projections",
+                columns: new[] { "tenant_id", "exposure_level" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ecpp_tenant_namespace_key_normalized",
+                table: "event_custom_property_projections",
+                columns: new[] { "tenant_id", "namespace", "key", "normalized_value" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ecpp_value",
+                table: "event_custom_property_projections",
+                column: "event_custom_property_value_id",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_custom_property_projections_event_custom_property_def",
+                table: "event_custom_property_projections",
+                column: "event_custom_property_definition_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_custom_property_projections_event_id",
+                table: "event_custom_property_projections",
+                column: "event_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_custom_property_projections_option_id",
+                table: "event_custom_property_projections",
+                column: "option_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ecpv_definition_event_ordinal",
+                table: "event_custom_property_values",
+                columns: new[] { "event_custom_property_definition_id", "event_id", "ordinal" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ecpv_tenant_event",
+                table: "event_custom_property_values",
+                columns: new[] { "tenant_id", "event_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_custom_property_values_event_id",
+                table: "event_custom_property_values",
+                column: "event_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_custom_property_values_option_id",
+                table: "event_custom_property_values",
+                column: "option_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_event_islamic_aspects_madhab_id",
@@ -3085,6 +3574,54 @@ namespace Explore.Persistence.Migrations
                 name: "ix_event_tags_tenant_id",
                 table: "event_tags",
                 column: "tenant_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_etcpd_template_namespace_key",
+                table: "event_template_custom_property_definitions",
+                columns: new[] { "event_template_id", "namespace", "key" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_etcpd_tenant_search_filter",
+                table: "event_template_custom_property_definitions",
+                columns: new[] { "tenant_id", "is_searchable", "is_filterable" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_template_custom_property_definitions_default_option_id",
+                table: "event_template_custom_property_definitions",
+                column: "default_option_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_etcpo_definition_namespace_key",
+                table: "event_template_custom_property_options",
+                columns: new[] { "event_template_custom_property_definition_id", "namespace", "key" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_etcpo_definition_sort",
+                table: "event_template_custom_property_options",
+                columns: new[] { "event_template_custom_property_definition_id", "sort_order" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_template_custom_property_options_parent_option_id",
+                table: "event_template_custom_property_options",
+                column: "parent_option_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_templates_event_type_id",
+                table: "event_templates",
+                column: "event_type_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_templates_tenant_key_version",
+                table: "event_templates",
+                columns: new[] { "tenant_id", "template_key", "version" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_templates_tenant_published_active",
+                table: "event_templates",
+                columns: new[] { "tenant_id", "is_published", "is_active" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_event_types_global_master_code",
@@ -3764,11 +4301,43 @@ namespace Explore.Persistence.Migrations
                 principalTable: "users",
                 principalColumn: "id",
                 onDelete: ReferentialAction.Cascade);
+
+            migrationBuilder.AddForeignKey(
+                name: "fk_custom_property_definitions_custom_property_options_default",
+                table: "custom_property_definitions",
+                column: "default_option_id",
+                principalTable: "custom_property_options",
+                principalColumn: "id",
+                onDelete: ReferentialAction.Restrict);
+
+            migrationBuilder.AddForeignKey(
+                name: "fk_event_custom_property_definitions_event_custom_property_opt",
+                table: "event_custom_property_definitions",
+                column: "default_option_id",
+                principalTable: "event_custom_property_options",
+                principalColumn: "id",
+                onDelete: ReferentialAction.Restrict);
+
+            migrationBuilder.AddForeignKey(
+                name: "fk_event_template_custom_property_definitions_event_template_c",
+                table: "event_template_custom_property_definitions",
+                column: "default_option_id",
+                principalTable: "event_template_custom_property_options",
+                principalColumn: "id",
+                onDelete: ReferentialAction.Restrict);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_series_actors_actor_id",
+                table: "event_series");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_events_actors_actor_id",
+                table: "events");
+
             migrationBuilder.DropForeignKey(
                 name: "fk_groups_actors_actor_id",
                 table: "groups");
@@ -3784,6 +4353,70 @@ namespace Explore.Persistence.Migrations
             migrationBuilder.DropForeignKey(
                 name: "fk_users_actors_actor_id",
                 table: "users");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_custom_property_definitions_tenants_tenant_id",
+                table: "custom_property_definitions");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_custom_property_definitions_tenants_tenant_id",
+                table: "event_custom_property_definitions");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_series_tenants_tenant_id",
+                table: "event_series");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_template_custom_property_definitions_tenants_tenant_id",
+                table: "event_template_custom_property_definitions");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_templates_tenants_tenant_id",
+                table: "event_templates");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_types_tenants_tenant_id",
+                table: "event_types");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_events_tenants_tenant_id",
+                table: "events");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_storage_objects_tenants_tenant_id",
+                table: "storage_objects");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_series_storage_objects_featured_image_id",
+                table: "event_series");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_events_storage_objects_background_image_id",
+                table: "events");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_events_storage_objects_featured_image_id",
+                table: "events");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_custom_property_definitions_custom_property_options_default",
+                table: "custom_property_definitions");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_custom_property_definitions_events_event_id",
+                table: "event_custom_property_definitions");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_custom_property_definitions_event_custom_property_opt",
+                table: "event_custom_property_definitions");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_template_custom_property_definitions_event_templates_",
+                table: "event_template_custom_property_definitions");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_template_custom_property_definitions_event_template_c",
+                table: "event_template_custom_property_definitions");
 
             migrationBuilder.DropTable(
                 name: "actor_key_stores");
@@ -3814,6 +4447,9 @@ namespace Explore.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "event_contact_share_export_item");
+
+            migrationBuilder.DropTable(
+                name: "event_custom_property_projections");
 
             migrationBuilder.DropTable(
                 name: "event_islamic_aspects");
@@ -3942,9 +4578,6 @@ namespace Explore.Persistence.Migrations
                 name: "category_types");
 
             migrationBuilder.DropTable(
-                name: "custom_property_options");
-
-            migrationBuilder.DropTable(
                 name: "categories");
 
             migrationBuilder.DropTable(
@@ -3952,6 +4585,9 @@ namespace Explore.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "event_contact_share_export");
+
+            migrationBuilder.DropTable(
+                name: "event_custom_property_values");
 
             migrationBuilder.DropTable(
                 name: "languages");
@@ -3984,49 +4620,16 @@ namespace Explore.Persistence.Migrations
                 name: "roles");
 
             migrationBuilder.DropTable(
-                name: "custom_property_definitions");
-
-            migrationBuilder.DropTable(
                 name: "event_registrations");
 
             migrationBuilder.DropTable(
                 name: "event_sessions");
 
             migrationBuilder.DropTable(
-                name: "events");
-
-            migrationBuilder.DropTable(
                 name: "locations");
 
             migrationBuilder.DropTable(
                 name: "registration_modes");
-
-            migrationBuilder.DropTable(
-                name: "atproto_records");
-
-            migrationBuilder.DropTable(
-                name: "audience_ages");
-
-            migrationBuilder.DropTable(
-                name: "audience_genders");
-
-            migrationBuilder.DropTable(
-                name: "event_formats");
-
-            migrationBuilder.DropTable(
-                name: "event_series");
-
-            migrationBuilder.DropTable(
-                name: "event_statuses");
-
-            migrationBuilder.DropTable(
-                name: "event_types");
-
-            migrationBuilder.DropTable(
-                name: "madhabs");
-
-            migrationBuilder.DropTable(
-                name: "visibility_types");
 
             migrationBuilder.DropTable(
                 name: "actors");
@@ -4047,19 +4650,70 @@ namespace Explore.Persistence.Migrations
                 name: "users");
 
             migrationBuilder.DropTable(
-                name: "storage_objects");
-
-            migrationBuilder.DropTable(
                 name: "approval_statuses");
-
-            migrationBuilder.DropTable(
-                name: "file_types");
 
             migrationBuilder.DropTable(
                 name: "tenants");
 
             migrationBuilder.DropTable(
                 name: "tenant_statuses");
+
+            migrationBuilder.DropTable(
+                name: "storage_objects");
+
+            migrationBuilder.DropTable(
+                name: "file_types");
+
+            migrationBuilder.DropTable(
+                name: "custom_property_options");
+
+            migrationBuilder.DropTable(
+                name: "custom_property_definitions");
+
+            migrationBuilder.DropTable(
+                name: "events");
+
+            migrationBuilder.DropTable(
+                name: "atproto_records");
+
+            migrationBuilder.DropTable(
+                name: "audience_ages");
+
+            migrationBuilder.DropTable(
+                name: "audience_genders");
+
+            migrationBuilder.DropTable(
+                name: "event_formats");
+
+            migrationBuilder.DropTable(
+                name: "event_series");
+
+            migrationBuilder.DropTable(
+                name: "event_statuses");
+
+            migrationBuilder.DropTable(
+                name: "madhabs");
+
+            migrationBuilder.DropTable(
+                name: "visibility_types");
+
+            migrationBuilder.DropTable(
+                name: "event_custom_property_options");
+
+            migrationBuilder.DropTable(
+                name: "event_custom_property_definitions");
+
+            migrationBuilder.DropTable(
+                name: "event_templates");
+
+            migrationBuilder.DropTable(
+                name: "event_types");
+
+            migrationBuilder.DropTable(
+                name: "event_template_custom_property_options");
+
+            migrationBuilder.DropTable(
+                name: "event_template_custom_property_definitions");
         }
     }
 }

@@ -50,6 +50,11 @@ ABOUTME: Read this first when resuming so implementation follows the hardened ex
 - Added repository support for tracked reads, duplicate checks excluding the current row, transactional option replacement, and feature-specific hard delete semantics.
 - Updated the details query to throw `NotFoundException` when the definition is missing instead of silently mapping null.
 - Added `Event.Application.UnitTests/Features/CustomPropertyDefinitions/Commands/UpdateCustomPropertyDefinitionCommandHandlerTests.cs` and `Event.Application.UnitTests/Features/CustomPropertyDefinitions/Commands/DeleteCustomPropertyDefinitionCommandHandlerTests.cs`.
+- Fixed the EF Core design-time foreign-key naming collision between template/runtime option self-references and definition references by assigning explicit constraint names in `EventTemplateCustomPropertyOptionConfiguration.cs` and `EventCustomPropertyOptionConfiguration.cs`.
+- Generated the clean development migration set in `Explore.Persistence/Migrations/`:
+  - `20260319164102_InitDevelopmentSchema.cs`
+  - `20260319164102_InitDevelopmentSchema.Designer.cs`
+  - `ExploreDbContextModelSnapshot.cs`
 
 ### 🟡 IN PROGRESS
 - Application/API/Blazor integration has not started yet.
@@ -59,6 +64,7 @@ ABOUTME: Read this first when resuming so implementation follows the hardened ex
 - Shared-definition create CQRS now calls the governance policy; update/delete flows and event-template/runtime flows still do not.
 - Shared-definition create and update CQRS now call the governance policy; template/runtime flows still do not.
 - Shared-definition delete uses feature-specific delete semantics so machine-key recreation is not blocked by stale soft-deleted rows.
+- Design-time `ExploreDbContext` creation via `dotnet ef` now succeeds again.
 
 ### ⚠️ BLOCKERS
 - Workspace is still dirty with many unrelated user changes, so follow-up implementation must keep edits isolated.

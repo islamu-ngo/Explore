@@ -39,7 +39,14 @@ public class EventTemplateCustomPropertyOptionConfiguration : IEntityTypeConfigu
         builder.HasOne(e => e.ParentOption)
             .WithMany(e => e.ChildOptions)
             .HasForeignKey(e => e.ParentOptionId)
+            .HasConstraintName("fk_etcpo_parent_option")
             .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(e => e.Definition)
+            .WithMany(e => e.Options)
+            .HasForeignKey(e => e.EventTemplateCustomPropertyDefinitionId)
+            .HasConstraintName("fk_etcpo_definition")
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(e => new { e.EventTemplateCustomPropertyDefinitionId, e.SortOrder })
             .HasDatabaseName("ix_etcpo_definition_sort");
