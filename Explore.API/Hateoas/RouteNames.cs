@@ -263,4 +263,15 @@ public static class RouteNames
     public const string ExportOrganizationSharedContacts = "ExportOrganizationSharedContacts";
 
     #endregion
+
+    #region Custom Property Definition Routes
+
+    public const string GetCustomPropertyDefinitions = "GetCustomPropertyDefinitions";
+    public const string GetCustomPropertyDefinitionById = "GetCustomPropertyDefinitionById";
+    public const string CreateCustomPropertyDefinition = "CreateCustomPropertyDefinition";
+    public const string UpdateCustomPropertyDefinition = "UpdateCustomPropertyDefinition";
+    public const string DeleteCustomPropertyDefinition = "DeleteCustomPropertyDefinition";
+
+    #endregion
+
 }

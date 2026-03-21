@@ -40,9 +40,9 @@ public sealed class DeploymentModeProvider : IDeploymentModeProvider
             return DeploymentMode.SingleTenant;
 
         // Layer 2: distributed cache
-        var cached = await _cache.GetStringAsync(CacheKey, ct);
-        if (cached is not null && Enum.TryParse<DeploymentMode>(cached, out var cachedMode))
-            return cachedMode;
+        var cached = await TryGetCachedModeAsync(ct);
+        if (cached is not null)
+            return cached.Value;
 
         // Layer 3: database (scoped repo accessed via factory)
         using var scope = _scopeFactory.CreateScope();
@@ -55,14 +55,7 @@ public sealed class DeploymentModeProvider : IDeploymentModeProvider
             ? dbMode
             : DeploymentMode.MultiTenant;
 
-        await _cache.SetStringAsync(
-            CacheKey,
-            mode.ToString(),
-            new DistributedCacheEntryOptions
-            {
-                AbsoluteExpirationRelativeToNow = CacheTtl
-            },
-            ct);
+        await TrySetCachedModeAsync(mode, ct);
 
         _logger.LogDebug("Deployment mode resolved from DB: {Mode}", mode);
         return mode;
@@ -72,5 +65,52 @@ public sealed class DeploymentModeProvider : IDeploymentModeProvider
         => await GetCurrentModeAsync(ct) == DeploymentMode.SingleTenant;
 
     public async Task InvalidateCacheAsync()
-        => await _cache.RemoveAsync(CacheKey);
+        => await TryRemoveCachedModeAsync();
+
+    private async Task<DeploymentMode?> TryGetCachedModeAsync(CancellationToken ct)
+    {
+        try
+        {
+            var cached = await _cache.GetStringAsync(CacheKey, ct);
+            return cached is not null && Enum.TryParse<DeploymentMode>(cached, out var cachedMode)
+                ? cachedMode
+                : null;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Distributed cache unavailable while resolving deployment mode. Falling back to database.");
+            return null;
+        }
+    }
+
+    private async Task TrySetCachedModeAsync(DeploymentMode mode, CancellationToken ct)
+    {
+        try
+        {
+            await _cache.SetStringAsync(
+                CacheKey,
+                mode.ToString(),
+                new DistributedCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = CacheTtl
+                },
+                ct);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Distributed cache unavailable while storing deployment mode. Continuing without cache.");
+        }
+    }
+
+    private async Task TryRemoveCachedModeAsync()
+    {
+        try
+        {
+            await _cache.RemoveAsync(CacheKey);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Distributed cache unavailable while invalidating deployment mode cache.");
+        }
+    }
 }

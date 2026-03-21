@@ -1,5 +1,5 @@
-ABOUTME: Strategic plan for a 3-layer event architecture: universal core, typed sector profiles, and custom extensions.
-ABOUTME: Treats EAV as the Layer 3 extension system only, with governed semantics, template instantiation, and projection support.
+ABOUTME: Strategic plan for a 3-layer event and event-session architecture: universal core, typed sector profiles, and custom extensions.
+ABOUTME: Treats EAV as the Layer 3 extension system only, with governed semantics, template instantiation, projection support, and aggregate read views.
 
 # EAV Custom Properties - Implementation Plan
 
@@ -9,7 +9,7 @@ ABOUTME: Treats EAV as the Layer 3 extension system only, with governed semantic
 
 ## Executive Summary
 
-Replace the remaining ad hoc metadata coupling and stale `MetadataJson` assumptions across docs/contracts with an enterprise-grade 3-layer event architecture where the custom-properties system serves only the extension layer.
+Replace the remaining ad hoc metadata coupling and stale `MetadataJson` assumptions across docs/contracts with an enterprise-grade 3-layer event and event-session architecture where the custom-properties system serves only the extension layer.
 
 - normalized and typed
 - deterministic and debuggable for self-hosted deployments
@@ -18,9 +18,9 @@ Replace the remaining ad hoc metadata coupling and stale `MetadataJson` assumpti
 
 The prior revision correctly moved events away from live shared-definition inheritance and toward template-based instantiation. This revision hardens the plan further by making the missing middle layer explicit:
 
-- **Layer 1 is the universal event core**
-- **Layer 2 is first-class typed sector schema**
-- **Layer 3 is the EAV/custom-properties extension layer**
+- **Layer 1 is the universal event and event-session core**
+- **Layer 2 is first-class typed sector schema for both event and session scopes**
+- **Layer 3 is the EAV/custom-properties extension layer for both event and session scopes**
 - **EAV is the extension/configuration layer, not the product's universal or sector-standard semantic contract**
 - **event custom properties use blueprint/template instantiation plus explicit sync workflows**
 - **definitions and options have stable namespaced machine keys distinct from display labels**
@@ -42,18 +42,18 @@ This aligns the custom-properties architecture with the platform's long-term nee
 
 ### Product-Level Positioning
 
-The event model is intentionally split into three layers:
+The event platform model is intentionally split into three layers across both `Event` and `EventSession`:
 
-1. **Layer 1 - Universal event core**
-   - fields shared by all events regardless of sector/domain
-   - modeled directly on `Event` and related first-class relational entities
+1. **Layer 1 - Universal event and session core**
+   - fields shared by all events or all sessions regardless of sector/domain
+   - modeled directly on `Event`, `EventSession`, and related first-class relational entities
 
 2. **Layer 2 - Sector-standard typed schema**
-   - structured fields shared across all events in a domain/vertical
+   - structured fields shared across all events or all sessions in a domain/vertical
    - modeled as first-class typed relational schema, usually 1:1 aspect/profile tables plus lookups and indexes
 
 3. **Layer 3 - Local custom extensions**
-   - tenant/organizer-specific long-tail extension fields
+   - tenant/organizer-specific long-tail extension fields at event scope or session scope
    - modeled by the EAV/custom-properties system in this plan
 
 Custom properties exist to support Layer 3 only:
@@ -81,27 +81,37 @@ Those fields must be either:
 
 ### Layer Rule
 
-If a field is required across all events in a sector, or is used in filtering, moderation, ranking, policy, export, federation, trust workflows, or stable sector semantics, it must not live only in EAV.
+If a field is required across all events or all sessions in a sector, or is used in filtering, moderation, ranking, policy, export, federation, trust workflows, or stable sector semantics, it must not live only in EAV.
 
 ### Final Direction
 
 Use three complementary layers:
 
-1. **Layer 1 - Universal event core** on `Event` and core relational entities
-2. **Layer 2 - Typed sector profiles/aspects** for domain-standard structured semantics
-3. **Layer 3 - Shared and event-local custom-property catalogs** for local extensions
+1. **Layer 1 - Universal event/session core** on `Event`, `EventSession`, and core relational entities
+2. **Layer 2 - Typed sector profiles/aspects** for domain-standard structured semantics at event scope and session scope
+3. **Layer 3 - Shared, event-local, and session-local custom-property catalogs** for local extensions
+
+### Aggregate Boundary Rule
+
+`Event` remains the parent program/container aggregate.
+
+`EventSession` remains the scheduled child aggregate.
+
+This plan does **not** collapse sessions into standalone peer `Event` rows. Sessions may be rendered like first-class cards in UI and discovery, but canonical write modeling remains parent/child.
 
 ### Non-Negotiable Lifecycle Rules
 
-1. Universal event semantics stay on Layer 1.
-2. Sector-standard semantics stay on Layer 2 typed schema.
+1. Universal event and session semantics stay on Layer 1.
+2. Sector-standard event and session semantics stay on Layer 2 typed schema.
 3. Event runtime reads use event-local Layer 3 definitions and values directly.
-4. Template changes never silently change existing events.
-5. Template-to-event sync exists, but it is explicit, version-aware, auditable, and operator-driven.
-6. Machine identity is stable even when labels/localization/display copy changes.
-7. Historical values survive retirement of definitions/options.
-8. Search/filter/publication-critical custom properties are projected into dedicated read models.
-9. EAV remains an internal extension layer, not the canonical interoperability contract.
+4. Session runtime reads use session-local Layer 3 definitions and values directly.
+5. Template changes never silently change existing events or sessions.
+6. Template-to-event and template-to-session sync exists, but it is explicit, version-aware, auditable, and operator-driven.
+7. Event-level Layer 3 properties do not automatically become session-level Layer 3 properties.
+8. Historical values survive retirement of definitions/options.
+9. Search/filter/publication-critical custom properties are projected into dedicated read models.
+10. EAV remains an internal extension layer, not the canonical interoperability contract.
+11. Sessions may appear as first-class discovery/view items, but aggregate truth remains split between parent event and child sessions.
 
 ---
 
@@ -117,7 +127,7 @@ Use three complementary layers:
 ### Current Technical Problems
 
 1. The historical `MetadataJson` pattern was untyped and weakly governed, and stale references still distort current planning.
-2. Existing plan revisions fixed event inheritance, but still left the Layer 2 sector-standard schema under-modeled.
+2. Existing plan revisions fixed event inheritance, but still left the Layer 2 sector-standard schema under-modeled for both events and sessions.
 3. Current plan still relies on mutable `Name` / `DisplayName` rather than stable namespaced machine identity.
 4. `ValidationRules string?` invites an opaque mini-rules engine.
 5. `IsMulti` exists without fully specified storage semantics.
@@ -135,7 +145,7 @@ Use three complementary layers:
 
 ## Design Principles
 
-1. **The event architecture is 3-layer: universal core, typed sector profile, and local extensions.**
+1. **The event platform architecture is 3-layer for both `Event` and `EventSession`: universal core, typed sector profile, and local extensions.**
 2. **EAV is an extension model, not the primary home of core or sector-standard discovery/policy semantics.**
 3. **Every custom property has a stable machine key distinct from display text.**
 4. **Custom-property identity is namespaced so platform-owned and tenant-owned semantics can coexist.**
@@ -146,6 +156,7 @@ Use three complementary layers:
 9. **Historical values and provenance remain explainable after retirement, rename, or template evolution.**
 10. **Template instantiation and template sync are both explicit workflows, never implicit runtime inheritance.**
 11. **Layer 2 sector-standard fields are first-class typed relational schema with direct query and policy support.**
+12. **Aggregate read views may merge event and session data for UX, but canonical persistence remains separate.**
 
 ---
 
@@ -185,6 +196,20 @@ Examples already modeled in the repo include:
 
 These remain first-class fields on `Event` and related normal entities.
 
+### Layer 1B - Universal EventSession Core
+
+Layer 1 also applies to `EventSession` as its own child aggregate.
+
+Examples already modeled in the repo include:
+
+- title / summary
+- start and end time
+- room/location
+- speaker and language links
+- pricing basics and session attendance context
+
+These remain first-class fields on `EventSession` and related normal entities.
+
 ### Layer 2 - Typed Sector Profiles / Aspects
 
 Layer 2 is the currently missing explicit piece in the planning docs.
@@ -206,13 +231,15 @@ These already demonstrate the preferred Layer 2 approach:
 
 #### Layer 2 Rule
 
-If a field is standard across all events in a sector, it belongs in a typed profile/aspect family, not in Layer 3 custom properties.
+If a field is standard across all events in a sector, or across all sessions in a sector, it belongs in a typed profile/aspect family, not in Layer 3 custom properties.
 
 #### Layer 2 Direction For This Plan
 
 This plan must explicitly preserve and extend the typed aspect/profile approach for sector-standard event semantics.
 
-- current Islamic and Tech aspect families remain Layer 2
+- current Islamic and Tech event aspect families remain Layer 2
+- current `EventSessionIslamicAspect` remains Layer 2 for session scope
+- future session-standard families should follow the same typed 1:1 pattern instead of becoming generic session metadata
 - future sector-standard families should follow the same typed 1:1 pattern
 - Layer 3 must not be used as the first destination for domain-standard sector fields
 
@@ -348,6 +375,64 @@ EventTemplateCustomPropertyOption (Guid PK) -- IAuditableEntity, ISoftDeletable
 |- SortOrder                               int
 |- ParentOptionId                          Guid?
 |- Audit + SoftDelete fields
+
+EventSessionTemplate (Guid PK) -- ITenantEntity, IAuditableEntity, ISoftDeletable
+|- EventTemplateId               Guid      -- parent event template
+|- SessionTemplateKey            string
+|- DisplayName                   string
+|- Description                   string?
+|- SortOrder                     int
+|- Version                       int
+|- IsPublished                   bool
+|- IsActive                      bool
+|- Audit + SoftDelete fields
+`- Definitions: IReadOnlyCollection<EventSessionTemplateCustomPropertyDefinition>
+
+EventSessionTemplateCustomPropertyDefinition (Guid PK) -- ITenantEntity, IAuditableEntity, ISoftDeletable
+|- EventSessionTemplateId       Guid
+|- Namespace                    string
+|- Key                          string
+|- DisplayName                  string
+|- Description                  string?
+|- PropertyType                 enum
+|- IsRequired                   bool
+|- IsMulti                      bool
+|- IsActive                     bool
+|- SortOrder                    int
+|- ExposureLevel                enum
+|- IsSearchable                 bool
+|- IsFilterable                 bool
+|- IsExportable                 bool
+|- IsModerationRelevant         bool
+|- IsAnalyticsRelevant          bool
+|- DefaultTextValue             string?
+|- DefaultNumberValue           decimal?
+|- DefaultBooleanValue          bool?
+|- DefaultDateTimeValue         DateTimeOffset?
+|- DefaultOptionId              Guid?
+|- MinLength                    int?
+|- MaxLength                    int?
+|- RegexPattern                 string?
+|- MinNumber                    decimal?
+|- MaxNumber                    decimal?
+|- MinDateTime                  DateTimeOffset?
+|- MaxDateTime                  DateTimeOffset?
+|- AllowedUrlSchemes            string?
+|- IsSystemOwned                bool
+`- Options: IReadOnlyCollection<EventSessionTemplateCustomPropertyOption>
+
+EventSessionTemplateCustomPropertyOption (Guid PK) -- IAuditableEntity, ISoftDeletable
+|- EventSessionTemplateCustomPropertyDefinitionId Guid
+|- Namespace                                      string
+|- Key                                            string
+|- DisplayName                                    string
+|- Description                                    string?
+|- Value                                          string
+|- IsDefault                                      bool
+|- IsActive                                       bool
+|- SortOrder                                      int
+|- ParentOptionId                                 Guid?
+|- Audit + SoftDelete fields
 ```
 
 ### Layer 3C - Event-Local Runtime Layer
@@ -420,6 +505,72 @@ EventCustomPropertyValue (Guid PK) -- ITenantEntity, IAuditableEntity, ISoftDele
 |- DateTimeValue                   DateTimeOffset?
 |- OptionId                        Guid?
 |- Audit + SoftDelete fields
+
+EventSessionCustomPropertyDefinition (Guid PK) -- ITenantEntity, IAuditableEntity, ISoftDeletable
+|- EventSessionId              Guid
+|- Namespace                   string
+|- Key                         string
+|- DisplayName                 string
+|- Description                 string?
+|- PropertyType                enum
+|- IsRequired                  bool
+|- IsMulti                     bool
+|- IsActive                    bool
+|- SortOrder                   int
+|- ExposureLevel               enum
+|- IsSearchable                bool
+|- IsFilterable                bool
+|- IsExportable                bool
+|- IsModerationRelevant        bool
+|- IsAnalyticsRelevant         bool
+|- DefaultTextValue            string?
+|- DefaultNumberValue          decimal?
+|- DefaultBooleanValue         bool?
+|- DefaultDateTimeValue        DateTimeOffset?
+|- DefaultOptionId             Guid?
+|- MinLength                   int?
+|- MaxLength                   int?
+|- RegexPattern                string?
+|- MinNumber                   decimal?
+|- MaxNumber                   decimal?
+|- MinDateTime                 DateTimeOffset?
+|- MaxDateTime                 DateTimeOffset?
+|- AllowedUrlSchemes           string?
+|- IsSystemOwned               bool
+|- SourceTemplateId            Guid?
+|- SourceTemplateKey           string?
+|- SourceTemplateVersion       int?
+|- SourceTemplateDefinitionId  Guid?
+|- InstantiatedAt              DateTimeOffset
+|- LastSyncedFromTemplateAt    DateTimeOffset?
+|- Audit + SoftDelete fields
+`- Options: IReadOnlyCollection<EventSessionCustomPropertyOption>
+
+EventSessionCustomPropertyOption (Guid PK) -- IAuditableEntity, ISoftDeletable
+|- EventSessionCustomPropertyDefinitionId Guid
+|- Namespace                              string
+|- Key                                    string
+|- DisplayName                            string
+|- Description                            string?
+|- Value                                  string
+|- IsDefault                              bool
+|- IsActive                               bool
+|- SortOrder                              int
+|- ParentOptionId                         Guid?
+|- SourceTemplateOptionId                 Guid?
+|- SourceTemplateVersion                  int?
+|- Audit + SoftDelete fields
+
+EventSessionCustomPropertyValue (Guid PK) -- ITenantEntity, IAuditableEntity, ISoftDeletable
+|- EventSessionCustomPropertyDefinitionId Guid
+|- EventSessionId                         Guid
+|- Ordinal                                int
+|- TextValue                              string?
+|- NumberValue                            decimal?
+|- BooleanValue                           bool?
+|- DateTimeValue                          DateTimeOffset?
+|- OptionId                               Guid?
+|- Audit + SoftDelete fields
 ```
 
 ### Layer 3D - Projection / Read-Model Layer
@@ -443,9 +594,48 @@ EventSearchDocument / equivalent projection payload
 |- canonical event fields
 |- promoted custom-property facets
 |- public/exportable custom-property payload
+
+EventSessionCustomPropertyProjection
+|- EventSessionId
+|- Namespace
+|- Key
+|- PropertyType
+|- ExposureLevel
+|- SearchToken / SearchValue columns
+|- FilterFacetValue columns
+|- ExportValue columns
+|- ModerationValue columns
+|- UpdatedAt
+
+EventWithSessionsView / equivalent aggregate payload
+|- canonical event fields
+|- event projections
+|- session summaries
+|- selected session projection facets
 ```
 
 This projection layer is implemented as part of this plan, not deferred.
+
+### Lexicon Strategy
+
+Lexicons should follow the same separation as the persistence model:
+
+- canonical core lexicons for `Event` and `EventSession`
+- typed Layer 2 lexicons for event and session profiles
+- Layer 3 extension lexicons for event and session extension payloads
+- aggregate read/view lexicons that embed session summaries inside an event-oriented view
+
+Recommended structure:
+
+- `...event.core`
+- `...eventsession.core`
+- `...event.islamic`, `...event.tech`
+- `...eventsession.islamic` and future session typed profile lexicons
+- `...event.extension`
+- `...eventsession.extension`
+- `...event.view` or `...event.withSessions.view`
+
+Canonical lexicons remain separate records. The merged event-with-sessions lexicon is a read/view contract, not the canonical write contract.
 
 ### Appearance Columns (Still Not EAV)
 
@@ -493,8 +683,11 @@ Namespaces and keys are normalized to lowercase machine identifiers before persi
 - shared definitions: `(TenantId, EntityTypeName, Namespace, Key)`
 - shared options: `(CustomPropertyDefinitionId, Namespace, Key)`
 - event templates: `(TenantId, TemplateKey, Version)` and `(EventTemplateId, Namespace, Key)`
+- session templates: `(EventTemplateId, SessionTemplateKey, Version)` and `(EventSessionTemplateId, Namespace, Key)`
 - event-local definitions: `(EventId, Namespace, Key)`
 - event-local options: `(EventCustomPropertyDefinitionId, Namespace, Key)`
+- session-local definitions: `(EventSessionId, Namespace, Key)`
+- session-local options: `(EventSessionCustomPropertyDefinitionId, Namespace, Key)`
 - single-value properties: max one value row with `Ordinal = 0`
 - multi-value properties: one row per selected/entered value with unique ordinal per definition/entity scope
 
@@ -688,10 +881,16 @@ Implementation should not begin until these decisions are locked in the plan and
   - plan explicitly forbids using custom properties as the sole persistence model for discovery/policy/publication-critical semantics
   - promotion/projection rule is documented
 
-#### Task 0.1A: Lock The 3-Layer Event Model
+#### Task 0.1A: Lock The 3-Layer Event And EventSession Model
 - **Acceptance Criteria:**
-  - plan explicitly distinguishes Layer 1 universal core, Layer 2 typed sector profile, and Layer 3 custom extensions
+  - plan explicitly distinguishes Layer 1 universal core, Layer 2 typed sector profile, and Layer 3 custom extensions for both event and session scopes
   - Layer 2 is described as first-class typed relational schema, not EAV
+
+#### Task 0.1C: Lock Parent/Child Aggregate Boundary
+- **Acceptance Criteria:**
+  - `Event` remains the parent program/container aggregate
+  - `EventSession` remains the scheduled child aggregate
+  - merged event-with-sessions views are read models, not canonical write models
 
 #### Task 0.1B: Lock Layer 2 Boundaries
 - **Acceptance Criteria:**
@@ -749,7 +948,7 @@ Implementation should not begin until these decisions are locked in the plan and
 
 #### Task 1.1A: Audit Existing Layer 2 Sector Aspect Families
 - **Acceptance Criteria:**
-  - identify which existing aspect/profile entities are already Layer 2
+  - identify which existing event and session aspect/profile entities are already Layer 2
   - document which sector-standard semantics remain outside Layer 3 scope
 
 #### Task 1.1B: Add Missing Typed Sector Profile Fields/Entities Only Where The Current Layer 2 Model Is Incomplete
@@ -775,9 +974,25 @@ Implementation should not begin until these decisions are locked in the plan and
 - `EventCustomPropertyValue`
 - **Acceptance Criteria:** event-local ownership, provenance/version fields, ordinal support
 
+#### Task 1.4A: Create EventSession Template Entities
+- `EventSessionTemplate`
+- `EventSessionTemplateCustomPropertyDefinition`
+- `EventSessionTemplateCustomPropertyOption`
+- **Acceptance Criteria:** child-blueprint identity, parent event template linkage, namespaced keys, versioning
+
+#### Task 1.4B: Create EventSession-Local Runtime Entities
+- `EventSessionCustomPropertyDefinition`
+- `EventSessionCustomPropertyOption`
+- `EventSessionCustomPropertyValue`
+- **Acceptance Criteria:** session-local ownership, provenance/version fields, ordinal support
+
 #### Task 1.5: Create Projection Entities / Value Objects
 - `EventCustomPropertyProjection` or equivalent domain-side representation
 - **Acceptance Criteria:** enough shape to support searchable/filterable/exportable projections
+
+#### Task 1.5A: Create Session Projection Entities / Value Objects
+- `EventSessionCustomPropertyProjection` or equivalent domain-side representation
+- **Acceptance Criteria:** enough shape to support session search/filter/export projections and event-with-sessions aggregate read views
 
 #### Task 1.6: Audit Existing Appearance / Branding Fields And Align Them To The New Governance Model
 - **Acceptance Criteria:** preserve current first-class appearance approach; reconcile existing `StorageObject`-style media references with the custom-properties plan rather than reintroducing URL-in-EAV patterns
@@ -802,11 +1017,20 @@ Implementation should not begin until these decisions are locked in the plan and
 #### Task 2.2: Configure Event Template Tables
 - **Acceptance Criteria:** `(TenantId, TemplateKey, Version)` uniqueness and definition/option namespaced uniqueness
 
+#### Task 2.2A: Configure EventSession Template Tables
+- **Acceptance Criteria:** parent event template linkage, `(EventTemplateId, SessionTemplateKey, Version)` uniqueness, and session definition/option namespaced uniqueness
+
 #### Task 2.3: Configure Event Runtime Tables
 - **Acceptance Criteria:** `(EventId, Namespace, Key)` uniqueness and provenance/version columns mapped
 
+#### Task 2.3A: Configure EventSession Runtime Tables
+- **Acceptance Criteria:** `(EventSessionId, Namespace, Key)` uniqueness and provenance/version columns mapped
+
 #### Task 2.4: Configure Projection Tables
 - **Acceptance Criteria:** indexes optimized for event discovery/search/filter reads
+
+#### Task 2.4B: Configure Session Projection Tables
+- **Acceptance Criteria:** indexes optimized for session discovery/search/filter reads and aggregate event-with-sessions views
 
 #### Task 2.5: Reconcile `EventConfiguration.cs` With The Hardened Plan
 
@@ -828,11 +1052,19 @@ Implementation should not begin until these decisions are locked in the plan and
 
 #### Task 3.2: Create Event Template Repositories
 
+#### Task 3.2A: Create EventSession Template Repositories
+
 #### Task 3.3: Create Event Runtime Repositories
+
+#### Task 3.3A: Create EventSession Runtime Repositories
 
 #### Task 3.4: Create Template Instantiation Service
 
+#### Task 3.4A: Create Session Template Instantiation Service
+
 #### Task 3.5: Create Template Diff / Sync Service
+
+#### Task 3.5A: Create Session Template Diff / Sync Service
 
 #### Task 3.6: Create Projection Updater / Rebuilder Service
 
@@ -847,11 +1079,17 @@ Implementation should not begin until these decisions are locked in the plan and
 
 #### Task 4.2: Create Event Template DTOs
 
+#### Task 4.2A: Create EventSession Template DTOs
+
 #### Task 4.3: Create Event Runtime Definition / Value DTOs
+
+#### Task 4.3A: Create EventSession Runtime Definition / Value DTOs
 
 #### Task 4.4: Create Template Diff / Sync DTOs
 
 #### Task 4.5: Create Projection/Admin DTOs As Needed
+
+#### Task 4.5A: Create Aggregate Event-With-Sessions View DTOs / Lexicon Contracts
 
 #### Task 4.6: Re-audit Event DTOs / Generated Contracts And Remove Any Stale Metadata-Blob Assumptions
 
@@ -875,15 +1113,25 @@ Implementation should not begin until these decisions are locked in the plan and
 
 #### Task 5.2: CRUD Commands / Queries For Event Templates
 
+#### Task 5.2A: CRUD Commands / Queries For EventSession Templates
+
 #### Task 5.3: CRUD Commands / Queries For Template Options
 
 #### Task 5.4: Queries For Event-Local Definitions And Values
 
+#### Task 5.4A: Queries For EventSession-Local Definitions And Values
+
 #### Task 5.5: Commands For Setting Event-Local Values With Explicit Multi-Value Rules
+
+#### Task 5.5A: Commands For Setting EventSession-Local Values With Explicit Multi-Value Rules
 
 #### Task 5.6: Commands For Editing Event-Local Definitions
 
+#### Task 5.6A: Commands For Editing EventSession-Local Definitions
+
 #### Task 5.7: Commands / Queries For Template Diff And Sync
+
+#### Task 5.7A: Commands / Queries For EventSession Template Diff And Sync
 
 #### Task 5.8: Commands / Jobs For Projection Updates And Rebuilds
 
@@ -895,12 +1143,14 @@ Implementation should not begin until these decisions are locked in the plan and
 
 ---
 
-### Phase 6: Event Creation, Template Instantiation, And Event Editing Flow
+### Phase 6: Event + EventSession Creation, Template Instantiation, And Editing Flow
 **Effort: XXL** | **Related Skills:** `cqrs-mediatr-guidelines`
 
 #### Task 6.1: Extend Event Creation Contract With Optional Template Selection
 
 #### Task 6.2: Instantiate Event-Local Definitions/Options/Defaults Transactionally
+
+#### Task 6.2A: Instantiate Session Templates And Session-Local Definitions/Options/Defaults Transactionally
 
 #### Task 6.3: Support Event Creation Without Template
 
@@ -908,8 +1158,13 @@ Implementation should not begin until these decisions are locked in the plan and
 
 #### Task 6.5: Add Template Sync Decision Flow To Event Administration
 
+#### Task 6.5A: Add Template Sync Decision Flow To EventSession Administration
+
 #### Task 6.6: Keep Layer 2 Editing Separate From Layer 3 Editing
 - **Acceptance Criteria:** typed sector-profile editing remains distinct from custom-property editing in contracts and workflows
+
+#### Task 6.7: Add Parent Event Aggregate Read/View Flow
+- **Acceptance Criteria:** event page can embed linked session summaries without turning sessions into canonical peer events
 
 ---
 
@@ -933,13 +1188,21 @@ Implementation should not begin until these decisions are locked in the plan and
 
 #### Task 8.2: Event Template Controllers
 
+#### Task 8.2A: EventSession Template Controllers
+
 #### Task 8.3: Event Runtime Definition / Value Controllers
 
+#### Task 8.3A: EventSession Runtime Definition / Value Controllers
+
 #### Task 8.4: Template Diff / Sync Controllers
+
+#### Task 8.4A: EventSession Template Diff / Sync Controllers
 
 #### Task 8.5: Projection Admin / Rebuild Endpoints If Required
 
 #### Task 8.6: Reconcile `EventController.cs` And Related API Contracts With Template-Aware Event Creation And Remove Any Stale Metadata Query Assumptions
+
+#### Task 8.6A: Reconcile `EventSessionController.cs` And Related API Contracts With Session Template/Layer 3 Workflows
 
 #### Task 8.7: Add Governance-Oriented Authorization Policies
 - template admin
@@ -960,9 +1223,15 @@ Implementation should not begin until these decisions are locked in the plan and
 
 #### Task 9.4: Add Template Selection To Event Creation UI
 
+#### Task 9.4A: Add Session Blueprint Selection / Editing To Event Session UI
+
 #### Task 9.5: Add Event Runtime Custom-Property Editor Against Event-Local Definitions
 
+#### Task 9.5A: Add EventSession Runtime Custom-Property Editor Against Session-Local Definitions
+
 #### Task 9.6: Add Template Diff / Sync UX
+
+#### Task 9.6A: Add EventSession Template Diff / Sync UX
 
 #### Task 9.7: Add Exposure / Searchability / Exportability Governance UX
 
@@ -972,7 +1241,7 @@ Implementation should not begin until these decisions are locked in the plan and
 
 ---
 
-### Phase 10: Search, Projection, Moderation, And Export Integration
+### Phase 10: Search, Projection, Moderation, Export, And Aggregate View Integration
 **Effort: XXL**
 
 #### Task 10.0: Integrate Layer 2 Sector Fields Directly Into Discovery And Governance Paths
@@ -980,9 +1249,15 @@ Implementation should not begin until these decisions are locked in the plan and
 
 #### Task 10.1: Populate Event Custom-Property Projections On Writes And Sync
 
+#### Task 10.1A: Populate EventSession Custom-Property Projections On Writes And Sync
+
 #### Task 10.2: Integrate Filterable/Searchable Projections Into Discovery Query Paths
 
+#### Task 10.2A: Integrate Session Filterable/Searchable Projections Into Discovery Query Paths
+
 #### Task 10.3: Integrate Exportable/Public Projections Into Publication / Export Paths
+
+#### Task 10.3A: Integrate Event-With-Sessions Aggregate Read/View Contracts Into Publication And Discovery Surfaces
 
 #### Task 10.4: Integrate Moderation-Relevant Projections Into Governance Workflows
 
@@ -1005,17 +1280,24 @@ Implementation should not begin until these decisions are locked in the plan and
 
 #### Task 11.6: Unit Tests For Template Instantiation, Versioning, And Sync Provenance
 
+#### Task 11.6A: Unit Tests For EventSession Template Instantiation, Versioning, And Sync Provenance
+
 #### Task 11.7: Unit Tests For Retired Definitions / Options With Historical Values
 
 #### Task 11.8: Integration Tests For Persistence Constraints And Tenant Isolation
 
+#### Task 11.8A: Integration Tests For EventSession Persistence Constraints And Tenant Isolation
+
 #### Task 11.9: Integration Tests For API Roundtrips (template -> event -> sync -> projections)
+
+#### Task 11.9B: Integration Tests For API Roundtrips (event template -> session blueprint -> event session -> sync -> projections)
 
 #### Task 11.10: Update Documentation
 - `docs/DOMAIN.md`
 - `docs/ARCHITECTURE.md`
 - `docs/EXTENSIBILITY.md`
 - any relevant publication / search / governance docs
+- lexicon planning docs for event/session canonical contracts and aggregate views
 
 ---
 
@@ -1029,6 +1311,7 @@ Implementation should not begin until these decisions are locked in the plan and
 | Validation devolves into a hidden DSL | Medium | High | typed governed validation model only |
 | Search/discovery queries become EAV-heavy and brittle | High | High | implement projection layer in the same initiative |
 | Template provenance becomes insufficient for support | Medium | High | versioned provenance fields and sync audit trail |
+| Event/session scope drifts and sessions get collapsed into peer events | Medium | High | preserve parent/child aggregate rule and use aggregate read views instead of canonical collapse |
 | Soft deletion causes historical data loss or confusion | Medium | High | explicit retirement rules and historical retention behavior |
 | Governance rules are too weak for public/searchable fields | Medium | High | add exposure flags and authorization categories now |
 
@@ -1038,6 +1321,7 @@ Implementation should not begin until these decisions are locked in the plan and
 
 1. All stale `MetadataJson` assumptions are removed from active runtime, API, UI, and planning surfaces.
 2. Event runtime behavior uses only event-local instantiated/synced definitions and values.
+3. EventSession runtime behavior uses only session-local instantiated/synced definitions and values.
 3. Custom-property identity survives display-name changes and localization changes.
 4. Multi-value semantics are consistent across storage, API, and UI.
 5. Validation is enforced from typed metadata with no opaque rule blobs.
@@ -1046,6 +1330,7 @@ Implementation should not begin until these decisions are locked in the plan and
 8. Historical values remain readable after definition or option retirement.
 9. Platform-owned and tenant-owned namespaced properties can coexist without collisions.
 10. Sector-standard semantics are modeled through Layer 2 typed schema, not Layer 3 EAV rows.
+11. Event and EventSession remain separate canonical resources while aggregate views can merge them for UX and federation-facing reads.
 
 ---
 
@@ -1062,12 +1347,13 @@ But do **not** let raw EAV become:
 
 The right implementation for this platform is:
 
-- Layer 1 universal core on `Event`
-- Layer 2 typed sector profiles/aspects for domain-standard semantics
-- EAV as a governed extension/configuration layer
+- Layer 1 universal core on `Event` and `EventSession`
+- Layer 2 typed sector profiles/aspects for domain-standard event and session semantics
+- EAV as a governed extension/configuration layer at both event and session scope
 - namespaced machine keys and typed validation
 - explicit exposure and governance semantics
-- event template instantiation plus versioned sync
+- event template instantiation plus session blueprint instantiation and versioned sync
 - projection-backed discovery/search/export/moderation reads
+- aggregate event-with-sessions view contracts for UX and federation-facing reads
 
 That is the enterprise-grade, self-hostable, multi-tenant direction this plan should implement now.

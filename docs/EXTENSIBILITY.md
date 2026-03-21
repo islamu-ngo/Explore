@@ -5,7 +5,7 @@ ABOUTME: Focuses on what exists today and documents the boundary between typed s
 
 ## Implemented Building Blocks
 
-1. Layer 2 typed schema for events:
+1. Layer 2 typed schema for events and sessions:
    - `EventIslamicAspect` (1:1 with `Event` via shared PK `Id`)
    - `EventTechAspect` (1:1 with `Event` via shared PK `Id`)
    - `EventSessionIslamicAspect` (1:1 with `EventSession` via shared key `EventSessionId`)
@@ -17,6 +17,7 @@ ABOUTME: Focuses on what exists today and documents the boundary between typed s
    - `EventTemplate`, `EventTemplateCustomPropertyDefinition`, `EventTemplateCustomPropertyOption` for versioned event blueprints
    - `EventCustomPropertyDefinition`, `EventCustomPropertyOption`, `EventCustomPropertyValue` for event-local runtime extension state
    - `EventCustomPropertyProjection` for derived read/query optimization
+   - planned next: session template/runtime/projection families mirroring the event-local Layer 3 architecture
 
 ## Module Keys And Defaults
 
@@ -68,23 +69,31 @@ Blazor event list uses these flags to control filter/UI exposure.
 
 ## Layer Boundary
 
-The platform uses three layers for event semantics:
+The platform uses three layers for event and session semantics:
 
-1. Layer 1 universal core fields.
+1. Layer 1 universal core fields on `Event` and `EventSession`.
 2. Layer 2 typed sector schema (`EventIslamicAspect`, `EventTechAspect`, `EventSessionIslamicAspect`).
-3. Layer 3 custom properties for local long-tail extension.
+3. Layer 3 custom properties for local long-tail extension at event scope or session scope.
 
 Layer 3 must not redefine Layer 2 meaning. If a field is standard across a sector or is required for filtering, moderation, policy, ranking, publication, or export, it must not live only in Layer 3.
 
+Parent/child rule:
+
+- `Event` stays the program/container aggregate
+- `EventSession` stays the scheduled child aggregate
+- merged event-with-sessions views are read models, not canonical write models
+
 ## Projection Lifecycle
 
-`EventCustomPropertyProjection` exists only as a derived read model.
+`EventCustomPropertyProjection` and future `EventSessionCustomPropertyProjection` rows exist only as derived read models.
 
-- source of truth remains event-local custom-property rows plus Layer 1/Layer 2 typed schema
+- source of truth remains event-local and session-local custom-property rows plus Layer 1/Layer 2 typed schema
 - projection rows are atomic per projected value, not one merged row per property
 - only projection-relevant properties are copied into projection rows
 - projection rows are rebuildable and invalidated when source definitions, flags, options, or values change
 - projections optimize discovery/filter/export/moderation reads; they do not replace typed policy truth
+
+Aggregate event-with-sessions views may embed session summaries and selected session projections for UX/discovery.
 
 ## Related
 

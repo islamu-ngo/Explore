@@ -56,11 +56,18 @@ The repo now contains a strengthened Layer 3 custom-property family:
 - event-local runtime entities via `EventCustomPropertyDefinition`, `EventCustomPropertyOption`, and `EventCustomPropertyValue`
 - derived read-side projection rows via `EventCustomPropertyProjection`
 
+Planned next extension of the same architecture:
+
+- session template entities under the parent event template
+- session-local runtime entities for `EventSession`
+- derived session projection rows and aggregate event-with-sessions read views
+
 Important boundary rule:
 
 - Layer 3 exists for tenant-specific and organizer-specific long-tail extensions.
 - Layer 3 must not become the only home of filtering, moderation, policy, or sector-standard semantics.
 - `Namespace + Key` is the machine identity; `DisplayName` is mutable UI text.
+- `Event` and `EventSession` remain separate canonical resources even when read models merge them for UX.
 
 ### 4) Tenant and soft-delete interfaces
 
@@ -97,6 +104,7 @@ These are enforced at database/model level today.
 - `EventSession.Location` uses `SetNull` on delete.
 - `EventSession -> Event` uses cascade delete.
 - `EventSessionIslamicAspect` has constraint requiring prayer fields when `StartTimeType` is relative-to-prayer.
+- `EventSession` is the scheduled child aggregate, not a peer `Event` row in canonical persistence.
 
 ## Actor ownership rules
 

@@ -12,6 +12,8 @@ The platform supports two optional event aspect families:
 
 There is also session-level Islamic extension data (`EventSessionIslamicAspect`).
 
+This means the repo already treats `EventSession` as its own typed semantic scope, not just as a disguised peer event.
+
 Each aspect is stored in its own table and linked 1:1 to the base record through a shared key.
 
 ## Aspect Fields (High-Signal)
@@ -64,6 +66,12 @@ These aspect families are Layer 2 typed schema, not flexible Layer 3 metadata.
 
 Layer 3 custom properties must not redefine these meanings later through `Namespace + Key` extension fields.
 
+Parent/child aggregate rule:
+
+- `Event` remains the parent program/container aggregate
+- `EventSession` remains the scheduled child aggregate
+- sessions may appear like first-class items in UI/search, but canonical persistence stays parent/child
+
 ## List Filtering And Module Guards
 
 `GET /api/event` supports aspect filters (Islamic and Tech), but they are guarded by module enablement:
@@ -92,6 +100,7 @@ Current seeded module keys:
 1. Aspect data model and API are fully implemented.
 2. Strategy abstractions for module-aware business logic exist, but event create/update handlers do not currently invoke `IStrategyResolver`.
 3. Tech strategy is not active for create applicability (`TechEventStrategy.IsApplicable` currently returns `false`).
+4. Session-level Layer 2 already exists, so the next enterprise-grade step is session-level Layer 3 plus aggregate event-with-sessions read views, not collapsing sessions into peer events.
 
 ## Related
 

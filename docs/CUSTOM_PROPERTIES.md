@@ -1,5 +1,5 @@
-ABOUTME: Governance and lifecycle rules for Layer 3 custom properties and event templates.
-ABOUTME: Defines the boundary between Layer 1 core fields, Layer 2 typed sector schema, and Layer 3 custom extensions.
+ABOUTME: Governance and lifecycle rules for Layer 3 custom properties across Event and EventSession.
+ABOUTME: Defines the boundary between Layer 1 core fields, Layer 2 typed sector schema, Layer 3 custom extensions, and aggregate read views.
 
 # Custom Properties
 
@@ -7,13 +7,19 @@ ABOUTME: Defines the boundary between Layer 1 core fields, Layer 2 typed sector 
 
 This document defines the production rules for Layer 3 custom properties.
 
-The platform uses a 3-layer model:
+The platform uses a 3-layer model for both `Event` and `EventSession`:
 
-1. Layer 1 core fields on `Event` and other first-class aggregates.
+1. Layer 1 core fields on `Event`, `EventSession`, and other first-class aggregates.
 2. Layer 2 typed sector schema such as `EventIslamicAspect`, `EventTechAspect`, and `EventSessionIslamicAspect`.
-3. Layer 3 custom properties for tenant-specific or organizer-specific long-tail extensions.
+3. Layer 3 custom properties for tenant-specific or organizer-specific long-tail extensions at event scope or session scope.
 
 Layer 3 exists to provide governed extensibility without becoming a parallel domain model.
+
+`Event` remains the parent program/container aggregate.
+
+`EventSession` remains the scheduled child aggregate.
+
+Sessions may appear as first-class cards in UI/search, but canonical write modeling remains parent/child.
 
 ## Hard Boundary
 
@@ -26,6 +32,7 @@ Examples in this repo:
 - `MadhabId` belongs to Layer 2 via `EventIslamicAspect`.
 - `GenderMode` belongs to Layer 2 via `EventIslamicAspect`.
 - `SkillLevel` belongs to Layer 2 via `EventTechAspect`.
+- prayer-relative scheduling belongs to Layer 2 session schema via `EventSessionIslamicAspect`.
 
 If a Layer 3 field becomes sector-standard, it must be promoted into typed Layer 2 schema instead of deepening EAV dependence.
 
@@ -48,7 +55,7 @@ Rules:
 
 ## Collision Policy
 
-Layer 3 cannot redefine Layer 2 meaning.
+Layer 3 cannot redefine Layer 2 meaning at event scope or session scope.
 
 The application layer must reject creation or update of a Layer 3 definition when:
 
@@ -109,7 +116,7 @@ Handlers, jobs, and UI must not reinterpret these flags locally.
 
 ## Projection Lifecycle
 
-`EventCustomPropertyProjection` exists for query and read optimization.
+`EventCustomPropertyProjection` and `EventSessionCustomPropertyProjection` exist for query and read optimization.
 
 It is not the source of truth.
 
@@ -117,6 +124,8 @@ Source of truth:
 
 - event-local Layer 3 definitions,
 - event-local Layer 3 values,
+- session-local Layer 3 definitions,
+- session-local Layer 3 values,
 - typed Layer 1 and Layer 2 schema.
 
 Projection rules:
@@ -135,6 +144,12 @@ Projection row shape:
 - atomic typed values and normalized value for query surfaces,
 - explicit `Ordinal` for multi-value ordering.
 
+Aggregate read/view rule:
+
+- parent event views may embed session summaries and selected session projections,
+- aggregate event-with-sessions views are read models only,
+- canonical event/session contracts stay separate.
+
 Lifecycle:
 
 - projection rows are generated on writes and template sync operations,
@@ -146,7 +161,7 @@ Lifecycle:
 
 Supportability requires stronger provenance than just template identity.
 
-Event-local Layer 3 definitions and options must record:
+Event-local and session-local Layer 3 definitions and options must record:
 
 - source template identifier,
 - source template key,
@@ -157,12 +172,12 @@ Event-local Layer 3 definitions and options must record:
 
 The system must be able to answer:
 
-1. which template produced this event-local definition,
+1. which template produced this event-local or session-local definition,
 2. which version was used,
-3. when the event was instantiated,
+3. when the event or session was instantiated,
 4. whether the event diverged and whether a later sync happened.
 
-Template changes do not silently rewrite existing events.
+Template changes do not silently rewrite existing events or sessions.
 
 ## Projection And Moderation Boundary
 
@@ -177,9 +192,60 @@ Layer 3 enriches curation and local extension. It must not become the hidden rep
 Expected uniqueness scopes:
 
 - shared definitions: owning scope + `Namespace + Key`
-- template definitions: template + `Namespace + Key`
+- event template definitions: template + `Namespace + Key`
+- session template definitions: session template + `Namespace + Key`
 - event-local definitions: event + `Namespace + Key`
+- session-local definitions: session + `Namespace + Key`
 - options: local parent definition + `Namespace + Key`
+
+## Event And Session Layering
+
+### Event
+
+- Layer 1: parent-program core semantics
+- Layer 2: event-wide typed sector schema
+- Layer 3: event-local custom extensions, templates, and projections
+
+### EventSession
+
+- Layer 1: scheduled child-unit core semantics
+- Layer 2: session-wide typed sector schema
+- Layer 3: session-local custom extensions, session templates/blueprints, and projections
+
+### Scope Rule
+
+Choose scope first, then layer.
+
+- if a concept is true for the whole program, it belongs on `Event`
+- if a concept is true for a specific scheduled unit, it belongs on `EventSession`
+- if it is sector-standard, it belongs in Layer 2
+- if it is local long-tail semantics, it belongs in Layer 3
+
+## Lexicon / Contract Direction
+
+Canonical contracts should stay separate:
+
+- `...event.core`
+- `...eventsession.core`
+
+Typed Layer 2 contracts should stay separate:
+
+- `...event.islamic`
+- `...event.tech`
+- `...eventsession.islamic`
+- future session typed profile contracts as needed
+
+Layer 3 contracts should stay separate:
+
+- `...event.extension`
+- `...eventsession.extension`
+
+Aggregate read contracts may merge them:
+
+- `...event.view`
+- `...event.withSessions.view`
+
+Do not make the merged event-with-sessions view the canonical write contract.
 
 Soft deletion and retirement behavior must be explicit. Re-creation semantics must not be left accidental.
 

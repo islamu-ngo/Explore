@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "https://localhost:61916/"
+      "url": "https://localhost:61205/"
     }
   ],
   "paths": {
@@ -2336,6 +2336,367 @@
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
+            }
+          }
+        }
+      }
+    },
+    "/api/custompropertydefinition": {
+      "get": {
+        "tags": [
+          "CustomPropertyDefinition"
+        ],
+        "summary": "Get all CustomPropertyDefinitions",
+        "description": "Get a paginated list of shared custom-property definitions for one entity scope. Default page size is 20, max is 100. Response includes HATEOAS navigation links (first, prev, next, last). Send \u0027Prefer: return=minimal\u0027 header to strip links.",
+        "operationId": "GetCustomPropertyDefinitions",
+        "parameters": [
+          {
+            "name": "entityTypeName",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/EntityTypeName"
+            }
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfCustomPropertyDefinitionListDto"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfCustomPropertyDefinitionListDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "CustomPropertyDefinition"
+        ],
+        "summary": "Create CustomPropertyDefinition",
+        "description": "Create a new shared custom-property definition for Organization or Group scope.",
+        "operationId": "CreateCustomPropertyDefinition",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCustomPropertyDefinitionDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCustomPropertyDefinitionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/custompropertydefinition/{id}": {
+      "get": {
+        "tags": [
+          "CustomPropertyDefinition"
+        ],
+        "summary": "Get CustomPropertyDefinition Details",
+        "description": "Get full details of a custom property definition including its options. Response includes links to related resources (events, members).",
+        "operationId": "GetCustomPropertyDefinitionById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfCustomPropertyDefinitionDto"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfCustomPropertyDefinitionDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "CustomPropertyDefinition"
+        ],
+        "summary": "Update CustomPropertyDefinition",
+        "description": "Update an existing shared custom-property definition and replace its option set.",
+        "operationId": "UpdateCustomPropertyDefinition",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCustomPropertyDefinitionDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCustomPropertyDefinitionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "CustomPropertyDefinition"
+        ],
+        "operationId": "DeleteCustomPropertyDefinition",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
             }
           }
         }
@@ -17482,6 +17843,214 @@
           }
         }
       },
+      "CreateCustomPropertyDefinitionDto": {
+        "required": [
+          "namespace",
+          "key",
+          "displayName"
+        ],
+        "type": "object",
+        "properties": {
+          "entityTypeName": {
+            "$ref": "#/components/schemas/EntityTypeName"
+          },
+          "namespace": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "propertyType": {
+            "$ref": "#/components/schemas/PropertyType"
+          },
+          "isRequired": {
+            "type": "boolean"
+          },
+          "isMulti": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "exposureLevel": {
+            "$ref": "#/components/schemas/ExposureLevel"
+          },
+          "isSearchable": {
+            "type": "boolean"
+          },
+          "isFilterable": {
+            "type": "boolean"
+          },
+          "isExportable": {
+            "type": "boolean"
+          },
+          "isModerationRelevant": {
+            "type": "boolean"
+          },
+          "isAnalyticsRelevant": {
+            "type": "boolean"
+          },
+          "isSystemOwned": {
+            "type": "boolean"
+          },
+          "defaultTextValue": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "defaultNumberValue": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "defaultBooleanValue": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "defaultDateTimeValue": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "minLength": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "maxLength": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "regexPattern": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "minNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "maxNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "minDateTime": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "maxDateTime": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "allowedUrlSchemes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateCustomPropertyOptionDto"
+            }
+          }
+        }
+      },
+      "CreateCustomPropertyOptionDto": {
+        "required": [
+          "namespace",
+          "key",
+          "displayName",
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "namespace": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "value": {
+            "type": "string"
+          },
+          "isDefault": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "CreateEventDto": {
         "required": [
           "title"
@@ -18810,6 +19379,9 @@
             "type": "boolean"
           }
         }
+      },
+      "EntityTypeName": {
+        "type": "integer"
       },
       "EventDto": {
         "required": [
@@ -20741,6 +21313,9 @@
           }
         }
       },
+      "ExposureLevel": {
+        "type": "integer"
+      },
       "ExternalApiKeyListDto": {
         "required": [
           "name",
@@ -21036,6 +21611,14 @@
           }
         }
       },
+      "HalCollectionEmbeddedOfCustomPropertyDefinitionListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array"
+          }
+        }
+      },
       "HalCollectionEmbeddedOfEventListDto": {
         "type": "object",
         "properties": {
@@ -21201,6 +21784,58 @@
           },
           "_embedded": {
             "$ref": "#/components/schemas/HalCollectionEmbeddedOfCategoryListDto"
+          }
+        }
+      },
+      "HalCollectionResourceOfCustomPropertyDefinitionListDto": {
+        "type": "object",
+        "properties": {
+          "pageNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalPages": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "hasPrevious": {
+            "type": "boolean"
+          },
+          "hasNext": {
+            "type": "boolean"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            }
+          },
+          "_embedded": {
+            "$ref": "#/components/schemas/HalCollectionEmbeddedOfCustomPropertyDefinitionListDto"
           }
         }
       },
@@ -21913,6 +22548,7 @@
           }
         }
       },
+      "HalResourceOfCustomPropertyDefinitionDto": {},
       "HalResourceOfEventDto": {
         "type": "object",
         "properties": {
@@ -24446,6 +25082,9 @@
           }
         }
       },
+      "PropertyType": {
+        "type": "integer"
+      },
       "PublicExperienceSettingsDto": {
         "type": "object",
         "properties": {
@@ -25910,6 +26549,175 @@
               "string"
             ],
             "format": "uuid"
+          }
+        }
+      },
+      "UpdateCustomPropertyDefinitionDto": {
+        "required": [
+          "namespace",
+          "key",
+          "displayName"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "entityTypeName": {
+            "$ref": "#/components/schemas/EntityTypeName"
+          },
+          "namespace": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "propertyType": {
+            "$ref": "#/components/schemas/PropertyType"
+          },
+          "isRequired": {
+            "type": "boolean"
+          },
+          "isMulti": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "exposureLevel": {
+            "$ref": "#/components/schemas/ExposureLevel"
+          },
+          "isSearchable": {
+            "type": "boolean"
+          },
+          "isFilterable": {
+            "type": "boolean"
+          },
+          "isExportable": {
+            "type": "boolean"
+          },
+          "isModerationRelevant": {
+            "type": "boolean"
+          },
+          "isAnalyticsRelevant": {
+            "type": "boolean"
+          },
+          "isSystemOwned": {
+            "type": "boolean"
+          },
+          "defaultTextValue": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "defaultNumberValue": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "defaultBooleanValue": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "defaultDateTimeValue": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "minLength": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "maxLength": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "regexPattern": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "minNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "maxNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "minDateTime": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "maxDateTime": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "allowedUrlSchemes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateCustomPropertyOptionDto"
+            }
           }
         }
       },
@@ -27385,6 +28193,9 @@
     },
     {
       "name": "ContactShareConsent"
+    },
+    {
+      "name": "CustomPropertyDefinition"
     },
     {
       "name": "DidCustodyType"

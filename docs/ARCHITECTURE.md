@@ -59,11 +59,12 @@ Complex filtering uses a custom Specification Pattern:
 4. `ToCacheKeySuffix()` generates deterministic cache keys from active filter/sort state.
 
 ## Event Data Layers
-1. Layer 1 stores universal event semantics directly on `Event` and other first-class related entities.
+1. Layer 1 stores universal semantics directly on `Event`, `EventSession`, and other first-class related entities.
 2. Layer 2 stores sector-standard semantics in typed 1:1 schema such as `EventIslamicAspect`, `EventTechAspect`, and `EventSessionIslamicAspect`.
-3. Layer 3 stores tenant-specific long-tail extensions through governed custom-property entities and event-template/event-runtime rows.
-4. Layer 3 must not redefine or replace Layer 2 semantics; reserved namespaces and collision rules are part of the custom-properties architecture.
-5. `EventCustomPropertyProjection` and similar rows are derived read models for query optimization only; source of truth remains typed schema plus event-local custom-property rows.
+3. Layer 3 stores tenant-specific long-tail extensions through governed custom-property entities and event/session template/runtime rows.
+4. `Event` remains the parent program/container aggregate; `EventSession` remains the scheduled child aggregate.
+5. Layer 3 must not redefine or replace Layer 2 semantics; reserved namespaces and collision rules are part of the custom-properties architecture.
+6. `EventCustomPropertyProjection`, `EventSessionCustomPropertyProjection`, and aggregate event-with-sessions read views are derived query models only; source of truth remains typed schema plus event-local and session-local custom-property rows.
 
 ## Caching Architecture (3 Layers)
 1. **Output Cache** (HTTP response level): `LookupData` (1h), `ListData` (30s), `DetailData` (60s). Applied via `[OutputCache]` on endpoints.

@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Hateoas;  // For ILinkPolicy, ICollectionLin
 using Explore.Application.DTOs.Actor;
 using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.DTOs.Category;
+using Explore.Application.DTOs.CustomPropertyDefinition;
 using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventSession;
@@ -66,6 +67,11 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<CategoryDto>, CategoryDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<CategoryListDto>, CategoryCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<CategoryDto, CategoryListDto>, CategoryResourceAssembler>();
+
+        // CustomPropertyDefinition
+        services.AddScoped<ILinkPolicy<CustomPropertyDefinitionDto>, CustomPropertyDefinitionDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<CustomPropertyDefinitionListDto>, CustomPropertyDefinitionCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<CustomPropertyDefinitionDto, CustomPropertyDefinitionListDto>, CustomPropertyDefinitionResourceAssembler>();
 
         // Group
         services.AddScoped<ILinkPolicy<GroupDto>, GroupDetailLinkPolicy>();

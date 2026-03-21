@@ -1,5 +1,5 @@
-ABOUTME: Context file for the enterprise-grade EAV custom properties redesign.
-ABOUTME: Read this first when resuming so implementation follows the hardened extension-layer architecture.
+ABOUTME: Context file for the enterprise-grade EAV custom properties redesign across Event and EventSession.
+ABOUTME: Read this first when resuming so implementation follows the hardened extension-layer and parent/child aggregate architecture.
 
 # EAV Custom Properties - Context
 
@@ -10,6 +10,10 @@ ABOUTME: Read this first when resuming so implementation follows the hardened ex
 ## SESSION PROGRESS (2026-03-19)
 
 ### ✅ COMPLETED
+- Locked the architectural decision that `Event` remains the parent program/container aggregate and `EventSession` remains the scheduled child aggregate.
+- Locked the rule that both `Event` and `EventSession` use the same 3-layer model: Layer 1 universal core, Layer 2 typed sector schema, Layer 3 governed custom extensions.
+- Locked the rule that sessions may be rendered like first-class event cards in UI/search, but canonical persistence and write contracts remain separate from `Event`.
+- Added lexicon strategy direction: separate canonical event/session contracts, separate Layer 2 and Layer 3 lexicons, and aggregate event-with-sessions view lexicons for merged reads.
 - Re-reviewed the active EAV dev docs after the first blueprint/template revision.
 - Incorporated senior-architect feedback that hardens EAV beyond storage normalization.
 - Repositioned EAV as an **internal extension/configuration layer**, not the canonical home of discovery/policy-critical semantics.
@@ -55,16 +59,17 @@ ABOUTME: Read this first when resuming so implementation follows the hardened ex
   - `20260319164102_InitDevelopmentSchema.cs`
   - `20260319164102_InitDevelopmentSchema.Designer.cs`
   - `ExploreDbContextModelSnapshot.cs`
+- Updated the existing `Explore.API/Controllers/CustomPropertyDefinitionController.cs` instead of creating a parallel controller.
+- Added `Explore.API/Hateoas/Assemblers/CustomPropertyDefinitionResourceAssembler.cs` and wired custom-property HATEOAS registration in `Explore.API/Extensions/HateoasAssemblerRegistration.cs`.
+- Fixed `ResourceDescriptorRegistry` to include `CustomPropertyDefinitionDto` and `CustomPropertyDefinitionListDto` so HATEOAS permission metadata resolves correctly.
+- Added API integration coverage in `Event.API.IntegrationTests/Features/CustomPropertyDefinitionControllerTests.cs`.
+- Fixed `Explore.Infrastructure/Services/DeploymentModeProvider.cs` to fall back gracefully when distributed cache/Redis is not configured, instead of throwing before tenant resolution completes.
+- Manually verified the live endpoint with a Development host on an alternate port: `GET /api/custompropertydefinition?entityTypeName=Organization` now returns `200 OK` with a HAL collection payload.
 
 ### 🟡 IN PROGRESS
-- Application/API/Blazor integration has not started yet.
-- EF migration has not been generated yet for the new Layer 3 schema.
-- Application-layer validator/handler enforcement for reserved namespaces and collision rejection has not been wired yet.
-- CQRS handlers do not yet call the governance policy; the service is ready but not yet attached to create/update custom-property flows.
-- Shared-definition create CQRS now calls the governance policy; update/delete flows and event-template/runtime flows still do not.
-- Shared-definition create and update CQRS now call the governance policy; template/runtime flows still do not.
-- Shared-definition delete uses feature-specific delete semantics so machine-key recreation is not blocked by stale soft-deleted rows.
-- Design-time `ExploreDbContext` creation via `dotnet ef` now succeeds again.
+- Event template/runtime/projection work is only implemented for `Event`, not yet for `EventSession`.
+- Shared-definition API/Application/Persistence slices exist, but session-specific template/runtime flows do not yet exist.
+- Full `Event.API.IntegrationTests` still has unrelated pre-existing failures (for example `TenantSettings_GetAll_ShouldReturnUnauthorized`, `InstanceOnboarding` OpenFeature shutdown failures, and event multi-tag filter failures), so suite-level green is not yet attributable solely to this initiative.
 
 ### ⚠️ BLOCKERS
 - Workspace is still dirty with many unrelated user changes, so follow-up implementation must keep edits isolated.
@@ -80,6 +85,7 @@ ABOUTME: Read this first when resuming so implementation follows the hardened ex
 5. Do **not** treat raw EAV tables as the final discovery/search/publication query model.
 6. Do **not** reintroduce live runtime inheritance for events.
 7. Do **not** use Layer 3 custom properties as the default home for sector-standard semantics.
+8. Do **not** collapse `EventSession` into peer `Event` rows; use parent/child aggregates plus aggregate read views.
 
 ---
 
@@ -114,10 +120,11 @@ If a property becomes central to those areas, it must be:
 
 ## Approved Runtime Model
 
-### Layer 1 - Universal Event Core
+### Layer 1 - Universal Event And EventSession Core
 
 - universal event semantics stay on `Event` and related core relational entities
-- this remains the shared model across all sectors/domains
+- universal session semantics stay on `EventSession` and related core relational entities
+- both remain the shared Layer 1 model across all sectors/domains
 
 ### Layer 2 - Typed Sector Profiles / Aspects
 
@@ -137,6 +144,21 @@ If a property becomes central to those areas, it must be:
 - event runtime reads use only event-local state
 - template sync is explicit, version-aware, and operator-driven
 - this is Layer 3 behavior, not a replacement for Layer 2 typed schema
+
+### EventSession
+
+- event sessions remain child aggregates, not standalone peer events
+- session templates/blueprints define reusable session defaults under an event template
+- session creation instantiates session-local definitions/options/initial values
+- session runtime reads use only session-local state
+- session sync is explicit, version-aware, and operator-driven
+- this is Layer 3 behavior at session scope, not a replacement for Layer 2 typed session schema
+
+### Aggregate Views And Lexicons
+
+- aggregate read models may merge parent event data and child session summaries for UX/discovery/export
+- canonical contracts remain separate for event and session
+- lexicon direction is: separate canonical records, separate typed/extension records, plus merged event-with-sessions view contracts
 
 ### Projection Layer
 
@@ -180,7 +202,11 @@ If a property becomes central to those areas, it must be:
 - `docs/MODULAR_EVENTS.md`
   - current repo already models Layer 2 through typed 1:1 aspect tables with direct filters and module guards
 - `Explore.Domain/Event.cs`
-  - current code already uses first-class event appearance fields and a `StorageObject` reference instead of a metadata blob
+- current code already uses first-class event appearance fields and a `StorageObject` reference instead of a metadata blob
+- `Explore.Domain/EventSession.cs`
+  - session already exists as its own aggregate, which supports extending the 3-layer model instead of collapsing sessions into peer events
+- `Explore.Domain/EventSessionIslamicAspect.cs`
+  - session-specific typed Layer 2 precedent already exists in the repo
 
 ### AT Protocol Signals
 
@@ -194,7 +220,8 @@ If a property becomes central to those areas, it must be:
 - raw custom-property rows are internal extension/configuration data
 - publication/discovery/search/export behavior must flow through governed projections
 - machine keys and namespaces are mandatory so local extensions do not masquerade as global semantics
-- sector-standard semantics should follow the repo's existing typed aspect/profile pattern instead of deepening Layer 3 EAV
+- sector-standard event and session semantics should follow the repo's existing typed aspect/profile pattern instead of deepening Layer 3 EAV
+- aggregate views can merge parent event and child session data without collapsing canonical contracts
 
 ---
 
@@ -203,10 +230,12 @@ If a property becomes central to those areas, it must be:
 | Family | Purpose |
 |--------|---------|
 | Shared custom-property entities | Tenant-scoped Organization / Group extensions with namespaced identity and typed governance |
-| Typed sector profile/aspect entities | First-class Layer 2 schema for domain-standard event semantics |
+| Typed sector profile/aspect entities | First-class Layer 2 schema for domain-standard event and session semantics |
 | Event template entities | Versioned reusable event blueprints |
+| EventSession template entities | Versioned reusable session blueprints under an event template |
 | Event runtime entities | Event-owned definitions/options/values after instantiation or sync |
-| Projection entities | Read-optimized searchable/filterable/exportable event custom-property views |
+| EventSession runtime entities | Session-owned definitions/options/values after instantiation or sync |
+| Projection entities | Read-optimized searchable/filterable/exportable event and session custom-property views |
 
 ## Implemented In Current Slice
 

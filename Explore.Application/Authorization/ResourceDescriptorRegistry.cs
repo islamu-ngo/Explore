@@ -5,6 +5,7 @@ namespace Explore.Application.Authorization;
 
 using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.DTOs.Category;
+using Explore.Application.DTOs.CustomPropertyDefinition;
 using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventSession;
@@ -95,6 +96,10 @@ public static class ResourceDescriptorRegistry
         // Category
         [typeof(CategoryDto)] = "category",
         [typeof(CategoryListDto)] = "category",
+
+        // Custom Property Definition
+        [typeof(CustomPropertyDefinitionDto)] = "custom_property_definition",
+        [typeof(CustomPropertyDefinitionListDto)] = "custom_property_definition",
 
         // ATProto Record
         [typeof(AtprotoRecordDto)] = "atproto_record",
