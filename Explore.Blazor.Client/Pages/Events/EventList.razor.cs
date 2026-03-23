@@ -513,7 +513,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     {
         if (_eventCardClickOpensDetailPage)
         {
-            Navigation.NavigateTo($"/event/detail/{evt.Id}");
+            Navigation.NavigateTo($"/events/{evt.Id}");
             return;
         }
 
@@ -593,7 +593,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     private async Task CopyEventLinkAsync()
     {
         if (_selectedEvent?.Id == null) return;
-        var url = Navigation.ToAbsoluteUri($"/event/detail/{_selectedEvent.Id}").ToString();
+        var url = Navigation.ToAbsoluteUri($"/events/{_selectedEvent.Id}").ToString();
         await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", url);
         Snackbar.Add("Link copied to clipboard", Severity.Success, options => options.VisibleStateDuration = 2000);
     }
@@ -654,7 +654,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     private void NavigateToEdit(EventListDto evt)
     {
         if (evt.Id.HasValue)
-            Navigation.NavigateTo($"/event/edit/{evt.Id.Value}");
+            Navigation.NavigateTo($"/events/{evt.Id.Value}/edit");
     }
 
     private async Task OpenDeleteDialog(EventListDto evt)
@@ -783,6 +783,27 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         "POSTPONED" => Color.Warning,
         _ => Color.Default
     };
+
+    /// <summary>
+    /// Returns the profile page URL for the given actor, or null if no public profile exists for that actor type.
+    /// Organization (ActorTypeId=2) → /organization/profile/{id}.
+    /// </summary>
+    private static string? GetActorProfileUrl(Guid? actorId, int? actorTypeId)
+    {
+        if (actorId == null || actorTypeId == null) return null;
+        return actorTypeId.Value switch
+        {
+            2 => $"/organization/profile/{actorId.Value}",  // Organization
+            _ => null
+        };
+    }
+
+    private void NavigateToActorProfile(Guid? actorId, int? actorTypeId)
+    {
+        var url = GetActorProfileUrl(actorId, actorTypeId);
+        if (url != null)
+            Navigation.NavigateTo(url);
+    }
 
     private bool HasDetailTags()
     {

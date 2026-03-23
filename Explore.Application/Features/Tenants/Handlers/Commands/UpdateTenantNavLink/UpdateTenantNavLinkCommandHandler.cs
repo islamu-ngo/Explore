@@ -1,3 +1,5 @@
+// ABOUTME: Handler for updating a tenant navigation link.
+// ABOUTME: Validates input, fetches entity, applies updates.
 using System;
 using System.Threading;
 using System.Threading.Tasks;

@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a single language by ID.
+// ABOUTME: Maps Language entity to LanguageDto.
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;

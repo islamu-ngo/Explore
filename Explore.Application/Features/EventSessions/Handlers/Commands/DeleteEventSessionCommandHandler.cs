@@ -1,3 +1,5 @@
+// ABOUTME: Handler for deleting an event session.
+// ABOUTME: Fetches session by ID and delegates deletion to the repository.
 using System;
 using System.Threading;
 using System.Threading.Tasks;

@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for updating an existing AT Protocol record.
+// ABOUTME: Carries the UpdateAtprotoRecordDto payload.
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.Responses;

@@ -455,7 +455,7 @@ public class OrganizationPolicyModel
 
 public class BrandingSettingsModel
 {
-    public string DefaultBrandDisplayName { get; set; } = "ISLAMU Explore";
+    public string DefaultBrandDisplayName { get; set; } = string.Empty;
     public string DefaultBrandLogoUrl { get; set; } = string.Empty;
     public string DefaultBrandFaviconUrl { get; set; } = string.Empty;
     public string DefaultBrandCustomCssUrl { get; set; } = string.Empty;

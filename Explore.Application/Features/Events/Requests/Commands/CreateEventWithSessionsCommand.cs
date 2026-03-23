@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for creating an event with initial sessions.
+// ABOUTME: Carries CreateEventWithSessionsDto.
 using Explore.Application.DTOs.Event;
 using Explore.Application.Responses;
 using MediatR;

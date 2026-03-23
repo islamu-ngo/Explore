@@ -142,6 +142,8 @@ public class SettingRegistryTests
             GovernanceSettingKeys.Branding.LogoUrl,
             GovernanceSettingKeys.Branding.FaviconUrl,
             GovernanceSettingKeys.Branding.CustomCssUrl,
+            GovernanceSettingKeys.Appearance.DefaultThemeId,
+            GovernanceSettingKeys.Appearance.ThemeMode,
             GovernanceSettingKeys.Domains.InstanceBaseDomain,
             GovernanceSettingKeys.Domains.AllowTenantCustomDomain,
             GovernanceSettingKeys.Domains.TenantSubdomain,
@@ -228,6 +230,26 @@ public class SettingRegistryTests
         await Assert.That(definition).IsNotNull();
         await Assert.That(definition!.MinScope).IsEqualTo(SettingScope.Instance);
         await Assert.That(definition.MaxScope).IsEqualTo(SettingScope.Instance);
+    }
+
+    [Test]
+    public async Task Registry_AppearanceThemeModeSupportsUserOverrides()
+    {
+        var definition = SettingRegistry.Get(GovernanceSettingKeys.Appearance.ThemeMode);
+
+        await Assert.That(definition).IsNotNull();
+        await Assert.That(definition!.Category).IsEqualTo("Appearance");
+        await Assert.That(definition.MaxScope).IsEqualTo(SettingScope.User);
+        await Assert.That(definition.AllowedValues).IsEquivalentTo(new[] { "system", "light", "dark" });
+    }
+
+    [Test]
+    public async Task Registry_EventCardClickBehaviorSupportsUserOverrides()
+    {
+        var definition = SettingRegistry.Get(GovernanceSettingKeys.Events.CardClickOpensDetailPage);
+
+        await Assert.That(definition).IsNotNull();
+        await Assert.That(definition!.MaxScope).IsEqualTo(SettingScope.User);
     }
 
     [Test]

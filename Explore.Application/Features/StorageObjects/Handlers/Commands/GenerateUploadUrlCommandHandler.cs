@@ -1,3 +1,5 @@
+// ABOUTME: Handler for generating a pre-signed upload URL for direct client-side storage upload.
+// ABOUTME: Calls the storage provider to produce a time-limited upload URL.
 using System;
 using System.Collections.Generic;
 using System.Text;

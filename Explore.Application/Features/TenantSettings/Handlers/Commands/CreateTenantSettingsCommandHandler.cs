@@ -1,3 +1,5 @@
+// ABOUTME: Handler for creating tenant settings with validation.
+// ABOUTME: Validates input, maps DTO, persists via repository.
 using AutoMapper;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;

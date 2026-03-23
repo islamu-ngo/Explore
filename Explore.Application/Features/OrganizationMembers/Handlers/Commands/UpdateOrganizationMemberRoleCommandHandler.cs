@@ -1,3 +1,6 @@
+// ABOUTME: Handler for changing a member's role within an organization.
+// ABOUTME: Validates OrgAdmin authorization and applies the new role.
+
 using System;
 using System.Linq;
 using System.Threading;

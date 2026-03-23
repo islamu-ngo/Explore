@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for creating a new tag.
+// ABOUTME: Carries the CreateTagDto payload.
 using System;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.Tag;

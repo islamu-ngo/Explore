@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using Explore.Domain;
+using Explore.Domain.Enums;
 
 namespace Explore.Application.Specifications.Events;
 
@@ -143,4 +144,14 @@ public sealed class EventFilter : IFilterSpecification<Event>
     /// </summary>
     public static EventFilter RegistrationRequired() =>
         new(e => e.IsRegistrationRequired);
+
+    /// <summary>
+    /// Filters events to only those publicly visible in discovery listings.
+    /// Excludes Draft and Archived statuses, and Unlisted/Private/MembersOnly visibility types.
+    /// Shows only Public visibility events with Published, Cancelled, or Completed status.
+    /// </summary>
+    public static EventFilter PubliclyDiscoverable() =>
+        new(e => e.VisibilityTypeId == (int)VisibilityTypeEnum.Public
+                 && e.EventStatusId != (int)EventStatusEnum.Draft
+                 && e.EventStatusId != (int)EventStatusEnum.Archived);
 }

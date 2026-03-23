@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning all event registrations for a specific user.
+// ABOUTME: Used for My Registrations user profile view.
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;

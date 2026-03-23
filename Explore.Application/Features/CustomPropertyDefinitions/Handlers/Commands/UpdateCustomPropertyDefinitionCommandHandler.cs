@@ -24,19 +24,22 @@ public class UpdateCustomPropertyDefinitionCommandHandler : IRequestHandler<Upda
     private readonly ICurrentUserService _currentUserService;
     private readonly IMapper _mapper;
     private readonly HybridCache _cache;
+    private readonly IUnitOfWork _unitOfWork;
 
     public UpdateCustomPropertyDefinitionCommandHandler(
         ICustomPropertyDefinitionRepository customPropertyDefinitionRepository,
         ICustomPropertyGovernancePolicy customPropertyGovernancePolicy,
         ICurrentUserService currentUserService,
         IMapper mapper,
-        HybridCache cache)
+        HybridCache cache,
+        IUnitOfWork unitOfWork)
     {
         _customPropertyDefinitionRepository = customPropertyDefinitionRepository;
         _customPropertyGovernancePolicy = customPropertyGovernancePolicy;
         _currentUserService = currentUserService;
         _mapper = mapper;
         _cache = cache;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateCustomPropertyDefinitionCommand request, CancellationToken cancellationToken)
@@ -92,7 +95,9 @@ public class UpdateCustomPropertyDefinitionCommandHandler : IRequestHandler<Upda
         var options = CreateOptionEntities(request.DefinitionDto.Options, definition.Id);
         var defaultOption = options.SingleOrDefault(x => x.IsDefault);
 
-        await _customPropertyDefinitionRepository.UpdateWithOptions(definition, options, defaultOption?.Id, cancellationToken);
+        await _unitOfWork.ExecuteInTransactionAsync(
+            ct => _customPropertyDefinitionRepository.UpdateWithOptions(definition, options, defaultOption?.Id, ct),
+            cancellationToken);
 
         response.Success = true;
         response.Id = definition.Id;

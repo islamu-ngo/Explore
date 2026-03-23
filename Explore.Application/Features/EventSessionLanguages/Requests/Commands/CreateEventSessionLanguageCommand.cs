@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for adding a language to an event session.
+// ABOUTME: Carries the CreateEventSessionLanguageDto payload.
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventSessionLanguage;
 using Explore.Application.Responses;

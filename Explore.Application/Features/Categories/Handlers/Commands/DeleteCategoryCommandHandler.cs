@@ -1,3 +1,5 @@
+// ABOUTME: Handler for deleting a category.
+// ABOUTME: Fetches category by ID and delegates deletion to the repository.
 using System;
 using System.Threading;
 using System.Threading.Tasks;

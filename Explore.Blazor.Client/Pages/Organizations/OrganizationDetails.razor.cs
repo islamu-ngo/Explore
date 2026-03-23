@@ -1,3 +1,6 @@
+// ABOUTME: Code-behind for the OrganizationDetails page.
+// ABOUTME: Loads organization info, edit permissions, and public events by this organization.
+
 using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
@@ -13,6 +16,7 @@ public partial class OrganizationDetails
 {
     [Inject] protected IOrganizationService OrganizationService { get; set; } = null!;
     [Inject] protected IOrganizationMemberService MemberService { get; set; } = null!;
+    [Inject] protected IEventService EventService { get; set; } = null!;
     [Inject] protected NavigationManager NavigationManager { get; set; } = null!;
     [Inject] protected AuthenticationStateProvider AuthenticationStateProvider { get; set; } = null!;
     [Inject] protected RouterStateService RouterState { get; set; } = null!;
@@ -30,10 +34,20 @@ public partial class OrganizationDetails
     private string? currentUserId;
     private int? currentUserRole;
 
+    private ICollection<EventListDto> _orgEvents = new List<EventListDto>();
+
     private UpdateOrganizationDto editModel = new();
     private OrganizationAppearanceSettings _appearance = new();
     private MudForm? form;
     private bool formValid;
+
+    private IEnumerable<EventListDto> UpcomingEvents =>
+        _orgEvents.Where(e => e.IsPast != true)
+                  .OrderBy(e => e.FirstSessionDate ?? DateTimeOffset.MaxValue);
+
+    private IEnumerable<EventListDto> PastEvents =>
+        _orgEvents.Where(e => e.IsPast == true)
+                  .OrderByDescending(e => e.FirstSessionDate ?? DateTimeOffset.MinValue);
 
     protected override async Task OnInitializedAsync()
     {
@@ -118,7 +132,10 @@ public partial class OrganizationDetails
             if (organization != null)
             {
                 Logger.LogDebug("Loaded organization: {OrganizationName}", organization.FullName);
-                await CheckEditPermissions();
+                var permissionsTask = CheckEditPermissions();
+                var eventsTask = EventService.GetPublicEventsByActorAsync(Id);
+                await Task.WhenAll(permissionsTask, eventsTask);
+                _orgEvents = eventsTask.Result;
                 InitializeEditModel();
             }
             else

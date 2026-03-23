@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for removing an indexed DID by ID.
+// ABOUTME: Carries the target DID record ID.
 using Explore.Application.Authorization;
 using MediatR;
 

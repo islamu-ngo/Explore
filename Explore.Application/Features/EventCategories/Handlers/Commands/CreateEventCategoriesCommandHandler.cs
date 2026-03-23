@@ -1,3 +1,5 @@
+// ABOUTME: Handler for creating event-to-category link records with validation.
+// ABOUTME: Validates input and persists the event-category junction entity.
 using System;
 using System.Linq;
 using System.Threading;

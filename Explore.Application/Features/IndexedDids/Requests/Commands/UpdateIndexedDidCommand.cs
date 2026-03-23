@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for updating an indexed DID record.
+// ABOUTME: Carries the UpdateIndexedDidDto payload.
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.IndexedDid;
 using Explore.Application.Responses;

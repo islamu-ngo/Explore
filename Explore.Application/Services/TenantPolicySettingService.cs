@@ -16,8 +16,45 @@ namespace Explore.Application.Services;
 
 public class TenantPolicySettingService : ITenantPolicySettingService
 {
-    private const string DefaultBrandDisplayName = "ISLAMU Explore";
+    private const string DefaultBrandDisplayName = "";
     private const string DefaultPublicHomePage = "EventList";
+    private const string DefaultCommunityGuidelinesContent =
+        "# Community Guidelines\n\n" +
+        "## Our Community\n\n" +
+        "This platform is a space for sharing events with our community. To ensure a positive experience for everyone, we ask all event organizers and participants to follow these guidelines.\n\n" +
+        "## Event Posting Standards\n\n" +
+        "**Accuracy and Transparency**\n" +
+        "- Provide complete and accurate event information including date, time, location, and organizer details.\n" +
+        "- Clearly describe what attendees can expect from your event.\n" +
+        "- Notify attendees promptly of any changes, cancellations, or updates.\n\n" +
+        "**Appropriate Content**\n" +
+        "- Events must be relevant to the community and align with the platform's purpose.\n" +
+        "- Event titles and descriptions must be truthful and not misleading.\n" +
+        "- Do not post duplicate or spam events.\n\n" +
+        "**Inclusive and Respectful Language**\n" +
+        "- Use welcoming, inclusive language in event descriptions and communications.\n" +
+        "- Events must not promote discrimination based on race, ethnicity, religion, gender, disability, or any other protected characteristic.\n" +
+        "- Maintain respectful communication with attendees and other organizers.\n\n" +
+        "## Prohibited Content\n\n" +
+        "The following types of events and content are not permitted on this platform:\n\n" +
+        "- Events that promote illegal activities or violate applicable laws\n" +
+        "- Hateful, discriminatory, or violent content\n" +
+        "- Harassment or targeted abuse of individuals or groups\n" +
+        "- Deceptive, fraudulent, or misleading events\n" +
+        "- Spam or commercially exploitative content\n\n" +
+        "## Participation Guidelines\n\n" +
+        "**As an Attendee**\n" +
+        "- Respect the organizer's event rules and code of conduct.\n" +
+        "- Be courteous to other attendees and event staff.\n" +
+        "- Cancel your registration if your plans change.\n\n" +
+        "**As an Organizer**\n" +
+        "- Respond to attendee inquiries in a timely manner.\n" +
+        "- Enforce a safe and welcoming environment at your events.\n" +
+        "- Honor the commitments made in your event listing.\n\n" +
+        "## Reporting Violations\n\n" +
+        "If you encounter content or behavior that violates these guidelines, please report it to the platform administrators. All reports are taken seriously.\n\n" +
+        "## Consequences\n\n" +
+        "Violations of these guidelines may result in removal of the event listing, a warning, temporary suspension, or permanent removal from the platform for serious or repeated violations.";
 
     private readonly ISystemSettingRepository _systemSettingRepository;
     private readonly ITenantSettingRepository _tenantSettingRepository;
@@ -65,6 +102,7 @@ public class TenantPolicySettingService : ITenantPolicySettingService
         var systemLockSmtp = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockSmtp);
         var systemLockStorage = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockStorage);
         var systemLockAnalytics = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockAnalytics);
+        var systemCommunityGuidelines = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Policies.CommunityGuidelinesContent);
         var systemRenderPreset = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.Preset);
         var systemRenderAdvanced = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.AdvancedEnabled);
         var systemGlobalRenderMode = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.Fallback.RenderMode);
@@ -91,6 +129,7 @@ public class TenantPolicySettingService : ITenantPolicySettingService
         var tenantBrandLogoUrl = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Branding.LogoUrl);
         var tenantBrandFaviconUrl = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Branding.FaviconUrl);
         var tenantBrandCustomCssUrl = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Branding.CustomCssUrl);
+        var tenantCommunityGuidelines = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Policies.CommunityGuidelinesContent);
 
         var allowTenantRenderOverride = DeserializeBoolean(systemAllowTenantRenderOverride?.Value, false);
         var canOverridePublicSeo = allowTenantRenderOverride && !DeserializeBoolean(systemLockPublicSeo?.Value, false);
@@ -174,7 +213,7 @@ public class TenantPolicySettingService : ITenantPolicySettingService
                 tenantBrandDisplayName?.Value,
                 systemBrandDisplayName?.Value,
                 DefaultBrandDisplayName,
-                isTenantWhiteLabelingEnabled && systemBrandDisplayName?.IsLocked != true),
+                systemBrandDisplayName?.IsLocked != true),
             BrandLogoUrl = ResolveString(
                 tenantBrandLogoUrl?.Value,
                 systemBrandLogoUrl?.Value,
@@ -193,7 +232,7 @@ public class TenantPolicySettingService : ITenantPolicySettingService
             CanOverrideHomePagePreference = canOverrideHomePage,
             CanOverrideSubdomain = canOverrideSubdomain,
             CanOverrideCustomDomain = canOverrideCustomDomain,
-            CanOverrideBrandDisplayName = isTenantWhiteLabelingEnabled && systemBrandDisplayName?.IsLocked != true,
+            CanOverrideBrandDisplayName = systemBrandDisplayName?.IsLocked != true,
             CanOverrideBrandLogoUrl = isTenantWhiteLabelingEnabled && systemBrandLogoUrl?.IsLocked != true,
             CanOverrideBrandFaviconUrl = isTenantWhiteLabelingEnabled && systemBrandFaviconUrl?.IsLocked != true,
             CanOverrideBrandCustomCssUrl = isTenantWhiteLabelingEnabled && systemBrandCustomCssUrl?.IsLocked != true,
@@ -264,7 +303,13 @@ public class TenantPolicySettingService : ITenantPolicySettingService
             CanOverrideAdminRenderPolicy = canOverrideAdmin,
             CanOverrideSmtp = !DeserializeBoolean(systemLockSmtp?.Value, true),
             CanOverrideStorage = !DeserializeBoolean(systemLockStorage?.Value, true),
-            CanOverrideAnalytics = !DeserializeBoolean(systemLockAnalytics?.Value, true)
+            CanOverrideAnalytics = !DeserializeBoolean(systemLockAnalytics?.Value, true),
+            CommunityGuidelinesContent = ResolveString(
+                tenantCommunityGuidelines?.Value,
+                systemCommunityGuidelines?.Value,
+                DefaultCommunityGuidelinesContent,
+                systemCommunityGuidelines?.IsLocked != true),
+            CanOverrideCommunityGuidelines = systemCommunityGuidelines?.IsLocked != true
         };
     }
 
@@ -289,6 +334,7 @@ public class TenantPolicySettingService : ITenantPolicySettingService
         var brandLogoUrlSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.LogoUrl);
         var brandFaviconUrlSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.FaviconUrl);
         var brandCustomCssUrlSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Branding.CustomCssUrl);
+        var communityGuidelinesSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Policies.CommunityGuidelinesContent);
         var allowTenantRenderOverrideSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.AllowTenantOverride);
         var lockPublicSeoSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.LockTenantPublicSeo);
         var lockOperationalSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.LockTenantOperational);
@@ -407,6 +453,13 @@ public class TenantPolicySettingService : ITenantPolicySettingService
             GovernanceSettingKeys.Branding.CustomCssUrl,
             settings.BrandCustomCssUrl,
             isTenantWhiteLabelingEnabled && brandCustomCssUrlSetting?.IsLocked != true,
+            actorUserId);
+
+        await SetStringTenantOverrideAsync(
+            tenantId,
+            GovernanceSettingKeys.Policies.CommunityGuidelinesContent,
+            settings.CommunityGuidelinesContent,
+            communityGuidelinesSetting?.IsLocked != true,
             actorUserId);
 
         var allowTenantRenderOverride = DeserializeBoolean(allowTenantRenderOverrideSetting?.Value, false);

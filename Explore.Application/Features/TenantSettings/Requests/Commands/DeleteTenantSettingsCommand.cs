@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for deleting a tenant settings record by ID.
+// ABOUTME: Carries the target record ID.
 using Explore.Application.Authorization;
 using MediatR;
 

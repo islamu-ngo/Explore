@@ -1,3 +1,5 @@
+// ABOUTME: Handler for creating a new storage object metadata record with validation.
+// ABOUTME: Validates input, maps DTO, links to actor, persists via repository.
 using AutoMapper;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;

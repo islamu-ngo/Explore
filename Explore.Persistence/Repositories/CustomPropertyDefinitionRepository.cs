@@ -72,30 +72,21 @@ public class CustomPropertyDefinitionRepository : GenericRepository<CustomProper
         Guid? defaultOptionId,
         CancellationToken cancellationToken)
     {
-        var executionStrategy = _dbContext.Database.CreateExecutionStrategy();
+        await _dbContext.CustomPropertyDefinitions.AddAsync(definition, cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
 
-        await executionStrategy.ExecuteAsync(async () =>
+        if (options.Count > 0)
         {
-            await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
-
-            await _dbContext.CustomPropertyDefinitions.AddAsync(definition, cancellationToken);
+            await _dbContext.CustomPropertyOptions.AddRangeAsync(options, cancellationToken);
             await _dbContext.SaveChangesAsync(cancellationToken);
+        }
 
-            if (options.Count > 0)
-            {
-                await _dbContext.CustomPropertyOptions.AddRangeAsync(options, cancellationToken);
-                await _dbContext.SaveChangesAsync(cancellationToken);
-            }
-
-            if (defaultOptionId.HasValue)
-            {
-                definition.DefaultOptionId = defaultOptionId;
-                _dbContext.Entry(definition).State = EntityState.Modified;
-                await _dbContext.SaveChangesAsync(cancellationToken);
-            }
-
-            await transaction.CommitAsync(cancellationToken);
-        });
+        if (defaultOptionId.HasValue)
+        {
+            definition.DefaultOptionId = defaultOptionId;
+            _dbContext.Entry(definition).State = EntityState.Modified;
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
 
         return await GetDefinitionWithDetails(definition.Id) ?? definition;
     }
@@ -106,64 +97,38 @@ public class CustomPropertyDefinitionRepository : GenericRepository<CustomProper
         Guid? defaultOptionId,
         CancellationToken cancellationToken)
     {
-        var executionStrategy = _dbContext.Database.CreateExecutionStrategy();
+        definition.DefaultOptionId = null;
+        _dbContext.Entry(definition).State = EntityState.Modified;
+        await _dbContext.SaveChangesAsync(cancellationToken);
 
-        await executionStrategy.ExecuteAsync(async () =>
+        await _dbContext.CustomPropertyOptions
+            .IgnoreQueryFilters()
+            .Where(x => x.CustomPropertyDefinitionId == definition.Id)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        if (options.Count > 0)
         {
-            await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+            await _dbContext.CustomPropertyOptions.AddRangeAsync(options, cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
 
-            definition.DefaultOptionId = null;
+        if (defaultOptionId.HasValue)
+        {
+            definition.DefaultOptionId = defaultOptionId;
             _dbContext.Entry(definition).State = EntityState.Modified;
             await _dbContext.SaveChangesAsync(cancellationToken);
-
-            await _dbContext.CustomPropertyOptions
-                .IgnoreQueryFilters()
-                .Where(x => x.CustomPropertyDefinitionId == definition.Id)
-                .ExecuteDeleteAsync(cancellationToken);
-
-            if (options.Count > 0)
-            {
-                await _dbContext.CustomPropertyOptions.AddRangeAsync(options, cancellationToken);
-                await _dbContext.SaveChangesAsync(cancellationToken);
-            }
-
-            if (defaultOptionId.HasValue)
-            {
-                definition.DefaultOptionId = defaultOptionId;
-                _dbContext.Entry(definition).State = EntityState.Modified;
-                await _dbContext.SaveChangesAsync(cancellationToken);
-            }
-
-            await transaction.CommitAsync(cancellationToken);
-        });
+        }
 
         return await GetDefinitionWithDetails(definition.Id) ?? definition;
     }
 
     public async Task<bool> DeleteDefinition(Guid id, CancellationToken cancellationToken)
     {
-        var executionStrategy = _dbContext.Database.CreateExecutionStrategy();
-        var deleted = false;
+        var affectedRows = await _dbContext.CustomPropertyDefinitions
+            .IgnoreQueryFilters()
+            .Where(x => x.Id == id)
+            .ExecuteDeleteAsync(cancellationToken);
 
-        await executionStrategy.ExecuteAsync(async () =>
-        {
-            await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
-
-            var affectedRows = await _dbContext.CustomPropertyDefinitions
-                .IgnoreQueryFilters()
-                .Where(x => x.Id == id)
-                .ExecuteDeleteAsync(cancellationToken);
-
-            if (affectedRows == 0)
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                return;
-            }
-
-            deleted = true;
-            await transaction.CommitAsync(cancellationToken);
-        });
-
-        return deleted;
+        return affectedRows > 0;
     }
 }

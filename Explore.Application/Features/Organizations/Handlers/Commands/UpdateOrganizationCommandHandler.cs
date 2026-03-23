@@ -1,3 +1,5 @@
+// ABOUTME: Handler for updating top-level organization metadata with validation.
+// ABOUTME: Validates input and applies updates via repository.
 using System;
 using System.Collections.Generic;
 using System.Text;

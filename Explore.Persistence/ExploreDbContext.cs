@@ -215,6 +215,18 @@ public class ExploreDbContext : DbContext
 
         modelBuilder.Entity<TenantNavigationLink>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+
+        // Footer link groups: instance-default groups (TenantId = null) are always visible;
+        // tenant-owned groups respect the tenant filter (same pattern as EventType).
+        modelBuilder.Entity<TenantFooterLinkGroup>()
+            .HasQueryFilter(QueryFilterNames.Tenant,
+                e => e.TenantId == null
+                    || TenantContext == null
+                    || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+
+        // Footer links have no TenantId — isolation flows through the parent group query filter.
+        // No additional filter needed; EF will respect the parent filter via navigation includes.
+
         modelBuilder.Entity<TenantInvitation>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
         // ===== Module Governance Entities =====
@@ -310,6 +322,8 @@ public class ExploreDbContext : DbContext
     public DbSet<TenantLifecycleLog> TenantLifecycleLogs { get; set; }
     public DbSet<PlatformUserRole> PlatformUserRoles { get; set; }
     public DbSet<TenantNavigationLink> TenantNavigationLinks { get; set; }
+    public DbSet<TenantFooterLinkGroup> TenantFooterLinkGroups { get; set; }
+    public DbSet<TenantFooterLink> TenantFooterLinks { get; set; }
     public DbSet<InstanceBootstrapState> InstanceBootstrapStates { get; set; }
 
     // ===== Governance Policy Aggregates =====
@@ -414,6 +428,7 @@ public class ExploreDbContext : DbContext
     public DbSet<UserPreference> UserPreferences { get; set; }
     public DbSet<AppSetting> AppSettings { get; set; }
     public DbSet<ConfigurationChangeLog> ConfigurationChangeLogs { get; set; }
+    public DbSet<UiTheme> UiThemes { get; set; }
 
     // ===== Audit & Notifications =====
     public DbSet<AuditLog> AuditLogs { get; set; }

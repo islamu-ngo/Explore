@@ -1,3 +1,5 @@
+// ABOUTME: MediatR query request for fetching a single actor key store by ID.
+// ABOUTME: Returns ActorKeyStoreDto.
 using Explore.Application.DTOs.ActorKeyStore;
 using MediatR;
 

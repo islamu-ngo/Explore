@@ -53,7 +53,7 @@ public partial class NavMenu : IDisposable
     private bool _dropdownOpen = false;
     private UserDto? _currentUser;
     private bool _userLoaded = false;
-    private string _brandDisplayName = "ISLAMU Explore";
+    private string _brandDisplayName = string.Empty;
     private string _brandLogoUrl = string.Empty;
     public string SearchQuery { get; set; } = "";
     private MudTextField<string> _searchField = null!;

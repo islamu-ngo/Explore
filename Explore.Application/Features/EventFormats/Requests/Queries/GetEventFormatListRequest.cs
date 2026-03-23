@@ -1,3 +1,5 @@
+// ABOUTME: MediatR query request for fetching all event formats.
+// ABOUTME: Returns IEnumerable<EventFormatDto>.
 using System.Collections.Generic;
 using Explore.Application.DTOs.EventFormat;
 using MediatR;

@@ -1,3 +1,5 @@
+// ABOUTME: MediatR query request for fetching a filtered, paginated event list.
+// ABOUTME: Returns PaginatedResult<EventListDto>.
 using Explore.Application.DTOs.Event;
 using Explore.Application.Responses;
 using Explore.Application.Specifications.Events;

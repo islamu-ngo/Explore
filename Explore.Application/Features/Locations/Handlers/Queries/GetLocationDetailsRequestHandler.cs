@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a single event location by ID.
+// ABOUTME: Maps Location entity to LocationDto.
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;

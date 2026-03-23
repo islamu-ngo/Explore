@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for updating a tag-to-tag-type link.
+// ABOUTME: Carries the UpdateTagTypeTagsDto payload.
 using Explore.Application.DTOs.TagTypeTags;
 using Explore.Application.Responses;
 using MediatR;

@@ -1,3 +1,5 @@
+// ABOUTME: Handler for creating a new event registration with validation.
+// ABOUTME: Validates input, enforces capacity, persists registration, invalidates cache.
 using System;
 using System.Linq;
 using System.Threading;

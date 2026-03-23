@@ -10,6 +10,7 @@
 @inject ITenantOnboardingService TenantOnboardingService
 @inject IPublicExperienceService PublicExperienceService
 @inject ISnackbar Snackbar
+@inject NavigationManager Navigation
 
 <div class="settings-layout">
     <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
@@ -78,121 +79,26 @@
                 <MudItem xs="3" sm="3" md="3">
                     <MudPaper Elevation="0" Class="settings-sidebar pa-0">
                         <MudList T="string" Dense="false" DisablePadding="true">
-                            @if (IsSingleTenantMode)
-                            {
-                                <MudListItem Icon="@Icons.Material.Filled.Settings"
-                                             Text="General"
-                                             Class="@GetNavItemClass("governance")"
-                                             OnClick="@(() => SelectSection("governance"))" />
-                                <MudListItem Icon="@Icons.Material.Filled.People"
-                                             Text="Members"
-                                             Class="@GetNavItemClass("members")"
-                                             OnClick="@(() => SelectSection("members"))" />
-                                <MudListItem Icon="@Icons.Material.Filled.Business"
-                                             Text="Organizations"
-                                             Class="@GetNavItemClass("organizations")"
-                                             OnClick="@(() => SelectSection("organizations"))" />
-                                <MudListItem Icon="@Icons.Material.Filled.TableChart"
-                                             Text="Lookup Tables"
-                                             Class="@GetNavItemClass("lookups")"
-                                             OnClick="@(() => SelectSection("lookups"))" />
-                                <MudListItem Icon="@Icons.Material.Filled.Policy"
-                                             Text="Policies"
-                                             Class="@GetNavItemClass("policies")"
-                                             OnClick="@(() => SelectSection("policies"))" />
-                                <MudListItem Icon="@Icons.Material.Filled.Visibility"
-                                             Text="Appearance"
-                                             Class="@GetNavItemClass("appearance")"
-                                             OnClick="@(() => SelectSection("appearance"))" />
-                                <MudListItem Icon="@Icons.Material.Filled.Key"
-                                             Text="Auth Providers"
-                                             Class="@GetNavItemClass("auth-providers")"
-                                             OnClick="@(() => SelectSection("auth-providers"))" />
-                                <MudListItem Icon="@Icons.Material.Filled.Extension"
-                                             Text="Modules"
-                                             Class="@GetNavItemClass("modules")"
-                                             OnClick="@(() => SelectSection("modules"))" />
-                                <MudListItem Icon="@Icons.Material.Filled.Language"
-                                             Text="Domain"
-                                             Class="@GetNavItemClass("domain")"
-                                             OnClick="@(() => SelectSection("domain"))" />
-                                <MudListItem Icon="@Icons.Material.Filled.Cloud"
-                                             Text="Object Storage"
-                                             Class="@GetNavItemClass("storage")"
-                                             OnClick="@(() => SelectSection("storage"))" />
-                                <MudListItem Icon="@Icons.Material.Filled.AlternateEmail"
-                                             Text="SMTP"
-                                             Class="@GetNavItemClass("smtp")"
-                                             OnClick="@(() => SelectSection("smtp"))" />
-                                <MudListItem Icon="@Icons.Material.Filled.Analytics"
-                                             Text="Analytics & Privacy"
-                                             Class="@GetNavItemClass("analytics-privacy")"
-                                             OnClick="@(() => SelectSection("analytics-privacy"))" />
-
-                                <!-- Advanced Section -->
-                                <div class="settings-nav-separator">
-                                    <MudText Typo="Typo.overline" Color="Color.Secondary" Class="settings-nav-separator__label">Advanced</MudText>
-                                </div>
-                                <MudListItem Icon="@Icons.Material.Filled.DisplaySettings"
-                                             Text="Render Policies"
-                                             Class="@GetNavItemClass("render-policies")"
-                                             OnClick="@(() => SelectSection("render-policies"))" />
-                                <MudListItem Icon="@Icons.Material.Filled.SwapHoriz"
-                                             Text="Multi-Tenancy"
-                                             Class="@GetNavItemClass("multi-tenancy")"
-                                             OnClick="@(() => SelectSection("multi-tenancy"))" />
-
-                                <!-- Developer Section -->
-                                <div class="settings-nav-separator">
-                                    <MudText Typo="Typo.overline" Color="Color.Secondary" Class="settings-nav-separator__label">Developer</MudText>
-                                </div>
-                                <MudListItem Icon="@Icons.Material.Filled.Key"
-                                             Text="Access Tokens"
-                                             Class="@GetNavItemClass("access-tokens")"
-                                             OnClick="@(() => SelectSection("access-tokens"))" />
-                                <MudListItem Icon="@Icons.Material.Filled.Webhook"
-                                             Text="Webhooks"
-                                             Class="@GetNavItemClass("webhooks")"
-                                             OnClick="@(() => SelectSection("webhooks"))" />
+                            @{
+                                string? renderedGroup = null;
                             }
-                            else
+                            @foreach (var navItem in BuildNavItems(IsSingleTenantMode))
                             {
-                                <MudListItem Icon="@Icons.Material.Filled.Gavel"
-                                             Text="Governance"
-                                             Class="@GetNavItemClass("governance")"
-                                             OnClick="@(() => SelectSection("governance"))" />
-                                <MudListItem Icon="@Icons.Material.Filled.Language"
-                                             Text="Domain"
-                                             Class="@GetNavItemClass("domain")"
-                                             OnClick="@(() => SelectSection("domain"))" />
-                                <MudListItem Icon="@Icons.Material.Filled.Palette"
-                                             Text="Branding"
-                                             Class="@GetNavItemClass("branding")"
-                                             OnClick="@(() => SelectSection("branding"))" />
-                                <MudListItem Icon="@Icons.Material.Filled.Key"
-                                             Text="Auth Providers"
-                                             Class="@GetNavItemClass("auth-providers")"
-                                             OnClick="@(() => SelectSection("auth-providers"))" />
-                                <MudListItem Icon="@Icons.Material.Filled.Extension"
-                                             Text="Modules"
-                                             Class="@GetNavItemClass("modules")"
-                                             OnClick="@(() => SelectSection("modules"))" />
-                                <MudListItem Icon="@Icons.Material.Filled.Cloud"
-                                             Text="Object Storage"
-                                             Class="@GetNavItemClass("storage")"
-                                             OnClick="@(() => SelectSection("storage"))" />
-                                <MudListItem Icon="@Icons.Material.Filled.AlternateEmail"
-                                             Text="SMTP"
-                                             Class="@GetNavItemClass("smtp")"
-                                             OnClick="@(() => SelectSection("smtp"))" />
-                                <MudListItem Icon="@Icons.Material.Filled.Analytics"
-                                             Text="Analytics & Privacy"
-                                             Class="@GetNavItemClass("analytics-privacy")"
-                                             OnClick="@(() => SelectSection("analytics-privacy"))" />
-                                <MudListItem Icon="@Icons.Material.Filled.DomainAdd"
-                                             Text="Tenants"
-                                             Class="@GetNavItemClass("tenants")"
-                                             OnClick="@(() => SelectSection("tenants"))" />
+                                if (navItem.Group != renderedGroup)
+                                {
+                                    renderedGroup = navItem.Group;
+                                    if (renderedGroup is not null)
+                                    {
+                                        <div class="settings-nav-separator">
+                                            <MudText Typo="Typo.overline" Color="Color.Secondary" Class="settings-nav-separator__label">@renderedGroup</MudText>
+                                        </div>
+                                    }
+                                }
+                                <MudListItem Icon="@navItem.Icon"
+                                             IconColor="@navItem.IconColor"
+                                             Text="@navItem.Label"
+                                             Class="@GetNavItemClass(navItem.Key)"
+                                             OnClick="@(() => SelectSection(navItem.Key))" />
                             }
                         </MudList>
                     </MudPaper>
@@ -267,7 +173,7 @@
                         {
                             <Explore.Blazor.Client.Pages.Admin.Tenant.Components.TenantLookupTablesSection />
                         }
-                        else if (_currentSection == "render-policies" && IsSingleTenantMode)
+                        else if (_currentSection == "render-policies")
                         {
                             <InstanceGovernanceSection Delegation="_delegation" EventPolicy="_eventPolicy" OrganizationPolicy="_orgPolicy" RenderPolicy="_renderPolicy" DeploymentMode="@_deploymentMode" TenantCount="_tenantCount" DeploymentModeChanged="OnDeploymentModeChanged" DisplayMode="render-policies" />
                         }
@@ -351,8 +257,11 @@
 </div>
 
 @code {
+    private record NavItem(string Key, string Icon, string Label, Color IconColor = Color.Default, string? Group = null);
+
     // Sub-resource models
     private string _deploymentMode = "SingleTenant";
+    private string _loadedDeploymentMode = "SingleTenant";
     private ModuleSettingsModel _modules = new();
     private EventPolicyModel _eventPolicy = new();
     private OrganizationPolicyModel _orgPolicy = new();
@@ -411,6 +320,7 @@
             analyticsTask, tenantCountTask);
 
         _deploymentMode = deploymentTask.Result.Mode;
+        _loadedDeploymentMode = _deploymentMode;
         _modules = modulesTask.Result;
         _eventPolicy = eventTask.Result;
         _orgPolicy = orgTask.Result;
@@ -435,24 +345,32 @@
     private async Task OnDeploymentModeChanged(string newMode)
     {
         _deploymentMode = newMode;
+        var isSingleTenant = string.Equals(newMode, "SingleTenant", StringComparison.OrdinalIgnoreCase);
 
-        if (string.Equals(newMode, "SingleTenant", StringComparison.OrdinalIgnoreCase))
+        if (isSingleTenant)
         {
             _tenantModel = await TenantOnboardingService.GetSettingsAsync();
-            if (_currentSection is "tenants")
-            {
-                _currentSection = "governance";
-            }
-        }
-        else
-        {
-            if (_currentSection is "policies" or "organizations" or "lookups" or "members" or "access-tokens" or "webhooks" or "render-policies" or "multi-tenancy" or "appearance")
-            {
-                _currentSection = "governance";
-            }
         }
 
+        _currentSection = NormalizeSection(_currentSection, isSingleTenant);
+
         StateHasChanged();
+    }
+
+    private static string NormalizeSection(string section, bool isSingleTenant)
+    {
+        // Sections only valid in single-tenant mode
+        var singleTenantOnly = new HashSet<string> { "members", "organizations", "lookups", "policies", "appearance", "access-tokens", "webhooks", "multi-tenancy" };
+        // Sections only valid in multi-tenant mode
+        var multiTenantOnly = new HashSet<string> { "tenants" };
+
+        if (!isSingleTenant && singleTenantOnly.Contains(section))
+            return "governance";
+
+        if (isSingleTenant && multiTenantOnly.Contains(section))
+            return "governance";
+
+        return section;
     }
 
     private void OnTenantCountChanged(int newCount)
@@ -550,7 +468,56 @@
 
         _isSaving = false;
         PublicExperienceService.ResetCache();
-        Snackbar.Add("Settings saved.", Severity.Success);
+
+        var modeChanged = !string.Equals(_deploymentMode, _loadedDeploymentMode, StringComparison.OrdinalIgnoreCase);
+        if (modeChanged)
+        {
+            Snackbar.Add("Mode changed. Reloading...", Severity.Info);
+            await Task.Delay(800);
+            Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
+        }
+        else
+        {
+            Snackbar.Add("Settings saved.", Severity.Success);
+        }
+    }
+
+    private IReadOnlyList<NavItem> BuildNavItems(bool isSingleTenant)
+    {
+        if (isSingleTenant)
+            return
+            [
+                new("governance",       Icons.Material.Filled.Settings,        "General"),
+                new("members",          Icons.Material.Filled.People,          "Members"),
+                new("organizations",    Icons.Material.Filled.Business,        "Organizations"),
+                new("lookups",          Icons.Material.Filled.TableChart,      "Lookup Tables"),
+                new("policies",         Icons.Material.Filled.Policy,          "Policies"),
+                new("appearance",       Icons.Material.Filled.Visibility,      "Appearance"),
+                new("auth-providers",   Icons.Material.Filled.Key,             "Auth Providers"),
+                new("modules",          Icons.Material.Filled.Extension,       "Modules"),
+                new("domain",           Icons.Material.Filled.Language,        "Domain"),
+                new("storage",          Icons.Material.Filled.Cloud,           "Object Storage"),
+                new("smtp",             Icons.Material.Filled.AlternateEmail,  "SMTP"),
+                new("analytics-privacy",Icons.Material.Filled.Analytics,       "Analytics & Privacy"),
+                new("render-policies",  Icons.Material.Filled.DisplaySettings, "Render Policies",  Group: "Advanced"),
+                new("multi-tenancy",    Icons.Material.Filled.SwapHoriz,       "Multi-Tenancy",    IconColor: Color.Warning, Group: "Advanced"),
+                new("access-tokens",    Icons.Material.Filled.Key,             "Access Tokens",    Group: "Developer"),
+                new("webhooks",         Icons.Material.Filled.Webhook,         "Webhooks",         Group: "Developer"),
+            ];
+
+        return
+        [
+            new("governance",       Icons.Material.Filled.Gavel,           "Governance"),
+            new("tenants",          Icons.Material.Filled.DomainAdd,       "Tenants"),
+            new("domain",           Icons.Material.Filled.Language,        "Domain"),
+            new("branding",         Icons.Material.Filled.Palette,         "Branding"),
+            new("auth-providers",   Icons.Material.Filled.Key,             "Auth Providers"),
+            new("modules",          Icons.Material.Filled.Extension,       "Modules"),
+            new("storage",          Icons.Material.Filled.Cloud,           "Object Storage"),
+            new("smtp",             Icons.Material.Filled.AlternateEmail,  "SMTP"),
+            new("analytics-privacy",Icons.Material.Filled.Analytics,       "Analytics & Privacy"),
+            new("render-policies",  Icons.Material.Filled.DisplaySettings, "Render Policies", Group: "Advanced"),
+        ];
     }
 
     private void SelectSection(string section)

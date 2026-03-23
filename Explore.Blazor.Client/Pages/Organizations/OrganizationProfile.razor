@@ -1,135 +1,278 @@
 @using MudBlazor
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Helpers
 @using Blazouter.Services
 @using Microsoft.Extensions.Logging
 @attribute [StreamRendering]
 
-<PageTitle>Organization Profile</PageTitle>
-<MudContainer Class="organization-profile">
-    @if (_isLoading)
-    {
+<PageTitle>@(_organization?.FullName ?? "Organization Profile")</PageTitle>
+
+@if (_isLoading)
+{
+    <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
         <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
-    }
-    else if (_organization == null)
-    {
+    </MudContainer>
+}
+else if (_organization == null)
+{
+    <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
         <MudAlert Severity="Severity.Error">Organization not found.</MudAlert>
-    }
-    else
-    {
-        <MudContainer MaxWidth="MaxWidth.Large" Class="organization-profile">
-            <!-- Header Section -->
-            <div class="organization-profile__header-section mb-6">
-                <MudCard Elevation="0" Class="organization-profile__header-card">
-                    <div class="organization-profile__banner" style="@_bannerStyle"></div>
-                    <div class="organization-profile__header-content">
-                        <div class="organization-profile__avatar-wrapper">
-                            @if (!string.IsNullOrEmpty(GetProfileImageUri()))
-                            {
-                                <MudImage Src="@GetProfileImageUri()"
-                                          Alt="@($"{_organization.FullName} Logo")"
-                                          Class="organization-profile__avatar-image"
-                                          ObjectFit="ObjectFit.Cover" />
-                            }
-                            else
-                            {
-                                <MudImage Src="@GetOrganizationPlaceholder()"
-                                          Alt="Organization Logo"
-                                          Class="organization-profile__avatar-image"
-                                          ObjectFit="ObjectFit.Cover" />
-                            }
-                        </div>
+    </MudContainer>
+}
+else
+{
+    <div class="org-profile">
+        @* ── Banner Section ── *@
+        <div class="org-profile__banner" style="@_bannerStyle"></div>
 
-                        <div class="organization-profile__info">
-                            <div class="d-flex align-center gap-2 mb-1">
-                                <MudText Typo="Typo.h4" Style="font-weight: 700;">@_organization.FullName</MudText>
-                                @if (_organization.ApprovalStatusId == 2)
-                                {
-                                    <MudIcon Icon="@Icons.Material.Filled.Verified" Color="Color.Primary" Title="Verified" Size="Size.Small" />
-                                }
-                            </div>
+        <MudContainer MaxWidth="MaxWidth.Large" Class="org-profile__container">
+            @* ── Header: Avatar + Info + Subscribe ── *@
+            <div class="org-profile__header">
+                <div class="org-profile__avatar-wrapper">
+                    @if (!string.IsNullOrEmpty(GetProfileImageUri()))
+                    {
+                        <MudImage Src="@GetProfileImageUri()"
+                                  Alt="@($"{_organization.FullName} Logo")"
+                                  Class="org-profile__avatar"
+                                  ObjectFit="ObjectFit.Cover" />
+                    }
+                    else
+                    {
+                        <MudImage Src="@GetOrganizationPlaceholder()"
+                                  Alt="Organization Logo"
+                                  Class="org-profile__avatar"
+                                  ObjectFit="ObjectFit.Cover" />
+                    }
+                </div>
 
-                            <div class="d-flex align-center gap-4 mb-4 flex-wrap">
-                                <div class="d-flex align-center gap-1">
-                                    <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Color="Color.Secondary" />
-                                    <MudText Typo="Typo.body2" Color="Color.Secondary">@_organization.City, @_organization.Country</MudText>
-                                </div>
-                                @if (!string.IsNullOrEmpty(_organization.WebsiteUrl))
-                                {
-                                    <div class="d-flex align-center gap-1">
-                                        <MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Small" Color="Color.Secondary" />
-                                        <MudLink Href="@_organization.WebsiteUrl" Target="_blank" Typo="Typo.body2" Color="Color.Primary">Website</MudLink>
-                                    </div>
-                                }
-                            </div>
-
-                            <div class="organization-profile__stats d-flex gap-6">
-                                <div class="text-center">
-                                    <MudText Typo="Typo.h6">@_reviews.Count</MudText>
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Reviews</MudText>
-                                </div>
-                                <div class="text-center">
-                                    <MudText Typo="Typo.h6">@(_reviews.Any() && _reviews.Any(r => r.Rating.HasValue) ? _reviews.Where(r => r.Rating.HasValue).Average(r => r.Rating!.Value).ToString("0.0") : "-")</MudText>
-                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Rating</MudText>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </MudCard>
+                <div class="org-profile__header-right">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.NotificationsActive"
+                               Class="org-profile__subscribe-btn">
+                        Subscribe
+                    </MudButton>
+                </div>
             </div>
 
-            <MudGrid>
-                <!-- Reviews Column -->
-                <MudItem xs="12" md="8">
-                    <MudText Typo="Typo.h5" Class="mb-4">Reviews</MudText>
-                    @if (_reviews.Any())
+            @* ── Name + Meta ── *@
+            <div class="org-profile__identity">
+                <div class="d-flex align-center gap-2 mb-1">
+                    <MudText Typo="Typo.h4" Style="font-weight: 700;">@_organization.FullName</MudText>
+                    @if (_organization.ApprovalStatusId == 2)
                     {
-                        <MudStack Spacing="3">
-                            @foreach (var review in _reviews.Take(3))
-                            {
-                                <MudCard Elevation="0" Class="pa-4 border-solid border-1 mud-border-lines-default rounded-lg">
-                                    <div class="d-flex justify-space-between align-start mb-2">
-                                        <div class="d-flex align-center gap-2">
-                                            <MudAvatar Size="Size.Medium" Color="Color.Primary" Variant="Variant.Outlined">
-                                                @(string.IsNullOrEmpty(review.UserFullName) ? "?" : review.UserFullName.Substring(0, 1).ToUpper())
-                                            </MudAvatar>
-                                            <div>
-                                                <MudText Typo="Typo.subtitle2">@review.UserFullName</MudText>
-                                                <MudText Typo="Typo.caption" Color="Color.Secondary">@(review.CreatedAt?.DateTime.ToShortDateString() ?? "Unknown")</MudText>
-                                            </div>
-                                        </div>
-                                        <MudRating ReadOnly="true" SelectedValue="@(review.Rating ?? 0)" Size="Size.Small" />
-                                    </div>
-                                    <MudText Typo="Typo.body2">@review.Comment</MudText>
-                                </MudCard>
-                            }
-                        </MudStack>
+                        <MudIcon Icon="@Icons.Material.Filled.Verified" Color="Color.Primary" Title="Verified" Size="Size.Small" />
+                    }
+                </div>
 
+                @if (!string.IsNullOrEmpty(_organization.City) || !string.IsNullOrEmpty(_organization.Country))
+                {
+                    <div class="d-flex align-center gap-1 mb-1">
+                        <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Color="Color.Secondary" />
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">@_organization.City, @_organization.Country</MudText>
+                    </div>
+                }
+
+                <div class="d-flex align-center gap-3 flex-wrap mt-2">
+                    @if (!string.IsNullOrEmpty(_organization.WebsiteUrl))
+                    {
+                        <MudLink Href="@_organization.WebsiteUrl" Target="_blank" Typo="Typo.body2" Color="Color.Primary">
+                            <MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Small" Class="mr-1" Style="vertical-align: text-bottom;" />Website
+                        </MudLink>
+                    }
+                    @if (!string.IsNullOrEmpty(_organization.Email))
+                    {
+                        <MudLink Href="@($"mailto:{_organization.Email}")" Typo="Typo.body2" Color="Color.Secondary">
+                            <MudIcon Icon="@Icons.Material.Filled.Email" Size="Size.Small" Class="mr-1" Style="vertical-align: text-bottom;" />Contact
+                        </MudLink>
+                    }
+                </div>
+            </div>
+
+            <MudDivider Class="my-6" />
+
+            @* ── Upcoming Events Section ── *@
+            <div class="org-profile__section">
+                <MudText Typo="Typo.h5" Class="mb-4" Style="font-weight: 700;">Upcoming Events</MudText>
+
+                @if (_isLoadingEvents)
+                {
+                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Small" />
+                }
+                else if (_upcomingEvents.Any())
+                {
+                    <MudGrid Spacing="4">
+                        @foreach (var evt in _upcomingEvents)
+                        {
+                            <MudItem xs="12" sm="6" md="4">
+                                <MudCard Elevation="0" Class="org-profile__event-card cursor-pointer"
+                                         @onclick="@(() => NavigateToEvent(evt))">
+                                    <div class="org-profile__event-card-image">
+                                        <MudImage Src="@GetEventImage(evt)"
+                                                  ObjectFit="ObjectFit.Cover"
+                                                  Style="width: 100%; height: 100%; display: block;" />
+                                    </div>
+                                    <MudCardContent Class="pa-3">
+                                        <div class="d-flex align-center gap-2 mb-2">
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="font-weight-bold px-1">
+                                                @evt.EventTypeFullName
+                                            </MudChip>
+                                            @if ((evt.Price ?? 0) == 0)
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled" Class="px-1">
+                                                    Free
+                                                </MudChip>
+                                            }
+                                        </div>
+                                        <MudText Typo="Typo.subtitle1" Style="font-weight: 600; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                                            @evt.Title
+                                        </MudText>
+                                        <div class="d-flex align-center gap-1 mt-2">
+                                            <MudIcon Icon="@Icons.Material.Outlined.CalendarToday" Size="Size.Small" Color="Color.Secondary" />
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                @FormatEventDate(evt)
+                                            </MudText>
+                                        </div>
+                                        <div class="d-flex align-center gap-1 mt-1">
+                                            <MudIcon Icon="@Icons.Material.Outlined.LocationOn" Size="Size.Small" Color="Color.Secondary" />
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                @GetLocationText(evt)
+                                            </MudText>
+                                        </div>
+                                    </MudCardContent>
+                                </MudCard>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                }
+                else
+                {
+                    <MudPaper Elevation="0" Class="pa-6 text-center border-solid border-1 mud-border-lines-default rounded-lg">
+                        <MudIcon Icon="@Icons.Material.Outlined.EventBusy" Size="Size.Large" Color="Color.Secondary" Class="mb-2" />
+                        <MudText Typo="Typo.body1" Color="Color.Secondary">No upcoming events</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">Subscribe to get notified when new events are posted.</MudText>
+                    </MudPaper>
+                }
+            </div>
+
+            @* ── Past Events Timeline Section ── *@
+            @if (_pastEvents.Any())
+            {
+                <MudDivider Class="my-6" />
+
+                <div class="org-profile__section">
+                    <MudText Typo="Typo.h5" Class="mb-6" Style="font-weight: 700;">Past Events</MudText>
+
+                    <div class="org-profile__timeline">
+                        @foreach (var dateGroup in _pastEventsByDate)
+                        {
+                            <div class="org-profile__timeline-group">
+                                @* ── Date marker ── *@
+                                <div class="org-profile__timeline-date">
+                                    <div class="org-profile__timeline-dot"></div>
+                                    <div class="org-profile__timeline-date-text">
+                                        <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">
+                                            @dateGroup.Key.ToString("MMM dd, yyyy")
+                                        </MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            @dateGroup.Key.ToString("dddd")
+                                        </MudText>
+                                    </div>
+                                </div>
+
+                                @* ── Event cards for this date ── *@
+                                <div class="org-profile__timeline-events">
+                                    @foreach (var evt in dateGroup.Value)
+                                    {
+                                        <MudPaper Elevation="0"
+                                                  Class="org-profile__timeline-card cursor-pointer"
+                                                  @onclick="@(() => NavigateToEvent(evt))">
+                                            <div class="d-flex gap-4">
+                                                <div class="org-profile__timeline-card-image">
+                                                    <MudImage Src="@GetEventImage(evt)"
+                                                              ObjectFit="ObjectFit.Cover"
+                                                              Style="width: 100%; height: 100%; display: block; border-radius: var(--isl-radius-md);" />
+                                                </div>
+                                                <div class="flex-grow-1" style="min-width: 0;">
+                                                    <div class="d-flex align-center gap-2 mb-1">
+                                                        @if (evt.FirstSessionDate.HasValue)
+                                                        {
+                                                            <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-weight: 600;">
+                                                                @evt.FirstSessionDate.Value.ToString("HH:mm")
+                                                                @if (evt.LastSessionDate.HasValue && evt.LastSessionDate != evt.FirstSessionDate)
+                                                                {
+                                                                    @(" · ")@evt.LastSessionDate.Value.ToString("HH:mm")
+                                                                }
+                                                            </MudText>
+                                                        }
+                                                    </div>
+                                                    <MudText Typo="Typo.subtitle1" Style="font-weight: 600; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                                                        @evt.Title
+                                                    </MudText>
+                                                    <div class="d-flex align-center gap-1 mt-1">
+                                                        <MudIcon Icon="@Icons.Material.Outlined.LocationOn" Size="Size.Small" Color="Color.Secondary" />
+                                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                            @GetLocationText(evt)
+                                                        </MudText>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </MudPaper>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            @* ── Reviews Section ── *@
+            @if (_reviews.Any())
+            {
+                <MudDivider Class="my-6" />
+
+                <div class="org-profile__section">
+                    <div class="d-flex align-center justify-space-between mb-4">
+                        <MudText Typo="Typo.h5" Style="font-weight: 700;">Reviews</MudText>
+                        <div class="d-flex align-center gap-2">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                @(_reviews.Any(r => r.Rating.HasValue) ? _reviews.Where(r => r.Rating.HasValue).Average(r => r.Rating!.Value).ToString("0.0") : "-")
+                            </MudText>
+                            <MudRating ReadOnly="true" SelectedValue="@GetAverageRating()" Size="Size.Small" />
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">(@_reviews.Count)</MudText>
+                        </div>
+                    </div>
+
+                    <MudStack Spacing="3">
+                        @foreach (var review in _reviews.Take(3))
+                        {
+                            <MudCard Elevation="0" Class="pa-4 border-solid border-1 mud-border-lines-default rounded-lg">
+                                <div class="d-flex justify-space-between align-start mb-2">
+                                    <div class="d-flex align-center gap-2">
+                                        <MudAvatar Size="Size.Medium" Color="Color.Primary" Variant="Variant.Outlined">
+                                            @(string.IsNullOrEmpty(review.UserFullName) ? "?" : review.UserFullName.Substring(0, 1).ToUpper())
+                                        </MudAvatar>
+                                        <div>
+                                            <MudText Typo="Typo.subtitle2">@review.UserFullName</MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@(review.CreatedAt?.DateTime.ToShortDateString() ?? "Unknown")</MudText>
+                                        </div>
+                                    </div>
+                                    <MudRating ReadOnly="true" SelectedValue="@(review.Rating ?? 0)" Size="Size.Small" />
+                                </div>
+                                <MudText Typo="Typo.body2">@review.Comment</MudText>
+                            </MudCard>
+                        }
+                    </MudStack>
+
+                    @if (_reviews.Count > 3)
+                    {
                         <div class="d-flex justify-center mt-4">
                             <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ShowAllReviews">View All Reviews</MudButton>
                         </div>
                     }
-                    else
-                    {
-                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">No reviews yet.</MudAlert>
-                    }
-                </MudItem>
-
-                <!-- Sidebar Info -->
-                <MudItem xs="12" md="4">
-                    <MudCard Elevation="0" Class="pa-4 border-solid border-1 mud-border-lines-default rounded-lg">
-                        <MudText Typo="Typo.h6" Class="mb-3">About</MudText>
-                        <MudList T="string" Dense="true" DisablePadding="true">
-                            <MudListItem Icon="@Icons.Material.Filled.Email" IconColor="Color.Primary">
-                                <MudText Typo="Typo.body2">@_organization.Email</MudText>
-                            </MudListItem>
-                            <MudListItem Icon="@Icons.Material.Filled.Work" IconColor="Color.Primary">
-                                <MudText Typo="Typo.body2">Religious Organization</MudText>
-                            </MudListItem>
-                        </MudList>
-                    </MudCard>
-                </MudItem>
-            </MudGrid>
+                </div>
+            }
         </MudContainer>
-    }
-</MudContainer>
+    </div>
+}

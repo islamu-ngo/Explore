@@ -8,7 +8,7 @@ public static class BrandingSettingDefinitions
     public static readonly SettingDefinition DisplayName = new(
         Key: "branding.display_name",
         ValueType: SettingValueType.String,
-        DefaultValue: "\"ISLAMU Explore\"",
+        DefaultValue: "\"\"",
         Category: "Branding",
         Description: "Default brand display name shown when tenants do not override branding",
         MaxScope: SettingScope.Tenant);

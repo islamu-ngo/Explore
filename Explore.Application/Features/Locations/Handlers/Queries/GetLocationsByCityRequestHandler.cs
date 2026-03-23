@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning all locations in a given city.
+// ABOUTME: Filters by city name, maps to LocationDto list.
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;

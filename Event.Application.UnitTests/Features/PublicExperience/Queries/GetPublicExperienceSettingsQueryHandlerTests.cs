@@ -1,6 +1,7 @@
 // ABOUTME: Unit tests for GetPublicExperienceSettingsQueryHandler covering modules, deployment mode, and analytics bootstrap.
 // ABOUTME: Verifies correct tenant-scoped public experience settings resolution and analytics configuration.
 
+using AutoMapper;
 using Explore.Application.Analytics;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
@@ -30,6 +31,8 @@ public class GetPublicExperienceSettingsQueryHandlerTests
     private readonly IAnalyticsGovernanceService _analyticsGovernanceService;
     private readonly IAnalyticsRuntimeProfileResolver _runtimeProfileResolver;
     private readonly IHierarchicalSettingsResolver _hierarchicalSettingsResolver;
+    private readonly IFooterLinkGroupRepository _footerLinkGroupRepository;
+    private readonly IMapper _mapper;
     private readonly GetPublicExperienceSettingsQueryHandler _handler;
 
     public GetPublicExperienceSettingsQueryHandlerTests()
@@ -50,6 +53,15 @@ public class GetPublicExperienceSettingsQueryHandlerTests
             .Returns(new AnalyticsSettingGroup());
         _instanceGovernanceSettingService.ReadEffectiveSettingsForTenantAsync(Arg.Any<Guid>()).Returns(CreateDefaultGovernanceSettings());
         _analyticsConfigResolver.ResolveAsync(Arg.Any<CancellationToken>()).Returns(new AnalyticsConfiguration());
+        _footerLinkGroupRepository = Substitute.For<IFooterLinkGroupRepository>();
+        _footerLinkGroupRepository.GetResolvedGroupsForTenantAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns([]);
+        _hierarchicalSettingsResolver.ResolveGroupAsync<FooterSettingGroup>(
+            Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
+            .Returns(new FooterSettingGroup());
+        _mapper = Substitute.For<IMapper>();
+        _mapper.Map<List<global::Explore.Application.DTOs.Footer.FooterLinkGroupDto>>(Arg.Any<object>())
+            .Returns([]);
 
         _handler = new GetPublicExperienceSettingsQueryHandler(
             _tenantContext,
@@ -60,7 +72,9 @@ public class GetPublicExperienceSettingsQueryHandlerTests
             _instanceGovernanceSettingService,
             _analyticsGovernanceService,
             _runtimeProfileResolver,
-            _hierarchicalSettingsResolver);
+            _hierarchicalSettingsResolver,
+            _footerLinkGroupRepository,
+            _mapper);
     }
 
     [Test]

@@ -103,12 +103,12 @@
             <div class="d-flex justify-content-between mt-6">
                 <MudButton Variant="Variant.Outlined"
                           Color="Color.Primary"
-                          OnClick="@(() => Navigation.NavigateTo("/createevent"))">
+                          OnClick="@(() => Navigation.NavigateTo("/events/create"))">
                     Create Another Event
                 </MudButton>
                 <MudButton Variant="Variant.Filled"
                           Color="Color.Primary"
-                          OnClick="@(() => Navigation.NavigateTo("/myevents"))">
+                          OnClick="@(() => Navigation.NavigateTo("/my/events"))">
                     View My Events
                 </MudButton>
             </div>
@@ -122,7 +122,7 @@
             <MudButton Variant="Variant.Filled"
                       Color="Color.Primary"
                       Class="mt-4"
-                      OnClick="@(() => Navigation.NavigateTo("/myevents"))">
+                      OnClick="@(() => Navigation.NavigateTo("/my/events"))">
                 Go to My Events
             </MudButton>
         </MudPaper>

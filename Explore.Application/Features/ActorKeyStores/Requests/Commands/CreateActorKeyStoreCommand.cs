@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for creating a new actor key store entry.
+// ABOUTME: Carries the CreateActorKeyStoreDto payload.
 using Explore.Application.DTOs.ActorKeyStore;
 using Explore.Application.Responses;
 using MediatR;

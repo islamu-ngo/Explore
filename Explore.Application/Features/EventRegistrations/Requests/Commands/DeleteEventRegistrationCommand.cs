@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for cancelling an event registration.
+// ABOUTME: Carries the registration ID.
 using System;
 using Explore.Application.Authorization;
 using MediatR;

@@ -1,3 +1,5 @@
+// ABOUTME: Handler for creating a new external login link with validation.
+// ABOUTME: Validates input, maps DTO, links user to external identity provider.
 using AutoMapper;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;

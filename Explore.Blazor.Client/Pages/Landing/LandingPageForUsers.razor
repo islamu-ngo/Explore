@@ -110,7 +110,7 @@
                             <div class="d-flex justify-center gap-6 px-12 h-100 align-center">
                                 @foreach (var evt in chunk)
                                 {
-                                    <MudCard @key="evt.Id" Elevation="0" Class="border-solid border-1 mud-border-lines-default rounded-xl overflow-hidden d-flex flex-column h-100" Style="flex: 1; max-width: 400px; transition: transform 0.2s;" onclick="@(() => Nav.NavigateTo($"/event/detail/{evt.Id}"))">
+                                    <MudCard @key="evt.Id" Elevation="0" Class="border-solid border-1 mud-border-lines-default rounded-xl overflow-hidden d-flex flex-column h-100" Style="flex: 1; max-width: 400px; transition: transform 0.2s;" onclick="@(() => Nav.NavigateTo($"/events/{evt.Id}"))">
                                         <div style="height: 200px; background-color: var(--mud-palette-background-grey); position: relative;">
                                             @if (!string.IsNullOrEmpty(evt.FeaturedImageUri))
                                             {

@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a paginated list of tags.
+// ABOUTME: Maps Tag entities to TagListDto.
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;

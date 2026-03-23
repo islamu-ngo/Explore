@@ -563,7 +563,7 @@ public partial class CreateEvent
             createDto.FeaturedImageId = featuredImageId;
             createDto.MadhabId = selectedMadhabId;
             createDto.IsRegistrationRequired = sessions.Any(s => s.RegistrationModeId is > 0);
-            createDto.EventStatusId ??= 1;
+            createDto.EventStatusId ??= 2; // Default: Published
             createDto.VisibilityTypeId ??= 1;
             createDto.EventFormatId ??= 1;
             createDto.Timezone = _selectedTimezone.Id;
@@ -615,7 +615,10 @@ public partial class CreateEvent
                     await EventService.CreateSessionAsync(createSessionDto);
                 }
 
-                Navigation.NavigateTo($"/event/detail/{createdEventId}");
+                var destination = createDto.EventStatusId == 1
+                    ? $"/events/{createdEventId}/edit"
+                    : $"/events/{createdEventId}";
+                Navigation.NavigateTo(destination);
             }
             else
             {
@@ -636,6 +639,12 @@ public partial class CreateEvent
         {
             isProcessing = false;
         }
+    }
+
+    private async Task SaveAsDraftAsync()
+    {
+        createDto.EventStatusId = 1; // Draft
+        await HandleSubmit();
     }
 
     // ========== Helpers ==========

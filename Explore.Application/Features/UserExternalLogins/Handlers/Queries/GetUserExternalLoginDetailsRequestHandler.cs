@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a single external login record by ID.
+// ABOUTME: Maps entity to UserExternalLoginDto.
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.UserExternalLogin;

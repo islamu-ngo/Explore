@@ -27,10 +27,9 @@
    Responsive grid layout for footer columns
    ======================================== */
 
-/* Desktop (>960px): 4-column layout — brand + 3 link columns */
+/* Desktop (>960px): grid columns set dynamically via inline style based on link group count */
 ::deep .site-footer__grid {
     display: grid;
-    grid-template-columns: 1.5fr 1fr 1fr 1fr;
     gap: var(--isl-space-10);
 }
 

@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for deleting an event session by ID.
+// ABOUTME: Carries the target session ID.
 using System;
 using Explore.Application.Authorization;
 using MediatR;

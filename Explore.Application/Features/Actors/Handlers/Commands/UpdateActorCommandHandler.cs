@@ -1,3 +1,5 @@
+// ABOUTME: Handler for updating an existing actor entity with validation.
+// ABOUTME: Validates input, fetches entity, applies updates via repository.
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Actor.Validators;

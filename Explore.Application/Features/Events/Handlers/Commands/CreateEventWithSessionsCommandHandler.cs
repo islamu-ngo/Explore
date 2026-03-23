@@ -1,3 +1,5 @@
+// ABOUTME: Handler for creating an event together with its initial sessions in one operation.
+// ABOUTME: Orchestrates event + session creation atomically.
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -45,6 +47,7 @@ public class CreateEventWithSessionsCommandHandler : IRequestHandler<CreateEvent
     private readonly IUserContext _userContext;
     private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
+    private readonly IUnitOfWork _unitOfWork;
 
     public CreateEventWithSessionsCommandHandler(
         IEventRepository eventRepository,
@@ -66,7 +69,8 @@ public class CreateEventWithSessionsCommandHandler : IRequestHandler<CreateEvent
         ILanguageRepository languageRepository,
         IUserContext userContext,
         ITenantContext tenantContext,
-        IMapper mapper)
+        IMapper mapper,
+        IUnitOfWork unitOfWork)
     {
         _eventRepository = eventRepository;
         _eventSessionRepository = eventSessionRepository;
@@ -88,6 +92,7 @@ public class CreateEventWithSessionsCommandHandler : IRequestHandler<CreateEvent
         _userContext = userContext;
         _tenantContext = tenantContext;
         _mapper = mapper;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateEventWithSessionsCommand request, CancellationToken cancellationToken)
@@ -227,7 +232,7 @@ public class CreateEventWithSessionsCommandHandler : IRequestHandler<CreateEvent
         var firstSessionDateOnly = DateOnly.FromDateTime(firstSessionDate.UtcDateTime);
         var lastSessionDateOnly = DateOnly.FromDateTime(lastSessionDate.UtcDateTime);
 
-        // ===== CREATE EVENT =====
+        // Build the event entity BEFORE the lambda — for retry safety (no random values inside)
         var @event = new Event
         {
             Title = dto.Title,
@@ -241,9 +246,9 @@ public class CreateEventWithSessionsCommandHandler : IRequestHandler<CreateEvent
             FeaturedImageId = dto.FeaturedImageId,
             IsRegistrationRequired = dto.IsRegistrationRequired,
             ExternalRegistrationUrl = dto.ExternalRegistrationUrl,
-            EventStatusId = dto.EventStatusId == 0 ? 1 : dto.EventStatusId, // Default: Draft
-            VisibilityTypeId = dto.VisibilityTypeId == 0 ? 1 : dto.VisibilityTypeId, // Default: Public
-            EventFormatId = dto.EventFormatId == 0 ? 1 : dto.EventFormatId, // Default: In-Person
+            EventStatusId = dto.EventStatusId == 0 ? 1 : dto.EventStatusId,
+            VisibilityTypeId = dto.VisibilityTypeId == 0 ? 1 : dto.VisibilityTypeId,
+            EventFormatId = dto.EventFormatId == 0 ? 1 : dto.EventFormatId,
             MadhabId = dto.MadhabId,
             Timezone = dto.Timezone,
             EventUrl = dto.EventUrl,
@@ -256,94 +261,96 @@ public class CreateEventWithSessionsCommandHandler : IRequestHandler<CreateEvent
             VisibilityType = null!,
             EventStatus = null!,
             EventFormat = null!,
-            // Computed from sessions
             FirstSessionDate = firstSessionDateOnly,
             LastSessionDate = lastSessionDateOnly,
             SessionCount = sessions.Count
         };
 
-        @event = await _eventRepository.Create(@event);
-        Console.WriteLine($"[CREATE EVENT WITH SESSIONS] Event created with ID: {@event.Id}");
-
-        // ===== UPDATE STORAGE OBJECT OWNERSHIP =====
-        if (dto.FeaturedImageId.HasValue)
+        // Atomic writes: event + storage + all sessions + Islamic aspects + languages
+        var eventId = await _unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
-            var storageObject = await _storageObjectRepository.GetById(dto.FeaturedImageId.Value);
-            if (storageObject != null)
+            @event = await _eventRepository.Create(@event);
+            Console.WriteLine($"[CREATE EVENT WITH SESSIONS] Event created with ID: {@event.Id}");
+
+            if (dto.FeaturedImageId.HasValue)
             {
-                storageObject.ActorId = actorId;
-                await _storageObjectRepository.Update(storageObject);
-                Console.WriteLine($"[CREATE EVENT WITH SESSIONS] StorageObject {storageObject.Id} ActorId updated to {actorId}");
-            }
-        }
-
-        // ===== CREATE EVENT SESSIONS =====
-        var sessionIndex = 0;
-        foreach (var sessionDto in sessions)
-        {
-            sessionIndex++;
-
-            var eventSession = new EventSession
-            {
-                EventId = @event.Id,
-                Event = null!,
-                TenantId = _tenantContext.TenantId,
-                Tenant = null!,
-                Title = string.IsNullOrWhiteSpace(sessionDto.Title) ? @event.Title : sessionDto.Title,
-                Description = sessionDto.Description,
-                StartTime = sessionDto.StartTime,
-                EndTime = sessionDto.EndTime,
-                LocationId = sessionDto.LocationId,
-                MaxAudienceAttendees = sessionDto.MaxAudienceAttendees,
-                CurrentAudienceAttendees = 0,
-                RegistrationModeId = sessionDto.RegistrationModeId ?? (dto.IsRegistrationRequired ? 1 : null),
-                Price = sessionDto.Price,
-                CurrencyCode = sessionDto.CurrencyCode,
-                Slug = GenerateSlug(string.IsNullOrWhiteSpace(sessionDto.Title) ? $"{@event.Title}-session-{sessionIndex}" : sessionDto.Title)
-            };
-
-            eventSession = await _eventSessionRepository.Create(eventSession);
-            Console.WriteLine($"[CREATE EVENT WITH SESSIONS] EventSession {sessionIndex} created with ID: {eventSession.Id}");
-
-            if (sessionDto.IslamicAspect != null)
-            {
-                var islamicAspect = new EventSessionIslamicAspect
+                var storageObject = await _storageObjectRepository.GetById(dto.FeaturedImageId.Value);
+                if (storageObject != null)
                 {
-                    EventSessionId = eventSession.Id,
-                    StartTimeType = sessionDto.IslamicAspect.StartTimeType,
-                    ReferencePrayer = sessionDto.IslamicAspect.ReferencePrayer,
-                    OffsetMinutes = sessionDto.IslamicAspect.OffsetMinutes,
-                    RequiresWudu = sessionDto.IslamicAspect.RequiresWudu,
-                    RitualRequirementsJson = sessionDto.IslamicAspect.RitualRequirementsJson
-                };
-
-                await _eventSessionIslamicAspectRepository.Create(islamicAspect);
+                    storageObject.ActorId = actorId;
+                    await _storageObjectRepository.Update(storageObject);
+                    Console.WriteLine($"[CREATE EVENT WITH SESSIONS] StorageObject {storageObject.Id} ActorId updated to {actorId}");
+                }
             }
 
-            // Create session-language associations
-            foreach (var languageId in sessionDto.LanguageIds)
+            var sessionIndex = 0;
+            foreach (var sessionDto in sessions)
             {
-                var sessionLanguage = new EventSessionLanguage
+                sessionIndex++;
+
+                var eventSession = new EventSession
                 {
-                    EventSessionId = eventSession.Id,
-                    EventSession = null!,
-                    LanguageId = languageId,
-                    Language = null!,
+                    EventId = @event.Id,
+                    Event = null!,
                     TenantId = _tenantContext.TenantId,
-                    Tenant = null!
+                    Tenant = null!,
+                    Title = string.IsNullOrWhiteSpace(sessionDto.Title) ? @event.Title : sessionDto.Title,
+                    Description = sessionDto.Description,
+                    StartTime = sessionDto.StartTime,
+                    EndTime = sessionDto.EndTime,
+                    LocationId = sessionDto.LocationId,
+                    MaxAudienceAttendees = sessionDto.MaxAudienceAttendees,
+                    CurrentAudienceAttendees = 0,
+                    RegistrationModeId = sessionDto.RegistrationModeId ?? (dto.IsRegistrationRequired ? 1 : null),
+                    Price = sessionDto.Price,
+                    CurrencyCode = sessionDto.CurrencyCode,
+                    Slug = GenerateSlug(string.IsNullOrWhiteSpace(sessionDto.Title) ? $"{@event.Title}-session-{sessionIndex}" : sessionDto.Title)
                 };
 
-                await _eventSessionLanguageRepository.Create(sessionLanguage);
+                eventSession = await _eventSessionRepository.Create(eventSession);
+                Console.WriteLine($"[CREATE EVENT WITH SESSIONS] EventSession {sessionIndex} created with ID: {eventSession.Id}");
+
+                if (sessionDto.IslamicAspect != null)
+                {
+                    var islamicAspect = new EventSessionIslamicAspect
+                    {
+                        EventSessionId = eventSession.Id,
+                        StartTimeType = sessionDto.IslamicAspect.StartTimeType,
+                        ReferencePrayer = sessionDto.IslamicAspect.ReferencePrayer,
+                        OffsetMinutes = sessionDto.IslamicAspect.OffsetMinutes,
+                        RequiresWudu = sessionDto.IslamicAspect.RequiresWudu,
+                        RitualRequirementsJson = sessionDto.IslamicAspect.RitualRequirementsJson
+                    };
+
+                    await _eventSessionIslamicAspectRepository.Create(islamicAspect);
+                }
+
+                foreach (var languageId in sessionDto.LanguageIds)
+                {
+                    var sessionLanguage = new EventSessionLanguage
+                    {
+                        EventSessionId = eventSession.Id,
+                        EventSession = null!,
+                        LanguageId = languageId,
+                        Language = null!,
+                        TenantId = _tenantContext.TenantId,
+                        Tenant = null!
+                    };
+
+                    await _eventSessionLanguageRepository.Create(sessionLanguage);
+                }
+
+                if (sessionDto.LanguageIds.Any())
+                {
+                    Console.WriteLine($"[CREATE EVENT WITH SESSIONS] {sessionDto.LanguageIds.Count} languages assigned to session {eventSession.Id}");
+                }
             }
 
-            if (sessionDto.LanguageIds.Any())
-            {
-                Console.WriteLine($"[CREATE EVENT WITH SESSIONS] {sessionDto.LanguageIds.Count} languages assigned to session {eventSession.Id}");
-            }
-        }
+            return @event.Id;
+        }, cancellationToken);
 
         response.Success = true;
-        response.Id = @event.Id;
+        response.Id = eventId;
         response.Message = $"Event and {sessions.Count} session(s) created successfully.";
 
         return response;

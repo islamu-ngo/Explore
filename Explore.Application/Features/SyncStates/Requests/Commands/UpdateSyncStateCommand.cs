@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for updating a sync state record.
+// ABOUTME: Carries the UpdateSyncStateDto payload.
 using Explore.Application.DTOs.SyncState;
 using Explore.Application.Responses;
 using MediatR;

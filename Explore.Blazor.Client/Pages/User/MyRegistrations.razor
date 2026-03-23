@@ -1,4 +1,4 @@
-@page "/my-registrations"
+@page "/my/registrations"
 @using MudBlazor
 @using Explore.Blazor.Client.Services
 @using Explore.Blazor.Client.Clients
@@ -17,7 +17,7 @@
             <MudText Typo="Typo.overline" Class="mud-text-secondary" Style="letter-spacing: 0.18em;">PARTICIPANT</MudText>
             <MudText Typo="Typo.h4">My Registrations</MudText>
         </div>
-        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/user/profile" Color="Color.Primary">
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/my/profile" Color="Color.Primary">
             Back to Profile
         </MudButton>
     </div>
@@ -76,7 +76,7 @@
                                 <MudButton Variant="Variant.Text" 
                                            Color="Color.Primary" 
                                            EndIcon="@Icons.Material.Filled.ArrowForward"
-                                           Href="@($"/event/detail/{reg.EventId}")">
+                                           Href="@($"/events/{reg.EventId}")">
                                     Details
                                 </MudButton>
                                 <MudSpacer />

@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for updating a tenant's profile.
+// ABOUTME: Carries the UpdateTenantDto payload.
 using System;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.Tenant;

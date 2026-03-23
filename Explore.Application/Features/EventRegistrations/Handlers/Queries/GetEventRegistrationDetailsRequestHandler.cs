@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a single event registration by ID.
+// ABOUTME: Maps EventRegistration entity to EventRegistrationDto.
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;

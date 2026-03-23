@@ -1,0 +1,184 @@
+// ABOUTME: Central runtime service for composing MudBlazor themes and persisting the current appearance mode.
+// ABOUTME: Removes duplicated palette/bootstrap logic from layouts while preserving the existing BFF-backed theme preference flow.
+
+using System.Net.Http.Json;
+using MudBlazor;
+
+namespace Explore.Blazor.Client.Services;
+
+public interface IAppearanceThemeService
+{
+    MudTheme CreateTheme(string appbarHeight);
+    Task<bool> ResolveInitialDarkModeAsync(bool? serverHint, MudThemeProvider themeProvider);
+    Task PersistThemeModeAsync(bool isDarkMode, CancellationToken cancellationToken = default);
+}
+
+public sealed class AppearanceThemeService : IAppearanceThemeService
+{
+    private readonly HttpClient _httpClient;
+    private readonly ILogger<AppearanceThemeService> _logger;
+
+    private static readonly PaletteLight LightPalette = new()
+    {
+        Primary = "#3B82F6",
+        Secondary = "#1E293B",
+        Black = "#0F172A",
+        AppbarText = "#1E293B",
+        AppbarBackground = "rgba(248,250,252,0.85)",
+        Background = "#F8FAFC",
+        Surface = "#FFFFFF",
+        DrawerBackground = "#F1F5F9",
+        DrawerText = "#1E293B",
+        DrawerIcon = "#475569",
+        GrayLight = "#E2E8F0",
+        GrayLighter = "#F8FAFC",
+        TextPrimary = "#0F172A",
+        TextSecondary = "#64748B",
+        Info = "#3B82F6",
+        Success = "#10B981",
+        Warning = "#F59E0B",
+        Error = "#EF4444",
+        LinesDefault = "#E2E8F0",
+        TableLines = "#E2E8F0",
+        Divider = "#E2E8F0",
+        OverlayLight = "rgba(248,250,252,0.8)"
+    };
+
+    private static readonly PaletteDark DarkPalette = new()
+    {
+        Primary = "#60A5FA",
+        Secondary = "#F1F5F9",
+        Surface = "#1E293B",
+        Background = "#0F172A",
+        BackgroundGray = "#1E293B",
+        AppbarText = "#F1F5F9",
+        AppbarBackground = "rgba(15,23,42,0.85)",
+        DrawerBackground = "#0F172A",
+        ActionDefault = "#94A3B8",
+        ActionDisabled = "#334155",
+        ActionDisabledBackground = "#1E293B",
+        TextPrimary = "#F1F5F9",
+        TextSecondary = "#94A3B8",
+        TextDisabled = "#475569",
+        DrawerIcon = "#CBD5E1",
+        DrawerText = "#F1F5F9",
+        GrayLight = "#334155",
+        GrayLighter = "#1E293B",
+        Info = "#60A5FA",
+        Success = "#34D399",
+        Warning = "#FBBF24",
+        Error = "#F87171",
+        LinesDefault = "#334155",
+        TableLines = "#334155",
+        Divider = "#1E293B",
+        OverlayLight = "rgba(15,23,42,0.8)"
+    };
+
+    private static readonly Typography Typography = new()
+    {
+        Default = new DefaultTypography
+        {
+            FontFamily = ["Inter", "system-ui", "-apple-system", "sans-serif"],
+            FontSize = ".9375rem",
+            FontWeight = "400",
+            LineHeight = "1.5",
+            LetterSpacing = "-.011em"
+        },
+        H1 = new H1Typography { FontSize = "2.5rem", FontWeight = "700", LineHeight = "1.2", LetterSpacing = "-.022em" },
+        H2 = new H2Typography { FontSize = "2rem", FontWeight = "600", LineHeight = "1.3", LetterSpacing = "-.017em" },
+        H3 = new H3Typography { FontSize = "1.75rem", FontWeight = "600", LineHeight = "1.3", LetterSpacing = "-.014em" },
+        H4 = new H4Typography { FontSize = "1.5rem", FontWeight = "600", LineHeight = "1.4" },
+        H5 = new H5Typography { FontSize = "1.25rem", FontWeight = "600", LineHeight = "1.5" },
+        H6 = new H6Typography { FontSize = "1.125rem", FontWeight = "600", LineHeight = "1.6" },
+        Body1 = new Body1Typography { FontSize = ".9375rem", LineHeight = "1.6", LetterSpacing = "-.011em" },
+        Body2 = new Body2Typography { FontSize = ".875rem", LineHeight = "1.5" },
+        Button = new ButtonTypography { FontSize = ".875rem", FontWeight = "500", TextTransform = "none", LetterSpacing = "-.011em" },
+        Caption = new CaptionTypography { FontSize = ".8125rem", LineHeight = "1.5" },
+        Overline = new OverlineTypography { FontSize = ".75rem", FontWeight = "500", TextTransform = "uppercase", LetterSpacing = ".08em" }
+    };
+
+    public AppearanceThemeService(
+        HttpClient httpClient,
+        ILogger<AppearanceThemeService> logger)
+    {
+        _httpClient = httpClient;
+        _logger = logger;
+    }
+
+    public MudTheme CreateTheme(string appbarHeight)
+    {
+        return new MudTheme
+        {
+            PaletteLight = LightPalette,
+            PaletteDark = DarkPalette,
+            Typography = Typography,
+            LayoutProperties = new LayoutProperties
+            {
+                DefaultBorderRadius = "8px",
+                AppbarHeight = appbarHeight
+            }
+        };
+    }
+
+    public async Task<bool> ResolveInitialDarkModeAsync(bool? serverHint, MudThemeProvider themeProvider)
+    {
+        if (serverHint.HasValue)
+        {
+            return serverHint.Value;
+        }
+
+        try
+        {
+            var preferences = await _httpClient.GetFromJsonAsync<UserThemePreferenceResponse>("/bff/theme");
+            if (preferences?.ThemeMode is "dark")
+            {
+                return true;
+            }
+
+            if (preferences?.ThemeMode is "light")
+            {
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Could not load current theme preference from the BFF.");
+        }
+
+        try
+        {
+            return await themeProvider.GetSystemDarkModeAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error resolving system theme preference");
+            return false;
+        }
+    }
+
+    public async Task PersistThemeModeAsync(bool isDarkMode, CancellationToken cancellationToken = default)
+    {
+        var request = new UserThemePreferenceResponse
+        {
+            ThemeMode = isDarkMode ? "dark" : "light"
+        };
+
+        try
+        {
+            using var response = await _httpClient.PostAsJsonAsync("/bff/theme", request, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Theme preference persistence failed with status code {StatusCode}", (int)response.StatusCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error saving theme preference");
+        }
+    }
+
+    private sealed class UserThemePreferenceResponse
+    {
+        public string ThemeMode { get; set; } = "system";
+    }
+}

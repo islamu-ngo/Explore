@@ -1,3 +1,5 @@
+// ABOUTME: MediatR query for fetching a pre-signed download URL by storage key.
+// ABOUTME: Returns the signed URL string.
 using Explore.Application.DTOs.StorageObject;
 using MediatR;
 

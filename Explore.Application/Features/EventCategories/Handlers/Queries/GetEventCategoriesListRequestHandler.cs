@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a paginated list of event-category links.
+// ABOUTME: Maps junction entities to EventCategoriesListDto.
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;

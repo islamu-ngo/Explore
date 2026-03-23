@@ -1,3 +1,5 @@
+// ABOUTME: MediatR query request for fetching a paginated AT Protocol record list.
+// ABOUTME: Returns IEnumerable<AtprotoRecordListDto>.
 using Explore.Application.DTOs.AtprotoRecord;
 using MediatR;
 

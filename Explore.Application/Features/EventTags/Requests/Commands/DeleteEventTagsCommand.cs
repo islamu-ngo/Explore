@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for removing a tag from an event.
+// ABOUTME: Carries the junction record ID.
 using System;
 using Explore.Application.Authorization;
 using MediatR;

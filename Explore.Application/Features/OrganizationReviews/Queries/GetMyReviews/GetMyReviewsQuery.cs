@@ -1,3 +1,5 @@
+// ABOUTME: MediatR query for fetching the current user's submitted organization reviews.
+// ABOUTME: Returns IEnumerable<OrganizationReviewDto>.
 using Explore.Application.DTOs.OrganizationReview;
 using MediatR;
 

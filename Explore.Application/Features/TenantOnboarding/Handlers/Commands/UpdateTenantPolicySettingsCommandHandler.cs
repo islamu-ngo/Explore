@@ -20,17 +20,20 @@ public class UpdateTenantPolicySettingsCommandHandler : IRequestHandler<UpdateTe
     private readonly ITenantOnboardingStateRepository _tenantOnboardingStateRepository;
     private readonly IAdminContext _adminContext;
     private readonly ITenantPolicySettingService _policySettingService;
+    private readonly IUnitOfWork _unitOfWork;
 
     public UpdateTenantPolicySettingsCommandHandler(
         ITenantContext tenantContext,
         ITenantOnboardingStateRepository tenantOnboardingStateRepository,
         IAdminContext adminContext,
-        ITenantPolicySettingService policySettingService)
+        ITenantPolicySettingService policySettingService,
+        IUnitOfWork unitOfWork)
     {
         _tenantContext = tenantContext;
         _tenantOnboardingStateRepository = tenantOnboardingStateRepository;
         _adminContext = adminContext;
         _policySettingService = policySettingService;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateTenantPolicySettingsCommand request, CancellationToken cancellationToken)
@@ -45,9 +48,12 @@ public class UpdateTenantPolicySettingsCommandHandler : IRequestHandler<UpdateTe
             return response;
         }
 
+        // Read-only validation BEFORE transaction — throws ValidationException if locked fields are changed
         await EnsureLockedSettingsAreNotModifiedAsync(tenantId, request.Settings);
 
-        await _policySettingService.ApplyTenantSettingsAsync(tenantId, request.UserId, request.Settings);
+        // Atomic writes: all tenant policy settings
+        await _unitOfWork.ExecuteInTransactionAsync(ct =>
+            _policySettingService.ApplyTenantSettingsAsync(tenantId, request.UserId, request.Settings), cancellationToken);
 
         var onboardingState = await _tenantOnboardingStateRepository.GetByTenantId(tenantId);
         response.Id = onboardingState?.Id ?? Guid.Empty;

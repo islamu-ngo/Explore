@@ -1,6 +1,6 @@
 @* ABOUTME: Single-page create event form inspired by Luma's design. Two-column layout with image left, form right. *@
 @* ABOUTME: Replaces the previous multi-step wizard. Uses inline first session, description dialog popup, and publisher row. *@
-@page "/create-event"
+@page "/events/create"
 @using MudBlazor
 @using Explore.Blazor.Client.Shared
 @using Explore.Blazor.Client.Pages.Events.Components
@@ -600,29 +600,45 @@
                 </MudItem>
             </MudGrid>
 
-            @* ===== Create Event Button (full width) ===== *@
-            <MudButton ButtonType="ButtonType.Submit"
-                       Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       FullWidth="true"
-                       Disabled="@(isProcessing || _isUploadingImage || !string.IsNullOrEmpty(_organizationRoleError) || !string.IsNullOrEmpty(_groupRoleError))"
-                       Class="mt-6 create-event__submit-button"
-                       Size="Size.Large">
-                @if (isProcessing)
-                {
-                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                    <span>Creating...</span>
-                }
-                else if (_isUploadingImage)
-                {
-                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                    <span>Uploading image...</span>
-                }
-                else
-                {
-                    <span>Create Event</span>
-                }
-            </MudButton>
+            @* ===== Create Event Button with Draft Option ===== *@
+            <div class="d-flex gap-0 mt-6" style="width: 100%;">
+                <MudButton ButtonType="ButtonType.Submit"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Disabled="@(isProcessing || _isUploadingImage || !string.IsNullOrEmpty(_organizationRoleError) || !string.IsNullOrEmpty(_groupRoleError))"
+                           Class="create-event__submit-button"
+                           Size="Size.Large"
+                           Style="flex: 1; border-top-right-radius: 0; border-bottom-right-radius: 0;">
+                    @if (isProcessing)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        <span>Creating...</span>
+                    }
+                    else if (_isUploadingImage)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        <span>Uploading image...</span>
+                    }
+                    else
+                    {
+                        <span>Create Event</span>
+                    }
+                </MudButton>
+                <MudMenu Icon="@Icons.Material.Filled.ArrowDropDown"
+                         Variant="Variant.Filled"
+                         Color="Color.Primary"
+                         Size="Size.Large"
+                         AnchorOrigin="Origin.BottomRight"
+                         TransformOrigin="Origin.TopRight"
+                         Disabled="@(isProcessing || _isUploadingImage)"
+                         Class="create-event__submit-dropdown"
+                         Style="border-top-left-radius: 0; border-bottom-left-radius: 0; min-width: 0;">
+                    <MudMenuItem OnClick="@SaveAsDraftAsync"
+                                 Icon="@Icons.Material.Outlined.Save">
+                        Save as Draft
+                    </MudMenuItem>
+                </MudMenu>
+            </div>
         </EditForm>
         </div>
 

@@ -1,3 +1,5 @@
+// ABOUTME: MediatR query request for fetching a single AT Protocol record by ID.
+// ABOUTME: Returns AtprotoRecordDto.
 using Explore.Application.DTOs.AtprotoRecord;
 using MediatR;
 

@@ -111,6 +111,10 @@
                                              Class="@GetNavItemClass("analytics")"
                                              OnClick="@(() => SelectSection("analytics"))" />
                             }
+                            <MudListItem Icon="@Icons.Material.Outlined.Gavel"
+                                         Text="Community Guidelines"
+                                         Class="@GetNavItemClass("community-guidelines")"
+                                         OnClick="@(() => SelectSection("community-guidelines"))" />
                             @if (_isSingleTenantMode && _isInstanceAdmin)
                             {
                                 <MudListItem Icon="@Icons.Material.Filled.Engineering"
@@ -192,6 +196,39 @@
                                     Tenant-specific analytics configuration is enabled by your platform administrator. Per-tenant override controls will be available in a future update.
                                     Currently, analytics settings are inherited from the platform configuration.
                                 </MudAlert>
+                            </div>
+                        }
+                        else if (_currentSection == "community-guidelines")
+                        {
+                            <div class="settings-section">
+                                <div class="settings-section-header">
+                                    <MudText Typo="Typo.h5" Style="font-weight: 700;">Community Guidelines</MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+                                        Manage the community guidelines displayed to users on the
+                                        <MudLink Href="/community-guidelines" Target="_blank" Color="Color.Primary">Community Guidelines</MudLink>
+                                        page. Guidelines inform event organizers and attendees of the platform's expectations.
+                                    </MudText>
+                                </div>
+                                @if (!_model.CanOverrideCommunityGuidelines)
+                                {
+                                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-4 mb-4">
+                                        The community guidelines content has been locked by the platform administrator and cannot be changed for this tenant.
+                                    </MudAlert>
+                                }
+                                <div class="settings-form-section mt-4">
+                                    <MudTextField T="string"
+                                                  @bind-Value="_model.CommunityGuidelinesContent"
+                                                  Label="Guidelines Content"
+                                                  Lines="20"
+                                                  Variant="Variant.Outlined"
+                                                  ReadOnly="!_model.CanOverrideCommunityGuidelines"
+                                                  HelperText="Supports basic Markdown: # Heading, ## Section, - bullet, **bold**, *italic*."
+                                                  FullWidth="true"
+                                                  Style="font-family: monospace; font-size: 0.875rem;" />
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
+                                        This content is displayed publicly. Leave empty to use the platform default guidelines.
+                                    </MudText>
+                                </div>
                             </div>
                         }
                         else if (_currentSection == "advanced" && _isSingleTenantMode && _isInstanceAdmin)

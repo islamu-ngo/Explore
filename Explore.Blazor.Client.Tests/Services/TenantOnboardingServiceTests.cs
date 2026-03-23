@@ -95,7 +95,7 @@ public class TenantOnboardingServiceTests
         // Assert
         await Assert.That(result).IsNotNull();
         await Assert.That(result.PreferredHomePage).IsEqualTo("EventList");
-        await Assert.That(result.BrandDisplayName).IsEqualTo("ISLAMU Explore");
+        await Assert.That(result.BrandDisplayName).IsEqualTo(string.Empty);
     }
 
     #endregion

@@ -1,3 +1,5 @@
+// ABOUTME: MediatR query request for fetching a paginated storage object list.
+// ABOUTME: Returns IEnumerable<StorageObjectListDto>.
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.Responses;
 using MediatR;

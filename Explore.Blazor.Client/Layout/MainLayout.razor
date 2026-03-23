@@ -28,7 +28,7 @@
                              Style="font-weight: 800; letter-spacing: -0.02em;">
                         Events
                     </MudText>
-                    <MudNavLink Href="/events"        
+                    <MudNavLink Href="/events"
                                 Icon="@Icons.Material.Filled.ManageSearch"
                                 Match="NavLinkMatch.All">
                         Advanced Search
@@ -40,6 +40,31 @@
                     <MudNavLink Href="/events?sort=random"
                                 Icon="@Icons.Material.Filled.Shuffle">
                         Random
+                    </MudNavLink>
+
+                    <MudDivider Class="my-2" />
+
+                    @if (!string.IsNullOrWhiteSpace(_brandDisplayName))
+                    {
+                        <MudText Typo="Typo.overline" Class="px-4 pb-1"
+                                 Style="font-weight: 700; letter-spacing: 0.08em; color: var(--mud-palette-text-secondary);">
+                            @_brandDisplayName
+                        </MudText>
+                    }
+                    @if (_showCommunityGuidelinesLink)
+                    {
+                        <MudNavLink Href="/community-guidelines"
+                                    Icon="@Icons.Material.Outlined.Gavel">
+                            Community Guidelines
+                        </MudNavLink>
+                    }
+                    <MudNavLink Href="/about"
+                                Icon="@Icons.Material.Outlined.Info">
+                        About Us
+                    </MudNavLink>
+                    <MudNavLink Href="/contact"
+                                Icon="@Icons.Material.Outlined.ContactMail">
+                        Contact
                     </MudNavLink>
                 </MudNavMenu>
             </MudDrawer>

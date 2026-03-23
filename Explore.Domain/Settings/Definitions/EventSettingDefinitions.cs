@@ -51,7 +51,7 @@ public static class EventSettingDefinitions
         DefaultValue: "true",
         Category: "Events",
         Description: "Whether clicking an event card navigates to the detail page",
-        MaxScope: SettingScope.Tenant);
+        MaxScope: SettingScope.User);
 
     public static IReadOnlyList<SettingDefinition> All =>
         [MaxSessionsPerEvent, UserSubmissionEnabled, OrganizationSubmissionEnabled, GroupSubmissionEnabled, RequireApproval, CardClickOpensDetailPage];

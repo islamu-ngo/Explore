@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for creating a user authentication token.
+// ABOUTME: Carries the CreateUserAuthenticationTokenDto payload.
 using Explore.Application.DTOs.UserAuthenticationToken;
 using Explore.Application.Responses;
 using MediatR;

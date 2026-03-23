@@ -1,3 +1,5 @@
+// ABOUTME: MediatR query request for fetching a paginated session list.
+// ABOUTME: Returns IEnumerable<EventSessionListDto>.
 using System.Collections.Generic;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.Responses;

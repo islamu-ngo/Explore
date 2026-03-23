@@ -1,3 +1,5 @@
+// ABOUTME: Handler for removing an indexed DID record.
+// ABOUTME: Fetches record by ID and delegates deletion.
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.IndexedDids.Requests.Commands;
 using Explore.Application.Responses;

@@ -1,3 +1,5 @@
+// ABOUTME: Handler for creating a new agenda item within an event session.
+// ABOUTME: Validates input, maps DTO, persists via repository.
 using System;
 using System.Linq;
 using System.Threading;

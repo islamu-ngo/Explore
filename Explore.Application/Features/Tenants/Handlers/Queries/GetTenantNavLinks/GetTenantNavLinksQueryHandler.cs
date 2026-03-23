@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning all navigation links configured for a tenant.
+// ABOUTME: Maps nav link entities to TenantNavLinkDto list.
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;

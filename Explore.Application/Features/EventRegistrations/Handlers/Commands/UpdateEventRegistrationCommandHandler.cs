@@ -1,3 +1,5 @@
+// ABOUTME: Handler for updating an event registration with validation.
+// ABOUTME: Validates input, fetches entity, applies status or seat changes.
 using System;
 using System.Linq;
 using System.Threading;

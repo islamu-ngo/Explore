@@ -1,3 +1,5 @@
+// ABOUTME: Handler for deleting a storage object and its backing blob.
+// ABOUTME: Fetches record, delegates blob deletion to storage provider, then removes the metadata record.
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.StorageObjects.Requests.Commands;

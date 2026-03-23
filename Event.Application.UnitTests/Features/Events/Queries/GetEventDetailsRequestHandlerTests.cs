@@ -1,4 +1,5 @@
 using AutoMapper;
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Event;
@@ -21,6 +22,7 @@ public class GetEventDetailsRequestHandlerTests
     private readonly IObjectStorageService _objectStorageService;
     private readonly ILogger<GetEventDetailsRequestHandler> _logger;
     private readonly HybridCache _cache;
+    private readonly IUserContext _userContext;
     private readonly GetEventDetailsRequestHandler _handler;
 
     public GetEventDetailsRequestHandlerTests()
@@ -32,7 +34,8 @@ public class GetEventDetailsRequestHandlerTests
         _objectStorageService = Substitute.For<IObjectStorageService>();
         _logger = Substitute.For<ILogger<GetEventDetailsRequestHandler>>();
         _cache = new TestHybridCache();
-        _handler = new GetEventDetailsRequestHandler(_eventRepository, _eventTagsRepository, _eventCategoriesRepository, _mapper, _objectStorageService, _logger, _cache);
+        _userContext = Substitute.For<IUserContext>();
+        _handler = new GetEventDetailsRequestHandler(_eventRepository, _eventTagsRepository, _eventCategoriesRepository, _mapper, _objectStorageService, _logger, _cache, _userContext);
     }
 
     private sealed class TestHybridCache : HybridCache

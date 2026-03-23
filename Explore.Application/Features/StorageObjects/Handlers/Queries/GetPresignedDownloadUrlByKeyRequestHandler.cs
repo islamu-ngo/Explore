@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a pre-signed download URL for a storage object identified by key.
+// ABOUTME: Used for direct authenticated asset access.
 using System;
 using System.Threading;
 using System.Threading.Tasks;

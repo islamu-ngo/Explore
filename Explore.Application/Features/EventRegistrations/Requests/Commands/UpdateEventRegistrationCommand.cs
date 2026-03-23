@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for updating an event registration.
+// ABOUTME: Carries the UpdateEventRegistrationDto payload.
 using System;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventRegistration;

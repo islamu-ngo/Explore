@@ -39,7 +39,10 @@
       "Bash(Out-File -FilePath C:/ISLAMU/GitHub/Event/test-output.txt -Encoding utf8)",
       "Bash(Select-String -Pattern \"error CS\")",
       "Bash(cd:*)",
-      "mcp__chrome-devtools__list_pages"
+      "mcp__chrome-devtools__list_pages",
+      "mcp__chrome-devtools__navigate_page",
+      "mcp__chrome-devtools__take_screenshot",
+      "mcp__chrome-devtools__take_snapshot"
     ]
   },
   "enableAllProjectMcpServers": true,

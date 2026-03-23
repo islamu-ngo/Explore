@@ -33,6 +33,8 @@ public class ApiEndpointSmokeTests
             .Where(description => !IsExternalDependencyEndpoint(description))
             .Where(description => !IsPublicSmokeException(description));
 
+        var failures = new List<string>();
+
         foreach (var description in endpoints)
         {
             var path = BuildPath(description);
@@ -46,11 +48,12 @@ public class ApiEndpointSmokeTests
 
             if (!isSuccess)
             {
-                Console.WriteLine($"Failed endpoint: {path} => {(int)response.StatusCode} {response.StatusCode}");
+                failures.Add($"{path} => {(int)response.StatusCode} {response.StatusCode}");
             }
-
-            await Assert.That(isSuccess).IsTrue();
         }
+
+        await Assert.That(failures).IsEmpty()
+            .Because($"All public GET endpoints should return OK/NoContent (or NotFound for parameterized). Failures: {string.Join("; ", failures)}");
     }
 
     [Test]

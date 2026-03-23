@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for updating an agenda item.
+// ABOUTME: Carries the UpdateEventSessionAgendaItemDto payload.
 using System;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventSessionAgendaItem;

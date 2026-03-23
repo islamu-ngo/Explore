@@ -1,10 +1,13 @@
-using System;
-using System.Collections.Generic;
-using System.Text;
+// ABOUTME: Handler for creating a new organization with actor, default admin membership, and profile picture linking.
+// ABOUTME: Validates input, creates the org + actor pair, adds creator as OrgAdmin, and tracks metrics.
+
+using System.Linq;
+using System.Text.RegularExpressions;
 using AutoMapper;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.Organization.Validators;
 using Explore.Application.Features.Organizations.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Application.Telemetry;
@@ -52,6 +55,16 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
     public async Task<BaseCommandResponse<Guid>> Handle(CreateOrganizationCommand request, CancellationToken cancellationToken)
     {
         var response = new BaseCommandResponse<Guid>();
+
+        var validator = new CreateOrganizationDtoValidator();
+        var validationResult = await validator.ValidateAsync(request.OrganizationDto, cancellationToken);
+        if (!validationResult.IsValid)
+        {
+            response.Success = false;
+            response.Message = "Organization creation failed due to validation errors.";
+            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+            return response;
+        }
 
         // Get the current authenticated user
         var currentUserId = _userContext.GetRequiredUserId();
@@ -154,7 +167,7 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
             .Replace(",", "");
 
         // Remove any non-alphanumeric characters except hyphens
-        handle = System.Text.RegularExpressions.Regex.Replace(handle, @"[^a-z0-9\-]", "");
+        handle = Regex.Replace(handle, @"[^a-z0-9\-]", "");
 
         // Limit length and add unique suffix to avoid collisions
         if (handle.Length > 20)

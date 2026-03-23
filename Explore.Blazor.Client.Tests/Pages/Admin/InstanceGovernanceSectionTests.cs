@@ -1,5 +1,5 @@
-// ABOUTME: Component tests for InstanceGovernanceSection render-policy preset UX behavior.
-// ABOUTME: Verifies recommended default preselection, highlighted styling, and advanced preset selection flow.
+// ABOUTME: Component tests for InstanceGovernanceSection render-policy preset UX behavior and single-tenant visibility rules.
+// ABOUTME: Verifies recommended default preselection, highlighted styling, advanced preset selection, and self-service toggle visibility.
 
 namespace Explore.Blazor.Client.Tests.Pages.Admin;
 
@@ -73,6 +73,22 @@ public class InstanceGovernanceSectionTests : IDisposable
         await Assert.That(cut.FindAll(".instance-governance__preset-card .mud-tooltip-root").Count).IsEqualTo(5);
         await Assert.That(cut.FindAll(".mud-tooltip-root").Count).IsGreaterThanOrEqualTo(5);
         await Assert.That(cut.Markup).Contains("Runtime Render Policy");
+    }
+
+    [Test]
+    public async Task GovernanceSection_SingleTenant_NoSelfServiceRegistrationToggle()
+    {
+        var cut = RenderGovernanceSection(deploymentMode: "SingleTenant");
+
+        await Assert.That(cut.Markup).DoesNotContain("Allow tenant self-service registration", StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Test]
+    public async Task GovernanceSection_MultiTenant_HasSelfServiceRegistrationToggle()
+    {
+        var cut = RenderGovernanceSection(deploymentMode: "MultiTenant");
+
+        await Assert.That(cut.Markup).Contains("Allow tenant self-service registration", StringComparison.OrdinalIgnoreCase);
     }
 
     private IRenderedComponent<DynamicComponent> RenderGovernanceSection(

@@ -1,10 +1,10 @@
-using System;
-using System.Collections.Generic;
+// ABOUTME: Handler for updating organization details — validates input and enforces OrgAdmin authorization.
+// ABOUTME: Only OrgAdmin members may update their organization's profile fields.
+
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.Organization.Validators;
 using Explore.Application.Features.Organizations.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain.Enums;
@@ -35,6 +35,16 @@ public class UpdateOrganizationDetailsCommandHandler : IRequestHandler<UpdateOrg
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateOrganizationDetailsCommand request, CancellationToken cancellationToken)
     {
         var response = new BaseCommandResponse<Guid>();
+
+        var validator = new UpdateOrganizationDtoValidator();
+        var validationResult = await validator.ValidateAsync(request.OrganizationDto, cancellationToken);
+        if (!validationResult.IsValid)
+        {
+            response.Success = false;
+            response.Message = "Organization update failed due to validation errors.";
+            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+            return response;
+        }
 
         // Get the organization
         var organization = await _organizationRepository.GetById(request.Id);

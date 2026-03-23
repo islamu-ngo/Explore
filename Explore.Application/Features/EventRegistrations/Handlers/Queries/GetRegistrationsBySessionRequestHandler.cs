@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning all registrations for a specific event session.
+// ABOUTME: Used for session capacity and attendee management.
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;

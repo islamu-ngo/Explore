@@ -1,3 +1,5 @@
+// ABOUTME: Handler for deleting an actor key store entry.
+// ABOUTME: Fetches entity and delegates deletion to the repository.
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.ActorKeyStores.Requests.Commands;
 using MediatR;

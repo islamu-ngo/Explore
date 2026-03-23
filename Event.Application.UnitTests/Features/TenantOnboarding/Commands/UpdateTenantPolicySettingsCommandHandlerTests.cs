@@ -26,6 +26,7 @@ public class UpdateTenantPolicySettingsCommandHandlerTests
     private readonly ITenantOnboardingStateRepository _onboardingStateRepository;
     private readonly IAdminContext _adminContext;
     private readonly ITenantPolicySettingService _policySettingService;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly UpdateTenantPolicySettingsCommandHandler _handler;
 
     public UpdateTenantPolicySettingsCommandHandlerTests()
@@ -34,14 +35,25 @@ public class UpdateTenantPolicySettingsCommandHandlerTests
         _onboardingStateRepository = Substitute.For<ITenantOnboardingStateRepository>();
         _adminContext = Substitute.For<IAdminContext>();
         _policySettingService = Substitute.For<ITenantPolicySettingService>();
+        _unitOfWork = Substitute.For<IUnitOfWork>();
 
         _tenantContext.TenantId.Returns(TestTenantId);
+
+        // Execute the lambda so inner service logic runs in tests
+        _unitOfWork
+            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task>>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var op = callInfo.Arg<Func<CancellationToken, Task>>();
+                return op(CancellationToken.None);
+            });
 
         _handler = new UpdateTenantPolicySettingsCommandHandler(
             _tenantContext,
             _onboardingStateRepository,
             _adminContext,
-            _policySettingService);
+            _policySettingService,
+            _unitOfWork);
 
         _policySettingService.ReadEffectiveTenantSettingsAsync(TestTenantId).Returns(new TenantPolicySettingsDto
         {

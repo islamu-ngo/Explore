@@ -1,3 +1,5 @@
+// ABOUTME: Handler for updating a group member's role.
+// ABOUTME: Validates authorization, fetches join record, applies role change.
 using System;
 using System.Linq;
 using System.Threading;

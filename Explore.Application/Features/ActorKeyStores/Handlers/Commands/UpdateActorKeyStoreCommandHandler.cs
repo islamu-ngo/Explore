@@ -1,11 +1,11 @@
+// ABOUTME: Handler for updating actor key store entries with validation.
+// ABOUTME: Fetches entity by ID, validates input, applies updates.
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
-using Explore.Application.DTOs.ActorKeyStore;
 using Explore.Application.DTOs.ActorKeyStore.Validators;
 using Explore.Application.Features.ActorKeyStores.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
-using FluentValidation;
 using MediatR;
 
 namespace Explore.Application.Features.ActorKeyStores.Handlers.Commands;
@@ -13,24 +13,25 @@ namespace Explore.Application.Features.ActorKeyStores.Handlers.Commands;
 public class UpdateActorKeyStoreCommandHandler : IRequestHandler<UpdateActorKeyStoreCommand, BaseCommandResponse<Guid>>
 {
     private readonly IActorKeyStoreRepository _actorKeyStoreRepository;
+    private readonly IActorRepository _actorRepository;
     private readonly IMapper _mapper;
-    private readonly IValidator<UpdateActorKeyStoreDto> _validator;
 
     public UpdateActorKeyStoreCommandHandler(
         IActorKeyStoreRepository actorKeyStoreRepository,
-        IMapper mapper,
-        IValidator<UpdateActorKeyStoreDto> validator)
+        IActorRepository actorRepository,
+        IMapper mapper)
     {
         _actorKeyStoreRepository = actorKeyStoreRepository;
+        _actorRepository = actorRepository;
         _mapper = mapper;
-        _validator = validator;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateActorKeyStoreCommand request, CancellationToken cancellationToken)
     {
         var response = new BaseCommandResponse<Guid>();
 
-        var validationResult = await _validator.ValidateAsync(request.ActorKeyStoreDto, cancellationToken);
+        var validator = new UpdateActorKeyStoreDtoValidator(_actorRepository);
+        var validationResult = await validator.ValidateAsync(request.ActorKeyStoreDto, cancellationToken);
 
         if (!validationResult.IsValid)
         {

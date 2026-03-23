@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a single audience age category by ID.
+// ABOUTME: Maps AudienceAge entity to AudienceAgeDto.
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.AudienceAge;

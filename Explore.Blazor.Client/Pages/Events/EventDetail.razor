@@ -11,6 +11,20 @@
 
 @if (_eventDetails != null)
 {
+    <HeadContent>
+        <meta name="description" content="@GetMetaDescription()" />
+        <meta property="og:title" content="@TruncateTitle(_eventDetails.Title)" />
+        <meta property="og:description" content="@GetMetaDescription()" />
+        <meta property="og:type" content="event" />
+        <meta property="og:url" content="@GetCanonicalUrl()" />
+        <meta property="og:image" content="@GetOgImageUrl()" />
+        <meta property="og:site_name" content="ISLAMU Events" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="@TruncateTitle(_eventDetails.Title)" />
+        <meta name="twitter:description" content="@GetMetaDescription()" />
+        <meta name="twitter:image" content="@GetOgImageUrl()" />
+        <link rel="canonical" href="@GetCanonicalUrl()" />
+    </HeadContent>
     <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
 
         @* ── Back Navigation ── *@
@@ -23,6 +37,18 @@
                 Back to Events
             </MudButton>
         </div>
+
+        @* ── Cancelled Event Banner ── *@
+        @if (IsCancelledEvent())
+        {
+            <MudAlert Severity="Severity.Error"
+                      Variant="Variant.Filled"
+                      Dense="false"
+                      Icon="@Icons.Material.Filled.Cancel"
+                      Class="mb-6">
+                This event has been cancelled. Registration is no longer available.
+            </MudAlert>
+        }
 
         @* ── Hero Section: Image Left / Title Right ── *@
         <MudGrid Spacing="6" Class="mb-8">
@@ -94,7 +120,12 @@
                     }
 
                     @* Organizer *@
-                    <div class="d-flex align-center gap-3 mt-4">
+                    @{
+                        var organizerUrl = GetOrganizerProfileUrl();
+                        var organizerContainerClass = $"d-flex align-center gap-3 mt-4{(organizerUrl != null ? " cursor-pointer" : "")}";
+                        var organizerNameStyle = organizerUrl != null ? "font-weight: 700; text-decoration: underline dotted;" : "font-weight: 700;";
+                    }
+                    <div class="@organizerContainerClass" @onclick="@(() => NavigateToOrganizer())">
                         <MudAvatar Size="Size.Medium" Color="Color.Primary" Variant="Variant.Outlined">
                             @if (!string.IsNullOrEmpty(GetOrganizerProfilePicture()))
                             {
@@ -107,7 +138,7 @@
                         </MudAvatar>
                         <div>
                             <MudText Typo="Typo.caption" Color="Color.Secondary">Hosted by</MudText>
-                            <MudText Typo="Typo.body1" Style="font-weight: 700;">@GetOrganizerName()</MudText>
+                            <MudText Typo="Typo.body1" Style="@organizerNameStyle">@GetOrganizerName()</MudText>
                         </div>
                     </div>
 
@@ -121,7 +152,7 @@
                                 @if (_canEdit)
                                 {
                                     <MudMenuItem Icon="@Icons.Material.Filled.Edit"
-                                                 Href="@($"/event/edit/{EventId}")">
+                                                 Href="@($"/events/{EventId}/edit")">
                                         Edit
                                     </MudMenuItem>
                                 }
@@ -502,15 +533,30 @@
             <MudButton StartIcon="@Icons.Material.Outlined.Share"
                        Variant="Variant.Outlined"
                        Color="Color.Default"
-                       Size="Size.Small">
+                       Size="Size.Small"
+                       OnClick="@ShareEventAsync">
                 Share
             </MudButton>
-            <MudButton StartIcon="@Icons.Material.Outlined.Flag"
-                       Variant="Variant.Outlined"
-                       Color="Color.Default"
-                       Size="Size.Small">
-                Report
-            </MudButton>
+
+            @if (_primarySession is not null)
+            {
+                <MudMenu Icon="@Icons.Material.Outlined.CalendarMonth"
+                         Variant="Variant.Outlined"
+                         Color="Color.Default"
+                         Size="Size.Small"
+                         Label="Add to Calendar"
+                         AnchorOrigin="Origin.BottomCenter"
+                         TransformOrigin="Origin.TopCenter">
+                    <MudMenuItem OnClick="@AddToGoogleCalendarAsync"
+                                 Icon="@Icons.Material.Outlined.Event">
+                        Google Calendar
+                    </MudMenuItem>
+                    <MudMenuItem OnClick="@DownloadIcsFileAsync"
+                                 Icon="@Icons.Material.Outlined.Download">
+                        Download .ics
+                    </MudMenuItem>
+                </MudMenu>
+            }
         </div>
 
     </MudContainer>

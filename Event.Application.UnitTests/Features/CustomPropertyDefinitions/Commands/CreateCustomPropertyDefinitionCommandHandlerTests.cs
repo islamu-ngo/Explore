@@ -25,6 +25,7 @@ public class CreateCustomPropertyDefinitionCommandHandlerTests
     private readonly ICurrentUserService _currentUserService;
     private readonly IMapper _mapper;
     private readonly HybridCache _cache;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly CreateCustomPropertyDefinitionCommandHandler _handler;
 
     public CreateCustomPropertyDefinitionCommandHandlerTests()
@@ -35,6 +36,16 @@ public class CreateCustomPropertyDefinitionCommandHandlerTests
         _currentUserService = Substitute.For<ICurrentUserService>();
         _mapper = Substitute.For<IMapper>();
         _cache = Substitute.For<HybridCache>();
+        _unitOfWork = Substitute.For<IUnitOfWork>();
+
+        // Execute the lambda so inner repo logic runs in tests
+        _unitOfWork
+            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<CustomPropertyDefinition>>>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var op = callInfo.Arg<Func<CancellationToken, Task<CustomPropertyDefinition>>>();
+                return op(CancellationToken.None);
+            });
 
         _handler = new CreateCustomPropertyDefinitionCommandHandler(
             _customPropertyDefinitionRepository,
@@ -42,7 +53,8 @@ public class CreateCustomPropertyDefinitionCommandHandlerTests
             _tenantContext,
             _currentUserService,
             _mapper,
-            _cache);
+            _cache,
+            _unitOfWork);
     }
 
     [Test]

@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for updating a user authentication token.
+// ABOUTME: Carries the UpdateUserAuthenticationTokenDto payload.
 using Explore.Application.DTOs.UserAuthenticationToken;
 using Explore.Application.Responses;
 using MediatR;

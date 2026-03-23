@@ -19,7 +19,7 @@ public class TenantPolicySettingsDto
     public string InstanceBaseDomain { get; set; } = string.Empty;
     public string Subdomain { get; set; } = string.Empty;
     public string CustomDomain { get; set; } = string.Empty;
-    public string BrandDisplayName { get; set; } = "ISLAMU Explore";
+    public string BrandDisplayName { get; set; } = string.Empty;
     public string BrandLogoUrl { get; set; } = string.Empty;
     public string BrandFaviconUrl { get; set; } = string.Empty;
     public string BrandCustomCssUrl { get; set; } = string.Empty;
@@ -47,6 +47,10 @@ public class TenantPolicySettingsDto
     public bool CanOverridePublicSeoRenderPolicy { get; set; }
     public bool CanOverrideOperationalRenderPolicy { get; set; }
     public bool CanOverrideAdminRenderPolicy { get; set; }
+
+    // Community guidelines
+    public string CommunityGuidelinesContent { get; set; } = string.Empty;
+    public bool CanOverrideCommunityGuidelines { get; set; } = true;
 
     // Category-level override flags (inverse of instance lock)
     public bool CanOverrideSmtp { get; set; }

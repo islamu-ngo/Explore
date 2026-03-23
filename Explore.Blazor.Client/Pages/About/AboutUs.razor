@@ -1,0 +1,48 @@
+@* ABOUTME: About Us page providing an overview of the platform's purpose and mission.
+   ABOUTME: Static informational page accessible at /about. *@
+
+@page "/about"
+
+<PageTitle>About Us — ISLAMU Explore</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-8">
+    <MudText Typo="Typo.h4" Class="mb-4" Style="font-weight: 800;">About Us</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-8">
+        Learn more about this platform and its mission.
+    </MudText>
+
+    <section class="mb-8">
+        <MudText Typo="Typo.h5" Class="mb-3" Style="font-weight: 700;">Our Mission</MudText>
+        <MudText Typo="Typo.body1" Class="mb-4">
+            This platform exists to make it easier for communities and organisations to discover,
+            share, and participate in events. We believe in open, inclusive, and well-organised events
+            that bring people together and create lasting impact.
+        </MudText>
+    </section>
+
+    <section class="mb-8">
+        <MudText Typo="Typo.h5" Class="mb-3" Style="font-weight: 700;">What We Offer</MudText>
+        <MudText Typo="Typo.body1" Class="mb-4">
+            A centralised place to discover and manage events — from community gatherings and educational
+            workshops to professional conferences. Our platform supports event organisers and attendees
+            with the tools they need to create great experiences.
+        </MudText>
+    </section>
+
+    <section class="mb-8">
+        <MudText Typo="Typo.h5" Class="mb-3" Style="font-weight: 700;">Our Values</MudText>
+        <MudStack Spacing="2" Class="mb-4">
+            <MudText Typo="Typo.body1"><strong>Inclusivity</strong> — Everyone is welcome, regardless of background or ability.</MudText>
+            <MudText Typo="Typo.body1"><strong>Transparency</strong> — We operate openly and honestly with our community.</MudText>
+            <MudText Typo="Typo.body1"><strong>Community</strong> — We put the needs of our community first.</MudText>
+            <MudText Typo="Typo.body1"><strong>Quality</strong> — We are committed to delivering a great experience.</MudText>
+        </MudStack>
+    </section>
+
+    <MudDivider Class="mb-8" />
+
+    <MudText Typo="Typo.body2" Color="Color.Secondary">
+        For more information or to get in touch, please visit our
+        <MudLink Href="/contact" Color="Color.Primary">Contact</MudLink> page.
+    </MudText>
+</MudContainer>

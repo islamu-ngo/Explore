@@ -70,7 +70,7 @@
                         <MudButton Variant="Variant.Filled"
                                    Color="Color.Primary"
                                    StartIcon="@Icons.Material.Filled.OpenInNew"
-                                   OnClick="@(() => Navigation.NavigateTo($"/event/detail/{_selectedEvent!.Id}"))">
+                                   OnClick="@(() => Navigation.NavigateTo($"/events/{_selectedEvent!.Id}"))">
                             Event Page
                         </MudButton>
                         <MudButton Variant="Variant.Filled"
@@ -290,9 +290,11 @@
                         @* ── Actor / Organizer Info ── *@
                         @if (_selectedEventDetail?.ActorDisplayName != null)
                         {
+                            var sidebarOrganizerUrl = GetActorProfileUrl(_selectedEventDetail!.ActorId, _selectedEventDetail.ActorTypeId);
                             <MudDivider Class="mb-4" />
                             <MudText Typo="Typo.overline" Class="mb-2" Style="font-weight: 600;">ORGANIZER</MudText>
-                            <div class="d-flex gap-3 align-center mb-4">
+                            <div class="@($"d-flex gap-3 align-center mb-4{(sidebarOrganizerUrl != null ? " cursor-pointer" : "")}")"
+                                 @onclick="@(() => NavigateToActorProfile(_selectedEventDetail.ActorId, _selectedEventDetail.ActorTypeId))">
                                 @if (!string.IsNullOrEmpty(_selectedEventDetail.ActorProfilePictureUri))
                                 {
                                     <MudAvatar Size="Size.Medium">
@@ -306,7 +308,7 @@
                                     </MudAvatar>
                                 }
                                 <div>
-                                    <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">@_selectedEventDetail.ActorDisplayName</MudText>
+                                    <MudText Typo="Typo.subtitle2" Style="@($"font-weight: 700;{(sidebarOrganizerUrl != null ? " text-decoration: underline dotted;" : "")}")">@_selectedEventDetail.ActorDisplayName</MudText>
                                     @if (!string.IsNullOrEmpty(_selectedEventDetail.ActorTypeFullName))
                                     {
                                         <MudText Typo="Typo.caption" Color="Color.Secondary">@_selectedEventDetail.ActorTypeFullName</MudText>
@@ -1076,6 +1078,25 @@
                                                 <MudText Typo="Typo.body2" Color="Color.Secondary" Style="overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
                                                     @GetTruncatedDescription(evt.Description)
                                                 </MudText>
+                                                @* ── Organizer ── *@
+                                                @{
+                                                    var dlOrganizerUrl = GetActorProfileUrl(evt.ActorId, evt.ActorTypeId);
+                                                    var dlOrganizerClass = $"d-flex align-center gap-2 mt-2{(dlOrganizerUrl != null ? " cursor-pointer" : "")}";
+                                                    var dlOrganizerNameStyle = dlOrganizerUrl != null ? "text-decoration: underline dotted;" : "";
+                                                }
+                                                <div class="@dlOrganizerClass"
+                                                     @onclick:stopPropagation="true"
+                                                     @onclick="@(() => NavigateToActorProfile(evt.ActorId, evt.ActorTypeId))">
+                                                    <MudAvatar Size="Size.Small" Image="@evt.ActorProfilePictureUri" Color="Color.Primary">
+                                                        @if (string.IsNullOrEmpty(evt.ActorProfilePictureUri))
+                                                        {
+                                                            @(evt.ActorDisplayName.FirstOrDefault())
+                                                        }
+                                                    </MudAvatar>
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="@dlOrganizerNameStyle">
+                                                        @evt.ActorDisplayName
+                                                    </MudText>
+                                                </div>
                                                 <div class="d-flex align-center gap-3 mt-auto pt-2">
                                                     <MudText Typo="Typo.caption" Color="Color.Secondary">
                                                         <MudIcon Icon="@Icons.Material.Outlined.CalendarToday" Size="Size.Small" Class="mr-1" Style="vertical-align: text-bottom;" />
@@ -1191,9 +1212,21 @@
                                                             <span style="color: var(--mud-palette-success); font-weight: 600;">Free</span>
                                                         }
                                                     </span>
-                                                    <span class="event-card__sr-meta-item">
-                                                        <MudIcon Icon="@Icons.Material.Outlined.Business" Size="Size.Small" />
-                                                        @evt.ActorDisplayName
+                                                    @{
+                                                        var srOrganizerUrl = GetActorProfileUrl(evt.ActorId, evt.ActorTypeId);
+                                                        var srOrganizerClass = $"event-card__sr-meta-item{(srOrganizerUrl != null ? " cursor-pointer" : "")}";
+                                                        var srOrganizerNameStyle = srOrganizerUrl != null ? "text-decoration: underline dotted;" : "";
+                                                    }
+                                                    <span class="@srOrganizerClass"
+                                                          @onclick:stopPropagation="true"
+                                                          @onclick="@(() => NavigateToActorProfile(evt.ActorId, evt.ActorTypeId))">
+                                                        <MudAvatar Size="Size.Small" Image="@evt.ActorProfilePictureUri" Color="Color.Primary" Style="width: 20px; height: 20px; font-size: 0.65rem;">
+                                                            @if (string.IsNullOrEmpty(evt.ActorProfilePictureUri))
+                                                            {
+                                                                @(evt.ActorDisplayName.FirstOrDefault())
+                                                            }
+                                                        </MudAvatar>
+                                                        <span style="@srOrganizerNameStyle">@evt.ActorDisplayName</span>
                                                     </span>
                                                 </div>
                                             </div>

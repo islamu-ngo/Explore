@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a paginated, filtered list of events.
+// ABOUTME: Applies EventFilter specification and maps to EventListDto.
 using AutoMapper;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
@@ -80,6 +82,14 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
         GetEventListRequest request, CancellationToken cancellationToken)
     {
         var spec = new EventQuerySpecification();
+
+        // ===== Public discoverability filter =====
+        // When no explicit status filter is provided, apply public visibility rules:
+        // only show Public visibility + non-Draft/Archived events in discovery listings.
+        if (request.EventStatusIds is not { Count: > 0 })
+        {
+            spec = spec.And(EventFilter.PubliclyDiscoverable());
+        }
 
         // ===== Core Event filters (always available) =====
 

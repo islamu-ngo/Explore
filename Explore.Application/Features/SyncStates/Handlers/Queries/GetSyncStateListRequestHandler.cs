@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a paginated list of sync state records.
+// ABOUTME: Maps entities to SyncStateListDto.
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.SyncState;

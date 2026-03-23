@@ -304,6 +304,22 @@ These rules are **non-negotiable**. Violations break architectural integrity.
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture overview
 - **[TEMPLATE_GLOSSARY.md](TEMPLATE_GLOSSARY.md)** - Placeholder definitions
 
+## Code Review Checklist
+
+### Command Handler PR Review
+
+Before approving any command handler PR, verify:
+
+- **Multi-step writes → `IUnitOfWork`**: If the handler performs more than one write operation (across any repository or service), confirm `IUnitOfWork.ExecuteInTransactionAsync` wraps all writes.
+- **Pre-validation outside lambda**: Validation, authorization checks, and read-only pre-fetches must be outside the transaction lambda.
+- **Post-commit side effects after lambda**: Cache invalidation, metrics, external notifications must happen *after* `ExecuteInTransactionAsync` returns — never inside the lambda.
+- **Retry-safety**: All `Guid.NewGuid()` / timestamps used as IDs must be generated before the lambda (captured via closure). No HTTP calls, broker publishes, or emails inside the lambda.
+- **No nested transactions**: Handlers must not call services that internally use `IUnitOfWork` while already inside a transaction.
+
+See `dev/active/unitofwork-pattern/unitofwork-pattern-context.md` for the canonical reference implementation.
+
+---
+
 ## Implementation Reference
 
 For detailed code patterns and examples, see:

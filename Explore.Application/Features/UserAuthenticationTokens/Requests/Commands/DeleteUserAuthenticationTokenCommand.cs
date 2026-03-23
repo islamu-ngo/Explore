@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for deleting a user authentication token by ID.
+// ABOUTME: Carries the target token ID.
 using MediatR;
 
 namespace Explore.Application.Features.UserAuthenticationTokens.Requests.Commands;

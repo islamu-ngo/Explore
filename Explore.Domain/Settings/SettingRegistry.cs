@@ -28,6 +28,7 @@ public static class SettingRegistry
         all.AddRange(GroupSettingDefinitions.All);
         all.AddRange(ModuleSettingDefinitions.All);
         all.AddRange(BrandingSettingDefinitions.All);
+        all.AddRange(AppearanceSettingDefinitions.All);
         all.AddRange(DomainSettingDefinitions.All);
         all.AddRange(EmailSettingDefinitions.All);
         all.AddRange(StorageSettingDefinitions.All);
@@ -35,6 +36,7 @@ public static class SettingRegistry
         all.AddRange(CerbosSettingDefinitions.All);
         all.AddRange(AnalyticsSettingDefinitions.All);
         all.AddRange(TenantDelegationSettingDefinitions.All);
+        all.AddRange(FooterSettingDefinitions.All);
 
         DefinitionsByKey = all.ToFrozenDictionary(d => d.Key);
         ByCategory = all

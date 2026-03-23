@@ -2,10 +2,12 @@
 // ABOUTME: Supports anonymous-safe home page routing and white-label branding consumption.
 
 using System.Text.Json;
+using AutoMapper;
 using Explore.Application.Analytics;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.Footer;
 using Explore.Application.DTOs.Instance;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.PublicExperience.Requests.Queries;
@@ -28,6 +30,8 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
     private readonly IAnalyticsGovernanceService _analyticsGovernanceService;
     private readonly IAnalyticsRuntimeProfileResolver _runtimeProfileResolver;
     private readonly IHierarchicalSettingsResolver _hierarchicalSettingsResolver;
+    private readonly IFooterLinkGroupRepository _footerLinkGroupRepository;
+    private readonly IMapper _mapper;
 
     public GetPublicExperienceSettingsQueryHandler(
         ITenantContext tenantContext,
@@ -38,7 +42,9 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
         IInstanceGovernanceSettingService instanceGovernanceSettingService,
         IAnalyticsGovernanceService analyticsGovernanceService,
         IAnalyticsRuntimeProfileResolver runtimeProfileResolver,
-        IHierarchicalSettingsResolver hierarchicalSettingsResolver)
+        IHierarchicalSettingsResolver hierarchicalSettingsResolver,
+        IFooterLinkGroupRepository footerLinkGroupRepository,
+        IMapper mapper)
     {
         _tenantContext = tenantContext;
         _systemSettingRepository = systemSettingRepository;
@@ -49,6 +55,8 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
         _analyticsGovernanceService = analyticsGovernanceService;
         _runtimeProfileResolver = runtimeProfileResolver;
         _hierarchicalSettingsResolver = hierarchicalSettingsResolver;
+        _footerLinkGroupRepository = footerLinkGroupRepository;
+        _mapper = mapper;
     }
 
     public async Task<PublicExperienceSettingsDto> Handle(GetPublicExperienceSettingsQuery request, CancellationToken cancellationToken)
@@ -81,6 +89,27 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
         var runtimeProfile = _runtimeProfileResolver.Resolve(analyticsSettingGroup);
         var consentBootstrap = MapToConsentBootstrap(runtimeProfile, analyticsProvider);
 
+        // Resolve footer config (settings + link groups)
+        var footerSettingGroup = await _hierarchicalSettingsResolver.ResolveGroupAsync<FooterSettingGroup>(
+            new SettingContext(TenantId: tenantId), cancellationToken);
+        var footerLinkGroups = await _footerLinkGroupRepository.GetResolvedGroupsForTenantAsync(tenantId, cancellationToken);
+
+        var footerConfig = new FooterConfigDto
+        {
+            Settings = new FooterSettingsDto
+            {
+                Enabled = footerSettingGroup.Enabled,
+                Template = footerSettingGroup.Template,
+                ShowDescription = footerSettingGroup.ShowDescription,
+                DescriptionText = footerSettingGroup.DescriptionText,
+                ShowSocialLinks = footerSettingGroup.ShowSocialLinks,
+                SocialLinks = footerSettingGroup.SocialLinks.AsReadOnly(),
+                CopyrightText = footerSettingGroup.CopyrightText,
+                ShowCookieSettingsLink = footerSettingGroup.ShowCookieSettingsLink,
+            },
+            LinkGroups = _mapper.Map<List<FooterLinkGroupDto>>(footerLinkGroups),
+        };
+
         return new PublicExperienceSettingsDto
         {
             TenantId = tenantId,
@@ -99,6 +128,7 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
             AllowOrganizationSelfRegistration = effectiveTenantSettings.AllowOrganizationSelfRegistration,
             AllowGroupSelfRegistration = effectiveTenantSettings.AllowGroupSelfRegistration,
             EventCardClickOpensDetailPage = effectiveTenantSettings.EventCardClickOpensDetailPage,
+            CommunityGuidelinesContent = effectiveTenantSettings.CommunityGuidelinesContent,
             IsIslamicModuleEnabled = enabledModuleKeys.Contains("Mod_Islamic"),
             IsTechModuleEnabled = enabledModuleKeys.Contains("Mod_Tech"),
             EnabledModules = enabledModuleKeys,
@@ -123,7 +153,8 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
             AdminPrerenderEnabled = governanceSettings.RenderPolicy.AdminPrerenderEnabled,
             OnboardingRenderMode = governanceSettings.RenderPolicy.OnboardingRenderMode,
             OnboardingPrerenderEnabled = governanceSettings.RenderPolicy.OnboardingPrerenderEnabled,
-            DisallowInteractiveServerOnOnboarding = governanceSettings.RenderPolicy.DisallowInteractiveServerOnOnboarding
+            DisallowInteractiveServerOnOnboarding = governanceSettings.RenderPolicy.DisallowInteractiveServerOnOnboarding,
+            FooterConfig = footerConfig,
         };
     }
 

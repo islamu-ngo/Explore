@@ -25,6 +25,7 @@ public class SyncUserCommandHandlerTests
     private readonly ITenantContext _tenantContext;
     private readonly IConfiguration _configuration;
     private readonly HybridCache _cache;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly SyncUserCommandHandler _handler;
 
     public SyncUserCommandHandlerTests()
@@ -36,6 +37,16 @@ public class SyncUserCommandHandlerTests
         _tenantContext = Substitute.For<ITenantContext>();
         _configuration = new ConfigurationBuilder().Build();
         _cache = Substitute.For<HybridCache>();
+        _unitOfWork = Substitute.For<IUnitOfWork>();
+
+        // Execute the lambda so inner repo logic runs in tests
+        _unitOfWork
+            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<User>>>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var op = callInfo.Arg<Func<CancellationToken, Task<User>>>();
+                return op(CancellationToken.None);
+            });
 
         _handler = new SyncUserCommandHandler(
             _userRepository,
@@ -44,7 +55,8 @@ public class SyncUserCommandHandlerTests
             _tenantRepository,
             _tenantContext,
             _configuration,
-            _cache);
+            _cache,
+            _unitOfWork);
     }
 
     [Test]

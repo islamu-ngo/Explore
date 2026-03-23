@@ -1,3 +1,5 @@
+// ABOUTME: Handler for updating an event session agenda item with validation.
+// ABOUTME: Validates input, fetches entity, applies updates.
 using System;
 using System.Linq;
 using System.Threading;

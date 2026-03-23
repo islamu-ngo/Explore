@@ -3,6 +3,9 @@
 
 namespace Explore.Blazor.Extensions;
 
+using System.Net.Http.Json;
+using Explore.Application.DTOs.Appearance;
+
 public static class BffPreferenceEndpoints
 {
     /// <summary>
@@ -13,6 +16,9 @@ public static class BffPreferenceEndpoints
         app.MapPost("/bff/theme", HandleThemePreference)
             .ExcludeFromDescription();
 
+        app.MapGet("/bff/theme", HandleGetThemePreferenceAsync)
+            .ExcludeFromDescription();
+
         app.MapPost("/bff/language", HandleLanguagePreference)
             .ExcludeFromDescription();
 
@@ -21,27 +27,67 @@ public static class BffPreferenceEndpoints
         return app;
     }
 
-    private static IResult HandleThemePreference(HttpContext ctx)
+    private static async Task<IResult> HandleThemePreference(HttpContext ctx, CancellationToken cancellationToken)
     {
-        var theme = ctx.Request.Query["theme"].ToString();
-        if (theme is "dark" or "light")
+        var request = new UpdateUserAppearancePreferencesDto
         {
-            var isDev = ctx.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment();
-            ctx.Response.Cookies.Append("theme", theme, new CookieOptions
-            {
-                MaxAge = TimeSpan.FromDays(365),
-                Path = "/",
-                SameSite = SameSiteMode.Lax,
-                HttpOnly = false,
-                Secure = !isDev
-            });
-            return Results.Ok();
+            ThemeMode = ctx.Request.Query["theme"].ToString().Trim().ToLowerInvariant()
+        };
+
+        if (request.ThemeMode is not "dark" and not "light" and not "system")
+        {
+            return Results.Problem(
+                detail: "Theme must be 'system', 'dark', or 'light'.",
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Invalid theme preference");
         }
 
-        return Results.Problem(
-            detail: "Theme must be 'dark' or 'light'.",
-            statusCode: StatusCodes.Status400BadRequest,
-            title: "Invalid theme preference");
+        if (ctx.User.Identity?.IsAuthenticated == true)
+        {
+            var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
+            using var response = await clientFactory.CreateClient("BffClient")
+                .PutAsJsonAsync("api/user/appearance", request, cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return Results.Problem(
+                    detail: "Authenticated theme preference could not be persisted.",
+                    statusCode: (int)response.StatusCode,
+                    title: "Theme preference update failed");
+            }
+        }
+
+        PersistThemeCookie(ctx, request.ThemeMode);
+
+        return Results.Ok(new UserAppearancePreferencesDto
+        {
+            ThemeMode = request.ThemeMode
+        });
+    }
+
+    private static async Task<IResult> HandleGetThemePreferenceAsync(HttpContext ctx, CancellationToken cancellationToken)
+    {
+        if (ctx.User.Identity?.IsAuthenticated == true)
+        {
+            var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
+            using var response = await clientFactory.CreateClient("BffClient")
+                .GetAsync("api/user/appearance", cancellationToken);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var preferences = await response.Content.ReadFromJsonAsync<UserAppearancePreferencesDto>(cancellationToken: cancellationToken);
+                if (preferences is not null)
+                {
+                    return Results.Ok(preferences);
+                }
+            }
+        }
+
+        var theme = ctx.Request.Cookies["theme"];
+        return Results.Ok(new UserAppearancePreferencesDto
+        {
+            ThemeMode = theme is "dark" or "light" ? theme : "system"
+        });
     }
 
     private static IResult HandleLanguagePreference(HttpContext ctx)
@@ -88,6 +134,32 @@ public static class BffPreferenceEndpoints
             Claims = ctx.User.Claims
                 .Where(c => safeClaims.Contains(c.Type, StringComparer.OrdinalIgnoreCase))
                 .Select(c => new { c.Type, c.Value })
+        });
+    }
+
+    private static void PersistThemeCookie(HttpContext ctx, string themeMode)
+    {
+        var isDev = ctx.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment();
+
+        if (themeMode == "system")
+        {
+            ctx.Response.Cookies.Delete("theme", new CookieOptions
+            {
+                Path = "/",
+                SameSite = SameSiteMode.Lax,
+                HttpOnly = false,
+                Secure = !isDev
+            });
+            return;
+        }
+
+        ctx.Response.Cookies.Append("theme", themeMode, new CookieOptions
+        {
+            MaxAge = TimeSpan.FromDays(365),
+            Path = "/",
+            SameSite = SameSiteMode.Lax,
+            HttpOnly = false,
+            Secure = !isDev
         });
     }
 }

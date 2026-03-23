@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for creating tenant settings.
+// ABOUTME: Carries the CreateTenantSettingsDto payload.
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.TenantSettings;
 using Explore.Application.Responses;

@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a paginated list of event registrations.
+// ABOUTME: Maps entities to EventRegistrationListDto.
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;

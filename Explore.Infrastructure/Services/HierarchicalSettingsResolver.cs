@@ -247,6 +247,16 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
         }
     }
 
+    public void InvalidateUserCache(Guid tenantId, Guid userId)
+    {
+        if (tenantId == Guid.Empty || userId == Guid.Empty)
+        {
+            return;
+        }
+
+        _cache.Remove($"{UserCachePrefix}{tenantId}:{userId}");
+    }
+
     private ResolvedSetting? ResolveSingleKey(
         string key,
         Dictionary<string, SystemSetting> systemDict,

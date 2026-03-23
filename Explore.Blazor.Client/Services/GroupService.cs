@@ -126,6 +126,7 @@ public class GroupService : IGroupService
                 Id = ReadGuid(root, "id") ?? groupId,
                 FullName = ReadString(root, "fullName") ?? string.Empty,
                 Description = ReadString(root, "description"),
+                ActorId = ReadGuid(root, "actorId"),
                 ActorBackgroundColor = ReadString(root, "actorBackgroundColor"),
                 ActorBackgroundEffect = ReadString(root, "actorBackgroundEffect"),
                 ActorBannerColor = ReadString(root, "actorBannerColor"),
@@ -275,6 +276,7 @@ public class GroupAdminDetailsModel
     public Guid Id { get; set; }
     public string FullName { get; set; } = string.Empty;
     public string? Description { get; set; }
+    public Guid? ActorId { get; set; }
     public string? ActorBackgroundColor { get; set; }
     public string? ActorBackgroundEffect { get; set; }
     public string? ActorBannerColor { get; set; }

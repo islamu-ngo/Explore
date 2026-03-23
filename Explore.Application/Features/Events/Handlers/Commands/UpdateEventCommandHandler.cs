@@ -1,3 +1,6 @@
+// ABOUTME: Handler for all event updates using the null-check DTO pattern.
+// ABOUTME: Checks which DTO is non-null on the command and applies only that specific update.
+
 using System;
 using System.Linq;
 using System.Threading;
@@ -15,6 +18,7 @@ namespace Explore.Application.Features.Events.Handlers.Commands;
 public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, BaseCommandResponse<Guid>>
 {
     private readonly IEventRepository _eventRepository;
+    private readonly IEventStatusRepository _eventStatusRepository;
     private readonly IAudienceAgeRepository _audienceAgeRepository;
     private readonly IAudienceGenderRepository _audienceGenderRepository;
     private readonly IEventTypeRepository _eventTypeRepository;
@@ -25,6 +29,7 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
 
     public UpdateEventCommandHandler(
         IEventRepository eventRepository,
+        IEventStatusRepository eventStatusRepository,
         IAudienceAgeRepository audienceAgeRepository,
         IAudienceGenderRepository audienceGenderRepository,
         IEventTypeRepository eventTypeRepository,
@@ -34,6 +39,7 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
         HybridCache cache)
     {
         _eventRepository = eventRepository;
+        _eventStatusRepository = eventStatusRepository;
         _audienceAgeRepository = audienceAgeRepository;
         _audienceGenderRepository = audienceGenderRepository;
         _eventTypeRepository = eventTypeRepository;
@@ -47,18 +53,7 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
     {
         var response = new BaseCommandResponse<Guid>();
 
-        var validator = new UpdateEventDtoValidator(_audienceAgeRepository, _audienceGenderRepository, _eventTypeRepository, _actorRepository, _storageObjectRepository);
-        var validationResult = await validator.ValidateAsync(request.EventDto, cancellationToken);
-
-        if (!validationResult.IsValid)
-        {
-            response.Success = false;
-            response.Message = "Event update failed.";
-            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
-            return response;
-        }
-
-        var @event = await _eventRepository.GetById(request.EventDto.Id);
+        var @event = await _eventRepository.GetById(request.Id);
         if (@event == null)
         {
             response.Success = false;
@@ -66,7 +61,39 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
             return response;
         }
 
-        _mapper.Map(request.EventDto, @event);
+        if (request.EventDto is not null)
+        {
+            var validator = new UpdateEventDtoValidator(
+                _audienceAgeRepository, _audienceGenderRepository,
+                _eventTypeRepository, _actorRepository, _storageObjectRepository);
+            var validationResult = await validator.ValidateAsync(request.EventDto, cancellationToken);
+
+            if (!validationResult.IsValid)
+            {
+                response.Success = false;
+                response.Message = "Event update failed.";
+                response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+                return response;
+            }
+
+            _mapper.Map(request.EventDto, @event);
+        }
+
+        if (request.EventStatusDto is not null)
+        {
+            var validator = new UpdateEventStatusDtoValidator(_eventStatusRepository);
+            var validationResult = await validator.ValidateAsync(request.EventStatusDto, cancellationToken);
+
+            if (!validationResult.IsValid)
+            {
+                response.Success = false;
+                response.Message = "Event status update failed.";
+                response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+                return response;
+            }
+
+            @event.EventStatusId = request.EventStatusDto.EventStatusId;
+        }
 
         await _eventRepository.Update(@event);
 

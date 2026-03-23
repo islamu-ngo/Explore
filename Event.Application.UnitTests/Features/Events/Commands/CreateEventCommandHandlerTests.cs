@@ -36,6 +36,7 @@ public class CreateEventCommandHandlerTests
     private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
     private readonly HybridCache _cache;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly CreateEventCommandHandler _handler;
 
     public CreateEventCommandHandlerTests()
@@ -57,6 +58,16 @@ public class CreateEventCommandHandlerTests
         _tenantContext = Substitute.For<ITenantContext>();
         _mapper = Substitute.For<IMapper>();
         _cache = Substitute.For<HybridCache>();
+        _unitOfWork = Substitute.For<IUnitOfWork>();
+
+        // Execute the lambda so inner repo logic runs in tests
+        _unitOfWork
+            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<Guid>>>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var op = callInfo.Arg<Func<CancellationToken, Task<Guid>>>();
+                return op(CancellationToken.None);
+            });
 
         var meterFactory = Substitute.For<IMeterFactory>();
         meterFactory.Create(Arg.Any<MeterOptions>()).Returns(new Meter("test"));
@@ -78,7 +89,8 @@ public class CreateEventCommandHandlerTests
             _tenantContext,
             _mapper,
             _cache,
-            new BusinessMetrics(meterFactory)
+            new BusinessMetrics(meterFactory),
+            _unitOfWork
         );
     }
 

@@ -1,3 +1,5 @@
+// ABOUTME: Handler for updating a user external login record with validation.
+// ABOUTME: Validates input, fetches entity, applies updates.
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.UserExternalLogin;

@@ -1,3 +1,5 @@
+// ABOUTME: Handler for removing a user's external login link.
+// ABOUTME: Fetches login record by ID and delegates deletion.
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.UserExternalLogins.Requests.Commands;

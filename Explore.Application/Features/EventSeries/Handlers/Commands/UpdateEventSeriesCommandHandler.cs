@@ -1,5 +1,10 @@
+// ABOUTME: Handler for updating an existing event series with validation.
+// ABOUTME: Fetches entity, validates input, and maps updated fields onto the tracked entity.
+
+using System.Linq;
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.EventSeries.Validators;
 using Explore.Application.Features.EventSeries.Requests.Commands;
 using Explore.Application.Responses;
 using MediatR;
@@ -19,6 +24,18 @@ public class UpdateEventSeriesCommandHandler : IRequestHandler<UpdateEventSeries
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateEventSeriesCommand request, CancellationToken cancellationToken)
     {
+        var validator = new UpdateEventSeriesDtoValidator();
+        var validationResult = await validator.ValidateAsync(request.EventSeriesDto, cancellationToken);
+        if (!validationResult.IsValid)
+        {
+            return new BaseCommandResponse<Guid>
+            {
+                Success = false,
+                Message = "Event series update failed due to validation errors.",
+                Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList()
+            };
+        }
+
         var series = await _eventSeriesRepository.GetById(request.EventSeriesDto.Id);
         if (series == null)
         {

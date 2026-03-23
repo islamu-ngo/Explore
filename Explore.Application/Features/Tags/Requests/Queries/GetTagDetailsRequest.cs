@@ -1,3 +1,5 @@
+// ABOUTME: MediatR query request for fetching a single tag by ID.
+// ABOUTME: Returns TagDto.
 using System;
 using Explore.Application.DTOs.Tag;
 using MediatR;

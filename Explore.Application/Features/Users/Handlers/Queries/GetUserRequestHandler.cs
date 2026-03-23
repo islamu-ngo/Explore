@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning full user profile details by ID.
+// ABOUTME: Maps User entity to UserDto via AutoMapper.
 using System;
 using System.Threading;
 using System.Threading.Tasks;

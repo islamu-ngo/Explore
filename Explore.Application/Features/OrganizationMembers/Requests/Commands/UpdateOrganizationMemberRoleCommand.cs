@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for updating a member's organization role.
+// ABOUTME: Carries the member ID and new role ID.
 using System;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.OrganizationMember;

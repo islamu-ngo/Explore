@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning all agenda items for a specific event session.
+// ABOUTME: Used for session detail view rendering.
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;

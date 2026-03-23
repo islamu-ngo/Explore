@@ -1,6 +1,8 @@
 // ABOUTME: DTO for anonymous/authenticated public experience settings resolved via instance->tenant cascade.
 // ABOUTME: Powers home-page routing and white-label branding without requiring admin permissions.
 
+using Explore.Application.DTOs.Footer;
+
 namespace Explore.Application.DTOs.Onboarding;
 
 public class PublicExperienceSettingsDto
@@ -8,7 +10,7 @@ public class PublicExperienceSettingsDto
     public Guid TenantId { get; set; }
     public string DeploymentMode { get; set; } = "SingleTenant";
     public string PreferredHomePage { get; set; } = "EventList";
-    public string BrandDisplayName { get; set; } = "ISLAMU Explore";
+    public string BrandDisplayName { get; set; } = string.Empty;
     public string BrandLogoUrl { get; set; } = string.Empty;
     public string BrandFaviconUrl { get; set; } = string.Empty;
     public string BrandCustomCssUrl { get; set; } = string.Empty;
@@ -23,6 +25,7 @@ public class PublicExperienceSettingsDto
     public bool AllowOrganizationSelfRegistration { get; set; } = true;
     public bool AllowGroupSelfRegistration { get; set; } = true;
     public bool EventCardClickOpensDetailPage { get; set; }
+    public string CommunityGuidelinesContent { get; set; } = string.Empty;
     public List<string> EnabledModules { get; set; } = new();
     public string AnalyticsProvider { get; set; } = "none";
     public bool AnalyticsEnabled { get; set; }
@@ -46,4 +49,5 @@ public class PublicExperienceSettingsDto
     public string OnboardingRenderMode { get; set; } = "InteractiveServer";
     public bool OnboardingPrerenderEnabled { get; set; }
     public bool DisallowInteractiveServerOnOnboarding { get; set; } = true;
+    public FooterConfigDto FooterConfig { get; set; } = new();
 }

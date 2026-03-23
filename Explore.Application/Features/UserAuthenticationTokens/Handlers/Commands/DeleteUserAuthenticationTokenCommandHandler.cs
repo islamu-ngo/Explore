@@ -1,3 +1,5 @@
+// ABOUTME: Handler for revoking/deleting a user authentication token.
+// ABOUTME: Fetches token by ID and delegates deletion.
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.UserAuthenticationToken;
 using Explore.Application.Features.UserAuthenticationTokens.Requests.Commands;

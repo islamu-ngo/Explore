@@ -1,3 +1,5 @@
+// ABOUTME: Handler for removing a tag from an event.
+// ABOUTME: Fetches the event-tag junction record and delegates deletion.
 using System;
 using System.Threading;
 using System.Threading.Tasks;

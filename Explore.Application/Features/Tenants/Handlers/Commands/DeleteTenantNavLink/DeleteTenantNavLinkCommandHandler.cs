@@ -1,3 +1,5 @@
+// ABOUTME: Handler for deleting a tenant navigation link.
+// ABOUTME: Fetches nav link by ID and delegates deletion.
 using System;
 using System.Threading;
 using System.Threading.Tasks;

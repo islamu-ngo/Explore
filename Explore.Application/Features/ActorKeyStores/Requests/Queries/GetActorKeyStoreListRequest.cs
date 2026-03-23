@@ -1,3 +1,5 @@
+// ABOUTME: MediatR query request for fetching a paginated list of actor key stores.
+// ABOUTME: Returns IEnumerable<ActorKeyStoreListDto>.
 using System.Collections.Generic;
 using Explore.Application.DTOs.ActorKeyStore;
 using MediatR;

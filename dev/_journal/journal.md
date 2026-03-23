@@ -17,6 +17,7 @@
 - [2026-02-15 21:28 Europe/Brussels] JS analytics bridge enforces no-op initialization when API key is empty, independent of provider flag, to preserve graceful degradation.
 
 ## Failed Approaches
+- [2026-03-22 Europe/Brussels] Considered storing the tenant theme catalog as JSON in a generic hierarchical setting (`appearance.available_themes`). Rejected because it would turn theme management into an accidental mini-database with weak concurrency, poor fallback semantics, and brittle admin editing behavior.
 - [2026-03-16 Europe/Brussels] Avoid describing the target registration model as “EventRegistration becomes the abstract parent.” In this codebase, `EventRegistration` is already mentally attached to session-scoped access rows, so that wording increases migration ambiguity and risks muddling attendance/capacity semantics.
 - [2026-03-13 Europe/Brussels] Attempted to recover completed handoff explore-agent results via `background_output(...)` after the system reminder, but the task IDs were no longer retrievable in this session context. For context-reset handoff, write the synthesis into dev docs immediately instead of depending on later retrieval.
 - [2026-03-13 Europe/Brussels] Tried standard `dotnet test --filter ...` again while validating the Blazor setup-secret slice; this repo's TUnit runner still rejects or ignores the standard filter flow. Use full project runs or runner-compatible partitioning instead.
@@ -26,6 +27,7 @@
 - [2026-02-27 Europe/Brussels] Attempted PowerShell-style orphan CSS check in Bash shell; command failed due to shell syntax mismatch. Switched to POSIX loop over `git ls-files` and completed orphan check successfully.
 
 ## Deferred Fixes
+- [2026-03-22 Europe/Brussels] Create the appearance architecture ADR before any code implementation for hierarchical settings preferences. The plan is updated, but the ADR file itself still needs to be written.
 - [2026-03-16 Europe/Brussels] When implementation starts for event scheduling, decide the exact parent-table name (`EventRegistrationIntent` vs `EventRegistrationGroup`) before touching migrations or DTOs so API and DB naming do not drift.
 - [2026-03-13 Europe/Brussels] Do not enable explicit antiforgery validation on state-changing BFF minimal API endpoints yet. There is currently no discoverable `X-CSRF-TOKEN` / `XSRF-TOKEN` request-header propagation path in the client-side codebase, so enforcement would likely break existing browser flows.
 - [2026-03-13 Europe/Brussels] Replace the reflection-based `CircuitAccessTokenService.SetToken(...)` workaround in `Explore.Blazor/Extensions/MiddlewareExtensions.cs` with a clean direct contract before finishing the middleware pass.
@@ -45,6 +47,8 @@
 - [2026-02-27 Europe/Brussels] Run the full mandatory multi-project test matrix from `CLAUDE.md` before final release/merge gate for this large restructure.
 
 ## Key Decisions
+- [2026-03-22 Europe/Brussels] For hierarchical settings preferences, keep the settings engine responsible for precedence and references only; model tenant theme catalogs as first-class relational entities and keep user theme selection as sparse `UserPreference` overrides.
+- [2026-03-22 Europe/Brussels] Do not let `MainLayout` or `SetupLayout` own theme precedence or palette mapping rules. Introduce a dedicated runtime service boundary (`IThemeCompositionService` / `IAppearanceRuntimeService`) before implementation.
 - [2026-03-16 Europe/Brussels] For event scheduling refactor planning, keep registration modeling as: parent rows preserve intent/policy semantics, child rows remain concrete session entitlements/access records. This is easier to migrate from the current session-only `EventRegistration` table and keeps attendance/capacity logic understandable.
 - [2026-03-16 Europe/Brussels] For the first scheduling rollout, same-room overlapping sessions should be rejected in create/update session DTO validators using async FluentValidation repository-backed checks. Stronger persistence/database hardening can be layered later if needed.
 - [2026-03-13 Europe/Brussels] For the HTTP resilience refactor, API auth scheme selection should be treated as not tenant-sensitive in this repo: `Explore.API/Program.cs` chooses API-key vs JWT auth based on `X-API-Key`, so tenant resolution does not need to move ahead of authentication for scheme selection.

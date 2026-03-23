@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.Application.DTOs.Tenant;
@@ -84,7 +85,11 @@ public class TenantController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateTenantDto dto, CancellationToken cancellationToken = default)
     {
-        var command = new CreateTenantCommand { TenantDto = dto };
+        var command = new CreateTenantCommand
+        {
+            TenantDto = dto,
+            RequestingUserId = GetCurrentUserId()
+        };
         var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)
@@ -93,6 +98,14 @@ public class TenantController : ControllerBase
         }
 
         return Ok(response);
+    }
+
+    private Guid? GetCurrentUserId()
+    {
+        var claim = User.FindFirst("sub")?.Value
+            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? User.FindFirst("sid")?.Value;
+        return Guid.TryParse(claim, out var userId) ? userId : null;
     }
 
     // PUT: api/tenant/{id}

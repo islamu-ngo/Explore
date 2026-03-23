@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a paginated list of agenda items.
+// ABOUTME: Maps entities to EventSessionAgendaItemListDto.
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;

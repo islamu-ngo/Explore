@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for updating a user external login record.
+// ABOUTME: Carries the UpdateUserExternalLoginDto payload.
 using Explore.Application.DTOs.UserExternalLogin;
 using Explore.Application.Responses;
 using MediatR;

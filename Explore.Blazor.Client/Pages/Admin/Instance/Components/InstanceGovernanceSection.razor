@@ -13,6 +13,30 @@
     </div>
     <MudStack Spacing="3">
 
+        @if (DisplayMode == "multi-tenancy")
+        {
+            @if (IsSingleTenant)
+            {
+                <MudAlert Severity="Severity.Warning" Icon="@Icons.Material.Filled.Warning" Class="mb-2">
+                    <MudText Typo="Typo.subtitle2" Style="font-weight:600;">Enabling Multi-Tenancy is a structural change</MudText>
+                    <MudList T="string" Dense="true" DisablePadding="true" Class="mt-2">
+                        <MudListItem Icon="@Icons.Material.Filled.ChevronRight" IconColor="Color.Warning" Dense="true">Settings will split into global defaults and per-tenant overrides</MudListItem>
+                        <MudListItem Icon="@Icons.Material.Filled.ChevronRight" IconColor="Color.Warning" Dense="true">Lock controls will appear to enforce consistency across tenants</MudListItem>
+                        <MudListItem Icon="@Icons.Material.Filled.ChevronRight" IconColor="Color.Warning" Dense="true">Your current configuration becomes the default tenant's settings</MudListItem>
+                        <MudListItem Icon="@Icons.Material.Filled.ChevronRight" IconColor="Color.Warning" Dense="true">To revert, you must reduce to one or fewer active tenants</MudListItem>
+                    </MudList>
+                </MudAlert>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Info" Class="mb-2">
+                    <MudText Typo="Typo.body2">
+                        To revert to Single-Tenant mode, archive or delete all tenants except one. Lock controls will disappear and the remaining tenant's settings will become the instance defaults.
+                    </MudText>
+                </MudAlert>
+            }
+        }
+
         @if (ShowDeploymentMode)
         {
         @* ── Deployment Mode ──────────────────────────────────────────── *@
@@ -142,7 +166,7 @@
 
         @if (ShowGeneralGovernance)
         {
-        @if (ShowHomePage)
+        @if (ShowHomePage && !IsSingleTenant)
         {
             <MudSwitch T="bool" @bind-Value="Delegation.AllowTenantSelfServiceRegistration" Color="Color.Primary">
                 Allow tenant self-service registration

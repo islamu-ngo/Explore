@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for deleting an actor key store entry.
+// ABOUTME: Carries the target entity ID.
 using MediatR;
 
 namespace Explore.Application.Features.ActorKeyStores.Requests.Commands;

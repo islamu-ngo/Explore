@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for updating a session-speaker link.
+// ABOUTME: Carries the UpdateEventSessionSpeakerDto payload.
 using System;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventSessionSpeaker;

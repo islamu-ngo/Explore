@@ -1,13 +1,17 @@
+// ABOUTME: Query handler returning full event details by ID or slug.
+// ABOUTME: Maps Event entity to EventDto with nested sessions and speakers.
 using System;
 using System.Collections.Generic;
 using System.Text;
 using AutoMapper;
+using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Category;
 using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.Tag;
 using Explore.Application.Features.Events.Requests.Queries;
+using Explore.Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
@@ -23,6 +27,7 @@ public class GetEventDetailsRequestHandler : IRequestHandler<GetEventDetailsRequ
     private readonly IObjectStorageService _objectStorageService;
     private readonly ILogger<GetEventDetailsRequestHandler> _logger;
     private readonly HybridCache _cache;
+    private readonly IUserContext _userContext;
 
     public GetEventDetailsRequestHandler(
         IEventRepository eventRepository,
@@ -31,7 +36,8 @@ public class GetEventDetailsRequestHandler : IRequestHandler<GetEventDetailsRequ
         IMapper mapper,
         IObjectStorageService objectStorageService,
         ILogger<GetEventDetailsRequestHandler> logger,
-        HybridCache cache)
+        HybridCache cache,
+        IUserContext userContext)
     {
         _eventRepository = eventRepository;
         _eventTagsRepository = eventTagsRepository;
@@ -40,6 +46,7 @@ public class GetEventDetailsRequestHandler : IRequestHandler<GetEventDetailsRequ
         _objectStorageService = objectStorageService;
         _logger = logger;
         _cache = cache;
+        _userContext = userContext;
     }
 
     public async Task<EventDto> Handle(GetEventDetailsRequest request, CancellationToken cancellationToken)
@@ -71,12 +78,28 @@ public class GetEventDetailsRequestHandler : IRequestHandler<GetEventDetailsRequ
             },
             cancellationToken: cancellationToken);
 
-        // Resolve presigned URLs for images
-        if (eventDto != null)
+        if (eventDto is null)
+            return eventDto;
+
+        // Visibility enforcement: Archived events are not publicly accessible
+        if (eventDto.EventStatusId == (int)EventStatusEnum.Archived)
+            return null;
+
+        // Visibility enforcement: Draft events are only visible to their creator
+        if (eventDto.EventStatusId == (int)EventStatusEnum.Draft)
         {
-            eventDto.FeaturedImageUri = await ResolveImageUrl(eventDto.FeaturedImageUri);
-            eventDto.ActorProfilePictureUri = await ResolveImageUrl(eventDto.ActorProfilePictureUri);
+            var currentUserId = _userContext.UserId;
+            if (currentUserId is null)
+                return null;
+
+            var @event = await _eventRepository.GetEventWithDetails(request.Id);
+            if (@event?.CreatedBy != currentUserId)
+                return null;
         }
+
+        // Resolve presigned URLs for images
+        eventDto.FeaturedImageUri = await ResolveImageUrl(eventDto.FeaturedImageUri);
+        eventDto.ActorProfilePictureUri = await ResolveImageUrl(eventDto.ActorProfilePictureUri);
 
         return eventDto;
     }

@@ -1,107 +1,164 @@
 <!--
     Footer Component - BEM Methodology
     Block: site-footer
-    Elements: __brand, __brand-icon, __brand-text, __brand-highlight, __description,
-              __section, __heading, __link, __bottom, __copyright, __social, __social-btn
+    Elements: __brand, __brand-icon, __brand-text, __description,
+              __col, __section, __heading, __link, __bottom, __copyright,
+              __social, __social-btn
+    Driven by FooterConfig from PublicExperienceService — no hardcoded links.
 -->
 @inject IPublicExperienceService PublicExperienceService
 @inject CookieConsentStateService CookieConsentState
 
-<div class="site-footer-root @(_drawerOpenCss)">
-<footer class="site-footer">
-    <MudContainer MaxWidth="MaxWidth.Large">
-        <div class="site-footer__grid">
-            <!-- Brand Column -->
-            <div class="site-footer__col site-footer__col--brand">
-                <div class="site-footer__brand">
-                    @if (!string.IsNullOrWhiteSpace(_brandLogoUrl))
+@if (_footerEnabled)
+{
+    <div class="site-footer-root @(_drawerOpenCss)">
+    <footer class="site-footer">
+        <MudContainer MaxWidth="MaxWidth.Large">
+            <div class="site-footer__grid" style="@_gridColumns">
+
+                <!-- Brand Column -->
+                <div class="site-footer__col site-footer__col--brand">
+                    <div class="site-footer__brand">
+                        @if (!string.IsNullOrWhiteSpace(_brandLogoUrl))
+                        {
+                            <MudImage Src="@_brandLogoUrl" Alt="@_brandDisplayName" Width="28" Height="28" Class="site-footer__brand-icon" />
+                        }
+                        else
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.Explore" Color="Color.Primary" Size="Size.Large" Class="site-footer__brand-icon" />
+                        }
+                        <div class="site-footer__brand-text">@_brandDisplayName</div>
+                    </div>
+
+                    @if (_showDescription && !string.IsNullOrWhiteSpace(_descriptionText))
                     {
-                        <MudImage Src="@_brandLogoUrl" Alt="@_brandDisplayName" Width="28" Height="28" Class="site-footer__brand-icon" />
+                        <MudText Class="site-footer__description">@_descriptionText</MudText>
                     }
-                    else
+                </div>
+
+                <!-- Dynamic Link Group Columns -->
+                @foreach (var group in _linkGroups)
+                {
+                    <div class="site-footer__col site-footer__col--links">
+                        <div class="site-footer__section">
+                            <div class="site-footer__heading">@group.Title</div>
+                            @foreach (var link in group.Links)
+                            {
+                                <a href="@link.Url"
+                                   class="site-footer__link"
+                                   target="@(link.OpenInNewTab ? "_blank" : "_self")"
+                                   rel="@(link.OpenInNewTab ? "noopener noreferrer" : null)">
+                                    @link.Label
+                                </a>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <MudDivider Class="my-8" />
+
+            <div class="site-footer__bottom">
+                <div class="site-footer__copyright">
+                    @_copyrightText
+                </div>
+
+                <div class="site-footer__social">
+                    @if (_showSocialLinks)
                     {
-                        <MudIcon Icon="@Icons.Material.Filled.Explore" Color="Color.Primary" Size="Size.Large" Class="site-footer__brand-icon" />
+                        @foreach (var social in _socialLinks)
+                        {
+                            <MudIconButton Icon="@GetSocialIcon(social.Platform)"
+                                           aria-label="@social.Label"
+                                           title="@social.Label"
+                                           Class="site-footer__social-btn"
+                                           Size="Size.Small"
+                                           Href="@social.Url"
+                                           Target="_blank"
+                                           rel="noopener noreferrer" />
+                        }
                     }
-                    <div class="site-footer__brand-text">@_brandDisplayName</div>
-                </div>
-                <MudText Class="site-footer__description">
-                    Connecting Muslims through meaningful events, gatherings, and community building initiatives across the globe.
-                </MudText>
-            </div>
 
-            <!-- Link Columns -->
-            <div class="site-footer__col site-footer__col--links">
-                <div class="site-footer__section">
-                    <div class="site-footer__heading">Platform</div>
-                    <a href="/events" class="site-footer__link">Browse Events</a>
-                    <a href="/event/categories" class="site-footer__link">Categories</a>
-                    <a href="/organizations" class="site-footer__link">Organizations</a>
+                    @if (_showCookieSettingsLink)
+                    {
+                        <MudButton Variant="Variant.Text"
+                                   Size="Size.Small"
+                                   Class="site-footer__link"
+                                   OnClick="HandleCookieSettingsClick">
+                            Cookie Settings
+                        </MudButton>
+                    }
                 </div>
             </div>
-
-            <div class="site-footer__col site-footer__col--links">
-                <div class="site-footer__section">
-                    <div class="site-footer__heading">Company</div>
-                    <a href="/about" class="site-footer__link">About Us</a>
-                    <a href="/contact" class="site-footer__link">Contact</a>
-                    <a href="/careers" class="site-footer__link">Careers</a>
-                </div>
-            </div>
-
-            <div class="site-footer__col site-footer__col--links">
-                <div class="site-footer__section">
-                    <div class="site-footer__heading">Legal</div>
-                    <a href="/privacy" class="site-footer__link">Privacy Policy</a>
-                    <a href="/terms" class="site-footer__link">Terms of Service</a>
-                    <a href="#" class="site-footer__link" @onclick="HandleCookieSettingsClick" @onclick:preventDefault="true">Cookie Settings</a>
-                </div>
-            </div>
-        </div>
-
-        <MudDivider Class="my-8" />
-
-        <div class="site-footer__bottom">
-            <div class="site-footer__copyright">
-                &copy; @DateTime.Now.Year @_brandDisplayName. All rights reserved.
-            </div>
-
-            <div class="site-footer__social">
-                <MudIconButton Icon="@Icons.Custom.Brands.Facebook" aria-label="Facebook" title="Visit our Facebook page" Class="site-footer__social-btn" Size="Size.Small" />
-                <MudIconButton Icon="@Icons.Custom.Brands.Twitter" aria-label="Twitter" title="Visit our Twitter page" Class="site-footer__social-btn" Size="Size.Small" />
-                <MudIconButton Icon="@Icons.Custom.Brands.Instagram" aria-label="Instagram" title="Visit our Instagram page" Class="site-footer__social-btn" Size="Size.Small" />
-                <MudIconButton Icon="@Icons.Custom.Brands.LinkedIn" aria-label="LinkedIn" title="Visit our LinkedIn page" Class="site-footer__social-btn" Size="Size.Small" />
-            </div>
-        </div>
-    </MudContainer>
-</footer>
-</div>
+        </MudContainer>
+    </footer>
+    </div>
+}
 
 @code {
-    private string _brandDisplayName = "ISLAMU Explore";
+    private string _brandDisplayName = string.Empty;
     private string _brandLogoUrl = string.Empty;
+    private bool _footerEnabled = true;
+    private bool _showDescription = true;
+    private string _descriptionText = string.Empty;
+    private bool _showSocialLinks = true;
+    private List<FooterSocialLinkModel> _socialLinks = [];
+    private string _copyrightText = string.Empty;
+    private bool _showCookieSettingsLink = true;
+    private List<FooterLinkGroupModel> _linkGroups = [];
 
     [Parameter] public bool DrawerOpen { get; set; }
 
     private string _drawerOpenCss => DrawerOpen ? "site-footer-root--drawer-open" : "";
 
+    private string _gridColumns
+    {
+        get
+        {
+            // Brand column + one column per link group
+            var cols = 1 + _linkGroups.Count;
+            return cols <= 1
+                ? "grid-template-columns: 1fr;"
+                : $"grid-template-columns: 1.5fr {string.Join(" ", Enumerable.Repeat("1fr", _linkGroups.Count))};";
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         var settings = await PublicExperienceService.GetSettingsAsync();
-        if (settings == null)
-        {
+        if (settings is null)
             return;
-        }
 
-        if (!string.IsNullOrWhiteSpace(settings.BrandDisplayName))
-        {
-            _brandDisplayName = settings.BrandDisplayName;
-        }
-
+        _brandDisplayName = settings.BrandDisplayName;
         _brandLogoUrl = settings.BrandLogoUrl ?? string.Empty;
+
+        var footer = settings.FooterConfig;
+        _footerEnabled = footer.Settings.Enabled;
+        _showDescription = footer.Settings.ShowDescription;
+        _descriptionText = footer.Settings.DescriptionText;
+        _showSocialLinks = footer.Settings.ShowSocialLinks;
+        _socialLinks = footer.Settings.SocialLinks;
+        _showCookieSettingsLink = footer.Settings.ShowCookieSettingsLink;
+        _linkGroups = footer.LinkGroups;
+
+        _copyrightText = string.IsNullOrWhiteSpace(footer.Settings.CopyrightText)
+            ? $"© {DateTime.Now.Year} {_brandDisplayName}. All rights reserved."
+            : footer.Settings.CopyrightText;
     }
 
     private async Task HandleCookieSettingsClick()
     {
         await CookieConsentState.RequestReopenAsync();
     }
+
+    private static string GetSocialIcon(string platform) => platform.ToLowerInvariant() switch
+    {
+        "facebook" => Icons.Custom.Brands.Facebook,
+        "twitter" or "x" => Icons.Custom.Brands.Twitter,
+        "instagram" => Icons.Custom.Brands.Instagram,
+        "linkedin" => Icons.Custom.Brands.LinkedIn,
+        "youtube" => Icons.Custom.Brands.YouTube,
+        "github" => Icons.Custom.Brands.GitHub,
+        _ => Icons.Material.Filled.Link,
+    };
 }

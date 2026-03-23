@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning all available madhabs.
+// ABOUTME: Maps Madhab entities to MadhabDto list.
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;

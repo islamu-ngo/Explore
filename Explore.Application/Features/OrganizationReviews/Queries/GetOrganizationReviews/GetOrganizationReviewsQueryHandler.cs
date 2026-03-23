@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning all reviews for a given organization.
+// ABOUTME: Filters by organization ID, maps to OrganizationReviewDto.
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.OrganizationReview;

@@ -1,3 +1,5 @@
+// ABOUTME: MediatR query for fetching locations in a given city.
+// ABOUTME: Returns IEnumerable<LocationDto>.
 using System.Collections.Generic;
 using Explore.Application.DTOs.Location;
 using MediatR;

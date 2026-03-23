@@ -1,3 +1,5 @@
+// ABOUTME: MediatR query request for fetching a single audience age category by ID.
+// ABOUTME: Returns AudienceAgeDto.
 using Explore.Application.DTOs.AudienceAge;
 using MediatR;
 

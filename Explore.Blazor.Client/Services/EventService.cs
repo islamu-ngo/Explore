@@ -71,6 +71,8 @@ public interface IEventService
     Task<BaseCommandResponseOfGuid> UpdateRegistrationAsync(UpdateEventRegistrationDto registration);
     Task<bool> CancelEventRegistrationAsync(Guid registrationId);
     Task<EventSessionDto?> GetSessionByIdAsync(Guid sessionId);
+    Task<bool> UpdateEventStatusAsync(Guid eventId, int eventStatusId);
+    Task<ICollection<EventListDto>> GetPublicEventsByActorAsync(Guid actorId);
 }
 
 public partial class EventService : IEventService
@@ -302,12 +304,32 @@ public partial class EventService : IEventService
     {
         try
         {
-            return await _apiClient.UpdateEventAsync(eventId, eventDto);
+            var command = new UpdateEventCommand { Id = eventId, EventDto = eventDto };
+            return await _apiClient.UpdateEventAsync(eventId, command);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating event {EventId}", eventId);
             return null;
+        }
+    }
+
+    public async Task<bool> UpdateEventStatusAsync(Guid eventId, int eventStatusId)
+    {
+        try
+        {
+            var command = new UpdateEventCommand
+            {
+                Id = eventId,
+                EventStatusDto = new UpdateEventStatusDto { EventStatusId = eventStatusId }
+            };
+            var result = await _apiClient.UpdateEventAsync(eventId, command);
+            return result?.Success ?? false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating event status {EventId}", eventId);
+            return false;
         }
     }
 
@@ -373,6 +395,25 @@ public partial class EventService : IEventService
         {
             _logger.LogError(ex, "Error fetching session {SessionId}", sessionId);
             return null;
+        }
+    }
+
+    public async Task<ICollection<EventListDto>> GetPublicEventsByActorAsync(Guid actorId)
+    {
+        try
+        {
+            // Public statuses: Published=2, Cancelled=3, Completed=4
+            var result = await _apiClient.GetEventsAsync(
+                pageNumber: 1,
+                pageSize: 100,
+                eventStatusIds: [2, 3, 4]);
+            var items = result?.GetItems() ?? new List<EventListDto>();
+            return items.Where(e => e.ActorId == actorId).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching public events for actor {ActorId}", actorId);
+            return new List<EventListDto>();
         }
     }
 }

@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning all sessions belonging to a specific event.
+// ABOUTME: Used for event detail session schedule display.
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;

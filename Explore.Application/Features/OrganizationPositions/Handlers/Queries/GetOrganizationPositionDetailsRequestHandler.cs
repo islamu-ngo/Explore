@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a single organization position by ID.
+// ABOUTME: Maps OrganizationPosition entity to OrganizationPositionDto.
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;

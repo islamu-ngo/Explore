@@ -1,3 +1,5 @@
+// ABOUTME: Handler for updating a tag-to-tag-type link record with validation.
+// ABOUTME: Validates input, fetches entity, applies updates.
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.TagTypeTags.Validators;

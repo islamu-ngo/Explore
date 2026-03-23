@@ -22,7 +22,7 @@
     else if (organization == null)
     {
         <MudAlert Severity="Severity.Error" Variant="Variant.Filled">Organization not found.</MudAlert>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => NavigationManager.NavigateTo("/organization/my"))" Class="mt-4 rounded-pill">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => NavigationManager.NavigateTo("/my/organizations"))" Class="mt-4 rounded-pill">
             Back to My Organizations
         </MudButton>
     }
@@ -32,7 +32,7 @@
             <MudButton StartIcon="@Icons.Material.Filled.ArrowBack"
                        Color="Color.Secondary"
                        Variant="Variant.Text"
-                       OnClick="@(() => NavigationManager.NavigateTo("/organization/my"))"
+                       OnClick="@(() => NavigationManager.NavigateTo("/my/organizations"))"
                        Class="rounded-pill">
                 Back to List
             </MudButton>
@@ -43,7 +43,7 @@
                     <MudButton Variant="Variant.Filled"
                                Color="Color.Success"
                                StartIcon="@Icons.Material.Filled.Event"
-                               OnClick="@(() => NavigationManager.NavigateTo($"/organization/{Id}/create-event"))"
+                               OnClick="@(() => NavigationManager.NavigateTo($"/organizations/{Id}/events/create"))"
                                Class="rounded-pill">
                         Create Event
                     </MudButton>
@@ -286,5 +286,70 @@
                 }
             </MudCardContent>
         </MudCard>
+
+        @* ── Events by this organization ── *@
+        @if (_orgEvents.Any())
+        {
+            <MudDivider Class="my-8" />
+            <section>
+                <MudText Typo="Typo.h5" Style="font-weight: 800;" Class="mb-6">Events</MudText>
+
+                @if (UpcomingEvents.Any())
+                {
+                    <MudText Typo="Typo.subtitle1" Style="font-weight: 700;" Color="Color.Primary" Class="mb-3">Upcoming</MudText>
+                    <MudGrid Spacing="4" Class="mb-6">
+                        @foreach (var evt in UpcomingEvents)
+                        {
+                            <MudItem xs="12" sm="6" md="4" @key="evt.Id">
+                                <MudCard Elevation="1" Class="rounded-xl h-100" Style="cursor: pointer;"
+                                         @onclick="@(() => NavigationManager.NavigateTo($"/events/{evt.Id}"))">
+                                    @if (!string.IsNullOrEmpty(evt.FeaturedImageUri))
+                                    {
+                                        <MudCardMedia Image="@evt.FeaturedImageUri" Height="140" />
+                                    }
+                                    <MudCardContent Class="pa-4">
+                                        <MudText Typo="Typo.caption" Color="Color.Primary" Style="font-weight: 700; text-transform: uppercase;">
+                                            @(evt.FirstSessionDate?.LocalDateTime.ToString("MMM dd, yyyy") ?? "Date TBD")
+                                        </MudText>
+                                        <MudText Typo="Typo.subtitle1" Style="font-weight: 700;" Class="mt-1">@evt.Title</MudText>
+                                        @if (!string.IsNullOrEmpty(evt.EventFormatFullName))
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default" Class="mt-2">
+                                                @evt.EventFormatFullName
+                                            </MudChip>
+                                        }
+                                    </MudCardContent>
+                                </MudCard>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                }
+
+                @if (PastEvents.Any())
+                {
+                    <MudText Typo="Typo.subtitle1" Style="font-weight: 700;" Color="Color.Secondary" Class="mb-3">Past Events</MudText>
+                    <MudGrid Spacing="4">
+                        @foreach (var evt in PastEvents.Take(6))
+                        {
+                            <MudItem xs="12" sm="6" md="4" @key="evt.Id">
+                                <MudCard Elevation="1" Class="rounded-xl h-100" Style="cursor: pointer; opacity: 0.8;"
+                                         @onclick="@(() => NavigationManager.NavigateTo($"/events/{evt.Id}"))">
+                                    @if (!string.IsNullOrEmpty(evt.FeaturedImageUri))
+                                    {
+                                        <MudCardMedia Image="@evt.FeaturedImageUri" Height="140" />
+                                    }
+                                    <MudCardContent Class="pa-4">
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-weight: 700; text-transform: uppercase;">
+                                            @(evt.FirstSessionDate?.LocalDateTime.ToString("MMM dd, yyyy") ?? "")
+                                        </MudText>
+                                        <MudText Typo="Typo.subtitle1" Style="font-weight: 700;" Class="mt-1">@evt.Title</MudText>
+                                    </MudCardContent>
+                                </MudCard>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                }
+            </section>
+        }
     }
 </MudContainer>

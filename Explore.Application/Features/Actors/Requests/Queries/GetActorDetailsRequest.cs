@@ -1,3 +1,5 @@
+// ABOUTME: MediatR query request for fetching a single actor by ID.
+// ABOUTME: Returns ActorDto.
 using Explore.Application.DTOs.Actor;
 using MediatR;
 

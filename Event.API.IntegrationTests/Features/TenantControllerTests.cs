@@ -80,21 +80,6 @@ public class TenantControllerTests
 
     #endregion
 
-    #region TenantSettings Controller
-
-    [Test]
-    public async Task TenantSettings_GetAll_ShouldReturnUnauthorized()
-    {
-        var response = await _fixture.Client.GetAsync("/api/tenantsettings");
-        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
-    }
-
-    [Test]
-    public async Task TenantSettings_GetById_WithRandomId_ShouldNotReturnServerError()
-    {
-        var response = await _fixture.Client.GetAsync($"/api/tenantsettings/{1}");
-        await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.InternalServerError);
-    }
-
-    #endregion
+    // TenantSettings region removed — TenantSettingsController was deleted in the settings refactor.
+    // Settings are now managed via InstanceSettingsController at api/instance/settings.
 }

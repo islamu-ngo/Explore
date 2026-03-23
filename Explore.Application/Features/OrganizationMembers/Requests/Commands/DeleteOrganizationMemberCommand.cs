@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for removing a member from an organization.
+// ABOUTME: Carries the organization member ID.
 using System;
 using Explore.Application.Authorization;
 using Explore.Application.Responses;

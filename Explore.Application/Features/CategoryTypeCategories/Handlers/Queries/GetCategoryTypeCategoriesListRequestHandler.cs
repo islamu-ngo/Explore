@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a paginated list of category-type/category links.
+// ABOUTME: Maps junction entities to CategoryTypeCategoriesListDto.
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.CategoryTypeCategories;

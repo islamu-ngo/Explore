@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for registering a user for an event.
+// ABOUTME: Carries the CreateEventRegistrationDto payload.
 using System;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventRegistration;

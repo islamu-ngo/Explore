@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for updating an existing actor.
+// ABOUTME: Carries the UpdateActorDto payload.
 using Explore.Application.DTOs.Actor;
 using Explore.Application.Responses;
 using MediatR;

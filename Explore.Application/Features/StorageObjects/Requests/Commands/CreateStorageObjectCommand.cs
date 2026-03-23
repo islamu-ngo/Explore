@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for creating a new storage object record.
+// ABOUTME: Carries the CreateStorageObjectDto payload.
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.Responses;

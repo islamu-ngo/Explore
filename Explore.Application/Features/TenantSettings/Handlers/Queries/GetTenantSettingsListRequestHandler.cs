@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning all tenant settings records.
+// ABOUTME: Maps entities to TenantSettingsDto list.
 using System.Collections.Generic;
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;

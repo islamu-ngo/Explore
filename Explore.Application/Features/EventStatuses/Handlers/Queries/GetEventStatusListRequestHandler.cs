@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning all event statuses.
+// ABOUTME: Maps EventStatus entities to EventStatusDto list.
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;

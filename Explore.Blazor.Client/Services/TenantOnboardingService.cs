@@ -124,7 +124,7 @@ public class TenantPolicySettingsModel
     public string InstanceBaseDomain { get; set; } = string.Empty;
     public string Subdomain { get; set; } = string.Empty;
     public string CustomDomain { get; set; } = string.Empty;
-    public string BrandDisplayName { get; set; } = "ISLAMU Explore";
+    public string BrandDisplayName { get; set; } = string.Empty;
     public string BrandLogoUrl { get; set; } = string.Empty;
     public string BrandFaviconUrl { get; set; } = string.Empty;
     public string BrandCustomCssUrl { get; set; } = string.Empty;
@@ -136,6 +136,10 @@ public class TenantPolicySettingsModel
     public bool CanOverrideBrandFaviconUrl { get; set; } = true;
     public bool CanOverrideBrandCustomCssUrl { get; set; } = true;
     public bool CanOverrideEventCardClickBehavior { get; set; } = true;
+
+    // Community guidelines
+    public string CommunityGuidelinesContent { get; set; } = string.Empty;
+    public bool CanOverrideCommunityGuidelines { get; set; } = true;
 
     // Render policy tenant overrides
     public string RenderPolicyPreset { get; set; } = string.Empty;

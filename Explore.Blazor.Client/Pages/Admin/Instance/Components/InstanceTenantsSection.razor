@@ -100,6 +100,9 @@
                               HelperText="Lowercase, alphanumeric with hyphens"
                               Required="true"
                               RequiredError="Slug is required" />
+                <MudCheckBox T="bool" @bind-Value="_assignSelfAsTenantAdmin" Color="Color.Primary">
+                    Assign me as administrator of this tenant
+                </MudCheckBox>
             </MudStack>
         </DialogContent>
         <DialogActions>
@@ -155,6 +158,7 @@
     private bool _showCreateDialog;
     private string _newTenantName = string.Empty;
     private string _newTenantSlug = string.Empty;
+    private bool _assignSelfAsTenantAdmin;
     private bool _isCreating;
 
     private bool _showDeleteDialog;
@@ -191,6 +195,7 @@
     {
         _newTenantName = string.Empty;
         _newTenantSlug = string.Empty;
+        _assignSelfAsTenantAdmin = false;
         _showCreateDialog = true;
     }
 
@@ -205,12 +210,14 @@
                 FullName = _newTenantName.Trim(),
                 Slug = _newTenantSlug.Trim().ToLowerInvariant()
             };
+            dto.AdditionalProperties["assignCurrentUserAsTenantAdmin"] = _assignSelfAsTenantAdmin;
 
             var response = await ApiClient.TenantPOSTAsync(dto);
             if (response.Success == true)
             {
                 _showCreateDialog = false;
-                Snackbar.Add($"Tenant '{dto.FullName}' created.", Severity.Success);
+                var adminNote = _assignSelfAsTenantAdmin ? " You have been assigned as tenant administrator." : string.Empty;
+                Snackbar.Add($"Tenant '{dto.FullName}' created.{adminNote}", Severity.Success);
                 await LoadTenantsAsync();
             }
             else

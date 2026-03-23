@@ -1,0 +1,57 @@
+@* ABOUTME: Contact page with general information on how to reach the platform administrators.
+   ABOUTME: Static page accessible at /contact. *@
+
+@page "/contact"
+
+<PageTitle>Contact — ISLAMU Explore</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-8">
+    <MudText Typo="Typo.h4" Class="mb-4" Style="font-weight: 800;">Contact</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-8">
+        Have a question, feedback, or need support? We'd love to hear from you.
+    </MudText>
+
+    <MudPaper Elevation="0" Class="pa-6 mb-6" Style="border: 1px solid var(--mud-palette-lines-default); border-radius: 12px;">
+        <MudStack Spacing="4">
+            <div>
+                <MudText Typo="Typo.subtitle1" Style="font-weight: 700;" Class="mb-1">
+                    General Enquiries
+                </MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    For general questions about the platform or events, please reach out to the
+                    administrators of this platform.
+                </MudText>
+            </div>
+
+            <div>
+                <MudText Typo="Typo.subtitle1" Style="font-weight: 700;" Class="mb-1">
+                    Report a Problem
+                </MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    If you encounter content or behaviour that violates our
+                    <MudLink Href="/community-guidelines" Color="Color.Primary">Community Guidelines</MudLink>,
+                    please notify the platform administrators so we can take appropriate action.
+                </MudText>
+            </div>
+
+            <div>
+                <MudText Typo="Typo.subtitle1" Style="font-weight: 700;" Class="mb-1">
+                    Technical Support
+                </MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Experiencing a technical issue? Please describe the problem in as much detail as possible
+                    when contacting us, including steps to reproduce the issue and the device or browser you
+                    are using.
+                </MudText>
+            </div>
+        </MudStack>
+    </MudPaper>
+
+    <MudText Typo="Typo.body2" Color="Color.Secondary">
+        You can also review our
+        <MudLink Href="/privacy" Color="Color.Primary">Privacy Policy</MudLink>
+        and
+        <MudLink Href="/terms" Color="Color.Primary">Terms of Service</MudLink>
+        for more information about your rights and responsibilities on this platform.
+    </MudText>
+</MudContainer>

@@ -1,3 +1,5 @@
+// ABOUTME: Handler for removing a language from an event session.
+// ABOUTME: Fetches the junction record and delegates deletion.
 using System.Threading;
 using System.Threading.Tasks;
 using Explore.Application.Contracts.Persistence;

@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for updating an event-tag link.
+// ABOUTME: Carries the UpdateEventTagsDto payload.
 using System;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventTags;

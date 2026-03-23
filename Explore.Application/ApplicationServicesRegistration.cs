@@ -1,14 +1,12 @@
-using System;
-using System.Collections.Generic;
+// ABOUTME: Application layer service registration for DI container.
+// ABOUTME: Registers MediatR, AutoMapper, pipeline behaviors, and application services.
 using System.Reflection;
-using System.Text;
 using Explore.Application.Analytics;
 using Explore.Application.Authorization;
 using Explore.Application.Behaviors;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Services;
 using Explore.Application.Settings;
-using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -22,7 +20,6 @@ public static class ApplicationServicesRegistration
         services.AddMediatR(typeof(ApplicationServicesRegistration).Assembly);
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(PerformanceBehavior<,>));
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
-        services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 
         // Onboarding Services
         services.AddScoped<ITenantPolicySettingService, TenantPolicySettingService>();

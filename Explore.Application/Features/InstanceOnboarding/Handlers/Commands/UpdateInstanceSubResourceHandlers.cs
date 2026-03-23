@@ -2,6 +2,7 @@
 // ABOUTME: Each handler validates admin access, then delegates to the corresponding service method.
 
 using Explore.Application.Contracts.Identity;
+using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Instance.Validators;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
@@ -14,11 +15,13 @@ public class UpdateModuleSettingsCommandHandler : IRequestHandler<UpdateModuleSe
 {
     private readonly IAdminContext _adminContext;
     private readonly IInstanceGovernanceSettingService _service;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public UpdateModuleSettingsCommandHandler(IAdminContext adminContext, IInstanceGovernanceSettingService service)
+    public UpdateModuleSettingsCommandHandler(IAdminContext adminContext, IInstanceGovernanceSettingService service, IUnitOfWork unitOfWork)
     {
         _adminContext = adminContext;
         _service = service;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateModuleSettingsCommand request, CancellationToken cancellationToken)
@@ -27,7 +30,8 @@ public class UpdateModuleSettingsCommandHandler : IRequestHandler<UpdateModuleSe
         if (!await _adminContext.IsInstanceAdminAsync(request.UserId, cancellationToken))
             return Unauthorized(response);
 
-        await _service.ApplyModuleSettingsAsync(null, request.Settings, request.UserId);
+        await _unitOfWork.ExecuteInTransactionAsync(ct =>
+            _service.ApplyModuleSettingsAsync(null, request.Settings, request.UserId), cancellationToken);
         response.Success = true;
         response.Message = "Module settings updated successfully.";
         return response;
@@ -45,11 +49,13 @@ public class UpdateEventPolicyCommandHandler : IRequestHandler<UpdateEventPolicy
 {
     private readonly IAdminContext _adminContext;
     private readonly IInstanceGovernanceSettingService _service;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public UpdateEventPolicyCommandHandler(IAdminContext adminContext, IInstanceGovernanceSettingService service)
+    public UpdateEventPolicyCommandHandler(IAdminContext adminContext, IInstanceGovernanceSettingService service, IUnitOfWork unitOfWork)
     {
         _adminContext = adminContext;
         _service = service;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateEventPolicyCommand request, CancellationToken cancellationToken)
@@ -58,7 +64,8 @@ public class UpdateEventPolicyCommandHandler : IRequestHandler<UpdateEventPolicy
         if (!await _adminContext.IsInstanceAdminAsync(request.UserId, cancellationToken))
             return Unauthorized(response);
 
-        await _service.ApplyEventPolicyAsync(request.Settings, request.UserId);
+        await _unitOfWork.ExecuteInTransactionAsync(ct =>
+            _service.ApplyEventPolicyAsync(request.Settings, request.UserId), cancellationToken);
         response.Success = true;
         response.Message = "Event policy updated successfully.";
         return response;
@@ -76,11 +83,13 @@ public class UpdateOrganizationPolicyCommandHandler : IRequestHandler<UpdateOrga
 {
     private readonly IAdminContext _adminContext;
     private readonly IInstanceGovernanceSettingService _service;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public UpdateOrganizationPolicyCommandHandler(IAdminContext adminContext, IInstanceGovernanceSettingService service)
+    public UpdateOrganizationPolicyCommandHandler(IAdminContext adminContext, IInstanceGovernanceSettingService service, IUnitOfWork unitOfWork)
     {
         _adminContext = adminContext;
         _service = service;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateOrganizationPolicyCommand request, CancellationToken cancellationToken)
@@ -89,7 +98,8 @@ public class UpdateOrganizationPolicyCommandHandler : IRequestHandler<UpdateOrga
         if (!await _adminContext.IsInstanceAdminAsync(request.UserId, cancellationToken))
             return Unauthorized(response);
 
-        await _service.ApplyOrganizationPolicyAsync(request.Settings, request.UserId);
+        await _unitOfWork.ExecuteInTransactionAsync(ct =>
+            _service.ApplyOrganizationPolicyAsync(request.Settings, request.UserId), cancellationToken);
         response.Success = true;
         response.Message = "Organization policy updated successfully.";
         return response;
@@ -107,11 +117,13 @@ public class UpdateBrandingSettingsCommandHandler : IRequestHandler<UpdateBrandi
 {
     private readonly IAdminContext _adminContext;
     private readonly IInstanceGovernanceSettingService _service;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public UpdateBrandingSettingsCommandHandler(IAdminContext adminContext, IInstanceGovernanceSettingService service)
+    public UpdateBrandingSettingsCommandHandler(IAdminContext adminContext, IInstanceGovernanceSettingService service, IUnitOfWork unitOfWork)
     {
         _adminContext = adminContext;
         _service = service;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateBrandingSettingsCommand request, CancellationToken cancellationToken)
@@ -120,7 +132,8 @@ public class UpdateBrandingSettingsCommandHandler : IRequestHandler<UpdateBrandi
         if (!await _adminContext.IsInstanceAdminAsync(request.UserId, cancellationToken))
             return Unauthorized(response);
 
-        await _service.ApplyBrandingSettingsAsync(request.Settings, request.UserId);
+        await _unitOfWork.ExecuteInTransactionAsync(ct =>
+            _service.ApplyBrandingSettingsAsync(request.Settings, request.UserId), cancellationToken);
         response.Success = true;
         response.Message = "Branding settings updated successfully.";
         return response;
@@ -138,11 +151,13 @@ public class UpdateDomainSettingsCommandHandler : IRequestHandler<UpdateDomainSe
 {
     private readonly IAdminContext _adminContext;
     private readonly IInstanceGovernanceSettingService _service;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public UpdateDomainSettingsCommandHandler(IAdminContext adminContext, IInstanceGovernanceSettingService service)
+    public UpdateDomainSettingsCommandHandler(IAdminContext adminContext, IInstanceGovernanceSettingService service, IUnitOfWork unitOfWork)
     {
         _adminContext = adminContext;
         _service = service;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateDomainSettingsCommand request, CancellationToken cancellationToken)
@@ -151,7 +166,8 @@ public class UpdateDomainSettingsCommandHandler : IRequestHandler<UpdateDomainSe
         if (!await _adminContext.IsInstanceAdminAsync(request.UserId, cancellationToken))
             return Unauthorized(response);
 
-        await _service.ApplyDomainSettingsAsync(request.Settings, request.UserId);
+        await _unitOfWork.ExecuteInTransactionAsync(ct =>
+            _service.ApplyDomainSettingsAsync(request.Settings, request.UserId), cancellationToken);
         response.Success = true;
         response.Message = "Domain settings updated successfully.";
         return response;
@@ -169,11 +185,13 @@ public class UpdateTenantDelegationSettingsCommandHandler : IRequestHandler<Upda
 {
     private readonly IAdminContext _adminContext;
     private readonly IInstanceGovernanceSettingService _service;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public UpdateTenantDelegationSettingsCommandHandler(IAdminContext adminContext, IInstanceGovernanceSettingService service)
+    public UpdateTenantDelegationSettingsCommandHandler(IAdminContext adminContext, IInstanceGovernanceSettingService service, IUnitOfWork unitOfWork)
     {
         _adminContext = adminContext;
         _service = service;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateTenantDelegationSettingsCommand request, CancellationToken cancellationToken)
@@ -182,7 +200,8 @@ public class UpdateTenantDelegationSettingsCommandHandler : IRequestHandler<Upda
         if (!await _adminContext.IsInstanceAdminAsync(request.UserId, cancellationToken))
             return Unauthorized(response);
 
-        await _service.ApplyTenantDelegationSettingsAsync(request.Settings, request.UserId);
+        await _unitOfWork.ExecuteInTransactionAsync(ct =>
+            _service.ApplyTenantDelegationSettingsAsync(request.Settings, request.UserId), cancellationToken);
         response.Success = true;
         response.Message = "Tenant delegation settings updated successfully.";
         return response;
@@ -200,11 +219,13 @@ public class UpdateRenderPolicySettingsCommandHandler : IRequestHandler<UpdateRe
 {
     private readonly IAdminContext _adminContext;
     private readonly IInstanceGovernanceSettingService _service;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public UpdateRenderPolicySettingsCommandHandler(IAdminContext adminContext, IInstanceGovernanceSettingService service)
+    public UpdateRenderPolicySettingsCommandHandler(IAdminContext adminContext, IInstanceGovernanceSettingService service, IUnitOfWork unitOfWork)
     {
         _adminContext = adminContext;
         _service = service;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateRenderPolicySettingsCommand request, CancellationToken cancellationToken)
@@ -223,7 +244,8 @@ public class UpdateRenderPolicySettingsCommandHandler : IRequestHandler<UpdateRe
             return response;
         }
 
-        await _service.ApplyRenderPolicySettingsAsync(request.Settings, request.UserId);
+        await _unitOfWork.ExecuteInTransactionAsync(ct =>
+            _service.ApplyRenderPolicySettingsAsync(request.Settings, request.UserId), cancellationToken);
         response.Success = true;
         response.Message = "Render policy settings updated successfully.";
         return response;

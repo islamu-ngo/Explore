@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for updating top-level organization metadata.
+// ABOUTME: Carries the UpdateOrganizationDto payload.
 using System;
 using System.Collections.Generic;
 using System.Text;

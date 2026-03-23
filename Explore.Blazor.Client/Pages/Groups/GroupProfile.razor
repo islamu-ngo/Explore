@@ -1,0 +1,206 @@
+@using MudBlazor
+@using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Helpers
+@using Blazouter.Services
+@attribute [StreamRendering]
+
+<PageTitle>@(_group?.FullName ?? "Group Profile")</PageTitle>
+
+@if (_isLoading)
+{
+    <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    </MudContainer>
+}
+else if (_group == null)
+{
+    <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
+        <MudAlert Severity="Severity.Error">Group not found.</MudAlert>
+    </MudContainer>
+}
+else
+{
+    <div class="group-profile">
+        @* ── Banner Section ── *@
+        <div class="group-profile__banner" style="@_bannerStyle"></div>
+
+        <MudContainer MaxWidth="MaxWidth.Large" Class="group-profile__container">
+            @* ── Header: Avatar + Info + Subscribe ── *@
+            <div class="group-profile__header">
+                <div class="group-profile__avatar-wrapper">
+                    @if (!string.IsNullOrEmpty(_group.ActorProfilePictureUri))
+                    {
+                        <MudImage Src="@_group.ActorProfilePictureUri"
+                                  Alt="@($"{_group.FullName} Logo")"
+                                  Class="group-profile__avatar"
+                                  ObjectFit="ObjectFit.Cover" />
+                    }
+                    else
+                    {
+                        <MudImage Src="@GetGroupPlaceholder()"
+                                  Alt="Group Logo"
+                                  Class="group-profile__avatar"
+                                  ObjectFit="ObjectFit.Cover" />
+                    }
+                </div>
+
+                <div class="group-profile__header-right">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.NotificationsActive"
+                               Class="group-profile__subscribe-btn">
+                        Subscribe
+                    </MudButton>
+                </div>
+            </div>
+
+            @* ── Name + Description ── *@
+            <div class="group-profile__identity">
+                <MudText Typo="Typo.h4" Style="font-weight: 700;" Class="mb-1">@_group.FullName</MudText>
+
+                @if (!string.IsNullOrEmpty(_group.Description))
+                {
+                    <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-1">@_group.Description</MudText>
+                }
+            </div>
+
+            <MudDivider Class="my-6" />
+
+            @* ── Upcoming Events Section ── *@
+            <div class="group-profile__section">
+                <MudText Typo="Typo.h5" Class="mb-4" Style="font-weight: 700;">Upcoming Events</MudText>
+
+                @if (_isLoadingEvents)
+                {
+                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Small" />
+                }
+                else if (_upcomingEvents.Any())
+                {
+                    <MudGrid Spacing="4">
+                        @foreach (var evt in _upcomingEvents)
+                        {
+                            <MudItem xs="12" sm="6" md="4">
+                                <MudCard Elevation="0" Class="group-profile__event-card cursor-pointer"
+                                         @onclick="@(() => NavigateToEvent(evt))">
+                                    <div class="group-profile__event-card-image">
+                                        <MudImage Src="@GetEventImage(evt)"
+                                                  ObjectFit="ObjectFit.Cover"
+                                                  Style="width: 100%; height: 100%; display: block;" />
+                                    </div>
+                                    <MudCardContent Class="pa-3">
+                                        <div class="d-flex align-center gap-2 mb-2">
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="font-weight-bold px-1">
+                                                @evt.EventTypeFullName
+                                            </MudChip>
+                                            @if ((evt.Price ?? 0) == 0)
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled" Class="px-1">
+                                                    Free
+                                                </MudChip>
+                                            }
+                                        </div>
+                                        <MudText Typo="Typo.subtitle1" Style="font-weight: 600; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                                            @evt.Title
+                                        </MudText>
+                                        <div class="d-flex align-center gap-1 mt-2">
+                                            <MudIcon Icon="@Icons.Material.Outlined.CalendarToday" Size="Size.Small" Color="Color.Secondary" />
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                @FormatEventDate(evt)
+                                            </MudText>
+                                        </div>
+                                        <div class="d-flex align-center gap-1 mt-1">
+                                            <MudIcon Icon="@Icons.Material.Outlined.LocationOn" Size="Size.Small" Color="Color.Secondary" />
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                @GetLocationText(evt)
+                                            </MudText>
+                                        </div>
+                                    </MudCardContent>
+                                </MudCard>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                }
+                else
+                {
+                    <MudPaper Elevation="0" Class="pa-6 text-center border-solid border-1 mud-border-lines-default rounded-lg">
+                        <MudIcon Icon="@Icons.Material.Outlined.EventBusy" Size="Size.Large" Color="Color.Secondary" Class="mb-2" />
+                        <MudText Typo="Typo.body1" Color="Color.Secondary">No upcoming events</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">Subscribe to get notified when new events are posted.</MudText>
+                    </MudPaper>
+                }
+            </div>
+
+            @* ── Past Events Timeline Section ── *@
+            @if (_pastEvents.Any())
+            {
+                <MudDivider Class="my-6" />
+
+                <div class="group-profile__section">
+                    <MudText Typo="Typo.h5" Class="mb-6" Style="font-weight: 700;">Past Events</MudText>
+
+                    <div class="group-profile__timeline">
+                        @foreach (var dateGroup in _pastEventsByDate)
+                        {
+                            <div class="group-profile__timeline-group">
+                                @* ── Date marker ── *@
+                                <div class="group-profile__timeline-date">
+                                    <div class="group-profile__timeline-dot"></div>
+                                    <div class="group-profile__timeline-date-text">
+                                        <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">
+                                            @dateGroup.Key.ToString("MMM dd, yyyy")
+                                        </MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            @dateGroup.Key.ToString("dddd")
+                                        </MudText>
+                                    </div>
+                                </div>
+
+                                @* ── Event cards for this date ── *@
+                                <div class="group-profile__timeline-events">
+                                    @foreach (var evt in dateGroup.Value)
+                                    {
+                                        <MudPaper Elevation="0"
+                                                  Class="group-profile__timeline-card cursor-pointer"
+                                                  @onclick="@(() => NavigateToEvent(evt))">
+                                            <div class="d-flex gap-4">
+                                                <div class="group-profile__timeline-card-image">
+                                                    <MudImage Src="@GetEventImage(evt)"
+                                                              ObjectFit="ObjectFit.Cover"
+                                                              Style="width: 100%; height: 100%; display: block; border-radius: var(--isl-radius-md);" />
+                                                </div>
+                                                <div class="flex-grow-1" style="min-width: 0;">
+                                                    <div class="d-flex align-center gap-2 mb-1">
+                                                        @if (evt.FirstSessionDate.HasValue)
+                                                        {
+                                                            <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-weight: 600;">
+                                                                @evt.FirstSessionDate.Value.ToString("HH:mm")
+                                                                @if (evt.LastSessionDate.HasValue && evt.LastSessionDate != evt.FirstSessionDate)
+                                                                {
+                                                                    @(" · ")@evt.LastSessionDate.Value.ToString("HH:mm")
+                                                                }
+                                                            </MudText>
+                                                        }
+                                                    </div>
+                                                    <MudText Typo="Typo.subtitle1" Style="font-weight: 600; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                                                        @evt.Title
+                                                    </MudText>
+                                                    <div class="d-flex align-center gap-1 mt-1">
+                                                        <MudIcon Icon="@Icons.Material.Outlined.LocationOn" Size="Size.Small" Color="Color.Secondary" />
+                                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                            @GetLocationText(evt)
+                                                        </MudText>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </MudPaper>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </MudContainer>
+    </div>
+}

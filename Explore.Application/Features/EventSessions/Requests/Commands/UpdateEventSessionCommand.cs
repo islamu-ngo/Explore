@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for updating an event session.
+// ABOUTME: Carries the UpdateEventSessionDto payload.
 using System;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventSession;

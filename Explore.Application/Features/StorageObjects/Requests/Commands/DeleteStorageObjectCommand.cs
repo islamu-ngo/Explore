@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for deleting a storage object by ID.
+// ABOUTME: Carries the target storage object ID.
 using Explore.Application.Authorization;
 using MediatR;
 

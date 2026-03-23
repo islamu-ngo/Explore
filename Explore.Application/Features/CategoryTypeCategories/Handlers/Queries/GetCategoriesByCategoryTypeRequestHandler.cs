@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning all categories belonging to a given category type.
+// ABOUTME: Used for filtered category tree rendering.
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Category;

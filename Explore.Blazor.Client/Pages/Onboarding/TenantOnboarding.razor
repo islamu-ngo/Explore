@@ -111,21 +111,19 @@
                 }
 
                 <MudDivider />
-                <MudText Typo="Typo.h6">Tenant Branding</MudText>
-                @if (!_model.IsTenantWhiteLabelingEnabled)
+                <MudText Typo="Typo.h6">Platform Identity</MudText>
+                <MudTextField Label="Brand Display Name (Required)"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="Brand display name is required."
+                              @bind-Value="_model.BrandDisplayName"
+                              Disabled="@(!_model.CanOverrideBrandDisplayName)" />
+                @if (!_model.CanOverrideBrandDisplayName)
                 {
-                    <MudAlert Severity="Severity.Info" Dense="true">
-                        Tenant white-label branding is disabled by platform governance for this deployment.
-                    </MudAlert>
+                    <MudText Typo="Typo.caption">Brand display name is locked by instance policy.</MudText>
                 }
-                else
+                @if (_model.IsTenantWhiteLabelingEnabled)
                 {
-                    <MudTextField Label="Brand Display Name (Required)"
-                                  Variant="Variant.Outlined"
-                                  Required="true"
-                                  RequiredError="Brand display name is required."
-                                  @bind-Value="_model.BrandDisplayName"
-                                  Disabled="@(!_model.CanOverrideBrandDisplayName)" />
                     <MudTextField Label="Brand Logo URL (Optional)"
                                   Variant="Variant.Outlined"
                                   @bind-Value="_model.BrandLogoUrl"

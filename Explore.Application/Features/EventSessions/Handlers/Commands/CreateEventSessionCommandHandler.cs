@@ -1,3 +1,5 @@
+// ABOUTME: Handler for creating a new event session with validation.
+// ABOUTME: Validates input, maps DTO, sets defaults, persists via repository.
 using System;
 using System.Linq;
 using System.Threading;

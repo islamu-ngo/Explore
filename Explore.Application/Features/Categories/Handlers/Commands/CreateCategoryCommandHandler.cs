@@ -1,3 +1,5 @@
+// ABOUTME: Handler for creating a new category with validation.
+// ABOUTME: Validates input, maps DTO to entity, sets TenantId, persists via repository.
 using System;
 using System.Linq;
 using System.Threading;

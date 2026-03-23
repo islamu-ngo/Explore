@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning all sessions where a given actor is a speaker.
+// ABOUTME: Used for speaker profile and My Sessions view.
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;

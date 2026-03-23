@@ -1,3 +1,5 @@
+// ABOUTME: MediatR query request for fetching a single sync state by ID.
+// ABOUTME: Returns SyncStateDto.
 using Explore.Application.DTOs.SyncState;
 using MediatR;
 

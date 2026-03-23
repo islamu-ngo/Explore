@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for removing a speaker from an event session.
+// ABOUTME: Carries the junction record ID.
 using System;
 using Explore.Application.Authorization;
 using MediatR;

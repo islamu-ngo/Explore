@@ -110,6 +110,8 @@ public static class PersistenceServicesRegistration
         services.AddScoped<ITenantMemberRepository, TenantMemberRepository>();
         services.AddScoped<ITenantOnboardingStateRepository, TenantOnboardingStateRepository>();
         services.AddScoped<ITenantNavigationLinkRepository, TenantNavigationLinkRepository>();
+        services.AddScoped<IFooterLinkGroupRepository, FooterLinkGroupRepository>();
+        services.AddScoped<IFooterLinkRepository, FooterLinkRepository>();
         services.AddScoped<ITenantInvitationRepository, TenantInvitationRepository>();
         services.AddScoped<ITenantLifecycleLogRepository, TenantLifecycleLogRepository>();
 
@@ -177,6 +179,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IGroupSettingRepository, GroupSettingRepository>();
         services.AddScoped<IUserPreferenceRepository, UserPreferenceRepository>();
         services.AddScoped<IAppSettingRepository, AppSettingRepository>();
+        services.AddScoped<IUiThemeRepository, UiThemeRepository>();
 
         // Module Governance Repositories
         services.AddScoped<IModuleDefinitionRepository, ModuleDefinitionRepository>();

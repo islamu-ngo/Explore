@@ -294,25 +294,21 @@ public class EventController : ControllerBase
     }
 
     /// <summary>
-    /// Update an existing event.
+    /// Update an existing event. Supports full update (EventDto) or targeted field updates (e.g., EventStatusDto).
+    /// Supply only the DTO(s) to update; null properties are ignored.
     /// </summary>
     [HttpPut("{id:guid}", Name = RouteNames.UpdateEvent)]
     [EndpointSummary("Update Event")]
-    [EndpointDescription("Update an existing event. User must be a member of the organization that owns the event.")]
+    [EndpointDescription("Update an existing event. Supports full update via EventDto or targeted updates via specific DTOs (e.g., EventStatusDto). Null DTOs are ignored.")]
     [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventDto @event, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventCommand command, CancellationToken cancellationToken = default)
     {
-        if (id != @event.Id)
-        {
-            return BadRequest(new { error = "Event ID mismatch" });
-        }
-
-        var command = new UpdateEventCommand { EventDto = @event };
+        command.Id = id;
         var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)

@@ -1,6 +1,9 @@
+// ABOUTME: Handler for retrieving the top featured event series (most upcoming events, highest views).
+// ABOUTME: Returns null if no published series with upcoming events exists.
+
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
-using Explore.Application.DTOs.Event;
+using Explore.Application.DTOs.EventSeries;
 using Explore.Application.Features.EventSeries.Requests.Queries;
 using Explore.Application.Responses;
 using MediatR;

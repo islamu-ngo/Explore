@@ -1,3 +1,6 @@
+// ABOUTME: Partial class extending NSwag-generated EventApiClient with request preparation hooks.
+// ABOUTME: Tenant context is resolved server-side from the forwarded host header.
+
 namespace Explore.Blazor.Client.Clients;
 
 /// <summary>

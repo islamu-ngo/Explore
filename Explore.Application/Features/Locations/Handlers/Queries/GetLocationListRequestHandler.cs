@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a paginated list of event locations.
+// ABOUTME: Maps entities to LocationListDto.
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;

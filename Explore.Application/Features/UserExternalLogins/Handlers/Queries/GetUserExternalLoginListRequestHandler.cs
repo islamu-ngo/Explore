@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a paginated list of external login records.
+// ABOUTME: Maps entities to UserExternalLoginListDto.
 using System.Collections.Generic;
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;

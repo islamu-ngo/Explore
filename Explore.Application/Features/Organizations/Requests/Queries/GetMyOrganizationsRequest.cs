@@ -1,3 +1,5 @@
+// ABOUTME: MediatR query for fetching the current user's organizations.
+// ABOUTME: Returns IEnumerable<OrganizationListDto>.
 using Explore.Application.DTOs.Organization;
 using Explore.Application.Responses;
 using MediatR;

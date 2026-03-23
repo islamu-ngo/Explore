@@ -1,3 +1,5 @@
+// ABOUTME: MediatR query request for fetching a single tenant settings record by ID.
+// ABOUTME: Returns TenantSettingsDto.
 using Explore.Application.DTOs.TenantSettings;
 using MediatR;
 

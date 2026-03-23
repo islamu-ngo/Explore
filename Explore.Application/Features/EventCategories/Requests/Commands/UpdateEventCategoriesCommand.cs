@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for updating an event-category link.
+// ABOUTME: Carries the UpdateEventCategoriesDto payload.
 using System;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventCategories;

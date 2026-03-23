@@ -1,3 +1,5 @@
+// ABOUTME: Handler for deleting a tenant settings record.
+// ABOUTME: Fetches record by ID and delegates deletion.
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.TenantSettings;
 using Explore.Application.Features.TenantSettings.Requests.Commands;

@@ -25,6 +25,7 @@ public class CompleteTenantOnboardingCommandHandlerTests
     private readonly ITenantOnboardingStateRepository _onboardingStateRepository;
     private readonly IAdminContext _adminContext;
     private readonly ITenantPolicySettingService _policySettingService;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly CompleteTenantOnboardingCommandHandler _handler;
 
     public CompleteTenantOnboardingCommandHandlerTests()
@@ -33,14 +34,25 @@ public class CompleteTenantOnboardingCommandHandlerTests
         _onboardingStateRepository = Substitute.For<ITenantOnboardingStateRepository>();
         _adminContext = Substitute.For<IAdminContext>();
         _policySettingService = Substitute.For<ITenantPolicySettingService>();
+        _unitOfWork = Substitute.For<IUnitOfWork>();
 
         _tenantContext.TenantId.Returns(TestTenantId);
+
+        // Execute the lambda so inner repo logic runs in tests
+        _unitOfWork
+            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<Guid>>>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var op = callInfo.Arg<Func<CancellationToken, Task<Guid>>>();
+                return op(CancellationToken.None);
+            });
 
         _handler = new CompleteTenantOnboardingCommandHandler(
             _tenantContext,
             _onboardingStateRepository,
             _adminContext,
-            _policySettingService);
+            _policySettingService,
+            _unitOfWork);
     }
 
     private static CompleteTenantOnboardingCommand CreateCommand() => new()

@@ -1,3 +1,5 @@
+// ABOUTME: MediatR query for downloading the binary content of a storage object.
+// ABOUTME: Returns file bytes and content type.
 using System.IO;
 using MediatR;
 

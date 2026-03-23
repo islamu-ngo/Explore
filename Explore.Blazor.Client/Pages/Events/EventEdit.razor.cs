@@ -457,7 +457,7 @@ public partial class EventEdit
                     }
                 }
 
-                Navigation.NavigateTo($"/event/detail/{EventId}");
+                Navigation.NavigateTo($"/events/{EventId}");
             }
             else
             {

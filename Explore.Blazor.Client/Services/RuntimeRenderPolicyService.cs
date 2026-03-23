@@ -106,7 +106,7 @@ public sealed class RuntimeRenderPolicyService : IRuntimeRenderPolicyService
             normalizedPath.Equals("/events", StringComparison.Ordinal) ||
             normalizedPath.Equals("/welcome", StringComparison.Ordinal) ||
             normalizedPath.Equals("/home", StringComparison.Ordinal) ||
-            normalizedPath.StartsWith("/event/detail/", StringComparison.Ordinal))
+            normalizedPath.StartsWith("/events/", StringComparison.Ordinal))
         {
             return RuntimeRouteGroup.PublicSeo;
         }

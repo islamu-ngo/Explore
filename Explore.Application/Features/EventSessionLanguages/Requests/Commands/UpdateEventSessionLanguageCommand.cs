@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for updating a session-language link.
+// ABOUTME: Carries the UpdateEventSessionLanguageDto payload.
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.EventSessionLanguage;
 using Explore.Application.Responses;

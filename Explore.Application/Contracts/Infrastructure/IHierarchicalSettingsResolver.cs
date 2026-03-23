@@ -57,4 +57,9 @@ public interface IHierarchicalSettingsResolver
     /// Pass null for both parameters to invalidate everything.
     /// </summary>
     void InvalidateCache(SettingScope? scope = null, Guid? scopeId = null);
+
+    /// <summary>
+    /// Invalidates a specific user preference cache entry.
+    /// </summary>
+    void InvalidateUserCache(Guid tenantId, Guid userId);
 }

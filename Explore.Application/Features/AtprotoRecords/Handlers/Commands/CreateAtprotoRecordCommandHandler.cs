@@ -1,3 +1,5 @@
+// ABOUTME: Handler for creating a new AT Protocol record with validation.
+// ABOUTME: Validates input, maps DTO, sets TenantId, persists via repository.
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.AtprotoRecord.Validators;

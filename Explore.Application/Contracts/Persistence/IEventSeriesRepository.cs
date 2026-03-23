@@ -1,3 +1,6 @@
+// ABOUTME: Repository interface for EventSeries with domain-specific query operations.
+// ABOUTME: Extends IGenericRepository with slug lookup, pagination, eager loading, and top-series query.
+
 using Explore.Domain;
 
 namespace Explore.Application.Contracts.Persistence;

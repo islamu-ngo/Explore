@@ -1,7 +1,8 @@
-using Explore.Application.Contracts.Persistence;
+// ABOUTME: Unit tests for CreateOrganizationDtoValidator.
+// ABOUTME: Validates all fields: FullName, Email, Country, City, Address, WebsiteUrl, Postcode.
+
 using Explore.Application.DTOs.Organization;
 using Explore.Application.DTOs.Organization.Validators;
-using NSubstitute;
 using TUnit.Assertions;
 using TUnit.Core;
 
@@ -9,13 +10,11 @@ namespace Event.Application.UnitTests.Features.Organizations.Validators;
 
 public class CreateOrganizationDtoValidatorTests
 {
-    private readonly IApprovalStatusRepository _approvalStatusRepository;
     private readonly CreateOrganizationDtoValidator _validator;
 
     public CreateOrganizationDtoValidatorTests()
     {
-        _approvalStatusRepository = Substitute.For<IApprovalStatusRepository>();
-        _validator = new CreateOrganizationDtoValidator(_approvalStatusRepository);
+        _validator = new CreateOrganizationDtoValidator();
     }
 
     [Test]

@@ -1,3 +1,5 @@
+// ABOUTME: Handler for updating a session-language link with validation.
+// ABOUTME: Validates input, fetches entity, applies field updates.
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;

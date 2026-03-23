@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for creating a new AT Protocol record.
+// ABOUTME: Carries the CreateAtprotoRecordDto payload.
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.Responses;

@@ -11,7 +11,7 @@ using Explore.Domain.Constants;
 /// </summary>
 public class BrandingSettingGroup : ISettingGroup
 {
-    public string DisplayName { get; private set; } = "ISLAMU Explore";
+    public string DisplayName { get; private set; } = string.Empty;
     public string? LogoUrl { get; private set; }
     public string? FaviconUrl { get; private set; }
     public string? CustomCssUrl { get; private set; }
@@ -27,7 +27,7 @@ public class BrandingSettingGroup : ISettingGroup
     public void Populate(IReadOnlyDictionary<string, ResolvedSetting> settings)
     {
         if (settings.TryGetValue(GovernanceSettingKeys.Branding.DisplayName, out var name))
-            DisplayName = SettingValueSerializer.Deserialize(name.Value, "ISLAMU Explore");
+            DisplayName = SettingValueSerializer.Deserialize(name.Value, string.Empty);
         if (settings.TryGetValue(GovernanceSettingKeys.Branding.LogoUrl, out var logo))
             LogoUrl = SettingValueSerializer.DeserializeString(logo.Value);
         if (settings.TryGetValue(GovernanceSettingKeys.Branding.FaviconUrl, out var favicon))

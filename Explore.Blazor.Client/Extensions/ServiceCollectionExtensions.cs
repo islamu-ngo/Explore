@@ -62,6 +62,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IInstanceOnboardingService, InstanceOnboardingService>();
         services.AddScoped<ITenantOnboardingService, TenantOnboardingService>();
         services.AddScoped<IPublicExperienceService, PublicExperienceService>();
+        services.AddScoped<IAppearanceThemeService, AppearanceThemeService>();
 
         // Runtime render policy and routing
         services.AddScoped<IRuntimeRenderPolicyService, RuntimeRenderPolicyService>();

@@ -1,3 +1,5 @@
+// ABOUTME: Handler for deleting an AT Protocol record.
+// ABOUTME: Fetches record by ID and delegates deletion to the repository.
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.AtprotoRecords.Requests.Commands;
 using Explore.Application.Responses;

@@ -517,7 +517,7 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
     // ── Normalization helpers (business logic) ──────────────────────────────────────
 
     private static string NormalizeRequiredDisplayName(string? value)
-        => string.IsNullOrWhiteSpace(value) ? "ISLAMU Explore" : value.Trim();
+        => value?.Trim() ?? string.Empty;
 
     private static string NormalizeOptionalUrl(string? value)
         => string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();

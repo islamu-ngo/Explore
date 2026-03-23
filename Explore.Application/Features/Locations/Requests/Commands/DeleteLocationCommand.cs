@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for deleting a location by ID.
+// ABOUTME: Carries the target location ID.
 using System;
 using Explore.Application.Authorization;
 using MediatR;

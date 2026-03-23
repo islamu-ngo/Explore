@@ -1,3 +1,6 @@
+// ABOUTME: Handles user synchronization from external identity providers (Keycloak, Google, ATProto).
+// ABOUTME: Uses IUnitOfWork to atomically create/update user, actor, and external login records.
+
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.User;
@@ -21,6 +24,7 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
     private readonly ITenantContext _tenantContext;
     private readonly IConfiguration _configuration;
     private readonly HybridCache _cache;
+    private readonly IUnitOfWork _unitOfWork;
 
     public SyncUserCommandHandler(
         IUserRepository userRepository,
@@ -29,7 +33,8 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
         ITenantRepository tenantRepository,
         ITenantContext tenantContext,
         IConfiguration configuration,
-        HybridCache cache)
+        HybridCache cache,
+        IUnitOfWork unitOfWork)
     {
         _userRepository = userRepository;
         _userExternalLoginRepository = userExternalLoginRepository;
@@ -38,6 +43,7 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
         _tenantContext = tenantContext;
         _configuration = configuration;
         _cache = cache;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(SyncUserCommand request, CancellationToken cancellationToken)
@@ -71,6 +77,7 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
                 }
             }
 
+            // Pre-reads for user resolution — outside transaction for fast rejection
             User? user = null;
 
             var existingLogin = await _userExternalLoginRepository.GetByProviderAndKey(provider, providerUserId);
@@ -89,108 +96,117 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
                 user = await _userRepository.GetUserByEmail(email);
             }
 
+            // Fast-rejection for missing email on new account creation — before any writes
+            string? safeEmail = null;
             if (user == null)
             {
-                var newUserId = userDto.Id != Guid.Empty ? userDto.Id : Guid.NewGuid();
-                var safeEmail = ResolveEmailForCreation(provider, email);
+                safeEmail = ResolveEmailForCreation(provider, email);
                 if (string.IsNullOrWhiteSpace(safeEmail))
                 {
                     response.Success = false;
                     response.Message = "Email is required to create a new account for this provider.";
                     return response;
                 }
-
-                user = new User
-                {
-                    Id = newUserId,
-                    Pii = new UserPii
-                    {
-                        Email = safeEmail,
-                        FirstName = ResolveFirstName(userDto.FirstName),
-                        LastName = ResolveLastName(userDto.LastName)
-                    },
-                    ActorId = null,
-                    AuthProvider = provider,
-                    AuthProviderId = providerUserId,
-                    EmailVerified = userDto.EmailVerified ?? supportsEmailAutoMatch,
-                    DefaultActorId = null
-                };
-
-                user = await _userRepository.Create(user);
-
-                var defaultTenantId = await GetDefaultTenantIdAsync();
-                var actor = new Actor
-                {
-                    ActorTypeId = (int)ActorTypeEnum.User,
-                    ActorType = null!,
-                    TenantId = defaultTenantId,
-                    Tenant = null!,
-                    Pii = new ActorPii
-                    {
-                        DisplayName = BuildDisplayName(userDto.FirstName, userDto.LastName),
-                        Handle = GenerateHandle(userDto.Username, safeEmail, providerUserId),
-                        Did = provider == AuthSchemeNames.Atproto.ToLowerInvariant() ? providerUserId : null
-                    },
-                    Description = null,
-                    UserId = user.Id,
-                    OrganizationId = null,
-                    DidCustodyTypeId = provider == AuthSchemeNames.Atproto.ToLowerInvariant()
-                        ? (int)DidCustodyTypeEnum.SelfCustody
-                        : (int)DidCustodyTypeEnum.Custodial
-                };
-
-                actor = await _actorRepository.Create(actor);
-                user.ActorId = actor.Id;
-                user.DefaultActorId = actor.Id;
-                await _userRepository.Update(user);
             }
-            else
+
+            // IDs generated before lambda — captured via closure for retry safety
+            var newUserId = userDto.Id != Guid.Empty ? userDto.Id : Guid.NewGuid();
+            var loginId = Guid.NewGuid();
+
+            var syncedUser = await _unitOfWork.ExecuteInTransactionAsync<User>(async ct =>
             {
-                if (!string.IsNullOrWhiteSpace(email))
+                if (user == null)
                 {
-                    user.Email = email;
-                }
-
-                user.FirstName = ResolveFirstName(userDto.FirstName);
-                user.LastName = ResolveLastName(userDto.LastName);
-                user.AuthProvider = provider;
-                user.AuthProviderId = providerUserId;
-                if (userDto.EmailVerified.HasValue)
-                {
-                    user.EmailVerified = userDto.EmailVerified;
-                }
-
-                if (user.ActorId.HasValue)
-                {
-                    var actor = await _actorRepository.GetById(user.ActorId.Value);
-                    if (actor != null)
+                    var newUser = new User
                     {
-                        actor.DisplayName = BuildDisplayName(userDto.FirstName, userDto.LastName);
-                        if (provider == AuthSchemeNames.Atproto.ToLowerInvariant() && string.IsNullOrWhiteSpace(actor.Did))
+                        Id = newUserId,
+                        Pii = new UserPii
                         {
-                            actor.Did = providerUserId;
-                            actor.DidCustodyTypeId = (int)DidCustodyTypeEnum.SelfCustody;
-                        }
+                            Email = safeEmail!,
+                            FirstName = ResolveFirstName(userDto.FirstName),
+                            LastName = ResolveLastName(userDto.LastName)
+                        },
+                        ActorId = null,
+                        AuthProvider = provider,
+                        AuthProviderId = providerUserId,
+                        EmailVerified = userDto.EmailVerified ?? supportsEmailAutoMatch,
+                        DefaultActorId = null
+                    };
 
-                        await _actorRepository.Update(actor);
-                    }
+                    var createdUser = await _userRepository.Create(newUser);
+
+                    var defaultTenantId = await GetDefaultTenantIdAsync();
+                    var actor = new Actor
+                    {
+                        ActorTypeId = (int)ActorTypeEnum.User,
+                        ActorType = null!,
+                        TenantId = defaultTenantId,
+                        Tenant = null!,
+                        Pii = new ActorPii
+                        {
+                            DisplayName = BuildDisplayName(userDto.FirstName, userDto.LastName),
+                            Handle = GenerateHandle(userDto.Username, safeEmail!, providerUserId),
+                            Did = provider == AuthSchemeNames.Atproto.ToLowerInvariant() ? providerUserId : null
+                        },
+                        Description = null,
+                        UserId = createdUser.Id,
+                        OrganizationId = null,
+                        DidCustodyTypeId = provider == AuthSchemeNames.Atproto.ToLowerInvariant()
+                            ? (int)DidCustodyTypeEnum.SelfCustody
+                            : (int)DidCustodyTypeEnum.Custodial
+                    };
+
+                    actor = await _actorRepository.Create(actor);
+                    createdUser.ActorId = actor.Id;
+                    createdUser.DefaultActorId = actor.Id;
+                    await _userRepository.Update(createdUser);
+
+                    await EnsureExternalLoginLinkInTransactionAsync(createdUser, provider, providerUserId, loginId, ct);
+                    return createdUser;
                 }
+                else
+                {
+                    if (!string.IsNullOrWhiteSpace(email))
+                    {
+                        user.Email = email;
+                    }
 
-                await _userRepository.Update(user);
-            }
+                    user.FirstName = ResolveFirstName(userDto.FirstName);
+                    user.LastName = ResolveLastName(userDto.LastName);
+                    user.AuthProvider = provider;
+                    user.AuthProviderId = providerUserId;
+                    if (userDto.EmailVerified.HasValue)
+                    {
+                        user.EmailVerified = userDto.EmailVerified;
+                    }
 
-            var linkResult = await EnsureExternalLoginLinkAsync(user, provider, providerUserId);
-            if (!linkResult.Success)
-            {
-                response.Success = false;
-                response.Message = linkResult.Message;
-                return response;
-            }
+                    if (user.ActorId.HasValue)
+                    {
+                        var actor = await _actorRepository.GetById(user.ActorId.Value);
+                        if (actor != null)
+                        {
+                            actor.DisplayName = BuildDisplayName(userDto.FirstName, userDto.LastName);
+                            if (provider == AuthSchemeNames.Atproto.ToLowerInvariant() && string.IsNullOrWhiteSpace(actor.Did))
+                            {
+                                actor.Did = providerUserId;
+                                actor.DidCustodyTypeId = (int)DidCustodyTypeEnum.SelfCustody;
+                            }
+
+                            await _actorRepository.Update(actor);
+                        }
+                    }
+
+                    await _userRepository.Update(user);
+
+                    await EnsureExternalLoginLinkInTransactionAsync(user, provider, providerUserId, loginId, ct);
+                    return user;
+                }
+            }, cancellationToken);
 
             response.Success = true;
             response.Message = "User synchronized successfully.";
-            response.Id = user.Id;
-            await _cache.RemoveAsync($"user:detail:{user.Id}", cancellationToken);
+            response.Id = syncedUser.Id;
+            await _cache.RemoveAsync($"user:detail:{syncedUser.Id}", cancellationToken);
         }
         catch (Exception ex)
         {
@@ -201,25 +217,25 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
         return response;
     }
 
-    private async Task<(bool Success, string Message)> EnsureExternalLoginLinkAsync(
+    private async Task EnsureExternalLoginLinkInTransactionAsync(
         User user,
         string provider,
-        string providerUserId)
+        string providerUserId,
+        Guid loginId,
+        CancellationToken ct)
     {
         var existingByProviderAndKey = await _userExternalLoginRepository.GetByProviderAndKey(provider, providerUserId);
         if (existingByProviderAndKey != null)
         {
             if (existingByProviderAndKey.UserId != user.Id)
-            {
-                return (false, "This provider identity is already linked to another account.");
-            }
+                throw new InvalidOperationException("This provider identity is already linked to another account.");
 
-            return (true, string.Empty);
+            return;
         }
 
         var login = new UserExternalLogin
         {
-            Id = Guid.NewGuid(),
+            Id = loginId,
             UserId = user.Id,
             User = user,
             TenantId = _tenantContext.TenantId,
@@ -230,7 +246,6 @@ public class SyncUserCommandHandler : IRequestHandler<SyncUserCommand, BaseComma
         };
 
         await _userExternalLoginRepository.Create(login);
-        return (true, string.Empty);
     }
 
     private static string NormalizeProvider(string? provider)

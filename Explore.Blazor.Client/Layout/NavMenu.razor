@@ -150,7 +150,7 @@
                                 </div>
                                 <div class="navbar__dropdown-divider"></div>
 
-                                <a href="/user/profile" class="navbar__dropdown-item" @onclick="CloseDropdown">
+                                <a href="/my/profile" class="navbar__dropdown-item" @onclick="CloseDropdown">
                                     <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
                                     Show Profile
                                 </a>
@@ -188,7 +188,7 @@
                                             </div>
                                         }
                                         <div class="navbar__dropdown-submenu-divider"></div>
-                                        <a href="/organization/create" class="navbar__dropdown-submenu-create" @onclick="CloseDropdown">
+                                        <a href="/organizations/create" class="navbar__dropdown-submenu-create" @onclick="CloseDropdown">
                                             <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />
                                             Create Organization
                                         </a>
@@ -235,11 +235,11 @@
                                     </div>
                                 }
 
-                                <a href="/myevents" class="navbar__dropdown-item" @onclick="CloseDropdown">
+                                <a href="/my/events" class="navbar__dropdown-item" @onclick="CloseDropdown">
                                     <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" />
                                     My Events
                                 </a>
-                                <a href="/my-registrations" class="navbar__dropdown-item" @onclick="CloseDropdown">
+                                <a href="/my/registrations" class="navbar__dropdown-item" @onclick="CloseDropdown">
                                     <MudIcon Icon="@Icons.Material.Filled.Assignment" Size="Size.Small" />
                                     My Registrations
                                 </a>
@@ -296,7 +296,7 @@
                                    StartIcon="@Icons.Material.Filled.Add"
                                    Size="Size.Small"
                                    Class="navbar__create-event-btn"
-                                   OnClick="@(() => OpenLoginPrompt("/create-event"))">
+                                   OnClick="@(() => OpenLoginPrompt("/events/create"))">
                             Add Event
                         </MudButton>
                     }

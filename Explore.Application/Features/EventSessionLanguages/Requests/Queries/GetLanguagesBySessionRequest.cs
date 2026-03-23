@@ -1,3 +1,5 @@
+// ABOUTME: MediatR query for fetching all languages in a session.
+// ABOUTME: Returns IEnumerable<LanguageDto>.
 using System;
 using System.Collections.Generic;
 using Explore.Application.DTOs.EventSessionLanguage;

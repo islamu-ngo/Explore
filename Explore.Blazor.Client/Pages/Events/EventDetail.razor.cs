@@ -11,6 +11,7 @@ using Explore.Blazor.Client.Pages.Events.Dialogs;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
+using Microsoft.JSInterop;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Pages.Events;
@@ -31,6 +32,7 @@ public partial class EventDetail : ComponentBase
     [Inject] private IEventAspectService EventAspectService { get; set; } = default!;
     [Inject] private IEventSessionAgendaItemService AgendaItemService { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
+    [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
 
     [PersistentState]
     public EventDetailState? PersistedState { get; set; }
@@ -50,6 +52,7 @@ public partial class EventDetail : ComponentBase
     private List<Guid> _userRegistrationIds = new();
     private bool _canDelete = false;
     private bool _canEdit = false;
+    private bool _isAuthenticated = false;
     private bool _isCheckingAuth = true;
     private string? _errorMessage;
 
@@ -224,7 +227,8 @@ public partial class EventDetail : ComponentBase
         try
         {
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            if (authState.User.Identity?.IsAuthenticated == true)
+            _isAuthenticated = authState.User.Identity?.IsAuthenticated == true;
+            if (_isAuthenticated)
             {
                 var user = await UserService.GetCurrentUserAsync();
                 if (user?.Id != null)
@@ -337,6 +341,9 @@ public partial class EventDetail : ComponentBase
         _ => Color.Default
     };
 
+    private bool IsCancelledEvent() =>
+        _eventDetails?.EventStatusMasterCode == "CANCELLED";
+
     /// <summary>
     /// Gets the formatted date display string.
     /// </summary>
@@ -445,7 +452,28 @@ public partial class EventDetail : ComponentBase
     /// </summary>
     private string GetOrganizerProfilePicture()
     {
-        return _eventDetails?.ActorProfilePictureUri ?? "https://via.placeholder.com/150";
+        return _eventDetails?.ActorProfilePictureUri ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Returns the profile page URL for the organizer actor, or null if no public profile exists for that actor type.
+    /// Organization (ActorTypeId=2) → /organization/profile/{id}.
+    /// </summary>
+    private string? GetOrganizerProfileUrl()
+    {
+        if (_eventDetails?.ActorId == null || _eventDetails.ActorTypeId == null) return null;
+        return _eventDetails.ActorTypeId.Value switch
+        {
+            2 => $"/organization/profile/{_eventDetails.ActorId.Value}",  // Organization
+            _ => null
+        };
+    }
+
+    private void NavigateToOrganizer()
+    {
+        var url = GetOrganizerProfileUrl();
+        if (url != null)
+            Navigation.NavigateTo(url);
     }
 
     /// <summary>
@@ -455,6 +483,12 @@ public partial class EventDetail : ComponentBase
     private async Task OpenRegistrationDialog()
     {
         if (_eventDetails == null) return;
+
+        if (!_isAuthenticated)
+        {
+            Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(Navigation.Uri)}");
+            return;
+        }
 
         // Ensure sessions are loaded
         if (_eventSessions == null || !_eventSessions.Any())
@@ -564,7 +598,9 @@ public partial class EventDetail : ComponentBase
     {
         if (_isCheckingRegistration) return "Checking...";
         if (_isCancellingRegistration) return "Cancelling...";
+        if (IsCancelledEvent()) return "Event Cancelled";
         if (_isUserRegistered) return "Already Registered";
+        if (!_isAuthenticated) return "Login to Register";
         if (_primarySession == null) return "Registration unavailable";
         return _eventDetails?.IsRegistrationRequired == true ? "Register now" : "Join us";
     }
@@ -574,7 +610,7 @@ public partial class EventDetail : ComponentBase
     /// </summary>
     private bool IsButtonDisabled()
     {
-        return _isCheckingRegistration || _isCancellingRegistration || _isUserRegistered || _primarySession == null;
+        return _isCheckingRegistration || _isCancellingRegistration || _isUserRegistered || IsCancelledEvent() || _primarySession == null;
     }
 
     /// <summary>
@@ -585,32 +621,216 @@ public partial class EventDetail : ComponentBase
         return _isUserRegistered ? Color.Success : Color.Primary;
     }
 
-    /// <summary>
-    /// Adds the event to Google Calendar.
-    /// </summary>
-    private void AddToGoogleCalendar()
+    #region OG Metadata Helpers
+
+    private string GetCanonicalUrl()
     {
-        Logger.LogInformation("Add to Google Calendar clicked for event {EventId}", EventId);
-        // TODO: Implement Google Calendar integration
+        var baseUri = Navigation.BaseUri.TrimEnd('/');
+        return $"{baseUri}/events/{EventId}";
+    }
+
+    private string GetMetaDescription()
+    {
+        if (string.IsNullOrWhiteSpace(_eventDetails?.Description))
+            return $"{_eventDetails?.Title} — Event on ISLAMU Events";
+
+        var plainText = _eventDetails.Description
+            .Replace("\r\n", " ")
+            .Replace("\n", " ")
+            .Trim();
+
+        return plainText.Length > 200
+            ? string.Concat(plainText.AsSpan(0, 197), "...")
+            : plainText;
+    }
+
+    private string GetOgImageUrl()
+    {
+        if (_eventDetails?.FeaturedImageId != Guid.Empty && _eventDetails?.FeaturedImageId != null)
+        {
+            var baseUri = Navigation.BaseUri.TrimEnd('/');
+            return $"{baseUri}/api/storageobject/{_eventDetails.FeaturedImageId}/public";
+        }
+
+        return string.Empty;
+    }
+
+    private static string TruncateTitle(string title)
+    {
+        if (title.Length <= 70)
+            return title;
+
+        var truncated = title[..67];
+        var lastSpace = truncated.LastIndexOf(' ');
+        return lastSpace > 0
+            ? string.Concat(truncated.AsSpan(0, lastSpace), "...")
+            : string.Concat(truncated, "...");
+    }
+
+    #endregion
+
+    #region Share
+
+    private async Task ShareEventAsync()
+    {
+        var url = GetCanonicalUrl();
+
+        try
+        {
+            // Try Web Share API first (mobile browsers)
+            var canShare = await JsRuntime.InvokeAsync<bool>("eval", "!!navigator.share");
+            if (canShare)
+            {
+                await JsRuntime.InvokeVoidAsync("navigator.share", new
+                {
+                    title = _eventDetails?.Title ?? "Event",
+                    url
+                });
+                return;
+            }
+        }
+        catch
+        {
+            // Web Share API not available or user cancelled — fall through to clipboard
+        }
+
+        try
+        {
+            await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", url);
+            Snackbar.Add("Link copied to clipboard!", Severity.Success,
+                options => options.VisibleStateDuration = 2000);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to copy event link to clipboard");
+            Snackbar.Add("Could not copy link", Severity.Error);
+        }
+    }
+
+    #endregion
+
+    #region Calendar Integration
+
+    private async Task AddToGoogleCalendarAsync()
+    {
+        if (_eventDetails is null || _primarySession is null)
+            return;
+
+        var start = _primarySession.StartTime!.Value.UtcDateTime.ToString("yyyyMMdd'T'HHmmss'Z'");
+        var end = _primarySession.EndTime!.Value.UtcDateTime.ToString("yyyyMMdd'T'HHmmss'Z'");
+        var title = Uri.EscapeDataString(_eventDetails.Title);
+        var details = Uri.EscapeDataString(
+            GetMetaDescription() + "\n\n" + GetCanonicalUrl());
+        var location = Uri.EscapeDataString(_primarySession.LocationFullName ?? "");
+
+        var url = $"https://calendar.google.com/calendar/r/eventedit?text={title}&dates={start}/{end}&details={details}&location={location}";
+
+        await JsRuntime.InvokeVoidAsync("open", url, "_blank");
+    }
+
+    private async Task DownloadIcsFileAsync()
+    {
+        if (_eventDetails is null || _primarySession is null)
+            return;
+
+        var ics = GenerateIcsContent();
+        var bytes = System.Text.Encoding.UTF8.GetBytes(ics);
+        var base64 = Convert.ToBase64String(bytes);
+        var fileName = SanitizeFileName(_eventDetails.Title) + ".ics";
+
+        await JsRuntime.InvokeVoidAsync("eval",
+            $"(() => {{ const a = document.createElement('a'); " +
+            $"a.href = 'data:text/calendar;base64,{base64}'; " +
+            $"a.download = '{fileName}'; " +
+            $"document.body.appendChild(a); a.click(); document.body.removeChild(a); }})()");
+    }
+
+    private string GenerateIcsContent()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("BEGIN:VCALENDAR");
+        sb.AppendLine("VERSION:2.0");
+        sb.AppendLine("PRODID:-//ISLAMU//Event Platform//EN");
+        sb.AppendLine("CALSCALE:GREGORIAN");
+        sb.AppendLine("METHOD:PUBLISH");
+        sb.AppendLine("BEGIN:VEVENT");
+
+        var now = DateTime.UtcNow;
+        sb.AppendLine($"DTSTAMP:{now:yyyyMMdd'T'HHmmss'Z'}");
+        sb.AppendLine($"UID:{EventId}@islamu.events");
+
+        if (_primarySession is not null)
+        {
+            sb.AppendLine($"DTSTART:{_primarySession.StartTime!.Value.UtcDateTime:yyyyMMdd'T'HHmmss'Z'}");
+            sb.AppendLine($"DTEND:{_primarySession.EndTime!.Value.UtcDateTime:yyyyMMdd'T'HHmmss'Z'}");
+
+            if (!string.IsNullOrWhiteSpace(_primarySession.LocationFullName))
+                sb.AppendLine(IcsFoldLine($"LOCATION:{IcsEscape(_primarySession.LocationFullName)}"));
+        }
+
+        sb.AppendLine(IcsFoldLine($"SUMMARY:{IcsEscape(_eventDetails!.Title)}"));
+
+        var description = GetMetaDescription() + "\\n\\n" + GetCanonicalUrl();
+        sb.AppendLine(IcsFoldLine($"DESCRIPTION:{IcsEscape(description)}"));
+        sb.AppendLine(IcsFoldLine($"URL:{GetCanonicalUrl()}"));
+        sb.AppendLine("END:VEVENT");
+        sb.AppendLine("END:VCALENDAR");
+
+        return sb.ToString();
+    }
+
+    private static string IcsEscape(string value)
+    {
+        return value
+            .Replace("\\", "\\\\")
+            .Replace(";", "\\;")
+            .Replace(",", "\\,")
+            .Replace("\n", "\\n")
+            .Replace("\r", "");
     }
 
     /// <summary>
-    /// Generates and downloads an Apple Calendar (.ics) file.
+    /// Folds an ICS content line at 75 octets per RFC 5545 §3.1.
+    /// Continuation lines begin with a single space character.
     /// </summary>
-    private void AddToAppleCalendar()
+    private static string IcsFoldLine(string line)
     {
-        Logger.LogInformation("Add to Apple Calendar clicked for event {EventId}", EventId);
-        // TODO: Implement ICS file generation
+        const int maxOctets = 75;
+        var bytes = System.Text.Encoding.UTF8.GetBytes(line);
+        if (bytes.Length <= maxOctets)
+            return line;
+
+        var sb = new System.Text.StringBuilder();
+        int offset = 0;
+        bool first = true;
+
+        while (offset < bytes.Length)
+        {
+            int limit = first ? maxOctets : maxOctets - 1; // account for leading space on continuation
+            int end = Math.Min(offset + limit, bytes.Length);
+
+            // Avoid splitting in the middle of a multi-byte UTF-8 character
+            while (end < bytes.Length && end > offset && (bytes[end] & 0xC0) == 0x80)
+                end--;
+
+            if (!first)
+                sb.Append("\r\n ");
+
+            sb.Append(System.Text.Encoding.UTF8.GetString(bytes, offset, end - offset));
+            offset = end;
+            first = false;
+        }
+
+        return sb.ToString();
     }
 
-    /// <summary>
-    /// Generates and downloads an Outlook Calendar (.ics) file.
-    /// </summary>
-    private void AddToOutlookCalendar()
+    private static string SanitizeFileName(string name)
     {
-        Logger.LogInformation("Add to Outlook Calendar clicked for event {EventId}", EventId);
-        // TODO: Implement ICS file generation
+        var invalid = System.IO.Path.GetInvalidFileNameChars();
+        return string.Concat(name.Where(c => !invalid.Contains(c))).Trim();
     }
+
+    #endregion
 
     /// <summary>
     /// Opens the delete confirmation dialog.
@@ -643,7 +863,7 @@ public partial class EventDetail : ComponentBase
         {
             // Dialog already handled deletion and snackbar notification
             // Navigate to My Events page
-            Navigation.NavigateTo("/myevents");
+            Navigation.NavigateTo("/my/events");
         }
     }
 

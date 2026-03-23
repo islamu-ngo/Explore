@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for updating tenant settings.
+// ABOUTME: Carries the UpdateTenantSettingsDto payload.
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.TenantSettings;
 using Explore.Application.Responses;

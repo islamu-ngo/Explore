@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for adding a member to an organization.
+// ABOUTME: Carries the target organization ID and user/actor ID.
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.Responses;

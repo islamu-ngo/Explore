@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for deleting an AT Protocol record by ID.
+// ABOUTME: Carries the target record ID.
 using Explore.Application.Authorization;
 using MediatR;
 

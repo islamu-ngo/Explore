@@ -1,3 +1,5 @@
+// ABOUTME: Handler for indexing a new DID (Decentralized Identifier) with validation.
+// ABOUTME: Validates input, maps DTO, persists via repository.
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.IndexedDid.Validators;

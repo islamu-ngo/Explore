@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a single actor's full details by ID.
+// ABOUTME: Maps actor entity to ActorDto via AutoMapper.
 using AutoMapper;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;

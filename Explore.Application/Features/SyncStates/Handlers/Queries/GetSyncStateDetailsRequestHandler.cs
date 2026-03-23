@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a single sync state record by ID.
+// ABOUTME: Maps SyncState entity to SyncStateDto.
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.SyncState;

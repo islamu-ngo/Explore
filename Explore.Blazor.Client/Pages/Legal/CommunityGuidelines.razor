@@ -1,0 +1,113 @@
+@* ABOUTME: Community Guidelines page displaying event posting and participation rules for this platform.
+   ABOUTME: Content is loaded from tenant settings and rendered dynamically; admins can customise it. *@
+
+@page "/community-guidelines"
+
+@using Explore.Blazor.Client.Services
+@inject IPublicExperienceService PublicExperienceService
+
+<PageTitle>Community Guidelines — ISLAMU Explore</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-8">
+    @if (_isLoading)
+    {
+        <MudStack AlignItems="AlignItems.Center" Class="py-12">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+        </MudStack>
+    }
+    else
+    {
+        <div class="community-guidelines-content">
+            @((MarkupString)_renderedContent)
+        </div>
+    }
+</MudContainer>
+
+@code {
+    private bool _isLoading = true;
+    private string _renderedContent = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var settings = await PublicExperienceService.GetCachedSettingsAsync();
+            _renderedContent = RenderContent(settings.CommunityGuidelinesContent);
+        }
+        catch
+        {
+            _renderedContent = "<p>Community guidelines are not currently available.</p>";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Converts plain text with markdown-like conventions into basic HTML for display.
+    /// Supports # headings, ** bold **, - bullet lists, and paragraph breaks.
+    /// </summary>
+    private static string RenderContent(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+            return "<p>No community guidelines have been published for this platform.</p>";
+
+        var sb = new System.Text.StringBuilder();
+        var lines = content.Split('\n');
+        var inList = false;
+
+        foreach (var rawLine in lines)
+        {
+            var line = rawLine.TrimEnd();
+
+            if (line.StartsWith("### "))
+            {
+                if (inList) { sb.Append("</ul>"); inList = false; }
+                sb.Append($"<h3 class=\"mud-typography mud-typography-h6\" style=\"font-weight:700;margin-top:1.5rem;margin-bottom:.5rem\">{EscapeHtml(line[4..])}</h3>");
+            }
+            else if (line.StartsWith("## "))
+            {
+                if (inList) { sb.Append("</ul>"); inList = false; }
+                sb.Append($"<h2 class=\"mud-typography mud-typography-h5\" style=\"font-weight:700;margin-top:2rem;margin-bottom:.75rem\">{EscapeHtml(line[3..])}</h2>");
+            }
+            else if (line.StartsWith("# "))
+            {
+                if (inList) { sb.Append("</ul>"); inList = false; }
+                sb.Append($"<h1 class=\"mud-typography mud-typography-h4\" style=\"font-weight:800;margin-bottom:1rem\">{EscapeHtml(line[2..])}</h1>");
+            }
+            else if (line.StartsWith("- ") || line.StartsWith("* "))
+            {
+                if (!inList) { sb.Append("<ul style=\"padding-left:1.5rem;margin-bottom:.5rem\">"); inList = true; }
+                sb.Append($"<li class=\"mud-typography mud-typography-body1\" style=\"margin-bottom:.25rem\">{FormatInline(EscapeHtml(line[2..]))}</li>");
+            }
+            else if (string.IsNullOrWhiteSpace(line))
+            {
+                if (inList) { sb.Append("</ul>"); inList = false; }
+            }
+            else
+            {
+                if (inList) { sb.Append("</ul>"); inList = false; }
+                sb.Append($"<p class=\"mud-typography mud-typography-body1\" style=\"margin-bottom:.75rem\">{FormatInline(EscapeHtml(line))}</p>");
+            }
+        }
+
+        if (inList) sb.Append("</ul>");
+
+        return sb.ToString();
+    }
+
+    private static string EscapeHtml(string text) =>
+        text.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;");
+
+    private static string FormatInline(string text)
+    {
+        // **bold**
+        var result = System.Text.RegularExpressions.Regex.Replace(
+            text, @"\*\*(.+?)\*\*", "<strong>$1</strong>");
+        // *italic*
+        result = System.Text.RegularExpressions.Regex.Replace(
+            result, @"\*(.+?)\*", "<em>$1</em>");
+        return result;
+    }
+}

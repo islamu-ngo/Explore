@@ -13,6 +13,7 @@ using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using static Explore.Application.Responses.FailureCodes;
 
 namespace Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 
@@ -22,20 +23,26 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
     private readonly IInstanceBootstrapStateRepository _instanceBootstrapStateRepository;
     private readonly ITenantRepository _tenantRepository;
     private readonly IInstanceGovernanceSettingService _governanceSettingService;
+    private readonly IDeploymentModeProvider _deploymentModeProvider;
     private readonly ILogger<UpdateInstanceGovernanceSettingsCommandHandler> _logger;
+    private readonly IUnitOfWork _unitOfWork;
 
     public UpdateInstanceGovernanceSettingsCommandHandler(
         IAdminContext adminContext,
         IInstanceBootstrapStateRepository instanceBootstrapStateRepository,
         ITenantRepository tenantRepository,
         IInstanceGovernanceSettingService governanceSettingService,
-        ILogger<UpdateInstanceGovernanceSettingsCommandHandler> logger)
+        IDeploymentModeProvider deploymentModeProvider,
+        ILogger<UpdateInstanceGovernanceSettingsCommandHandler> logger,
+        IUnitOfWork unitOfWork)
     {
         _adminContext = adminContext;
         _instanceBootstrapStateRepository = instanceBootstrapStateRepository;
         _tenantRepository = tenantRepository;
         _governanceSettingService = governanceSettingService;
+        _deploymentModeProvider = deploymentModeProvider;
         _logger = logger;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateInstanceGovernanceSettingsCommand request, CancellationToken cancellationToken)
@@ -71,47 +78,68 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
 
         var bootstrap = await _instanceBootstrapStateRepository.GetCurrent();
         var currentMode = bootstrap?.SelectedDeploymentMode;
-
-        if (string.Equals(currentMode, "MultiTenant", StringComparison.OrdinalIgnoreCase)
-            && deploymentMode == DeploymentMode.SingleTenant)
-        {
-            var tenantCount = await _tenantRepository.GetActiveTenantCountAsync();
-            if (tenantCount > 1)
-            {
-                response.Success = false;
-                response.Message = "Cannot revert to Single-Tenant mode.";
-                response.Errors = new List<string>
-                {
-                    $"You currently have {tenantCount} tenants. Please delete {tenantCount - 1} tenant(s) to enable Single-Tenant mode."
-                };
-                return response;
-            }
-        }
-
         var isSingleTenant = deploymentMode == DeploymentMode.SingleTenant;
-        Guid? defaultTenantId = null;
-
-        if (isSingleTenant)
-        {
-            var defaultTenant = await EnsureDefaultTenantAsync();
-            defaultTenantId = defaultTenant.Id;
-        }
+        var isRevertingToSingleTenant = string.Equals(currentMode, "MultiTenant", StringComparison.OrdinalIgnoreCase)
+                                        && isSingleTenant;
 
         LogOnboardingGuardrailRejectionIfNeeded(request.UserId, request.Settings.RenderPolicy);
 
-        await _governanceSettingService.ApplySettingsAsync(defaultTenantId, request.Settings, request.UserId);
+        // Atomic: validate active-tenant count + persist settings + update bootstrap — all in one transaction.
+        // The count check MUST be inside the transaction so validation and write cannot be separated by
+        // a concurrent admin action that activates a second tenant between check and commit.
+        string? failureCode = null;
+        string? failureMessage = null;
+        List<string>? failureErrors = null;
 
-        if (bootstrap != null)
+        var bootstrapId = await _unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
-            bootstrap.SelectedDeploymentMode = deploymentMode.ToString();
-            await _instanceBootstrapStateRepository.Update(bootstrap);
-            response.Id = bootstrap.Id;
-        }
-        else
+            if (isRevertingToSingleTenant)
+            {
+                var activeTenantCount = await _tenantRepository.GetActiveTenantCountAsync();
+                if (activeTenantCount > 1)
+                {
+                    failureCode = FailureCodes.DeploymentModeChangeBlockedByActiveTenants;
+                    failureMessage = "Cannot revert to Single-Tenant mode.";
+                    failureErrors =
+                    [
+                        $"You have {activeTenantCount} active tenants. Archive or suspend {activeTenantCount - 1} tenant(s) before switching to Single-Tenant mode."
+                    ];
+                    return Guid.Empty;
+                }
+            }
+
+            Guid? defaultTenantId = null;
+            if (isSingleTenant)
+            {
+                var defaultTenant = await EnsureDefaultTenantAsync();
+                defaultTenantId = defaultTenant.Id;
+            }
+
+            await _governanceSettingService.ApplySettingsAsync(defaultTenantId, request.Settings, request.UserId);
+
+            if (bootstrap != null)
+            {
+                bootstrap.SelectedDeploymentMode = deploymentMode.ToString();
+                await _instanceBootstrapStateRepository.Update(bootstrap);
+                return bootstrap.Id;
+            }
+
+            return Guid.Empty;
+        }, cancellationToken);
+
+        if (failureCode is not null)
         {
-            response.Id = Guid.Empty;
+            response.Success = false;
+            response.FailureCode = failureCode;
+            response.Message = failureMessage;
+            response.Errors = failureErrors;
+            return response;
         }
 
+        // Invalidate the cached deployment mode so all in-process caches reflect the new value immediately.
+        await _deploymentModeProvider.InvalidateCacheAsync();
+
+        response.Id = bootstrapId;
         response.Success = true;
         response.Message = "Instance governance settings updated successfully.";
         return response;

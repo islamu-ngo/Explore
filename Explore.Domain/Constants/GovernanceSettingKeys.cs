@@ -115,6 +115,12 @@ public static class GovernanceSettingKeys
         public const string CustomCssUrl = "branding.custom_css_url";
     }
 
+    public static class Appearance
+    {
+        public const string DefaultThemeId = "appearance.default_theme_id";
+        public const string ThemeMode = "appearance.theme_mode";
+    }
+
     public static class Domains
     {
         public const string InstanceBaseDomain = "domains.instance_base_domain";
@@ -206,6 +212,11 @@ public static class GovernanceSettingKeys
         public const string LockAnalytics = "governance.lock_tenant_analytics";
     }
 
+    public static class Policies
+    {
+        public const string CommunityGuidelinesContent = "policies.community_guidelines_content";
+    }
+
     public static class Localization
     {
         public const string DefaultLanguage = "localization.default_language";
@@ -213,5 +224,24 @@ public static class GovernanceSettingKeys
         public const string TmsApiUrl = "localization.tms_api_url";
         public const string TmsProjectId = "localization.tms_project_id";
         public const string TmsComponent = "localization.tms_component";
+    }
+
+    public static class Footer
+    {
+        public const string Enabled = "footer.enabled";
+        public const string Template = "footer.template";
+        public const string ShowDescription = "footer.show_description";
+        public const string DescriptionText = "footer.description_text";
+        public const string ShowSocialLinks = "footer.show_social_links";
+        public const string SocialLinks = "footer.social_links";
+        public const string CopyrightText = "footer.copyright_text";
+        public const string ShowCookieSettingsLink = "footer.show_cookie_settings_link";
+
+        // Instance-level lock flags (prevent tenant override)
+        public const string LockTenantTemplate = "footer.lock_tenant_template";
+        public const string LockTenantLinkGroups = "footer.lock_tenant_link_groups";
+        public const string LockTenantSocialLinks = "footer.lock_tenant_social_links";
+        public const string LockTenantDescription = "footer.lock_tenant_description";
+        public const string LockTenantCopyright = "footer.lock_tenant_copyright";
     }
 }

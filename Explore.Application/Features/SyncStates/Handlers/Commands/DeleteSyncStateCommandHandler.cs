@@ -1,3 +1,5 @@
+// ABOUTME: Handler for deleting an AT Protocol sync state record.
+// ABOUTME: Fetches sync state by ID and delegates deletion.
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.SyncStates.Requests.Commands;
 using Explore.Application.Responses;

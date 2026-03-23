@@ -1,4 +1,4 @@
-@page "/organizations/my"
+@page "/my/organizations"
 @using MudBlazor
 @using Microsoft.AspNetCore.Authorization
 @using Explore.Blazor.Client.Services
@@ -138,7 +138,7 @@
                                         <MudButton Variant="Variant.Filled"
                                                    Color="Color.Primary"
                                                    StartIcon="@Icons.Material.Filled.Add"
-                                                   Href="@($"/organization/{org.Id}/create-event")">
+                                                   Href="@($"/organizations/{org.Id}/events/create")">
                                             Event
                                         </MudButton>
                                     }

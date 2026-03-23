@@ -82,7 +82,7 @@ public class PublicExperienceSettingsModel
     public Guid TenantId { get; set; }
     public string DeploymentMode { get; set; } = "SingleTenant";
     public string PreferredHomePage { get; set; } = "EventList";
-    public string BrandDisplayName { get; set; } = "ISLAMU Explore";
+    public string BrandDisplayName { get; set; } = string.Empty;
     public string BrandLogoUrl { get; set; } = string.Empty;
     public string BrandFaviconUrl { get; set; } = string.Empty;
     public string BrandCustomCssUrl { get; set; } = string.Empty;
@@ -97,6 +97,7 @@ public class PublicExperienceSettingsModel
     public bool AllowOrganizationSelfRegistration { get; set; } = true;
     public bool AllowGroupSelfRegistration { get; set; } = true;
     public bool EventCardClickOpensDetailPage { get; set; }
+    public string CommunityGuidelinesContent { get; set; } = string.Empty;
     public List<string> EnabledModules { get; set; } = new();
     public string AnalyticsProvider { get; set; } = "none";
     public bool AnalyticsEnabled { get; set; }
@@ -120,4 +121,49 @@ public class PublicExperienceSettingsModel
     public string OnboardingRenderMode { get; set; } = "InteractiveServer";
     public bool OnboardingPrerenderEnabled { get; set; }
     public bool DisallowInteractiveServerOnOnboarding { get; set; } = false;
+    public FooterConfigModel FooterConfig { get; set; } = new();
+}
+
+// ── Footer client-side models (mirror server DTOs for JSON deserialization) ──
+
+public class FooterConfigModel
+{
+    public FooterSettingsModel Settings { get; set; } = new();
+    public List<FooterLinkGroupModel> LinkGroups { get; set; } = [];
+}
+
+public class FooterSettingsModel
+{
+    public bool Enabled { get; set; } = true;
+    public string Template { get; set; } = "standard-3-col";
+    public bool ShowDescription { get; set; } = true;
+    public string DescriptionText { get; set; } = string.Empty;
+    public bool ShowSocialLinks { get; set; } = true;
+    public List<FooterSocialLinkModel> SocialLinks { get; set; } = [];
+    public string CopyrightText { get; set; } = string.Empty;
+    public bool ShowCookieSettingsLink { get; set; } = true;
+}
+
+public class FooterLinkGroupModel
+{
+    public Guid Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public int Order { get; set; }
+    public List<FooterLinkItemModel> Links { get; set; } = [];
+}
+
+public class FooterLinkItemModel
+{
+    public Guid Id { get; set; }
+    public string Label { get; set; } = string.Empty;
+    public string Url { get; set; } = string.Empty;
+    public bool OpenInNewTab { get; set; }
+    public int Order { get; set; }
+}
+
+public class FooterSocialLinkModel
+{
+    public string Platform { get; set; } = string.Empty;
+    public string Url { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
 }

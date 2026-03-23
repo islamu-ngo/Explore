@@ -1,3 +1,5 @@
+// ABOUTME: Handler for creating a new event with full validation.
+// ABOUTME: Validates input, maps DTO, sets TenantId and defaults, persists via repository.
 using System;
 using System.Linq;
 using System.Threading;
@@ -38,6 +40,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     private readonly IMapper _mapper;
     private readonly HybridCache _cache;
     private readonly BusinessMetrics _metrics;
+    private readonly IUnitOfWork _unitOfWork;
 
     public CreateEventCommandHandler(
         IEventRepository eventRepository,
@@ -56,7 +59,8 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         ITenantContext tenantContext,
         IMapper mapper,
         HybridCache cache,
-        BusinessMetrics metrics)
+        BusinessMetrics metrics,
+        IUnitOfWork unitOfWork)
     {
         _eventRepository = eventRepository;
         _eventSessionRepository = eventSessionRepository;
@@ -75,6 +79,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         _mapper = mapper;
         _cache = cache;
         _metrics = metrics;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand request, CancellationToken cancellationToken)
@@ -205,67 +210,63 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             actorId = userActor.Id;
         }
 
-        // Map DTO to entity
+        // Map DTO to entity — BEFORE lambda for retry safety (no random values inside lambda)
         var @event = _mapper.Map<Event>(request.EventDto);
-
-        // Set the resolved ActorId and initialize defaults
         @event.ActorId = actorId;
         @event.TotalViews = 0;
         @event.TenantId = _tenantContext.TenantId;
         @event.IsUserReported = !request.EventDto.OrganizationId.HasValue && !request.EventDto.GroupId.HasValue;
-
-        // Set defaults for status and visibility if not provided
         if (@event.EventStatusId == 0) @event.EventStatusId = 1; // Draft
         if (@event.VisibilityTypeId == 0) @event.VisibilityTypeId = 1; // Public
         if (@event.EventFormatId == 0) @event.EventFormatId = 1; // In-Person
 
-        // Persist the event
-        @event = await _eventRepository.Create(@event);
-        Console.WriteLine($"[CREATE EVENT] Event created with ID: {@event.Id}");
-
-        // ===== UPDATE STORAGE OBJECT OWNERSHIP =====
-        // If a featured image was uploaded, update its ActorId to link it to the event's actor
-        if (request.EventDto.FeaturedImageId.HasValue)
+        // Atomic writes: event + optional storage object update + default session
+        var eventId = await _unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
-            var storageObject = await _storageObjectRepository.GetById(request.EventDto.FeaturedImageId.Value);
-            if (storageObject != null)
+            @event = await _eventRepository.Create(@event);
+            Console.WriteLine($"[CREATE EVENT] Event created with ID: {@event.Id}");
+
+            if (request.EventDto.FeaturedImageId.HasValue)
             {
-                storageObject.ActorId = actorId;
-                await _storageObjectRepository.Update(storageObject);
-                Console.WriteLine($"[CREATE EVENT] StorageObject {storageObject.Id} ActorId updated to {actorId}");
+                var storageObject = await _storageObjectRepository.GetById(request.EventDto.FeaturedImageId.Value);
+                if (storageObject != null)
+                {
+                    storageObject.ActorId = actorId;
+                    await _storageObjectRepository.Update(storageObject);
+                    Console.WriteLine($"[CREATE EVENT] StorageObject {storageObject.Id} ActorId updated to {actorId}");
+                }
             }
-        }
 
-        // ===== CREATE DEFAULT EVENT SESSION =====
-        // Each event must have at least one session
-        // Use the dates from the DTO to create the first session
-        var eventSession = new EventSession
-        {
-            EventId = @event.Id,
-            Event = null!,
-            TenantId = _tenantContext.TenantId,
-            Tenant = null!,
-            Title = @event.Title, // Use event title as default session title
-            Description = @event.Description,
-            StartTime = request.EventDto.FirstSessionDate ?? DateTimeOffset.UtcNow,
-            EndTime = request.EventDto.LastSessionDate ?? DateTimeOffset.UtcNow.AddHours(2),
-            LocationId = null, // Location can be added later
-            MaxAudienceAttendees = null,
-            CurrentAudienceAttendees = 0,
-            RegistrationModeId = request.EventDto.IsRegistrationRequired ? 1 : null, // 1 = Required
-            Slug = GenerateSlug(@event.Title)
-        };
+            var eventSession = new EventSession
+            {
+                EventId = @event.Id,
+                Event = null!,
+                TenantId = _tenantContext.TenantId,
+                Tenant = null!,
+                Title = @event.Title,
+                Description = @event.Description,
+                StartTime = request.EventDto.FirstSessionDate ?? DateTimeOffset.UtcNow,
+                EndTime = request.EventDto.LastSessionDate ?? DateTimeOffset.UtcNow.AddHours(2),
+                LocationId = null,
+                MaxAudienceAttendees = null,
+                CurrentAudienceAttendees = 0,
+                RegistrationModeId = request.EventDto.IsRegistrationRequired ? 1 : null,
+                Slug = GenerateSlug(@event.Title)
+            };
 
-        await _eventSessionRepository.Create(eventSession);
-        Console.WriteLine($"[CREATE EVENT] Default EventSession created with ID: {eventSession.Id}");
+            await _eventSessionRepository.Create(eventSession);
+            Console.WriteLine($"[CREATE EVENT] Default EventSession created with ID: {eventSession.Id}");
+
+            return @event.Id;
+        }, cancellationToken);
 
         response.Success = true;
-        response.Id = @event.Id;
+        response.Id = eventId;
         response.Message = "Event and session created successfully.";
 
+        // Post-commit side effects — DB has committed before these run
         _metrics.RecordEventCreated(_tenantContext.TenantId.ToString());
-
-        await _cache.RemoveAsync($"event:detail:{@event.Id}", cancellationToken);
+        await _cache.RemoveAsync($"event:detail:{eventId}", cancellationToken);
         await _cache.RemoveAsync("events:list:1:20", cancellationToken);
 
         return response;

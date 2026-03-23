@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for deleting a tenant navigation link by ID.
+// ABOUTME: Carries the target nav link ID.
 using System;
 using Explore.Application.Responses;
 using MediatR;

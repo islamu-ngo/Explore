@@ -1,3 +1,5 @@
+// ABOUTME: Handler for deleting an event location.
+// ABOUTME: Fetches location by ID and delegates deletion to the repository.
 using System;
 using System.Threading;
 using System.Threading.Tasks;

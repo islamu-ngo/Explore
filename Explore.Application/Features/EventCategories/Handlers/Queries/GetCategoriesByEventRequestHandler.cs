@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning all categories assigned to a specific event.
+// ABOUTME: Used for event detail category display.
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;

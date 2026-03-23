@@ -10,28 +10,37 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
 {
     private readonly ExploreDbContext _dbContext;
 
-    public EfCoreUnitOfWork(ExploreDbContext dbContext)
-    {
-        _dbContext = dbContext;
-    }
+    public EfCoreUnitOfWork(ExploreDbContext dbContext) => _dbContext = dbContext;
 
-    public async Task ExecuteInTransactionAsync(Func<CancellationToken, Task> operation, CancellationToken ct = default)
-    {
-        // InMemory provider does not support transactions or execution strategies — run operation directly
-        if (_dbContext.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory")
+    // Void overload delegates to generic — single execution path, no duplication
+    public Task ExecuteInTransactionAsync(Func<CancellationToken, Task> operation, CancellationToken ct = default)
+        => ExecuteInTransactionAsync<object?>(async innerCt =>
         {
-            await operation(ct);
-            return;
-        }
+            await operation(innerCt);
+            return null;
+        }, ct);
+
+    public async Task<T> ExecuteInTransactionAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct = default)
+    {
+        // Nested transaction guard — fail fast with a deterministic error
+        if (_dbContext.Database.CurrentTransaction != null)
+            throw new InvalidOperationException(
+                "ExecuteInTransactionAsync cannot be called while a transaction is already active. " +
+                "Nested transactions are not supported. Ensure only one UoW transaction scope per handler.");
+
+        // InMemory provider does not support transactions or execution strategies — run directly
+        if (_dbContext.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory")
+            return await operation(ct);
 
         var strategy = _dbContext.Database.CreateExecutionStrategy();
-        await strategy.ExecuteAsync(async () =>
+        return await strategy.ExecuteAsync(async () =>
         {
             await using var transaction = await _dbContext.Database.BeginTransactionAsync(ct);
             try
             {
-                await operation(ct);
+                var result = await operation(ct);
                 await transaction.CommitAsync(ct);
+                return result;
             }
             catch
             {

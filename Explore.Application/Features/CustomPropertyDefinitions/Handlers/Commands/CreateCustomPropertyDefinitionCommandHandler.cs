@@ -24,6 +24,7 @@ public class CreateCustomPropertyDefinitionCommandHandler : IRequestHandler<Crea
     private readonly ICurrentUserService _currentUserService;
     private readonly IMapper _mapper;
     private readonly HybridCache _cache;
+    private readonly IUnitOfWork _unitOfWork;
 
     public CreateCustomPropertyDefinitionCommandHandler(
         ICustomPropertyDefinitionRepository customPropertyDefinitionRepository,
@@ -31,7 +32,8 @@ public class CreateCustomPropertyDefinitionCommandHandler : IRequestHandler<Crea
         ITenantContext tenantContext,
         ICurrentUserService currentUserService,
         IMapper mapper,
-        HybridCache cache)
+        HybridCache cache,
+        IUnitOfWork unitOfWork)
     {
         _customPropertyDefinitionRepository = customPropertyDefinitionRepository;
         _customPropertyGovernancePolicy = customPropertyGovernancePolicy;
@@ -39,6 +41,7 @@ public class CreateCustomPropertyDefinitionCommandHandler : IRequestHandler<Crea
         _currentUserService = currentUserService;
         _mapper = mapper;
         _cache = cache;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateCustomPropertyDefinitionCommand request, CancellationToken cancellationToken)
@@ -86,10 +89,8 @@ public class CreateCustomPropertyDefinitionCommandHandler : IRequestHandler<Crea
         var options = CreateOptionEntities(request.DefinitionDto.Options, definition.Id);
         var defaultOption = options.SingleOrDefault(x => x.IsDefault);
 
-        definition = await _customPropertyDefinitionRepository.CreateWithOptions(
-            definition,
-            options,
-            defaultOption?.Id,
+        definition = await _unitOfWork.ExecuteInTransactionAsync(
+            ct => _customPropertyDefinitionRepository.CreateWithOptions(definition, options, defaultOption?.Id, ct),
             cancellationToken);
 
         response.Success = true;

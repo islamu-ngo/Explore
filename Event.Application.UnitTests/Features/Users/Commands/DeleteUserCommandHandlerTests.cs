@@ -21,6 +21,7 @@ public class DeleteUserCommandHandlerTests
     private readonly IActorRepository _actorRepository;
     private readonly IGenericRepository<ActorPii, Guid> _actorPiiRepository;
     private readonly HybridCache _cache;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly DeleteUserCommandHandler _handler;
 
     public DeleteUserCommandHandlerTests()
@@ -31,13 +32,25 @@ public class DeleteUserCommandHandlerTests
         _actorRepository = Substitute.For<IActorRepository>();
         _actorPiiRepository = Substitute.For<IGenericRepository<ActorPii, Guid>>();
         _cache = Substitute.For<HybridCache>();
+        _unitOfWork = Substitute.For<IUnitOfWork>();
+
+        // Execute the lambda so inner repo logic runs in tests
+        _unitOfWork
+            .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task>>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var op = callInfo.Arg<Func<CancellationToken, Task>>();
+                return op(CancellationToken.None);
+            });
+
         _handler = new DeleteUserCommandHandler(
             _userRepository,
             _userPiiRepository,
             _userAuthenticationTokenRepository,
             _actorRepository,
             _actorPiiRepository,
-            _cache);
+            _cache,
+            _unitOfWork);
     }
 
     [Test]

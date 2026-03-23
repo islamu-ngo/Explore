@@ -1,28 +1,23 @@
-using System;
-using System.Collections.Generic;
-using System.Text;
-using Explore.Application.Contracts.Persistence;
+// ABOUTME: FluentValidation validator for CreateOrganizationDto.
+// ABOUTME: Manually instantiated in CreateOrganizationCommandHandler (not DI-injected).
+
 using FluentValidation;
 
 namespace Explore.Application.DTOs.Organization.Validators;
 
 public class CreateOrganizationDtoValidator : AbstractValidator<CreateOrganizationDto>
 {
-    private readonly IApprovalStatusRepository _statusTypeRepository;
-
-    public CreateOrganizationDtoValidator(IApprovalStatusRepository statusTypeRepository)
+    public CreateOrganizationDtoValidator()
     {
-        _statusTypeRepository = statusTypeRepository;
-
         RuleFor(p => p.FullName)
             .NotEmpty().WithMessage("{PropertyName} is required.")
             .NotNull()
             .MaximumLength(100).WithMessage("{PropertyName} must not exceed 100 characters.");
 
         RuleFor(p => p.WebsiteUrl)
-            .MaximumLength(200).When(p => p.WebsiteUrl.Length > 0)
+            .MaximumLength(200).When(p => !string.IsNullOrEmpty(p.WebsiteUrl))
             .WithMessage("{PropertyName} must not exceed 200 characters.")
-            .Must(uri => Uri.IsWellFormedUriString(uri, UriKind.Absolute)).When(p => p.WebsiteUrl.Length > 0)
+            .Must(uri => Uri.IsWellFormedUriString(uri, UriKind.Absolute)).When(p => !string.IsNullOrEmpty(p.WebsiteUrl))
             .WithMessage("{PropertyName} must be a valid Uri.");
 
         RuleFor(p => p.Email)

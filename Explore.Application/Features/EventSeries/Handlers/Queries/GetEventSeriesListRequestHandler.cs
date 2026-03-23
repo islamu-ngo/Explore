@@ -1,6 +1,9 @@
+// ABOUTME: Handler for retrieving a paginated list of event series with optional actor filter.
+// ABOUTME: Returns a PaginatedResult wrapping EventSeriesListDto items.
+
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
-using Explore.Application.DTOs.Event;
+using Explore.Application.DTOs.EventSeries;
 using Explore.Application.Features.EventSeries.Requests.Queries;
 using Explore.Application.Responses;
 using MediatR;

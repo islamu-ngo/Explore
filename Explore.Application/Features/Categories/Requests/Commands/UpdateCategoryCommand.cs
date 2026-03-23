@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for updating an existing category.
+// ABOUTME: Carries the UpdateCategoryDto payload.
 using System;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.Category;

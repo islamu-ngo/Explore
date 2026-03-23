@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for creating a new organization.
+// ABOUTME: Carries the CreateOrganizationDto payload.
 using System;
 using System.Collections.Generic;
 using System.Text;

@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a single actor key store by ID.
+// ABOUTME: Maps entity to ActorKeyStoreDto via AutoMapper.
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.ActorKeyStore;

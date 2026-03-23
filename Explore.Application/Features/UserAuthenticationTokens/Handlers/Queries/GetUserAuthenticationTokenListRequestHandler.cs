@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a paginated list of user authentication tokens.
+// ABOUTME: Maps entities to UserAuthenticationTokenListDto.
 using System.Collections.Generic;
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;

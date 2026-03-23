@@ -1,3 +1,5 @@
+// ABOUTME: MediatR query request for fetching the full list of audience age categories.
+// ABOUTME: Returns IEnumerable<AudienceAgeDto>.
 using Explore.Application.DTOs.AudienceAge;
 using MediatR;
 

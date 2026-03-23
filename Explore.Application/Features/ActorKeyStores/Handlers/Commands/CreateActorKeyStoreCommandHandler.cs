@@ -1,3 +1,5 @@
+// ABOUTME: Handler for creating actor key store entries with validation.
+// ABOUTME: Validates input, maps DTO to entity, persists via repository.
 using AutoMapper;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;

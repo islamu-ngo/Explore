@@ -1,3 +1,5 @@
+// ABOUTME: Handler for deleting a tag.
+// ABOUTME: Fetches tag by ID and delegates deletion to the repository.
 using System.Threading;
 using System.Threading.Tasks;
 using Explore.Application.Contracts.Persistence;

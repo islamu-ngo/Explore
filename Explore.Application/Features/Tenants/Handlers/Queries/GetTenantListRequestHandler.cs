@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a paginated list of tenants.
+// ABOUTME: Maps Tenant entities to TenantListDto.
 using System.Collections.Generic;
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;

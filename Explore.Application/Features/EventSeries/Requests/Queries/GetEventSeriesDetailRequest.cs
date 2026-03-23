@@ -1,4 +1,7 @@
-using Explore.Application.DTOs.Event;
+// ABOUTME: MediatR query for retrieving a single event series by ID.
+// ABOUTME: Returns EventSeriesDto with associated events, or null if not found.
+
+using Explore.Application.DTOs.EventSeries;
 using Explore.Application.Responses;
 using MediatR;
 

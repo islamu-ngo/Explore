@@ -1,3 +1,5 @@
+// ABOUTME: MediatR query for fetching all registrations for a session.
+// ABOUTME: Returns IEnumerable<EventRegistrationDto>.
 using System;
 using System.Collections.Generic;
 using Explore.Application.DTOs.EventRegistration;

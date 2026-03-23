@@ -239,6 +239,13 @@ public static class RouteNames
 
     #endregion
 
+    #region User Appearance Routes
+
+    public const string GetCurrentUserAppearancePreferences = "GetCurrentUserAppearancePreferences";
+    public const string UpdateCurrentUserAppearancePreferences = "UpdateCurrentUserAppearancePreferences";
+
+    #endregion
+
     #region ATProto Routes
 
     public const string GetAtprotoRecords = "GetAtprotoRecords";
@@ -271,6 +278,24 @@ public static class RouteNames
     public const string CreateCustomPropertyDefinition = "CreateCustomPropertyDefinition";
     public const string UpdateCustomPropertyDefinition = "UpdateCustomPropertyDefinition";
     public const string DeleteCustomPropertyDefinition = "DeleteCustomPropertyDefinition";
+
+    #endregion
+
+    #region Footer Routes
+
+    public const string GetFooterConfig = "GetFooterConfig";
+    public const string GetFooterLinkGroups = "GetFooterLinkGroups";
+    public const string GetFooterLinkGroupById = "GetFooterLinkGroupById";
+    public const string CreateFooterLinkGroup = "CreateFooterLinkGroup";
+    public const string UpdateFooterLinkGroup = "UpdateFooterLinkGroup";
+    public const string DeleteFooterLinkGroup = "DeleteFooterLinkGroup";
+    public const string ReorderFooterLinkGroups = "ReorderFooterLinkGroups";
+    public const string CreateFooterLink = "CreateFooterLink";
+    public const string UpdateFooterLink = "UpdateFooterLink";
+    public const string DeleteFooterLink = "DeleteFooterLink";
+    public const string GetFooterGovernanceSettings = "GetFooterGovernanceSettings";
+    public const string UpdateFooterGovernanceSettings = "UpdateFooterGovernanceSettings";
+    public const string UpdateTenantFooterSettings = "UpdateTenantFooterSettings";
 
     #endregion
 

@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for updating instance SMTP settings.
+// ABOUTME: Carries the UpdateInstanceSmtpSettingsDto payload.
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Responses;
 using MediatR;

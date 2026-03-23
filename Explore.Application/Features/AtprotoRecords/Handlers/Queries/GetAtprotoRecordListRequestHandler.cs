@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a paginated list of AT Protocol records.
+// ABOUTME: Maps entities to AtprotoRecordListDto via AutoMapper.
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.AtprotoRecord;

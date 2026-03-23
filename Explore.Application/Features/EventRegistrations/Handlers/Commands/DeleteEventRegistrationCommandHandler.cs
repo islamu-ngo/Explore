@@ -1,3 +1,5 @@
+// ABOUTME: Handler for cancelling an event registration.
+// ABOUTME: Fetches registration by ID and delegates deletion to the repository.
 using System;
 using System.Threading;
 using System.Threading.Tasks;

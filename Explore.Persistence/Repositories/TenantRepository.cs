@@ -24,6 +24,6 @@ public class TenantRepository : GenericRepository<Tenant, Guid>, ITenantReposito
     {
         return await _dbContext.Tenants
             .AsNoTracking()
-            .CountAsync();
+            .CountAsync(t => t.TenantStatus.IsActiveState);
     }
 }

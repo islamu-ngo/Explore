@@ -3,11 +3,15 @@
 
 using System.Security.Claims;
 using Asp.Versioning;
+using Explore.API.Hateoas;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Analytics;
+using Explore.Application.DTOs.Footer;
 using Explore.Application.DTOs.Instance;
 using Explore.Application.DTOs.Onboarding;
+using Explore.Application.Features.Footer.Requests.Commands;
+using Explore.Application.Features.Footer.Requests.Queries;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Features.InstanceOnboarding.Requests.Queries;
 using Explore.Application.Responses;
@@ -435,6 +439,36 @@ public class InstanceSettingsController : ControllerBase
         if (!userId.HasValue) return BadRequest(InvalidIdentityResponse());
 
         var response = await _mediator.Send(new UpdateAnalyticsGovernanceSettingsCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
+        return HandleCommandResponse(response);
+    }
+
+    [HttpGet("footer-governance", Name = RouteNames.GetFooterGovernanceSettings)]
+    [EndpointSummary("Get Footer Governance Settings")]
+    [EndpointDescription("Returns instance-level footer lock flags. Requires instance administrator.")]
+    [ProducesResponseType(typeof(FooterGovernanceSettingsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<FooterGovernanceSettingsDto>> GetFooterGovernanceSettings(CancellationToken cancellationToken = default)
+    {
+        if (!await IsInstanceAdmin(cancellationToken)) return Forbid();
+        var settings = await _mediator.Send(new GetFooterGovernanceSettingsQuery(), cancellationToken);
+        return Ok(settings);
+    }
+
+    [HttpPut("footer-governance", Name = RouteNames.UpdateFooterGovernanceSettings)]
+    [EndpointSummary("Update Footer Governance Settings")]
+    [EndpointDescription("Updates instance-level footer lock flags. Requires instance administrator.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateFooterGovernanceSettings(
+        [FromBody] FooterGovernanceSettingsDto settings, CancellationToken cancellationToken = default)
+    {
+        if (!await IsInstanceAdmin(cancellationToken)) return Forbid();
+        var userId = GetCurrentUserId();
+        if (!userId.HasValue) return BadRequest(InvalidIdentityResponse());
+
+        var response = await _mediator.Send(new UpdateFooterGovernanceSettingsCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
         return HandleCommandResponse(response);
     }
 

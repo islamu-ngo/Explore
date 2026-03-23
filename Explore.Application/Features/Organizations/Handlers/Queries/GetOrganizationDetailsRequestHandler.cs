@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning full organization details by ID or slug.
+// ABOUTME: Maps Organization entity to OrganizationDto with members.
 using System;
 using System.Collections.Generic;
 using System.Text;

@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a single indexed DID record by ID.
+// ABOUTME: Maps entity to IndexedDidDto.
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.IndexedDid;

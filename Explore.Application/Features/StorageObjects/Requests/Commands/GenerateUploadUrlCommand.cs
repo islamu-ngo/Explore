@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for generating a pre-signed upload URL.
+// ABOUTME: Carries bucket, key, and content-type for the upload request.
 using System;
 using System.Collections.Generic;
 using System.Text;

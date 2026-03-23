@@ -18,17 +18,20 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
     private readonly ITenantOnboardingStateRepository _tenantOnboardingStateRepository;
     private readonly IAdminContext _adminContext;
     private readonly ITenantPolicySettingService _policySettingService;
+    private readonly IUnitOfWork _unitOfWork;
 
     public CompleteTenantOnboardingCommandHandler(
         ITenantContext tenantContext,
         ITenantOnboardingStateRepository tenantOnboardingStateRepository,
         IAdminContext adminContext,
-        ITenantPolicySettingService policySettingService)
+        ITenantPolicySettingService policySettingService,
+        IUnitOfWork unitOfWork)
     {
         _tenantContext = tenantContext;
         _tenantOnboardingStateRepository = tenantOnboardingStateRepository;
         _adminContext = adminContext;
         _policySettingService = policySettingService;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(CompleteTenantOnboardingCommand request, CancellationToken cancellationToken)
@@ -43,41 +46,45 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
             return response;
         }
 
-        await _policySettingService.ApplyTenantSettingsAsync(tenantId, request.UserId, request.Settings);
+        // Pre-read for create-or-update decision — BEFORE transaction (fast rejection, no write)
+        var existingState = await _tenantOnboardingStateRepository.GetByTenantId(tenantId);
 
-        var onboardingState = await _tenantOnboardingStateRepository.GetByTenantId(tenantId);
-        if (onboardingState == null)
+        // Atomic writes: policy settings + onboarding state
+        var onboardingStateId = await _unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
-            onboardingState = await _tenantOnboardingStateRepository.Create(new TenantOnboardingState
+            await _policySettingService.ApplyTenantSettingsAsync(tenantId, request.UserId, request.Settings);
+
+            if (existingState == null)
             {
-                TenantId = tenantId,
-                Tenant = null!,
-                IsCompleted = true,
-                CurrentStep = 4,
-                TotalSteps = 4,
-                CompletedStepsJson = "[\"Identity\",\"Policies\",\"Branding\",\"Review\"]",
-                CreatedAt = DateTime.UtcNow,
-                CompletedAt = DateTime.UtcNow,
-                CompletedByUserId = request.UserId
-            });
-        }
-        else
-        {
-            onboardingState.IsCompleted = true;
-            onboardingState.CurrentStep = Math.Max(onboardingState.CurrentStep, 4);
-            onboardingState.TotalSteps = Math.Max(onboardingState.TotalSteps, 4);
-            if (string.IsNullOrWhiteSpace(onboardingState.CompletedStepsJson))
-            {
-                onboardingState.CompletedStepsJson = "[\"Identity\",\"Policies\",\"Branding\",\"Review\"]";
+                var created = await _tenantOnboardingStateRepository.Create(new TenantOnboardingState
+                {
+                    TenantId = tenantId,
+                    Tenant = null!,
+                    IsCompleted = true,
+                    CurrentStep = 4,
+                    TotalSteps = 4,
+                    CompletedStepsJson = "[\"Identity\",\"Policies\",\"Branding\",\"Review\"]",
+                    CreatedAt = DateTime.UtcNow,
+                    CompletedAt = DateTime.UtcNow,
+                    CompletedByUserId = request.UserId
+                });
+                return created.Id;
             }
-            onboardingState.CompletedAt = DateTime.UtcNow;
-            onboardingState.CompletedByUserId = request.UserId;
-            await _tenantOnboardingStateRepository.Update(onboardingState);
-        }
+
+            existingState.IsCompleted = true;
+            existingState.CurrentStep = Math.Max(existingState.CurrentStep, 4);
+            existingState.TotalSteps = Math.Max(existingState.TotalSteps, 4);
+            if (string.IsNullOrWhiteSpace(existingState.CompletedStepsJson))
+                existingState.CompletedStepsJson = "[\"Identity\",\"Policies\",\"Branding\",\"Review\"]";
+            existingState.CompletedAt = DateTime.UtcNow;
+            existingState.CompletedByUserId = request.UserId;
+            await _tenantOnboardingStateRepository.Update(existingState);
+            return existingState.Id;
+        }, cancellationToken);
 
         response.Success = true;
         response.Message = "Tenant onboarding completed successfully.";
-        response.Id = onboardingState.Id;
+        response.Id = onboardingStateId;
         return response;
     }
 

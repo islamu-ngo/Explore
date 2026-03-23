@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for creating a new sync state record.
+// ABOUTME: Carries the CreateSyncStateDto payload.
 using Explore.Application.DTOs.SyncState;
 using Explore.Application.Responses;
 using MediatR;

@@ -1,3 +1,5 @@
+// ABOUTME: MediatR query request for fetching a paginated registration list.
+// ABOUTME: Returns IEnumerable<EventRegistrationListDto>.
 using System.Collections.Generic;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.Responses;

@@ -23,6 +23,7 @@ using Explore.Application.DTOs.EventStatus;
 using Explore.Application.DTOs.EventTags;
 using Explore.Application.DTOs.EventType;
 using Explore.Application.DTOs.FileType;
+using Explore.Application.DTOs.Footer;
 using Explore.Application.DTOs.Group;
 using Explore.Application.DTOs.GroupMember;
 using Explore.Application.DTOs.IndexedDid;
@@ -48,6 +49,7 @@ using Explore.Application.DTOs.UserAuthenticationToken;
 using Explore.Application.DTOs.UserExternalLogin;
 using Explore.Application.DTOs.VisibilityType;
 using Explore.Domain;
+using EventSeriesNS = Explore.Application.DTOs.EventSeries;
 
 namespace Explore.Application.Profiles;
 
@@ -175,14 +177,41 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.IsPast, opt => opt.MapFrom(src => src.LastSessionStartUtc != null && src.LastSessionStartUtc <= DateTimeOffset.UtcNow));
 
         // Event Series
-        CreateMap<EventSeries, EventSeriesListDto>()
+        CreateMap<EventSeries, EventSeriesNS.EventSeriesListDto>()
         .ForMember(d => d.FeaturedImageUri, opt => opt.MapFrom(s => s.FeaturedImage != null ? s.FeaturedImage.Uri : null))
         .ForMember(d => d.ActorDisplayName, opt => opt.MapFrom(s => s.Actor != null && s.Actor.Pii != null ? s.Actor.Pii.DisplayName : null))
         .ForMember(d => d.EventCount, opt => opt.MapFrom(s => s.Events != null ? s.Events.Count : 0));
 
-        CreateMap<EventSeries, EventSeriesDto>()
+        CreateMap<EventSeries, EventSeriesNS.EventSeriesDto>()
         .ForMember(d => d.FeaturedImageUri, opt => opt.MapFrom(s => s.FeaturedImage != null ? s.FeaturedImage.Uri : null))
         .ForMember(d => d.ActorDisplayName, opt => opt.MapFrom(s => s.Actor != null && s.Actor.Pii != null ? s.Actor.Pii.DisplayName : null));
+
+        CreateMap<EventSeriesNS.CreateEventSeriesDto, EventSeries>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.TenantId, opt => opt.Ignore())    // Set by handler from ITenantContext
+            .ForMember(dest => dest.TotalViews, opt => opt.Ignore())  // Initialized to 0 by handler
+            .ForMember(dest => dest.VisibilityTypeId, opt => opt.Ignore()) // Defaulted to 1 (Public) by handler
+            .ForMember(dest => dest.VisibilityType, opt => opt.Ignore())
+            .ForMember(dest => dest.StartDateUtc, opt => opt.Ignore())
+            .ForMember(dest => dest.EndDateUtc, opt => opt.Ignore())
+            .ForMember(dest => dest.Events, opt => opt.Ignore())
+            .ForMember(dest => dest.Actor, opt => opt.Ignore())
+            .ForMember(dest => dest.FeaturedImage, opt => opt.Ignore())
+            .ForMember(dest => dest.Tenant, opt => opt.Ignore());
+
+        CreateMap<EventSeriesNS.UpdateEventSeriesDto, EventSeries>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.TenantId, opt => opt.Ignore())
+            .ForMember(dest => dest.ActorId, opt => opt.Ignore())     // Actor is not changed on update
+            .ForMember(dest => dest.TotalViews, opt => opt.Ignore())
+            .ForMember(dest => dest.VisibilityTypeId, opt => opt.Ignore())
+            .ForMember(dest => dest.VisibilityType, opt => opt.Ignore())
+            .ForMember(dest => dest.StartDateUtc, opt => opt.Ignore())
+            .ForMember(dest => dest.EndDateUtc, opt => opt.Ignore())
+            .ForMember(dest => dest.Events, opt => opt.Ignore())
+            .ForMember(dest => dest.Actor, opt => opt.Ignore())
+            .ForMember(dest => dest.FeaturedImage, opt => opt.Ignore())
+            .ForMember(dest => dest.Tenant, opt => opt.Ignore());
 
         CreateMap<CreateEventDto, Event>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
@@ -717,6 +746,7 @@ public class MappingProfile : Profile
         // NOTIFICATION MAPPINGS
         // ============================================
         CreateNotificationMappings();
+        CreateFooterMappings();
     }
 
     /// <summary>
@@ -728,6 +758,24 @@ public class MappingProfile : Profile
         if (src.IslamicAspect != null) aspects.Add("Islamic");
         if (src.TechAspect != null) aspects.Add("Tech");
         return aspects;
+    }
+
+    // ============================================
+    // FOOTER MAPPINGS
+    // ============================================
+
+    private void CreateFooterMappings()
+    {
+        CreateMap<TenantFooterLink, FooterLinkItemDto>();
+
+        CreateMap<TenantFooterLinkGroup, FooterLinkGroupDto>()
+            .ForMember(d => d.Links, opt => opt.MapFrom(s => s.Links));
+
+        CreateMap<TenantFooterLinkGroup, FooterLinkGroupListDto>()
+            .ForMember(d => d.LinkCount, opt => opt.MapFrom(s => s.Links.Count));
+
+        CreateMap<TenantFooterLinkGroup, FooterLinkGroupDetailsDto>()
+            .ForMember(d => d.Links, opt => opt.MapFrom(s => s.Links));
     }
 
     /// <summary>

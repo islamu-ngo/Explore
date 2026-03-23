@@ -1,12 +1,11 @@
-// ABOUTME: Loads and displays organization profile details and recent reviews.
-// ABOUTME: Persists prerendered organization payload to prevent hydration flicker.
+// ABOUTME: Luma-inspired organization profile page with banner, avatar, events timeline.
+// ABOUTME: Loads org details, reviews, and public events split into upcoming vs past.
 
 using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
-using Microsoft.Extensions.Logging;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Pages.Organizations;
@@ -15,6 +14,7 @@ public partial class OrganizationProfile
 {
     [Inject] protected IOrganizationService OrganizationService { get; set; } = null!;
     [Inject] protected IOrganizationReviewService OrganizationReviewService { get; set; } = null!;
+    [Inject] protected IEventService EventService { get; set; } = null!;
     [Inject] protected NavigationManager Navigation { get; set; } = null!;
     [Inject] protected RouterStateService RouterState { get; set; } = null!;
     [Inject] protected ILogger<OrganizationProfile> Logger { get; set; } = null!;
@@ -23,7 +23,11 @@ public partial class OrganizationProfile
 
     private OrganizationDto? _organization;
     private bool _isLoading = true;
+    private bool _isLoadingEvents;
     private List<OrganizationReviewDto> _reviews = new();
+    private List<EventListDto> _upcomingEvents = new();
+    private List<EventListDto> _pastEvents = new();
+    private List<KeyValuePair<DateTime, List<EventListDto>>> _pastEventsByDate = new();
     private OrganizationAppearanceSettings _appearance = new();
     private string _bannerStyle = OrganizationAppearanceMetadataHelper.BuildBannerStyle(new OrganizationAppearanceSettings(), "#1f6feb");
 
@@ -34,7 +38,6 @@ public partial class OrganizationProfile
 
     protected override async Task OnInitializedAsync()
     {
-        // Get route parameter from Blazouter
         var idStr = RouterState.GetParam("id");
         if (Guid.TryParse(idStr, out var id))
         {
@@ -51,13 +54,17 @@ public partial class OrganizationProfile
 
         try
         {
-            // Load organization and its reviews
-            _organization = await OrganizationService.GetOrganizationByIdAsync(Id);
-            _reviews = (await OrganizationReviewService.GetReviewsByOrganizationId(Id)).ToList();
+            var orgTask = OrganizationService.GetOrganizationByIdAsync(Id);
+            var reviewsTask = OrganizationReviewService.GetReviewsByOrganizationId(Id);
+            await Task.WhenAll(orgTask, reviewsTask);
+
+            _organization = await orgTask;
+            _reviews = (await reviewsTask).ToList();
             _appearance = OrganizationAppearanceMetadataHelper.FromColumns(
                 _organization?.ActorBackgroundColor,
                 _organization?.ActorBannerPictureUri, _organization?.ActorBackgroundEffect);
             _bannerStyle = OrganizationAppearanceMetadataHelper.BuildBannerStyle(_appearance, "#1f6feb");
+
             Logger.LogDebug("Loaded organization {OrganizationId} with {ReviewCount} reviews", Id, _reviews.Count);
 
             PersistState();
@@ -71,11 +78,64 @@ public partial class OrganizationProfile
         {
             _isLoading = false;
         }
+
+        // Load events in parallel after the main data is ready
+        if (_organization?.ActorId.HasValue == true)
+        {
+            _ = InvokeAsync(LoadEventsAsync);
+        }
+    }
+
+    private async Task LoadEventsAsync()
+    {
+        _isLoadingEvents = true;
+        StateHasChanged();
+
+        try
+        {
+            var allEvents = await EventService.GetPublicEventsByActorAsync(_organization!.ActorId!.Value);
+
+            _upcomingEvents = allEvents
+                .Where(e => e.IsPast != true)
+                .OrderBy(e => e.FirstSessionDate)
+                .ToList();
+
+            _pastEvents = allEvents
+                .Where(e => e.IsPast == true)
+                .OrderByDescending(e => e.FirstSessionDate)
+                .ToList();
+
+            _pastEventsByDate = _pastEvents
+                .GroupBy(e => e.FirstSessionDate?.Date ?? DateTime.MinValue)
+                .OrderByDescending(g => g.Key)
+                .Select(g => new KeyValuePair<DateTime, List<EventListDto>>(g.Key, g.ToList()))
+                .ToList();
+
+            Logger.LogDebug("Loaded {Upcoming} upcoming and {Past} past events for actor {ActorId}",
+                _upcomingEvents.Count, _pastEvents.Count, _organization.ActorId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading events for organization {OrganizationId}", Id);
+        }
+        finally
+        {
+            _isLoadingEvents = false;
+            StateHasChanged();
+        }
     }
 
     private void ShowAllReviews()
     {
         Navigation.NavigateTo($"/organization/reviews/{Id}");
+    }
+
+    private void NavigateToEvent(EventListDto evt)
+    {
+        if (evt.Id.HasValue)
+        {
+            Navigation.NavigateTo($"/events/{evt.Id}");
+        }
     }
 
     private string GetOrganizationPlaceholder()
@@ -96,6 +156,43 @@ public partial class OrganizationProfile
         return null;
     }
 
+    private static string GetEventImage(EventListDto evt)
+    {
+        var color = EventColorHelper.GetColorByTypeId(evt.EventTypeId);
+        if (color == EventColorHelper.DefaultColor)
+        {
+            color = EventColorHelper.GetColorByHash(evt.Title);
+        }
+
+        return ImageHelper.GetEventImageUrl(evt.FeaturedImageUri, evt.Title, color);
+    }
+
+    private static string FormatEventDate(EventListDto evt)
+    {
+        if (evt.FirstSessionDate == null) return "TBD";
+
+        var start = evt.FirstSessionDate.Value;
+        if (evt.LastSessionDate != null && evt.LastSessionDate.Value.Date != start.Date)
+        {
+            return $"{start:MMM dd} — {evt.LastSessionDate.Value:MMM dd, yyyy}";
+        }
+
+        return start.ToString("MMM dd, yyyy");
+    }
+
+    private static string GetLocationText(EventListDto evt)
+    {
+        if (evt.EventFormatId == 2) return "Online";
+        if (!string.IsNullOrEmpty(evt.EventFormatFullName)) return evt.EventFormatFullName;
+        return "Location TBD";
+    }
+
+    private int GetAverageRating()
+    {
+        if (!_reviews.Any(r => r.Rating.HasValue)) return 0;
+        return (int)Math.Round(_reviews.Where(r => r.Rating.HasValue).Average(r => r.Rating!.Value));
+    }
+
     private bool TryRestoreState()
     {
         if (PersistedState == null || PersistedState.OrganizationId != Id)
@@ -111,6 +208,13 @@ public partial class OrganizationProfile
         _bannerStyle = OrganizationAppearanceMetadataHelper.BuildBannerStyle(_appearance, "#1f6feb");
         _isLoading = false;
         _errorMessage = null;
+
+        // Load events asynchronously even when restoring
+        if (_organization?.ActorId.HasValue == true)
+        {
+            _ = InvokeAsync(LoadEventsAsync);
+        }
+
         return true;
     }
 

@@ -1,4 +1,4 @@
-@page "/myevents"
+@page "/my/events"
 @using MudBlazor
 @using Microsoft.AspNetCore.Authorization
 @using Explore.Blazor.Client.Services
@@ -127,6 +127,12 @@
                                         </MudMenuItem>
                                         @if (CanEditEvent(evt))
                                         {
+                                            @if (IsDraftEvent(evt))
+                                            {
+                                                <MudMenuItem OnClick="@(() => PublishEvent(evt))">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Publish" Class="mr-2" Size="Size.Small" /> Publish
+                                                </MudMenuItem>
+                                            }
                                             <MudMenuItem OnClick="@(() => ViewRegistrations(evt))">
                                                 <MudIcon Icon="@Icons.Material.Filled.People" Class="mr-2" Size="Size.Small" /> Registrations
                                             </MudMenuItem>
@@ -140,7 +146,17 @@
                                 <MudCardMedia Image="@GetEventImageUrl(evt)" Height="200" />
                                 
                                 <MudCardContent Class="flex-grow-1">
-                                    <MudText Typo="Typo.button" Class="mud-text-disabled mb-1">@(evt.EventTypeFullName ?? "Event")</MudText>
+                                    <div class="d-flex align-center gap-2 mb-1">
+                                        <MudText Typo="Typo.button" Class="mud-text-disabled">@(evt.EventTypeFullName ?? "Event")</MudText>
+                                        @if (evt.EventStatusId == 1)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Filled">Draft</MudChip>
+                                        }
+                                        @if (evt.EventStatusFullName is "Cancelled")
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Filled">Cancelled</MudChip>
+                                        }
+                                    </div>
                                     <MudText Typo="Typo.h6" Class="mb-4">@evt.Title</MudText>
                                     <MudText Typo="Typo.body2" Style="overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;">
                                         @evt.Description
@@ -160,7 +176,7 @@
                                 <MudCardActions>
                                     <MudButton Variant="Variant.Text"
                                                Color="Color.Primary"
-                                               Href="@($"/event/detail/{evt.Id}")"
+                                               Href="@($"/events/{evt.Id}")"
                                                EndIcon="@Icons.Material.Filled.ArrowForward">
                                         Details
                                     </MudButton>

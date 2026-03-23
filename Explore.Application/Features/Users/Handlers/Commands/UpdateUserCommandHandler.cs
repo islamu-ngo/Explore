@@ -1,8 +1,10 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
+// ABOUTME: Handler for updating user profile fields with validation.
+// ABOUTME: Validates input, updates user entity and linked actor profile picture if changed.
+
+using System.Linq;
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.User.Validators;
 using Explore.Application.Features.Users.Requests.Commands;
 using Explore.Application.Responses;
 using MediatR;
@@ -35,6 +37,17 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, BaseC
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateUserCommand request, CancellationToken cancellationToken)
     {
         var response = new BaseCommandResponse<Guid>();
+
+        var validator = new UpdateUserDtoValidator();
+        var validationResult = await validator.ValidateAsync(request.UpdateUserDto, cancellationToken);
+        if (!validationResult.IsValid)
+        {
+            response.Success = false;
+            response.Message = "User update failed due to validation errors.";
+            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+            return response;
+        }
+
         var user = await _userRepository.GetById(request.UpdateUserDto.Id);
 
         if (user == null)

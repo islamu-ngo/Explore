@@ -2,6 +2,18 @@
 
 Last Updated: 2026-03-16 Europe/Brussels
 
+## 2026-03-22 Europe/Brussels - Hierarchical Settings Preferences: Theme Storage And Runtime Boundary
+
+- Decision: Keep hierarchical settings for precedence, defaults, and approved user overrides, but do not store the theme catalog as JSON in generic settings. Theme catalogs must be modeled as first-class entities with audit and concurrency support.
+- Why: The feature needs admin-managed lists, deterministic defaults, fallback when a selected theme is removed, and safe concurrent editing. Those concerns become brittle if theme definitions are hidden inside settings payloads.
+- Consequence: The next implementation slice must start with an ADR, then define theme entities/value objects plus reference-based appearance settings such as `appearance.default_theme_id` and `appearance.theme_mode`.
+
+## 2026-03-22 Europe/Brussels - Hierarchical Settings Preferences: Layouts Must Not Be The Theme Engine
+
+- Decision: `Explore.Blazor.Client/Layout/MainLayout.razor.cs` and `Explore.Blazor.Client/Layout/SetupLayout.razor.cs` should become thin consumers of a dedicated runtime theming service instead of owning precedence and palette composition logic.
+- Why: The current layout files already duplicate theme-building code. If precedence, bootstrap, and fallback rules are left there, theming behavior will spread across UI lifecycle code and become hard to test.
+- Consequence: Before UI work starts, introduce a dedicated service boundary such as `IThemeCompositionService` or `IAppearanceRuntimeService` and define SSR/bootstrap authority order in the ADR.
+
 ## 2026-03-16 Europe/Brussels - Event Scheduling Refactor: Registration Architecture
 
 - Decision: Do not redefine the current session-level `EventRegistration` rows as the abstract parent registration concept. Instead, add a new parent intent/group layer above them and keep the child/session rows as the concrete entitlement/access records.

@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a single AT Protocol record by ID.
+// ABOUTME: Maps entity to AtprotoRecordDto via AutoMapper.
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.AtprotoRecord;

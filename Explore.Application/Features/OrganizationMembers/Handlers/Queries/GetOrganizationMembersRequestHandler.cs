@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning all members of a specific organization.
+// ABOUTME: Maps OrganizationMember entities to OrganizationMemberDto list.
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;

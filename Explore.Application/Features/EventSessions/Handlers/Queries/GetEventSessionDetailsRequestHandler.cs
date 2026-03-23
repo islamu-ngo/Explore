@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a single event session by ID.
+// ABOUTME: Maps EventSession entity to EventSessionDto.
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;

@@ -1,0 +1,24 @@
+// ABOUTME: Repository interface for TenantFooterLink with domain-specific query operations.
+// ABOUTME: Links are isolated through their parent group; no direct TenantId filtering needed.
+
+using Explore.Domain;
+
+namespace Explore.Application.Contracts.Persistence;
+
+public interface IFooterLinkRepository : IGenericRepository<TenantFooterLink, Guid>
+{
+    /// <summary>
+    /// Gets all active links for a group, ordered by Order.
+    /// </summary>
+    Task<List<TenantFooterLink>> GetByGroupIdAsync(Guid groupId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets the maximum Order value within a link group.
+    /// </summary>
+    Task<int> GetMaxOrderInGroupAsync(Guid groupId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes all links belonging to a group. Used when deleting the parent group.
+    /// </summary>
+    Task DeleteByGroupIdAsync(Guid groupId, CancellationToken ct = default);
+}

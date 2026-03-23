@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning all available registration modes.
+// ABOUTME: Maps entities to RegistrationModeDto list.
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;

@@ -1,3 +1,5 @@
+// ABOUTME: Handler for removing a category from an event.
+// ABOUTME: Fetches the junction record and delegates deletion.
 using System;
 using System.Threading;
 using System.Threading.Tasks;

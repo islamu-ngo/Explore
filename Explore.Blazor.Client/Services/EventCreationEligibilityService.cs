@@ -53,12 +53,12 @@ public sealed record EventCreationEligibility
     /// Resolves the appropriate navigation route for the "Create Event" action.
     /// </summary>
     public string CreateEventRoute => IsUserSubmissionMode
-        ? "/create-event"
+        ? "/events/create"
         : EligibleOrganizationId.HasValue
-            ? $"/organization/{EligibleOrganizationId}/create-event"
+            ? $"/organizations/{EligibleOrganizationId}/events/create"
             : EligibleGroupId.HasValue
-                ? $"/group/{EligibleGroupId}/create-event"
-                : "/create-event";
+                ? $"/groups/{EligibleGroupId}/events/create"
+                : "/events/create";
 }
 
 public class EventCreationEligibilityService : IEventCreationEligibilityService

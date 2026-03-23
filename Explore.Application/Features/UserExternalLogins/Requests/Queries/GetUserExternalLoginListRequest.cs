@@ -1,3 +1,5 @@
+// ABOUTME: MediatR query request for fetching a paginated external login list.
+// ABOUTME: Returns IEnumerable<UserExternalLoginListDto>.
 using System.Collections.Generic;
 using Explore.Application.DTOs.UserExternalLogin;
 using MediatR;

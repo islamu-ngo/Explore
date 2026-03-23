@@ -1,3 +1,5 @@
+// ABOUTME: MediatR query request for fetching a single indexed DID by ID.
+// ABOUTME: Returns IndexedDidDto.
 using Explore.Application.DTOs.IndexedDid;
 using MediatR;
 

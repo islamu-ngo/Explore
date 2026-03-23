@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for deleting an agenda item by ID.
+// ABOUTME: Carries the target agenda item ID.
 using System;
 using Explore.Application.Authorization;
 using MediatR;

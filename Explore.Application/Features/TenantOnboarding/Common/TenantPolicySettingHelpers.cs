@@ -12,7 +12,7 @@ namespace Explore.Application.Features.TenantOnboarding.Common;
 
 internal static class TenantPolicySettingHelpers
 {
-    private const string DefaultBrandDisplayName = "ISLAMU Explore";
+    private const string DefaultBrandDisplayName = "";
     private const string DefaultPublicHomePage = "EventList";
 
     internal static async Task<TenantPolicySettingsDto> ReadEffectiveTenantSettingsAsync(

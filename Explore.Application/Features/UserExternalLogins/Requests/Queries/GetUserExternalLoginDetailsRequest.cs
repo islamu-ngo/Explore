@@ -1,3 +1,5 @@
+// ABOUTME: MediatR query request for fetching a single external login record by ID.
+// ABOUTME: Returns UserExternalLoginDto.
 using Explore.Application.DTOs.UserExternalLogin;
 using MediatR;
 

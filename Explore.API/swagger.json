@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "https://localhost:61205/"
+      "url": "https://localhost:61951/"
     }
   ],
   "paths": {
@@ -3431,7 +3431,7 @@
           "Event"
         ],
         "summary": "Update Event",
-        "description": "Update an existing event. User must be a member of the organization that owns the event.",
+        "description": "Update an existing event. Supports full update via EventDto or targeted updates via specific DTOs (e.g., EventStatusDto). Null DTOs are ignored.",
         "operationId": "UpdateEvent",
         "parameters": [
           {
@@ -3448,12 +3448,12 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateEventDto"
+                "$ref": "#/components/schemas/UpdateEventCommand"
               }
             },
             "application/*\u002Bjson; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateEventDto"
+                "$ref": "#/components/schemas/UpdateEventCommand"
               }
             }
           },
@@ -4729,6 +4729,357 @@
                   }
                 }
               }
+            }
+          }
+        }
+      }
+    },
+    "/api/eventseries": {
+      "get": {
+        "tags": [
+          "EventSeries"
+        ],
+        "parameters": [
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 10
+            }
+          },
+          {
+            "name": "actorId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResultOfEventSeriesListDto"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResultOfEventSeriesListDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "EventSeries"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventSeriesDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventSeriesDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventSeriesDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/eventseries/{id}": {
+      "get": {
+        "tags": [
+          "EventSeries"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventSeriesDto"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventSeriesDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "EventSeries"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventSeriesDto"
+              }
+            },
+            "text/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventSeriesDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventSeriesDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "EventSeries"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfboolean"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfboolean"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/eventseries/top": {
+      "get": {
+        "tags": [
+          "EventSeries"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventSeriesDto"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventSeriesDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": {},
+              "application/hal\u002Bjson": {}
             }
           }
         }
@@ -12783,6 +13134,51 @@
         }
       }
     },
+    "/api/storageobject/{id}/public": {
+      "get": {
+        "tags": [
+          "StorageObject"
+        ],
+        "summary": "Get Public Image",
+        "description": "Serves an image directly by storage object ID. Returns a stable, non-expiring URL suitable for OG image tags and social media preview cards. Images are cached for 7 days.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/storageobject/{id}/presigned-url": {
       "get": {
         "tags": [
@@ -16078,367 +16474,6 @@
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
-            }
-          }
-        }
-      }
-    },
-    "/api/eventseries": {
-      "get": {
-        "tags": [
-          "EventSeries"
-        ],
-        "parameters": [
-          {
-            "name": "pageNumber",
-            "in": "query",
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
-              "format": "int32",
-              "default": 1
-            }
-          },
-          {
-            "name": "pageSize",
-            "in": "query",
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
-              "format": "int32",
-              "default": 10
-            }
-          },
-          {
-            "name": "actorId",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json; v=1.0": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaginatedResultOfEventSeriesListDto"
-                }
-              },
-              "application/hal\u002Bjson; v=1.0": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaginatedResultOfEventSeriesListDto"
-                }
-              },
-              "application/json": {},
-              "application/hal\u002Bjson": {}
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "EventSeries"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json; v=1.0": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateEventSeriesDto"
-              }
-            },
-            "text/json; v=1.0": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateEventSeriesDto"
-              }
-            },
-            "application/*\u002Bjson; v=1.0": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateEventSeriesDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "application/json; v=1.0": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/hal\u002Bjson; v=1.0": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/json": {},
-              "application/hal\u002Bjson": {}
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json; v=1.0": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/hal\u002Bjson; v=1.0": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {},
-              "application/hal\u002Bjson": {}
-            }
-          }
-        }
-      }
-    },
-    "/api/eventseries/{id}": {
-      "get": {
-        "tags": [
-          "EventSeries"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json; v=1.0": {
-                "schema": {
-                  "$ref": "#/components/schemas/EventSeriesDto"
-                }
-              },
-              "application/hal\u002Bjson; v=1.0": {
-                "schema": {
-                  "$ref": "#/components/schemas/EventSeriesDto"
-                }
-              },
-              "application/json": {},
-              "application/hal\u002Bjson": {}
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/json; v=1.0": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/hal\u002Bjson; v=1.0": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {},
-              "application/hal\u002Bjson": {}
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "EventSeries"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json; v=1.0": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateEventSeriesDto"
-              }
-            },
-            "text/json; v=1.0": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateEventSeriesDto"
-              }
-            },
-            "application/*\u002Bjson; v=1.0": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateEventSeriesDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json; v=1.0": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/hal\u002Bjson; v=1.0": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
-                }
-              },
-              "application/json": {},
-              "application/hal\u002Bjson": {}
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json; v=1.0": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/hal\u002Bjson; v=1.0": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {},
-              "application/hal\u002Bjson": {}
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/json; v=1.0": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/hal\u002Bjson; v=1.0": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {},
-              "application/hal\u002Bjson": {}
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "EventSeries"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json; v=1.0": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfboolean"
-                }
-              },
-              "application/hal\u002Bjson; v=1.0": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseCommandResponseOfboolean"
-                }
-              },
-              "application/json": {},
-              "application/hal\u002Bjson": {}
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/json; v=1.0": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/hal\u002Bjson; v=1.0": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {},
-              "application/hal\u002Bjson": {}
-            }
-          }
-        }
-      }
-    },
-    "/api/eventseries/top": {
-      "get": {
-        "tags": [
-          "EventSeries"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json; v=1.0": {
-                "schema": {
-                  "$ref": "#/components/schemas/EventSeriesDto"
-                }
-              },
-              "application/hal\u002Bjson; v=1.0": {
-                "schema": {
-                  "$ref": "#/components/schemas/EventSeriesDto"
-                }
-              },
-              "application/json": {},
-              "application/hal\u002Bjson": {}
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/json; v=1.0": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/hal\u002Bjson; v=1.0": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {},
-              "application/hal\u002Bjson": {}
             }
           }
         }
@@ -26732,6 +26767,35 @@
           }
         }
       },
+      "UpdateEventCommand": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventDto": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventDto"
+              }
+            ]
+          },
+          "eventStatusDto": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateEventStatusDto"
+              }
+            ]
+          }
+        }
+      },
       "UpdateEventDto": {
         "required": [
           "title"
@@ -27126,6 +27190,19 @@
                 "$ref": "#/components/schemas/EventSessionIslamicAspectDto"
               }
             ]
+          }
+        }
+      },
+      "UpdateEventStatusDto": {
+        "type": "object",
+        "properties": {
+          "eventStatusId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -28210,6 +28287,9 @@
       "name": "EventRegistration"
     },
     {
+      "name": "EventSeries"
+    },
+    {
       "name": "EventSessionAgendaItem"
     },
     {
@@ -28322,9 +28402,6 @@
     },
     {
       "name": "VisibilityType"
-    },
-    {
-      "name": "EventSeries"
     },
     {
       "name": "Explore.API"

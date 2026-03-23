@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning pending organization invitations for the current user.
+// ABOUTME: Filters invitations by user ID and pending status.
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;

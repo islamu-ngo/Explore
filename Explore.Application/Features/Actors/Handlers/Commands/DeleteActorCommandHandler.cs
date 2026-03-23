@@ -1,3 +1,5 @@
+// ABOUTME: Handler for deleting an actor entity.
+// ABOUTME: Fetches actor by ID and delegates deletion to the repository.
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Actors.Requests.Commands;
 using MediatR;

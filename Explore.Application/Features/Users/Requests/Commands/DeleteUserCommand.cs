@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for deleting a user account.
+// ABOUTME: Carries the target user ID.
 using Explore.Application.Authorization;
 using MediatR;
 

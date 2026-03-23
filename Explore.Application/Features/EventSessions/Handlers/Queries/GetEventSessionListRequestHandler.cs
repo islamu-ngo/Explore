@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a paginated list of event sessions.
+// ABOUTME: Maps entities to EventSessionListDto.
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;

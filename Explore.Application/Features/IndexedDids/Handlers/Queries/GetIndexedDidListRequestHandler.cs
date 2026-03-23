@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a paginated list of indexed DID records.
+// ABOUTME: Maps entities to IndexedDidListDto.
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.IndexedDid;

@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning the binary content of a storage object.
+// ABOUTME: Streams file bytes from the storage provider.
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;

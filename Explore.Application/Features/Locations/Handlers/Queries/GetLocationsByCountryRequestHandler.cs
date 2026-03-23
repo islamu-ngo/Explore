@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning all locations in a given country.
+// ABOUTME: Filters by country, maps to LocationDto list.
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;

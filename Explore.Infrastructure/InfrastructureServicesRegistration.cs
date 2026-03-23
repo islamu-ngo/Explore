@@ -42,6 +42,7 @@ public static class InfrastructureServicesRegistration
         // Identity services
         services.AddScoped<IUserContext, UserContext>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<IPublicUrlBuilder, PublicUrlBuilder>();
 
         // Memory cache for settings and module governance
         services.AddMemoryCache();

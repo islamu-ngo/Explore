@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a single visibility type by ID.
+// ABOUTME: Maps VisibilityType entity to VisibilityTypeDto.
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;

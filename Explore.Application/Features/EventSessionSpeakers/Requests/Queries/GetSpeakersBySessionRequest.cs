@@ -1,3 +1,5 @@
+// ABOUTME: MediatR query for fetching all speakers in a session.
+// ABOUTME: Returns IEnumerable<ActorDto>.
 using System;
 using System.Collections.Generic;
 using Explore.Application.DTOs.EventSessionSpeaker;

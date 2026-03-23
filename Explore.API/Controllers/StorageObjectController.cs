@@ -91,6 +91,28 @@ public class StorageObjectController : ControllerBase
         }
     }
 
+    // GET: api/storageobject/{id}/public
+    [HttpGet("{id}/public")]
+    [EndpointSummary("Get Public Image")]
+    [EndpointDescription("Serves an image directly by storage object ID. Returns a stable, non-expiring URL " +
+        "suitable for OG image tags and social media preview cards. Images are cached for 7 days.")]
+    [AllowAnonymous]
+    [ResponseCache(Duration = 604800, Location = ResponseCacheLocation.Any)] // 7 days
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPublicImage(Guid id, CancellationToken cancellationToken = default)
+    {
+        var result = await _mediator.Send(new GetPublicImageRequest { StorageObjectId = id }, cancellationToken);
+
+        if (result is null)
+        {
+            return NotFound();
+        }
+
+        var (fileStream, contentType) = result.Value;
+        return File(fileStream, contentType, enableRangeProcessing: true);
+    }
+
     // GET: api/storageobject/{id}/presigned-url
     [HttpGet("{id}/presigned-url")]
     [EndpointSummary("Get Presigned Download URL")]

@@ -1,3 +1,6 @@
+// ABOUTME: Handles deletion of a user account including hard removal of PII, auth tokens, and linked actor PII.
+// ABOUTME: Uses IUnitOfWork to ensure all deletions are atomic — a partial delete is worse than no delete.
+
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Exceptions;
 using Explore.Application.Features.Users.Requests.Commands;
@@ -15,6 +18,7 @@ public class DeleteUserCommandHandler : IRequestHandler<DeleteUserCommand, Unit>
     private readonly IActorRepository _actorRepository;
     private readonly IGenericRepository<ActorPii, Guid> _actorPiiRepository;
     private readonly HybridCache _cache;
+    private readonly IUnitOfWork _unitOfWork;
 
     public DeleteUserCommandHandler(
         IUserRepository userRepository,
@@ -22,7 +26,8 @@ public class DeleteUserCommandHandler : IRequestHandler<DeleteUserCommand, Unit>
         IUserAuthenticationTokenRepository userAuthenticationTokenRepository,
         IActorRepository actorRepository,
         IGenericRepository<ActorPii, Guid> actorPiiRepository,
-        HybridCache cache)
+        HybridCache cache,
+        IUnitOfWork unitOfWork)
     {
         _userRepository = userRepository;
         _userPiiRepository = userPiiRepository;
@@ -30,6 +35,7 @@ public class DeleteUserCommandHandler : IRequestHandler<DeleteUserCommand, Unit>
         _actorRepository = actorRepository;
         _actorPiiRepository = actorPiiRepository;
         _cache = cache;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<Unit> Handle(DeleteUserCommand request, CancellationToken cancellationToken)
@@ -39,32 +45,36 @@ public class DeleteUserCommandHandler : IRequestHandler<DeleteUserCommand, Unit>
         if (user == null)
             throw new NotFoundException(nameof(User), request.UserId);
 
-        // Hard delete user-identifying PII while preserving skeletal user record for analytics.
-        var userPii = await _userPiiRepository.GetById(request.UserId);
-        if (userPii != null)
+        await _unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
-            await _userPiiRepository.HardDelete(userPii);
-        }
-
-        // Revoke all active authentication tokens.
-        var tokens = await _userAuthenticationTokenRepository.GetByUser(request.UserId);
-        foreach (var token in tokens)
-        {
-            await _userAuthenticationTokenRepository.HardDelete(token);
-        }
-
-        // Hard delete linked actor identity PII (if personal actor exists).
-        var actor = await _actorRepository.GetActorByUserId(request.UserId);
-        if (actor != null)
-        {
-            var actorPii = await _actorPiiRepository.GetById(actor.Id);
-            if (actorPii != null)
+            // Hard delete user-identifying PII while preserving skeletal user record for analytics.
+            var userPii = await _userPiiRepository.GetById(request.UserId);
+            if (userPii != null)
             {
-                await _actorPiiRepository.HardDelete(actorPii);
+                await _userPiiRepository.HardDelete(userPii);
             }
-        }
 
-        await _userRepository.Delete(user);
+            // Revoke all active authentication tokens.
+            var tokens = await _userAuthenticationTokenRepository.GetByUser(request.UserId);
+            foreach (var token in tokens)
+            {
+                await _userAuthenticationTokenRepository.HardDelete(token);
+            }
+
+            // Hard delete linked actor identity PII (if personal actor exists).
+            var actor = await _actorRepository.GetActorByUserId(request.UserId);
+            if (actor != null)
+            {
+                var actorPii = await _actorPiiRepository.GetById(actor.Id);
+                if (actorPii != null)
+                {
+                    await _actorPiiRepository.HardDelete(actorPii);
+                }
+            }
+
+            await _userRepository.Delete(user);
+        }, cancellationToken);
+
         await _cache.RemoveAsync($"user:detail:{request.UserId}", cancellationToken);
 
         return Unit.Value;

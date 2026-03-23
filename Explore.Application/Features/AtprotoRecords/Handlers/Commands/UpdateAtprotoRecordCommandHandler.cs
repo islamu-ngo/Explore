@@ -1,3 +1,5 @@
+// ABOUTME: Handler for updating an existing AT Protocol record with validation.
+// ABOUTME: Validates input, fetches entity, applies field updates.
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.AtprotoRecord.Validators;

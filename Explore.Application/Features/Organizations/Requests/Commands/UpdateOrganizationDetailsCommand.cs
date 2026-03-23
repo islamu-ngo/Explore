@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for updating organization profile details.
+// ABOUTME: Carries the detailed UpdateOrganizationDetailsDto payload.
 using System;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.Organization;

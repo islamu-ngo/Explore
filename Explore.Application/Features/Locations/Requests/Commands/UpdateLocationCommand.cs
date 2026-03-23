@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for updating an event location.
+// ABOUTME: Carries the UpdateLocationDto payload.
 using System;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.Location;

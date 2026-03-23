@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a single category by ID.
+// ABOUTME: Maps Category entity to CategoryDto via AutoMapper.
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;

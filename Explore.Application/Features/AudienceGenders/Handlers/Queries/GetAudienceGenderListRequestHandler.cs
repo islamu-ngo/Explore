@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning all available audience gender options.
+// ABOUTME: Maps AudienceGender entities to AudienceGenderDto list.
 using System;
 using System.Collections.Generic;
 using System.Text;

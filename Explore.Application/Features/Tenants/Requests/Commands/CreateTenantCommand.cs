@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for creating a new tenant.
+// ABOUTME: Carries the CreateTenantDto payload and optional requesting-user context for automatic admin assignment.
 using System;
 using Explore.Application.Authorization;
 using Explore.Application.DTOs.Tenant;
@@ -17,6 +19,12 @@ public class CreateTenantCommand : IRequest<BaseCommandResponse<Guid>>, ISecureR
     /// DTO containing the tenant data to create.
     /// </summary>
     public CreateTenantDto TenantDto { get; set; } = null!;
+
+    /// <summary>
+    /// The authenticated user making the request. Set by the controller from the JWT claims.
+    /// Required when <see cref="CreateTenantDto.AssignCurrentUserAsTenantAdmin"/> is true.
+    /// </summary>
+    public Guid? RequestingUserId { get; init; }
 
     string? ISecureRequest.ResourceId => null;
 }

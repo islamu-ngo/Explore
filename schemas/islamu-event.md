@@ -438,6 +438,108 @@ Table "tenant_navigation_links" {
   "is_active" boolean [not null]
 }
 
+// ============================================================
+// Tenant Footer Links
+// ============================================================
+
+Table "tenant_footer_link_groups" {
+  "id" uuid [pk, not null]
+  "tenant_id" uuid
+  "title" varchar(100) [not null]
+  "order" int [not null]
+  "is_active" boolean [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    tenant_id [name: 'ix_tenant_footer_link_groups_tenant_id']
+    (tenant_id, order) [name: 'ix_tenant_footer_link_groups_tenant_id_order']
+  }
+
+  Note: 'TenantId null = instance-default group.'
+}
+
+Table "tenant_footer_links" {
+  "id" uuid [pk, not null]
+  "footer_link_group_id" uuid [not null]
+  "label" varchar(100) [not null]
+  "url" varchar(1000) [not null]
+  "open_in_new_tab" boolean [not null]
+  "order" int [not null]
+  "is_active" boolean [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (footer_link_group_id, order) [name: 'ix_tenant_footer_links_footer_link_group_id_order']
+  }
+}
+
+// ============================================================
+// Appearance (UI Themes)
+// ============================================================
+
+Table "ui_themes" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid
+  "theme_key" varchar(128) [not null]
+  "display_name" varchar(200) [not null]
+  "description" varchar(1000)
+  "is_active" boolean [not null]
+  "is_default" boolean [not null]
+  "sort_order" int [not null]
+  "light_primary" varchar(7) [not null]
+  "light_secondary" varchar(7) [not null]
+  "light_background" varchar(7) [not null]
+  "light_surface" varchar(7) [not null]
+  "light_appbar_background" varchar(32) [not null]
+  "light_appbar_text" varchar(7) [not null]
+  "light_drawer_background" varchar(32) [not null]
+  "light_drawer_text" varchar(7) [not null]
+  "light_drawer_icon" varchar(7) [not null]
+  "light_text_primary" varchar(7) [not null]
+  "light_text_secondary" varchar(7) [not null]
+  "light_info" varchar(7) [not null]
+  "light_success" varchar(7) [not null]
+  "light_warning" varchar(7) [not null]
+  "light_error" varchar(7) [not null]
+  "light_lines_default" varchar(7) [not null]
+  "light_divider" varchar(32) [not null]
+  "dark_primary" varchar(7) [not null]
+  "dark_secondary" varchar(7) [not null]
+  "dark_background" varchar(7) [not null]
+  "dark_surface" varchar(7) [not null]
+  "dark_appbar_background" varchar(32) [not null]
+  "dark_appbar_text" varchar(7) [not null]
+  "dark_drawer_background" varchar(32) [not null]
+  "dark_drawer_text" varchar(7) [not null]
+  "dark_drawer_icon" varchar(7) [not null]
+  "dark_text_primary" varchar(7) [not null]
+  "dark_text_secondary" varchar(7) [not null]
+  "dark_info" varchar(7) [not null]
+  "dark_success" varchar(7) [not null]
+  "dark_warning" varchar(7) [not null]
+  "dark_error" varchar(7) [not null]
+  "dark_lines_default" varchar(7) [not null]
+  "dark_divider" varchar(32) [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "xmin" xid [not null, note: 'rowversion / optimistic concurrency']
+
+  indexes {
+    theme_key [unique, name: 'ix_ui_themes_theme_key', note: 'filter: tenant_id IS NULL']
+    (tenant_id, theme_key) [unique, name: 'ix_ui_themes_tenant_id_theme_key', note: 'filter: tenant_id IS NOT NULL']
+    is_default [unique, name: 'ix_ui_themes_is_default', note: 'filter: tenant_id IS NULL AND is_default = true']
+    (tenant_id, is_default) [unique, name: 'ix_ui_themes_tenant_id_is_default', note: 'filter: tenant_id IS NOT NULL AND is_default = true']
+  }
+}
+
 Table "tenant_onboarding_states" {
   "id" uuid [pk, not null, note: 'uuidv7 app-side']
   "tenant_id" uuid [not null]
@@ -627,6 +729,7 @@ Table "custom_property_definitions" {
   indexes {
     (tenant_id, entity_type_name, is_active) [name: 'ix_cpd_tenant_entity_active']
     (tenant_id, entity_type_name, event_type_id, name) [unique, name: 'ix_cpd_tenant_entity_type_name']
+    event_type_id [name: 'ix_custom_property_definitions_event_type_id']
   }
 }
 
@@ -650,6 +753,7 @@ Table "custom_property_options" {
 
   indexes {
     (custom_property_definition_id, sort_order) [name: 'ix_cpo_definition_sort']
+    parent_option_id [name: 'ix_custom_property_options_parent_option_id']
   }
 }
 
@@ -657,6 +761,7 @@ Table "custom_property_values" {
   "id" uuid [pk, not null]
   "custom_property_definition_id" uuid [not null]
   "entity_id" uuid [not null]
+  "ordinal" int [not null]
   "text_value" varchar(4000)
   "number_value" decimal(19,4)
   "boolean_value" boolean
@@ -675,6 +780,258 @@ Table "custom_property_values" {
     (custom_property_definition_id, entity_id) [name: 'ix_cpv_definition_entity']
     entity_id [name: 'ix_cpv_entity']
     (tenant_id, custom_property_definition_id) [name: 'ix_cpv_tenant_definition']
+    option_id [name: 'ix_custom_property_values_option_id']
+  }
+}
+
+// ============================================================
+// Event Templates & Event Custom Properties
+// ============================================================
+
+Table "event_templates" {
+  "id" uuid [pk, not null]
+  "tenant_id" uuid [not null]
+  "template_key" varchar(100) [not null]
+  "display_name" varchar(200) [not null]
+  "description" varchar(500)
+  "event_type_id" int
+  "version" int [not null]
+  "is_published" boolean [not null]
+  "is_active" boolean [not null]
+  "sort_order" int [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  indexes {
+    event_type_id [name: 'ix_event_templates_event_type_id']
+    (tenant_id, template_key, version) [unique, name: 'ix_event_templates_tenant_key_version']
+    (tenant_id, is_published, is_active) [name: 'ix_event_templates_tenant_published_active']
+  }
+}
+
+Table "event_template_custom_property_definitions" {
+  "id" uuid [pk, not null]
+  "event_template_id" uuid [not null]
+  "tenant_id" uuid [not null]
+  "namespace" varchar(100) [not null]
+  "key" varchar(100) [not null]
+  "display_name" varchar(200) [not null]
+  "description" varchar(500)
+  "property_type" varchar(50) [not null]
+  "is_required" boolean [not null]
+  "is_multi" boolean [not null]
+  "is_active" boolean [not null]
+  "sort_order" int [not null]
+  "exposure_level" varchar(50) [not null]
+  "is_searchable" boolean [not null]
+  "is_filterable" boolean [not null]
+  "is_exportable" boolean [not null]
+  "is_moderation_relevant" boolean [not null]
+  "is_analytics_relevant" boolean [not null]
+  "is_system_owned" boolean [not null]
+  "default_text_value" varchar(1000)
+  "default_number_value" decimal(19,4)
+  "default_boolean_value" boolean
+  "default_date_time_value" timestamptz
+  "default_option_id" uuid
+  "min_length" int
+  "max_length" int
+  "regex_pattern" varchar(1000)
+  "min_number" decimal(19,4)
+  "max_number" decimal(19,4)
+  "min_date_time" timestamptz
+  "max_date_time" timestamptz
+  "allowed_url_schemes" varchar(500)
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  indexes {
+    (event_template_id, namespace, key) [unique, name: 'ix_etcpd_template_namespace_key']
+    (tenant_id, is_searchable, is_filterable) [name: 'ix_etcpd_tenant_search_filter']
+    default_option_id [name: 'ix_event_template_custom_property_definitions_default_option_id']
+  }
+}
+
+Table "event_template_custom_property_options" {
+  "id" uuid [pk, not null]
+  "event_template_custom_property_definition_id" uuid [not null]
+  "namespace" varchar(100) [not null]
+  "key" varchar(100) [not null]
+  "display_name" varchar(200) [not null]
+  "description" varchar(500)
+  "value" varchar(500) [not null]
+  "is_default" boolean [not null]
+  "is_active" boolean [not null]
+  "sort_order" int [not null]
+  "parent_option_id" uuid
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  indexes {
+    (event_template_custom_property_definition_id, sort_order) [name: 'ix_etcpo_definition_sort']
+    (event_template_custom_property_definition_id, namespace, key) [unique, name: 'ix_etcpo_definition_namespace_key']
+    parent_option_id [name: 'ix_event_template_custom_property_options_parent_option_id']
+  }
+}
+
+Table "event_custom_property_definitions" {
+  "id" uuid [pk, not null]
+  "event_id" uuid [not null]
+  "tenant_id" uuid [not null]
+  "namespace" varchar(100) [not null]
+  "key" varchar(100) [not null]
+  "display_name" varchar(200) [not null]
+  "description" varchar(500)
+  "property_type" varchar(50) [not null]
+  "is_required" boolean [not null]
+  "is_multi" boolean [not null]
+  "is_active" boolean [not null]
+  "sort_order" int [not null]
+  "exposure_level" varchar(50) [not null]
+  "is_searchable" boolean [not null]
+  "is_filterable" boolean [not null]
+  "is_exportable" boolean [not null]
+  "is_moderation_relevant" boolean [not null]
+  "is_analytics_relevant" boolean [not null]
+  "is_system_owned" boolean [not null]
+  "default_text_value" varchar(1000)
+  "default_number_value" decimal(19,4)
+  "default_boolean_value" boolean
+  "default_date_time_value" timestamptz
+  "default_option_id" uuid
+  "min_length" int
+  "max_length" int
+  "regex_pattern" varchar(1000)
+  "min_number" decimal(19,4)
+  "max_number" decimal(19,4)
+  "min_date_time" timestamptz
+  "max_date_time" timestamptz
+  "allowed_url_schemes" varchar(500)
+  "source_template_id" uuid
+  "source_template_key" varchar(100)
+  "source_template_version" int
+  "source_template_definition_id" uuid
+  "instantiated_at" timestamptz [not null]
+  "last_synced_from_template_at" timestamptz
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  indexes {
+    (event_id, namespace, key) [unique, name: 'ix_ecpd_event_namespace_key']
+    (tenant_id, event_id, is_searchable, is_filterable) [name: 'ix_ecpd_tenant_event_search_filter']
+    default_option_id [name: 'ix_event_custom_property_definitions_default_option_id']
+    source_template_id [name: 'ix_event_custom_property_definitions_source_template_id']
+  }
+}
+
+Table "event_custom_property_options" {
+  "id" uuid [pk, not null]
+  "event_custom_property_definition_id" uuid [not null]
+  "namespace" varchar(100) [not null]
+  "key" varchar(100) [not null]
+  "display_name" varchar(200) [not null]
+  "description" varchar(500)
+  "value" varchar(500) [not null]
+  "is_default" boolean [not null]
+  "is_active" boolean [not null]
+  "sort_order" int [not null]
+  "parent_option_id" uuid
+  "source_template_option_id" uuid
+  "source_template_version" int
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  indexes {
+    (event_custom_property_definition_id, sort_order) [name: 'ix_ecpo_definition_sort']
+    (event_custom_property_definition_id, namespace, key) [unique, name: 'ix_ecpo_definition_namespace_key']
+    parent_option_id [name: 'ix_event_custom_property_options_parent_option_id']
+  }
+}
+
+Table "event_custom_property_values" {
+  "id" uuid [pk, not null]
+  "event_custom_property_definition_id" uuid [not null]
+  "event_id" uuid [not null]
+  "tenant_id" uuid [not null]
+  "ordinal" int [not null]
+  "text_value" varchar(4000)
+  "number_value" decimal(19,4)
+  "boolean_value" boolean
+  "date_time_value" timestamptz
+  "option_id" uuid
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  indexes {
+    (tenant_id, event_id) [name: 'ix_ecpv_tenant_event']
+    (event_custom_property_definition_id, event_id, ordinal) [unique, name: 'ix_ecpv_definition_event_ordinal']
+    event_id [name: 'ix_event_custom_property_values_event_id']
+    option_id [name: 'ix_event_custom_property_values_option_id']
+  }
+}
+
+Table "event_custom_property_projections" {
+  "id" uuid [pk, not null]
+  "event_custom_property_definition_id" uuid [not null]
+  "event_custom_property_value_id" uuid [not null]
+  "event_id" uuid [not null]
+  "tenant_id" uuid [not null]
+  "namespace" varchar(100) [not null]
+  "key" varchar(100) [not null]
+  "property_type" varchar(50) [not null]
+  "exposure_level" varchar(50) [not null]
+  "is_searchable" boolean [not null]
+  "is_filterable" boolean [not null]
+  "is_exportable" boolean [not null]
+  "is_moderation_relevant" boolean [not null]
+  "is_analytics_relevant" boolean [not null]
+  "ordinal" int [not null]
+  "option_id" uuid
+  "text_value" varchar(4000)
+  "number_value" decimal(19,4)
+  "boolean_value" boolean
+  "date_time_value" timestamptz
+  "normalized_value" varchar(4000)
+  "updated_at" timestamptz [not null]
+
+  indexes {
+    event_custom_property_definition_id [name: 'ix_event_custom_property_projections_event_custom_property_def']
+    event_id [name: 'ix_event_custom_property_projections_event_id']
+    option_id [name: 'ix_event_custom_property_projections_option_id']
+    event_custom_property_value_id [unique, name: 'ix_ecpp_value']
+    (tenant_id, namespace, key, normalized_value) [name: 'ix_ecpp_tenant_namespace_key_normalized']
+    (tenant_id, exposure_level) [name: 'ix_ecpp_tenant_exposure']
+    (tenant_id, event_id, namespace, key, ordinal) [name: 'ix_ecpp_tenant_event_namespace_key_ordinal']
   }
 }
 
@@ -1566,6 +1923,7 @@ Ref: "tenant_settings"."default_group_id" > "groups"."id" [delete: restrict]
 Ref: "tenant_settings"."default_organization_id" > "organizations"."id" [delete: restrict]
 Ref: "tenant_setting_overrides"."tenant_id" > "tenants"."id" [delete: cascade]
 Ref: "tenant_navigation_links"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "tenant_footer_link_groups"."tenant_id" > "tenants"."id" [delete: cascade]
 Ref: "tenant_onboarding_states"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "tenant_policy_sets"."tenant_id" > "tenants"."id" [delete: cascade]
 Ref: "tenant_lifecycle_logs"."tenant_id" > "tenants"."id" [delete: restrict]
@@ -1579,6 +1937,10 @@ Ref: "tenant_members"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "tenant_members"."user_id" > "users"."id" [delete: restrict]
 Ref: "tenant_members"."role_id" > "roles"."id" [delete: restrict]
 Ref: "external_api_keys"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "ui_themes"."tenant_id" > "tenants"."id" [delete: cascade]
+
+// Footer link relationships
+Ref: "tenant_footer_links"."footer_link_group_id" > "tenant_footer_link_groups"."id" [delete: cascade]
 
 // Taxonomy relationships
 Ref: "categories"."parent_id" > "categories"."id" [delete: restrict]
@@ -1723,6 +2085,32 @@ Ref: "event_contact_share_export"."event_id" > "events"."id" [delete: restrict]
 Ref: "event_contact_share_export"."exported_by_user_id" > "users"."id" [delete: restrict]
 Ref: "event_contact_share_export_item"."export_id" > "event_contact_share_export"."id" [delete: cascade]
 Ref: "event_contact_share_export_item"."consent_id" > "event_contact_share_consents"."id" [delete: restrict]
+
+// Event template relationships
+Ref: "event_templates"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "event_templates"."event_type_id" > "event_types"."id" [delete: restrict]
+Ref: "event_template_custom_property_definitions"."event_template_id" > "event_templates"."id" [delete: cascade]
+Ref: "event_template_custom_property_definitions"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "event_template_custom_property_definitions"."default_option_id" > "event_template_custom_property_options"."id" [delete: restrict]
+Ref: "event_template_custom_property_options"."event_template_custom_property_definition_id" > "event_template_custom_property_definitions"."id" [delete: cascade]
+Ref: "event_template_custom_property_options"."parent_option_id" > "event_template_custom_property_options"."id" [delete: set null]
+
+// Event custom property relationships
+Ref: "event_custom_property_definitions"."event_id" > "events"."id" [delete: cascade]
+Ref: "event_custom_property_definitions"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "event_custom_property_definitions"."source_template_id" > "event_templates"."id" [delete: restrict]
+Ref: "event_custom_property_definitions"."default_option_id" > "event_custom_property_options"."id" [delete: restrict]
+Ref: "event_custom_property_options"."event_custom_property_definition_id" > "event_custom_property_definitions"."id" [delete: cascade]
+Ref: "event_custom_property_options"."parent_option_id" > "event_custom_property_options"."id" [delete: set null]
+Ref: "event_custom_property_values"."event_custom_property_definition_id" > "event_custom_property_definitions"."id" [delete: cascade]
+Ref: "event_custom_property_values"."event_id" > "events"."id" [delete: cascade]
+Ref: "event_custom_property_values"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "event_custom_property_values"."option_id" > "event_custom_property_options"."id" [delete: set null]
+Ref: "event_custom_property_projections"."event_custom_property_definition_id" > "event_custom_property_definitions"."id" [delete: cascade]
+Ref: "event_custom_property_projections"."event_custom_property_value_id" > "event_custom_property_values"."id" [delete: cascade]
+Ref: "event_custom_property_projections"."event_id" > "events"."id" [delete: cascade]
+Ref: "event_custom_property_projections"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "event_custom_property_projections"."option_id" > "event_custom_property_options"."id" [delete: set null]
 
 // RBAC relationships
 Ref: "role_permissions"."role_id" > "roles"."id" [delete: restrict]

@@ -1,3 +1,5 @@
+// ABOUTME: Query handler returning a paginated list of actor key stores.
+// ABOUTME: Maps entities to ActorKeyStoreListDto via AutoMapper.
 using System.Collections.Generic;
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;

@@ -91,7 +91,7 @@ public partial class MyEvents : ComponentBase
     {
         if (CanEditEvent(evt))
         {
-            Navigation.NavigateTo($"/event/edit/{evt.Id}");
+            Navigation.NavigateTo($"/events/{evt.Id}/edit");
         }
         else
         {
@@ -101,7 +101,7 @@ public partial class MyEvents : ComponentBase
 
     private void ViewEventDetails(EventListDto evt)
     {
-        Navigation.NavigateTo($"/event/detail/{evt.Id}");
+        Navigation.NavigateTo($"/events/{evt.Id}");
     }
 
     private async Task ViewRegistrations(EventListDto evt)
@@ -156,11 +156,44 @@ public partial class MyEvents : ComponentBase
         }
     }
 
+    private bool IsDraftEvent(EventListDto evt) => evt.EventStatusId == 1;
+
+    private async Task PublishEvent(EventListDto evt)
+    {
+        if (!CanEditEvent(evt))
+        {
+            Snackbar.Add("You do not have permission to publish this event.", Severity.Error);
+            return;
+        }
+
+        var result = await DialogService.ShowMessageBoxAsync(
+            "Publish Event",
+            $"Are you sure you want to publish '{evt.Title}'? It will become visible to the public.",
+            yesText: "Publish", cancelText: "Cancel",
+            options: new DialogOptions { MaxWidth = MaxWidth.Small });
+
+        if (result == true && evt.Id.HasValue)
+        {
+            var success = await EventService.UpdateEventStatusAsync(evt.Id.Value, 2); // Published = 2
+            if (success)
+            {
+                evt.EventStatusId = 2;
+                evt.EventStatusFullName = "Published";
+                Snackbar.Add($"Event '{evt.Title}' has been published.", Severity.Success);
+                StateHasChanged();
+            }
+            else
+            {
+                Snackbar.Add("Failed to publish event.", Severity.Error);
+            }
+        }
+    }
+
     private void OnSearch(string value) => _searchString = value;
     private void OnCategoryChanged(string value) => _selectedCategory = value;
     private void OnOrganizationChanged(Guid? organizationId) => _selectedOrganizationId = organizationId ?? Guid.Empty;
-    private void NavigateToCreateEvent() => Navigation.NavigateTo("/organization/my");
-    private void NavigateToCreateOrganization() => Navigation.NavigateTo("/organization/create");
+    private void NavigateToCreateEvent() => Navigation.NavigateTo("/events/create");
+    private void NavigateToCreateOrganization() => Navigation.NavigateTo("/organizations/create");
 
     private static string GetEventColorCode(EventListDto evt) =>
         EventColorHelper.GetColorByTypeName(evt.EventTypeFullName);

@@ -1,3 +1,5 @@
+// ABOUTME: MediatR command for declining an organization invitation.
+// ABOUTME: Carries the invitation token.
 using System;
 using Explore.Application.Responses;
 using MediatR;
