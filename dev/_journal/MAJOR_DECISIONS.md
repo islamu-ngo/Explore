@@ -1,6 +1,71 @@
 # Major Decisions
 
-Last Updated: 2026-03-16 Europe/Brussels
+Last Updated: 2026-03-26 Europe/Brussels
+
+## 2026-03-26 Europe/Brussels - Enterprise Footer Customization: Blazor UI Implementation
+
+### Footer Template Dispatch via Switch (ADR-005)
+- Decision: Use `switch` on template key string in `Footer.razor` to dispatch to 4 typed template components (`FooterTemplateStandard3Col`, `FooterTemplateStandard2Col`, `FooterTemplateMinimal`, `FooterTemplateCommunity`).
+- Why: 4 fixed templates → compile-time safety, simple to reason about. `DynamicComponent` deferred to Phase 2+ when newsletter/HTML fragment blocks are added.
+
+### Footer Admin: Typed HTTP Client (Not NSwag)
+- Decision: Create `IFooterAdminService` + `FooterAdminService` as typed HttpClient service following `ITenantNavigationService` pattern, instead of using NSwag-generated client.
+- Why: Footer admin endpoints were not covered by existing NSwag generation. Typed client provides explicit control over models and error handling. Registered via `AddTypedApiClient` with interactive resilience.
+
+### Footer Governance Available in All Deployment Modes
+- Decision: Lock toggles shown in both single-tenant and multi-tenant modes. Info alert in single-tenant explains locks have no effect.
+- Why: User explicitly requested footer customization for all deployment modes, not just multi-tenant.
+
+### Default Footer Seeded via Runtime Seeder
+- Decision: Default link groups (Quick Links: About/Events/Contact + Legal: Terms/Privacy) seeded at runtime via `LookupTableSeeder.SeedDefaultFooterLinkGroupsAsync()` with deterministic GUIDs and `TenantId = null`.
+- Why: Follows existing seeding pattern. Avoids EF Core 10 `HasData()` circular FK bug (#36682). Idempotent check prevents re-seeding.
+
+### Community Guidelines Link: Dynamic Runtime Conditional
+- Decision: Community guidelines link rendered conditionally in footer templates based on `AllowUserSubmittedEvents || AllowOrganizationSubmittedEvents || AllowGroupSubmittedEvents` — same rule as sidebar in `MainLayout.razor.cs`.
+- Why: User explicitly requested same logic as sidebar. Not stored as a DB link since visibility is determined by runtime policy, not admin configuration.
+
+## 2026-03-26 Europe/Brussels - API Enterprise Hardening
+
+### ValidationBehavior: Delete (Option A — Manual Validation)
+- Decision: Delete `ValidationBehavior.cs` rather than enabling pipeline validation.
+- Why: Per CLAUDE.md rule, validators are manually instantiated in handlers. The behavior was never registered and is dead code. Enabling it would require auditing 617 handlers for double validation — unacceptable risk for the benefit. Manual validation gives handlers explicit control over validation timing and error shaping.
+- Files removed: `Explore.Application/Behaviors/ValidationBehavior.cs`
+
+### Idempotency Store: Database-backed (PostgreSQL)
+- Decision: Store idempotency keys in PostgreSQL via EF Core, not Redis.
+- Why: Auditability — idempotency records need to survive Redis flushes, be queryable for debugging, and participate in the same transactional boundary as the command they protect. Redis would require a separate reliability story. 24-hour TTL via `ExpiresAt` column keeps the table bounded.
+- Files: `Explore.Domain/IdempotencyRecord.cs`, `Explore.Persistence/Repositories/IdempotencyRepository.cs`, `Explore.API/Middleware/IdempotencyMiddleware.cs`
+
+### URL Versioning: IApplicationModelConvention (No Controller Modifications)
+- Decision: Add URL segment versioning (`/api/v0.1/actor`) alongside existing media-type versioning via a `VersionedRouteConvention` that automatically adds versioned route templates to all controllers.
+- Why: Modifying 58 controller files to add a second `[Route]` attribute is fragile and creates merge conflicts. The convention approach is zero-touch for controller authors and automatically applies to new controllers.
+- Files: `Explore.API/Extensions/ApiVersioningExtensions.cs`
+
+### Swashbuckle: Kept (User Decision)
+- Decision: Do NOT remove Swashbuckle. Keep both Swagger UI and Scalar/native OpenAPI.
+- Why: User explicitly requested to keep Swashbuckle. Blazor client generation and existing tooling depends on `/swagger/v0.1/swagger.json`.
+
+### SafeMode: One-Way Latch (No Programmatic Deactivation)
+- Decision: Changed `SafeMode` from public get/set to private set with `ActivateSafeMode()` method. Once activated, safe mode persists until instance restart.
+- Why: Previously, RuntimeAuthorizationProvider toggled SafeMode on/off per-request in a try/finally. This allowed transient oscillation between safe and normal mode when BYO Cerbos was intermittently failing. The latch pattern is more secure — once the PDP is detected as unreachable, deny-all stays until an operator restarts the instance.
+
+## 2026-03-25 Europe/Brussels - CSS Modernization: @layer Architecture + Design Tokens + Wrapper Components
+
+- Decision: Replace monolithic `StyleGlobal.css` with `@layer`-based cascade architecture (7 layer files), 3-tier design token system, MudBlazor wrapper components, and modern CSS features (oklch, clamp, CSS nesting, container queries).
+- Why: The existing 660+ line monolithic CSS file mixed reset, tokens, components, utilities, and global MudBlazor overrides without cascade control. MudBlazor v9 removed `MudGlobal` defaults. Global `.mud-*` class overrides violated CSS isolation skill guidance.
+- Key decisions:
+  1. **@layer ordering** (`reset → base → tokens → mudblazor-overrides → components → utilities`) — later layers win regardless of specificity.
+  2. **3-tier tokens** (Primitives → Semantic → Component) — semantic aliases point to `--mud-palette-*` for dark mode compatibility.
+  3. **Wrapper components** (`AppButton`, `AppCard`, `AppTextField<T>`, `AppIconButton`, `AppDialogShell`) — composition via `CaptureUnmatchedValues`, not inheritance.
+  4. **DialogOptionsFactory** — static presets (`Small`, `Medium`, `Confirmation`, `Editor`) replace inline `new DialogOptions { ... }`.
+  5. **oklch** for all color mixing and shadows — perceptually uniform, replaces `rgba` and `color-mix(in srgb, ...)`.
+  6. **Fluid typography** with `clamp()` for H1-H5 — eliminates breakpoint-based typography queries.
+  7. **Global `.mud-*` exception policy** — documented whitelist in `mudblazor-overrides.css` header, each block requires justification comment.
+  8. **CSS nesting** — native `&` for pseudo-classes/modifiers/media queries. BEM element selectors stay flat (no `&__element` concatenation).
+  9. **Container queries** in EventList — 5 viewport media queries converted to `@container` queries.
+  10. **DefaultBorderRadius** changed from 8px to 12px in `AppearanceThemeService.cs`.
+- Files: `Explore.Blazor/wwwroot/css/` (7 layer files), `Explore.Blazor.Client/Components/Common/` (5 wrapper components), `Explore.Blazor.Client/Services/DialogOptionsFactory.cs`.
+- Follow-up: Remaining MudButton/Card/TextField/IconButton → wrapper migrations in ~80 files (Tier 2+3).
 
 ## 2026-03-22 Europe/Brussels - Hierarchical Settings Preferences: Theme Storage And Runtime Boundary
 

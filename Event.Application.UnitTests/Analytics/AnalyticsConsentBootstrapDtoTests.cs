@@ -106,7 +106,7 @@ public class AnalyticsConsentBootstrapDtoTests
 
         await Assert.That(properties).DoesNotContain("PersonalApiKey");
         await Assert.That(properties).DoesNotContain("ApiKey");
-        await Assert.That(properties).DoesNotContain("TenantSlug");
+        await Assert.That(properties).DoesNotContain("TenantStableKey");
         await Assert.That(properties).DoesNotContain("EndpointUrl");
     }
 

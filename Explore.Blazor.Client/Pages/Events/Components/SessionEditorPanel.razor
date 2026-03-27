@@ -43,14 +43,13 @@
                                MaximumFileCount="1"
                                Class="mb-2">
                     <CustomContent Context="fileUpload">
-                        <MudButton Variant="Variant.Outlined"
-                                   Color="Color.Primary"
+                        <AppButton Variant="Variant.Outlined"
                                    StartIcon="@Icons.Material.Filled.CloudUpload"
                                    Size="Size.Small"
                                    OnClick="fileUpload.OpenFilePickerAsync"
                                    FullWidth="true">
                             @(_isUploadingSessionImage ? "Uploading..." : "Upload Session Image")
-                        </MudButton>
+                        </AppButton>
                     </CustomContent>
                 </MudFileUpload>
 
@@ -64,13 +63,13 @@
         @* --- Basic Session Info --- *@
         <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">Basic Info</MudText>
 
-        <MudTextField @bind-Value="_model.Title"
+        <AppTextField T="string" @bind-Value="_model.Title"
                       Label="Session Title"
                       Placeholder="Leave blank to use event title"
                       Variant="Variant.Outlined"
                       Class="mb-3" />
 
-        <MudTextField @bind-Value="_model.Description"
+        <AppTextField T="string" @bind-Value="_model.Description"
                       Label="Description"
                       Placeholder="Session-specific description"
                       Variant="Variant.Outlined"
@@ -178,13 +177,11 @@
     @* --- Action Buttons --- *@
     <div class="session-editor-panel__actions d-flex justify-end gap-2 mt-4 pt-3"
          style="border-top: 1px solid var(--mud-palette-lines-default);">
-        <MudButton OnClick="Cancel" Variant="Variant.Text">Cancel</MudButton>
-        <MudButton Color="Color.Primary"
-                   Variant="Variant.Filled"
-                   Disabled="_isUploadingSessionImage"
+        <AppButton OnClick="Cancel" Variant="Variant.Text">Cancel</AppButton>
+        <AppButton Disabled="_isUploadingSessionImage"
                    OnClick="Submit">
             @(IsNew ? "Add Session" : "Save Changes")
-        </MudButton>
+        </AppButton>
     </div>
 </div>
 

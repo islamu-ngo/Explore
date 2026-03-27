@@ -1,5 +1,7 @@
-// ABOUTME: MediatR command for updating an existing actor.
-// ABOUTME: Carries the UpdateActorDto payload.
+// ABOUTME: Single command for all actor updates using the null-check DTO pattern.
+// ABOUTME: Each nullable DTO targets a specific update; the handler applies whichever is non-null.
+
+using System;
 using Explore.Application.DTOs.Actor;
 using Explore.Application.Responses;
 using MediatR;
@@ -8,5 +10,8 @@ namespace Explore.Application.Features.Actors.Requests.Commands;
 
 public class UpdateActorCommand : IRequest<BaseCommandResponse<Guid>>
 {
-    public required UpdateActorDto ActorDto { get; set; }
+    public Guid Id { get; set; }
+
+    public UpdateActorDto? ActorDto { get; set; }
+    public UpdateActorAppearanceDto? AppearanceDto { get; set; }
 }

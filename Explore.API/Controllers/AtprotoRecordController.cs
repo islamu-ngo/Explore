@@ -1,3 +1,6 @@
+// ABOUTME: API controller for ATProto record management and federation operations.
+// ABOUTME: Handles creation, updates, and deletion of ATProto records for federation support.
+
 using Asp.Versioning;
 using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.Features.AtprotoRecords.Requests.Commands;
@@ -43,10 +46,6 @@ public class AtprotoRecordController : ControllerBase
     public async Task<ActionResult<AtprotoRecordDto>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var atprotoRecord = await _mediator.Send(new GetAtprotoRecordDetailsRequest { Id = id }, cancellationToken);
-        if (atprotoRecord == null)
-        {
-            return NotFound(new { error = "AtprotoRecord not found" });
-        }
 
         return Ok(atprotoRecord);
     }
@@ -88,12 +87,7 @@ public class AtprotoRecordController : ControllerBase
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteAtprotoRecordCommand { Id = id };
-        var result = await _mediator.Send(command, cancellationToken);
-
-        if (!result)
-        {
-            return NotFound(new { error = "AtprotoRecord not found or you don't have permission to delete it" });
-        }
+        await _mediator.Send(command, cancellationToken);
 
         return NoContent();
     }

@@ -2,18 +2,22 @@
 
 <MudThemeProvider @ref="_mudThemeProvider" Theme="@_theme" @bind-IsDarkMode="@_isDarkMode" />
 <MudPopoverProvider />
-<MudDialogProvider />
+<MudDialogProvider DefaultFocus="DefaultFocus.FirstChild" />
 <MudSnackbarProvider />
 <AnalyticsInitializer />
 
+@* Skip-to-content link — first focusable element on every page (WCAG 2.4.1) *@
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
 <div class="main-layout-root @(_hideChrome ? "main-layout-root--hide-chrome" : "")">
+<MudRTLProvider RightToLeft="@_isRtl">
     <MudLayout class="main-layout">
         @if (!_hideChrome)
         {
-            <div class="main-layout__header">
+            <header class="main-layout__header">
                 <AnnouncementBar OnVisibilityChanged="OnAnnouncementVisibilityChanged" />
                 <NavMenu OnToggleTheme="DarkModeToggle" />
-            </div>
+            </header>
 
             <MudDrawer Open="@SidebarState.IsOpen"    
                        OpenChanged="@OnDrawerOpenChanged"
@@ -23,60 +27,62 @@
                        ClipMode="DrawerClipMode.Always"
                        Elevation="0"
                        Class="main-layout__drawer">
-                <MudNavMenu Dense="true" Class="px-2 pt-2">
-                    <MudText Typo="Typo.h6" Class="px-4 pt-2 pb-1"
-                             Style="font-weight: 800; letter-spacing: -0.02em;">
-                        Events
-                    </MudText>
-                    <MudNavLink Href="/events"
-                                Icon="@Icons.Material.Filled.ManageSearch"
-                                Match="NavLinkMatch.All">
-                        Advanced Search
-                    </MudNavLink>
-                    <MudNavLink Href="/events?sort=recent"
-                                Icon="@Icons.Material.Filled.NewReleases">
-                        Recently Added
-                    </MudNavLink>
-                    <MudNavLink Href="/events?sort=random"
-                                Icon="@Icons.Material.Filled.Shuffle">
-                        Random
-                    </MudNavLink>
-
-                    <MudDivider Class="my-2" />
-
-                    @if (!string.IsNullOrWhiteSpace(_brandDisplayName))
-                    {
-                        <MudText Typo="Typo.overline" Class="px-4 pb-1"
-                                 Style="font-weight: 700; letter-spacing: 0.08em; color: var(--mud-palette-text-secondary);">
-                            @_brandDisplayName
+                <nav aria-label="Sidebar navigation">
+                    <MudNavMenu Dense="true" Class="px-2 pt-2">
+                        <MudText Typo="Typo.h6" Class="px-4 pt-2 pb-1"
+                                 Style="font-weight: 800; letter-spacing: -0.02em;">
+                            Events
                         </MudText>
-                    }
-                    @if (_showCommunityGuidelinesLink)
-                    {
-                        <MudNavLink Href="/community-guidelines"
-                                    Icon="@Icons.Material.Outlined.Gavel">
-                            Community Guidelines
+                        <MudNavLink Href="/events"
+                                    Icon="@Icons.Material.Filled.ManageSearch"
+                                    Match="NavLinkMatch.All">
+                            Advanced Search
                         </MudNavLink>
-                    }
-                    <MudNavLink Href="/about"
-                                Icon="@Icons.Material.Outlined.Info">
-                        About Us
-                    </MudNavLink>
-                    <MudNavLink Href="/contact"
-                                Icon="@Icons.Material.Outlined.ContactMail">
-                        Contact
-                    </MudNavLink>
-                </MudNavMenu>
+                        <MudNavLink Href="/events?sort=recent"
+                                    Icon="@Icons.Material.Filled.NewReleases">
+                            Recently Added
+                        </MudNavLink>
+                        <MudNavLink Href="/events?sort=random"
+                                    Icon="@Icons.Material.Filled.Shuffle">
+                            Random
+                        </MudNavLink>
+
+                        <MudDivider Class="my-2" />
+
+                        @if (!string.IsNullOrWhiteSpace(_brandDisplayName))
+                        {
+                            <MudText Typo="Typo.overline" Class="px-4 pb-1"
+                                     Style="font-weight: 700; letter-spacing: 0.08em; color: var(--mud-palette-text-secondary);">
+                                @_brandDisplayName
+                            </MudText>
+                        }
+                        @if (_showCommunityGuidelinesLink)
+                        {
+                            <MudNavLink Href="/community-guidelines"
+                                        Icon="@Icons.Material.Outlined.Gavel">
+                                Community Guidelines
+                            </MudNavLink>
+                        }
+                        <MudNavLink Href="/about"
+                                    Icon="@Icons.Material.Outlined.Info">
+                            About Us
+                        </MudNavLink>
+                        <MudNavLink Href="/contact"
+                                    Icon="@Icons.Material.Outlined.ContactMail">
+                            Contact
+                        </MudNavLink>
+                    </MudNavMenu>
+                </nav>
             </MudDrawer>
         }
         else
         {
             @* Floating switchers for onboarding/setup pages where navbar is hidden *@
-            <div style="position:fixed;top:20px;right:20px;z-index:9999;pointer-events:all;">
+            <div style="position:fixed;top:20px;inset-inline-end:20px;z-index:9999;pointer-events:all;">
                 <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center" Class="pa-1 px-4 rounded-pill mud-elevation-6 mud-surface" Style="border:1px solid var(--mud-palette-lines-default); color: var(--mud-palette-text-primary);">
                     <LanguagePicker />
                     <MudDivider Vertical="true" FlexItem="true" Style="height:24px;margin:0 4px; border-color: var(--mud-palette-divider);" />
-                    <MudIconButton Icon="@DarkLightModeButtonIcon"
+                    <AppIconButton Icon="@DarkLightModeButtonIcon"
                                    Color="Color.Inherit"
                                    OnClick="DarkModeToggle"
                                    Size="Size.Medium"
@@ -86,13 +92,18 @@
         }
 
         <MudMainContent Class="main-layout__main" Style="padding-top: 0 !important;">
-            <div class="main-layout__content-wrapper @(SidebarState.IsOpen ? "main-layout__content-wrapper--drawer-open" : "")">
+            <main id="main-content" tabindex="-1" class="main-layout__content-wrapper @(SidebarState.IsOpen ? "main-layout__content-wrapper--drawer-open" : "")">
                 @Body
-            </div>
+            </main>
             @if (!_hideChrome)
             {
                 <Footer DrawerOpen="@SidebarState.IsOpen" />
             }
         </MudMainContent>
     </MudLayout>
+</MudRTLProvider>
 </div>
+
+@* ARIA live regions for screen reader announcements — must exist in DOM at all times *@
+<div id="aria-live-polite" aria-live="polite" aria-atomic="true" class="sr-only"></div>
+<div id="aria-live-assertive" aria-live="assertive" aria-atomic="true" class="sr-only"></div>

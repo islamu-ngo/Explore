@@ -106,10 +106,8 @@
         }
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel" Variant="Variant.Text">Cancel</MudButton>
-        <MudButton OnClick="SaveAsync"
-                   Variant="Variant.Filled"
-                   Color="Color.Primary"
+        <AppButton OnClick="Cancel" Variant="Variant.Text">Cancel</AppButton>
+        <AppButton OnClick="SaveAsync"
                    Disabled="@(_isSaving || _isLoading)">
             @if (_isSaving)
             {
@@ -120,7 +118,7 @@
             {
                 <span>Save</span>
             }
-        </MudButton>
+        </AppButton>
     </DialogActions>
 </MudDialog>
 

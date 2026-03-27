@@ -1,6 +1,7 @@
-// ABOUTME: Main layout code-behind handling theme initialization and user sync.
-// ABOUTME: Uses MudBlazor built-in theme switching with cookie persistence for SSR.
+// ABOUTME: Main layout code-behind handling theme initialization, user sync, and accessibility.
+// ABOUTME: Uses MudBlazor theme switching with cookie persistence, and manages focus-on-navigate for screen readers.
 
+using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -45,8 +46,16 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     [Inject]
     protected IAppearanceThemeService AppearanceThemeService { get; set; } = null!;
 
+    [Inject]
+    protected IAccessibilityFocusService AccessibilityFocusService { get; set; } = null!;
+
     [CascadingParameter(Name = "InitialTheme")]
     public bool? InitialTheme { get; set; }
+
+    [CascadingParameter(Name = "Language")]
+    public Models.LanguageContext? LanguageContext { get; set; }
+
+    private bool _isRtl => LanguageContext?.EffectiveIsRtl ?? false;
 
     public string DarkLightModeButtonIcon => _isDarkMode switch
     {
@@ -131,7 +140,12 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         UpdateChromeVisibility();
-        _ = InvokeAsync(StateHasChanged);
+        _ = InvokeAsync(async () =>
+        {
+            StateHasChanged();
+            // Move focus to h1 after navigation for screen readers (replaces FocusOnNavigate for Blazouter)
+            await AccessibilityFocusService.FocusOnNavigateAsync();
+        });
     }
 
     private void UpdateChromeVisibility()

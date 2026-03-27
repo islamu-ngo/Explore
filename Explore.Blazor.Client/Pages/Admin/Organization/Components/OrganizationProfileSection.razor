@@ -38,25 +38,25 @@
 
         <MudGrid Spacing="3">
             <MudItem xs="12">
-                <MudTextField @bind-Value="_model.FullName"
+                <AppTextField T="string" @bind-Value="_model.FullName"
                               Label="Organization Name"
                               Variant="Variant.Outlined"
                               Required="true" />
             </MudItem>
             <MudItem xs="12" sm="6">
-                <MudTextField @bind-Value="_model.Email"
+                <AppTextField T="string" @bind-Value="_model.Email"
                               Label="Email"
                               Variant="Variant.Outlined"
                               Required="true"
                               InputType="InputType.Email" />
             </MudItem>
             <MudItem xs="12" sm="6">
-                <MudTextField @bind-Value="_model.WebsiteUrl"
+                <AppTextField T="string" @bind-Value="_model.WebsiteUrl"
                               Label="Website URL"
                               Variant="Variant.Outlined" />
             </MudItem>
             <MudItem xs="12" sm="6">
-                <MudTextField @bind-Value="_model.Address"
+                <AppTextField T="string" @bind-Value="_model.Address"
                               Label="Address"
                               Variant="Variant.Outlined"
                               Required="true" />
@@ -69,32 +69,32 @@
                                  Min="0" />
             </MudItem>
             <MudItem xs="12" sm="6">
-                <MudTextField @bind-Value="_model.City"
+                <AppTextField T="string" @bind-Value="_model.City"
                               Label="City"
                               Variant="Variant.Outlined"
                               Required="true" />
             </MudItem>
             <MudItem xs="12" sm="6">
-                <MudTextField @bind-Value="_model.Country"
+                <AppTextField T="string" @bind-Value="_model.Country"
                               Label="Country"
                               Variant="Variant.Outlined"
                               Required="true" />
             </MudItem>
             <MudItem xs="12">
-                <MudTextField Value="@_organization?.ActorProfilePictureUri"
+                <AppTextField T="string" Value="@_organization?.ActorProfilePictureUri"
                               Label="Profile Image URL (managed via Actor)"
                               Variant="Variant.Outlined"
                               ReadOnly="true"
                               Placeholder="Set through Actor settings" />
             </MudItem>
             <MudItem xs="12" sm="4">
-                <MudTextField @bind-Value="_appearance.BackgroundColor"
+                <AppTextField T="string" @bind-Value="_appearance.BackgroundColor"
                               Label="Banner Color"
                               Variant="Variant.Outlined"
                               InputType="InputType.Color" />
             </MudItem>
             <MudItem xs="12" sm="8">
-                <MudTextField @bind-Value="_appearance.BannerPictureUri"
+                <AppTextField T="string" @bind-Value="_appearance.ImageUri"
                               Label="Banner Picture URL"
                               Variant="Variant.Outlined"
                               Placeholder="https://... (image or GIF)" />
@@ -117,7 +117,7 @@
         <MudText Typo="Typo.subtitle2" Class="mb-2">Preview</MudText>
         <MudPaper Elevation="0"
                   Class="pa-6 rounded-lg border-solid border-1 mud-border-lines-default"
-                  Style="@OrganizationAppearanceMetadataHelper.BuildBannerStyle(_appearance, "#1f6feb")">
+                  Style="@AppearanceStyleBuilder.BuildBannerStyle(_appearance, "#1f6feb")">
             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                 @if (!string.IsNullOrWhiteSpace(GetProfileImageUri()))
                 {
@@ -139,13 +139,11 @@
         </MudPaper>
 
         <MudStack Row="true" Justify="Justify.FlexEnd" Class="mt-4">
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       OnClick="SaveAsync"
+            <AppButton OnClick="SaveAsync"
                        Disabled="@_saving"
                        StartIcon="@(_saving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
                 @(_saving ? "Saving..." : "Save Organization Settings")
-            </MudButton>
+            </AppButton>
         </MudStack>
     }
 </div>
@@ -156,7 +154,7 @@
 
     private OrganizationDto? _organization;
     private UpdateOrganizationDto _model = new();
-    private OrganizationAppearanceSettings _appearance = new();
+    private AppearanceSettings _appearance = new();
     private bool _loading = true;
     private bool _saving;
     private string? _errorMessage;
@@ -185,9 +183,12 @@
                     Country = _organization.Country ?? string.Empty,
                     Postcode = int.TryParse(_organization.Postcode, out var postcode) ? postcode : null
                 };
-                _appearance = OrganizationAppearanceMetadataHelper.FromColumns(
-                    _organization.ActorBackgroundColor,
-                    _organization.ActorBannerPictureUri, _organization.ActorBackgroundEffect);
+                _appearance = new AppearanceSettings
+                {
+                    BackgroundColor = _organization.ActorBackgroundColor ?? string.Empty,
+                    ImageUri = _organization.ActorBannerPictureUri ?? string.Empty,
+                    BackgroundEffect = _organization.ActorBackgroundEffect ?? string.Empty
+                };
             }
         }
         catch (Exception ex)

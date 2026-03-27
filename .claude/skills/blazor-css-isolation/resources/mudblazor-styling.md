@@ -82,6 +82,37 @@ Common MudBlazor utility class combinations:
 - **v9**: MudDrawer uses CSS `transition` instead of `animation` — custom animation overrides need updating.
 - **v9**: `CssBuilder`/`StyleBuilder` are `readonly struct`. Use `new CssBuilder()` or `CssBuilder.Default()` — **never** `default(CssBuilder)` (throws NRE).
 
+## Wrapper Components And DialogOptionsFactory
+
+See [mudblazor-usage.md](../blazor-ui-conventions/resources/mudblazor-usage.md) for the wrapper component catalog and DialogOptionsFactory presets. Wrappers live in `Explore.Blazor.Client/Components/Common/` and use `display: contents` + `::deep` for CSS isolation.
+
+Also see the `design-system` skill (`wrapper-components.md`) for detailed parameter tables and usage guidance.
+
+## Global `.mud-*` Override Exception Policy
+
+Global MudBlazor class overrides are tracked in `css/mudblazor-overrides.css` with a whitelist header comment. Each override block must include a `JUSTIFICATION` comment explaining why scoped CSS or wrapper components are insufficient.
+
+**Currently approved exceptions**:
+1. **Drawer/portal overrides** — MudDrawerContainer renders outside Blazor component scope boundary. Fixed positioning + z-index management cannot be achieved with CSS isolation.
+2. **Overlay z-index** — Cross-component layering for modal overlays.
+
+**Migration path**: Button overrides have been migrated from global to `AppButton.razor.css` via `::deep`. New global overrides require documented justification.
+
+## oklch Color Functions
+
+Prefer `oklch()` and `color-mix(in oklch, ...)` over `rgba()` and `color-mix(in srgb, ...)` for perceptually uniform color manipulation:
+
+```css
+/* Shadows — oklch for perceptual uniformity */
+--isl-shadow-sm: 0 1px 2px oklch(0 0 0 / 0.05);
+
+/* Color mixing — oklch produces better intermediate tones */
+--isl-card-border: color-mix(in oklch, var(--mud-palette-lines-default) 80%, transparent);
+
+/* Interaction states */
+--isl-state-hover: color-mix(in oklch, var(--isl-color-primary) 8%, transparent);
+```
+
 ## Anti-Patterns (Don't Do This)
 
 - ❌ `Elevation="4"` or higher on content cards — too heavy.
@@ -89,3 +120,8 @@ Common MudBlazor utility class combinations:
 - ❌ Global CSS overriding MudBlazor base classes without scoping — causes side effects.
 - ❌ `!important` in isolated CSS — sign of a specificity problem.
 - ❌ Coloring entire surfaces with `Color.Primary` — use sparingly for CTAs only.
+- ❌ `color-mix(in srgb, ...)` — use `color-mix(in oklch, ...)` for perceptually uniform results.
+- ❌ `transition: all` — specify exact properties (`background-color`, `box-shadow`, `border-color`, `opacity`).
+
+## Related
+- [v9-migration.md](../blazor-ui-conventions/resources/v9-migration.md) — v9 breaking API changes

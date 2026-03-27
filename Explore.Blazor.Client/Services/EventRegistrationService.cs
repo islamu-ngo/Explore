@@ -69,7 +69,7 @@ public class EventRegistrationService : IEventRegistrationService
     {
         try
         {
-            return await _apiClient.EventregistrationGET2Async(registrationId);
+            return await _apiClient.EventregistrationGET3Async(registrationId);
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {

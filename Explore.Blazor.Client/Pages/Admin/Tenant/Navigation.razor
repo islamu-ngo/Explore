@@ -38,12 +38,10 @@
         <MudPaper Elevation="0" Class="pa-6 rounded-lg border-solid border-1 mud-border-lines-default">
             <!-- Create Button -->
             <MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-6">
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.Add"
+                <AppButton StartIcon="@Icons.Material.Filled.Add"
                            OnClick="OpenCreateDialog">
                     Create Link
-                </MudButton>
+                </AppButton>
             </MudStack>
 
             <!-- Table -->
@@ -67,13 +65,13 @@
                     <RowTemplate>
                         <MudTd DataLabel="Order">
                             <MudStack Row="true" Spacing="1">
-                                <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward"
+                                <AppIconButton Icon="@Icons.Material.Filled.ArrowUpward"
                                                Size="Size.Small"
                                                Color="Color.Default"
                                                OnClick="@(() => MoveUp(context))"
                                                Disabled="@IsFirstItem(context)"
                                                Title="Move up" />
-                                <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward"
+                                <AppIconButton Icon="@Icons.Material.Filled.ArrowDownward"
                                                Size="Size.Small"
                                                Color="Color.Default"
                                                OnClick="@(() => MoveDown(context))"
@@ -102,12 +100,12 @@
                         </MudTd>
                         <MudTd DataLabel="Actions">
                             <MudStack Row="true" Spacing="1">
-                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                <AppIconButton Icon="@Icons.Material.Filled.Edit"
                                                Size="Size.Small"
                                                Color="Color.Primary"
                                                OnClick="@(() => OpenEditDialog(context))"
                                                Title="Edit" />
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                <AppIconButton Icon="@Icons.Material.Filled.Delete"
                                                Size="Size.Small"
                                                Color="Color.Error"
                                                OnClick="@(() => DeleteLink(context))"

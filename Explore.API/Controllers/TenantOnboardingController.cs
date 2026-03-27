@@ -130,7 +130,7 @@ public class TenantOnboardingController : ControllerBase
     [EndpointDescription("Persists tenant onboarding step progress without completing onboarding.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> SaveStep([FromBody] SaveTenantOnboardingStepCommand command, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> SaveStep([FromBody] SaveTenantOnboardingStepDto dto, CancellationToken cancellationToken = default)
     {
         var currentUserId = GetCurrentUserId();
         if (!currentUserId.HasValue)
@@ -142,7 +142,13 @@ public class TenantOnboardingController : ControllerBase
             });
         }
 
-        command.UserId = currentUserId.Value;
+        var command = new SaveTenantOnboardingStepCommand
+        {
+            UserId = currentUserId.Value,
+            CurrentStep = dto.CurrentStep,
+            TotalSteps = dto.TotalSteps,
+            CompletedSteps = dto.CompletedSteps
+        };
 
         var response = await _mediator.Send(command, cancellationToken);
         if (!response.Success)
@@ -152,6 +158,8 @@ public class TenantOnboardingController : ControllerBase
 
         return Ok(response);
     }
+
+    public sealed record SaveTenantOnboardingStepDto(int CurrentStep, int TotalSteps, string[] CompletedSteps);
 
     private Guid? GetCurrentUserId()
     {

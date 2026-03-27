@@ -17,7 +17,7 @@ public class AppearanceThemeServiceTests
         var theme = service.CreateTheme("112px");
 
         await Assert.That(theme.LayoutProperties.AppbarHeight).IsEqualTo("112px");
-        await Assert.That(theme.LayoutProperties.DefaultBorderRadius).IsEqualTo("8px");
+        await Assert.That(theme.LayoutProperties.DefaultBorderRadius).IsEqualTo("12px");
         await Assert.That(theme.Typography?.Default?.FontFamily?.FirstOrDefault()).IsEqualTo("Inter");
     }
 

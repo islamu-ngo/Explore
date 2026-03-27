@@ -11,4 +11,11 @@ public interface IUserRepository : IGenericRepository<User, Guid>
     Task<User?> GetUserByEmail(string email);
     Task<bool> ExistsByEmail(string email);
     Task<List<User>> GetUsersByIdsAsync(List<Guid> ids);
+
+    /// <summary>
+    /// Permanently deletes PII data for a user (GDPR erasure).
+    /// Uses ExecuteDeleteAsync for efficient bulk deletion without loading entities.
+    /// </summary>
+    /// <returns>Number of PII records deleted.</returns>
+    Task<int> ForgetPiiAsync(Guid userId);
 }

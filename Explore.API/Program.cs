@@ -27,6 +27,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.IO;
 using Microsoft.OpenApi;
 using OpenFeature;
 using OpenFeature.Hosting.Providers.Memory;
@@ -36,8 +37,7 @@ using static Microsoft.AspNetCore.Http.StatusCodes;
 
 // Graceful shutdown tracking for zero-downtime deployments
 // SIGTERM: 25 second grace period (health returns 503, still accepts requests)
-// SIGINT: Immediate shutdown
-var isShuttingDown = false;
+// SIGINT: Immediate shutdown via host StopApplication()
 var shutdownCts = new CancellationTokenSource();
 const int GracefulShutdownSeconds = 25;
 
@@ -102,18 +102,26 @@ builder.Services.Configure<GzipCompressionProviderOptions>(options => options.Le
 builder.Services.AddOutputCache(options =>
 {
     options.AddBasePolicy(builder => builder.NoCache());
+    // PublicData: truly public lookup endpoints (categories, tags, languages) — no auth variance needed
+    options.AddPolicy("PublicData", builder => builder
+        .Expire(TimeSpan.FromHours(1))
+        .SetVaryByHeader(TenantHeaderNames.TenantSlug, "Host")
+        .Tag("lookup-data"));
+    // LookupData: kept for backward compatibility, same as PublicData
     options.AddPolicy("LookupData", builder => builder
         .Expire(TimeSpan.FromHours(1))
         .SetVaryByHeader(TenantHeaderNames.TenantSlug, "Host")
         .Tag("lookup-data"));
+    // ListData: varies by Authorization for auth-aware HATEOAS links
     options.AddPolicy("ListData", builder => builder
         .Expire(TimeSpan.FromSeconds(30))
-        .SetVaryByHeader(TenantHeaderNames.TenantSlug, "Host")
+        .SetVaryByHeader(TenantHeaderNames.TenantSlug, "Host", "Authorization")
         .SetVaryByQuery("pageNumber", "pageSize")
         .Tag("list-data"));
+    // DetailData: varies by Authorization for auth-aware HATEOAS links
     options.AddPolicy("DetailData", builder => builder
         .Expire(TimeSpan.FromSeconds(60))
-        .SetVaryByHeader(TenantHeaderNames.TenantSlug, "Host")
+        .SetVaryByHeader(TenantHeaderNames.TenantSlug, "Host", "Authorization")
         .SetVaryByRouteValue("id")
         .Tag("detail-data"));
 });
@@ -134,8 +142,6 @@ builder.Services.AddRouting(options =>
 {
     options.LowercaseUrls = true;
 });
-
-//AddSwaggerDoc(builder.Services); moved to AddSwaggerGenWithAuth extension method
 
 // Add services to the container.
 
@@ -160,6 +166,9 @@ builder.Services.AddApiMediaTypeVersioning();
 // Business metrics (OpenTelemetry)
 builder.Services.AddSingleton<BusinessMetrics>();
 
+// Pooled memory streams for ETag middleware — eliminates per-request MemoryStream allocations
+builder.Services.AddSingleton<RecyclableMemoryStreamManager>();
+
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -173,7 +182,6 @@ builder.Services.AddControllers()
 builder.Services.AddApiExceptionHandling();
 
 builder.Services.AddEndpointsApiExplorer();
-//builder.Services.AddSwaggerGen(); // moved to AddSwaggerGenWithAuth extension method
 builder.Services.AddSwaggerGenWithAuth(builder.Configuration);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 
@@ -200,6 +208,9 @@ builder.Services.AddHostedService<OpenApiExportService>();
 // Register PDS sync background worker for AT Protocol federation
 builder.Services.AddHostedService<PdsSyncWorker>();
 
+// Register generic outbox processor for reliable side-effect delivery
+builder.Services.AddHostedService<OutboxProcessor>();
+
 // CORS: hardened policies with configurable allowed origins
 // Dev policy remains permissive; production policies use explicit origin allowlists
 var corsAllowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins")
@@ -219,7 +230,7 @@ builder.Services.AddCors(options =>
             .AllowAnyHeader());
 
     options.AddPolicy("InternalWebsitePolicy",
-        policy => policy.WithOrigins("https://iloveibadah.app")
+        policy => policy.WithOrigins(corsAllowedOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials());
@@ -307,8 +318,6 @@ builder.Services.AddAuthentication(options =>
                         return true;
                     }
 
-                    // Log the audience validation failure for debugging
-                    Console.WriteLine($"[JWT AudienceValidator] Token audiences: [{string.Join(", ", audienceList)}], azp: {azp ?? "(null)"}, valid audiences: [{string.Join(", ", validAudiences)}]");
                 }
 
                 return false;
@@ -339,81 +348,29 @@ builder.Services.AddAuthentication(options =>
             };
         }
 
-        // JWT Bearer events for debugging and logging
+        // JWT Bearer events — minimal production logging
+        // PII-safe: only exception messages logged, never token claims or raw values
         options.Events = new JwtBearerEvents
         {
             OnAuthenticationFailed = context =>
             {
                 var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-                logger.LogWarning("[JWT] Authentication failed: {Error}", context.Exception?.Message);
-
-                // Log detailed exception info for debugging
-                if (context.Exception is SecurityTokenValidationException stve)
-                {
-                    logger.LogWarning("[JWT] Token validation error details: {Details}", stve.Message);
-                }
-                if (context.Exception?.InnerException != null)
-                {
-                    logger.LogWarning("[JWT] Inner exception: {Inner}", context.Exception.InnerException.Message);
-                }
-
-                // Log token details for debugging audience issues
-                var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
-                if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-                {
-                    try
-                    {
-                        var token = authHeader.Substring(7);
-                        var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
-                        if (handler.CanReadToken(token))
-                        {
-                            var jwt = handler.ReadJwtToken(token);
-                            var aud = jwt.Audiences?.ToList() ?? new List<string>();
-                            var azp = jwt.Claims.FirstOrDefault(c => c.Type == "azp")?.Value;
-                            var iss = jwt.Issuer;
-                            var exp = jwt.ValidTo;
-
-                            logger.LogWarning("[JWT] Token details - Issuer: {Issuer}, Audiences: [{Audiences}], Azp: {Azp}, Expires: {Exp}",
-                                iss, string.Join(", ", aud), azp ?? "(null)", exp);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.LogWarning("[JWT] Could not parse token for debugging: {Error}", ex.Message);
-                    }
-                }
-
-                return Task.CompletedTask;
-            },
-
-            OnTokenValidated = context =>
-            {
-                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-                var claims = context.Principal?.Claims.Select(c => $"{c.Type}={c.Value}");
-                logger.LogInformation("[JWT] Token validated successfully. Claims: {Claims}",
-                    string.Join(", ", claims ?? Array.Empty<string>()));
+                logger.LogWarning(
+                    "[JWT] Authentication failed for {Method} {Path}: {Error}",
+                    context.Request.Method,
+                    context.Request.Path,
+                    context.Exception?.Message);
                 return Task.CompletedTask;
             },
 
             OnChallenge = context =>
             {
                 var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-                logger.LogWarning("[JWT] Challenge issued. Error: {Error}, ErrorDescription: {Desc}",
-                    context.Error, context.ErrorDescription);
-                return Task.CompletedTask;
-            },
-
-            OnMessageReceived = context =>
-            {
-                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-                var hasAuth = context.Request.Headers.ContainsKey("Authorization");
-                var authHeader = hasAuth ? context.Request.Headers["Authorization"].ToString() : null;
-                var tokenPreview = !string.IsNullOrEmpty(authHeader) && authHeader.Length > 20
-                    ? $"{authHeader[..20]}..."
-                    : authHeader;
-
-                logger.LogInformation("[JWT] Message received. Path: {Path}, Has Authorization: {HasAuth}, Header: {Token}",
-                    context.Request.Path, hasAuth, tokenPreview);
+                logger.LogDebug(
+                    "[JWT] Challenge issued for {Path}. Error: {Error}, Description: {Desc}",
+                    context.Request.Path,
+                    context.Error,
+                    context.ErrorDescription);
                 return Task.CompletedTask;
             }
         };
@@ -431,7 +388,6 @@ builder.Services.AddAuthentication(options =>
         });
 
 builder.Services.AddAuthorizationBuilder();
-//builder.Services.AddAuthorization();
 
 builder.Services.AddHsts(options =>
 {
@@ -491,29 +447,15 @@ app.Lifetime.ApplicationStopping.Register(() =>
         GracefulShutdownSeconds);
 });
 
-// Handle SIGINT for immediate shutdown
+// Handle SIGINT — delegate to host for graceful drain
 Console.CancelKeyPress += (sender, e) =>
 {
-    app.Logger.LogWarning("SIGINT received. Initiating immediate shutdown...");
-    e.Cancel = false; // Allow the process to terminate immediately
+    app.Logger.LogWarning("SIGINT received. Initiating graceful shutdown...");
+    e.Cancel = true; // Prevent immediate CLR termination; let the host drain
     shutdownCts.Cancel();
-    Environment.Exit(0);
+    app.Lifetime.StopApplication();
 };
 
-// Handle SIGTERM with grace period (Unix systems)
-AppDomain.CurrentDomain.ProcessExit += (sender, e) =>
-{
-    if (!isShuttingDown)
-    {
-        isShuttingDown = true;
-        app.Logger.LogInformation(
-            "Process exit signal received. Graceful shutdown with {Seconds} second grace period...",
-            GracefulShutdownSeconds);
-
-        // Wait for grace period to allow in-flight requests to complete
-        Thread.Sleep(TimeSpan.FromSeconds(GracefulShutdownSeconds));
-    }
-};
 
 // Apply database migrations before starting the application
 // EF Core 9+ has built-in locking for concurrent migration protection (safe for multiple replicas)
@@ -527,11 +469,11 @@ if (!builder.Environment.IsEnvironment("Testing"))
     try
     {
         logger.LogInformation("Applying database migrations...");
-        db.Database.Migrate();
+        await db.Database.MigrateAsync();
         logger.LogInformation("Database migrations completed successfully.");
 
         // Run seeding (lookup tables in all environments, dev data in Development)
-        DatabaseSeeder.SeedAsync(db, app.Environment).GetAwaiter().GetResult();
+        await DatabaseSeeder.SeedAsync(db, app.Environment);
         logger.LogInformation("Database seeding completed.");
     }
     catch (Exception ex)
@@ -554,19 +496,14 @@ if (setupSecretProvider.IsSetupModeActive)
     }
     else
     {
-        app.Logger.LogWarning("[SetupSecret] No SETUP_SECRET env var found. Auto-generated secret for bootstrap.");
-        var secretForLog = ((Explore.Infrastructure.Services.SetupSecretProvider)setupSecretProvider).GetSecretForLogging();
+        var secretForLog = setupSecretProvider.GetSecretForLogging();
         setupSecretForStartupReminder = secretForLog;
-        Console.WriteLine();
-        Console.WriteLine("+=============================================================+");
-        Console.WriteLine("| SETUP SECRET (auto-generated, not persisted across restarts |");
-        Console.WriteLine("| unless you set the SETUP_SECRET environment variable):      |");
-        Console.WriteLine("|                                                             |");
-        Console.WriteLine($"|  {secretForLog,-55} |");
-        Console.WriteLine("|                                                             |");
-        Console.WriteLine("| Use this at /setup to claim this instance.                  |");
-        Console.WriteLine("+=============================================================+");
-        Console.WriteLine();
+        app.Logger.LogWarning(
+            "[SetupMode] Instance is unclaimed. Auto-generated setup secret active. " +
+            "Visit /setup to claim. Secret: {SetupSecret}",
+            secretForLog);
+        // Console output for terminal visibility when SSH'd into a container
+        Console.WriteLine($"[SetupMode] Setup secret: {secretForLog}");
     }
 }
 else
@@ -578,15 +515,7 @@ if (!string.IsNullOrWhiteSpace(setupSecretForStartupReminder))
 {
     app.Lifetime.ApplicationStarted.Register(() =>
     {
-        Console.WriteLine();
-        Console.WriteLine("+=============================================================+");
-        Console.WriteLine("| STARTUP COMPLETE — SETUP SECRET                             |");
-        Console.WriteLine("|                                                             |");
-        Console.WriteLine($"|  {setupSecretForStartupReminder,-55} |");
-        Console.WriteLine("|                                                             |");
-        Console.WriteLine("| Open /setup in Blazor to continue onboarding.               |");
-        Console.WriteLine("+=============================================================+");
-        Console.WriteLine();
+        Console.WriteLine($"[SetupMode] Startup complete. Setup secret: {setupSecretForStartupReminder} — open /setup to continue onboarding.");
     });
 }
 
@@ -650,6 +579,7 @@ app.UseRequestTimeouts();
 app.UseMiddleware<ApiAuthenticationConflictMiddleware>();
 app.UseAuthentication();
 app.UseMiddleware<ApiTenantPostAuthenticationMiddleware>();
+app.UseMiddleware<IdempotencyMiddleware>();
 app.UseRateLimiter();
 app.UseAuthorization();
 app.UseOutputCache();
@@ -662,46 +592,10 @@ app.MapControllers();
 // Map health check endpoints for Coolify/container orchestration
 app.MapDefaultEndpoints();
 
-//app.MapGet("users/me", (ClaimsPrincipal claimsPrincipal) =>
-//{
-//    return claimsPrincipal.Claims.ToDictionary(c => c.Type, c => c.Value);
-//}).RequireAuthorization();
-
 app.Run();
 
-//void AddSwaggerDoc(IServiceCollection services)
-//{
-//    services.AddSwaggerGen(c =>
-//    {
-//        c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-//        {
-//            Description = @"JWT Authorization header using the Bearer scheme.
-//                            Enter 'Bearer' [space] and then your token in the text input below.
-//                            Example: 'Bearer 12345abcdef'",
-//            Name = "Authorization",
-//            In = ParameterLocation.Header,
-//            Type = SecuritySchemeType.ApiKey,
-//            Scheme = "Bearer"
-//        });
-
-//        c.AddSecurityRequirement(new OpenApiSecurityRequirement()
-//        {
-//            {
-//                new OpenApiSecurityScheme
-//                {
-//                    Reference = new OpenApiReference
-//                    {
-//                        Type = ReferenceType.SecurityScheme,
-//                        Id = "Bearer"
-//                    },
-//                    Scheme = "oauth2",
-//                    Name = "Bearer",
-//                    In = ParameterLocation.Header,
-//                },
-//                new List<string>()
-//            }
-//        });
-
-//        c.SwaggerDoc("v1", new OpenApiInfo { Title = "Explore API", Version = "v1" });
-//    });
-//}
+// Static volatile field for thread-safe shutdown signaling across health check threads
+partial class Program
+{
+    private static volatile bool isShuttingDown;
+}

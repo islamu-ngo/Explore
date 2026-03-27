@@ -1,3 +1,6 @@
+// ABOUTME: REST API controller for organization member CRUD operations with role-based access control.
+// ABOUTME: Manages user-role assignments within organizations via CQRS/MediatR.
+
 using System;
 using System.Collections.Generic;
 using System.Security.Claims;

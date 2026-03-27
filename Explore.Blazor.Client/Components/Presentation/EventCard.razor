@@ -1,7 +1,7 @@
 @using MudBlazor
 @using Explore.Blazor.Client.Clients
 
-<MudCard Elevation="0" Class="event-card rounded-xl overflow-hidden cursor-pointer hover-scale" @onclick="OnClick">
+<AppCard Class="event-card rounded-xl overflow-hidden cursor-pointer hover-scale" @onclick="OnClick">
     <div class="event-card__image-container relative">
         <MudImage Src="@(string.IsNullOrEmpty(Event.FeaturedImageUri) ? "image/landing_placeholder.png" : Event.FeaturedImageUri)" 
                   Alt="@Event.Title"
@@ -63,7 +63,7 @@
             }
         </div>
     </MudCardContent>
-</MudCard>
+</AppCard>
 
 <style>
     .event-card {

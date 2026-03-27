@@ -53,6 +53,9 @@ public static class LookupTableSeeder
         await SeedPermissionsAsync(context, cancellationToken);
         await SeedNotificationTypesAsync(context, cancellationToken);
         await SeedNotificationEntityTypesAsync(context, cancellationToken);
+        await SeedDefaultFooterLinkGroupsAsync(context, cancellationToken);
+        await SeedExternalApiKeyStatusesAsync(context, cancellationToken);
+        await SeedExternalApiKeyCreditPeriodsAsync(context, cancellationToken);
     }
 
     private static async Task SeedActorTypesAsync(ExploreDbContext context, CancellationToken ct)
@@ -546,6 +549,132 @@ public static class LookupTableSeeder
             new NotificationEntityType { Id = (int)NotificationEntityTypeEnum.EventRegistration, MasterCode = "EVENT_REGISTRATION", FullName = "Event Registration", Description = "Links to an event registration" },
             new NotificationEntityType { Id = (int)NotificationEntityTypeEnum.EventSession, MasterCode = "EVENT_SESSION", FullName = "Event Session", Description = "Links to an event session" },
             new NotificationEntityType { Id = (int)NotificationEntityTypeEnum.User, MasterCode = "USER", FullName = "User", Description = "Links to a user" });
+        await context.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Seeds default instance-level footer link groups (TenantId = null) with standard navigation links.
+    /// Only runs if no instance-level footer link groups exist yet.
+    /// </summary>
+    private static async Task SeedDefaultFooterLinkGroupsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        // Only seed if no instance-level (TenantId = null) footer link groups exist
+        if (await context.Set<TenantFooterLinkGroup>().AnyAsync(g => g.TenantId == null, ct)) return;
+
+        var now = DateTime.UtcNow;
+
+        // Group 1: Quick Links
+        var quickLinksGroup = new TenantFooterLinkGroup
+        {
+            Id = Guid.Parse("019573a0-0001-7000-8000-000000000001"),
+            TenantId = null,
+            Title = "Quick Links",
+            Order = 0,
+            IsActive = true,
+            CreatedAt = now,
+        };
+
+        // Group 2: Legal
+        var legalGroup = new TenantFooterLinkGroup
+        {
+            Id = Guid.Parse("019573a0-0002-7000-8000-000000000001"),
+            TenantId = null,
+            Title = "Legal",
+            Order = 1,
+            IsActive = true,
+            CreatedAt = now,
+        };
+
+        context.Set<TenantFooterLinkGroup>().AddRange(quickLinksGroup, legalGroup);
+        await context.SaveChangesAsync(ct);
+
+        // Quick Links
+        context.Set<TenantFooterLink>().AddRange(
+            new TenantFooterLink
+            {
+                Id = Guid.Parse("019573a0-0003-7000-8000-000000000001"),
+                FooterLinkGroupId = quickLinksGroup.Id,
+                Label = "About Us",
+                Url = "/about",
+                OpenInNewTab = false,
+                Order = 0,
+                IsActive = true,
+                CreatedAt = now,
+            },
+            new TenantFooterLink
+            {
+                Id = Guid.Parse("019573a0-0004-7000-8000-000000000001"),
+                FooterLinkGroupId = quickLinksGroup.Id,
+                Label = "Events",
+                Url = "/events",
+                OpenInNewTab = false,
+                Order = 1,
+                IsActive = true,
+                CreatedAt = now,
+            },
+            new TenantFooterLink
+            {
+                Id = Guid.Parse("019573a0-0005-7000-8000-000000000001"),
+                FooterLinkGroupId = quickLinksGroup.Id,
+                Label = "Contact",
+                Url = "/contact",
+                OpenInNewTab = false,
+                Order = 2,
+                IsActive = true,
+                CreatedAt = now,
+            });
+
+        // Legal
+        context.Set<TenantFooterLink>().AddRange(
+            new TenantFooterLink
+            {
+                Id = Guid.Parse("019573a0-0006-7000-8000-000000000001"),
+                FooterLinkGroupId = legalGroup.Id,
+                Label = "Terms of Service",
+                Url = "/terms",
+                OpenInNewTab = false,
+                Order = 0,
+                IsActive = true,
+                CreatedAt = now,
+            },
+            new TenantFooterLink
+            {
+                Id = Guid.Parse("019573a0-0007-7000-8000-000000000001"),
+                FooterLinkGroupId = legalGroup.Id,
+                Label = "Privacy Policy",
+                Url = "/privacy",
+                OpenInNewTab = false,
+                Order = 1,
+                IsActive = true,
+                CreatedAt = now,
+            });
+
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedExternalApiKeyStatusesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<ExternalApiKeyStatus>().AnyAsync(ct)) return;
+
+        context.Set<ExternalApiKeyStatus>().AddRange(
+            new ExternalApiKeyStatus { Id = (int)ExternalApiKeyStatusEnum.Active, MasterCode = "ACTIVE", FullName = "Active", Description = "Key is active and can authenticate requests", IsUsable = true },
+            new ExternalApiKeyStatus { Id = (int)ExternalApiKeyStatusEnum.Revoked, MasterCode = "REVOKED", FullName = "Revoked", Description = "Key has been permanently revoked by owner or admin", IsUsable = false },
+            new ExternalApiKeyStatus { Id = (int)ExternalApiKeyStatusEnum.Expired, MasterCode = "EXPIRED", FullName = "Expired", Description = "Key has passed its expiration date", IsUsable = false },
+            new ExternalApiKeyStatus { Id = (int)ExternalApiKeyStatusEnum.Suspended, MasterCode = "SUSPENDED", FullName = "Suspended", Description = "Key is temporarily suspended due to credit exhaustion or policy violation", IsUsable = false },
+            new ExternalApiKeyStatus { Id = (int)ExternalApiKeyStatusEnum.PendingRotation, MasterCode = "PENDING_ROTATION", FullName = "Pending Rotation", Description = "Key is in rotation overlap window; still usable until new key is confirmed", IsUsable = true });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedExternalApiKeyCreditPeriodsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<ExternalApiKeyCreditPeriod>().AnyAsync(ct)) return;
+
+        context.Set<ExternalApiKeyCreditPeriod>().AddRange(
+            new ExternalApiKeyCreditPeriod { Id = (int)ExternalApiKeyCreditPeriodEnum.None, MasterCode = "NONE", FullName = "None", Description = "No credit tracking; unlimited usage" },
+            new ExternalApiKeyCreditPeriod { Id = (int)ExternalApiKeyCreditPeriodEnum.Daily, MasterCode = "DAILY", FullName = "Daily", Description = "Credit quota resets every day" },
+            new ExternalApiKeyCreditPeriod { Id = (int)ExternalApiKeyCreditPeriodEnum.Weekly, MasterCode = "WEEKLY", FullName = "Weekly", Description = "Credit quota resets every week" },
+            new ExternalApiKeyCreditPeriod { Id = (int)ExternalApiKeyCreditPeriodEnum.Monthly, MasterCode = "MONTHLY", FullName = "Monthly", Description = "Credit quota resets every month" },
+            new ExternalApiKeyCreditPeriod { Id = (int)ExternalApiKeyCreditPeriodEnum.Yearly, MasterCode = "YEARLY", FullName = "Yearly", Description = "Credit quota resets every year" });
         await context.SaveChangesAsync(ct);
     }
 }

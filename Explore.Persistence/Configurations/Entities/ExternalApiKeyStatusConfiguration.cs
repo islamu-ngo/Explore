@@ -1,0 +1,27 @@
+// ABOUTME: EF Core configuration for ExternalApiKeyStatus lookup table entity.
+// ABOUTME: Uses ValueGeneratedNever for explicit int IDs matching ExternalApiKeyStatusEnum values.
+
+using Explore.Domain;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Explore.Persistence.Configurations.Entities;
+
+public class ExternalApiKeyStatusConfiguration : IEntityTypeConfiguration<ExternalApiKeyStatus>
+{
+    public void Configure(EntityTypeBuilder<ExternalApiKeyStatus> builder)
+    {
+        builder.Property(e => e.Id).ValueGeneratedNever();
+
+        builder.Property(e => e.MasterCode)
+            .IsRequired()
+            .HasMaxLength(50);
+
+        builder.Property(e => e.FullName)
+            .IsRequired()
+            .HasMaxLength(100);
+
+        builder.Property(e => e.Description)
+            .HasMaxLength(500);
+    }
+}

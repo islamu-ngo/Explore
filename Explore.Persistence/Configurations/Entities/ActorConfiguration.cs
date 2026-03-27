@@ -42,6 +42,11 @@ public class ActorConfiguration : IEntityTypeConfiguration<Actor>
             .HasForeignKey(e => e.BannerPictureId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        builder.HasOne(e => e.BackgroundImage)
+            .WithMany()
+            .HasForeignKey(e => e.BackgroundImageId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         // Appearance settings
         builder.Property(e => e.BackgroundColor).HasMaxLength(50);
         builder.Property(e => e.BackgroundEffect).HasMaxLength(50);

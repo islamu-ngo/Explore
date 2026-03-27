@@ -1,4 +1,5 @@
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using MudBlazor;
@@ -10,6 +11,7 @@ public partial class MyReviews
     [Inject] protected IUserService UserService { get; set; } = null!;
     [Inject] protected IOrganizationReviewService OrganizationReviewService { get; set; } = null!;
     [Inject] protected IDialogService DialogService { get; set; } = null!;
+    [Inject] private IAccessibilityFocusService AccessibilityFocusService { get; set; } = default!;
 
     private List<OrganizationReviewDto> _reviews = new();
     private bool _loading = true;
@@ -54,10 +56,12 @@ public partial class MyReviews
 
     private async Task DeleteReview(OrganizationReviewDto review)
     {
+        await AccessibilityFocusService.SaveFocusAsync();
         bool? result = await DialogService.ShowMessageBoxAsync(
             "Delete Review",
             "Are you sure you want to delete this review?",
             yesText: "Delete", cancelText: "Cancel");
+        await AccessibilityFocusService.RestoreFocusAsync();
 
         if (result == true)
         {

@@ -28,6 +28,15 @@ public class NamingConventionTests
             .HaveNameEndingWith("CommandHandler")
             .GetResult();
 
+        if (!result.IsSuccessful && result.FailingTypes != null)
+        {
+            Console.WriteLine($"CommandHandler Naming Failures ({result.FailingTypes.Count()}):");
+            foreach (var type in result.FailingTypes)
+            {
+                Console.WriteLine($"  - {type.FullName}");
+            }
+        }
+
         await Assert.That(result.IsSuccessful).IsTrue();
     }
 
@@ -105,12 +114,14 @@ public class NamingConventionTests
     [Test]
     public async Task DTOs_ShouldEndWith_Dto()
     {
-        // Composite aggregates and write-model request DTOs are excluded from the Dto suffix rule
+        // Composite aggregates, write-model request DTOs, and non-DTO types are excluded from the Dto suffix rule
         var compositeAggregateNames = new HashSet<string>
         {
             "InstanceGovernanceSettings",
             "CompleteInstanceOnboardingRequest",
-            "UpdateTenantPolicyRequest"
+            "UpdateTenantPolicyRequest",
+            "BatchUpdateMode",  // Enum, not a DTO
+            "UiThemeInputRules"  // Utility class, not a DTO
         };
 
         var result = Types.InAssembly(ApplicationAssembly)
@@ -129,6 +140,15 @@ public class NamingConventionTests
         var failures = result.FailingTypes?
             .Where(t => !compositeAggregateNames.Contains(t.Name))
             .ToList() ?? [];
+
+        if (failures.Count > 0)
+        {
+            Console.WriteLine($"DTO Naming Failures ({failures.Count}):");
+            foreach (var type in failures)
+            {
+                Console.WriteLine($"  - {type.FullName}");
+            }
+        }
 
         await Assert.That(failures.Count).IsEqualTo(0);
     }

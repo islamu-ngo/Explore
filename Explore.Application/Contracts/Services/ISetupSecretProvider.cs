@@ -41,4 +41,12 @@ public interface ISetupSecretProvider
     /// Once locked, IsSetupModeActive returns false and ValidateSecret always returns false.
     /// </summary>
     void Lock();
+
+    /// <summary>
+    /// Returns the auto-generated setup secret for startup logging only.
+    /// Returns null when the secret was loaded from an environment variable
+    /// (the operator already knows the value).
+    /// This value must NEVER be exposed via API or any public endpoint.
+    /// </summary>
+    string? GetSecretForLogging();
 }

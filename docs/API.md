@@ -36,14 +36,17 @@ The middleware pipeline in `Program.cs` is ordered precisely. Changing order wil
 12. **Authorization** — `UseAuthorization()`.
 13. **Output Cache** — `UseOutputCache()`. Three cache policies (see below).
 14. **ETag** — `UseETag()`. SHA256-based weak ETags, 304 Not Modified support.
+15. **Idempotency** — `UseMiddleware<IdempotencyMiddleware>()`. Implements `Idempotency-Key` header for write operations (POST/PUT/PATCH/DELETE). Caches responses by (Key, TenantId) and replays on duplicate requests within 24-hour window.
 
 ---
 
 ## API Versioning
 
-1. Media-type strategy: `Accept: application/json;v=0.1` or `application/hal+json;v=0.1`.
-2. Default API version is `0.1` when unspecified.
-3. Clean URLs — no `/v1/` path segments.
+Dual-strategy versioning — both strategies work simultaneously:
+
+1. **Media-type strategy**: `Accept: application/json;v=0.1` or `application/hal+json;v=0.1`.
+2. **URL segment strategy**: `/api/v0.1/controller`. `VersionedRouteConvention` auto-adds URL routes to all controllers.
+3. Default API version is `0.1` when unspecified.
 4. Version is reported in response headers via `Asp.Versioning` middleware.
 
 ## Controller Conventions
@@ -117,8 +120,9 @@ Applied via `[OutputCache(PolicyName = "...")]` on controller endpoints.
 | Policy | Duration | Vary By | Use Case |
 |---|---|---|---|
 | `LookupData` | 1 hour | — | Lookup tables (event types, languages, etc.) |
-| `ListData` | 30 seconds | page number, page size, all query params | Collection listings |
-| `DetailData` | 60 seconds | entity ID | Single-entity detail views |
+| `PublicData` | 1 hour | — | Anonymous lookup endpoints, no auth variance |
+| `ListData` | 30 seconds | page number, page size, all query params, `Authorization` header | Collection listings |
+| `DetailData` | 60 seconds | entity ID, `Authorization` header | Single-entity detail views |
 
 ### Layer 2: HybridCache (Application Level — L1 + L2)
 Injected into MediatR handlers, not controllers. Provides in-memory L1 + distributed L2 caching with stampede protection.
@@ -137,6 +141,7 @@ Injected into MediatR handlers, not controllers. Provides in-memory L1 + distrib
 - Computes SHA256-based weak ETags on `application/json` and `application/hal+json` responses.
 - Returns `304 Not Modified` when client sends `If-None-Match` header matching current ETag.
 - Applied globally after output cache in the pipeline.
+- Uses `RecyclableMemoryStream` for efficient memory handling. Bodies larger than 256 KB skip ETag computation.
 
 ---
 
@@ -166,7 +171,7 @@ Non-GET responses additionally receive:
 - Custom `AudienceValidator`: checks both `aud` claim and `azp` (Keycloak authorized party) claim.
 - Clock skew tolerance: 5 minutes.
 - Dev mode: accepts self-signed certificates.
-- Detailed JWT event logging: `OnAuthenticationFailed`, `OnTokenValidated`, `OnChallenge`, `OnMessageReceived`.
+- Minimal JWT event logging: `OnAuthenticationFailed` (Warning), `OnChallenge` (Debug). PII-leaking handlers removed.
 
 ### Endpoint Auth Pattern
 - `GET`: usually `[AllowAnonymous]`
@@ -303,6 +308,9 @@ Exception handling uses .NET 8+ `IExceptionHandler` chain (not middleware):
 All responses use **RFC 7807 ProblemDetails** with extensions:
 - `traceId` — from `Activity.Current` or `HttpContext.TraceIdentifier`
 - `timestamp` — UTC ISO 8601
+- `correlationId` — from `X-Correlation-ID` / `X-Request-ID` header or generated UUID
+
+The `type` field uses IANA RFC 9110 standard URIs (e.g., `https://www.rfc-editor.org/rfc/rfc9110#section-15.5.5` for 404) instead of httpstatuses.com.
 
 ---
 
@@ -314,7 +322,7 @@ Five policies configured in `Program.cs`:
 |---|---|---|---|---|
 | `InternalAppPolicy` | Configurable | All | Yes | Internal app communication |
 | `ExternalAppPolicy` | Configurable | Specific set | No | External API consumers |
-| `InternalWebsitePolicy` | `iloveibadah.app` only | All | Yes | Internal website |
+| `InternalWebsitePolicy` | Configurable (loaded from `CorsSettings:AllowedOrigins`) | All | Yes | Internal website |
 | `ExternalWebsitePolicy` | Configurable | `GET`, `OPTIONS` only | No | External read-only |
 | `DevPolicy` | All origins | All | Yes | Development only |
 
@@ -341,7 +349,7 @@ Gates onboarding endpoints behind the setup secret:
 | Behavior | Purpose |
 |---|---|
 | `PerformanceBehavior` | Logs requests taking >500ms as warnings |
-| `AuthorizationBehavior` | Checks `IAuthorizedRequest` / `[AuthorizeResource]` attribute; throws `AuthorizationException` on deny |
+| `AuthorizationBehavior` | Checks `IAuthorizedRequest` / `[AuthorizeResource]` attribute; throws `AuthorizationException` on deny. Reflection results cached via `ConcurrentDictionary`. Emits OpenTelemetry activity spans on `Explore.Authorization` source with `resource.kind`, `resource.action`, and `request.type` tags. |
 
 ---
 
@@ -357,9 +365,19 @@ Meter name: `Explore.Business`. All counters tagged with `tenant_id` and `resour
 | `organizations.created` | Organizations created |
 | `authorization.decisions` | Authorization check outcomes |
 
+Authorization decisions are also traced via `ActivitySource` named `Explore.Authorization` with `resource.kind`, `resource.action`, and `request.type` tags.
+
 ---
 
 ## Background Services
+
+### OutboxProcessor
+- Polls `outbox_messages` table for pending events at configurable interval (default 5s).
+- Processes in batches (default 100) with optimistic locking (`TryMarkAsProcessing`).
+- Dispatches via `IOutboxMessageDispatcher` (currently `LoggingOutboxMessageDispatcher` no-op).
+- Exponential backoff retry: `InitialRetryDelaySeconds × 2^retryCount`, capped at `MaxRetryDelaySeconds`.
+- Dead-letters messages after `MaxRetryCount` exhausted.
+- Configuration section: `OutboxProcessor` (Enabled, PollingIntervalSeconds, BatchSize, MaxRetryCount, InitialRetryDelaySeconds, MaxRetryDelaySeconds, VerboseLogging).
 
 ### PdsSyncWorker
 - Polls `PdsSyncOutbox` table for pending AT Protocol sync entries.
@@ -374,9 +392,20 @@ Meter name: `Explore.Business`. All counters tagged with `tenant_id` and `resour
 
 - Grace period: 25 seconds on `SIGTERM`.
 - Health checks return `503` during shutdown for load balancer draining.
-- `SIGINT`: immediate shutdown.
+- Uses cooperative cancellation via `app.Lifetime.StopApplication()`. `Console.CancelKeyPress` sets `isShuttingDown` flag and triggers graceful stop.
 - `Kestrel.KeepAliveTimeout`: 30 seconds.
 - `Host.ShutdownTimeout`: 30 seconds.
+
+---
+
+## Idempotency
+
+Write operations support the `Idempotency-Key` HTTP header for safe retries:
+- Client sends `Idempotency-Key: <UUID>` on POST/PUT/PATCH/DELETE requests.
+- Server caches the response by `(Key, TenantId)` in PostgreSQL.
+- Duplicate requests within 24 hours replay the cached response with original status code.
+- Keys expire after 24 hours via background cleanup.
+- Entity: `IdempotencyRecord` with `Key`, `TenantId`, `StatusCode`, `ResponseBody`, `CreatedAt`, `ExpiresAt`.
 
 ---
 
@@ -423,6 +452,20 @@ Meter name: `Explore.Business`. All counters tagged with `tenant_id` and `resour
    - `PATCH /api/notification/{id}/read` — mark single as read (idempotent)
    - `POST /api/notification/read-all` — bulk mark all as read (YouTube-style, timestamp cutoff)
    - `DELETE /api/notification/{id}` — soft delete
+7. Footer management:
+   - `GET /api/footer/config` — public footer config (AllowAnonymous)
+   - `GET /api/footer/link-groups` — list link groups (Authorize)
+   - `GET /api/footer/link-groups/{id}` — link group detail (Authorize)
+   - `POST /api/footer/link-groups` — create link group
+   - `PUT /api/footer/link-groups/{id}` — update link group
+   - `DELETE /api/footer/link-groups/{id}` — delete link group
+   - `POST /api/footer/link-groups/reorder` — reorder link groups
+   - `POST /api/footer/link-groups/{groupId}/links` — create link in group
+   - `PUT /api/footer/links/{id}` — update link
+   - `DELETE /api/footer/links/{id}` — delete link
+   - `PUT /api/footer/settings` — update footer settings
+8. Actor appearance:
+   - Actor entities include appearance fields (BackgroundColor, BackgroundEffect, BannerColor, BannerPictureId, BackgroundImageId) managed via actor update endpoints.
 
 ---
 
@@ -441,4 +484,6 @@ Meter name: `Explore.Business`. All counters tagged with `tenant_id` and `resour
 - `docs/OPERATIONS.md` — rate limiting config, timeouts, shutdown
 - `docs/CODEBASE_INSIGHTS.md` — non-obvious patterns
 - `docs/MULTI_TENANCY.md` — tenant resolution and isolation
+- `docs/OUTBOX_PATTERN.md` — outbox pattern implementation details
+- `docs/FOOTER_MANAGEMENT.md` — footer management system
 - `docs/CONTRIBUTING.md` — development workflow

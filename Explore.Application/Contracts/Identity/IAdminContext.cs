@@ -1,10 +1,10 @@
-// ABOUTME: Contract for resolving the current user's administrative authority across the hierarchy.
+// ABOUTME: Contract for resolving the current user's administrative authority across the full hierarchy.
 // DB-first authority model: identity from claims, authority from role assignments and memberships.
 
 namespace Explore.Application.Contracts.Identity;
 
 /// <summary>
-/// Resolves the current user's administrative authority across the Instance > Tenant > Organization hierarchy.
+/// Resolves the current user's administrative authority across the Instance > Tenant > Organization > Group hierarchy.
 /// Uses a DB-first authority model where identity comes from authenticated claims and
 /// authorization comes from database relationships.
 /// Implementations should cache the "Authority Profile" for performance (5-minute sliding window).
@@ -62,4 +62,21 @@ public interface IAdminContext
     /// Use this overload when the caller already knows the userId.
     /// </summary>
     Task<IReadOnlyList<Guid>> GetAdminOrganizationIdsAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets whether the current user is a Group Administrator for the specified group.
+    /// Resolved strictly from the GroupMembers database table (RoleId == GroupAdmin).
+    /// </summary>
+    Task<bool> IsGroupAdminAsync(Guid groupId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets all group IDs where the current user has administrative rights.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetAdminGroupIdsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets all group IDs where the specified user has administrative rights.
+    /// Use this overload when the caller already knows the userId.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetAdminGroupIdsAsync(Guid userId, CancellationToken cancellationToken = default);
 }

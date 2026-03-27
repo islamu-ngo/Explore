@@ -31,4 +31,5 @@ public sealed class AnalyticsGovernanceSettingsDto
     public bool CookieBannerRequired { get; set; }
     public bool CanRunBeforeConsent { get; set; }
     public string StorageProfile { get; set; } = "Unknown";
+    public List<string> ResolveReasons { get; set; } = [];
 }

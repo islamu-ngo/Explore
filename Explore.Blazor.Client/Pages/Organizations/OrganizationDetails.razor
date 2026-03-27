@@ -22,55 +22,52 @@
     else if (organization == null)
     {
         <MudAlert Severity="Severity.Error" Variant="Variant.Filled">Organization not found.</MudAlert>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => NavigationManager.NavigateTo("/my/organizations"))" Class="mt-4 rounded-pill">
+        <AppButton OnClick="@(() => NavigationManager.NavigateTo("/my/organizations"))" Class="mt-4 rounded-pill">
             Back to My Organizations
-        </MudButton>
+        </AppButton>
     }
     else
     {
         <div class="d-flex justify-space-between align-center flex-wrap gap-4 mb-6">
-            <MudButton StartIcon="@Icons.Material.Filled.ArrowBack"
+            <AppButton StartIcon="@Icons.Material.Filled.ArrowBack"
                        Color="Color.Secondary"
                        Variant="Variant.Text"
                        OnClick="@(() => NavigationManager.NavigateTo("/my/organizations"))"
                        Class="rounded-pill">
                 Back to List
-            </MudButton>
+            </AppButton>
 
             <div class="d-flex gap-2">
                 @if (canEdit && !isEditMode)
                 {
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Success"
+                    <AppButton Color="Color.Success"
                                StartIcon="@Icons.Material.Filled.Event"
                                OnClick="@(() => NavigationManager.NavigateTo($"/organizations/{Id}/events/create"))"
                                Class="rounded-pill">
                         Create Event
-                    </MudButton>
-                    <MudButton Variant="Variant.Outlined"
+                    </AppButton>
+                    <AppButton Variant="Variant.Outlined"
                                Color="Color.Secondary"
                                StartIcon="@Icons.Material.Filled.People"
                                OnClick="@(() => NavigationManager.NavigateTo($"/organization/{Id}/members"))"
                                Class="rounded-pill">
                         Members
-                    </MudButton>
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               StartIcon="@Icons.Material.Filled.Edit"
+                    </AppButton>
+                    <AppButton StartIcon="@Icons.Material.Filled.Edit"
                                OnClick="ToggleEditMode"
                                Class="rounded-pill">
                         Edit
-                    </MudButton>
+                    </AppButton>
                 }
                 else if (canEdit && isEditMode)
                 {
-                    <MudButton Variant="Variant.Outlined"
+                    <AppButton Variant="Variant.Outlined"
                                Color="Color.Secondary"
                                OnClick="ToggleEditMode"
                                StartIcon="@Icons.Material.Filled.Cancel"
                                Class="rounded-pill">
                         Cancel
-                    </MudButton>
+                    </AppButton>
                 }
             </div>
         </div>
@@ -89,7 +86,7 @@
             </MudAlert>
         }
 
-        <MudCard Elevation="0" Class="rounded-xl border-solid border-1 mud-border-lines-default overflow-hidden">
+        <AppCard Class="rounded-xl border-solid border-1 mud-border-lines-default overflow-hidden">
             <div class="pa-6 border-b-1 mud-border-lines-default bg-surface">
                 <div class="d-flex align-center gap-4">
                     <MudAvatar Color="Color.Primary" Size="Size.Large" Variant="Variant.Filled" Rounded="true">
@@ -97,7 +94,7 @@
                     </MudAvatar>
                     <div>
                         <div class="d-flex align-center gap-3">
-                            <MudText Typo="Typo.h4" Style="font-weight: 800;">@organization.FullName</MudText>
+                            <MudText Typo="Typo.h4" HtmlTag="h1" Style="font-weight: 800;">@organization.FullName</MudText>
                             <MudChip T="string" Color="@GetStatusColor(organization.ApprovalStatusId ?? 0)" Size="Size.Small" Variant="Variant.Filled">
                                 @(organization.ApprovalStatusFullName ?? "Pending")
                             </MudChip>
@@ -156,7 +153,7 @@
                     <MudForm @ref="form" @bind-IsValid="@formValid">
                         <MudGrid Spacing="3">
                             <MudItem xs="12">
-                                <MudTextField @bind-Value="editModel.FullName"
+                                <AppTextField T="string" @bind-Value="editModel.FullName"
                                               Label="Organization Name"
                                               Variant="Variant.Outlined"
                                               Adornment="Adornment.Start"
@@ -166,7 +163,7 @@
                             </MudItem>
 
                             <MudItem xs="12" sm="6">
-                                <MudTextField @bind-Value="editModel.Email"
+                                <AppTextField T="string" @bind-Value="editModel.Email"
                                               Label="Email"
                                               Variant="Variant.Outlined"
                                               Adornment="Adornment.Start"
@@ -177,7 +174,7 @@
                             </MudItem>
 
                             <MudItem xs="12" sm="6">
-                                <MudTextField @bind-Value="editModel.WebsiteUrl"
+                                <AppTextField T="string" @bind-Value="editModel.WebsiteUrl"
                                               Label="Website (Optional)"
                                               Variant="Variant.Outlined"
                                               Adornment="Adornment.Start"
@@ -190,7 +187,7 @@
                             </MudItem>
 
                             <MudItem xs="12" sm="6">
-                                <MudTextField @bind-Value="editModel.Address"
+                                <AppTextField T="string" @bind-Value="editModel.Address"
                                               Label="Address"
                                               Variant="Variant.Outlined"
                                               Adornment="Adornment.Start"
@@ -212,7 +209,7 @@
                             </MudItem>
 
                             <MudItem xs="12" sm="6">
-                                <MudTextField @bind-Value="editModel.City"
+                                <AppTextField T="string" @bind-Value="editModel.City"
                                               Label="City"
                                               Variant="Variant.Outlined"
                                               Adornment="Adornment.Start"
@@ -222,7 +219,7 @@
                             </MudItem>
 
                             <MudItem xs="12" sm="6">
-                                <MudTextField @bind-Value="editModel.Country"
+                                <AppTextField T="string" @bind-Value="editModel.Country"
                                               Label="Country"
                                               Variant="Variant.Outlined"
                                               Adornment="Adornment.Start"
@@ -237,7 +234,7 @@
                             </MudItem>
 
                             <MudItem xs="12" sm="4">
-                                <MudTextField @bind-Value="_appearance.BackgroundColor"
+                                <AppTextField T="string" @bind-Value="_appearance.BackgroundColor"
                                               Label="Background Color"
                                               Variant="Variant.Outlined"
                                               InputType="InputType.Color"
@@ -245,7 +242,7 @@
                             </MudItem>
 
                             <MudItem xs="12" sm="8">
-                                <MudTextField @bind-Value="_appearance.BannerPictureUri"
+                                <AppTextField T="string" @bind-Value="_appearance.ImageUri"
                                               Label="Banner Picture URL"
                                               Variant="Variant.Outlined"
                                               Placeholder="https://... (image or GIF)" />
@@ -264,9 +261,7 @@
                             </MudItem>
 
                             <MudItem xs="12" Class="d-flex justify-end gap-3 mt-6">
-                                <MudButton Variant="Variant.Filled"
-                                           Color="Color.Primary"
-                                           OnClick="SaveChanges"
+                                <AppButton OnClick="SaveChanges"
                                            StartIcon="@Icons.Material.Filled.Save"
                                            Disabled="!formValid || isSaving"
                                            Class="rounded-pill px-8">
@@ -279,13 +274,13 @@
                                     {
                                         <span>Save Changes</span>
                                     }
-                                </MudButton>
+                                </AppButton>
                             </MudItem>
                         </MudGrid>
                     </MudForm>
                 }
             </MudCardContent>
-        </MudCard>
+        </AppCard>
 
         @* ── Events by this organization ── *@
         @if (_orgEvents.Any())
@@ -301,7 +296,7 @@
                         @foreach (var evt in UpcomingEvents)
                         {
                             <MudItem xs="12" sm="6" md="4" @key="evt.Id">
-                                <MudCard Elevation="1" Class="rounded-xl h-100" Style="cursor: pointer;"
+                                <AppCard Elevation="1" Class="rounded-xl h-100" Style="cursor: pointer;"
                                          @onclick="@(() => NavigationManager.NavigateTo($"/events/{evt.Id}"))">
                                     @if (!string.IsNullOrEmpty(evt.FeaturedImageUri))
                                     {
@@ -319,7 +314,7 @@
                                             </MudChip>
                                         }
                                     </MudCardContent>
-                                </MudCard>
+                                </AppCard>
                             </MudItem>
                         }
                     </MudGrid>
@@ -332,7 +327,7 @@
                         @foreach (var evt in PastEvents.Take(6))
                         {
                             <MudItem xs="12" sm="6" md="4" @key="evt.Id">
-                                <MudCard Elevation="1" Class="rounded-xl h-100" Style="cursor: pointer; opacity: 0.8;"
+                                <AppCard Elevation="1" Class="rounded-xl h-100" Style="cursor: pointer; opacity: 0.8;"
                                          @onclick="@(() => NavigationManager.NavigateTo($"/events/{evt.Id}"))">
                                     @if (!string.IsNullOrEmpty(evt.FeaturedImageUri))
                                     {
@@ -344,7 +339,7 @@
                                         </MudText>
                                         <MudText Typo="Typo.subtitle1" Style="font-weight: 700;" Class="mt-1">@evt.Title</MudText>
                                     </MudCardContent>
-                                </MudCard>
+                                </AppCard>
                             </MudItem>
                         }
                     </MudGrid>

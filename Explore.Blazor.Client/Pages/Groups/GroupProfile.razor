@@ -16,7 +16,9 @@
 else if (_group == null)
 {
     <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
-        <MudAlert Severity="Severity.Error">Group not found.</MudAlert>
+        <div role="alert">
+            <MudAlert Severity="Severity.Error">Group not found.</MudAlert>
+        </div>
     </MudContainer>
 }
 else
@@ -46,18 +48,16 @@ else
                 </div>
 
                 <div class="group-profile__header-right">
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               StartIcon="@Icons.Material.Filled.NotificationsActive"
+                    <AppButton StartIcon="@Icons.Material.Filled.NotificationsActive"
                                Class="group-profile__subscribe-btn">
                         Subscribe
-                    </MudButton>
+                    </AppButton>
                 </div>
             </div>
 
             @* ── Name + Description ── *@
             <div class="group-profile__identity">
-                <MudText Typo="Typo.h4" Style="font-weight: 700;" Class="mb-1">@_group.FullName</MudText>
+                <MudText Typo="Typo.h4" HtmlTag="h1" Style="font-weight: 700;" Class="mb-1">@_group.FullName</MudText>
 
                 @if (!string.IsNullOrEmpty(_group.Description))
                 {
@@ -81,10 +81,15 @@ else
                         @foreach (var evt in _upcomingEvents)
                         {
                             <MudItem xs="12" sm="6" md="4">
-                                <MudCard Elevation="0" Class="group-profile__event-card cursor-pointer"
-                                         @onclick="@(() => NavigateToEvent(evt))">
+                                <AppCard Class="group-profile__event-card cursor-pointer"
+                                         @onclick="@(() => NavigateToEvent(evt))"
+                                         tabindex="0"
+                                         role="link"
+                                         aria-label="@($"View event: {evt.Title}")"
+                                         @onkeydown="@(e => HandleEventKeyDown(e, evt))">
                                     <div class="group-profile__event-card-image">
                                         <MudImage Src="@GetEventImage(evt)"
+                                                  Alt="@evt.Title"
                                                   ObjectFit="ObjectFit.Cover"
                                                   Style="width: 100%; height: 100%; display: block;" />
                                     </div>
@@ -116,7 +121,7 @@ else
                                             </MudText>
                                         </div>
                                     </MudCardContent>
-                                </MudCard>
+                                </AppCard>
                             </MudItem>
                         }
                     </MudGrid>
@@ -162,10 +167,15 @@ else
                                     {
                                         <MudPaper Elevation="0"
                                                   Class="group-profile__timeline-card cursor-pointer"
-                                                  @onclick="@(() => NavigateToEvent(evt))">
+                                                  @onclick="@(() => NavigateToEvent(evt))"
+                                                  tabindex="0"
+                                                  role="link"
+                                                  aria-label="@($"View past event: {evt.Title}")"
+                                                  @onkeydown="@(e => HandleEventKeyDown(e, evt))">
                                             <div class="d-flex gap-4">
                                                 <div class="group-profile__timeline-card-image">
                                                     <MudImage Src="@GetEventImage(evt)"
+                                                              Alt="@evt.Title"
                                                               ObjectFit="ObjectFit.Cover"
                                                               Style="width: 100%; height: 100%; display: block; border-radius: var(--isl-radius-md);" />
                                                 </div>

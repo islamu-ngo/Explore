@@ -43,6 +43,7 @@ public class GetCurrentUserAppearancePreferencesQueryHandler : IRequestHandler<G
         return new UserAppearancePreferencesDto
         {
             ThemeMode = appearance.ThemeMode,
+            Direction = appearance.Direction,
             DefaultThemeId = appearance.DefaultThemeId
         };
     }

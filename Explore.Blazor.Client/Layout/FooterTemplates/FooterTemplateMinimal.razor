@@ -1,0 +1,49 @@
+@* ABOUTME: Minimal footer template rendering only copyright text and social links.
+   ABOUTME: Compact single-row layout for sites that prefer a lightweight footer. *@
+
+<div class="site-footer__bottom">
+    <div class="site-footer__copyright">@CopyrightText</div>
+    <div class="site-footer__social">
+        @if (ShowSocialLinks)
+        {
+            @foreach (var social in SocialLinks)
+            {
+                <AppIconButton Icon="@FooterIconHelper.GetSocialIcon(social.Platform)"
+                               aria-label="@social.Label"
+                               title="@social.Label"
+                               Class="site-footer__social-btn"
+                               Size="Size.Small"
+                               Href="@social.Url"
+                               Target="_blank"
+                               rel="noopener noreferrer" />
+            }
+        }
+        @if (ShowCommunityGuidelinesLink)
+        {
+            <a href="/community-guidelines" class="site-footer__link">Community Guidelines</a>
+        }
+        @if (ShowCookieSettingsLink)
+        {
+            <AppButton Variant="Variant.Text"
+                       Size="Size.Small"
+                       Class="site-footer__link"
+                       OnClick="OnCookieSettingsClick">
+                Cookie Settings
+            </AppButton>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string BrandDisplayName { get; set; } = string.Empty;
+    [Parameter] public string BrandLogoUrl { get; set; } = string.Empty;
+    [Parameter] public bool ShowDescription { get; set; }
+    [Parameter] public string DescriptionText { get; set; } = string.Empty;
+    [Parameter] public bool ShowSocialLinks { get; set; }
+    [Parameter] public List<FooterSocialLinkModel> SocialLinks { get; set; } = [];
+    [Parameter] public string CopyrightText { get; set; } = string.Empty;
+    [Parameter] public bool ShowCookieSettingsLink { get; set; }
+    [Parameter] public bool ShowCommunityGuidelinesLink { get; set; }
+    [Parameter] public List<FooterLinkGroupModel> LinkGroups { get; set; } = [];
+    [Parameter] public EventCallback OnCookieSettingsClick { get; set; }
+}

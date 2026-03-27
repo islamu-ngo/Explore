@@ -1,5 +1,5 @@
 // ABOUTME: Tests the core consent policy engine (AnalyticsRuntimeProfileResolver).
-// ABOUTME: Covers global kill switch, provider capabilities, PostHog modes, consent computation.
+// ABOUTME: Covers global kill switch, provider capabilities, PostHog modes, consent computation, and resolve reason codes.
 
 using Explore.Application.Analytics;
 using Explore.Application.Settings.Groups;
@@ -22,7 +22,7 @@ public class AnalyticsRuntimeProfileResolverTests
         PosthogCookielessMode cookielessMode = PosthogCookielessMode.Off,
         bool cookieBannerEnabled = true,
         DeclineBehavior declineBehavior = DeclineBehavior.Disable,
-        string? tenantSlug = "test-tenant")
+        string? tenantStableKey = "test-tenant")
     {
         var settings = new Dictionary<string, Explore.Application.Contracts.Infrastructure.ResolvedSetting>
         {
@@ -35,7 +35,7 @@ public class AnalyticsRuntimeProfileResolverTests
 
         var group = new AnalyticsSettingGroup();
         group.Populate(settings);
-        group.TenantSlug = tenantSlug;
+        group.TenantStableKey = tenantStableKey;
         return group;
     }
 
@@ -67,6 +67,9 @@ public class AnalyticsRuntimeProfileResolverTests
         await Assert.That(result.StorageProfile).IsEqualTo(AnalyticsStorageProfile.Cookieless);
         await Assert.That(result.DeclineBehavior).IsEqualTo(DeclineBehavior.Disable);
         await Assert.That(result.Posthog).IsNull();
+        await Assert.That(result.ResolveReasons.Count).IsEqualTo(2);
+        await Assert.That(result.ResolveReasons[0]).IsEqualTo(ProfileResolveReason.GlobalKillSwitch);
+        await Assert.That(result.ResolveReasons[1]).IsEqualTo(ProfileResolveReason.CookieBannerSuppressed);
     }
 
     // --- Analytics Disabled ---
@@ -87,6 +90,9 @@ public class AnalyticsRuntimeProfileResolverTests
 
         await Assert.That(result.CookieBannerEnabled).IsFalse();
         await Assert.That(result.CanRunBeforeConsent).IsFalse();
+        await Assert.That(result.ResolveReasons.Count).IsEqualTo(2);
+        await Assert.That(result.ResolveReasons[0]).IsEqualTo(ProfileResolveReason.AnalyticsDisabled);
+        await Assert.That(result.ResolveReasons[1]).IsEqualTo(ProfileResolveReason.CookieBannerSuppressed);
     }
 
     [Test]
@@ -105,6 +111,8 @@ public class AnalyticsRuntimeProfileResolverTests
 
         await Assert.That(result.CookieBannerEnabled).IsFalse();
         await Assert.That(result.CanRunBeforeConsent).IsFalse();
+        await Assert.That(result.ResolveReasons[0]).IsEqualTo(ProfileResolveReason.AnalyticsDisabled);
+        await Assert.That(result.ResolveReasons[1]).IsEqualTo(ProfileResolveReason.CookieBannerSuppressed);
     }
 
     // --- Inherently Cookieless Providers ---
@@ -126,6 +134,8 @@ public class AnalyticsRuntimeProfileResolverTests
         await Assert.That(result.CookieBannerEnabled).IsFalse();
         await Assert.That(result.CanRunBeforeConsent).IsTrue();
         await Assert.That(result.StorageProfile).IsEqualTo(AnalyticsStorageProfile.Cookieless);
+        await Assert.That(result.ResolveReasons[0]).IsEqualTo(ProfileResolveReason.ProviderInherentlyCookieless);
+        await Assert.That(result.ResolveReasons[1]).IsEqualTo(ProfileResolveReason.CookieBannerSuppressed);
     }
 
     [Test]
@@ -145,6 +155,8 @@ public class AnalyticsRuntimeProfileResolverTests
         await Assert.That(result.CookieBannerEnabled).IsFalse();
         await Assert.That(result.CanRunBeforeConsent).IsTrue();
         await Assert.That(result.StorageProfile).IsEqualTo(AnalyticsStorageProfile.Cookieless);
+        await Assert.That(result.ResolveReasons[0]).IsEqualTo(ProfileResolveReason.ProviderInherentlyCookieless);
+        await Assert.That(result.ResolveReasons[1]).IsEqualTo(ProfileResolveReason.CookieBannerSuppressed);
     }
 
     // --- PostHog Cookieless Mode Always ---
@@ -161,6 +173,8 @@ public class AnalyticsRuntimeProfileResolverTests
         await Assert.That(result.StorageProfile).IsEqualTo(AnalyticsStorageProfile.Cookieless);
         await Assert.That(result.Posthog).IsNotNull();
         await Assert.That(result.Posthog!.CookielessMode).IsEqualTo(PosthogCookielessMode.Always);
+        await Assert.That(result.ResolveReasons[0]).IsEqualTo(ProfileResolveReason.PosthogCookielessAlways);
+        await Assert.That(result.ResolveReasons[1]).IsEqualTo(ProfileResolveReason.CookieBannerSuppressed);
     }
 
     // --- PostHog Cookieless Mode OnReject ---
@@ -179,6 +193,8 @@ public class AnalyticsRuntimeProfileResolverTests
         await Assert.That(result.CanRunBeforeConsent).IsTrue();
         await Assert.That(result.StorageProfile).IsEqualTo(AnalyticsStorageProfile.ConsentManaged);
         await Assert.That(result.DeclineBehavior).IsEqualTo(DeclineBehavior.Cookieless);
+        await Assert.That(result.ResolveReasons[0]).IsEqualTo(ProfileResolveReason.PosthogCookielessOnReject);
+        await Assert.That(result.ResolveReasons[1]).IsEqualTo(ProfileResolveReason.CookieBannerEnabledByOperator);
     }
 
     [Test]
@@ -192,6 +208,8 @@ public class AnalyticsRuntimeProfileResolverTests
 
         await Assert.That(result.CookieBannerEnabled).IsFalse();
         await Assert.That(result.CanRunBeforeConsent).IsTrue();
+        await Assert.That(result.ResolveReasons[0]).IsEqualTo(ProfileResolveReason.PosthogCookielessOnReject);
+        await Assert.That(result.ResolveReasons[1]).IsEqualTo(ProfileResolveReason.CookieBannerSuppressed);
     }
 
     // --- PostHog Cookieless Mode Off (full consent) ---
@@ -209,6 +227,8 @@ public class AnalyticsRuntimeProfileResolverTests
         await Assert.That(result.CanRunBeforeConsent).IsFalse();
         await Assert.That(result.StorageProfile).IsEqualTo(AnalyticsStorageProfile.FullConsent);
         await Assert.That(result.DeclineBehavior).IsEqualTo(DeclineBehavior.Disable);
+        await Assert.That(result.ResolveReasons[0]).IsEqualTo(ProfileResolveReason.PosthogFullConsentRequired);
+        await Assert.That(result.ResolveReasons[1]).IsEqualTo(ProfileResolveReason.CookieBannerEnabledByOperator);
     }
 
     // --- RudderStack (v1 full consent) ---
@@ -231,28 +251,44 @@ public class AnalyticsRuntimeProfileResolverTests
         await Assert.That(result.CookieBannerEnabled).IsTrue();
         await Assert.That(result.CanRunBeforeConsent).IsFalse();
         await Assert.That(result.StorageProfile).IsEqualTo(AnalyticsStorageProfile.FullConsent);
+        await Assert.That(result.ResolveReasons[0]).IsEqualTo(ProfileResolveReason.ProviderRequiresFullConsent);
+        await Assert.That(result.ResolveReasons[1]).IsEqualTo(ProfileResolveReason.CookieBannerEnabledByOperator);
     }
 
-    // --- Consent Cookie Key ---
+    // --- Consent Cookie Key (stable tenant ID, Amendment 9) ---
 
     [Test]
-    public async Task Resolve_SetsConsentCookieKeyFromTenantSlug()
+    public async Task Resolve_SetsConsentCookieKeyFromTenantStableKey()
     {
-        var settings = CreatePosthogSettings(tenantSlug: "my-org");
+        var settings = CreatePosthogSettings(tenantStableKey: "a1b2c3d4");
 
         var result = _resolver.Resolve(settings);
 
-        await Assert.That(result.ConsentCookieKey).IsEqualTo("explore_cc_my-org");
+        await Assert.That(result.ConsentCookieKey).IsEqualTo("explore_cc_a1b2c3d4");
     }
 
     [Test]
-    public async Task Resolve_NullTenantSlug_DefaultsCookieKey()
+    public async Task Resolve_NullTenantStableKey_DefaultsCookieKey()
     {
-        var settings = CreatePosthogSettings(tenantSlug: null);
+        var settings = CreatePosthogSettings(tenantStableKey: null);
 
         var result = _resolver.Resolve(settings);
 
         await Assert.That(result.ConsentCookieKey).IsEqualTo("explore_cc_default");
+    }
+
+    [Test]
+    public async Task Resolve_DifferentTenantStableKeys_ProduceDifferentCookieKeys()
+    {
+        var settingsA = CreatePosthogSettings(tenantStableKey: "aaaa1111");
+        var settingsB = CreatePosthogSettings(tenantStableKey: "bbbb2222");
+
+        var resultA = _resolver.Resolve(settingsA);
+        var resultB = _resolver.Resolve(settingsB);
+
+        await Assert.That(resultA.ConsentCookieKey).IsNotEqualTo(resultB.ConsentCookieKey);
+        await Assert.That(resultA.ConsentCookieKey).IsEqualTo("explore_cc_aaaa1111");
+        await Assert.That(resultB.ConsentCookieKey).IsEqualTo("explore_cc_bbbb2222");
     }
 
     // --- Consent Cookie Lifetime ---
@@ -303,5 +339,45 @@ public class AnalyticsRuntimeProfileResolverTests
         var result = _resolver.Resolve(group);
 
         await Assert.That(result.Posthog).IsNull();
+    }
+
+    // --- Resolve Reasons always populated ---
+
+    [Test]
+    public async Task Resolve_AlwaysPopulatesAtLeastTwoReasons()
+    {
+        // Every code path should produce exactly 2 reasons: primary + banner
+        var scenarios = new[]
+        {
+            CreateSettings(), // default = disabled
+            CreatePosthogSettings(cookielessMode: PosthogCookielessMode.Always),
+            CreatePosthogSettings(cookielessMode: PosthogCookielessMode.OnReject),
+            CreatePosthogSettings(cookielessMode: PosthogCookielessMode.Off),
+        };
+
+        foreach (var settings in scenarios)
+        {
+            var result = _resolver.Resolve(settings);
+            await Assert.That(result.ResolveReasons.Count).IsEqualTo(2);
+        }
+    }
+
+    [Test]
+    public async Task Resolve_RudderStackBannerDisabled_BannerSuppressedReason()
+    {
+        var settings = new Dictionary<string, Explore.Application.Contracts.Infrastructure.ResolvedSetting>
+        {
+            ["analytics.provider"] = new() { Value = "\"rudderstack\"" },
+            ["analytics.enabled"] = new() { Value = "true" },
+            ["analytics.cookie_consent_enabled"] = new() { Value = "false" }
+        };
+
+        var group = new AnalyticsSettingGroup();
+        group.Populate(settings);
+
+        var result = _resolver.Resolve(group);
+
+        await Assert.That(result.ResolveReasons[0]).IsEqualTo(ProfileResolveReason.ProviderRequiresFullConsent);
+        await Assert.That(result.ResolveReasons[1]).IsEqualTo(ProfileResolveReason.CookieBannerSuppressed);
     }
 }

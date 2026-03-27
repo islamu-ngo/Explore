@@ -109,7 +109,7 @@ public class EventRegistrationServiceTests
             EventSessionId = Guid.NewGuid()
         };
 
-        _apiClient.EventregistrationGET2Async(registrationId, Arg.Any<CancellationToken>())
+        _apiClient.EventregistrationGET3Async(registrationId, Arg.Any<CancellationToken>())
             .Returns(expected);
 
         // Act
@@ -125,7 +125,7 @@ public class EventRegistrationServiceTests
     {
         // Arrange
         var registrationId = Guid.NewGuid();
-        _apiClient.EventregistrationGET2Async(registrationId, Arg.Any<CancellationToken>())
+        _apiClient.EventregistrationGET3Async(registrationId, Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Not Found", 404));
 
         // Act
@@ -140,7 +140,7 @@ public class EventRegistrationServiceTests
     {
         // Arrange
         var registrationId = Guid.NewGuid();
-        _apiClient.EventregistrationGET2Async(registrationId, Arg.Any<CancellationToken>())
+        _apiClient.EventregistrationGET3Async(registrationId, Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Server Error", 500));
 
         // Act

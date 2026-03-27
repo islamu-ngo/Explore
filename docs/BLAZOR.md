@@ -102,7 +102,7 @@ Key components:
 
 Consent cookie design:
 
-- Name: `explore_cc_{tenantSlug}` (tenant-scoped to prevent cross-tenant leakage).
+- Name: `explore_cc_{stableShortKey}` where `stableShortKey` is the first 8 hex characters of the tenant's immutable GUID (not the mutable subdomain slug).
 - Values: `accepted` or `declined` only (minimal, no tracking data).
 - Lifetime: configurable, default 180 days.
 
@@ -112,6 +112,17 @@ Privacy-first defaults:
 - PostHog `person_profiles: 'identified_only'` (or `'never'` for anonymous-only).
 - Session replay, autocapture, heatmaps, and toolbar all disabled by default.
 - PostHog `defaults` version pin recommended for SDK stability.
+
+## SSR / Prerender Stance
+
+All consent-sensitive decisions happen **post-hydration** in the browser. During server-side rendering (SSR) and prerendering:
+
+1. `AnalyticsInitializer` renders no markup server-side — it is a client-only component that initializes in `OnAfterRenderAsync`.
+2. No consent cookies are read or written during SSR. `ServerCookieConsentInterop` is a no-op that returns `null`.
+3. No analytics pageview events are emitted during SSR. The first pageview fires after the client-side state machine reaches a terminal or immediate-init state.
+4. The cookie consent banner is never visible during the initial server-rendered HTML. It appears only after the client-side bootstrap determines banner visibility from `AnalyticsConsentBootstrap`.
+
+This ensures zero consent-sensitive data is processed before the user's browser has had the opportunity to display and collect consent.
 
 ## API Client Generation (Non-Obvious)
 1. `Explore.Blazor.Client.csproj` runs target `GenerateApiClient` before `CoreCompile`.
@@ -152,11 +163,51 @@ Privacy-first defaults:
 2. `AccessTokenForwardingHandler` must remain token-only; tenant and setup-secret forwarding belong in separate handlers.
 3. Any future token lifecycle work must explicitly consider render-mode transitions and circuit reconnection behavior before changing handler responsibilities.
 
-## Styling Rules
+## Styling Architecture
+
+### Global CSS (@layer)
+Global styles use `@layer` cascade ordering via `Explore.Blazor/wwwroot/css/layers.css`:
+- **Layers** (cascade order): `reset → base → tokens → mudblazor-overrides → components → utilities`
+- **Token system**: 3-tier (Primitives → Semantic → Component) in `tokens.css`
+- **Colors**: Use `oklch()` and `color-mix(in oklch, ...)` for perceptual uniformity
+- **Typography**: H1-H5 use `clamp()` for fluid responsive sizing
+
+### Component CSS Isolation
 1. Prefer CSS isolation (`.razor.css`) per component.
 2. Use clear BEM-style class names to keep scoped CSS readable.
-3. Use `::deep` only when integration with third-party component internals requires it.
-4. Avoid global CSS except variables, reset, and shared utilities.
+3. Use native CSS nesting (`&`) for pseudo-classes, modifiers, and nested media/container queries. Max 3 levels deep.
+4. Use `::deep` only when integration with third-party component internals requires it.
+
+### Wrapper Components
+MudBlazor wrapper components in `Explore.Blazor.Client/Components/Common/` provide consistent defaults:
+- `AppButton` (Filled/Primary/Elevation=0), `AppCard` (Elevation=0/border), `AppTextField<T>` (Outlined), `AppIconButton`, `AppDialogShell`
+- `DialogOptionsFactory` in `Services/` — static presets: `Small()`, `Medium()`, `Confirmation()`, `Editor()`
+
+### MudBlazor Override Policy
+- Global `.mud-*` overrides tracked in `css/mudblazor-overrides.css` with whitelist header
+- Each override requires a `JUSTIFICATION` comment
+- Approved exceptions: drawer/portal overrides (render outside Blazor scope), overlay z-index
+
+### AppearanceStyleBuilder
+Generates inline CSS for actor/event appearance customization (`Explore.Blazor.Client/Helpers/`):
+
+| Method | Purpose |
+|---|---|
+| `BuildStyle(settings, fallbackHex, additionalCss?)` | General background with optional overlay effect |
+| `BuildHeroStyle(settings, fallbackHex)` | Hero sections with `aspect-ratio: 16/9` |
+| `BuildBannerStyle(settings, fallbackHex)` | Banner-specific styling |
+
+**AppearanceSettings model**: `BackgroundColor`, `ImageUri`, `BackgroundEffect` (None, SoftOverlay 0.24, StrongOverlay 0.40, Blur 0.18), `IsEmpty`.
+
+### AppearanceEditor Component
+Two-way bindable editor (`Explore.Blazor.Client/Shared/`): `BackgroundColor`, `BackgroundEffect`, `ImageUri` with `ShowImageField`, `ShowPreview`, `FallbackColor`, `PreviewAdditionalCss` parameters.
+
+### DialogOptionsFactory
+Static presets in `Explore.Blazor.Client/Services/`:
+- `Small()` — MaxWidth.Small, FullWidth, CloseOnEscape
+- `Medium()` — MaxWidth.Medium, FullWidth, CloseOnEscape
+- `Confirmation()` — Small + DialogPosition.Center
+- `Editor()` — Medium + CloseButton + BackdropClick
 
 ## Common Pitfalls
 1. Updating UI before regenerating NSwag client after API contract changes.
@@ -169,3 +220,5 @@ Privacy-first defaults:
 - `docs/CONTRIBUTING.md`
 - `docs/RENDER_POLICIES.md`
 - `docs/TROUBLESHOOTING.md`
+- `docs/DESIGN_SYSTEM.md` — CSS layers, tokens, wrapper components, typography
+- `docs/ACCESSIBILITY.md` — WCAG AA compliance, service contracts, testing

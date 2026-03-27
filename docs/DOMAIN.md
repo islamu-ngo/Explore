@@ -137,14 +137,61 @@ Notable exception:
 - `User` is soft-delete filtered but not tenant-scoped.
 - `EventType` allows global values (`TenantId = null`) plus tenant-specific values.
 
+## Outbox And Messaging Entities
+
+### OutboxMessage
+
+General-purpose transactional outbox entity for reliable asynchronous event dispatch:
+
+| Field | Type | Notes |
+|---|---|---|
+| `Id` | `Guid` | UUID v7 (time-sortable) |
+| `AggregateType` | `string(200)` | Source entity type name |
+| `AggregateId` | `Guid` | Source entity ID |
+| `EventType` | `string(200)` | Event classification |
+| `Payload` | `string?` | JSONB serialized event data |
+| `Status` | `OutboxMessageStatus` | Pending(1), Processing(2), Completed(3), Failed(4), DeadLettered(5) |
+| `CreatedAt` | `DateTime` | When the message was created |
+| `ProcessedAt` | `DateTime?` | When successfully dispatched |
+| `RetryCount` | `int` | Current retry attempt |
+| `LastError` | `string?(2000)` | Most recent error message |
+| `NextRetryAt` | `DateTime?` | Scheduled next retry (exponential backoff) |
+| `MaxRetries` | `int` | Default 10 |
+| `DeadLetteredAt` | `DateTime?` | When permanently failed |
+
+Specialized variants: `PdsSyncOutbox` (federation), `PolicyChangeOutbox` (authorization policy changes).
+
+## Footer Entities
+
+Two entities support per-tenant footer customization:
+
+- **`TenantFooterLinkGroup`** — `Id` (Guid), `TenantId`, `Title`, `Order`, `IsActive`, auditing fields. Owns a collection of `TenantFooterLink`.
+- **`TenantFooterLink`** — `Id` (Guid), `FooterLinkGroupId` (FK), `Label`, `Url`, `OpenInNewTab`, `Order`, `IsActive`, auditing fields.
+
+Footer behavior (template, social links, description, copyright) is governed through `TenantSetting` entries with `footer.*` keys. Instance-level locks prevent tenant overrides.
+
+## Actor Appearance Fields
+
+`Actor` includes visual customization fields persisted at the database level:
+
+- `BackgroundColor` — hex color for actor profile background.
+- `BackgroundEffect` — visual effect overlay (None, SoftOverlay, StrongOverlay, Blur).
+- `BannerColor` — hex color for banner area.
+- `BannerPictureId` — FK to `StorageObject` for banner image.
+- `BackgroundImageId` — FK to `StorageObject` for background image.
+
+These follow the same appearance pattern as `Event` (which has `BackgroundColor`, `BackgroundEffect`, `BackgroundImageId`).
+
 ## What Is Not Implemented as a Domain Primitive
 
 - No dedicated domain-event dispatch model is defined in `Explore.Domain` (no `IDomainEvent` pattern in current code).
 - Most business invariants are currently enforced in handlers/services and EF configuration, not rich domain methods.
+- `IOutboxMessageDispatcher` is currently a no-op (`LoggingOutboxMessageDispatcher`) — real dispatch logic is deferred until integration requirements solidify.
 
 ## Related
-
 - [ARCHITECTURE.md](ARCHITECTURE.md)
 - [CUSTOM_PROPERTIES.md](CUSTOM_PROPERTIES.md)
 - [CODEBASE_INSIGHTS.md](CODEBASE_INSIGHTS.md)
 - [MULTI_TENANCY.md](MULTI_TENANCY.md)
+- [OUTBOX_PATTERN.md](OUTBOX_PATTERN.md)
+- [FOOTER_MANAGEMENT.md](FOOTER_MANAGEMENT.md)

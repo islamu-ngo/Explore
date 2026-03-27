@@ -331,7 +331,7 @@ public class EventServiceTests
         var updateDto = new UpdateEventDto { Id = eventId, Title = "Updated Title" };
         var expectedResponse = ComponentDataBuilder.SuccessResponse(eventId);
 
-        _apiClient.UpdateEventAsync(Arg.Any<Guid>(), Arg.Any<UpdateEventCommand>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateEventAsync(Arg.Any<Guid>(), Arg.Any<UpdateEventRequestDto>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
@@ -349,7 +349,7 @@ public class EventServiceTests
         // Arrange
         var eventId = Guid.NewGuid();
         var updateDto = new UpdateEventDto { Id = eventId };
-        _apiClient.UpdateEventAsync(Arg.Any<Guid>(), Arg.Any<UpdateEventCommand>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateEventAsync(Arg.Any<Guid>(), Arg.Any<UpdateEventRequestDto>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Not Found", 404));
 
         // Act
@@ -366,7 +366,7 @@ public class EventServiceTests
         var eventId = new Guid("d415b43c-3f93-4b68-9a2d-59021d838e11");
         var updateDto = new UpdateEventDto { Id = eventId, Title = "Test Title" };
         var expectedResponse = ComponentDataBuilder.SuccessResponse(eventId);
-        _apiClient.UpdateEventAsync(Arg.Any<Guid>(), Arg.Any<UpdateEventCommand>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateEventAsync(Arg.Any<Guid>(), Arg.Any<UpdateEventRequestDto>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
@@ -375,7 +375,7 @@ public class EventServiceTests
         // Assert: command wraps the DTO correctly
         await _apiClient.Received(1).UpdateEventAsync(
             eventId,
-            Arg.Is<UpdateEventCommand>(c => c.Id == eventId && c.EventDto == updateDto),
+            Arg.Is<UpdateEventRequestDto>(c => c.EventDto == updateDto),
             Arg.Any<CancellationToken>());
     }
 

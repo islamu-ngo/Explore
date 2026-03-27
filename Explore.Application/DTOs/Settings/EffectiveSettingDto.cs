@@ -1,0 +1,24 @@
+// ABOUTME: DTO representing a single resolved setting with full metadata for client rendering.
+// ABOUTME: Includes editability info (CanEdit/Reason) so UIs can render disabled controls with explanations.
+
+namespace Explore.Application.DTOs.Settings;
+
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Domain;
+
+/// <summary>
+/// A fully resolved setting value with metadata for client-side rendering.
+/// Includes source provenance, lock state, and editability for the requesting scope.
+/// </summary>
+public class EffectiveSettingDto
+{
+    public required string Key { get; init; }
+    public required string Value { get; init; }
+    public SettingValueType ValueType { get; init; }
+    public SettingSource Source { get; init; }
+    public bool IsLocked { get; init; }
+    public bool CanEdit { get; init; }
+    public string? Reason { get; init; }
+    public string? Description { get; init; }
+    public string? AllowedValues { get; init; }
+}

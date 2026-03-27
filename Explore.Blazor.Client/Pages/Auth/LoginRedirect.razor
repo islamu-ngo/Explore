@@ -14,14 +14,16 @@
 
 <MudContainer MaxWidth="MaxWidth.Small" Class="py-8">
     <MudPaper Class="pa-6">
-        <MudText Typo="Typo.h4" Class="mb-2">Sign in</MudText>
+        <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-2">Sign in</MudText>
         <MudText Typo="Typo.body2" Class="mb-4">
             Choose an authentication provider to continue.
         </MudText>
 
         @if (!string.IsNullOrWhiteSpace(_challengeErrorMessage))
         {
-            <MudAlert Severity="Severity.Warning" Class="mb-4">@_challengeErrorMessage</MudAlert>
+            <div role="alert">
+                <MudAlert Severity="Severity.Warning" Class="mb-4">@_challengeErrorMessage</MudAlert>
+            </div>
         }
 
         @if (_isLoading || _isAutoRedirecting)
@@ -33,10 +35,12 @@
         }
         else if (!string.IsNullOrWhiteSpace(_errorMessage))
         {
-            <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
-            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="LoadProvidersAsync">
+            <div role="alert">
+                <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+            </div>
+            <AppButton Variant="Variant.Outlined" Color="Color.Default" OnClick="LoadProvidersAsync">
                 Retry
-            </MudButton>
+            </AppButton>
         }
         else
         {
@@ -54,14 +58,14 @@
                             }
                         </MudStack>
 
-                        <MudButton Variant="@(provider.Recommended ? Variant.Filled : Variant.Outlined)"
+                        <AppButton Variant="@(provider.Recommended ? Variant.Filled : Variant.Outlined)"
                                    Color="@(provider.Recommended ? Color.Primary : Color.Default)"
                                    FullWidth="true"
                                    Size="Size.Large"
                                    StartIcon="@Icons.Material.Filled.Login"
                                    OnClick="@(() => StartButtonProviderChallenge(provider))">
                             Continue with @provider.DisplayName
-                        </MudButton>
+                        </AppButton>
                     </MudStack>
                 }
 
@@ -70,24 +74,23 @@
                     <MudDivider Class="my-1" />
 
                     <MudText Typo="Typo.subtitle2">AT Protocol</MudText>
-                    <MudTextField T="string"
+                    <AppTextField T="string"
                                   Label="Handle"
                                   Placeholder="user.bsky.social"
-                                  Variant="Variant.Outlined"
                                   Adornment="Adornment.Start"
                                   AdornmentIcon="@Icons.Material.Filled.AlternateEmail"
                                   Immediate="true"
                                   @bind-Value="_atprotoHandle"
                                   OnKeyUp="HandleAtprotoKeyUp" />
 
-                    <MudButton Variant="Variant.Outlined"
+                    <AppButton Variant="Variant.Outlined"
                                Color="Color.Default"
                                FullWidth="true"
                                Size="Size.Large"
                                Disabled="@string.IsNullOrWhiteSpace(_atprotoHandle)"
                                OnClick="StartAtprotoChallenge">
                         Continue with Handle
-                    </MudButton>
+                    </AppButton>
                 }
             </MudStack>
         }

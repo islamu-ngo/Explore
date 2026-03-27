@@ -1,0 +1,83 @@
+@* ABOUTME: Dialog for creating and editing footer link groups. *@
+@* ABOUTME: Follows TenantNavigationDialog pattern with MudForm validation and DialogResult dispatch. *@
+
+@using Explore.Blazor.Client.Contracts.Services.Footer
+@using MudBlazor
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@(_isEdit ? Icons.Material.Filled.Edit : Icons.Material.Filled.Add)" Class="mr-3 mb-n1" />
+            @(_isEdit ? "Edit Link Group" : "Create Link Group")
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isValid" Model="_model">
+            <AppTextField T="string" @bind-Value="_model.Title"
+                          Label="Group Title"
+                          For="@(() => _model.Title)"
+                          Required="true"
+                          RequiredError="Title is required."
+                          Placeholder="e.g., Resources" />
+
+            @if (_isEdit)
+            {
+                <MudCheckBox T="bool" @bind-Value="_isActive"
+                             Label="Active"
+                             Color="Color.Primary" />
+            }
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <AppButton OnClick="Cancel">Cancel</AppButton>
+        <AppButton OnClick="Submit">@(_isEdit ? "Update" : "Create")</AppButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IDialogReference? DialogReference { get; set; }
+
+    [Parameter]
+    public FooterLinkGroupListModel? ExistingGroup { get; set; }
+
+    private MudForm _form = null!;
+    private bool _isValid;
+    private bool _isEdit;
+    private bool _isActive = true;
+    private CreateFooterLinkGroupModel _model = new();
+
+    protected override void OnInitialized()
+    {
+        _isEdit = ExistingGroup != null;
+
+        if (_isEdit && ExistingGroup != null)
+        {
+            _model.Title = ExistingGroup.Title;
+            _isActive = ExistingGroup.IsActive;
+        }
+    }
+
+    private async Task Submit()
+    {
+        await _form.Validate();
+        if (_form.IsValid)
+        {
+            if (_isEdit && ExistingGroup != null)
+            {
+                var updateModel = new UpdateFooterLinkGroupModel
+                {
+                    Title = _model.Title,
+                    IsActive = _isActive
+                };
+                DialogReference?.Dismiss(DialogResult.Ok(updateModel));
+            }
+            else
+            {
+                DialogReference?.Dismiss(DialogResult.Ok(_model));
+            }
+        }
+    }
+
+    private void Cancel() => DialogReference?.Dismiss(DialogResult.Cancel());
+}

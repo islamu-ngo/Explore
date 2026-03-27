@@ -62,4 +62,11 @@ public class LocationRepository : GenericRepository<Location, Guid>, ILocationRe
 
         return (items, totalCount);
     }
+
+    public async Task<int> ForgetPiiAsync(Guid locationId)
+    {
+        return await _dbContext.LocationPii
+            .Where(p => p.LocationId == locationId)
+            .ExecuteDeleteAsync();
+    }
 }

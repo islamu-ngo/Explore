@@ -3,23 +3,23 @@
 
 @if (!string.IsNullOrEmpty(ErrorMessage))
 {
-    <MudAlert Severity="Severity.Error" 
-              Variant="Variant.Outlined" 
-              Class="mb-4"
-              ShowCloseIcon="true"
-              CloseIconClicked="OnDismiss">
-        @ErrorMessage
-    </MudAlert>
+    <div role="alert">
+        <MudAlert Severity="Severity.Error" 
+                  Variant="Variant.Outlined" 
+                  Class="mb-4"
+                  ShowCloseIcon="true"
+                  CloseIconClicked="OnDismiss">
+            @ErrorMessage
+        </MudAlert>
+    </div>
     
     @if (OnRetry.HasDelegate)
     {
-        <MudButton Variant="Variant.Filled" 
-                   Color="Color.Primary" 
-                   StartIcon="@Icons.Material.Filled.Refresh"
+        <AppButton StartIcon="@Icons.Material.Filled.Refresh"
                    OnClick="OnRetry"
                    Class="mb-4">
             @RetryText
-        </MudButton>
+        </AppButton>
     }
 }
 

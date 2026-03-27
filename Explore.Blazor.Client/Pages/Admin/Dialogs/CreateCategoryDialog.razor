@@ -12,13 +12,13 @@
     </TitleContent>
     <DialogContent>
         <MudForm @ref="form" @bind-IsValid="success" Model="categoryDto">
-            <MudTextField @bind-Value="categoryDto.FullName" Label="Name" For="@(() => categoryDto.FullName)" Required="true" RequiredError="Name is required." />
-            <MudTextField @bind-Value="categoryDto.MasterCode" Label="Master Code" For="@(() => categoryDto.MasterCode)" Required="true" RequiredError="Master Code is required." />
+            <AppTextField T="string" @bind-Value="categoryDto.FullName" Label="Name" For="@(() => categoryDto.FullName)" Required="true" RequiredError="Name is required." />
+            <AppTextField T="string" @bind-Value="categoryDto.MasterCode" Label="Master Code" For="@(() => categoryDto.MasterCode)" Required="true" RequiredError="Master Code is required." />
         </MudForm>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" OnClick="Submit">Create</MudButton>
+        <AppButton Variant="Variant.Text" Color="Color.Default" OnClick="Cancel">Cancel</AppButton>
+        <AppButton OnClick="Submit">Create</AppButton>
     </DialogActions>
 </MudDialog>
 

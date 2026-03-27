@@ -1,3 +1,6 @@
+// ABOUTME: API controller for category type lookup table (read-only enumeration).
+// ABOUTME: Provides category type groupings for event category organization and filtering.
+
 using Asp.Versioning;
 using Explore.Application.DTOs.CategoryType;
 using Explore.Application.Features.CategoryTypeCategories.Requests.Queries;

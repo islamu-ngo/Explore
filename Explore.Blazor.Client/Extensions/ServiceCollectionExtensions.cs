@@ -3,11 +3,13 @@
 
 using Explore.Blazor.Client.Contracts.Providers;
 using Explore.Blazor.Client.Contracts.Services;
+using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.Events;
 using Explore.Blazor.Client.Contracts.Services.Lookup;
 using Explore.Blazor.Client.Contracts.Services.Notifications;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Services;
+using Explore.Blazor.Client.Services.Accessibility;
 using Explore.Blazor.Client.Services.Lookup;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -76,6 +78,10 @@ public static class ServiceCollectionExtensions
 
         // UI state
         services.AddScoped<SidebarState>();
+
+        // Accessibility services (ARIA announcements + focus management)
+        services.AddScoped<IAccessibilityAnnouncerService, AccessibilityAnnouncerService>();
+        services.AddScoped<IAccessibilityFocusService, AccessibilityFocusService>();
 
         // Feature flags (hydrated from API, no OpenFeature SDK dependency)
         services.AddScoped<FeatureStateContainer>();

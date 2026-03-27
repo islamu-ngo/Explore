@@ -53,13 +53,11 @@ public class TagTypeTagsRepository : GenericRepository<TagTypeTags, Guid>, ITagT
             .ThenBy(tt => tt.Tag.FullName)
             .ToListAsync();
 
-        return allEntries
-            .GroupBy(tt => tt.TagTypeId)
-            .Select(g =>
-            {
-                var first = g.First();
-                return (first.TagType, g.Select(tt => tt.Tag).ToList());
-            })
-            .ToList();
+        var lookup = allEntries.ToLookup(tt => tt.TagTypeId);
+        return lookup.Select(g =>
+        {
+            var first = g.First();
+            return (first.TagType, g.Select(tt => tt.Tag).ToList());
+        }).ToList();
     }
 }

@@ -66,14 +66,14 @@
         <MudPaper Elevation="0" Class="event-series-section__new-series-form pa-4 mt-3 rounded-lg border-solid border-1 mud-border-lines-default">
             <MudText Typo="Typo.subtitle2" Class="mb-3">New Series</MudText>
 
-            <MudTextField @bind-Value="_newSeriesTitle"
+            <AppTextField T="string" @bind-Value="_newSeriesTitle"
                           Label="Series Title"
                           Required="true"
                           RequiredError="Series title is required"
                           Variant="Variant.Outlined"
                           Class="mb-3" />
 
-            <MudTextField @bind-Value="_newSeriesDescription"
+            <AppTextField T="string" @bind-Value="_newSeriesDescription"
                           Label="Description (optional)"
                           Variant="Variant.Outlined"
                           Lines="2"

@@ -1,3 +1,6 @@
+// ABOUTME: REST API controller for event tag CRUD operations with HATEOAS support.
+// ABOUTME: Manages event tags used for categorization and discovery filtering.
+
 using Asp.Versioning;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Tag;
@@ -82,11 +85,8 @@ public class TagController : ControllerBase
     public async Task<ActionResult<HalResource<TagDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var tag = await _mediator.Send(new GetTagDetailsRequest { Id = id }, cancellationToken);
-
-        if (tag is null)
-        {
-            return NotFound(new { error = "Tag not found" });
-        }
+        if (tag == null)
+            return NotFound();
 
         var halResource = await _resourceAssembler.ToResource(tag, HttpContext);
         return Ok(halResource);
@@ -161,22 +161,9 @@ public class TagController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var command = new DeleteTagCommand { Id = id };
-            var result = await _mediator.Send(command, cancellationToken);
+        var command = new DeleteTagCommand { Id = id };
+        await _mediator.Send(command, cancellationToken);
 
-            if (!result)
-            {
-                return NotFound(new { error = "Tag not found" });
-            }
-
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error deleting tag {TagId}", id);
-            return StatusCode(500, new { error = ex.Message });
-        }
+        return NoContent();
     }
 }

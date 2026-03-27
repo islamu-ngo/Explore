@@ -1,10 +1,15 @@
 // ABOUTME: Handles UpdateAnalyticsGovernanceSettingsCommand — persists analytics governance settings.
-// ABOUTME: Uses IHierarchicalSettingsResolver.SetValueAsync to write at Instance scope.
+// ABOUTME: Validates settings against provider capabilities before writing at Instance scope.
 
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Settings;
+using Explore.Application.Settings.Groups;
+using Explore.Domain.Analytics;
 using Explore.Domain.Constants;
+using Explore.Domain.Enums;
+using Explore.Domain.Enums.Analytics;
 using Explore.Domain.Settings;
 using MediatR;
 
@@ -20,6 +25,98 @@ public sealed class UpdateAnalyticsGovernanceSettingsCommandHandler(
         var s = request.Settings;
         var userId = request.UserId;
 
+        // Resolve current provider context for capability-aware validation
+        var group = await settingsResolver.ResolveGroupAsync<AnalyticsSettingGroup>(
+            new SettingContext(), cancellationToken);
+
+        var provider = Enum.TryParse<AnalyticsProviderEnum>(group.Provider, true, out var parsed)
+            ? parsed : AnalyticsProviderEnum.None;
+        var capabilities = AnalyticsProviderCapabilities.For(provider);
+
+        // Validate — reject illegal combinations
+        var errors = ValidateSettings(s, group, capabilities);
+        if (errors.Count > 0)
+        {
+            return new BaseCommandResponse<Guid>
+            {
+                Success = false,
+                FailureCode = "ValidationFailed",
+                Errors = errors
+            };
+        }
+
+        // Collect advisory warnings for suboptimal-but-allowed combos
+        var warnings = CollectWarnings(s, group, provider, capabilities);
+
+        // Persist all settings
+        await PersistSettingsAsync(s, userId, cancellationToken);
+
+        return new BaseCommandResponse<Guid>
+        {
+            Success = true,
+            Message = warnings.Count > 0 ? string.Join(" ", warnings) : null
+        };
+    }
+
+    private static List<string> ValidateSettings(
+        DTOs.Analytics.AnalyticsGovernanceSettingsDto s,
+        AnalyticsSettingGroup group,
+        AnalyticsProviderCapabilities capabilities)
+    {
+        var errors = new List<string>();
+
+        if (s.ConsentCookieLifetimeDays is < 1 or > 730)
+            errors.Add("ConsentCookieLifetimeDays must be between 1 and 730.");
+
+        // DeclineBehavior.Cookieless requires provider cookieless support
+        // (inherently cookieless providers don't need explicit cookieless mode)
+        if (s.DeclineBehavior == DeclineBehavior.Cookieless
+            && group.Enabled
+            && !capabilities.SupportsCookielessMode
+            && !capabilities.InherentlyCookieless)
+        {
+            errors.Add($"Provider '{group.Provider}' does not support cookieless decline behavior.");
+        }
+
+        return errors;
+    }
+
+    private static List<string> CollectWarnings(
+        DTOs.Analytics.AnalyticsGovernanceSettingsDto s,
+        AnalyticsSettingGroup group,
+        AnalyticsProviderEnum provider,
+        AnalyticsProviderCapabilities capabilities)
+    {
+        var warnings = new List<string>();
+
+        // PostHog-specific features on non-PostHog provider
+        if (provider != AnalyticsProviderEnum.Posthog && group.Enabled)
+        {
+            var hasPosthogFeatures = s.PosthogSessionReplay || s.PosthogAutocapture
+                || s.PosthogHeatmaps || s.PosthogToolbar
+                || s.PosthogCookielessMode != PosthogCookielessMode.Off
+                || s.PosthogPersonProfiles != PosthogPersonProfiles.IdentifiedOnly;
+
+            if (hasPosthogFeatures)
+                warnings.Add("PostHog-specific features are configured but active provider is not PostHog; these will be ignored at runtime.");
+        }
+
+        // Session replay degraded in always-cookieless mode
+        if (s.PosthogSessionReplay && s.PosthogCookielessMode == PosthogCookielessMode.Always)
+            warnings.Add("Session replay is degraded in always-cookieless mode.");
+
+        // Cookie consent banner unnecessary for inherently cookieless provider
+        if (s.CookieConsentEnabled && capabilities.InherentlyCookieless && group.Enabled)
+            warnings.Add($"Cookie consent banner is unnecessary for inherently cookieless provider '{group.Provider}'.");
+
+        return warnings;
+    }
+
+    private async Task PersistSettingsAsync(
+        DTOs.Analytics.AnalyticsGovernanceSettingsDto s,
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
         await settingsResolver.SetValueAsync(
             GovernanceSettingKeys.Analytics.CookieConsentEnabled,
             s.CookieConsentEnabled.ToString().ToLowerInvariant(),
@@ -69,8 +166,6 @@ public sealed class UpdateAnalyticsGovernanceSettingsCommandHandler(
             GovernanceSettingKeys.Analytics.PosthogToolbar,
             s.PosthogToolbar.ToString().ToLowerInvariant(),
             SettingScope.Instance, Guid.Empty, userId, cancellationToken);
-
-        return new BaseCommandResponse<Guid> { Success = true };
     }
 
     private static string ToSnakeCase(string value)

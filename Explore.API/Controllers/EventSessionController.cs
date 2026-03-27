@@ -1,3 +1,6 @@
+// ABOUTME: REST API controller for event session CRUD operations with multi-language and speaker support.
+// ABOUTME: Manages event sessions, agendas, speakers, and session-level registration with HATEOAS.
+
 using Asp.Versioning;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.EventSession;
@@ -82,11 +85,8 @@ public class EventSessionController : ControllerBase
     public async Task<ActionResult<HalResource<EventSessionDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var session = await _mediator.Send(new GetEventSessionDetailsRequest { Id = id }, cancellationToken);
-
-        if (session is null)
-        {
-            return NotFound(new { error = "Event session not found" });
-        }
+        if (session == null)
+            return NotFound();
 
         var halResource = await _resourceAssembler.ToResource(session, HttpContext);
         return Ok(halResource);
@@ -182,22 +182,9 @@ public class EventSessionController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var command = new DeleteEventSessionCommand { Id = id };
-            var result = await _mediator.Send(command, cancellationToken);
+        var command = new DeleteEventSessionCommand { Id = id };
+        await _mediator.Send(command, cancellationToken);
 
-            if (!result)
-            {
-                return NotFound(new { error = "Event session not found" });
-            }
-
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error deleting event session {SessionId}", id);
-            return StatusCode(500, new { error = ex.Message });
-        }
+        return NoContent();
     }
 }

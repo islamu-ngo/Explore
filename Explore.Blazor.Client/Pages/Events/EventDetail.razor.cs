@@ -3,6 +3,7 @@
 
 using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.Events;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Helpers;
@@ -10,6 +11,7 @@ using Explore.Blazor.Client.Pages.Events.Components;
 using Explore.Blazor.Client.Pages.Events.Dialogs;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 using MudBlazor;
@@ -39,6 +41,8 @@ public partial class EventDetail : ComponentBase
 
     // Changed from private to protected to be accessible by Razor view
     [Inject] protected ILogger<EventDetail> Logger { get; set; } = default!;
+    [Inject] private IAccessibilityFocusService AccessibilityFocusService { get; set; } = default!;
+    [Inject] private IAccessibilityAnnouncerService AnnouncerService { get; set; } = default!;
 
     private Guid EventId { get; set; }
 
@@ -60,7 +64,7 @@ public partial class EventDetail : ComponentBase
     private EventIslamicAspectDto? _islamicAspect;
     private EventTechAspectDto? _techAspect;
     private ICollection<EventSessionAgendaItemListDto>? _agendaItems;
-    private EventAppearanceSettings _appearance = new();
+    private AppearanceSettings _appearance = new();
 
     // Tag/Category management
     private bool _showDetailTagCatPopup;
@@ -104,8 +108,12 @@ public partial class EventDetail : ComponentBase
             if (_eventDetails != null)
             {
                 Logger.LogInformation("Loaded event: {Title}", _eventDetails.Title);
-                _appearance = EventAppearanceMetadataHelper.FromColumns(
-                    _eventDetails.BackgroundColor, _eventDetails.BackgroundImageUri, _eventDetails.BackgroundEffect);
+                _appearance = new AppearanceSettings
+                {
+                    BackgroundColor = _eventDetails.BackgroundColor ?? string.Empty,
+                    ImageUri = _eventDetails.BackgroundImageUri ?? string.Empty,
+                    BackgroundEffect = _eventDetails.BackgroundEffect ?? "None"
+                };
 
                 // Load event sessions
                 _eventSessions = await EventService.GetSessionsByEventAsync(EventId);
@@ -137,6 +145,11 @@ public partial class EventDetail : ComponentBase
             _isCheckingAuth = false;
         }
 
+        if (_errorMessage != null)
+            await AnnouncerService.AnnounceAssertiveAsync(_errorMessage);
+        else if (_eventDetails == null)
+            await AnnouncerService.AnnouncePoliteAsync("Event not found");
+
         if (_eventDetails != null)
         {
             PersistState();
@@ -155,7 +168,7 @@ public partial class EventDetail : ComponentBase
         _primarySession = PersistedState.PrimarySession;
         _islamicAspect = PersistedState.IslamicAspect;
         _techAspect = PersistedState.TechAspect;
-        _appearance = PersistedState.Appearance ?? new EventAppearanceSettings();
+        _appearance = PersistedState.Appearance ?? new AppearanceSettings();
         _isLoading = false;
         _isCheckingRegistration = true;
         _isCheckingAuth = true;
@@ -195,7 +208,7 @@ public partial class EventDetail : ComponentBase
         public EventSessionListDto? PrimarySession { get; init; }
         public EventIslamicAspectDto? IslamicAspect { get; init; }
         public EventTechAspectDto? TechAspect { get; init; }
-        public EventAppearanceSettings? Appearance { get; init; }
+        public AppearanceSettings? Appearance { get; init; }
     }
 
     /// <summary>
@@ -259,11 +272,13 @@ public partial class EventDetail : ComponentBase
     {
         if (!_userRegistrationIds.Any()) return;
 
+        await AccessibilityFocusService.SaveFocusAsync();
         var confirm = await DialogService.ShowMessageBoxAsync(
             "Cancel Registration",
             $"Are you sure you want to cancel your registration for \"{_eventDetails?.Title}\"?",
             yesText: "Cancel Registration",
             cancelText: "Keep Registration");
+        await AccessibilityFocusService.RestoreFocusAsync();
 
         if (confirm != true) return;
 
@@ -428,7 +443,7 @@ public partial class EventDetail : ComponentBase
 
     private string GetHeroStyle()
     {
-        return EventAppearanceMetadataHelper.BuildHeroStyle(_appearance, $"#{GetEventColor()}");
+        return AppearanceStyleBuilder.BuildHeroStyle(_appearance, $"#{GetEventColor()}");
     }
 
     /// <summary>
@@ -476,6 +491,14 @@ public partial class EventDetail : ComponentBase
             Navigation.NavigateTo(url);
     }
 
+    private void HandleOrganizerKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is "Enter" or " ")
+        {
+            NavigateToOrganizer();
+        }
+    }
+
     /// <summary>
     /// Opens the registration dialog for the event.
     /// Handles single vs multiple session scenarios.
@@ -493,33 +516,32 @@ public partial class EventDetail : ComponentBase
         // Ensure sessions are loaded
         if (_eventSessions == null || !_eventSessions.Any())
         {
+            await AccessibilityFocusService.SaveFocusAsync();
             await DialogService.ShowMessageBoxAsync(
                 "Registration unavailable",
                 "No sessions are available for this event yet.",
                 yesText: "OK");
+            await AccessibilityFocusService.RestoreFocusAsync();
             return;
         }
 
         // Case 1: Single Session -> Register directly
         if (_eventSessions.Count == 1)
         {
+            await AccessibilityFocusService.SaveFocusAsync();
             await RegisterForSession(_eventSessions.First());
+            await AccessibilityFocusService.RestoreFocusAsync();
         }
         // Case 2: Multiple Sessions -> Show Selection Dialog
         else
         {
+            await AccessibilityFocusService.SaveFocusAsync();
             var parameters = new DialogParameters
             {
                 { "Sessions", _eventSessions.ToList() }
             };
 
-            var options = new DialogOptions
-            {
-                CloseOnEscapeKey = true,
-                MaxWidth = MaxWidth.Small,
-                FullWidth = true,
-                Position = DialogPosition.Center
-            };
+            var options = DialogOptionsFactory.Confirmation();
 
             var dialog = await SessionSelectionDialog.ShowAsync(
                 DialogService,
@@ -548,6 +570,7 @@ public partial class EventDetail : ComponentBase
                     await CheckRegistrationStatusAsync();
                 }
             }
+            await AccessibilityFocusService.RestoreFocusAsync();
         }
     }
 
@@ -562,13 +585,7 @@ public partial class EventDetail : ComponentBase
             { "Title", $"Register for {_eventDetails!.Title} - {session.Title}" }
         };
 
-        var options = new DialogOptions
-        {
-            CloseOnEscapeKey = true,
-            MaxWidth = MaxWidth.Medium,
-            FullWidth = true,
-            Position = DialogPosition.Center
-        };
+        var options = DialogOptionsFactory.Medium();
 
         var dialog = await DialogService.ShowAsync<EventRegistration>(
             "Register",
@@ -845,19 +862,16 @@ public partial class EventDetail : ComponentBase
             { "EventTitle", _eventDetails.Title }
         };
 
-        var options = new DialogOptions
-        {
-            CloseOnEscapeKey = true,
-            MaxWidth = MaxWidth.Small,
-            FullWidth = true
-        };
+        var options = DialogOptionsFactory.Small();
 
+        await AccessibilityFocusService.SaveFocusAsync();
         var dialog = await DeleteEventDialog.ShowAsync(
             DialogService,
             "Delete Event",
             parameters,
             options);
         var result = await dialog.Result;
+        await AccessibilityFocusService.RestoreFocusAsync();
 
         if (result != null && !result.Canceled)
         {
@@ -896,13 +910,9 @@ public partial class EventDetail : ComponentBase
             { "ExistingAspect", existingAspect }
         };
 
-        var options = new DialogOptions
-        {
-            CloseOnEscapeKey = true,
-            MaxWidth = MaxWidth.Medium,
-            FullWidth = true
-        };
+        var options = DialogOptionsFactory.Medium();
 
+        await AccessibilityFocusService.SaveFocusAsync();
         var dialog = await IslamicAspectEditDialog.ShowAsync(
             DialogService,
             existingAspect == null ? "Add Islamic Characteristics" : "Edit Islamic Characteristics",
@@ -910,6 +920,7 @@ public partial class EventDetail : ComponentBase
             options);
 
         var result = await dialog.Result;
+        await AccessibilityFocusService.RestoreFocusAsync();
 
         if (result != null && !result.Canceled)
         {
@@ -945,13 +956,9 @@ public partial class EventDetail : ComponentBase
             { "ExistingAspect", existingAspect }
         };
 
-        var options = new DialogOptions
-        {
-            CloseOnEscapeKey = true,
-            MaxWidth = MaxWidth.Medium,
-            FullWidth = true
-        };
+        var options = DialogOptionsFactory.Medium();
 
+        await AccessibilityFocusService.SaveFocusAsync();
         var dialog = await TechAspectEditDialog.ShowAsync(
             DialogService,
             existingAspect == null ? "Add Tech Characteristics" : "Edit Tech Characteristics",
@@ -959,6 +966,7 @@ public partial class EventDetail : ComponentBase
             options);
 
         var result = await dialog.Result;
+        await AccessibilityFocusService.RestoreFocusAsync();
 
         if (result != null && !result.Canceled)
         {
@@ -972,11 +980,13 @@ public partial class EventDetail : ComponentBase
     /// </summary>
     private async Task ConfirmDeleteIslamicAspect()
     {
+        await AccessibilityFocusService.SaveFocusAsync();
         var confirmed = await DialogService.ShowMessageBoxAsync(
             "Delete Islamic Characteristics",
             "Are you sure you want to remove the Islamic characteristics from this event? This action cannot be undone.",
             yesText: "Delete",
             cancelText: "Cancel");
+        await AccessibilityFocusService.RestoreFocusAsync();
 
         if (confirmed == true)
         {
@@ -1005,11 +1015,13 @@ public partial class EventDetail : ComponentBase
     /// </summary>
     private async Task ConfirmDeleteTechAspect()
     {
+        await AccessibilityFocusService.SaveFocusAsync();
         var confirmed = await DialogService.ShowMessageBoxAsync(
             "Delete Tech Characteristics",
             "Are you sure you want to remove the Tech characteristics from this event? This action cannot be undone.",
             yesText: "Delete",
             cancelText: "Cancel");
+        await AccessibilityFocusService.RestoreFocusAsync();
 
         if (confirmed == true)
         {

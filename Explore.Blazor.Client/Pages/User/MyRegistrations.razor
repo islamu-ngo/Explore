@@ -15,17 +15,18 @@
     <div class="d-flex flex-wrap align-end justify-space-between gap-4 mb-8">
         <div>
             <MudText Typo="Typo.overline" Class="mud-text-secondary" Style="letter-spacing: 0.18em;">PARTICIPANT</MudText>
-            <MudText Typo="Typo.h4">My Registrations</MudText>
+            <MudText Typo="Typo.h4" HtmlTag="h1">My Registrations</MudText>
         </div>
-        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/my/profile" Color="Color.Primary">
+        <AppButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/my/profile">
             Back to Profile
-        </MudButton>
+        </AppButton>
     </div>
 
     <!-- Filters -->
     <MudGrid Class="mb-8">
         <MudItem xs="12">
-            <MudTextField @bind-Value="_searchString" 
+            <AppTextField T="string" T="string"
+                          @bind-Value="_searchString" 
                           Placeholder="Search events..." 
                           Adornment="Adornment.Start" 
                           AdornmentIcon="@Icons.Material.Filled.Search" 
@@ -48,7 +49,7 @@
         <div class="d-flex flex-column align-center justify-center py-16">
             <MudIcon Icon="@Icons.Material.Outlined.AppRegistration" Size="Size.Large" Color="Color.Default" Style="width: 80px; height: 80px; opacity: 0.2;" />
             <MudText Typo="Typo.h6" Class="mt-4">No registrations found</MudText>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/events" Class="mt-4">Explore Events</MudButton>
+            <AppButton Href="/events" Class="mt-4">Explore Events</AppButton>
         </div>
     }
     else
@@ -58,7 +59,7 @@
             <Virtualize Items="@FilteredRegistrations.ToList()" Context="reg" OverscanCount="4">
                 <ItemContent>
                     <MudItem xs="12" sm="6" md="4">
-                        <MudCard Class="h-100 d-flex flex-column">
+                        <AppCard Class="h-100 d-flex flex-column">
                             <MudCardMedia Image="@(string.IsNullOrEmpty(reg.FeaturedImageUri) ? $"https://placehold.co/600x400?text={Uri.EscapeDataString(reg.EventTitle ?? "Event")}" : reg.FeaturedImageUri)" 
                                           Height="200" />
                             <MudCardContent Class="flex-grow-1">
@@ -73,32 +74,31 @@
                                 </div>
                             </MudCardContent>
                             <MudCardActions>
-                                <MudButton Variant="Variant.Text" 
-                                           Color="Color.Primary" 
+                                <AppButton Variant="Variant.Text" 
                                            EndIcon="@Icons.Material.Filled.ArrowForward"
                                            Href="@($"/events/{reg.EventId}")">
                                     Details
-                                </MudButton>
+                                </AppButton>
                                 <MudSpacer />
-                                <MudButton Variant="Variant.Text" 
+                                <AppButton Variant="Variant.Text" 
                                            Color="Color.Error" 
                                            OnClick="@(() => CancelRegistration(reg.RegistrationId))">
                                     Cancel
-                                </MudButton>
+                                </AppButton>
                             </MudCardActions>
-                        </MudCard>
+                        </AppCard>
                     </MudItem>
                 </ItemContent>
                 <Placeholder>
                     <MudItem xs="12" sm="6" md="4">
-                        <MudCard Class="h-100 d-flex flex-column">
+                        <AppCard Class="h-100 d-flex flex-column">
                             <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
                             <MudCardContent>
                                 <MudSkeleton Width="30%" Class="mb-1" />
                                 <MudSkeleton Width="70%" Class="mb-4" />
                                 <MudSkeleton Width="50%" />
                             </MudCardContent>
-                        </MudCard>
+                        </AppCard>
                     </MudItem>
                 </Placeholder>
             </Virtualize>

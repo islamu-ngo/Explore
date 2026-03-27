@@ -4,6 +4,8 @@
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
+<PageTitle>Home</PageTitle>
+
 @switch (_state)
 {
     case RootState.Loading:
@@ -13,7 +15,7 @@
                 @for (int i = 0; i < 8; i++)
                 {
                     <MudItem xs="12" sm="6" md="4" lg="3">
-                        <MudCard Class="h-100 d-flex flex-column rounded-xl border-solid border-1 mud-border-lines-default" Elevation="0">
+                        <AppCard Class="h-100 d-flex flex-column rounded-xl border-solid border-1 mud-border-lines-default">
                             <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
                             <MudCardContent>
                                 <MudSkeleton Width="30%" Height="20px" Class="mb-2" />
@@ -21,7 +23,7 @@
                                 <MudSkeleton Width="100%" Height="20px" />
                                 <MudSkeleton Width="100%" Height="20px" />
                             </MudCardContent>
-                        </MudCard>
+                        </AppCard>
                     </MudItem>
                 }
             </MudGrid>
@@ -40,7 +42,7 @@
                 @for (int i = 0; i < 4; i++)
                 {
                     <MudItem xs="12" sm="6" md="4" lg="3">
-                        <MudCard Class="h-100 d-flex flex-column rounded-xl border-solid border-1 mud-border-lines-default" Elevation="0">
+                        <AppCard Class="h-100 d-flex flex-column rounded-xl border-solid border-1 mud-border-lines-default">
                             <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
                             <MudCardContent>
                                 <MudSkeleton Width="30%" Height="20px" Class="mb-2" />
@@ -48,7 +50,7 @@
                                 <MudSkeleton Width="100%" Height="20px" />
                                 <MudSkeleton Width="100%" Height="20px" />
                             </MudCardContent>
-                        </MudCard>
+                        </AppCard>
                     </MudItem>
                 }
             </MudGrid>

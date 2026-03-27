@@ -78,11 +78,8 @@ public class SetupSecretProvider : ISetupSecretProvider, IDisposable
         _isBootstrapComplete = true;
     }
 
-    /// <summary>
-    /// Returns the secret value for startup logging only.
-    /// This method is internal and should NEVER be exposed via API or any public endpoint.
-    /// </summary>
-    internal string GetSecretForLogging() => _secret;
+    /// <inheritdoc />
+    public string? GetSecretForLogging() => IsFromEnvironmentVariable ? null : _secret;
 
     public void Dispose()
     {

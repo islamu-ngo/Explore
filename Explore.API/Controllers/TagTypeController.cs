@@ -1,3 +1,6 @@
+// ABOUTME: API controller for tag type lookup table (read-only enumeration).
+// ABOUTME: Provides tag type categories for event tag classification and filtering.
+
 using Asp.Versioning;
 using Explore.Application.DTOs.TagType;
 using Explore.Application.Features.TagTypes.Requests.Queries;

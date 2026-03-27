@@ -27,7 +27,7 @@
                         Color="Color.Success"
                         Size="Size.Large"
                         Style="font-size: 5rem;" />
-                <MudText Typo="Typo.h4" Color="Color.Success" Class="mt-4">
+                <MudText Typo="Typo.h4" HtmlTag="h1" Color="Color.Success" Class="mt-4">
                     Event Created Successfully!
                 </MudText>
                 <MudText Typo="Typo.body1" Class="mt-2 text-muted">
@@ -101,16 +101,13 @@
             <MudDivider Class="my-4" />
 
             <div class="d-flex justify-content-between mt-6">
-                <MudButton Variant="Variant.Outlined"
-                          Color="Color.Primary"
+                <AppButton Variant="Variant.Outlined"
                           OnClick="@(() => Navigation.NavigateTo("/events/create"))">
                     Create Another Event
-                </MudButton>
-                <MudButton Variant="Variant.Filled"
-                          Color="Color.Primary"
-                          OnClick="@(() => Navigation.NavigateTo("/my/events"))">
+                </AppButton>
+                <AppButton OnClick="@(() => Navigation.NavigateTo("/my/events"))">
                     View My Events
-                </MudButton>
+                </AppButton>
             </div>
         </MudPaper>
     }
@@ -119,12 +116,10 @@
         <MudPaper Class="pa-8 text-center">
             <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" Size="Size.Large" />
             <MudText Typo="Typo.h6" Class="mt-4">Event not found</MudText>
-            <MudButton Variant="Variant.Filled"
-                      Color="Color.Primary"
-                      Class="mt-4"
+            <AppButton Class="mt-4"
                       OnClick="@(() => Navigation.NavigateTo("/my/events"))">
                 Go to My Events
-            </MudButton>
+            </AppButton>
         </MudPaper>
     }
 </MudContainer>

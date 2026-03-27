@@ -6,6 +6,8 @@
 @using Microsoft.Extensions.Logging
 @attribute [StreamRendering]
 
+<PageTitle>@(Organization?.FullName ?? "Organization Details")</PageTitle>
+
 <div class="admin-list-details">
     @if (_isLoading)
     {
@@ -26,7 +28,7 @@
                     <MudIcon Icon="@Icons.Material.Filled.Business" Color="Color.Primary" Size="Size.Large" />
                 </div>
                 <div>
-                    <MudText Typo="Typo.h4" Style="font-weight:800; letter-spacing:.2px;">
+                    <MudText Typo="Typo.h4" HtmlTag="h1" Style="font-weight:800; letter-spacing:.2px;">
                         @Organization.FullName
                     </MudText>
                     <MudText Typo="Typo.body2" Class="admin-list-details__hero-meta">
@@ -129,13 +131,13 @@
 
         <!-- FOOTER ACTIONS -->
         <div class="admin-list-details__footer">
-            <MudButton Variant="Variant.Outlined"
+            <AppButton Variant="Variant.Outlined"
                        Color="Color.Default"
                        StartIcon="@Icons.Material.Filled.ArrowBack"
                        OnClick="NavigateBack"
                        Style="border-radius:999px;">
                 Back to List
-            </MudButton>
+            </AppButton>
         </div>
     }
     else
@@ -144,13 +146,13 @@
             <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Large" Color="Color.Warning" />
             <MudText Typo="Typo.h6" Style="font-weight:800;">Organization not found</MudText>
             <MudText Typo="Typo.body2">The Organization you're looking for doesn't exist or has been deleted.</MudText>
-            <MudButton Variant="Variant.Outlined"
+            <AppButton Variant="Variant.Outlined"
                        Color="Color.Default"
                        StartIcon="@Icons.Material.Filled.ArrowBack"
                        OnClick="NavigateBack"
                        Style="border-radius:999px; margin-top:16px;">
                 Back to List
-            </MudButton>
+            </AppButton>
         </MudPaper>
     }
 </div>

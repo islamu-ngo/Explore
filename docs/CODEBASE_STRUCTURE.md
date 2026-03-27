@@ -1,3 +1,6 @@
+ABOUTME: Complete directory map showing all projects, folders, and key files.
+ABOUTME: Helps AI agents and developers locate code quickly without full-repo scanning.
+
 # Codebase Structure Reference
 
 > Complete directory map for AI agents and developers.
@@ -59,6 +62,10 @@ Explore.Domain/
 ├── Constants/                    — Platform-wide constants
 │   ├── GovernanceSettingKeys.cs  — SystemSetting key strings (deployment mode, branding, domains)
 │   └── PlatformDefaults.cs       — Default values for platform settings
+├── OutboxMessage.cs              — General-purpose transactional outbox entity (UUID v7, JSONB payload)
+├── OutboxMessageStatus.cs        — Enum: Pending, Processing, Completed, Failed, DeadLettered
+├── TenantFooterLinkGroup.cs      — Footer link group entity (per-tenant, ordered)
+├── TenantFooterLink.cs           — Footer link entity (belongs to group, ordered)
 ├── Federation/                   — ATProto federation entities
 │   └── PdsSyncOutbox.cs          — Outbox pattern for PDS synchronization
 └── Modules/                      — Module governance entities
@@ -94,6 +101,7 @@ Explore.Application/
 │   │   └── Common/               — Shared helpers for onboarding features
 │   ├── TenantOnboarding/         — Tenant-level onboarding flow
 │   ├── PublicExperience/         — Public-facing discovery (landing pages)
+│   ├── Footer/                    — Footer link groups, links, settings, governance
 │   └── [30+ more feature folders] — Each follows Handlers/{Commands,Queries} + Requests/{Commands,Queries}
 ├── DTOs/                         — Data Transfer Objects (one folder per entity)
 │   ├── Event/                    — CreateEventDto.cs, UpdateEventDto.cs, EventDto.cs, EventListDto.cs
@@ -104,7 +112,10 @@ Explore.Application/
 │   ├── Persistence/              — Repository interfaces (one per entity)
 │   │   ├── IGenericRepository.cs — Base generic repository interface
 │   │   ├── IEventRepository.cs   — Event-specific repository methods
+│   │   ├── IOutboxRepository.cs    — Outbox message retrieval and status management
 │   │   └── [50+ more interfaces] — One interface per entity/aggregate
+│   ├── Outbox/                    — Outbox pattern contracts
+│   │   └── IOutboxMessageDispatcher.cs — Interface for dispatching outbox messages
 │   ├── Infrastructure/           — Infrastructure service interfaces
 │   │   ├── ITenantContext.cs     — Multi-tenant context resolution
 │   │   ├── ICurrentUserService.cs— Current authenticated user info
@@ -173,6 +184,9 @@ Explore.Persistence/
 ├── Repositories/                  — Repository implementations
 │   ├── GenericRepository.cs       — Base CRUD with soft delete awareness
 │   ├── EventRepository.cs         — Event-specific queries with eager loading
+│   ├── OutboxRepository.cs        — Outbox message batch retrieval, optimistic locking, dead-letter
+│   ├── TenantFooterLinkGroupRepository.cs — Footer link group CRUD
+│   ├── TenantFooterLinkRepository.cs      — Footer link CRUD
 │   └── [55+ more repositories]    — One per entity, extends GenericRepository
 ├── Configurations/
 │   └── Entities/                  — EF Core entity configurations (Fluent API)
@@ -207,6 +221,7 @@ Explore.API/
 │   ├── OrganizationController.cs  — Organization endpoints
 │   ├── InstanceOnboardingController.cs — Instance admin bootstrap
 │   ├── TenantOnboardingController.cs   — Tenant setup wizard
+│   ├── FooterController.cs         — Footer link groups, links, settings, governance (11 endpoints)
 │   └── [40+ more controllers]     — One per entity; GET=AllowAnonymous, POST/PUT/DELETE=Authorize
 ├── Services/                      — API-layer services
 │   └── TenantContext.cs           — Multi-tenant resolution (header → custom domain → subdomain → default)
@@ -242,6 +257,7 @@ Explore.API/
 ├── OpenApi/                       — Scalar/OpenAPI customization
 │   └── HalSchemaTransformer.cs    — Transforms OpenAPI schema for HAL format
 ├── BackgroundServices/            — Hosted background workers
+│   ├── OutboxProcessor.cs         — Polls outbox_messages, dispatches events, retry + dead-letter
 │   └── PdsSyncWorker.cs           — ATProto PDS synchronization (outbox pattern, exponential backoff)
 ├── Static/                        — Static file serving configuration
 ├── swagger.json                   — Generated OpenAPI specification
@@ -298,19 +314,34 @@ Explore.Blazor.Client/
 ├── Services/                      — API proxy services (one per domain area)
 │   ├── EventService.cs            — Event API calls
 │   ├── OrganizationService.cs     — Organization API calls
+│   ├── FooterAdminService.cs      — Footer link groups, links, settings admin API calls
+│   ├── PublicExperienceService.cs — Public-facing discovery + footer config API calls
 │   ├── BffClient.cs               — BFF HTTP client with XSRF token handling
 │   ├── AuthStateService.cs        — Centralized authentication state
 │   ├── LookupCacheService.cs      — Client-side cache for lookup table data
-│   └── ImageStorageService.cs     — S3 presigned URL upload handling
+│   ├── ImageStorageService.cs     — S3 presigned URL upload handling
+│   ├── DialogOptionsFactory.cs    — Static dialog preset factory (Small, Medium, Confirmation, Editor)
+│   ├── Accessibility/             — Accessibility service implementations
+│   │   ├── AccessibilityAnnouncerService.cs — ARIA live region announcements via JS interop
+│   │   └── AccessibilityFocusService.cs     — Focus management via JS interop
+│   └── AppearanceThemeService.cs  — WCAG AA compliant color palette management
 ├── Components/                    — Reusable UI components
+│   ├── Common/                    — MudBlazor wrapper components (consistent defaults)
+│   │   ├── AppButton.razor/.css   — Filled/Primary/Elevation=0 button wrapper
+│   │   ├── AppCard.razor/.css     — Elevation=0/border card wrapper
+│   │   ├── AppTextField.razor/.css— Outlined text field wrapper (generic <T>)
+│   │   ├── AppIconButton.razor/.css — Icon button wrapper
+│   │   └── AppDialogShell.razor/.css — Dialog shell (header/body/actions BEM)
 │   ├── ImageUpload.razor          — Image upload with S3 presigned URLs
 │   ├── S3Image.razor              — Image display from S3 storage
 │   ├── ReviewDialog.razor         — Generic review/rating dialog
 │   └── Loading.razor              — Loading spinner component
 ├── Layout/                        — Layout components
-│   ├── MainLayout.razor/.cs       — Main page layout with drawer navigation
+│   ├── MainLayout.razor/.cs       — Main page layout (skip-link, landmarks, ARIA live regions)
 │   ├── NavMenu.razor/.cs          — Navigation menu component
-│   └── Footer.razor               — Site footer
+│   └── Footer.razor               — Site footer (template-based, tenant-configurable)
+├── Shared/                        — Shared editor components
+│   └── AppearanceEditor.razor/.css — Appearance editor (color picker, effects, image URL)
 ├── Clients/                       — Generated API clients
 │   ├── EventApiClient.cs          — NSwag-generated client interface + implementation
 │   └── EventApiClient.g.cs        — Auto-generated client code from OpenAPI spec
@@ -320,7 +351,11 @@ Explore.Blazor.Client/
 │   └── Responses/
 │       ├── BaseCommandResponse.cs — Client-side mirror of API response
 │       └── ServiceResult.cs       — Service operation result wrapper
+├── Contracts/Services/Accessibility/ — Accessibility service interfaces
+│   ├── IAccessibilityAnnouncerService.cs — ARIA live region announcement contract
+│   └── IAccessibilityFocusService.cs     — Focus management contract
 ├── Helpers/                       — UI helper utilities
+│   ├── AppearanceStyleBuilder.cs  — Builds inline CSS for actor/event appearance (overlays, blur, gradient)
 │   ├── EventAppearanceMetadataHelper.cs     — Event display metadata
 │   └── OrganizationAppearanceMetadataHelper.cs — Organization display metadata
 ├── Validators/                    — Client-side FluentValidation validators
@@ -410,7 +445,9 @@ Event.Domain.UnitTests/            — Domain entity unit tests
 Event.Architecture.Tests/          — Architecture fitness tests
 ├── CleanArchitectureTests.cs      — Validates dependency rules between layers
 ├── CqrsPatternTests.cs            — Validates CQRS naming and structure conventions
-└── NamingConventionTests.cs       — Enforces naming patterns across codebase
+├── NamingConventionTests.cs       — Enforces naming patterns across codebase
+├── AccessibilityConventionTests.cs — Page shell, landmark, heading, CSS direction conventions
+└── AuthorizationParityTests.cs    — Resource kind ↔ Cerbos policy parity checks
 
 Event.Persistence.IntegrationTests/— Database integration tests
 ├── Fixtures/                      — Test fixtures (in-memory or containerized DB)
@@ -477,7 +514,7 @@ docker/                            — Docker configurations
 
 lexicons/                          — ATProto lexicon schema definitions
 scripts/                           — Utility scripts
-images/                            — Documentation images
+assets/                            — Documentation assets (images, gif...)
 inbox/                             — Temporary staging area
 
 _bmad/                             — BMAD methodology templates
@@ -508,3 +545,11 @@ _bmad-output/                      — BMAD workflow outputs
 | Secret management | `Explore.Secrets/` (standalone library) |
 | Database migrations | `dotnet ef` via `Event.MigrationService/` |
 | Architecture tests | `Event.Architecture.Tests/` |
+| Wrapper components | `Explore.Blazor.Client/Components/Common/App*.razor` |
+| Accessibility services | `Explore.Blazor.Client/Services/Accessibility/` |
+| Accessibility contracts | `Explore.Blazor.Client/Contracts/Services/Accessibility/` |
+| Appearance styling | `Explore.Blazor.Client/Helpers/AppearanceStyleBuilder.cs` |
+| Footer management | `Explore.Blazor.Client/Services/FooterAdminService.cs` + `Explore.API/Controllers/FooterController.cs` |
+| Outbox processing | `Explore.API/BackgroundServices/OutboxProcessor.cs` + `Explore.Domain/OutboxMessage.cs` |
+| Dialog presets | `Explore.Blazor.Client/Services/DialogOptionsFactory.cs` |
+| CSS tokens/layers | `Explore.Blazor/wwwroot/css/tokens.css` + `layers.css` |

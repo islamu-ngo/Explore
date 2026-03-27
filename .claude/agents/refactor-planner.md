@@ -4,7 +4,10 @@ ABOUTME: Lists required reads, must-do rules, and outputs.
 ---
 name: refactor-planner
 description: Creates refactoring plans that enforce Clean Architecture for {Project}.
-tools: All tools
+type: review
+enforcement: suggest
+priority: high
+tools: Read, Glob, Grep
 ---
 
 # Refactor Planner

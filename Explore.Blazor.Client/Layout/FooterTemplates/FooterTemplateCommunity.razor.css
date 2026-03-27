@@ -1,0 +1,82 @@
+/* ABOUTME: Scoped styles for the Community footer template with prominent social links.
+   ABOUTME: Layout-specific styles for social card grid, link rows, and centered bottom bar. */
+
+/* Social bar section */
+::deep .footer-community__social-bar {
+    text-align: center;
+    margin-bottom: var(--isl-space-4);
+}
+
+::deep .footer-community__heading--centered {
+    text-align: center;
+}
+
+/* Social card grid — responsive wrap */
+::deep .footer-community__social-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--isl-space-3);
+    margin-top: var(--isl-space-4);
+}
+
+/* Social card — bordered pill with icon + label */
+::deep .footer-community__social-card {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--isl-space-2);
+    padding: var(--isl-space-2) var(--isl-space-4);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--mud-default-borderradius);
+    color: var(--mud-palette-text-secondary);
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+}
+
+::deep .footer-community__social-card:hover {
+    color: var(--mud-palette-primary);
+    border-color: var(--mud-palette-primary);
+    background-color: color-mix(in srgb, var(--mud-palette-primary) 8%, transparent);
+    transform: translateY(-0.125rem);
+}
+
+/* Link groups row — horizontal layout */
+::deep .footer-community__links-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--isl-space-8) var(--isl-space-16);
+}
+
+/* Bottom bar — centered column layout */
+::deep .footer-community__bottom {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--isl-space-3);
+    text-align: center;
+}
+
+/* Compact brand in bottom bar */
+::deep .footer-community__brand--compact {
+    gap: var(--isl-space-2);
+}
+
+::deep .footer-community__brand-text--sm {
+    font-size: 1.125rem !important;
+}
+
+/* Mobile (<=599px): stack link groups vertically */
+@media (max-width: 37.499em) {
+    ::deep .footer-community__links-row {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    ::deep .footer-community__links-row .site-footer__section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+}

@@ -9,6 +9,7 @@ using Explore.Infrastructure.Analytics;
 using Explore.Infrastructure.Identity;
 using Explore.Infrastructure.Localization;
 using Explore.Infrastructure.Mail;
+using Explore.Infrastructure.Outbox;
 using Explore.Infrastructure.Services;
 using Explore.Infrastructure.Services.Federation;
 using Explore.Infrastructure.Storage;
@@ -166,6 +167,10 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<ITranslationManagementProvider>(sp => sp.GetRequiredService<RuntimeTranslationProvider>());
         services.AddScoped<TranslationResolver>();
         services.AddScoped<ITranslationResolver>(sp => sp.GetRequiredService<TranslationResolver>());
+
+        // Generic Outbox Processor settings and dispatcher
+        services.Configure<OutboxProcessorSettings>(configuration.GetSection(OutboxProcessorSettings.SectionName));
+        services.AddScoped<IOutboxMessageDispatcher, LoggingOutboxMessageDispatcher>();
 
         // PDS Synchronization services
         services.Configure<PdsSyncSettings>(configuration.GetSection(PdsSyncSettings.SectionName));

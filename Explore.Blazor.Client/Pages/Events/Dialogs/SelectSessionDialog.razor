@@ -13,7 +13,7 @@
                 <PropertyColumn Property="x => x.StartTime" />
                 <TemplateColumn StickyRight="true">
                     <CellTemplate Context="context">
-                        <MudButton OnClick="@(() => Select(context.Item))" Variant="Variant.Text">Select</MudButton>
+                        <AppButton OnClick="@(() => Select(context.Item))" Variant="Variant.Text">Select</AppButton>
                     </CellTemplate>
                 </TemplateColumn>
             </Columns>

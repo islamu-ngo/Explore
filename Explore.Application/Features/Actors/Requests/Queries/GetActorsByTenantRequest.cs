@@ -8,4 +8,6 @@ namespace Explore.Application.Features.Actors.Requests.Queries;
 public class GetActorsByTenantRequest : IRequest<List<ActorListDto>>
 {
     public Guid TenantId { get; set; }
+    public int PageNumber { get; set; } = 1;
+    public int PageSize { get; set; } = 20;
 }

@@ -76,14 +76,14 @@
                             @if (consent.Status == "Granted")
                             {
                                 <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Outlined">Active</MudChip>
-                                <MudButton Variant="Variant.Outlined"
+                                <AppButton Variant="Variant.Outlined"
                                            Color="Color.Error"
                                            Size="Size.Small"
                                            StartIcon="@Icons.Material.Filled.LinkOff"
                                            OnClick="@(() => PromptWithdraw(consent))"
                                            Disabled="_isWithdrawing">
                                     Withdraw
-                                </MudButton>
+                                </AppButton>
                             }
                             else
                             {
@@ -108,14 +108,14 @@
         </MudAlert>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="CancelWithdraw" Variant="Variant.Text">Cancel</MudButton>
-        <MudButton OnClick="ConfirmWithdraw" Color="Color.Error" Variant="Variant.Filled" Disabled="_isWithdrawing">
+        <AppButton OnClick="CancelWithdraw" Variant="Variant.Text">Cancel</AppButton>
+        <AppButton OnClick="ConfirmWithdraw" Color="Color.Error" Disabled="_isWithdrawing">
             @if (_isWithdrawing)
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
             }
             Withdraw Access
-        </MudButton>
+        </AppButton>
     </DialogActions>
 </MudDialog>
 

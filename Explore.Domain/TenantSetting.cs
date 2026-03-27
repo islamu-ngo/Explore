@@ -37,6 +37,12 @@ public class TenantSetting : ITenantEntity, IAuditableEntity
     public required string Value { get; set; }
 
     /// <summary>
+    /// When true, lower-scope overrides (Organization, Group, User) for this key become non-effective.
+    /// The tenant's value becomes authoritative until unlocked.
+    /// </summary>
+    public bool IsLocked { get; set; }
+
+    /// <summary>
     /// When this override was created.
     /// </summary>
     public DateTime CreatedAt { get; set; }

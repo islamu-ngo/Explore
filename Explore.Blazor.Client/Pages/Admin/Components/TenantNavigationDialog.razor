@@ -11,21 +11,21 @@
     </TitleContent>
     <DialogContent>
         <MudForm @ref="form" @bind-IsValid="success" Model="linkDto">
-            <MudTextField @bind-Value="linkDto.Label" 
+            <AppTextField T="string" @bind-Value="linkDto.Label" 
                           Label="Label" 
                           For="@(() => linkDto.Label)" 
                           Required="true" 
                           RequiredError="Label is required." 
                           Placeholder="e.g., About Us" />
             
-            <MudTextField @bind-Value="linkDto.Url" 
+            <AppTextField T="string" @bind-Value="linkDto.Url" 
                           Label="URL" 
                           For="@(() => linkDto.Url)" 
                           Required="true" 
                           RequiredError="URL is required." 
                           Placeholder="e.g., https://example.com/about" />
             
-            <MudTextField @bind-Value="linkDto.Icon" 
+            <AppTextField T="string" @bind-Value="linkDto.Icon" 
                           Label="Icon (Material Design)" 
                           Placeholder="Leave empty to use default Link icon" 
                           HelperText="e.g., Icons.Material.Filled.Info" />
@@ -36,8 +36,8 @@
         </MudForm>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" OnClick="Submit">@(_isEdit ? "Update" : "Create")</MudButton>
+        <AppButton OnClick="Cancel">Cancel</AppButton>
+        <AppButton OnClick="Submit">@(_isEdit ? "Update" : "Create")</AppButton>
     </DialogActions>
 </MudDialog>
 

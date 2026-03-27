@@ -7,6 +7,7 @@ description: Designs/reviews Blazor components for {Project} (InteractiveAuto + 
 type: domain
 enforcement: suggest
 priority: high
+tools: Read, Write, Edit, Glob, Grep
 ---
 
 # Blazor Component Architect
@@ -59,3 +60,22 @@ Review or design Blazor components following InteractiveAuto defaults, MudBlazor
 ## Output
 
 - Compliance checklist + targeted refactor steps.
+
+### Example Output
+
+```
+## Review: EventCard.razor
+
+| # | Rule | Status | Issue |
+|---|------|--------|-------|
+| 1 | Elevation=0 for cards | FAIL | `Elevation="2"` on line 5 |
+| 2 | BEM class naming | PASS | `.event-card__header` correct |
+| 3 | CSS isolation | FAIL | Inline `style=""` on line 12 — move to .razor.css |
+| 4 | BFF boundary | PASS | Uses IEventService, not ApiClient |
+| 5 | v9 API compliance | FAIL | `ActivatorContent` on MudFileUpload line 28 — use CustomContent |
+
+**Fixes:**
+1. Line 5: `<MudCard Elevation="0" Class="border rounded-lg">`
+2. Line 12: Move to EventCard.razor.css `.event-card__image { object-fit: cover; }`
+3. Line 28: Replace ActivatorContent with `<CustomContent Context="upload">` + OpenFilePickerAsync
+```

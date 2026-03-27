@@ -26,13 +26,11 @@
                         You have already registered for this event.<br />
                         We look forward to seeing you there!
                     </MudText>
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               Size="Size.Large"
+                    <AppButton Size="Size.Large"
                                OnClick="Close"
                                StartIcon="@Icons.Material.Filled.Close">
                         Close
-                    </MudButton>
+                    </AppButton>
                 </div>
             </div>
         }
@@ -52,15 +50,13 @@
                 }
 
                 <div class="action-buttons">
-                    <MudButton Variant="Variant.Text"
+                    <AppButton Variant="Variant.Text"
                                Color="Color.Default"
                                OnClick="Cancel"
                                Disabled="isSubmitting">
                         Cancel
-                    </MudButton>
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               OnClick="HandleSubmit"
+                    </AppButton>
+                    <AppButton OnClick="HandleSubmit"
                                Disabled="isSubmitting || currentUser == null"
                                StartIcon="@(isSubmitting ? null : Icons.Material.Filled.CheckCircle)">
                         @if (isSubmitting)
@@ -72,7 +68,7 @@
                         {
                             <span>Confirm Registration</span>
                         }
-                    </MudButton>
+                    </AppButton>
                 </div>
             </div>
         }
@@ -90,13 +86,11 @@
                         Thank you for registering@(currentUser != null ? $", {currentUser.FirstName}" : "")! <br />
                         You will receive a confirmation email shortly.
                     </MudText>
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               Size="Size.Large"
+                    <AppButton Size="Size.Large"
                                OnClick="Close"
                                StartIcon="@Icons.Material.Filled.Close">
                         Close
-                    </MudButton>
+                    </AppButton>
                 </div>
             </div>
         }

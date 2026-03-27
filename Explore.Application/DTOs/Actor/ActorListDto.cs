@@ -38,6 +38,8 @@ public class ActorListDto
     public string? BannerColor { get; set; }
     public Guid? BannerPictureId { get; set; }
     public string? BannerPictureUri { get; set; }
+    public Guid? BackgroundImageId { get; set; }
+    public string? BackgroundImageUri { get; set; }
 
     public string? PdsHost { get; set; }
     public DateTime? IndexedAt { get; set; }

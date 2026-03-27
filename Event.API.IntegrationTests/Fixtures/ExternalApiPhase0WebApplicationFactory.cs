@@ -167,7 +167,10 @@ public sealed class ExternalApiPhase0WebApplicationFactory : WebApplicationFacto
                     Scopes = string.Join(' ', seed.Scopes),
                     OwnerType = seed.OwnerType,
                     OwnerId = seed.OwnerId,
-                    Status = seed.Status,
+                    ExternalApiKeyStatusId = (int)seed.Status,
+                    ExternalApiKeyStatus = null!,
+                    ExternalApiKeyCreditPeriodId = (int)ExternalApiKeyCreditPeriodEnum.None,
+                    ExternalApiKeyCreditPeriod = null!,
                     ExpiresAt = seed.ExpiresAtUtc?.UtcDateTime
                 }));
 
@@ -360,7 +363,7 @@ public sealed class ExternalApiPhase0WebApplicationFactory : WebApplicationFacto
 
         public Guid OwnerId { get; init; }
 
-        public ExternalApiKeyStatus Status { get; init; } = ExternalApiKeyStatus.Active;
+        public ExternalApiKeyStatusEnum Status { get; init; } = ExternalApiKeyStatusEnum.Active;
 
         public DateTimeOffset? ExpiresAtUtc { get; init; }
 

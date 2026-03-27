@@ -1,4 +1,5 @@
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Pages.Events.Components;
 using Explore.Blazor.Client.Pages.Events.Dialogs;
@@ -17,6 +18,7 @@ public partial class MyEvents : ComponentBase
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
     [Inject] private IDialogService DialogService { get; set; } = default!;
     [Inject] private ILogger<MyEvents> Logger { get; set; } = default!;
+    [Inject] private IAccessibilityFocusService AccessibilityFocusService { get; set; } = default!;
 
     private ICollection<EventListDto> _events = new List<EventListDto>();
     private ICollection<OrganizationListDto> _myOrganizations = new List<OrganizationListDto>();
@@ -114,6 +116,7 @@ public partial class MyEvents : ComponentBase
             return;
         }
 
+        await AccessibilityFocusService.SaveFocusAsync();
         var sessionParameters = new DialogParameters { ["EventId"] = evt.Id };
         var sessionDialog = await SelectSessionDialog.ShowAsync(DialogService, $"Select a session for {evt.Title}", sessionParameters);
         var sessionResult = await sessionDialog.Result;
@@ -121,10 +124,11 @@ public partial class MyEvents : ComponentBase
         if (sessionResult is { Canceled: false, Data: Guid selectedSessionId })
         {
             var parameters = new DialogParameters { ["EventSessionId"] = selectedSessionId };
-            var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true };
+            var options = DialogOptionsFactory.Editor();
             var dialog = await RegistrationManagerDialog.ShowAsync(DialogService, "Registrations for session", parameters, options);
             await dialog.Result;
         }
+        await AccessibilityFocusService.RestoreFocusAsync();
     }
 
     private async Task DeleteEvent(EventListDto evt)
@@ -135,11 +139,13 @@ public partial class MyEvents : ComponentBase
             return;
         }
 
+        await AccessibilityFocusService.SaveFocusAsync();
         var result = await DialogService.ShowMessageBoxAsync(
             "Delete Event",
             $"Are you sure you want to delete '{evt.Title}'? This action cannot be undone.",
             yesText: "Delete", cancelText: "Cancel",
-            options: new DialogOptions { MaxWidth = MaxWidth.Small });
+            options: DialogOptionsFactory.Small());
+        await AccessibilityFocusService.RestoreFocusAsync();
 
         if (result == true && evt.Id.HasValue)
         {
@@ -166,11 +172,13 @@ public partial class MyEvents : ComponentBase
             return;
         }
 
+        await AccessibilityFocusService.SaveFocusAsync();
         var result = await DialogService.ShowMessageBoxAsync(
             "Publish Event",
             $"Are you sure you want to publish '{evt.Title}'? It will become visible to the public.",
             yesText: "Publish", cancelText: "Cancel",
-            options: new DialogOptions { MaxWidth = MaxWidth.Small });
+            options: DialogOptionsFactory.Small());
+        await AccessibilityFocusService.RestoreFocusAsync();
 
         if (result == true && evt.Id.HasValue)
         {

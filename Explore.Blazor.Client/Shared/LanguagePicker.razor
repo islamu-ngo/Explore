@@ -12,12 +12,12 @@
          Dense="true"
          Class="language-picker">
     <ActivatorContent>
-        <MudButton Variant="Variant.Text" 
+        <AppButton Variant="Variant.Text" 
                    Color="Color.Inherit" 
                    EndIcon="@(_isOpen ? Icons.Material.Filled.ArrowDropUp : Icons.Material.Filled.ArrowDropDown)"
                    Style="text-transform: none; min-width: 0; padding: 4px 8px;">
             <MudText Typo="Typo.body1">@LanguageContext.ForLanguage(_currentLang).Flag</MudText>
-        </MudButton>
+        </AppButton>
     </ActivatorContent>
     <ChildContent>
         @if (_languages.Count > 0)

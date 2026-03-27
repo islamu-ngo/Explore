@@ -1,5 +1,5 @@
-// ABOUTME: Persistence repository for external API keys.
-// ABOUTME: Uses an explicit tenant-filter bypass only for pre-tenant authentication lookup by public key id.
+// ABOUTME: Persistence repository for external API keys with tenant-scoped and platform-scoped query paths.
+// ABOUTME: Uses explicit tenant-filter bypasses for authentication and InstanceAdmin platform key management.
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
@@ -74,15 +74,45 @@ public class ExternalApiKeyRepository : GenericRepository<ExternalApiKey, Guid>,
             return [];
         }
 
-        return await _dbContext.ExternalApiKeys
-            .AsNoTracking()
-            .Where(apiKey => apiKey.OwnerType == ownerType && ownerIds.Contains(apiKey.OwnerId))
-            .ToListAsync();
+        var results = new List<ExternalApiKey>(ownerIds.Count);
+        foreach (var chunk in ownerIds.Chunk(100))
+        {
+            var chunkResults = await _dbContext.ExternalApiKeys
+                .AsNoTracking()
+                .Where(apiKey => apiKey.OwnerType == ownerType && chunk.Contains(apiKey.OwnerId))
+                .ToListAsync();
+            results.AddRange(chunkResults);
+        }
+        return results;
     }
 
     public async Task<bool> ExistsByOwnerAndName(ExternalApiKeyOwnerType ownerType, Guid ownerId, string name)
     {
         return await _dbContext.ExternalApiKeys
+            .AsNoTracking()
+            .AnyAsync(apiKey => apiKey.OwnerType == ownerType && apiKey.OwnerId == ownerId && apiKey.Name == name);
+    }
+
+    public async Task<ExternalApiKey?> GetByIdIgnoringTenantFilter(Guid id)
+    {
+        return await _dbContext.ExternalApiKeys
+            .IgnoreTenantFilter()
+            .FirstOrDefaultAsync(apiKey => apiKey.Id == id);
+    }
+
+    public async Task<List<ExternalApiKey>> GetByOwnerIgnoringTenantFilter(ExternalApiKeyOwnerType ownerType, Guid ownerId)
+    {
+        return await _dbContext.ExternalApiKeys
+            .IgnoreTenantFilter()
+            .AsNoTracking()
+            .Where(apiKey => apiKey.OwnerType == ownerType && apiKey.OwnerId == ownerId)
+            .ToListAsync();
+    }
+
+    public async Task<bool> ExistsByOwnerAndNameIgnoringTenantFilter(ExternalApiKeyOwnerType ownerType, Guid ownerId, string name)
+    {
+        return await _dbContext.ExternalApiKeys
+            .IgnoreTenantFilter()
             .AsNoTracking()
             .AnyAsync(apiKey => apiKey.OwnerType == ownerType && apiKey.OwnerId == ownerId && apiKey.Name == name);
     }

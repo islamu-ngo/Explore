@@ -15,6 +15,10 @@ Key behavior in current code:
 - Tiered rate limiting and request-timeout middleware.
 - Correlation ID propagation (`X-Correlation-ID`/`X-Request-ID`) and structured request logging.
 - Runtime authorization provider routing (Cerbos or local fallback).
+- Footer management endpoints (11 endpoints: link groups CRUD, links CRUD, settings, reorder, governance).
+- Actor appearance fields (BackgroundColor, BackgroundEffect, BannerColor, BannerPictureId, BackgroundImageId) on actor update endpoints.
+- OutboxProcessor background service for reliable event dispatching with retry and dead-letter.
+- Analytics relay rate limit policy (`AnalyticsRelay`) for `POST /api/a/t`.
 
 ## Historical Baseline (`v0.1.0`)
 

@@ -13,8 +13,8 @@
     </TitleContent>
     <DialogContent>
         <MudForm @ref="form" @bind-IsValid="success" Model="sessionDto">
-            <MudTextField @bind-Value="sessionDto.Title" Label="Title" For="@(() => sessionDto.Title)" Required="true" RequiredError="Title is required." />
-            <MudTextField @bind-Value="sessionDto.Description" Label="Description" For="@(() => sessionDto.Description)" Lines="3" />
+            <AppTextField T="string" @bind-Value="sessionDto.Title" Label="Title" For="@(() => sessionDto.Title)" Required="true" RequiredError="Title is required." />
+            <AppTextField T="string" @bind-Value="sessionDto.Description" Label="Description" For="@(() => sessionDto.Description)" Lines="3" />
             <MudDatePicker @bind-Date="startDate" Label="Start Date" Required="true" />
             <MudTimePicker @bind-Time="startTime" Label="Start Time" Required="true" />
             <MudDatePicker @bind-Date="endDate" Label="End Date" Required="true" />
@@ -23,8 +23,8 @@
         </MudForm>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" OnClick="Submit">Update</MudButton>
+        <AppButton OnClick="Cancel">Cancel</AppButton>
+        <AppButton OnClick="Submit">Update</AppButton>
     </DialogActions>
 </MudDialog>
 

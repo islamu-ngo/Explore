@@ -89,14 +89,14 @@
                     <MudSelectItem Value="@("LandingPage")">Landing Page</MudSelectItem>
                 </MudSelect>
 
-                <MudTextField Label="Subdomain"
+                <AppTextField T="string" Label="Subdomain"
                               Variant="Variant.Outlined"
                               Placeholder="tenant-slug"
                               @bind-Value="_model.Subdomain"
                               Disabled="@(!_model.CanOverrideSubdomain)"
                               HelperText="@($"Base domain: {(_model.InstanceBaseDomain == string.Empty ? "(not configured)" : _model.InstanceBaseDomain)}")" />
 
-                <MudTextField Label="Custom Domain"
+                <AppTextField T="string" Label="Custom Domain"
                               Variant="Variant.Outlined"
                               Placeholder="events.example.org"
                               @bind-Value="_model.CustomDomain"
@@ -104,26 +104,26 @@
 
                 <MudDivider />
                 <MudText Typo="Typo.h6">Tenant Branding</MudText>
-                <MudTextField Label="Brand Display Name"
+                <AppTextField T="string" Label="Brand Display Name"
                               Variant="Variant.Outlined"
                               @bind-Value="_model.BrandDisplayName"
                               Disabled="@(!_model.CanOverrideBrandDisplayName)" />
-                <MudTextField Label="Brand Logo URL"
+                <AppTextField T="string" Label="Brand Logo URL"
                               Variant="Variant.Outlined"
                               @bind-Value="_model.BrandLogoUrl"
                               Disabled="@(!_model.CanOverrideBrandLogoUrl)" />
-                <MudTextField Label="Brand Favicon URL"
+                <AppTextField T="string" Label="Brand Favicon URL"
                               Variant="Variant.Outlined"
                               @bind-Value="_model.BrandFaviconUrl"
                               Disabled="@(!_model.CanOverrideBrandFaviconUrl)" />
-                <MudTextField Label="Advanced: Custom CSS URL (Optional)"
+                <AppTextField T="string" Label="Advanced: Custom CSS URL (Optional)"
                               Variant="Variant.Outlined"
                               @bind-Value="_model.BrandCustomCssUrl"
                               Disabled="@(!_model.CanOverrideBrandCustomCssUrl)" />
 
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync" Disabled="_isSaving">
+                <AppButton OnClick="SaveAsync" Disabled="_isSaving">
                     Save Tenant Settings
-                </MudButton>
+                </AppButton>
             </MudStack>
         }
     </MudPaper>

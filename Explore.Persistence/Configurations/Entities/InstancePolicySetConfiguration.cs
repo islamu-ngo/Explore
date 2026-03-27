@@ -1,5 +1,5 @@
 // ABOUTME: EF Core configuration for InstancePolicySet — the root governance policy aggregate.
-// ABOUTME: Each sub-policy section is stored as a JSON column for typed access without column explosion.
+// ABOUTME: Each sub-policy section uses table-splitting (flattened columns) for relational querying.
 
 using Explore.Domain.Policies;
 using Microsoft.EntityFrameworkCore;
@@ -38,7 +38,6 @@ public class InstancePolicySetConfiguration : IEntityTypeConfiguration<InstanceP
         {
             ConfigurePolicySlot(modules, m => m.EnableIslamicModule);
             ConfigurePolicySlot(modules, m => m.EnableTechModule);
-            modules.ToJson("modules_policy");
         });
     }
 
@@ -50,7 +49,6 @@ public class InstancePolicySetConfiguration : IEntityTypeConfiguration<InstanceP
             ConfigurePolicySlot(events, e => e.AllowOrganizationSubmittedEvents);
             ConfigurePolicySlot(events, e => e.AllowGroupSubmittedEvents);
             ConfigurePolicySlot(events, e => e.EventCardClickOpensDetailPage);
-            events.ToJson("events_policy");
         });
     }
 
@@ -62,7 +60,6 @@ public class InstancePolicySetConfiguration : IEntityTypeConfiguration<InstanceP
             ConfigurePolicySlot(orgs, o => o.AllowTenantToOmitVerification);
             ConfigurePolicySlot(orgs, o => o.AllowSelfRegistration);
             ConfigurePolicySlot(orgs, o => o.AllowGroupSelfRegistration);
-            orgs.ToJson("organizations_policy");
         });
     }
 
@@ -74,7 +71,6 @@ public class InstancePolicySetConfiguration : IEntityTypeConfiguration<InstanceP
             ConfigurePolicySlot(branding, b => b.LogoUrl);
             ConfigurePolicySlot(branding, b => b.FaviconUrl);
             ConfigurePolicySlot(branding, b => b.CustomCssUrl);
-            branding.ToJson("branding_policy");
         });
     }
 
@@ -86,7 +82,6 @@ public class InstancePolicySetConfiguration : IEntityTypeConfiguration<InstanceP
             ConfigurePolicySlot(domains, d => d.AllowTenantCustomDomains);
             ConfigurePolicySlot(domains, d => d.LockTenantSubdomain);
             ConfigurePolicySlot(domains, d => d.LockTenantCustomDomain);
-            domains.ToJson("domains_policy");
         });
     }
 
@@ -102,7 +97,6 @@ public class InstancePolicySetConfiguration : IEntityTypeConfiguration<InstanceP
             ConfigurePolicySlot(delegation, d => d.LockTenantAnalytics);
             ConfigurePolicySlot(delegation, d => d.DecentralizationEnabled);
             ConfigurePolicySlot(delegation, d => d.AuthorizationProvider);
-            delegation.ToJson("tenant_delegation_policy");
         });
     }
 
@@ -128,7 +122,6 @@ public class InstancePolicySetConfiguration : IEntityTypeConfiguration<InstanceP
             ConfigurePolicySlot(rp, r => r.LockTenantPublicSeo);
             ConfigurePolicySlot(rp, r => r.LockTenantOperational);
             ConfigurePolicySlot(rp, r => r.LockTenantAdmin);
-            rp.ToJson("render_policy");
         });
     }
 

@@ -1,3 +1,6 @@
+// ABOUTME: REST API controller for tenant CRUD operations and tenant-level configuration management.
+// ABOUTME: Handles tenant creation, updates, deletion, and cascading settings for multi-tenant deployments.
+
 using System;
 using System.Collections.Generic;
 using System.Security.Claims;
@@ -68,10 +71,6 @@ public class TenantController : ControllerBase
     public async Task<ActionResult<TenantDto>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var tenant = await _mediator.Send(new GetTenantDetailsRequest { Id = id }, cancellationToken);
-        if (tenant == null)
-        {
-            return NotFound();
-        }
 
         return Ok(tenant);
     }
@@ -144,12 +143,7 @@ public class TenantController : ControllerBase
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteTenantCommand { Id = id };
-        var result = await _mediator.Send(command, cancellationToken);
-
-        if (!result)
-        {
-            return NotFound(new { error = "Tenant not found" });
-        }
+        await _mediator.Send(command, cancellationToken);
 
         return NoContent();
     }

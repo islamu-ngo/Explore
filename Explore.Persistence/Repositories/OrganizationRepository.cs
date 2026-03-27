@@ -126,4 +126,11 @@ public class OrganizationRepository : GenericRepository<Organization, Guid>, IOr
 
         return (items, totalCount);
     }
+
+    public async Task<int> ForgetPiiAsync(Guid organizationId)
+    {
+        return await _dbContext.OrganizationPii
+            .Where(p => p.OrganizationId == organizationId)
+            .ExecuteDeleteAsync();
+    }
 }

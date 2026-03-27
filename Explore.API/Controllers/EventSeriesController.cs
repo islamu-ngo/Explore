@@ -47,10 +47,7 @@ public class EventSeriesController : ControllerBase
     public async Task<ActionResult<EventSeriesDto>> GetById(Guid id)
     {
         var response = await _mediator.Send(new GetEventSeriesDetailRequest { Id = id });
-        if (response == null)
-        {
-            return NotFound();
-        }
+
         return Ok(response);
     }
 

@@ -41,21 +41,21 @@
                         <div class="d-flex gap-2">
                             @if (_sessionAgendaItems.TryGetValue(session.Id!.Value, out var items) && items.Count > 0)
                             {
-                                <MudButton Variant="Variant.Text"
+                                <AppButton Variant="Variant.Text"
                                            Size="Size.Small"
                                            Color="Color.Default"
                                            OnClick="@(() => ToggleAgenda(session.Id!.Value))">
                                     <MudIcon Icon="@Icons.Material.Outlined.ViewAgenda" Size="Size.Small" Class="mr-1" />
                                     @items.Count item@(items.Count == 1 ? "" : "s")
-                                </MudButton>
+                                </AppButton>
                             }
                             @if (ShowRegisterButton)
                             {
-                                <MudButton Variant="Variant.Outlined"
+                                <AppButton Variant="Variant.Outlined"
                                            Color="Color.Primary"
                                            OnClick="@(() => OnRegisterClick.InvokeAsync(session))">
                                     Register
-                                </MudButton>
+                                </AppButton>
                             }
                         </div>
                     </div>

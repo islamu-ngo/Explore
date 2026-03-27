@@ -22,6 +22,9 @@ public static class BffPreferenceEndpoints
         app.MapPost("/bff/language", HandleLanguagePreference)
             .ExcludeFromDescription();
 
+        app.MapPost("/bff/direction", HandleDirectionPreference)
+            .ExcludeFromDescription();
+
         app.MapGet("/bff/me", HandleGetCurrentUser);
 
         return app;
@@ -29,12 +32,9 @@ public static class BffPreferenceEndpoints
 
     private static async Task<IResult> HandleThemePreference(HttpContext ctx, CancellationToken cancellationToken)
     {
-        var request = new UpdateUserAppearancePreferencesDto
-        {
-            ThemeMode = ctx.Request.Query["theme"].ToString().Trim().ToLowerInvariant()
-        };
+        var themeMode = ctx.Request.Query["theme"].ToString().Trim().ToLowerInvariant();
 
-        if (request.ThemeMode is not "dark" and not "light" and not "system")
+        if (themeMode is not "dark" and not "light" and not "system")
         {
             return Results.Problem(
                 detail: "Theme must be 'system', 'dark', or 'light'.",
@@ -42,8 +42,17 @@ public static class BffPreferenceEndpoints
                 title: "Invalid theme preference");
         }
 
+        // Preserve current direction when only updating theme
+        var currentDirection = ctx.Request.Cookies["direction"] ?? "auto";
+
         if (ctx.User.Identity?.IsAuthenticated == true)
         {
+            var request = new UpdateUserAppearancePreferencesDto
+            {
+                ThemeMode = themeMode,
+                Direction = currentDirection
+            };
+
             var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
             using var response = await clientFactory.CreateClient("BffClient")
                 .PutAsJsonAsync("api/user/appearance", request, cancellationToken);
@@ -57,11 +66,12 @@ public static class BffPreferenceEndpoints
             }
         }
 
-        PersistThemeCookie(ctx, request.ThemeMode);
+        PersistThemeCookie(ctx, themeMode);
 
         return Results.Ok(new UserAppearancePreferencesDto
         {
-            ThemeMode = request.ThemeMode
+            ThemeMode = themeMode,
+            Direction = currentDirection
         });
     }
 
@@ -84,9 +94,11 @@ public static class BffPreferenceEndpoints
         }
 
         var theme = ctx.Request.Cookies["theme"];
+        var direction = ctx.Request.Cookies["direction"];
         return Results.Ok(new UserAppearancePreferencesDto
         {
-            ThemeMode = theme is "dark" or "light" ? theme : "system"
+            ThemeMode = theme is "dark" or "light" ? theme : "system",
+            Direction = direction is "ltr" or "rtl" ? direction : "auto"
         });
     }
 
@@ -134,6 +146,77 @@ public static class BffPreferenceEndpoints
             Claims = ctx.User.Claims
                 .Where(c => safeClaims.Contains(c.Type, StringComparer.OrdinalIgnoreCase))
                 .Select(c => new { c.Type, c.Value })
+        });
+    }
+
+    private static async Task<IResult> HandleDirectionPreference(HttpContext ctx, CancellationToken cancellationToken)
+    {
+        var direction = ctx.Request.Query["dir"].ToString().Trim().ToLowerInvariant();
+
+        if (direction is not "auto" and not "ltr" and not "rtl")
+        {
+            return Results.Problem(
+                detail: "Direction must be 'auto', 'ltr', or 'rtl'.",
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Invalid direction preference");
+        }
+
+        // Preserve current theme when only updating direction
+        var currentTheme = ctx.Request.Cookies["theme"] ?? "system";
+
+        if (ctx.User.Identity?.IsAuthenticated == true)
+        {
+            var request = new UpdateUserAppearancePreferencesDto
+            {
+                ThemeMode = currentTheme is "dark" or "light" ? currentTheme : "system",
+                Direction = direction
+            };
+
+            var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
+            using var response = await clientFactory.CreateClient("BffClient")
+                .PutAsJsonAsync("api/user/appearance", request, cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return Results.Problem(
+                    detail: "Authenticated direction preference could not be persisted.",
+                    statusCode: (int)response.StatusCode,
+                    title: "Direction preference update failed");
+            }
+        }
+
+        PersistDirectionCookie(ctx, direction);
+
+        return Results.Ok(new UserAppearancePreferencesDto
+        {
+            ThemeMode = currentTheme is "dark" or "light" ? currentTheme : "system",
+            Direction = direction
+        });
+    }
+
+    private static void PersistDirectionCookie(HttpContext ctx, string direction)
+    {
+        var isDev = ctx.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment();
+
+        if (direction == "auto")
+        {
+            ctx.Response.Cookies.Delete("direction", new CookieOptions
+            {
+                Path = "/",
+                SameSite = SameSiteMode.Lax,
+                HttpOnly = false,
+                Secure = !isDev
+            });
+            return;
+        }
+
+        ctx.Response.Cookies.Append("direction", direction, new CookieOptions
+        {
+            MaxAge = TimeSpan.FromDays(365),
+            Path = "/",
+            SameSite = SameSiteMode.Lax,
+            HttpOnly = false,
+            Secure = !isDev
         });
     }
 

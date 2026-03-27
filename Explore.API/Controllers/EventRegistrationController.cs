@@ -1,3 +1,6 @@
+// ABOUTME: REST API controller for event registration CRUD operations with approval workflow support.
+// ABOUTME: Manages user registrations, waitlists, approval status, and registration limits per session.
+
 using System;
 using System.Collections.Generic;
 using System.Security.Claims;

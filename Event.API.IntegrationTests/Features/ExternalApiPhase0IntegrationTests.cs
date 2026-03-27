@@ -253,7 +253,7 @@ public sealed class ExternalApiPhase0IntegrationTests
                     Secret = secret,
                     TenantId = tenantId,
                     OwnerId = Guid.NewGuid(),
-                    Status = ExternalApiKeyStatus.Revoked,
+                    Status = ExternalApiKeyStatusEnum.Revoked,
                     Scopes = ["events:read"]
                 }
             ]

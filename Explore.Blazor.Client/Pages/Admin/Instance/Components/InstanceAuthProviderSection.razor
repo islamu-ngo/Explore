@@ -31,9 +31,9 @@
 
                 @if (Model.KeycloakEnabled)
                 {
-                    <MudTextField T="string" Label="Authority URL" Variant="Variant.Outlined" @bind-Value="Model.KeycloakAuthority" />
-                    <MudTextField T="string" Label="Client ID" Variant="Variant.Outlined" @bind-Value="Model.KeycloakClientId" />
-                    <MudTextField T="string" Label="Client Secret" Variant="Variant.Outlined" InputType="InputType.Password" @bind-Value="Model.KeycloakClientSecret" />
+                    <AppTextField T="string" T="string" Label="Authority URL" @bind-Value="Model.KeycloakAuthority" />
+                    <AppTextField T="string" T="string" Label="Client ID" @bind-Value="Model.KeycloakClientId" />
+                    <AppTextField T="string" T="string" Label="Client Secret" InputType="InputType.Password" @bind-Value="Model.KeycloakClientSecret" />
                 }
 
                 @if (!IsSingleTenant)
@@ -56,7 +56,7 @@
 
                 @if (Model.AtprotoLoginEnabled)
                 {
-                    <MudTextField T="string" Label="Public URL" Variant="Variant.Outlined" @bind-Value="Model.AtprotoPublicUrl" HelperText="Used to serve ATProto OAuth client metadata." />
+                    <AppTextField T="string" T="string" Label="Public URL" @bind-Value="Model.AtprotoPublicUrl" HelperText="Used to serve ATProto OAuth client metadata." />
                 }
 
                 @if (!IsSingleTenant)
@@ -79,8 +79,8 @@
 
                 @if (Model.GoogleSsoEnabled)
                 {
-                    <MudTextField T="string" Label="Client ID" Variant="Variant.Outlined" @bind-Value="Model.GoogleClientId" />
-                    <MudTextField T="string" Label="Client Secret" Variant="Variant.Outlined" InputType="InputType.Password" @bind-Value="Model.GoogleClientSecret" />
+                    <AppTextField T="string" T="string" Label="Client ID" @bind-Value="Model.GoogleClientId" />
+                    <AppTextField T="string" T="string" Label="Client Secret" InputType="InputType.Password" @bind-Value="Model.GoogleClientSecret" />
                 }
 
                 @if (!IsSingleTenant)

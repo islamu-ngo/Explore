@@ -11,6 +11,8 @@
 
 <PageTitle>Edit Event</PageTitle>
 
+<MudText Typo="Typo.h1" HtmlTag="h1" Class="sr-only">Edit Event</MudText>
+
 <MudContainer MaxWidth="MaxWidth.Large" Class="py-6">
     @if (isLoading)
     {
@@ -23,7 +25,7 @@
     {
         <MudContainer Class="py-8">
             <MudAlert Severity="Severity.Error" Variant="Variant.Filled">Event not found.</MudAlert>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/my/events" Class="mt-4">Back to My Events</MudButton>
+            <AppButton Href="/my/events" Class="mt-4">Back to My Events</AppButton>
         </MudContainer>
     }
     else
@@ -91,14 +93,14 @@
                                            Class="rounded-lg border-solid border-1 mud-border-lines-default">
                             <MudGrid Spacing="2">
                                 <MudItem xs="12">
-                                    <MudTextField @bind-Value="_appearance.BackgroundColor"
+                                    <AppTextField T="string" @bind-Value="_appearance.BackgroundColor"
                                                   Label="Background Color"
                                                   Variant="Variant.Outlined"
                                                   Margin="Margin.Dense"
                                                   Placeholder="#0f172a" />
                                 </MudItem>
                                 <MudItem xs="12">
-                                    <MudTextField @bind-Value="_appearance.BackgroundImageUri"
+                                    <AppTextField T="string" @bind-Value="_appearance.ImageUri"
                                                   Label="Background Image URL"
                                                   Variant="Variant.Outlined"
                                                   Margin="Margin.Dense"
@@ -125,7 +127,7 @@
                 <MudItem xs="12" sm="7" Class="edit-event__col-right">
 
                     @* --- Event Title (large, Luma-style) --- *@
-                    <MudTextField @bind-Value="updateDto.Title"
+                    <AppTextField T="string" @bind-Value="updateDto.Title"
                                   Placeholder="Event Name"
                                   Variant="Variant.Text"
                                   FullWidth="true"
@@ -171,7 +173,7 @@
                                                Margin="Margin.Dense"
                                                Class="edit-event__datetime-picker" />
                             </div>
-                            <MudButton Variant="Variant.Text"
+                            <AppButton Variant="Variant.Text"
                                        Size="Size.Small"
                                        Color="Color.Default"
                                        OnClick="@(() => _showTimezoneSelector = !_showTimezoneSelector)"
@@ -179,7 +181,7 @@
                                 <MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Small" Class="mr-1" />
                                 @_selectedTimezoneDisplay
                                 <MudIcon Icon="@(_showTimezoneSelector ? Icons.Material.Filled.ArrowDropUp : Icons.Material.Filled.ArrowDropDown)" Size="Size.Small" />
-                            </MudButton>
+                            </AppButton>
                             @if (_showTimezoneSelector)
                             {
                                 <MudAutocomplete T="TimeZoneInfo"
@@ -197,7 +199,7 @@
                         </div>
 
                         @* First session location *@
-                        <MudButton StartIcon="@Icons.Material.Filled.LocationOn"
+                        <AppButton StartIcon="@Icons.Material.Filled.LocationOn"
                                    Variant="Variant.Text"
                                    Color="Color.Default"
                                    FullWidth="true"
@@ -213,7 +215,7 @@
                                 <span>Add event location</span>
                                 <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-2">Physical or virtual link</MudText>
                             }
-                        </MudButton>
+                        </AppButton>
 
                         @if (_showFirstSessionLocation && locations != null)
                         {
@@ -265,7 +267,7 @@
                     }
 
                     @* --- Add Description Button (Luma-style popup) --- *@
-                    <MudButton StartIcon="@Icons.Material.Filled.Notes"
+                    <AppButton StartIcon="@Icons.Material.Filled.Notes"
                                Variant="Variant.Text"
                                Color="Color.Default"
                                FullWidth="true"
@@ -279,7 +281,7 @@
                         {
                             <span>Add a description</span>
                         }
-                    </MudButton>
+                    </AppButton>
 
                     @* --- Additional Sessions (2+) --- *@
                     @if (sessions.Count > 1)
@@ -304,14 +306,13 @@
                         </div>
                     }
 
-                    <MudButton StartIcon="@Icons.Material.Filled.Add"
+                    <AppButton StartIcon="@Icons.Material.Filled.Add"
                                Variant="Variant.Outlined"
-                               Color="Color.Primary"
                                FullWidth="true"
                                OnClick="@(() => _sessionWorkflow.OpenForCreate(sessions, imagePreviewUrl))"
                                Class="mt-2 mb-4 rounded-lg">
                         Add Session
-                    </MudButton>
+                    </AppButton>
 
                     @* --- Event Options (Luma-style rows) --- *@
                     <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">Event Options</MudText>
@@ -477,7 +478,7 @@
                                 {
                                     <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="font-style: italic;">None</MudText>
                                 }
-                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                <AppIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
                                                OnClick="@(() => { _editTagCatMode = TagCategoryMode.Categories; _editTagCatInitialIds = selectedCategoryIds.ToList().AsReadOnly(); _showEditTagCatPopup = true; })"
                                                aria-label="Manage categories" />
                             </div>
@@ -503,7 +504,7 @@
                                 {
                                     <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="font-style: italic;">None</MudText>
                                 }
-                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                <AppIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
                                                OnClick="@(() => { _editTagCatMode = TagCategoryMode.Tags; _editTagCatInitialIds = selectedTagIds.ToList().AsReadOnly(); _showEditTagCatPopup = true; })"
                                                aria-label="Manage tags" />
                             </div>
@@ -514,9 +515,7 @@
             </MudGrid>
 
             @* ===== Update Event Button (full width) ===== *@
-            <MudButton ButtonType="ButtonType.Submit"
-                       Variant="Variant.Filled"
-                       Color="Color.Primary"
+            <AppButton ButtonType="ButtonType.Submit"
                        FullWidth="true"
                        Disabled="@(isProcessing || _isUploadingImage)"
                        Class="mt-6 edit-event__submit-button"
@@ -535,7 +534,7 @@
                 {
                     <span>Update Event</span>
                 }
-            </MudButton>
+            </AppButton>
         </EditForm>
         </div>
 
@@ -550,19 +549,19 @@
                 <div class="d-flex align-center justify-space-between w-100">
                     <MudText Typo="Typo.h6">@(_sessionWorkflow.IsNewSession ? "Add Session" : "Edit Session")</MudText>
                     <div class="d-flex align-center gap-1">
-                        <MudIconButton Icon="@Icons.Material.Filled.NavigateBefore"
+                        <AppIconButton Icon="@Icons.Material.Filled.NavigateBefore"
                                        Size="Size.Small"
                                        Disabled="@(!_sessionWorkflow.CanNavigatePrevious(sessions))"
                                        OnClick="@(() => _sessionWorkflow.NavigatePrevious(sessions, imagePreviewUrl))" />
-                        <MudIconButton Icon="@Icons.Material.Filled.NavigateNext"
+                        <AppIconButton Icon="@Icons.Material.Filled.NavigateNext"
                                        Size="Size.Small"
                                        Disabled="@(!_sessionWorkflow.CanNavigateNext(sessions))"
                                        OnClick="@(() => _sessionWorkflow.NavigateNext(sessions, imagePreviewUrl))" />
-                        <MudIconButton Icon="@Icons.Material.Filled.Add"
+                        <AppIconButton Icon="@Icons.Material.Filled.Add"
                                        Size="Size.Small"
                                        Color="Color.Primary"
                                        OnClick="@(() => _sessionWorkflow.AddFromDrawer(sessions, imagePreviewUrl))" />
-                        <MudIconButton Icon="@Icons.Material.Filled.Close"
+                        <AppIconButton Icon="@Icons.Material.Filled.Close"
                                        Size="Size.Small"
                                        OnClick="@(() => _sessionWorkflow.Close())" />
                     </div>

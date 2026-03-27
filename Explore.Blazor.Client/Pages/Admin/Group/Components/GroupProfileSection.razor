@@ -15,7 +15,7 @@
 
     <MudGrid Spacing="3">
         <MudItem xs="12">
-            <MudTextField @bind-Value="Model.FullName"
+            <AppTextField T="string" @bind-Value="Model.FullName"
                           Label="Group Name"
                           Variant="Variant.Outlined"
                           Adornment="Adornment.Start"
@@ -25,14 +25,14 @@
         </MudItem>
 
         <MudItem xs="12">
-            <MudTextField @bind-Value="Model.Description"
+            <AppTextField T="string" @bind-Value="Model.Description"
                           Label="Description"
                           Variant="Variant.Outlined"
                           Lines="4" />
         </MudItem>
 
         <MudItem xs="12" sm="6">
-            <MudTextField @bind-Value="Branding.BannerPictureUri"
+            <AppTextField T="string" @bind-Value="Branding.ImageUri"
                           Label="Banner Picture URL"
                           Variant="Variant.Outlined"
                           Adornment="Adornment.Start"
@@ -40,14 +40,14 @@
         </MudItem>
 
         <MudItem xs="12" sm="6">
-            <MudTextField @bind-Value="Branding.BannerColor"
+            <AppTextField T="string" @bind-Value="Branding.BackgroundColor"
                           Label="Banner Color"
                           Variant="Variant.Outlined"
                           InputType="InputType.Color" />
         </MudItem>
 
         <MudItem xs="12">
-            <MudTextField @bind-Value="Branding.BannerPictureUri"
+            <AppTextField T="string" @bind-Value="Branding.ImageUri"
                           Label="Banner Media URL"
                           Variant="Variant.Outlined"
                           Placeholder="https://... (image or GIF)" />
@@ -73,10 +73,10 @@
               Class="pa-6 rounded-lg border-solid border-1 mud-border-lines-default"
               Style="@GetPreviewStyle()">
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-            @if (!string.IsNullOrWhiteSpace(Branding.BannerPictureUri))
+            @if (!string.IsNullOrWhiteSpace(Branding.ImageUri))
             {
                 <MudAvatar Size="Size.Large" Rounded="true">
-                    <MudImage Src="@Branding.BannerPictureUri" Alt="Group picture preview" ObjectFit="ObjectFit.Cover" />
+                    <MudImage Src="@Branding.ImageUri" Alt="Group picture preview" ObjectFit="ObjectFit.Cover" />
                 </MudAvatar>
             }
             else
@@ -96,13 +96,11 @@
     </MudPaper>
 
     <MudStack Row="true" Justify="Justify.FlexEnd" Class="mt-4">
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   OnClick="@(() => OnSave.InvokeAsync())"
+        <AppButton OnClick="@(() => OnSave.InvokeAsync())"
                    Disabled="IsSaving"
                    StartIcon="@(_isSavingIcon)">
             @(IsSaving ? "Saving..." : "Save Group Settings")
-        </MudButton>
+        </AppButton>
     </MudStack>
 </div>
 
@@ -111,7 +109,7 @@
     public UpdateGroupDto Model { get; set; } = null!;
 
     [Parameter, EditorRequired]
-    public GroupBrandingSettings Branding { get; set; } = null!;
+    public AppearanceSettings Branding { get; set; } = null!;
 
     [Parameter]
     public bool IsSaving { get; set; }
@@ -125,6 +123,6 @@
 
     private string GetPreviewStyle()
     {
-        return GroupBrandingMetadataHelper.BuildBannerStyle(Branding, "#334155");
+        return AppearanceStyleBuilder.BuildBannerStyle(Branding, "#334155");
     }
 }

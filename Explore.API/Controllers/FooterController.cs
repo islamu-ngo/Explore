@@ -20,12 +20,10 @@ namespace Explore.API.Controllers;
 public class FooterController : ControllerBase
 {
     private readonly IMediator _mediator;
-    private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public FooterController(IMediator mediator, IHttpContextAccessor httpContextAccessor)
+    public FooterController(IMediator mediator)
     {
         _mediator = mediator;
-        _httpContextAccessor = httpContextAccessor;
     }
 
     // ── Public / tenant-read endpoints ──────────────────────────────────────
@@ -228,10 +226,10 @@ public class FooterController : ControllerBase
 
     private Guid GetCurrentUserId()
     {
-        var raw = _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
-            ?? _httpContextAccessor.HttpContext?.User?.FindFirst(
+        var raw = HttpContext.User?.FindFirst("sub")?.Value
+            ?? HttpContext.User?.FindFirst(
                 "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-            ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
+            ?? HttpContext.User?.FindFirst("sid")?.Value;
 
         return Guid.TryParse(raw, out var id) ? id : Guid.Empty;
     }

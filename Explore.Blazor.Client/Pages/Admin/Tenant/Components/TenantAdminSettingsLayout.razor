@@ -13,7 +13,7 @@
     <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
         <!-- Header -->
         <div class="settings-header mb-8">
-            <MudText Typo="Typo.h4" Style="font-weight: 800;">
+            <MudText Typo="Typo.h4" HtmlTag="h1" Style="font-weight: 800;">
                 @(_isSingleTenantMode ? "Administration" : "Tenant Administration")
             </MudText>
             <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">
@@ -30,12 +30,12 @@
                              Icon="@Icons.Material.Filled.Apartment">
                         Multi-Tenant
                     </MudChip>
-                    <MudButton Variant="Variant.Text"
+                    <AppButton Variant="Variant.Text"
                                Color="Color.Primary"
                                StartIcon="@Icons.Material.Filled.Dns"
                                Href="/admin/instance/settings">
                         Manage Platform
-                    </MudButton>
+                    </AppButton>
                 </MudStack>
             }
         </div>
@@ -216,7 +216,7 @@
                                     </MudAlert>
                                 }
                                 <div class="settings-form-section mt-4">
-                                    <MudTextField T="string"
+                                    <AppTextField T="string" T="string"
                                                   @bind-Value="_model.CommunityGuidelinesContent"
                                                   Label="Guidelines Content"
                                                   Lines="20"
@@ -244,9 +244,9 @@
                                         Your platform is currently running in Single-Tenant Mode. If you intend to host multiple organizations with their own dedicated instances, domains, and policies, you can switch to Multi-Tenant Mode. 
                                         <strong>This will enable the full Instance Administration dashboard.</strong>
                                     </MudText>
-                                    <MudButton Variant="Variant.Outlined" Color="Color.Warning" Href="/admin/instance/settings">
+                                    <AppButton Variant="Variant.Outlined" Color="Color.Warning" Href="/admin/instance/settings">
                                         Go to Instance Administration
-                                    </MudButton>
+                                    </AppButton>
                                 </div>
                             </div>
                         }
@@ -254,13 +254,11 @@
                         <MudDivider Class="my-4" />
 
                         <MudStack Row="true" Justify="Justify.FlexEnd">
-                            <MudButton Variant="Variant.Filled"
-                                       Color="Color.Primary"
-                                       OnClick="SaveAsync"
+                            <AppButton OnClick="SaveAsync"
                                        Disabled="_isSaving"
                                        StartIcon="@(_isSaving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
                                 @(_isSaving ? "Saving..." : "Save Tenant Settings")
-                            </MudButton>
+                            </AppButton>
                         </MudStack>
                     </MudPaper>
                 </MudItem>

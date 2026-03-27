@@ -14,6 +14,9 @@
 @using Explore.Blazor.Client.Pages.Groups
 @using Explore.Blazor.Client.Pages.Admin.Group
 @using Explore.Blazor.Client.Pages.Landing
+@using Explore.Blazor.Client.Pages.Legal
+@using Explore.Blazor.Client.Pages.Contact
+@using Explore.Blazor.Client.Pages.About
 @using Explore.Blazor.Client.Pages.Onboarding
 @using Explore.Blazor.Client.Providers
 @using Explore.Blazor.Client.Routing.Guards
@@ -24,12 +27,13 @@
         <Blazouter.Components.Router Routes="@_routes" DefaultLayout="typeof(MainLayout)">
             <NotFound>
                 <LayoutView Layout="typeof(MainLayout)">
+                    <PageTitle>Page Not Found</PageTitle>
                     <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-8">
-                        <MudText Typo="Typo.h3">404 - Page Not Found</MudText>
+                        <MudText Typo="Typo.h3" HtmlTag="h1">404 - Page Not Found</MudText>
                         <MudText Typo="Typo.body1" Class="mt-4">The page you requested could not be found.</MudText>
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/" Class="mt-4">
+                        <AppButton Href="/" Class="mt-4">
                             Return to Home
-                        </MudButton>
+                        </AppButton>
                     </MudContainer>
                 </LayoutView>
             </NotFound>
@@ -104,6 +108,13 @@
             new RouteConfig { Path = "/organizations/:organizationId/events/create", Component = typeof(CreateEvent), Transition = RouteTransition.Fade, Guards = RequireAuthenticated() },
             // Parameterized event route last — catches /events/{any-guid}
             new RouteConfig { Path = "/events/:eventId", Component = typeof(EventDetail), Transition = RouteTransition.Fade },
+
+            // Legal & informational routes — public, no guards
+            new RouteConfig { Path = "/about", Component = typeof(AboutUs), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/contact", Component = typeof(Contact), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/community-guidelines", Component = typeof(CommunityGuidelines), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/privacy", Component = typeof(PrivacyPolicy), Transition = RouteTransition.Fade },
+            new RouteConfig { Path = "/terms", Component = typeof(TermsOfService), Transition = RouteTransition.Fade },
 
             // Admin routes
             new RouteConfig { Path = "/admin/organization/:organizationId", Component = typeof(AdminListDetails), Transition = RouteTransition.Fade, Guards = RequireAdmin() },

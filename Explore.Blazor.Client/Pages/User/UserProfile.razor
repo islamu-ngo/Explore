@@ -20,21 +20,21 @@
     else if (!string.IsNullOrEmpty(ErrorMessage))
     {
         <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-6">@ErrorMessage</MudAlert>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@LoadUserDataAsync">Retry</MudButton>
+        <AppButton OnClick="@LoadUserDataAsync">Retry</AppButton>
     }
     else if (UserData == null)
     {
         <MudAlert Severity="Severity.Warning" Variant="Variant.Filled">
             Unable to load user profile. Please try logging in again.
         </MudAlert>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/login" Class="mt-4">Log In</MudButton>
+        <AppButton Href="/login" Class="mt-4">Log In</AppButton>
     }
     else
     {
         <!-- Modern Hero Profile Header -->
-        <MudCard Elevation="0" Outlined="true" Class="rounded-xl overflow-hidden mb-6 position-relative">
+        <AppCard Outlined="true" Class="rounded-xl overflow-hidden mb-6 position-relative">
             <!-- Hero Banner -->
-            <div style="height: 200px; background: linear-gradient(135deg, var(--mud-palette-primary) 0%, color-mix(in srgb, var(--mud-palette-primary) 60%, black) 100%);"></div>
+            <div style="height: 200px; @_bannerStyle"></div>
             
             <div class="px-6 pb-6" style="margin-top: -50px;">
                 <div class="d-flex flex-column align-center">
@@ -51,7 +51,7 @@
                     </MudAvatar>
 
                     <!-- User Info -->
-                    <MudText Typo="Typo.h4" Style="font-weight: 800;" Align="Align.Center">@GetFullName()</MudText>
+                    <MudText Typo="Typo.h4" HtmlTag="h1" Style="font-weight: 800;" Align="Align.Center">@GetFullName()</MudText>
                     <MudText Typo="Typo.body1" Color="Color.Secondary" Align="Align.Center" Class="mb-4">@@@GetUsername()</MudText>
 
                     @if (!string.IsNullOrEmpty(GetDisplayLocation()) && GetDisplayLocation() != "Location not set")
@@ -62,7 +62,7 @@
                         </div>
                     }
 
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Edit" Href="/settings" Class="rounded-pill px-6">Edit Profile</MudButton>
+                    <AppButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit" Href="/settings" Class="rounded-pill px-6">Edit Profile</AppButton>
                 </div>
             </div>
 
@@ -78,12 +78,12 @@
                     <MudText Typo="Typo.caption" Style="text-transform: uppercase; letter-spacing: 1px; font-weight: 600;" Color="Color.Secondary">Reviews</MudText>
                 </div>
             </div>
-        </MudCard>
+        </AppCard>
 
         <MudGrid Spacing="6">
             <!-- Left Column: About -->
             <MudItem xs="12" md="4">
-                <MudCard Elevation="0" Outlined="true" Class="rounded-xl h-100">
+                <AppCard Outlined="true" Class="rounded-xl h-100">
                     <MudCardHeader>
                         <CardHeaderContent>
                             <MudText Typo="Typo.h6" Style="font-weight: 700;">About</MudText>
@@ -110,17 +110,17 @@
                             }
                         </MudList>
                     </MudCardContent>
-                </MudCard>
+                </AppCard>
             </MudItem>
 
             <!-- Right Column: Reviews -->
             <MudItem xs="12" md="8">
-                <MudCard Elevation="0" Outlined="true" Class="rounded-xl h-100">
+                <AppCard Outlined="true" Class="rounded-xl h-100">
                     <MudCardHeader>
                         <CardHeaderContent>
                             <div class="d-flex justify-space-between align-center w-100">
                                 <MudText Typo="Typo.h6" Style="font-weight: 700;">Recent Reviews</MudText>
-                                <MudButton Variant="Variant.Text" Color="Color.Primary" EndIcon="@Icons.Material.Filled.ArrowForward" Href="/my/reviews" Class="rounded-pill">View All</MudButton>
+                                <AppButton Variant="Variant.Text" EndIcon="@Icons.Material.Filled.ArrowForward" Href="/my/reviews" Class="rounded-pill">View All</AppButton>
                             </div>
                         </CardHeaderContent>
                     </MudCardHeader>
@@ -148,7 +148,7 @@
                             <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">No reviews given yet.</MudAlert>
                         }
                     </MudCardContent>
-                </MudCard>
+                </AppCard>
             </MudItem>
         </MudGrid>
     }

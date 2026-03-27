@@ -12,6 +12,8 @@
 @using Microsoft.JSInterop
 @using Explore.Blazor.Client.Models.Responses
 
+<PageTitle>Setup Access</PageTitle>
+
 <div class="setup-page">
     @* Left branding panel *@
     <div class="setup-left-panel">
@@ -55,7 +57,7 @@
     <div class="setup-right-panel">
         <div class="setup-form-container">
             <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Class="setup-form-icon mb-4" />
-            <MudText Typo="Typo.h4" Class="mb-1">Setup Access</MudText>
+            <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-1">Setup Access</MudText>
             <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">
                 Authenticate to begin instance configuration
             </MudText>
@@ -113,17 +115,15 @@
                             Setup secret is validated and your session is authenticated.
                         </MudAlert>
 
-                        <MudButton Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   FullWidth="true"
+                        <AppButton FullWidth="true"
                                    Size="Size.Large"
                                    OnClick="ContinueToOnboardingAsync"
                                    Class="mb-2">
                             Continue to Instance Onboarding
-                        </MudButton>
-                        <MudButton Variant="Variant.Text" Color="Color.Default" FullWidth="true" OnClick="ClearStoredSecretAsync">
+                        </AppButton>
+                        <AppButton Variant="Variant.Text" Color="Color.Default" FullWidth="true" OnClick="ClearStoredSecretAsync">
                             Clear Secret
-                        </MudButton>
+                        </AppButton>
                     }
                     else if (_validationSucceeded)
                     {
@@ -139,24 +139,22 @@
 
                         @foreach (var provider in _detectedProviders)
                         {
-                            <MudButton Variant="Variant.Filled"
-                                       Color="Color.Primary"
-                                       FullWidth="true"
+                            <AppButton FullWidth="true"
                                        StartIcon="@Icons.Material.Filled.Login"
                                        OnClick="@(() => ContinueToProviderLogin(provider))"
                                        Class="mb-2">
                                 Continue with @provider.DisplayName
-                            </MudButton>
+                            </AppButton>
                         }
 
-                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true" OnClick="ContinueToAuthConfig">
+                        <AppButton Variant="Variant.Outlined" FullWidth="true" OnClick="ContinueToAuthConfig">
                             Configure Authentication
-                        </MudButton>
+                        </AppButton>
                     }
                     else
                     {
                         @* Not yet validated: show secret input + validate button *@
-                        <MudTextField T="string"
+                        <AppTextField T="string" T="string"
                                       Label="Setup Secret"
                                       InputType="InputType.Password"
                                       Variant="Variant.Outlined"
@@ -169,9 +167,7 @@
                             Check the <code>SETUP_SECRET</code> environment variable or API server logs.
                         </MudText>
 
-                        <MudButton Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   FullWidth="true"
+                        <AppButton FullWidth="true"
                                    Size="Size.Large"
                                    Disabled="_isValidating || string.IsNullOrWhiteSpace(_secret)"
                                    OnClick="ValidateAsync"
@@ -181,7 +177,7 @@
                                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
                             }
                             Validate Secret
-                        </MudButton>
+                        </AppButton>
                     }
                 </div>
             }

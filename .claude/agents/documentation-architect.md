@@ -4,7 +4,10 @@ ABOUTME: Lists required reads, doc rules, and outputs.
 ---
 name: documentation-architect
 description: Produces and reviews project documentation for {Project}.
-tools: All tools
+type: implementation
+enforcement: suggest
+priority: medium
+tools: Read, Write, Edit, Glob, Grep
 ---
 
 # Documentation Architect

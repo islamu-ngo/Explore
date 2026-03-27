@@ -61,8 +61,6 @@ public class NotificationController : ControllerBase
     public async Task<ActionResult<NotificationDto>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var notification = await _mediator.Send(new GetNotificationByIdRequest { Id = id }, cancellationToken);
-        if (notification == null)
-            return NotFound(new { error = "Notification not found." });
 
         return Ok(notification);
     }
@@ -91,8 +89,6 @@ public class NotificationController : ControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> MarkAsRead(Guid id, CancellationToken cancellationToken = default)
     {
         var response = await _mediator.Send(new MarkNotificationAsReadCommand { Id = id }, cancellationToken);
-        if (!response.Success)
-            return NotFound(new { error = response.Message });
 
         return Ok(response);
     }
@@ -118,9 +114,7 @@ public class NotificationController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        var result = await _mediator.Send(new DeleteNotificationCommand { Id = id }, cancellationToken);
-        if (!result)
-            return NotFound(new { error = "Notification not found." });
+        await _mediator.Send(new DeleteNotificationCommand { Id = id }, cancellationToken);
 
         return NoContent();
     }

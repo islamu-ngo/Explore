@@ -93,7 +93,7 @@ public class UserService : IUserService
         try
         {
             _logger.LogInformation("Fetching current user");
-            var user = await _apiClient.UserGETAsync();
+            var user = await _apiClient.UserGET2Async();
             _logger.LogInformation("User found: {Email}", user?.Email);
             return user;
         }
@@ -109,7 +109,7 @@ public class UserService : IUserService
                 {
                     _logger.LogInformation("Auto-sync successful, retrying GetCurrentUser");
                     await Task.Delay(100); // Wait for DB write to complete
-                    return await _apiClient.UserGETAsync();
+                    return await _apiClient.UserGET2Async();
                 }
                 else
                 {
@@ -146,7 +146,7 @@ public class UserService : IUserService
         try
         {
             _logger.LogInformation("Updating user");
-            return await _apiClient.UserPUTAsync(userDto);
+            return await _apiClient.UserPUT2Async(userDto);
         }
         catch (ApiException ex)
         {

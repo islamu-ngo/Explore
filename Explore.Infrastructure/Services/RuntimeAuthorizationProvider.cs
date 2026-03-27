@@ -165,15 +165,9 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider
             {
                 // Safe-Mode: only instance admin allowed, deny everything else.
                 // Never fall back to instance PDP — tenant policies might be stricter.
-                _localProvider.SafeMode = true;
-                try
-                {
-                    return await _localProvider.IsAllowedBatchAsync(checks, cancellationToken);
-                }
-                finally
-                {
-                    _localProvider.SafeMode = false;
-                }
+                // Safe mode is a one-way latch — persists until instance restart.
+                _localProvider.ActivateSafeMode();
+                return await _localProvider.IsAllowedBatchAsync(checks, cancellationToken);
             }
 
             // Open mode: standard RBAC fallback — tenant accepts the risk

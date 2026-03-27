@@ -1,3 +1,6 @@
+// ABOUTME: REST API controller for custom property definition CRUD operations.
+// ABOUTME: Allows organizations to define custom fields for events and registrations with type validation.
+
 using Asp.Versioning;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.CustomPropertyDefinition;
@@ -82,6 +85,9 @@ public class CustomPropertyDefinitionController : ControllerBase
     public async Task<ActionResult<HalResource<CustomPropertyDefinitionDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var definition = await _mediator.Send(new GetCustomPropertyDefinitionDetailsRequest { Id = id }, cancellationToken);
+        if (definition == null)
+            return NotFound();
+
         var halResource = await _resourceAssembler.ToResource(definition, HttpContext);
         return Ok(halResource);
     }
@@ -164,12 +170,7 @@ public class CustomPropertyDefinitionController : ControllerBase
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteCustomPropertyDefinitionCommand { Id = id };
-        var result = await _mediator.Send(command, cancellationToken);
-
-        if (!result)
-        {
-            return NotFound(new { error = "CustomPropertyDefinition not found" });
-        }
+        await _mediator.Send(command, cancellationToken);
 
         return NoContent();
     }

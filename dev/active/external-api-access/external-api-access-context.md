@@ -3,7 +3,7 @@ ABOUTME: Tracks verified files, architectural decisions, implementation progress
 
 # External API Access - Context
 
-> **Last Updated:** 2026-03-09
+> **Last Updated:** 2026-03-26
 
 ## SESSION PROGRESS (2026-03-09)
 
@@ -127,6 +127,10 @@ ABOUTME: Tracks verified files, architectural decisions, implementation progress
 10. **Proxy trust is now part of the feature design.** Host-derived tenanting for direct API consumers must define trusted proxies, forwarded-host handling, and mismatch semantics rather than treating them as deployment trivia.
 11. **Persisted auth uses `keyId.secret`.** The handler now parses a stable public key id from the incoming raw key, performs a single-row repository lookup, and verifies only the secret segment hash.
 12. **Tenant-filter bypass is limited to auth lookup.** Persisted key authentication uses an explicit repository method that ignores only the named tenant filter for pre-tenant auth resolution.
+13. **Five owner types, not two.** `ExternalApiKeyOwnerType` expanded to User (1), Organization (2), Group (3), Tenant (4), InstanceAdmin (5). Each maps OwnerId to a different entity. TenantId is nullable for InstanceAdmin platform-scoped keys.
+14. **Expanded OwnerType enum over Actor FK.** Tenant is not an Actor entity and InstanceAdmin is a role on User, not a separate entity. The existing OwnerId (Guid) pattern handles all types without polymorphic FK complexity.
+15. **Group admin authority gap.** `AdminContext` currently has `IsInstanceAdminAsync`, `IsTenantAdminAsync`, and `IsOrganizationAdminAsync` but no `IsGroupAdminAsync`. This must be added before group key authorization works.
+16. **Scope ceiling hierarchy.** InstanceAdmin > Tenant > Organization ~ Group > User. A key's effective permissions are the intersection of its scope set and the creator's authority level.
 
 ---
 
@@ -293,20 +297,32 @@ But this slice stores external-provider auth artifacts, not the machine-consumer
 
 ---
 
-## Remaining Work Before Implementation Starts
+## Remaining Work Before Implementation Continues
 
 1. Decide whether rotation overlap is required in v1 before building rotation handlers and endpoints.
 2. Add aggregated usage rollup and reporting storage beyond the new `LastUsedAt`/`LastUsedIp` path.
 3. Extend the new API-key metrics and audit-style logging slice with reveal, rotate, and usage-rollup coverage so observability is complete without reading raw tenant secrets.
 4. Reconcile the existing broad `Event.API.IntegrationTests` `404` baseline before relying on whole-project API integration runs as a signal.
 5. Keep instance-admin reporting metadata-only unless a separate audited emergency-access design is approved.
+6. **Expand `ExternalApiKeyOwnerType` enum** from 2 values (User, Organization) to 5 values (User, Organization, Group, Tenant, InstanceAdmin).
+7. **Make `TenantId` nullable** on `ExternalApiKey` for InstanceAdmin platform-scoped keys; update EF configuration, indexes, and migration.
+8. **Add `IsGroupAdminAsync(groupId)` to `AdminContext`** following the `IsOrganizationAdminAsync` pattern with `GroupMember` + RoleId=31.
+9. **Update CreateExternalApiKeyCommand/Handler** for all 5 owner types with admin authority verification per type.
+10. **Update CreateExternalApiKeyDto** with GroupId field and Tenant/InstanceAdmin handling.
+11. **Update validation** for scope ceiling enforcement per owner type.
+12. **Update list query** to aggregate by new owner types (group-admin-visible, tenant-admin-visible, instance-admin-visible keys).
+13. **Update auth handler claims** for Group, Tenant, and InstanceAdmin owner types.
+14. **Update rate-limit partitioning** for new key types.
+15. **Update metrics dimensions** for the expanded owner type taxonomy.
+16. **Expand tests** for all 5 owner type boundaries, scope ceiling enforcement, and nullable TenantId edge cases.
 
 ---
 
 ## Quick Resume
 
-1. Read `dev/active/external-api-access/external-api-access-plan.md`.
+1. Read `dev/active/external-api-access/external-api-access-plan.md` — updated 2026-03-26 with five-owner-type model.
 2. Inspect `Explore.Domain/ExternalApiKey.cs`, `Explore.Application/Contracts/Persistence/IExternalApiKeyRepository.cs`, `Explore.Persistence/Repositories/ExternalApiKeyRepository.cs`, and `Explore.Persistence/Migrations/20260309122122_AddExternalApiKey.cs` for the persisted auth slice.
 3. Inspect `Explore.API/Authentication/ApiKeyAuthenticationHandler.cs` and `Explore.API/Authentication/ApiKeyHashing.cs` for the new `keyId.secret` auth path and fallback behavior.
 4. Inspect `Event.API.IntegrationTests/Fixtures/ExternalApiPhase0WebApplicationFactory.cs` and `Event.API.IntegrationTests/Features/ExternalApiPhase0IntegrationTests.cs` for the updated `11/11` seam verification harness.
-5. Continue with observability follow-through next; core API-key counters and audit-style logs are now in place, but usage rollups, reveal or rotate event coverage, clustered limiter semantics, and metadata-only instance-admin reporting are still open.
+5. Inspect `Explore.Application/Authorization/AdminContext.cs` — needs `IsGroupAdminAsync(groupId)` addition.
+6. Next priorities: expand OwnerType enum to 5 values, make TenantId nullable, add IsGroupAdminAsync, update CQRS handlers for all owner types, then continue with usage rollups, reveal/rotate events, clustered limiter semantics, and metadata-only instance-admin reporting.

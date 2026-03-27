@@ -27,4 +27,11 @@ public interface IOrganizationRepository : IGenericRepository<Organization, Guid
     /// <param name="pageSize">The number of items per page.</param>
     /// <returns>A tuple containing the items and total count.</returns>
     Task<(List<Organization> Items, int TotalCount)> GetMyOrganizationsPaged(Guid userId, int pageNumber, int pageSize);
+
+    /// <summary>
+    /// Permanently deletes PII data for an organization (GDPR erasure).
+    /// Uses ExecuteDeleteAsync for efficient bulk deletion without loading entities.
+    /// </summary>
+    /// <returns>Number of PII records deleted.</returns>
+    Task<int> ForgetPiiAsync(Guid organizationId);
 }

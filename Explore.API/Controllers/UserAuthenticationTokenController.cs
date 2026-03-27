@@ -1,3 +1,6 @@
+// ABOUTME: API controller for managing user authentication tokens and session management.
+// ABOUTME: Provides endpoints for token refresh, revocation, and listing active sessions.
+
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
@@ -49,10 +52,6 @@ public class UserAuthenticationTokenController : ControllerBase
     public async Task<ActionResult<UserAuthenticationTokenDto>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var token = await _mediator.Send(new GetUserAuthenticationTokenDetailsRequest { Id = id }, cancellationToken);
-        if (token == null)
-        {
-            return NotFound();
-        }
 
         return Ok(token);
     }
@@ -113,12 +112,7 @@ public class UserAuthenticationTokenController : ControllerBase
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteUserAuthenticationTokenCommand { Id = id };
-        var result = await _mediator.Send(command, cancellationToken);
-
-        if (!result)
-        {
-            return NotFound(new { error = "User Authentication Token not found" });
-        }
+        await _mediator.Send(command, cancellationToken);
 
         return NoContent();
     }

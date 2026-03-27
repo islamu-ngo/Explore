@@ -6,7 +6,7 @@
 <div class="setup-layout-root" style="margin:0;padding:0;width:100vw;min-height:100vh;overflow-x:hidden;position:relative;">
     <MudThemeProvider @ref="_mudThemeProvider" Theme="@_theme" @bind-IsDarkMode="@_isDarkMode" />
     <MudPopoverProvider />
-    <MudDialogProvider />
+    <MudDialogProvider DefaultFocus="DefaultFocus.FirstChild" />
     <MudSnackbarProvider />
 
     @* Floating switchers container — positioned at top-level of root div to avoid any stacking context issues from MudLayout *@
@@ -16,7 +16,7 @@
                   Style="border:1px solid var(--mud-palette-lines-default); color: var(--mud-palette-text-primary); pointer-events: all;">
             <LanguagePicker />
             <MudDivider Vertical="true" FlexItem="true" Style="height:24px;margin:0 4px; border-color: var(--mud-palette-divider);" />
-            <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Rounded.LightMode : Icons.Material.Outlined.DarkMode)"
+            <AppIconButton Icon="@(_isDarkMode ? Icons.Material.Rounded.LightMode : Icons.Material.Outlined.DarkMode)"
                            Color="Color.Inherit"
                            OnClick="ToggleDarkMode"
                            Size="Size.Medium"
@@ -26,7 +26,9 @@
 
     <MudLayout Style="padding:0;margin:0;">
         <MudMainContent Style="padding:0;margin:0;padding-top:0;">
-            @Body
+            <main id="main-content" tabindex="-1">
+                @Body
+            </main>
         </MudMainContent>
     </MudLayout>
 </div>

@@ -1,0 +1,92 @@
+@* ABOUTME: Standard 2-column footer template with brand section left and link groups right.
+   ABOUTME: All link groups are rendered in a compact right column instead of individual columns. *@
+
+<div class="footer-std2__grid">
+    <!-- Brand Column -->
+    <div class="footer-std2__brand-col">
+        <div class="site-footer__brand">
+            @if (!string.IsNullOrWhiteSpace(BrandLogoUrl))
+            {
+                <MudImage Src="@BrandLogoUrl" Alt="@BrandDisplayName" Width="28" Height="28" Class="site-footer__brand-icon" />
+            }
+            else
+            {
+                <MudIcon Icon="@Icons.Material.Filled.Explore" Color="Color.Primary" Size="Size.Large" Class="site-footer__brand-icon" />
+            }
+            <div class="site-footer__brand-text">@BrandDisplayName</div>
+        </div>
+
+        @if (ShowDescription && !string.IsNullOrWhiteSpace(DescriptionText))
+        {
+            <MudText Class="site-footer__description">@DescriptionText</MudText>
+        }
+    </div>
+
+    <!-- Combined Links Column -->
+    <div class="footer-std2__links-col">
+        @foreach (var group in LinkGroups)
+        {
+            <div class="site-footer__section">
+                <div class="site-footer__heading">@group.Title</div>
+                @foreach (var link in group.Links)
+                {
+                    <a href="@link.Url"
+                       class="site-footer__link"
+                       target="@(link.OpenInNewTab ? "_blank" : "_self")"
+                       rel="@(link.OpenInNewTab ? "noopener noreferrer" : null)">
+                        @link.Label
+                    </a>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+<MudDivider Class="my-8" />
+
+<div class="site-footer__bottom">
+    <div class="site-footer__copyright">@CopyrightText</div>
+    <div class="site-footer__social">
+        @if (ShowSocialLinks)
+        {
+            @foreach (var social in SocialLinks)
+            {
+                <AppIconButton Icon="@FooterIconHelper.GetSocialIcon(social.Platform)"
+                               aria-label="@social.Label"
+                               title="@social.Label"
+                               Class="site-footer__social-btn"
+                               Size="Size.Small"
+                               Href="@social.Url"
+                               Target="_blank"
+                               rel="noopener noreferrer" />
+            }
+        }
+        @if (ShowCommunityGuidelinesLink)
+        {
+            <a href="/community-guidelines" class="site-footer__link">Community Guidelines</a>
+        }
+        @if (ShowCookieSettingsLink)
+        {
+            <AppButton Variant="Variant.Text"
+                       Size="Size.Small"
+                       Class="site-footer__link"
+                       OnClick="OnCookieSettingsClick">
+                Cookie Settings
+            </AppButton>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string BrandDisplayName { get; set; } = string.Empty;
+    [Parameter] public string BrandLogoUrl { get; set; } = string.Empty;
+    [Parameter] public bool ShowDescription { get; set; }
+    [Parameter] public string DescriptionText { get; set; } = string.Empty;
+    [Parameter] public bool ShowSocialLinks { get; set; }
+    [Parameter] public List<FooterSocialLinkModel> SocialLinks { get; set; } = [];
+    [Parameter] public string CopyrightText { get; set; } = string.Empty;
+    [Parameter] public bool ShowCookieSettingsLink { get; set; }
+    [Parameter] public bool ShowCommunityGuidelinesLink { get; set; }
+    [Parameter] public List<FooterLinkGroupModel> LinkGroups { get; set; } = [];
+    [Parameter] public EventCallback OnCookieSettingsClick { get; set; }
+}

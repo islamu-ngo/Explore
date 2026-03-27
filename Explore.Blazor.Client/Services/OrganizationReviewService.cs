@@ -70,7 +70,7 @@ public class OrganizationReviewService : IOrganizationReviewService
     {
         try
         {
-            return await _apiClient.OrganizationreviewAsync(review);
+            return await _apiClient.OrganizationreviewPOSTAsync(review);
         }
         catch (ApiException ex)
         {

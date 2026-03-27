@@ -5,12 +5,18 @@
 @inject ILogger<StartupGate> Logger
 @rendermode InteractiveServer
 
+<PageTitle>Startup Routing</PageTitle>
+
+<MudText Typo="Typo.h1" HtmlTag="h1" Class="sr-only">Startup Routing</MudText>
+
 <MudContainer MaxWidth="MaxWidth.Small" Class="py-8">
     @if (!string.IsNullOrEmpty(_error))
     {
-        <MudAlert Severity="Severity.Error" Variant="Variant.Filled">
-            @_error
-        </MudAlert>
+        <div role="alert">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled">
+                @_error
+            </MudAlert>
+        </div>
     }
     else
     {

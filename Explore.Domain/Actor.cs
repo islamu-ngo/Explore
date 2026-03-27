@@ -53,11 +53,14 @@ public class Actor : ITenantEntity, IAuditableEntity, ISoftDeletable
     [ForeignKey("BannerPictureStorage")]
     public Guid? BannerPictureId { get; set; }
     public StorageObject? BannerPicture { get; set; }
-
     // Appearance settings
     public string? BackgroundColor { get; set; }
     public string? BackgroundEffect { get; set; }
     public string? BannerColor { get; set; }
+
+    [ForeignKey("BackgroundImage")]
+    public Guid? BackgroundImageId { get; set; }
+    public StorageObject? BackgroundImage { get; set; }
 
     [NotMapped]
     public string? Did

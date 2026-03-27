@@ -22,15 +22,19 @@
     }
     else if (_user == null)
     {
-        <MudAlert Severity="Severity.Error" Variant="Variant.Filled">Failed to load user profile.</MudAlert>
+        <div role="alert">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled">Failed to load user profile.</MudAlert>
+        </div>
     }
     else
     {
         @if (!string.IsNullOrEmpty(_errorMessage))
         {
-            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-6 rounded-lg" ShowCloseIcon="true" CloseIconClicked="@(() => _errorMessage = null)">
-                @_errorMessage
-            </MudAlert>
+            <div role="alert">
+                <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-6 rounded-lg" ShowCloseIcon="true" CloseIconClicked="@(() => _errorMessage = null)">
+                    @_errorMessage
+                </MudAlert>
+            </div>
         }
 
         @if (!string.IsNullOrEmpty(_successMessage))
@@ -53,7 +57,8 @@
                                    Width="120px"
                                    Height="120px"
                                    HintText="JPG, PNG, GIF, WebP (Max 5MB)" 
-                                   Icon="@Icons.Material.Filled.Person" />
+                                   Icon="@Icons.Material.Filled.Person"
+                                   Alt="Profile picture" />
                     </div>
                     <div>
                         <MudText Typo="Typo.body2" Color="Color.Secondary">
@@ -71,18 +76,16 @@
                 <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-4">Name</MudText>
                 <MudGrid Spacing="3">
                     <MudItem xs="12" sm="6">
-                        <MudTextField @bind-Value="_user.FirstName" 
+                        <AppTextField T="string" @bind-Value="_user.FirstName" 
                                       Label="First Name" 
                                       Required="true" 
-                                      Variant="Variant.Outlined" 
                                       Adornment="Adornment.Start" 
                                       AdornmentIcon="@Icons.Material.Filled.Person" />
                     </MudItem>
                     <MudItem xs="12" sm="6">
-                        <MudTextField @bind-Value="_user.LastName" 
+                        <AppTextField T="string" @bind-Value="_user.LastName" 
                                       Label="Last Name" 
                                       Required="true" 
-                                      Variant="Variant.Outlined"
                                       Adornment="Adornment.Start" 
                                       AdornmentIcon="@Icons.Material.Filled.Person" />
                     </MudItem>
@@ -97,18 +100,16 @@
                 <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-4">Contact Information</MudText>
                 <MudGrid Spacing="3">
                     <MudItem xs="12">
-                        <MudTextField @bind-Value="_user.Email" 
+                        <AppTextField T="string" @bind-Value="_user.Email" 
                                       Label="Email" 
-                                      Variant="Variant.Outlined" 
                                       ReadOnly="true" 
                                       HelperText="Email cannot be changed"
                                       Adornment="Adornment.Start" 
                                       AdornmentIcon="@Icons.Material.Filled.Email" />
                     </MudItem>
                     <MudItem xs="12">
-                        <MudTextField @bind-Value="_user.Username" 
+                        <AppTextField T="string" @bind-Value="_user.Username" 
                                       Label="Username" 
-                                      Variant="Variant.Outlined" 
                                       Adornment="Adornment.Start" 
                                       AdornmentIcon="@Icons.Material.Filled.AlternateEmail" />
                     </MudItem>
@@ -120,15 +121,13 @@
 
             <!-- Action Buttons -->
             <div class="d-flex justify-end gap-3 mt-8">
-                <MudButton Variant="Variant.Outlined" 
+                <AppButton Variant="Variant.Outlined" 
                            Color="Color.Default" 
                            OnClick="ResetForm"
                            Class="rounded-pill px-6">
                     Cancel
-                </MudButton>
-                <MudButton Variant="Variant.Filled" 
-                           Color="Color.Primary" 
-                           OnClick="SaveSettings" 
+                </AppButton>
+                <AppButton OnClick="SaveSettings" 
                            Disabled="@(!_success || _isSaving)" 
                            StartIcon="@Icons.Material.Filled.Save"
                            Class="rounded-pill px-6">
@@ -141,7 +140,7 @@
                     {
                         <span>Save Changes</span>
                     }
-                </MudButton>
+                </AppButton>
             </div>
         </MudForm>
     }

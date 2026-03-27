@@ -10,7 +10,7 @@
             <MudText Typo="Typo.h5" Style="font-weight: 700;">Members</MudText>
 
             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="flex-wrap">
-                <MudTextField @bind-Value="_searchString"
+                <AppTextField T="string" @bind-Value="_searchString"
                               Placeholder="Search members..."
                               Adornment="Adornment.Start"
                               AdornmentIcon="@Icons.Material.Filled.Search"
@@ -34,12 +34,10 @@
                     }
                 </MudSelect>
 
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.PersonAdd"
+                <AppButton StartIcon="@Icons.Material.Filled.PersonAdd"
                            Disabled="true">
                     Add Member
-                </MudButton>
+                </AppButton>
             </MudStack>
         </MudStack>
     </div>

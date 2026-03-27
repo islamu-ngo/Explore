@@ -114,6 +114,41 @@ Checks:
 4. Remember that analytics failures should degrade to no-op behavior; if user-facing routes break, the issue is larger than analytics transport.
 5. If the operator wants an emergency stop, switch to provider `none` or disable analytics rather than removing scripts manually.
 
+## Outbox Processor Issues
+
+**Symptoms:** Messages stuck in `Pending` status, events not being dispatched.
+
+Checks:
+1. Verify `OutboxProcessor:Enabled` is `true` in configuration.
+2. Check logs for `OutboxProcessor` — look for polling activity and dispatch errors.
+3. Query `outbox_messages` table: `SELECT status, COUNT(*) FROM outbox_messages GROUP BY status`.
+4. If messages are `DeadLettered`, check `last_error` column for root cause. Dead-lettered messages stay in DB indefinitely for manual review.
+5. Verify `IOutboxMessageDispatcher` registration — default `LoggingOutboxMessageDispatcher` is a no-op that logs warnings.
+6. Check `MaxRetryCount` setting — messages retry with exponential backoff before dead-lettering.
+
+## Footer Settings Issues
+
+**Symptoms:** Footer not rendering, template changes not visible, governance locks not applying.
+
+Checks:
+1. Verify `footer.enabled` setting is `true` for the tenant.
+2. Check `footer.template` value matches a known template: `standard-3-col`, `standard-2-col`, `minimal`, `community`.
+3. In multi-tenant mode, check instance governance locks (`footer.lock_tenant_template`, `footer.lock_tenant_link_groups`, etc.) — locked settings prevent tenant overrides.
+4. If social links not showing, verify `footer.show_social_links` is `true` and `footer.social_links` JSON array is valid.
+5. After changing footer settings via API, the public config endpoint (`GET /api/footer/config`) may be output-cached — wait or clear cache.
+
+## Secret Provider Issues
+
+**Symptoms:** Application fails to start, secrets not loaded, connection strings missing.
+
+Checks:
+1. Check `SecretProvider:Provider` config value — `None` uses env vars, `Infisical` uses Infisical API.
+2. If `FailFast` is `true`, missing required secrets will crash at startup. Check logs for `RequiredSecretsValidator` errors.
+3. For Infisical: verify `ClientId`, `ClientSecret`, `ProjectId`, and `Environment` are set.
+4. Check health endpoint: `/health` includes `secret_provider` check — `Degraded` after 1-2 failures, `Unhealthy` after 3+.
+5. If refresh is enabled, check `secrets_refresh_failures_total` Prometheus metric for recurring failures.
+6. Key mapping: Infisical uses `SCREAMING_SNAKE_CASE` (e.g., `DATABASE__CONNECTIONSTRING` → `Database:ConnectionString`).
+
 ## Local URLs
 
 - API: `https://localhost:7039`

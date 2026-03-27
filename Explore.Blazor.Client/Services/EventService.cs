@@ -304,7 +304,7 @@ public partial class EventService : IEventService
     {
         try
         {
-            var command = new UpdateEventCommand { Id = eventId, EventDto = eventDto };
+            var command = new UpdateEventRequestDto { EventDto = eventDto };
             return await _apiClient.UpdateEventAsync(eventId, command);
         }
         catch (Exception ex)
@@ -318,9 +318,8 @@ public partial class EventService : IEventService
     {
         try
         {
-            var command = new UpdateEventCommand
+            var command = new UpdateEventRequestDto
             {
-                Id = eventId,
                 EventStatusDto = new UpdateEventStatusDto { EventStatusId = eventStatusId }
             };
             var result = await _apiClient.UpdateEventAsync(eventId, command);

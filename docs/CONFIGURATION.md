@@ -114,7 +114,7 @@ Cookie consent and privacy governance keys:
 
 | Key | Type | Default | Description |
 |---|---|---|---|
-| `analytics.global_disable_client_tracking` | bool | `false` | Emergency kill switch — disables all browser analytics immediately |
+| `analytics.global_disable_client_tracking` | bool | `false` | Emergency kill switch — disables all **browser-side** analytics immediately. Server-side relay endpoints and server analytics continue normally. Scope: browser SDK initialization only. |
 | `analytics.cookie_banner_enabled` | bool | `false` | Whether the cookie consent banner is shown to end users |
 | `analytics.decline_behavior` | enum | `"disable"` | What happens when a user declines consent: `disable` (no analytics) or `cookieless` (privacy-preserving analytics) |
 | `analytics.consent_cookie_lifetime_days` | int | `180` | How long the consent preference cookie persists (ICO recommends 6 months) |
@@ -137,8 +137,9 @@ Storage-mode-driven consent rules:
 
 Consent cookie design:
 
-- Cookie name is tenant-scoped: `explore_cc_{tenantSlug}` to prevent cross-tenant consent leakage.
+- Cookie name is tenant-scoped: `explore_cc_{stableShortKey}` where the stable key is derived from the first 8 hex characters of the tenant's immutable GUID (not the mutable subdomain slug). This prevents cookie orphaning when a tenant renames their subdomain.
 - Cookie value is minimal: `accepted` or `declined` only. No timestamps, user IDs, or tracking data.
+- Cookie scope: per effective public host/tenant experience. `SameSite=Lax`, `Secure`, `path=/`. Consent is not shared across subdomains or tenants.
 - The consent cookie itself is classified as strictly necessary (remembering the user's choice).
 
 Post-onboarding management note:

@@ -2,3 +2,10 @@
 ::deep .event-review-dialog {
     color: inherit;
 }
+
+/* ── Star rating accessibility ── */
+.star:focus-visible {
+    outline: 2px solid var(--mud-palette-primary);
+    outline-offset: 2px;
+    border-radius: 4px;
+}

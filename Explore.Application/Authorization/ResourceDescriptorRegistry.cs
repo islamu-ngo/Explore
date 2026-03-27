@@ -3,6 +3,7 @@
 
 namespace Explore.Application.Authorization;
 
+using Explore.Application.DTOs.Actor;
 using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.DTOs.Category;
 using Explore.Application.DTOs.CustomPropertyDefinition;
@@ -11,8 +12,10 @@ using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionAgendaItem;
 using Explore.Application.DTOs.Group;
+using Explore.Application.DTOs.GroupMember;
 using Explore.Application.DTOs.IndexedDid;
 using Explore.Application.DTOs.Location;
+using Explore.Application.DTOs.Notification;
 using Explore.Application.DTOs.Organization;
 using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.DTOs.OrganizationReview;
@@ -39,6 +42,10 @@ public static class ResourceDescriptorRegistry
         // Group
         [typeof(GroupDto)] = "group",
         [typeof(GroupListDto)] = "group",
+
+        // Group Member
+        [typeof(GroupMemberDto)] = "group_member",
+        [typeof(GroupMemberListDto)] = "group_member",
 
         // Tenant Settings
         [typeof(TenantSettingsDto)] = "tenant_setting",
@@ -101,6 +108,14 @@ public static class ResourceDescriptorRegistry
         [typeof(CustomPropertyDefinitionDto)] = "custom_property_definition",
         [typeof(CustomPropertyDefinitionListDto)] = "custom_property_definition",
 
+        // Notification
+        [typeof(NotificationDto)] = "notification",
+        [typeof(NotificationListDto)] = "notification",
+
+        // Actor
+        [typeof(ActorDto)] = "actor",
+        [typeof(ActorListDto)] = "actor",
+
         // ATProto Record
         [typeof(AtprotoRecordDto)] = "atproto_record",
         [typeof(AtprotoRecordListDto)] = "atproto_record"
@@ -130,6 +145,8 @@ public static class ResourceDescriptorRegistry
             PermissionAction.Update => "update",
             PermissionAction.Delete => "delete",
             PermissionAction.ManageMembers => "manage_members",
+            PermissionAction.ViewSharedContacts => "viewsharedcontacts",
+            PermissionAction.ExportSharedContacts => "exportsharedcontacts",
             _ => throw new ArgumentOutOfRangeException(nameof(action), action, null)
         };
     }

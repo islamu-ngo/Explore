@@ -58,7 +58,7 @@ public class ExternalApiKeyIntegrationTests
         await Assert.That(stored.Scopes).IsEqualTo("events.read events.write");
         await Assert.That(stored.ExpiresAt).IsEqualTo(expiresAt);
         await Assert.That(stored.OwnerId).IsEqualTo(userId);
-        await Assert.That(stored.Status).IsEqualTo(ExternalApiKeyStatus.Active);
+        await Assert.That(stored.ExternalApiKeyStatusId).IsEqualTo((int)ExternalApiKeyStatusEnum.Active);
         await Assert.That(stored.UpdatedAt).IsNotNull();
     }
 
@@ -143,7 +143,7 @@ public class ExternalApiKeyIntegrationTests
         var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
         var stored = await dbContext.ExternalApiKeys.SingleAsync(x => x.Id == apiKeyId);
 
-        await Assert.That(stored.Status).IsEqualTo(ExternalApiKeyStatus.Revoked);
+        await Assert.That(stored.ExternalApiKeyStatusId).IsEqualTo((int)ExternalApiKeyStatusEnum.Revoked);
         await Assert.That(stored.UpdatedAt).IsNotNull();
     }
 

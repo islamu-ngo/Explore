@@ -24,6 +24,9 @@ public class ExternalApiKeyObservabilityTests
         var externalApiKeyRepository = Substitute.For<IExternalApiKeyRepository>();
         var organizationRepository = Substitute.For<IOrganizationRepository>();
         var organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
+        var groupMemberRepository = Substitute.For<IGroupMemberRepository>();
+        var groupRepository = Substitute.For<IGroupRepository>();
+        var adminContext = Substitute.For<IAdminContext>();
         var userContext = Substitute.For<IUserContext>();
         var tenantContext = Substitute.For<ITenantContext>();
         var logger = Substitute.For<ILogger<CreateExternalApiKeyCommandHandler>>();
@@ -47,6 +50,9 @@ public class ExternalApiKeyObservabilityTests
             externalApiKeyRepository,
             organizationRepository,
             organizationMemberRepository,
+            groupMemberRepository,
+            groupRepository,
+            adminContext,
             userContext,
             tenantContext,
             metrics,
@@ -79,6 +85,8 @@ public class ExternalApiKeyObservabilityTests
 
         var externalApiKeyRepository = Substitute.For<IExternalApiKeyRepository>();
         var organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
+        var groupMemberRepository = Substitute.For<IGroupMemberRepository>();
+        var adminContext = Substitute.For<IAdminContext>();
         var userContext = Substitute.For<IUserContext>();
         var logger = Substitute.For<ILogger<RevokeExternalApiKeyCommandHandler>>();
 
@@ -95,15 +103,20 @@ public class ExternalApiKeyObservabilityTests
             Scopes = "events.read",
             OwnerType = ExternalApiKeyOwnerType.User,
             OwnerId = userId,
-            Status = ExternalApiKeyStatus.Active
+            ExternalApiKeyStatusId = (int)ExternalApiKeyStatusEnum.Active,
+            ExternalApiKeyStatus = null!,
+            ExternalApiKeyCreditPeriodId = (int)ExternalApiKeyCreditPeriodEnum.None,
+            ExternalApiKeyCreditPeriod = null!
         };
 
         userContext.GetRequiredUserId().Returns(userId);
-        externalApiKeyRepository.GetById(externalApiKey.Id).Returns(externalApiKey);
+        externalApiKeyRepository.GetByIdIgnoringTenantFilter(externalApiKey.Id).Returns(externalApiKey);
 
         var handler = new RevokeExternalApiKeyCommandHandler(
             externalApiKeyRepository,
             organizationMemberRepository,
+            groupMemberRepository,
+            adminContext,
             userContext,
             metrics,
             logger);

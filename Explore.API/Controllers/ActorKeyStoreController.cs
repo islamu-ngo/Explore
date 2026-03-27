@@ -1,3 +1,6 @@
+// ABOUTME: API controller for managing actor cryptographic key storage and federation identity.
+// ABOUTME: Handles DID key management, key rotation, and federation credential operations.
+
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
@@ -49,10 +52,6 @@ public class ActorKeyStoreController : ControllerBase
     public async Task<ActionResult<ActorKeyStoreDto>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var keyStore = await _mediator.Send(new GetActorKeyStoreDetailsRequest { Id = id }, cancellationToken);
-        if (keyStore == null)
-        {
-            return NotFound();
-        }
 
         return Ok(keyStore);
     }

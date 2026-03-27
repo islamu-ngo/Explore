@@ -1,5 +1,6 @@
 using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Pages.Organizations.Dialogs;
 using Explore.Blazor.Client.Services;
@@ -17,6 +18,7 @@ public partial class OrganizationMembers
     [Inject] protected NavigationManager Navigation { get; set; } = null!;
     [Inject] protected AuthenticationStateProvider AuthenticationStateProvider { get; set; } = null!;
     [Inject] protected RouterStateService RouterState { get; set; } = null!;
+    [Inject] private IAccessibilityFocusService AccessibilityFocusService { get; set; } = default!;
 
     private Guid Id { get; set; }
     private List<OrganizationMemberDto> Members = new();
@@ -96,8 +98,10 @@ public partial class OrganizationMembers
     private async Task OpenInviteDialog()
     {
         var parameters = new DialogParameters { ["OrganizationId"] = Id };
+        await AccessibilityFocusService.SaveFocusAsync();
         var dialog = await InviteMemberDialog.ShowAsync(DialogService, "Invite Member", parameters);
         var result = await dialog.Result;
+        await AccessibilityFocusService.RestoreFocusAsync();
 
         if (!result.Canceled)
         {
@@ -108,8 +112,10 @@ public partial class OrganizationMembers
     private async Task OpenEditRoleDialog(OrganizationMemberDto member)
     {
         var parameters = new DialogParameters { ["Member"] = member, ["OrganizationId"] = Id };
+        await AccessibilityFocusService.SaveFocusAsync();
         var dialog = await EditMemberRoleDialog.ShowAsync(DialogService, "Edit Role", parameters);
         var result = await dialog.Result;
+        await AccessibilityFocusService.RestoreFocusAsync();
 
         if (!result.Canceled)
         {
@@ -119,10 +125,12 @@ public partial class OrganizationMembers
 
     private async Task RemoveMember(OrganizationMemberDto member)
     {
+        await AccessibilityFocusService.SaveFocusAsync();
         bool? result = await DialogService.ShowMessageBoxAsync(
             "Remove Member",
             $"Are you sure you want to remove {member.UserEmail} from the organization?",
             yesText: "Remove", cancelText: "Cancel");
+        await AccessibilityFocusService.RestoreFocusAsync();
 
         if (result == true)
         {

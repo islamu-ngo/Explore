@@ -11,14 +11,14 @@
 <PageTitle>Create Organization</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
-    <MudCard Elevation="0" Class="rounded-xl border-solid border-1 mud-border-lines-default overflow-hidden">
+    <AppCard Class="rounded-xl border-solid border-1 mud-border-lines-default overflow-hidden">
         <div class="pa-6 border-b-1 mud-border-lines-default bg-surface">
             <MudStack Row AlignItems="AlignItems.Center" Spacing="4">
                 <MudAvatar Rounded="true" Size="Size.Large" Color="Color.Primary" Variant="Variant.Filled">
                     <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Medium" />
                 </MudAvatar>
                 <div>
-                    <MudText Typo="Typo.h4" Style="font-weight: 800;">Create Organization</MudText>
+                    <MudText Typo="Typo.h4" HtmlTag="h1" Style="font-weight: 800;">Create Organization</MudText>
                     <MudText Typo="Typo.body1" Color="Color.Secondary">
                         Fill in the details to register your organization.
                     </MudText>
@@ -70,14 +70,14 @@
                             </MudItem>
                             <MudItem xs="12" md="8">
                                 <MudStack Spacing="4">
-                                    <MudTextField @bind-Value="organization.FullName"
+                                    <AppTextField T="string" @bind-Value="organization.FullName"
                                                   Label="Organization Name"
                                                   Variant="Variant.Outlined"
                                                   Required
                                                   Adornment="Adornment.Start"
                                                   AdornmentIcon="@Icons.Material.Filled.Business" />
 
-                                    <MudTextField @bind-Value="organization.WebsiteUrl"
+                                    <AppTextField T="string" @bind-Value="organization.WebsiteUrl"
                                                   Label="Website URL (Optional)"
                                                   Variant="Variant.Outlined"
                                                   Adornment="Adornment.Start"
@@ -86,13 +86,13 @@
                                     <MudText Typo="Typo.subtitle2" Color="Color.Primary">Organization Page Appearance (Optional)</MudText>
                                     <MudGrid Spacing="2">
                                         <MudItem xs="12" sm="4">
-                                            <MudTextField @bind-Value="_appearance.BackgroundColor"
+                                            <AppTextField T="string" @bind-Value="_appearance.BackgroundColor"
                                                           Label="Background Color"
                                                           Variant="Variant.Outlined"
                                                           InputType="InputType.Color" />
                                         </MudItem>
                                         <MudItem xs="12" sm="8">
-                                            <MudTextField @bind-Value="_appearance.BannerPictureUri"
+                                            <AppTextField T="string" @bind-Value="_appearance.ImageUri"
                                                           Label="Banner Picture URL"
                                                           Variant="Variant.Outlined"
                                                           Placeholder="https://... (image or GIF)" />
@@ -119,7 +119,7 @@
                     <div class="py-6">
                         <MudGrid Spacing="3">
                             <MudItem xs="12">
-                                <MudTextField @bind-Value="organization.Email"
+                                <AppTextField T="string" @bind-Value="organization.Email"
                                               Label="Contact Email"
                                               Variant="Variant.Outlined"
                                               InputType="InputType.Email"
@@ -129,7 +129,7 @@
                             </MudItem>
 
                             <MudItem xs="12">
-                                <MudTextField @bind-Value="organization.Address"
+                                <AppTextField T="string" @bind-Value="organization.Address"
                                               Label="Street Address"
                                               Variant="Variant.Outlined"
                                               Required
@@ -148,7 +148,7 @@
                             </MudItem>
 
                             <MudItem xs="12" md="4">
-                                <MudTextField @bind-Value="organization.City"
+                                <AppTextField T="string" @bind-Value="organization.City"
                                               Label="City"
                                               Variant="Variant.Outlined"
                                               Required
@@ -225,9 +225,7 @@
                         </MudGrid>
 
                         <div class="d-flex justify-end mt-8">
-                            <MudButton Variant="Variant.Filled"
-                                       Color="Color.Primary"
-                                       Size="Size.Large"
+                            <AppButton Size="Size.Large"
                                        StartIcon="@Icons.Material.Filled.Send"
                                        OnClick="@HandleSubmit"
                                        Disabled="@(!CanSubmit() || isSubmitting)"
@@ -241,11 +239,11 @@
                                 {
                                     <span>Submit for Review</span>
                                 }
-                            </MudButton>
+                            </AppButton>
                         </div>
                     </div>
                 </MudStep>
             </MudStepper>
         </div>
-    </MudCard>
+    </AppCard>
 </MudContainer>

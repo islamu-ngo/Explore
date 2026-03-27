@@ -58,76 +58,51 @@ ABOUTME: Prefer MudBlazor components over raw HTML; covers v9 API changes and st
 - **Colors**: Use neutral tones for most UI; accent (`Color.Primary`) only for interactive/call-to-action elements.
 - **Dense mode**: Prefer `Dense` for data-heavy views; normal for user-facing content.
 
-## MudGlobal Removal — Wrapper Component Pattern
+## Wrapper Component Catalog
 
-Since `MudGlobal` defaults are removed in v9, create thin wrapper components for repeated defaults:
+Wrappers in `Explore.Blazor.Client/Components/Common/` replace `MudGlobal` defaults (removed in v9). All use `[Parameter(CaptureUnmatchedValues = true)]` + `@attributes` for pass-through.
 
-```razor
-@* AppButton.razor — shared button defaults *@
-<MudButton Variant="Variant.Filled" Color="Color.Primary" Elevation="0"
-           DisableElevation="true" Class="@Class" Style="@Style"
-           @attributes="AdditionalAttributes">
-    @ChildContent
-</MudButton>
+| Wrapper | Wraps | Key Defaults |
+|---------|-------|-------------|
+| `AppButton` | `MudButton` | `Variant.Filled`, `Color.Primary`, `Elevation=0` |
+| `AppCard` | `MudCard` | `Elevation=0` (border via `.app-card` CSS) |
+| `AppTextField<T>` | `MudTextField<T>` | `Variant.Outlined` |
+| `AppIconButton` | `MudIconButton` | (transparent pass-through) |
+| `AppDialogShell` | N/A | Structural shell: `Title`, `HeaderContent`, `ChildContent`, `ActionsContent` |
 
-@code {
-    [Parameter] public string? Class { get; set; }
-    [Parameter] public string? Style { get; set; }
-    [Parameter] public RenderFragment? ChildContent { get; set; }
-    [Parameter(CaptureUnmatchedValues = true)]
-    public IDictionary<string, object>? AdditionalAttributes { get; set; }
-}
+Override any default by passing the parameter explicitly: `<AppButton Variant="Variant.Outlined">`.
+
+### DialogOptionsFactory
+
+Static presets in `Explore.Blazor.Client/Services/DialogOptionsFactory.cs`:
+
+```csharp
+DialogOptionsFactory.Small()          // CloseOnEscapeKey, MaxWidth.Small, FullWidth
+DialogOptionsFactory.Medium()         // CloseOnEscapeKey, MaxWidth.Medium, FullWidth
+DialogOptionsFactory.Confirmation()   // Small + Position.Center
+DialogOptionsFactory.Editor()         // MaxWidth.Medium, FullWidth, CloseButton, BackdropClick
 ```
 
-```razor
-@* AppCard.razor — shared card defaults *@
-<MudCard Elevation="0" Class="@($"border rounded-lg {Class}")">
-    @ChildContent
-</MudCard>
+Use instead of inline `new DialogOptions { ... }` for consistency.
 
-@code {
-    [Parameter] public string? Class { get; set; }
-    [Parameter] public RenderFragment? ChildContent { get; set; }
-}
+### MudDialogProvider Configuration
+
+Both `MainLayout.razor` and `SetupLayout.razor` configure:
+```razor
+<MudDialogProvider DefaultFocus="DefaultFocus.FirstChild" />
 ```
 
-## v9 Breaking API Changes (Must Follow)
+Both `Program.cs` files configure popover transitions:
+```csharp
+builder.Services.AddMudServices(config =>
+{
+    config.PopoverOptions.Duration = TimeSpan.FromMilliseconds(300);
+});
+```
 
-### DialogService
-- `ShowMessageBox` → **`ShowMessageBoxAsync`** (old method removed).
-- `Show<T>()` → **`ShowAsync<T>()`**; `ShowForm<T>()` → **`ShowFormAsync<T>()`**.
-- `Close()` → **`CloseAsync()`**.
-- `DefaultFocus` moved from `MudGlobal.DialogDefaults` to `MudDialogProvider` or `DialogOptions`.
+## v9 Breaking API Changes
 
-### MudFileUpload
-- `<ActivatorContent>` → **`<CustomContent Context="fileUpload">`**.
-- Must explicitly call `OnClick="@fileUpload.OpenFilePickerAsync"` on inner button (no longer auto-activates).
-- New features: built-in drag-and-drop (`DragAndDrop="true"`), default file list, `GetFilenames()`, `RemoveFile()`.
-
-### MudMenu ActivatorContent
-- `ActivatorContent` now provides a **`MenuContext`** parameter.
-- Must explicitly call `context.ToggleAsync` / `context.OpenAsync` / `context.CloseAsync` on event handlers.
-
-### MudSelect
-- `SelectedValues` type changed from `ICollection<T>` to **`IReadOnlyCollection<T>`**.
-- `Clear` → **`ClearAsync`**; `Open` now supports `@bind-Open`.
-
-### MudTabs Class Renames
-- `TabPanelClass` → **`TabButtonsClass`**; `PanelClass` → **`TabPanelsClass`**.
-- `MudTabPanel` has new `PanelClass` property for panel-specific styling.
-
-### MudLink
-- `Typo` default changed from `Typo.body1` to **`Typo.inherit`**. Add `Typo="Typo.body1"` explicitly where needed.
-
-### MudSnackbar
-- Snackbars with action buttons **require interaction by default** (won't auto-dismiss). Set `RequireInteraction="false"` to restore old behavior.
-
-### Popover
-- Modal default changed from `true` to **`false`**. Set `Modal="true"` explicitly if needed.
-- `OverflowBehavior` default is now **`FlipAlways`**. Configure via `PopoverOptions` in `AddMudServices`.
-
-### Range / DateRange
-- Now **immutable** — no setters on `Start`/`End`. Create new instances instead of mutating.
+See [v9-migration.md](v9-migration.md) for the complete v9 breaking changes reference. Key items: `ShowAsync<T>()` replaces `Show<T>()`, `<CustomContent>` replaces `<ActivatorContent>` in file uploads, Range/DateRange are immutable.
 
 ## Large Lists
 - Use server-side table/pagination for large datasets.

@@ -1,3 +1,6 @@
+// ABOUTME: REST API controller for venue/location CRUD operations with HATEOAS support.
+// ABOUTME: Manages event venues, addresses, and geographic data for event discovery filtering.
+
 using Asp.Versioning;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Location;
@@ -81,11 +84,8 @@ public class LocationController : ControllerBase
     public async Task<ActionResult<HalResource<LocationDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var location = await _mediator.Send(new GetLocationDetailsRequest { Id = id }, cancellationToken);
-
-        if (location is null)
-        {
-            return NotFound(new { error = "Location not found" });
-        }
+        if (location == null)
+            return NotFound();
 
         var halResource = await _resourceAssembler.ToResource(location, HttpContext);
         return Ok(halResource);
@@ -202,22 +202,9 @@ public class LocationController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var command = new DeleteLocationCommand { Id = id };
-            var result = await _mediator.Send(command, cancellationToken);
+        var command = new DeleteLocationCommand { Id = id };
+        await _mediator.Send(command, cancellationToken);
 
-            if (!result)
-            {
-                return NotFound(new { error = "Location not found" });
-            }
-
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error deleting location {LocationId}", id);
-            return StatusCode(500, new { error = ex.Message });
-        }
+        return NoContent();
     }
 }

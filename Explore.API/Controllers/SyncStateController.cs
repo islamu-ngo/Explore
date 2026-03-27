@@ -1,3 +1,6 @@
+// ABOUTME: API controller for managing sync state records used in federation and data synchronization.
+// ABOUTME: Tracks external system synchronization status and provides endpoints for sync operations.
+
 using Asp.Versioning;
 using Explore.Application.DTOs.SyncState;
 using Explore.Application.Features.SyncStates.Requests.Commands;
@@ -43,10 +46,6 @@ public class SyncStateController : ControllerBase
     public async Task<ActionResult<SyncStateDto>> GetById(int id, CancellationToken cancellationToken = default)
     {
         var syncState = await _mediator.Send(new GetSyncStateDetailsRequest { Id = id }, cancellationToken);
-        if (syncState == null)
-        {
-            return NotFound(new { error = "SyncState not found" });
-        }
 
         return Ok(syncState);
     }
@@ -88,12 +87,7 @@ public class SyncStateController : ControllerBase
     public async Task<ActionResult> Delete(int id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteSyncStateCommand { Id = id };
-        var result = await _mediator.Send(command, cancellationToken);
-
-        if (!result)
-        {
-            return NotFound(new { error = "SyncState not found or you don't have permission to delete it" });
-        }
+        await _mediator.Send(command, cancellationToken);
 
         return NoContent();
     }

@@ -1,5 +1,5 @@
-// ABOUTME: Repository contract for persisted external API key authentication lookups.
-// ABOUTME: Exposes an explicit pre-tenant auth path so API-key authentication can resolve tenant authority safely.
+// ABOUTME: Repository contract for persisted external API key lookups (tenant-scoped and platform-scoped).
+// ABOUTME: Exposes explicit tenant-filter bypass paths for auth and platform (InstanceAdmin) key management.
 
 using Explore.Domain;
 using Explore.Domain.Enums;
@@ -13,4 +13,13 @@ public interface IExternalApiKeyRepository : IGenericRepository<ExternalApiKey, 
     Task<List<ExternalApiKey>> GetByOwner(ExternalApiKeyOwnerType ownerType, Guid ownerId);
     Task<List<ExternalApiKey>> GetByOwners(ExternalApiKeyOwnerType ownerType, IReadOnlyCollection<Guid> ownerIds);
     Task<bool> ExistsByOwnerAndName(ExternalApiKeyOwnerType ownerType, Guid ownerId, string name);
+
+    /// <summary>Lookup by ID bypassing tenant filter. Used by management handlers for platform-scoped keys.</summary>
+    Task<ExternalApiKey?> GetByIdIgnoringTenantFilter(Guid id);
+
+    /// <summary>List keys by owner bypassing tenant filter. Used for InstanceAdmin platform-scoped key listing.</summary>
+    Task<List<ExternalApiKey>> GetByOwnerIgnoringTenantFilter(ExternalApiKeyOwnerType ownerType, Guid ownerId);
+
+    /// <summary>Name uniqueness check bypassing tenant filter. Used for platform-scoped key creation.</summary>
+    Task<bool> ExistsByOwnerAndNameIgnoringTenantFilter(ExternalApiKeyOwnerType ownerType, Guid ownerId, string name);
 }

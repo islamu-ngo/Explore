@@ -190,6 +190,7 @@ public class AdminContextTests
         ITenantMemberRepository tenantMemberRepository,
         IOrganizationMemberRepository organizationMemberRepository)
     {
+        var groupMemberRepository = Substitute.For<IGroupMemberRepository>();
         var cache = new MemoryCache(new MemoryCacheOptions());
         var logger = Substitute.For<ILogger<AdminContext>>();
 
@@ -199,6 +200,7 @@ public class AdminContextTests
             instanceBootstrapStateRepository,
             tenantMemberRepository,
             organizationMemberRepository,
+            groupMemberRepository,
             cache,
             logger);
     }

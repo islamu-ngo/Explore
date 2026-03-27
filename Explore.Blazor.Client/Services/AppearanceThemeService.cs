@@ -11,6 +11,8 @@ public interface IAppearanceThemeService
     MudTheme CreateTheme(string appbarHeight);
     Task<bool> ResolveInitialDarkModeAsync(bool? serverHint, MudThemeProvider themeProvider);
     Task PersistThemeModeAsync(bool isDarkMode, CancellationToken cancellationToken = default);
+    Task<string> ResolveInitialDirectionAsync();
+    Task PersistDirectionAsync(string direction, CancellationToken cancellationToken = default);
 }
 
 public sealed class AppearanceThemeService : IAppearanceThemeService
@@ -20,7 +22,7 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
 
     private static readonly PaletteLight LightPalette = new()
     {
-        Primary = "#3B82F6",
+        Primary = "#2563EB",
         Secondary = "#1E293B",
         Black = "#0F172A",
         AppbarText = "#1E293B",
@@ -34,10 +36,10 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
         GrayLighter = "#F8FAFC",
         TextPrimary = "#0F172A",
         TextSecondary = "#64748B",
-        Info = "#3B82F6",
-        Success = "#10B981",
-        Warning = "#F59E0B",
-        Error = "#EF4444",
+        Info = "#2563EB",
+        Success = "#047857",
+        Warning = "#B45309",
+        Error = "#DC2626",
         LinesDefault = "#E2E8F0",
         TableLines = "#E2E8F0",
         Divider = "#E2E8F0",
@@ -84,11 +86,11 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
             LineHeight = "1.5",
             LetterSpacing = "-.011em"
         },
-        H1 = new H1Typography { FontSize = "2.5rem", FontWeight = "700", LineHeight = "1.2", LetterSpacing = "-.022em" },
-        H2 = new H2Typography { FontSize = "2rem", FontWeight = "600", LineHeight = "1.3", LetterSpacing = "-.017em" },
-        H3 = new H3Typography { FontSize = "1.75rem", FontWeight = "600", LineHeight = "1.3", LetterSpacing = "-.014em" },
-        H4 = new H4Typography { FontSize = "1.5rem", FontWeight = "600", LineHeight = "1.4" },
-        H5 = new H5Typography { FontSize = "1.25rem", FontWeight = "600", LineHeight = "1.5" },
+        H1 = new H1Typography { FontSize = "clamp(1.875rem, 1.5rem + 1.04vw, 2.5rem)", FontWeight = "700", LineHeight = "1.2", LetterSpacing = "-.022em" },
+        H2 = new H2Typography { FontSize = "clamp(1.625rem, 1.375rem + 0.625vw, 2rem)", FontWeight = "600", LineHeight = "1.3", LetterSpacing = "-.017em" },
+        H3 = new H3Typography { FontSize = "clamp(1.5rem, 1.333rem + 0.42vw, 1.75rem)", FontWeight = "600", LineHeight = "1.3", LetterSpacing = "-.014em" },
+        H4 = new H4Typography { FontSize = "clamp(1.25rem, 1.083rem + 0.42vw, 1.5rem)", FontWeight = "600", LineHeight = "1.4" },
+        H5 = new H5Typography { FontSize = "clamp(1.125rem, 1.042rem + 0.21vw, 1.25rem)", FontWeight = "600", LineHeight = "1.5" },
         H6 = new H6Typography { FontSize = "1.125rem", FontWeight = "600", LineHeight = "1.6" },
         Body1 = new Body1Typography { FontSize = ".9375rem", LineHeight = "1.6", LetterSpacing = "-.011em" },
         Body2 = new Body2Typography { FontSize = ".875rem", LineHeight = "1.5" },
@@ -114,7 +116,7 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
             Typography = Typography,
             LayoutProperties = new LayoutProperties
             {
-                DefaultBorderRadius = "8px",
+                DefaultBorderRadius = "12px",
                 AppbarHeight = appbarHeight
             }
         };
@@ -177,8 +179,47 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
         }
     }
 
+    public async Task<string> ResolveInitialDirectionAsync()
+    {
+        try
+        {
+            var preferences = await _httpClient.GetFromJsonAsync<UserThemePreferenceResponse>("/bff/theme");
+            if (preferences?.Direction is "ltr" or "rtl")
+            {
+                return preferences.Direction;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Could not load direction preference from the BFF.");
+        }
+
+        return "auto";
+    }
+
+    public async Task PersistDirectionAsync(string direction, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var response = await _httpClient.PostAsync(
+                $"/bff/direction?dir={Uri.EscapeDataString(direction)}",
+                null,
+                cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Direction preference persistence failed with status code {StatusCode}", (int)response.StatusCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error saving direction preference");
+        }
+    }
+
     private sealed class UserThemePreferenceResponse
     {
         public string ThemeMode { get; set; } = "system";
+        public string Direction { get; set; } = "auto";
     }
 }

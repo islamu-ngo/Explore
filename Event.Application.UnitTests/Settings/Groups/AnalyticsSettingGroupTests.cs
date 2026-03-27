@@ -204,15 +204,15 @@ public class AnalyticsSettingGroupTests
         await Assert.That(group.ProviderEnum).IsEqualTo(Explore.Domain.Enums.AnalyticsProviderEnum.None);
     }
 
-    // --- TenantSlug ---
+    // --- TenantStableKey ---
 
     [Test]
-    public async Task TenantSlug_IsSettableExternally()
+    public async Task TenantStableKey_IsSettableExternally()
     {
         var group = new AnalyticsSettingGroup();
-        group.TenantSlug = "my-school";
+        group.TenantStableKey = "a1b2c3d4";
 
-        await Assert.That(group.TenantSlug).IsEqualTo("my-school");
+        await Assert.That(group.TenantStableKey).IsEqualTo("a1b2c3d4");
     }
 
     // --- SettingKeys completeness ---

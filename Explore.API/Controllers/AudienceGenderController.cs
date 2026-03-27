@@ -1,3 +1,6 @@
+// ABOUTME: API controller for audience gender lookup table (read-only enumeration).
+// ABOUTME: Provides gender options for event filtering and audience targeting in Islamic module.
+
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
@@ -47,10 +50,6 @@ public class AudienceGenderController : ControllerBase
     public async Task<ActionResult<AudienceGenderDto>> GetById(int id, CancellationToken cancellationToken = default)
     {
         var audienceGender = await _mediator.Send(new GetAudienceGenderDetailsRequest { Id = id }, cancellationToken);
-        if (audienceGender == null)
-        {
-            return NotFound();
-        }
 
         return Ok(audienceGender);
     }

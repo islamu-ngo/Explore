@@ -33,7 +33,6 @@ public class OrganizationPolicySetConfiguration : IEntityTypeConfiguration<Organ
             ConfigureSlot(events, e => e.AllowOrganizationSubmittedEvents);
             ConfigureSlot(events, e => e.AllowGroupSubmittedEvents);
             ConfigureSlot(events, e => e.EventCardClickOpensDetailPage);
-            events.ToJson("events_policy");
         });
     }
 

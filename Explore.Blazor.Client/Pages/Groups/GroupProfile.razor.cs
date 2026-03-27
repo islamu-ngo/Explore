@@ -3,9 +3,11 @@
 
 using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Pages.Groups;
@@ -17,6 +19,7 @@ public partial class GroupProfile
     [Inject] protected NavigationManager Navigation { get; set; } = null!;
     [Inject] protected RouterStateService RouterState { get; set; } = null!;
     [Inject] protected ILogger<GroupProfile> Logger { get; set; } = null!;
+    [Inject] private IAccessibilityAnnouncerService AnnouncerService { get; set; } = default!;
 
     private Guid Id { get; set; }
 
@@ -26,8 +29,8 @@ public partial class GroupProfile
     private List<EventListDto> _upcomingEvents = new();
     private List<EventListDto> _pastEvents = new();
     private List<KeyValuePair<DateTime, List<EventListDto>>> _pastEventsByDate = new();
-    private GroupBrandingSettings _branding = new();
-    private string _bannerStyle = GroupBrandingMetadataHelper.BuildBannerStyle(new GroupBrandingSettings(), "#334155");
+    private AppearanceSettings _branding = new();
+    private string _bannerStyle = AppearanceStyleBuilder.BuildBannerStyle(new AppearanceSettings(), "#334155");
 
     private string? _errorMessage;
 
@@ -53,10 +56,13 @@ public partial class GroupProfile
         try
         {
             _group = await GroupService.GetGroupDetailsAsync(Id);
-            _branding = GroupBrandingMetadataHelper.FromColumns(
-                _group?.ActorBannerColor,
-                _group?.ActorBannerPictureUri, _group?.ActorBackgroundEffect);
-            _bannerStyle = GroupBrandingMetadataHelper.BuildBannerStyle(_branding, "#334155");
+            _branding = new AppearanceSettings
+            {
+                BackgroundColor = _group?.ActorBannerColor ?? string.Empty,
+                ImageUri = _group?.ActorBannerPictureUri ?? string.Empty,
+                BackgroundEffect = _group?.ActorBackgroundEffect ?? "None"
+            };
+            _bannerStyle = AppearanceStyleBuilder.BuildBannerStyle(_branding, "#334155");
 
             Logger.LogDebug("Loaded group {GroupId}", Id);
             PersistState();
@@ -70,6 +76,11 @@ public partial class GroupProfile
         {
             _isLoading = false;
         }
+
+        if (_errorMessage != null)
+            await AnnouncerService.AnnounceAssertiveAsync(_errorMessage);
+        else if (_group == null)
+            await AnnouncerService.AnnouncePoliteAsync("Group not found");
 
         if (_group?.ActorId.HasValue == true)
         {
@@ -113,6 +124,12 @@ public partial class GroupProfile
         {
             _isLoadingEvents = false;
             StateHasChanged();
+
+            var totalEvents = _upcomingEvents.Count + _pastEvents.Count;
+            if (totalEvents > 0)
+                await AnnouncerService.AnnouncePoliteAsync($"{_upcomingEvents.Count} upcoming and {_pastEvents.Count} past events loaded");
+            else
+                await AnnouncerService.AnnouncePoliteAsync("No events found for this group");
         }
     }
 
@@ -121,6 +138,14 @@ public partial class GroupProfile
         if (evt.Id.HasValue)
         {
             Navigation.NavigateTo($"/events/{evt.Id}");
+        }
+    }
+
+    private void HandleEventKeyDown(KeyboardEventArgs e, EventListDto evt)
+    {
+        if (e.Key is "Enter" or " ")
+        {
+            NavigateToEvent(evt);
         }
     }
 
@@ -168,10 +193,13 @@ public partial class GroupProfile
         }
 
         _group = PersistedState.Group;
-        _branding = GroupBrandingMetadataHelper.FromColumns(
-            _group?.ActorBannerColor,
-            _group?.ActorBannerPictureUri, _group?.ActorBackgroundEffect);
-        _bannerStyle = GroupBrandingMetadataHelper.BuildBannerStyle(_branding, "#334155");
+        _branding = new AppearanceSettings
+        {
+            BackgroundColor = _group?.ActorBannerColor ?? string.Empty,
+            ImageUri = _group?.ActorBannerPictureUri ?? string.Empty,
+            BackgroundEffect = _group?.ActorBackgroundEffect ?? "None"
+        };
+        _bannerStyle = AppearanceStyleBuilder.BuildBannerStyle(_branding, "#334155");
         _isLoading = false;
         _errorMessage = null;
 

@@ -29,13 +29,13 @@
 
         @* ── Back Navigation ── *@
         <div class="mb-6">
-            <MudButton StartIcon="@Icons.Material.Filled.ArrowBack"
+            <AppButton StartIcon="@Icons.Material.Filled.ArrowBack"
                        Variant="Variant.Text"
                        Color="Color.Default"
                        Href="/events"
                        Class="px-0">
                 Back to Events
-            </MudButton>
+            </AppButton>
         </div>
 
         @* ── Cancelled Event Banner ── *@
@@ -60,9 +60,9 @@
                                   ObjectFit="ObjectFit.Cover"
                                   Style="width: 100%; height: 100%; object-fit: cover; display: block;" />
                     }
-                    else if (!string.IsNullOrWhiteSpace(_appearance.BackgroundImageUri))
+                    else if (!string.IsNullOrWhiteSpace(_appearance.ImageUri))
                     {
-                        <MudImage Src="@_appearance.BackgroundImageUri"
+                        <MudImage Src="@_appearance.ImageUri"
                                   ObjectFit="ObjectFit.Cover"
                                   Style="width: 100%; height: 100%; object-fit: cover; display: block;" />
                     }
@@ -108,7 +108,7 @@
                     </MudText>
 
                     @* Title *@
-                    <MudText Typo="Typo.h3" Style="font-weight: 900; line-height: 1.2;" Class="mb-2">
+                    <MudText Typo="Typo.h3" HtmlTag="h1" Style="font-weight: 900; line-height: 1.2;" Class="mb-2">
                         @_eventDetails.Title
                     </MudText>
 
@@ -125,7 +125,12 @@
                         var organizerContainerClass = $"d-flex align-center gap-3 mt-4{(organizerUrl != null ? " cursor-pointer" : "")}";
                         var organizerNameStyle = organizerUrl != null ? "font-weight: 700; text-decoration: underline dotted;" : "font-weight: 700;";
                     }
-                    <div class="@organizerContainerClass" @onclick="@(() => NavigateToOrganizer())">
+                    <div class="@organizerContainerClass"
+                         @onclick="@(() => NavigateToOrganizer())"
+                         tabindex="@(organizerUrl != null ? 0 : -1)"
+                         role="@(organizerUrl != null ? "link" : null)"
+                         aria-label="@(organizerUrl != null ? $"View profile of {GetOrganizerName()}" : null)"
+                         @onkeydown="@HandleOrganizerKeyDown">
                         <MudAvatar Size="Size.Medium" Color="Color.Primary" Variant="Variant.Outlined">
                             @if (!string.IsNullOrEmpty(GetOrganizerProfilePicture()))
                             {
@@ -195,8 +200,7 @@
                     }
                 </MudItem>
                 <MudItem xs="12" sm="8" Class="d-flex align-center gap-4 flex-wrap">
-                    <MudButton Variant="Variant.Filled"
-                               Color="GetButtonColor()"
+                    <AppButton Color="GetButtonColor()"
                                Size="Size.Large"
                                Class="py-3 px-8 rounded-lg font-weight-bold"
                                OnClick="OpenRegistrationDialog"
@@ -204,7 +208,7 @@
                                Elevation="0"
                                StartIcon="@(_isUserRegistered ? Icons.Material.Filled.CheckCircle : null)">
                         @GetButtonText()
-                    </MudButton>
+                    </AppButton>
                     @if (_isUserRegistered)
                     {
                         <div>
@@ -216,13 +220,12 @@
                     }
                     @if (!string.IsNullOrEmpty(_eventDetails.ExternalRegistrationUrl))
                     {
-                        <MudButton Variant="Variant.Outlined"
-                                   Color="Color.Primary"
+                        <AppButton Variant="Variant.Outlined"
                                    Href="@_eventDetails.ExternalRegistrationUrl"
                                    Target="_blank"
                                    StartIcon="@Icons.Material.Outlined.OpenInNew">
                             External Registration
-                        </MudButton>
+                        </AppButton>
                     }
                 </MudItem>
             </MudGrid>
@@ -301,7 +304,7 @@
                 }
                 @if (_canEdit)
                 {
-                    <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
+                    <AppIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
                                    OnClick="@OpenDetailTagManagement"
                                    aria-label="Manage tags" />
                 }
@@ -316,7 +319,7 @@
                 }
                 @if (_canEdit)
                 {
-                    <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
+                    <AppIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
                                    OnClick="@OpenDetailCategoryManagement"
                                    aria-label="Manage categories" />
                 }
@@ -530,13 +533,13 @@
 
         @* ── Footer Actions ── *@
         <div class="d-flex justify-center gap-3 mb-8">
-            <MudButton StartIcon="@Icons.Material.Outlined.Share"
+            <AppButton StartIcon="@Icons.Material.Outlined.Share"
                        Variant="Variant.Outlined"
                        Color="Color.Default"
                        Size="Size.Small"
                        OnClick="@ShareEventAsync">
                 Share
-            </MudButton>
+            </AppButton>
 
             @if (_primarySession is not null)
             {
@@ -617,6 +620,6 @@ else
         <MudIcon Icon="@Icons.Material.Outlined.EventBusy" Size="Size.Large" Color="Color.Secondary" Style="font-size: 4rem;" Class="mb-4" />
         <MudText Typo="Typo.h4" Style="font-weight: 700;" Class="mb-2">Event not found</MudText>
         <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-6">The event you are looking for might have been removed or is unavailable.</MudText>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/events" Size="Size.Large">Browse Events</MudButton>
+        <AppButton Href="/events" Size="Size.Large">Browse Events</AppButton>
     </MudContainer>
 }

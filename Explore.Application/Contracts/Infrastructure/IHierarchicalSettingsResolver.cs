@@ -49,8 +49,15 @@ public interface IHierarchicalSettingsResolver
 
     /// <summary>
     /// Locks a setting at a specific scope, preventing child scopes from overriding it.
+    /// Supported scopes: Instance, Tenant. Lower-scope values remain in storage but become non-effective.
     /// </summary>
     Task LockAsync(string key, SettingScope scope, Guid scopeId, Guid actorId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Unlocks a setting at a specific scope, restoring the normal cascade.
+    /// Supported scopes: Instance, Tenant. Lower-scope values that were suppressed become effective again.
+    /// </summary>
+    Task UnlockAsync(string key, SettingScope scope, Guid scopeId, Guid actorId, CancellationToken ct = default);
 
     /// <summary>
     /// Invalidates cached settings. Scope-aware: invalidating a tenant also invalidates child orgs/groups.

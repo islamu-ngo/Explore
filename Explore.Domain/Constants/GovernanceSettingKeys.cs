@@ -119,6 +119,7 @@ public static class GovernanceSettingKeys
     {
         public const string DefaultThemeId = "appearance.default_theme_id";
         public const string ThemeMode = "appearance.theme_mode";
+        public const string Direction = "appearance.direction";
     }
 
     public static class Domains
@@ -224,6 +225,26 @@ public static class GovernanceSettingKeys
         public const string TmsApiUrl = "localization.tms_api_url";
         public const string TmsProjectId = "localization.tms_project_id";
         public const string TmsComponent = "localization.tms_component";
+    }
+
+    public static class EventList
+    {
+        public const string BrowseMode = "event_list.browse_mode";
+        public const string PageSize = "event_list.page_size";
+        public const string DefaultLayout = "event_list.default_layout";
+
+        public static class Card
+        {
+            public const string ShowDate = "event_list.card.show_date";
+            public const string ShowLocation = "event_list.card.show_location";
+            public const string ShowOrganizer = "event_list.card.show_organizer";
+            public const string ShowDescription = "event_list.card.show_description";
+            public const string ShowTags = "event_list.card.show_tags";
+            public const string ShowCategories = "event_list.card.show_categories";
+            public const string ShowCapacity = "event_list.card.show_capacity";
+            public const string ShowPrice = "event_list.card.show_price";
+            public const string ShowStatus = "event_list.card.show_status";
+        }
     }
 
     public static class Footer

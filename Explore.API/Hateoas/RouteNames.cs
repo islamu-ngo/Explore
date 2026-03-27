@@ -281,6 +281,20 @@ public static class RouteNames
 
     #endregion
 
+    #region Settings Routes
+
+    public const string GetUserSettings = "GetUserSettings";
+    public const string UpdateUserSettingsBatch = "UpdateUserSettingsBatch";
+    public const string UpdateUserSetting = "UpdateUserSetting";
+    public const string ResetUserSetting = "ResetUserSetting";
+    public const string GetTenantScopedSettings = "GetTenantScopedSettings";
+    public const string UpdateTenantSettingsBatch = "UpdateTenantSettingsBatch";
+    public const string UpdateTenantSetting = "UpdateTenantSetting";
+    public const string LockTenantSetting = "LockTenantSetting";
+    public const string UnlockTenantSetting = "UnlockTenantSetting";
+
+    #endregion
+
     #region Footer Routes
 
     public const string GetFooterConfig = "GetFooterConfig";

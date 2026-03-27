@@ -50,13 +50,11 @@ public class CategoryTypeCategoriesRepository : GenericRepository<CategoryTypeCa
             .ThenBy(ct => ct.Category.FullName)
             .ToListAsync();
 
-        return allEntries
-            .GroupBy(ct => ct.CategoryTypeId)
-            .Select(g =>
-            {
-                var first = g.First();
-                return (first.CategoryType, g.Select(ct => ct.Category).ToList());
-            })
-            .ToList();
+        var lookup = allEntries.ToLookup(ct => ct.CategoryTypeId);
+        return lookup.Select(g =>
+        {
+            var first = g.First();
+            return (first.CategoryType, g.Select(ct => ct.Category).ToList());
+        }).ToList();
     }
 }

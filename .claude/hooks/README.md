@@ -1,36 +1,45 @@
-Here is the refactored `README.md` tailored specifically for your **ASP.NET Core / .NET 10** project context on Windows.
-
----
+ABOUTME: Hook system documentation for Claude Code integration.
+ABOUTME: Describes 4 C# hooks (SkillTrigger, ContextTracker, FormatCode, BuildCheck) and their configuration.
 
 # Hooks (.NET 10 / C#)
 
-Native C# hooks for Claude Code that enable Clean Architecture tracking, skill auto-activation, and build validation.
-
----
+Native C# hooks for Claude Code that enable skill auto-activation, Clean Architecture tracking, and build validation.
 
 ## What Are Hooks?
 
 Hooks are C# scripts that run at specific points in Claude's workflow:
-- **UserPromptSubmit**: Checks your prompt to suggest specialized Agents.
-- **PostToolUse**: Tracks which Clean Architecture layers (Domain, Infra, UI) are being modified.
-- **Stop**: Runs validation tasks like `dotnet build` or `dotnet format` when Claude finishes.
+- **UserPromptSubmit**: Checks your prompt to suggest specialized agents/skills.
+- **PostToolUse**: Tracks which Clean Architecture layers are being modified.
+- **Stop**: Runs validation tasks like `dotnet build` and `dotnet format` when Claude finishes.
 
-**Key insight:** Since this is a .NET 10 project, all hooks are written in **C#** and executed directly via the CLI, eliminating the need for Node.js or Bash scripts.
+All hooks are written in C# and executed via `dotnet` CLI — no Node.js or Bash required.
 
----
-
-## Essential Hooks
+## Hook Inventory
 
 ### 1. SkillTrigger.cs (UserPromptSubmit)
 
-**Purpose:** Automatically suggests relevant specialized agents based on keywords in your prompt.
+Reads the user prompt and suggests relevant agents/skills based on keyword matching.
 
-**How it works:**
-1. Reads the user's prompt from Stdin.
-2. Detects keywords like "controller" (suggests `auth-route-debugger`) or "razor" (suggests `frontend-error-fixer`).
-3. Injects suggestions directly into Claude's context.
+**Triggers**: auth (401/403/keycloak/cerbos), frontend (blazor/mudblazor/css/razor), architecture (refactor/clean arch/mediatr/cqrs), build errors (error cs/build fail), database (ef core/migration/postgres), testing (tunit/bunit/mock), outbox (dead letter/message dispatch), design system (design token/wrapper/appearance), footer (social links/footer template), accessibility (wcag/aria/a11y), secrets (infisical/vault/encryption).
 
-**Configuration (`settings.json`):**
+### 2. ContextTracker.cs (PostToolUse)
+
+Monitors Edit/Write tool calls, detects the Clean Architecture layer from file paths, and logs to `.claude/build-cache/`. Updates `context-state.json` with the most recently touched layer.
+
+**Layer detection**: Domain, Application, Infrastructure, API, Frontend, Shared.
+
+### 3. FormatCode.cs (Stop)
+
+Runs `dotnet format` on modified files to enforce `.editorconfig` rules.
+
+### 4. BuildCheck.cs (Stop)
+
+Verifies compilation. Reads the ContextTracker cache for targeted builds, falls back to full solution build. Captures errors to `.claude/build-cache/last-errors.txt` for the `auto-error-resolver` agent.
+
+## Configuration
+
+Hooks are registered in `.claude/settings.json`:
+
 ```json
 {
   "hooks": {
@@ -39,27 +48,18 @@ Hooks are C# scripts that run at specific points in Claude's workflow:
         "type": "command",
         "command": "dotnet .claude/hooks/SkillTrigger.cs"
       }
-    ]
-  }
-}
-```
-
----
-
-### 2. ContextTracker.cs (PostToolUse)
-
-**Purpose:** Tracks file changes to optimize the build process and maintain context.
-
-**How it works:**
-1. Monitors `Edit` and `Write` tool calls.
-2. Identifies the Clean Architecture layer (e.g., `Explore.Domain`, `Explore.Blazor`).
-3. Logs modified layers to `.claude/build-cache/`.
-4. Prepares targeted build commands (so we don't rebuild the whole solution if only a UI component changed).
-
-**Configuration (`settings.json`):**
-```json
-{
-  "hooks": {
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "dotnet .claude/hooks/SecurityCheck.cs"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|MultiEdit|Write",
@@ -70,38 +70,7 @@ Hooks are C# scripts that run at specific points in Claude's workflow:
           }
         ]
       }
-    ]
-  }
-}
-```
-
----
-
-## Quality Assurance Hooks (Stop)
-
-These run when Claude finishes a task or asks for feedback.
-
-### 3. BuildCheck.cs
-
-**Purpose:** Verifies that the code compiles successfully.
-
-**Logic:**
-- Reads the cache created by `ContextTracker`.
-- Runs `dotnet build` on specific projects if possible, or the full Solution (`.sln`) as a fallback.
-- If the build fails, it captures errors for the `auto-error-resolver` agent.
-
-### 4. FormatCode.cs
-
-**Purpose:** Enforces C# coding standards.
-
-**Logic:**
-- Runs `dotnet format` on modified files.
-- Ensures braces, indentation, and imports match `.editorconfig`.
-
-**Configuration (`settings.json`):**
-```json
-{
-  "hooks": {
+    ],
     "Stop": [
       {
         "type": "command",
@@ -116,42 +85,29 @@ These run when Claude finishes a task or asks for feedback.
 }
 ```
 
----
+## Supported Hook Events
 
-## Setup & Installation
-
-### 1. Prerequisites
-- **.NET 10 SDK** installed.
-- **PowerShell 7+** or CMD.
-
-### 2. Verify Script Permissions
-Ensure your `.cs` files are accessible.
-
-```powershell
-# Verify files exist
-Get-ChildItem .claude/hooks/*.cs
-```
-
-### 3. Usage
-Hooks run automatically based on the events defined in `settings.json`. You do not need to run them manually, though you can test them:
-
-```powershell
-# Test compilation hook manually
-dotnet .claude/hooks/BuildCheck.cs
-```
-
----
+| Event | When It Fires | Use Case |
+|-------|---------------|----------|
+| `UserPromptSubmit` | Before processing user message | Skill/agent suggestions |
+| `PreToolUse` | Before a tool executes | Security checks (Bash validation) |
+| `PostToolUse` | After a tool executes | File change tracking |
+| `Stop` | When Claude finishes a task | Build verification, formatting |
+| `Notification` | On system notifications | (not currently used) |
+| `SubagentStop` | When a subagent completes | (not currently used) |
 
 ## Troubleshooting
 
-### "Command not found" or "dotnet" error
-*   **Cause:** `.NET SDK` is not in your system PATH.
-*   **Fix:** Run `dotnet --version` to verify installation.
+### "dotnet: command not found"
+.NET SDK is not in PATH. Run `dotnet --version` to verify installation.
 
 ### Hooks failing on Windows
-*   **Cause:** Path separators (`/` vs `\`) or JSON parsing issues.
-*   **Fix:** The provided C# scripts handle path normalization automatically. Ensure you are not using `$CLAUDE_PROJECT_DIR` in `settings.json` (Unix syntax) but rather relative paths like `dotnet .claude/hooks/...`.
+Path separator issues. The C# scripts handle path normalization automatically. Use relative paths like `dotnet .claude/hooks/...` in settings.json.
 
 ### Build is too slow
-*   **Cause:** The hook is rebuilding the entire solution on every stop.
-*   **Fix:** Ensure `ContextTracker.cs` is correctly identifying layers so `BuildCheck.cs` can run targeted builds (e.g., `dotnet build Explore.Domain`).
+ContextTracker identifies modified layers so BuildCheck can run targeted builds. Verify ContextTracker is correctly detecting layers in `.claude/build-cache/`.
+
+## Cache
+
+- **Location**: `.claude/build-cache/`
+- **Auto-cleanup**: BuildCheck deletes cache on successful build (exit code 0).

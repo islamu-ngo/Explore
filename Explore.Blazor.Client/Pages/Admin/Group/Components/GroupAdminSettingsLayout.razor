@@ -39,7 +39,7 @@
                         </MudAvatar>
                     }
                     <div>
-                        <MudText Typo="Typo.h4" Style="font-weight: 800;">@_group.FullName</MudText>
+                        <MudText Typo="Typo.h4" HtmlTag="h1" Style="font-weight: 800;">@_group.FullName</MudText>
                         <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">Manage group members, profile details, and white-label branding.</MudText>
                     </div>
                 </MudStack>
@@ -92,7 +92,7 @@
 
     private GroupAdminDetailsModel? _group;
     private UpdateGroupDto _model = new() { FullName = string.Empty };
-    private GroupBrandingSettings _branding = new();
+    private AppearanceSettings _branding = new();
     private bool _isLoading = true;
     private bool _isSaving;
     private string? _errorMessage;
@@ -117,9 +117,12 @@
                     FullName = _group.FullName,
                     Description = _group.Description
                 };
-                _branding = GroupBrandingMetadataHelper.FromColumns(
-                    _group.ActorBannerColor,
-                    _group.ActorBannerPictureUri, _group.ActorBackgroundEffect);
+                _branding = new AppearanceSettings
+                {
+                    BackgroundColor = _group.ActorBannerColor ?? string.Empty,
+                    ImageUri = _group.ActorBannerPictureUri ?? string.Empty,
+                    BackgroundEffect = _group.ActorBackgroundEffect ?? string.Empty
+                };
             }
         }
         catch (Exception ex)

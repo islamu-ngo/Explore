@@ -4,7 +4,7 @@
 
 <div class="tri-state-category-filter" style="position: relative;">
     @* Trigger Button with live badge *@
-    <MudButton Variant="Variant.Outlined"
+    <AppButton Variant="Variant.Outlined"
                Color="@(HasActiveFilters() ? MudBlazor.Color.Primary : MudBlazor.Color.Default)"
                StartIcon="@Icons.Material.Filled.Category"
                EndIcon="@(_isOpen ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
@@ -14,7 +14,7 @@
                Style="text-transform: none; white-space: nowrap;"
                Class="tri-state-category-filter__trigger">
         @GetBadgeText()
-    </MudButton>
+    </AppButton>
 
     @* Overlay for click-outside-to-close *@
     <MudOverlay Visible="_isOpen" OnClick="ClosePopover" LockScroll="false" />
@@ -28,7 +28,7 @@
 
             @* Search + Reset controls *@
             <div class="d-flex align-center gap-2 mb-2">
-                <MudTextField @bind-Value="_searchTerm"
+                <AppTextField T="string" @bind-Value="_searchTerm"
                               Placeholder="Search categories..."
                               Variant="Variant.Outlined"
                               Margin="Margin.Dense"
@@ -36,20 +36,20 @@
                               AdornmentIcon="@Icons.Material.Filled.Search"
                               Immediate="true"
                               Class="flex-grow-1" />
-                <MudButton Variant="Variant.Text"
+                <AppButton Variant="Variant.Text"
                            Color="MudBlazor.Color.Warning"
                            Size="Size.Small"
                            OnClick="ClearVisible"
                            Disabled="@(!HasActiveFilters())">
                     Clear Visible
-                </MudButton>
-                <MudButton Variant="Variant.Text"
+                </AppButton>
+                <AppButton Variant="Variant.Text"
                            Color="MudBlazor.Color.Error"
                            Size="Size.Small"
                            OnClick="ResetAll"
                            Disabled="@(!HasActiveFilters())">
                     Reset All
-                </MudButton>
+                </AppButton>
             </div>
 
             <MudText Typo="Typo.caption" Class="mb-3" Style="opacity: 0.6;">

@@ -1,3 +1,6 @@
+// ABOUTME: REST API controller for event session agenda item CRUD operations.
+// ABOUTME: Manages agenda items within event sessions including timing, speakers, and descriptions.
+
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -53,11 +56,6 @@ public class EventSessionAgendaItemController : ControllerBase
     public async Task<ActionResult<EventSessionAgendaItemDto>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var agendaItem = await _mediator.Send(new GetEventSessionAgendaItemDetailsRequest { Id = id }, cancellationToken);
-
-        if (agendaItem == null)
-        {
-            return NotFound(new { error = "Agenda item not found" });
-        }
 
         return Ok(agendaItem);
     }
@@ -122,22 +120,9 @@ public class EventSessionAgendaItemController : ControllerBase
     [Authorize]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var command = new DeleteEventSessionAgendaItemCommand { Id = id };
-            var result = await _mediator.Send(command, cancellationToken);
+        var command = new DeleteEventSessionAgendaItemCommand { Id = id };
+        await _mediator.Send(command, cancellationToken);
 
-            if (!result)
-            {
-                return NotFound(new { error = "Agenda item not found" });
-            }
-
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error deleting agenda item {AgendaItemId}", id);
-            return StatusCode(500, new { error = ex.Message });
-        }
+        return NoContent();
     }
 }

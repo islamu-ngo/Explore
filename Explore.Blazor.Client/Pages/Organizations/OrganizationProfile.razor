@@ -47,19 +47,17 @@ else
                 </div>
 
                 <div class="org-profile__header-right">
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               StartIcon="@Icons.Material.Filled.NotificationsActive"
+                    <AppButton StartIcon="@Icons.Material.Filled.NotificationsActive"
                                Class="org-profile__subscribe-btn">
                         Subscribe
-                    </MudButton>
+                    </AppButton>
                 </div>
             </div>
 
             @* ── Name + Meta ── *@
             <div class="org-profile__identity">
                 <div class="d-flex align-center gap-2 mb-1">
-                    <MudText Typo="Typo.h4" Style="font-weight: 700;">@_organization.FullName</MudText>
+                    <MudText Typo="Typo.h4" HtmlTag="h1" Style="font-weight: 700;">@_organization.FullName</MudText>
                     @if (_organization.ApprovalStatusId == 2)
                     {
                         <MudIcon Icon="@Icons.Material.Filled.Verified" Color="Color.Primary" Title="Verified" Size="Size.Small" />
@@ -106,7 +104,7 @@ else
                         @foreach (var evt in _upcomingEvents)
                         {
                             <MudItem xs="12" sm="6" md="4">
-                                <MudCard Elevation="0" Class="org-profile__event-card cursor-pointer"
+                                <AppCard Class="org-profile__event-card cursor-pointer"
                                          @onclick="@(() => NavigateToEvent(evt))">
                                     <div class="org-profile__event-card-image">
                                         <MudImage Src="@GetEventImage(evt)"
@@ -141,7 +139,7 @@ else
                                             </MudText>
                                         </div>
                                     </MudCardContent>
-                                </MudCard>
+                                </AppCard>
                             </MudItem>
                         }
                     </MudGrid>
@@ -247,7 +245,7 @@ else
                     <MudStack Spacing="3">
                         @foreach (var review in _reviews.Take(3))
                         {
-                            <MudCard Elevation="0" Class="pa-4 border-solid border-1 mud-border-lines-default rounded-lg">
+                            <AppCard Class="pa-4 border-solid border-1 mud-border-lines-default rounded-lg">
                                 <div class="d-flex justify-space-between align-start mb-2">
                                     <div class="d-flex align-center gap-2">
                                         <MudAvatar Size="Size.Medium" Color="Color.Primary" Variant="Variant.Outlined">
@@ -261,14 +259,14 @@ else
                                     <MudRating ReadOnly="true" SelectedValue="@(review.Rating ?? 0)" Size="Size.Small" />
                                 </div>
                                 <MudText Typo="Typo.body2">@review.Comment</MudText>
-                            </MudCard>
+                            </AppCard>
                         }
                     </MudStack>
 
                     @if (_reviews.Count > 3)
                     {
                         <div class="d-flex justify-center mt-4">
-                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ShowAllReviews">View All Reviews</MudButton>
+                            <AppButton Variant="Variant.Outlined" OnClick="ShowAllReviews">View All Reviews</AppButton>
                         </div>
                     }
                 </div>

@@ -197,7 +197,7 @@ public class ExploreDbContext : DbContext
 
         // ===== User-Related Tenant Entities =====
         modelBuilder.Entity<ExternalApiKey>()
-            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || (e.TenantId != null && e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty)));
         modelBuilder.Entity<UserAuthenticationToken>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
         modelBuilder.Entity<UserExternalLogin>()
@@ -336,6 +336,9 @@ public class ExploreDbContext : DbContext
     public DbSet<User> Users { get; set; }
     public DbSet<UserPii> UserPii { get; set; }
     public DbSet<ExternalApiKey> ExternalApiKeys { get; set; }
+    public DbSet<ExternalApiKeyStatus> ExternalApiKeyStatuses { get; set; }
+    public DbSet<ExternalApiKeyCreditPeriod> ExternalApiKeyCreditPeriods { get; set; }
+    public DbSet<ExternalApiKeyQuota> ExternalApiKeyQuotas { get; set; }
     public DbSet<UserAuthenticationToken> UserAuthenticationTokens { get; set; }
     public DbSet<UserExternalLogin> UserExternalLogins { get; set; }
 
@@ -448,9 +451,15 @@ public class ExploreDbContext : DbContext
     // ===== PDS Synchronization (Outbox Pattern) =====
     public DbSet<PdsSyncOutbox> PdsSyncOutbox { get; set; }
 
+    // ===== Generic Outbox (cross-process side effects) =====
+    public DbSet<OutboxMessage> OutboxMessages { get; set; }
+
     // ===== Event Series =====
     public DbSet<EventSeries> EventSeries { get; set; }
 
     // ===== Contact Share Consents =====
     public DbSet<EventContactShareConsent> EventContactShareConsents { get; set; }
+
+    // ===== Idempotency =====
+    public DbSet<IdempotencyRecord> IdempotencyRecords { get; set; }
 }

@@ -46,10 +46,8 @@ public class ExternalApiKeyController : ControllerBase
     public async Task<ActionResult<ExternalApiKeyListDto>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var key = await _mediator.Send(new GetExternalApiKeyDetailsRequest { Id = id }, cancellationToken);
-        if (key is null)
-        {
-            return NotFound(new { error = "External API key not found." });
-        }
+        if (key == null)
+            return NotFound();
 
         return Ok(key);
     }
@@ -108,11 +106,7 @@ public class ExternalApiKeyController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        var result = await _mediator.Send(new RevokeExternalApiKeyCommand { Id = id }, cancellationToken);
-        if (!result)
-        {
-            return NotFound(new { error = "External API key not found." });
-        }
+        await _mediator.Send(new RevokeExternalApiKeyCommand { Id = id }, cancellationToken);
 
         return NoContent();
     }

@@ -20,10 +20,13 @@ public partial class UserProfile : ComponentBase
     [Inject] private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
     [Inject] private ILogger<UserProfile> Logger { get; set; } = default!;
 
+    private const string DefaultBannerFallback = "#6366f1";
+
     // State
     private UserDto? UserData { get; set; }
     private bool IsLoading { get; set; } = true;
     private string? ErrorMessage { get; set; }
+    private string _bannerStyle = AppearanceStyleBuilder.BuildBannerStyle(new AppearanceSettings(), DefaultBannerFallback);
 
     // Statistics
     private int EventsAttended { get; set; }
@@ -72,6 +75,15 @@ public partial class UserProfile : ComponentBase
             {
                 UserData = userData;
                 Logger.LogInformation("[UserProfile] User data loaded: {Email}", UserData.Email);
+
+                _bannerStyle = AppearanceStyleBuilder.BuildBannerStyle(
+                    new AppearanceSettings
+                    {
+                        BackgroundColor = userData.ActorBackgroundColor ?? string.Empty,
+                        ImageUri = userData.ActorBackgroundImageUri ?? string.Empty,
+                        BackgroundEffect = userData.ActorBackgroundEffect ?? string.Empty
+                    },
+                    DefaultBannerFallback);
 
                 // Load statistics in parallel
                 if (userData.Id.HasValue)

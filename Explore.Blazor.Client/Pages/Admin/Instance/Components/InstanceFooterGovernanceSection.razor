@@ -1,0 +1,54 @@
+@* ABOUTME: Renders footer governance settings for Instance Admin Settings. *@
+@* ABOUTME: Lock toggles control tenant override permissions; available in all deployment modes. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Services
+
+<div class="settings-section">
+    <div class="settings-section-header">
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Footer Governance</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+            Control which footer settings tenants can customize. Locked settings enforce the instance default.
+        </MudText>
+    </div>
+
+    <MudStack Spacing="3">
+        <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Tenant Lock Controls</MudText>
+
+        <MudSwitch T="bool" @bind-Value="Model.LockTenantTemplate" Color="Color.Primary">
+            Lock tenant footer template
+        </MudSwitch>
+
+        <MudSwitch T="bool" @bind-Value="Model.LockTenantLinkGroups" Color="Color.Primary">
+            Lock tenant link groups
+        </MudSwitch>
+
+        <MudSwitch T="bool" @bind-Value="Model.LockTenantSocialLinks" Color="Color.Primary">
+            Lock tenant social links
+        </MudSwitch>
+
+        <MudSwitch T="bool" @bind-Value="Model.LockTenantDescription" Color="Color.Primary">
+            Lock tenant description
+        </MudSwitch>
+
+        <MudSwitch T="bool" @bind-Value="Model.LockTenantCopyright" Color="Color.Primary">
+            Lock tenant copyright text
+        </MudSwitch>
+
+        @if (IsSingleTenant)
+        {
+            <MudAlert Severity="Severity.Info" Dense="true" Class="mt-2">
+                In single-tenant mode, these locks have no effect since you are the only administrator.
+            </MudAlert>
+        }
+    </MudStack>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public FooterGovernanceSettingsModel Model { get; set; } = null!;
+
+    /// <summary>When true, shows an informational note that locks have no effect.</summary>
+    [Parameter]
+    public bool IsSingleTenant { get; set; }
+}

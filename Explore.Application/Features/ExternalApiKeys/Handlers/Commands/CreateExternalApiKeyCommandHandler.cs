@@ -1,4 +1,4 @@
-// ABOUTME: Issues persisted external API keys for the current user or a managed organization.
+// ABOUTME: Issues persisted external API keys for all five owner types (User, Organization, Group, Tenant, InstanceAdmin).
 // ABOUTME: Generates one-time raw secrets in the handler while storing only hash and public key id.
 
 using Explore.Application.Contracts.Identity;
@@ -22,6 +22,9 @@ public class CreateExternalApiKeyCommandHandler : IRequestHandler<CreateExternal
     private readonly IExternalApiKeyRepository _externalApiKeyRepository;
     private readonly IOrganizationRepository _organizationRepository;
     private readonly IOrganizationMemberRepository _organizationMemberRepository;
+    private readonly IGroupMemberRepository _groupMemberRepository;
+    private readonly IGroupRepository _groupRepository;
+    private readonly IAdminContext _adminContext;
     private readonly IUserContext _userContext;
     private readonly ITenantContext _tenantContext;
     private readonly BusinessMetrics _metrics;
@@ -31,6 +34,9 @@ public class CreateExternalApiKeyCommandHandler : IRequestHandler<CreateExternal
         IExternalApiKeyRepository externalApiKeyRepository,
         IOrganizationRepository organizationRepository,
         IOrganizationMemberRepository organizationMemberRepository,
+        IGroupMemberRepository groupMemberRepository,
+        IGroupRepository groupRepository,
+        IAdminContext adminContext,
         IUserContext userContext,
         ITenantContext tenantContext,
         BusinessMetrics metrics,
@@ -39,6 +45,9 @@ public class CreateExternalApiKeyCommandHandler : IRequestHandler<CreateExternal
         _externalApiKeyRepository = externalApiKeyRepository;
         _organizationRepository = organizationRepository;
         _organizationMemberRepository = organizationMemberRepository;
+        _groupMemberRepository = groupMemberRepository;
+        _groupRepository = groupRepository;
+        _adminContext = adminContext;
         _userContext = userContext;
         _tenantContext = tenantContext;
         _metrics = metrics;
@@ -49,13 +58,20 @@ public class CreateExternalApiKeyCommandHandler : IRequestHandler<CreateExternal
     {
         var response = new CreateExternalApiKeyCommandResponse();
         var currentUserId = _userContext.GetRequiredUserId();
+        var dto = request.ExternalApiKeyDto;
+
+        var tenantId = dto.OwnerType == ExternalApiKeyOwnerType.InstanceAdmin
+            ? (Guid?)null
+            : _tenantContext.TenantId;
 
         var validator = new CreateExternalApiKeyDtoValidator(
             _externalApiKeyRepository,
             _organizationRepository,
-            currentUserId);
+            _groupRepository,
+            currentUserId,
+            tenantId);
 
-        var validationResult = await validator.ValidateAsync(request.ExternalApiKeyDto, cancellationToken);
+        var validationResult = await validator.ValidateAsync(dto, cancellationToken);
         if (!validationResult.IsValid)
         {
             response.Success = false;
@@ -64,22 +80,13 @@ public class CreateExternalApiKeyCommandHandler : IRequestHandler<CreateExternal
             return response;
         }
 
-        var ownerId = currentUserId;
-        if (request.ExternalApiKeyDto.OwnerType == ExternalApiKeyOwnerType.Organization)
+        var authorityResult = await CheckOwnerAuthorityAsync(dto, currentUserId, cancellationToken);
+        if (!authorityResult.IsAuthorized)
         {
-            ownerId = request.ExternalApiKeyDto.OrganizationId!.Value;
-            var hasPermission = await _organizationMemberRepository.HasPermissionInOrganization(
-                ownerId,
-                currentUserId,
-                PermissionCodes.OrganizationManage);
-
-            if (!hasPermission)
-            {
-                response.Success = false;
-                response.Message = "You do not have permission to manage API keys for this organization.";
-                response.Errors = ["Your organization role does not include organization management permission."];
-                return response;
-            }
+            response.Success = false;
+            response.Message = authorityResult.DenialMessage;
+            response.Errors = [authorityResult.DenialDetail];
+            return response;
         }
 
         var keyId = ApiKeyHashing.CreateKeyId();
@@ -88,16 +95,22 @@ public class CreateExternalApiKeyCommandHandler : IRequestHandler<CreateExternal
 
         var externalApiKey = new ExternalApiKey
         {
-            TenantId = _tenantContext.TenantId,
-            Tenant = null!,
-            Name = request.ExternalApiKeyDto.Name.Trim(),
+            TenantId = tenantId,
+            Tenant = null,
+            Name = dto.Name.Trim(),
             KeyId = keyId,
             SecretHash = ApiKeyHashing.ComputeHash(secret),
-            Scopes = NormalizeScopes(request.ExternalApiKeyDto.Scopes),
-            OwnerType = request.ExternalApiKeyDto.OwnerType,
-            OwnerId = ownerId,
-            Status = ExternalApiKeyStatus.Active,
-            ExpiresAt = request.ExternalApiKeyDto.ExpiresAt,
+            Scopes = NormalizeScopes(dto.Scopes),
+            OwnerType = dto.OwnerType,
+            OwnerId = authorityResult.OwnerId,
+            ExternalApiKeyStatusId = (int)ExternalApiKeyStatusEnum.Active,
+            ExternalApiKeyStatus = null!,
+            ExternalApiKeyCreditPeriodId = dto.CreditPeriodId ?? (int)ExternalApiKeyCreditPeriodEnum.None,
+            ExternalApiKeyCreditPeriod = null!,
+            CreditLimit = dto.CreditLimit,
+            MaxRolloverCredits = dto.MaxRolloverCredits,
+            Description = dto.Description,
+            ExpiresAt = dto.ExpiresAt,
             CreatedAt = DateTime.UtcNow,
             CreatedBy = currentUserId
         };
@@ -105,13 +118,13 @@ public class CreateExternalApiKeyCommandHandler : IRequestHandler<CreateExternal
         externalApiKey = await _externalApiKeyRepository.Create(externalApiKey);
 
         _metrics.RecordExternalApiKeyCreated(
-            externalApiKey.TenantId.ToString(),
+            externalApiKey.TenantId?.ToString() ?? "platform",
             externalApiKey.OwnerType.ToString());
 
         _logger.LogInformation(
             "External API key {KeyId} created for tenant {TenantId} with owner type {OwnerType} and owner {OwnerId}.",
             externalApiKey.KeyId,
-            externalApiKey.TenantId,
+            externalApiKey.TenantId?.ToString() ?? "platform",
             externalApiKey.OwnerType,
             externalApiKey.OwnerId);
 
@@ -123,6 +136,70 @@ public class CreateExternalApiKeyCommandHandler : IRequestHandler<CreateExternal
         return response;
     }
 
+    private async Task<OwnerAuthorityResult> CheckOwnerAuthorityAsync(
+        DTOs.ExternalApiKey.CreateExternalApiKeyDto dto, Guid currentUserId, CancellationToken cancellationToken)
+    {
+        switch (dto.OwnerType)
+        {
+            case ExternalApiKeyOwnerType.User:
+                return OwnerAuthorityResult.Authorized(currentUserId);
+
+            case ExternalApiKeyOwnerType.Organization:
+                {
+                    var orgId = dto.OrganizationId!.Value;
+                    var hasPermission = await _organizationMemberRepository.HasPermissionInOrganization(
+                        orgId, currentUserId, PermissionCodes.OrganizationManage);
+
+                    return hasPermission
+                        ? OwnerAuthorityResult.Authorized(orgId)
+                        : OwnerAuthorityResult.Denied(
+                            "You do not have permission to manage API keys for this organization.",
+                            "Your organization role does not include organization management permission.");
+                }
+
+            case ExternalApiKeyOwnerType.Group:
+                {
+                    var groupId = dto.GroupId!.Value;
+                    var hasPermission = await _groupMemberRepository.HasPermissionInGroup(
+                        groupId, currentUserId, PermissionCodes.GroupManage);
+
+                    return hasPermission
+                        ? OwnerAuthorityResult.Authorized(groupId)
+                        : OwnerAuthorityResult.Denied(
+                            "You do not have permission to manage API keys for this group.",
+                            "Your group role does not include group management permission.");
+                }
+
+            case ExternalApiKeyOwnerType.Tenant:
+                {
+                    var tenantId = _tenantContext.TenantId;
+                    var isTenantAdmin = await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken);
+
+                    return isTenantAdmin
+                        ? OwnerAuthorityResult.Authorized(tenantId)
+                        : OwnerAuthorityResult.Denied(
+                            "You do not have permission to manage tenant-level API keys.",
+                            "Only tenant administrators can create tenant-scoped API keys.");
+                }
+
+            case ExternalApiKeyOwnerType.InstanceAdmin:
+                {
+                    var isInstanceAdmin = await _adminContext.IsInstanceAdminAsync(cancellationToken);
+
+                    return isInstanceAdmin
+                        ? OwnerAuthorityResult.Authorized(currentUserId)
+                        : OwnerAuthorityResult.Denied(
+                            "You do not have permission to manage instance-level API keys.",
+                            "Only instance administrators can create platform-scoped API keys.");
+                }
+
+            default:
+                return OwnerAuthorityResult.Denied(
+                    "Unsupported owner type.",
+                    $"Owner type '{dto.OwnerType}' is not supported.");
+        }
+    }
+
     private static string NormalizeScopes(IEnumerable<string> scopes)
     {
         return string.Join(' ', scopes
@@ -131,4 +208,5 @@ public class CreateExternalApiKeyCommandHandler : IRequestHandler<CreateExternal
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(scope => scope, StringComparer.OrdinalIgnoreCase));
     }
+
 }

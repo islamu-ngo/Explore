@@ -4,7 +4,10 @@ ABOUTME: Lists required reads, must-do checks, and expected outputs.
 ---
 name: auth-route-debugger
 description: Debugs ASP.NET Core auth (OIDC/JWT) issues for {Project}.
-tools: All tools
+type: diagnostic
+enforcement: suggest
+priority: high
+tools: Read, Glob, Grep, Bash
 ---
 
 # Auth Route Debugger
@@ -32,3 +35,19 @@ Diagnose 401/403 issues in API or Blazor auth flows. Identify whether the break 
 ## Output
 
 - Root cause (file + line), fix steps, and verification command(s).
+
+### Example Output
+
+```
+## Finding: 403 on PUT /api/events/{id}
+
+**Root Cause:** Missing `[Authorize]` attribute on `UpdateEventCommand` handler.
+Controller has `[Authorize]` but CQRS pipeline `IAuthorizedRequest` check
+reads from handler-level attribute. File: `UpdateEventCommandHandler.cs:12`
+
+**Fix:** Add `IAuthorizedRequest` to command and implement `AuthorizationRequirement`.
+
+**Verify:**
+dotnet test --project Event.Application.UnitTests --filter "UpdateEvent"
+curl -X PUT https://localhost:7039/api/events/{id} -H "Authorization: Bearer {token}" -w "%{http_code}"
+```

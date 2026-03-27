@@ -1,3 +1,6 @@
+// ABOUTME: API controller for registration mode lookup table (read-only enumeration).
+// ABOUTME: Provides registration mode options (open, approval-required, invite-only) for events.
+
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;

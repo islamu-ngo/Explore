@@ -1,35 +1,52 @@
 # Cookie Consent & Analytics Governance — Context
 
-Last Updated: 2026-03-10 (Rev 3 — Post Architect Review)
+Last Updated: 2026-03-26 (Rev 4 — Post-Implementation Audit + Feedback Incorporation)
 
 ---
 
-## SESSION PROGRESS (2026-03-10)
+## SESSION PROGRESS
 
 ### ✅ COMPLETED
-- Comprehensive codebase analysis of analytics system
+- Comprehensive codebase analysis of analytics system (Rev 1-3)
 - Implementation plan Rev 1, Rev 2, Rev 3
-- Architect review incorporated (7 amendments)
+- Architect review incorporated (7 amendments → Amendments 1-7)
+- **Phase 1: Domain Layer** — 4 enums, capability matrix, 17 governance keys, 17 setting definitions
+- **Phase 2: Application Layer** — AnalyticsSettingGroup (17 props), resolver + profile + options, DTOs, query handler, DI
+- **Phase 3: Browser/JS Layer** — ConsentState enum, CookieConsentBanner, CookieConsentStateService, cookie-consent.js, analytics-bridge.js, AnalyticsInitializer state machine (311 lines)
+- **Phase 4: Admin UI** — InstanceAnalyticsPrivacySection (261 lines), sidebar nav, settings model, save/load
+- **80+ tests** across 13 test files (resolver: 20, setting group: 17, bootstrap DTO: 13, capabilities: 5, initializer: 5, consent state: 5, governance service: 3, etc.)
+- Rev 4 plan update: codebase audit + feedback incorporation
 
-### 🟡 IN PROGRESS
-- Plan review with user (Rev 3 delivered)
+### ⏳ REMAINING
+- Phase 5: Hardening (3 code changes + tests from feedback)
+- Phase 6: Documentation (3 docs updates)
+- Phase 7: Testing gaps (4 test suites)
 
-### ⚠️ BLOCKERS
-- None
+### ⚠️ ACTIVE RISKS
+- ConsentCookieKey uses mutable tenant slug (HIGH — Amendment 9)
+- No command-side validation (MEDIUM — Amendment 12)
 
 ---
 
-## Rev 3 Amendments (from Senior Architect Review)
+## All Amendments (1-15)
 
-| # | Amendment | Summary |
-|---|-----------|---------|
-| 1 | Typed enums | Replace stringly-typed contracts with domain enums. JS string mapping only at interop edge. |
-| 2 | Dedicated resolver | `IAnalyticsRuntimeProfileResolver` — single source of policy truth. Admin UI + query handler + tests all use it. |
-| 3 | Slim public DTO | `AnalyticsConsentBootstrap` — effective runtime config only. No admin inputs, no tenantSlug, no PersonalApiKey. |
-| 4 | Consent state machine | 7-state `ConsentState` enum drives AnalyticsInitializer. No imperative if/else branching. |
-| 5 | Advisory auto-computation | Suggest defaults on provider/mode change, show hint. Never silently overwrite admin's manual choices. |
-| 6 | Global kill switch | `analytics.global_disable_client_tracking` — System-scope, disables all browser analytics immediately. |
-| 7 | Defer RudderStack parity | RudderStack = "full consent required" for v1. Explicit extension point in resolver. |
+| # | Amendment | Source | Status |
+|---|-----------|--------|--------|
+| 1 | Typed enums replace stringly-typed contracts | Rev 3 | ✅ Done |
+| 2 | Dedicated `IAnalyticsRuntimeProfileResolver` | Rev 3 | ✅ Done |
+| 3 | Slim public `AnalyticsConsentBootstrapDto` | Rev 3 | ✅ Done |
+| 4 | 7-state `ConsentState` machine | Rev 3 | ✅ Done |
+| 5 | Advisory auto-computation (suggest, don't overwrite) | Rev 3 | ✅ Done |
+| 6 | Global kill switch | Rev 3 | ✅ Done |
+| 7 | Defer RudderStack parity | Rev 3 | ✅ Done |
+| 8 | Kill switch boundary documentation | Feedback #1 | ⏳ Phase 6 |
+| 9 | Stable ConsentCookieKey (not mutable slug) | Feedback #2 | ⏳ Phase 5 |
+| 10 | Resolver diagnostics / reason codes | Feedback #3 | ⏳ Phase 5 |
+| 11 | No client-side policy duplication | Feedback #4 | ✅ Verified |
+| 12 | Command-side validation | Feedback #5 | ⏳ Phase 5 |
+| 13 | Consent withdrawal = UI transition only | Feedback #6 | ✅ Verified |
+| 14 | Cross-subdomain cookie scope docs | Feedback #7 | ⏳ Phase 6 |
+| 15 | SSR/prerender stance docs | Feedback #9 | ⏳ Phase 6 |
 
 ---
 
@@ -42,160 +59,119 @@ Last Updated: 2026-03-10 (Rev 3 — Post Architect Review)
 
 ---
 
-## Key Files
+## Key Files (Actual Paths, Verified)
 
 ### Domain Layer
-- **`Explore.Domain/Constants/GovernanceSettingKeys.cs`** — Analytics keys (lines 177-186), needs 10 new keys
-- **`Explore.Domain/Settings/Definitions/AnalyticsSettingDefinitions.cs`** — Needs 10 new definitions
-- **`Explore.Domain/Enums/AnalyticsProviderEnum.cs`** — `None=0, Posthog=1, Plausible=2, Rybbit=3, RudderStack=4`
-- **`Explore.Domain/Enums/Analytics/`** — NEW: DeclineBehavior, PosthogCookielessMode, PosthogPersonProfiles, AnalyticsStorageProfile
-- **`Explore.Domain/Analytics/AnalyticsProviderCapabilities.cs`** — NEW: Provider capability matrix
+- `Explore.Domain/Enums/Analytics/DeclineBehavior.cs`
+- `Explore.Domain/Enums/Analytics/PosthogCookielessMode.cs`
+- `Explore.Domain/Enums/Analytics/PosthogPersonProfiles.cs`
+- `Explore.Domain/Enums/Analytics/AnalyticsStorageProfile.cs`
+- `Explore.Domain/Analytics/AnalyticsProviderCapabilities.cs`
+- `Explore.Domain/Constants/GovernanceSettingKeys.cs` — 17 analytics keys
+- `Explore.Domain/Settings/Definitions/AnalyticsSettingDefinitions.cs` — 17 definitions
 
 ### Application Layer
-- **`Explore.Application/Settings/Groups/AnalyticsSettingGroup.cs`** — Needs 10 new properties (typed enums)
-- **`Explore.Application/Contracts/Services/IAnalyticsRuntimeProfileResolver.cs`** — NEW: Resolver contract
-- **`Explore.Application/Analytics/AnalyticsRuntimeProfileResolver.cs`** — NEW: Core policy engine
-- **`Explore.Application/Analytics/AnalyticsRuntimeProfile.cs`** — NEW: Computed profile record
-- **`Explore.Application/Analytics/PosthogClientOptions.cs`** — NEW: PostHog typed options
-- **`Explore.Application/DTOs/Onboarding/AnalyticsConsentBootstrap.cs`** — NEW: Slim public DTO
-- **`Explore.Application/DTOs/Onboarding/PublicExperienceSettingsDto.cs`** — Extends with AnalyticsConsentBootstrap
-- **`Explore.Application/Features/PublicExperience/Handlers/Queries/GetPublicExperienceSettingsQueryHandler.cs`** — Delegates to resolver, maps to DTO
+- `Explore.Application/Settings/Groups/AnalyticsSettingGroup.cs` — 17 typed properties, snake_case→PascalCase
+- `Explore.Application/Contracts/Services/IAnalyticsRuntimeProfileResolver.cs`
+- `Explore.Application/Analytics/AnalyticsRuntimeProfileResolver.cs` — 130 lines, core policy engine
+- `Explore.Application/Analytics/AnalyticsRuntimeProfile.cs` — record (⚠️ needs reason codes, Amendment 10)
+- `Explore.Application/Analytics/PosthogClientOptions.cs`
+- `Explore.Application/DTOs/Onboarding/AnalyticsConsentBootstrap.cs` — `AnalyticsConsentBootstrapDto` + `PosthogClientBootstrapDto`
+- `Explore.Application/Features/PublicExperience/Handlers/Queries/GetPublicExperienceSettingsQueryHandler.cs` — injects resolver, maps to DTO
+- `Explore.Application/Features/Analytics/Handlers/Commands/UpdateAnalyticsGovernanceSettingsCommandHandler.cs` — ⚠️ pure write-through, no validation (Amendment 12)
+- `Explore.Application/Features/Analytics/Handlers/Queries/GetAnalyticsGovernanceSettingsQueryHandler.cs` — injects resolver, maps advisory values
 
 ### Browser/JS Layer
-- **`Explore.Blazor.Client/Analytics/ConsentState.cs`** — NEW: 7-state consent state machine enum
-- **`Explore.Blazor.Client/wwwroot/js/analytics-bridge.js`** — PostHog init + consent methods
-- **`Explore.Blazor.Client/wwwroot/js/cookie-consent.js`** — NEW: Tenant-scoped cookie utility
-- **`Explore.Blazor.Client/Shared/AnalyticsInitializer.razor`** — State machine driven
-- **`Explore.Blazor.Client/Shared/CookieConsentBanner.razor`** — NEW: Banner component
-- **`Explore.Blazor.Client/Contracts/Interop/ICookieConsentInterop.cs`** — NEW
-- **`Explore.Blazor.Client/Contracts/Interop/IAnalyticsInterop.cs`** — Extended with consent methods
-- **`Explore.Blazor.Client/Services/AnalyticsInterop.cs`** — Extended
-- **`Explore.Blazor/Services/ServerAnalyticsInterop.cs`** — Extended (no-ops)
+- `Explore.Blazor.Client/Models/Analytics/ConsentState.cs` — 7-state enum
+- `Explore.Blazor.Client/Models/Analytics/AnalyticsConsentBootstrapModel.cs` — client model
+- `Explore.Blazor.Client/Shared/CookieConsentBanner.razor` — 33 lines, MudBlazor, equal Accept/Decline
+- `Explore.Blazor.Client/Services/CookieConsentStateService.cs` — cross-component event bridge
+- `Explore.Blazor.Client/Contracts/Interop/ICookieConsentInterop.cs`
+- `Explore.Blazor.Client/Contracts/Interop/IAnalyticsInterop.cs` — 6 methods
+- `Explore.Blazor.Client/Services/AnalyticsInterop.cs` — client-side implementation
+- `Explore.Blazor/Services/ServerAnalyticsInterop.cs` — server-side no-ops
+- `Explore.Blazor.Client/wwwroot/js/cookie-consent.js` — 23 lines, readConsent/writeConsent/clearConsent
+- `Explore.Blazor.Client/wwwroot/js/analytics-bridge.js` — multi-provider adapter, cookieless_mode support
+- `Explore.Blazor.Client/Shared/AnalyticsInitializer.razor` — 311 lines, full state machine
 
-### Admin UI Layer
-- **`Explore.Blazor.Client/Pages/Admin/Instance/Components/InstanceAdminSettingsLayout.razor`** — Sidebar
-- **`Explore.Blazor.Client/Pages/Admin/Instance/Components/InstanceAnalyticsSection.razor`** — NEW
-- **`Explore.Blazor.Client/Pages/Admin/Instance/Components/InstanceGovernanceSection.razor`** — Reference pattern
+### Admin UI
+- `Explore.Blazor.Client/Pages/Admin/Instance/Components/InstanceAnalyticsPrivacySection.razor` — 261 lines (NOTE: named `PrivacySection`, not `Section`)
+- `Explore.Blazor.Client/Pages/Admin/Instance/Components/InstanceAdminSettingsLayout.razor` — sidebar nav, line 505
+- `Explore.Blazor.Client/Models/Admin/AnalyticsGovernanceSettingsModel.cs` — 36 lines, advisory fields marked "from resolver"
 
-### Tests
-- **`Event.Application.UnitTests/Analytics/AnalyticsRuntimeProfileResolverTests.cs`** — NEW: KEY test class
-- **`Event.Application.UnitTests/Features/PublicExperience/...`** — Handler tests (delegates to resolver)
-- **`Event.Application.UnitTests/Settings/AnalyticsSettingGroupTests.cs`** — New property tests
-- **`Explore.Blazor.Client.Tests/...`** — State machine, banner, JS interop contract tests
+### Tests (Existing)
+- `Event.Application.UnitTests/Analytics/AnalyticsRuntimeProfileResolverTests.cs` — 20 tests
+- `Event.Application.UnitTests/Settings/AnalyticsSettingGroupTests.cs` — 17 tests
+- `Event.Application.UnitTests/DTOs/AnalyticsConsentBootstrapDtoTests.cs` — 13 tests
+- `Event.Application.UnitTests/Analytics/AnalyticsProviderCapabilitiesTests.cs` — 5 tests
+- `Explore.Blazor.Client.Tests/Shared/AnalyticsInitializerTests.cs` — 5 tests
+- `Explore.Blazor.Client.Tests/Models/Analytics/ConsentStateTests.cs` — 5 tests
+- `Event.Application.UnitTests/Services/AnalyticsGovernanceServiceTests.cs` — 3 tests
 
 ### Documentation
-- **`docs/CONFIGURATION.md`** — Analytics settings table, needs 10 new keys
-- **`docs/BLAZOR.md`** — Analytics bootstrap, needs state machine docs
-- **`docs/OPERATIONS.md`** — Provider table, needs storage mode + consent columns
+- `docs/BLAZOR.md` — Already has "Cookie Consent & Privacy State Machine" section (lines 80-115)
+- `docs/CONFIGURATION.md` — Needs 17 keys + kill switch boundary + cookie scope
+- `docs/OPERATIONS.md` — Needs provider table + kill switch ops guide
 
 ---
 
 ## Key Decisions
 
-### Decision 1: Storage-Mode-Driven Consent
-Consent is computed from the provider's **runtime storage behavior**, not just the provider name. Implemented via `IAnalyticsRuntimeProfileResolver` which returns an `AnalyticsRuntimeProfile` — the single source of policy truth.
+### Decision 1: Storage-Mode-Driven Consent ✅
+Consent computed from provider's runtime storage behavior via `IAnalyticsRuntimeProfileResolver`.
 
-### Decision 2: Graceful Decline via Cookieless Analytics
-PostHog `cookieless_mode: 'on_reject'` — declined users still counted via privacy-preserving server-side hash. Configurable: `Cookieless` (default) or `Disable`.
+### Decision 2: Graceful Decline via Cookieless ✅
+PostHog `cookieless_mode: 'on_reject'` — declined users still counted. Configurable: `Cookieless` (default) or `Disable`.
 
-### Decision 3: Tenant-Scoped Consent Cookie
-`explore_cc_{tenantSlug}` — computed server-side as `ConsentCookieKey` (raw slug not exposed). 180 days configurable. Values: `accepted` | `declined` only.
+### Decision 3: Tenant-Scoped Consent Cookie ⚠️ NEEDS HARDENING
+Currently: `explore_cc_{tenantSlug}` from mutable subdomain. Amendment 9: change to stable identifier.
 
-### Decision 4: Privacy-First PostHog Defaults
-Features OFF, `cookieless_mode: on_reject`, `person_profiles: identified_only`. Explicit admin action required to enable.
+### Decision 4: Privacy-First PostHog Defaults ✅
+Features OFF, `cookieless_mode: on_reject`, `person_profiles: identified_only`.
 
-### Decision 5: Self-Hoster Override with Warnings (Advisory, Not Destructive)
-Auto-suggest defaults on provider/mode change. Show "recommended settings" hint. Never silently overwrite admin's manual choices.
+### Decision 5: Advisory Auto-Computation ✅
+Admin UI shows "Computed advisory (read-only, from resolver)". Never silently overwrites.
 
-### Decision 6: No Page Blocking + Persistent Withdrawal
-Banner non-blocking. "Cookie Settings" link in footer for consent withdrawal. State machine supports re-entry.
+### Decision 6: Consent Withdrawal = UI Transition Only ✅
+`ReopenConsentAsync` clears cookie, returns to pending. Analytics state changes only on explicit accept/decline.
 
-### Decision 7: Global Emergency Kill Switch
-`analytics.global_disable_client_tracking` — System scope. One flag disables all browser analytics immediately.
+### Decision 7: No Client-Side Policy Duplication ✅
+Admin query handler injects resolver, maps to advisory fields. Admin model doesn't re-implement logic.
 
-### Decision 8: Defer RudderStack Cookieless Parity
-RudderStack treated as "full consent required" for v1. Resolver has explicit extension point.
+### Decision 8: Global Kill Switch ✅
+`analytics.global_disable_client_tracking` — System scope. Browser-only boundary (Amendment 8 documents this).
+
+### Decision 9: Defer RudderStack Cookieless Parity ✅
+Resolver has explicit extension point. `SupportsCookielessMode = false` for v1.
 
 ---
 
-## Interface Signatures
+## Governance Keys (17 total, all implemented)
 
-### Domain Enums
 ```csharp
-public enum DeclineBehavior { Disable = 0, Cookieless = 1 }
-public enum PosthogCookielessMode { Off = 0, Always = 1, OnReject = 2 }
-public enum PosthogPersonProfiles { Always = 0, IdentifiedOnly = 1, Never = 2 }
-public enum AnalyticsStorageProfile { Cookieless = 0, ConsentManaged = 1, FullConsent = 2 }
+// Original 7
+analytics.provider, analytics.enabled, analytics.consent_mode,
+analytics.transport_mode, analytics.api_key, analytics.endpoint_url, analytics.personal_api_key
+
+// Consent & Storage (4 new)
+analytics.cookie_consent_enabled     // bool, default false, Tenant scope
+analytics.decline_behavior           // string, default "cookieless", Tenant scope
+analytics.consent_cookie_lifetime_days // int, default 180, Tenant scope
+analytics.global_disable_client_tracking // bool, default false, System scope
+
+// PostHog Privacy & Features (6 new)
+analytics.posthog_cookieless_mode    // string, default "on_reject", Tenant scope
+analytics.posthog_person_profiles    // string, default "identified_only", Tenant scope
+analytics.posthog_session_replay     // bool, default false, Tenant scope
+analytics.posthog_autocapture        // bool, default false, Tenant scope
+analytics.posthog_heatmaps           // bool, default false, Tenant scope
+analytics.posthog_toolbar            // bool, default false, Tenant scope
 ```
 
-### Consent State Machine
-```csharp
-public enum ConsentState
-{
-    Uninitialized,
-    NoBannerImmediateInit,
-    BannerPendingCookieless,
-    BannerPendingBlocked,
-    Accepted,
-    DeclinedCookieless,
-    DeclinedDisabled
-}
-```
+---
 
-### Resolver Contract
-```csharp
-public interface IAnalyticsRuntimeProfileResolver
-{
-    AnalyticsRuntimeProfile Resolve(AnalyticsSettingGroup settings);
-}
-```
+## PostHog JS Config (Implemented)
 
-### Runtime Profile
-```csharp
-public sealed record AnalyticsRuntimeProfile
-{
-    public AnalyticsStorageProfile StorageProfile { get; init; }
-    public bool CookieBannerEnabled { get; init; }
-    public bool CanRunBeforeConsent { get; init; }
-    public DeclineBehavior DeclineBehavior { get; init; }
-    public string ConsentCookieKey { get; init; }
-    public int ConsentCookieLifetimeDays { get; init; }
-    public PosthogClientOptions? Posthog { get; init; }
-}
-```
-
-### Slim Public DTO
-```csharp
-public sealed class AnalyticsConsentBootstrap
-{
-    public bool CookieBannerEnabled { get; set; }
-    public bool CanRunBeforeConsent { get; set; }
-    public string DeclineBehavior { get; set; }        // JS: "none"|"cookieless"|"disable"
-    public string ConsentCookieKey { get; set; }       // "explore_cc_{slug}"
-    public int ConsentCookieLifetimeDays { get; set; }
-    public string AnalyticsProvider { get; set; }
-    public PosthogClientBootstrap? Posthog { get; set; }
-}
-```
-
-### Governance Keys (10 total)
-```csharp
-// Consent & Storage
-public const string CookieConsentEnabled = "analytics.cookie_consent_enabled";
-public const string DeclineBehavior = "analytics.decline_behavior";
-public const string ConsentCookieLifetimeDays = "analytics.consent_cookie_lifetime_days";
-public const string GlobalDisableClientTracking = "analytics.global_disable_client_tracking";
-
-// PostHog Privacy & Features
-public const string PosthogCookielessMode = "analytics.posthog_cookieless_mode";
-public const string PosthogPersonProfiles = "analytics.posthog_person_profiles";
-public const string PosthogSessionReplay = "analytics.posthog_session_replay";
-public const string PosthogAutocapture = "analytics.posthog_autocapture";
-public const string PosthogHeatmaps = "analytics.posthog_heatmaps";
-public const string PosthogToolbar = "analytics.posthog_toolbar";
-```
-
-### PostHog JS Init (Rev 3)
 ```javascript
 window.posthog.init(apiKey, {
     api_host: host,
@@ -210,7 +186,7 @@ window.posthog.init(apiKey, {
     defaults: '2026-01-30'
 });
 
-// Consent methods
+// Consent methods (implemented in analytics-bridge.js)
 posthog.opt_in_capturing();
 posthog.opt_out_capturing();
 posthog.get_explicit_consent_status(); // "pending"|"granted"|"denied"
@@ -221,9 +197,8 @@ posthog.get_explicit_consent_status(); // "pending"|"granted"|"denied"
 ## Quick Resume
 
 To continue this work:
-1. Read this context file for current state and all 7 amendments
-2. Read the tasks file for remaining work (31 tasks across 6 phases)
-3. Read the plan file for full architecture: resolver, state machine, capability matrix
-4. Start with Phase 1 (Domain Layer) — enums, capability matrix, governance keys, setting definitions
-5. Work inward through architecture layers
-6. Key PostHog docs: https://posthog.com/docs/privacy/data-collection
+1. Read this context file for current state and all 15 amendments
+2. Read the tasks file for remaining work (11 tasks across Phases 5-7)
+3. Read the plan file for architecture reference and hardening details
+4. **Start with Phase 5, Task 5.1** — change ConsentCookieKey from mutable `TenantSlug` to stable tenant identifier
+5. Key files to change first: `AnalyticsRuntimeProfileResolver.cs` (line 16), `GetPublicExperienceSettingsQueryHandler.cs` (line 88)

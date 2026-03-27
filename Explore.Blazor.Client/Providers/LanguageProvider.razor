@@ -26,21 +26,23 @@
         {
             try
             {
-                // Read language from cookie via JS interop
+                // Read language and direction cookies via JS interop
                 var cookieLang = await JSRuntime.InvokeAsync<string?>("localization.getLanguageCookie");
+                var cookieDir = await JSRuntime.InvokeAsync<string?>("localization.getDirectionCookie");
                 var lang = cookieLang ?? "en";
 
-                Logger.LogInformation("[LANGUAGE] Initializing with language: {Language}", lang);
+                Logger.LogInformation("[LANGUAGE] Initializing with language: {Language}, direction override: {Direction}", lang, cookieDir ?? "auto");
 
                 // Preload translations
                 await TranslationService.PreloadAsync(lang);
 
-                // Update context
+                // Update context with direction override from user preference
                 _languageContext = Models.LanguageContext.ForLanguage(lang);
+                _languageContext.DirectionOverride = cookieDir is "ltr" or "rtl" ? cookieDir : "auto";
 
-                // Set document direction and lang attribute
+                // Set document direction and lang attribute (respecting user override)
                 await JSRuntime.InvokeVoidAsync("localization.setDirection",
-                    _languageContext.IsRtl ? "rtl" : "ltr",
+                    _languageContext.EffectiveIsRtl ? "rtl" : "ltr",
                     _languageContext.LanguageCode);
 
                 StateHasChanged();
@@ -56,12 +58,14 @@
     {
         try
         {
+            var previousOverride = _languageContext.DirectionOverride;
             _languageContext = Models.LanguageContext.ForLanguage(newLanguage);
+            _languageContext.DirectionOverride = previousOverride;
 
             await InvokeAsync(async () =>
             {
                 await JSRuntime.InvokeVoidAsync("localization.setDirection",
-                    _languageContext.IsRtl ? "rtl" : "ltr",
+                    _languageContext.EffectiveIsRtl ? "rtl" : "ltr",
                     _languageContext.LanguageCode);
 
                 StateHasChanged();

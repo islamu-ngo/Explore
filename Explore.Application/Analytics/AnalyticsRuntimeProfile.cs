@@ -18,6 +18,12 @@ public sealed record AnalyticsRuntimeProfile
     public string ConsentCookieKey { get; init; } = "explore_cc_default";
     public int ConsentCookieLifetimeDays { get; init; } = 180;
     public PosthogClientOptions? Posthog { get; init; }
+
+    /// <summary>
+    /// Diagnostic reason codes explaining why this profile was chosen.
+    /// Internal/admin only — never exposed in public bootstrap DTOs.
+    /// </summary>
+    public IReadOnlyList<ProfileResolveReason> ResolveReasons { get; init; } = [];
 }
 
 /// <summary>

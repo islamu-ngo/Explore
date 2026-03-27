@@ -18,7 +18,7 @@
         <!-- Sidebar Toggle (shown only when a page registers a sidebar) -->
         @if (SidebarState.HasSidebar)
         {
-            <MudIconButton Icon="@Icons.Material.Filled.Menu"
+            <AppIconButton Icon="@Icons.Material.Filled.Menu"
                            Color="Color.Inherit"
                            OnClick="@(() => SidebarState.Toggle())"
                            Title="Toggle sidebar"
@@ -85,7 +85,7 @@
         <!-- Right Actions -->
         <div class="navbar__actions">
             <LanguagePicker />
-            <MudIconButton Icon="@Icons.Material.Rounded.LightMode"
+            <AppIconButton Icon="@Icons.Material.Rounded.LightMode"
                            Color="Color.Inherit"
                            OnClick="@OnToggleTheme"
                            Title="Toggle Theme"
@@ -96,13 +96,11 @@
                     @if (_eventCreationEligibility.CanCreate)
                     {
                         <a href="@_eventCreationEligibility.CreateEventRoute" style="text-decoration: none;">
-                            <MudButton Variant="Variant.Filled"
-                                       Color="Color.Primary"
-                                       StartIcon="@Icons.Material.Filled.Add"
+                            <AppButton StartIcon="@Icons.Material.Filled.Add"
                                        Size="Size.Small"
                                        Class="navbar__create-event-btn">
                                 Add Event
-                            </MudButton>
+                            </AppButton>
                         </a>
                     }
 
@@ -227,11 +225,7 @@
                                                 <MudText Typo="Typo.caption" Color="Color.Secondary">No groups yet</MudText>
                                             </div>
                                         }
-                                        <div class="navbar__dropdown-submenu-divider"></div>
-                                        <a href="/group/create" class="navbar__dropdown-submenu-create" @onclick="CloseDropdown">
-                                            <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />
-                                            Create Group
-                                        </a>
+                        <div class="navbar__dropdown-submenu-divider"></div>
                                     </div>
                                 }
 
@@ -291,22 +285,18 @@
                 <NotAuthorized>
                     @if (_showAddEventForAnonymous)
                     {
-                        <MudButton Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   StartIcon="@Icons.Material.Filled.Add"
+                        <AppButton StartIcon="@Icons.Material.Filled.Add"
                                    Size="Size.Small"
                                    Class="navbar__create-event-btn"
                                    OnClick="@(() => OpenLoginPrompt("/events/create"))">
                             Add Event
-                        </MudButton>
+                        </AppButton>
                     }
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               Class="navbar__login-btn"
+                    <AppButton Class="navbar__login-btn"
                                StartIcon="@Icons.Material.Filled.Login"
                                OnClick="@(() => OpenLoginPrompt(null))">
                         Login
-                    </MudButton>
+                    </AppButton>
                 </NotAuthorized>
             </AuthorizeView>
         </div>

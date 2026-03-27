@@ -28,7 +28,7 @@ public partial class CreateOrganization
     private bool _isUploadingLogo = false;
     private Guid? _uploadedLogoStorageObjectId = null;
     private string? _logoUploadError;
-    private OrganizationAppearanceSettings _appearance = new();
+    private AppearanceSettings _appearance = new();
 
     private bool submitSuccess = false;
     private string errorMessage = string.Empty;

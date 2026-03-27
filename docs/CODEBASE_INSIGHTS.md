@@ -1,3 +1,6 @@
+ABOUTME: Non-intuitive patterns, hidden knowledge, and implementation details requiring deep analysis.
+ABOUTME: Captures what you cannot guess from reading ARCHITECTURE.md alone — internal mechanics and gotchas.
+
 # Codebase Insights
 
 > Non-intuitive patterns, hidden knowledge, and things requiring deep analysis.

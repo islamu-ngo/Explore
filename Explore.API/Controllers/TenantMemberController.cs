@@ -48,10 +48,6 @@ public class TenantMemberController : ControllerBase
     public async Task<ActionResult<TenantMemberDto>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var tenantMember = await _mediator.Send(new GetTenantMemberDetailsRequest { Id = id }, cancellationToken);
-        if (tenantMember == null)
-        {
-            return NotFound();
-        }
 
         return Ok(tenantMember);
     }
@@ -109,12 +105,7 @@ public class TenantMemberController : ControllerBase
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteTenantMemberCommand { Id = id };
-        var result = await _mediator.Send(command, cancellationToken);
-
-        if (!result)
-        {
-            return NotFound(new { error = "Tenant Member not found" });
-        }
+        await _mediator.Send(command, cancellationToken);
 
         return NoContent();
     }

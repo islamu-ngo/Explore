@@ -2,6 +2,7 @@
 // ABOUTME: Handles publisher selection, inline image upload, description dialog, session management, and event creation.
 
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Pages.Events.Components;
 using Explore.Blazor.Client.Pages.Events.Models;
@@ -28,6 +29,7 @@ public partial class CreateEvent
     [Inject] protected NavigationManager Navigation { get; set; } = null!;
     [Inject] protected IDialogService DialogService { get; set; } = null!;
     [Inject] protected ILogger<CreateEvent> Logger { get; set; } = null!;
+    [Inject] private IAccessibilityFocusService AccessibilityFocusService { get; set; } = default!;
 
     // Sentinel Guid values for "Create Organization" / "Create Group" dropdown items
     private static readonly Guid CreateOrgSentinelValue = Guid.Parse("00000000-0000-0000-0000-000000000001");
@@ -84,7 +86,9 @@ public partial class CreateEvent
     // Sessions
     private List<SessionEditorModel> sessions = new();
     private readonly SessionEditorWorkflow _sessionWorkflow = new();
-    private EventAppearanceSettings _appearance = new();
+    private string _bgColor = string.Empty;
+    private string _bgEffect = "None";
+    private string _bgImageUri = string.Empty;
 
     // UI toggles
     private bool _showFirstSessionLocation = false;
@@ -269,16 +273,12 @@ public partial class CreateEvent
             { x => x.Description, createDto.Description }
         };
 
-        var options = new DialogOptions
-        {
-            MaxWidth = MaxWidth.Medium,
-            FullWidth = true,
-            CloseButton = true,
-            BackdropClick = true
-        };
+        var options = DialogOptionsFactory.Editor();
 
+        await AccessibilityFocusService.SaveFocusAsync();
         var dialog = await DialogService.ShowAsync<DescriptionDialog>("", parameters, options);
         var result = await dialog.Result;
+        await AccessibilityFocusService.RestoreFocusAsync();
 
         if (result is not null && !result.Canceled)
         {
@@ -341,10 +341,12 @@ public partial class CreateEvent
 
             if (session.Id.HasValue && session.Id != Guid.Empty)
             {
+                await AccessibilityFocusService.SaveFocusAsync();
                 bool? confirm = await DialogService.ShowMessageBoxAsync(
                     "Delete Session",
                     "This session already exists. Deleting it here will remove it permanently. Continue?",
                     yesText: "Delete", cancelText: "Cancel");
+                await AccessibilityFocusService.RestoreFocusAsync();
 
                 if (confirm == true)
                 {
@@ -567,8 +569,8 @@ public partial class CreateEvent
             createDto.VisibilityTypeId ??= 1;
             createDto.EventFormatId ??= 1;
             createDto.Timezone = _selectedTimezone.Id;
-            createDto.BackgroundColor = _appearance.BackgroundColor;
-            createDto.BackgroundEffect = _appearance.BackgroundEffect;
+            createDto.BackgroundColor = string.IsNullOrWhiteSpace(_bgColor) ? null : _bgColor;
+            createDto.BackgroundEffect = string.IsNullOrWhiteSpace(_bgEffect) || _bgEffect == "None" ? null : _bgEffect;
 
             var earliestStart = sessions.Min(s => DateTimeHelper.ConvertLocalToUtc(s.StartTime));
             var latestEnd = sessions.Max(s => DateTimeHelper.ConvertLocalToUtc(s.EndTime));

@@ -99,14 +99,17 @@ public class ActorControllerTests
     {
         // Arrange
         var id = Guid.NewGuid();
-        var updateDto = new UpdateActorDto
+        var command = new
         {
-            Id = id,
-            DisplayName = "Updated Actor"
+            ActorDto = new UpdateActorDto
+            {
+                Id = id,
+                DisplayName = "Updated Actor"
+            }
         };
 
         // Act
-        var response = await _fixture.Client.PutAsJsonAsync($"{BaseUrl}/{id}", updateDto);
+        var response = await _fixture.Client.PutAsJsonAsync($"{BaseUrl}/{id}", command);
 
         // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);

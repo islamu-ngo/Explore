@@ -26,12 +26,11 @@
     else
     {
         <MudStack Row="true" Spacing="2" Class="mb-4" AlignItems="AlignItems.Center">
-            <MudButton Variant="Variant.Outlined"
-                       Color="Color.Primary"
+            <AppButton Variant="Variant.Outlined"
                        StartIcon="@Icons.Material.Filled.Refresh"
                        OnClick="LoadOrganizationRequestsAsync">
                 Refresh
-            </MudButton>
+            </AppButton>
         </MudStack>
 
         <MudTabs @bind-ActivePanelIndex="_activeTab" Elevation="0" Rounded="true" ApplyEffectsToContainer="true" Color="Color.Primary">

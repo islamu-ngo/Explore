@@ -41,11 +41,20 @@ public class UserRepository : GenericRepository<User, Guid>, IUserRepository
 
     public async Task<List<User>> GetUsersByIdsAsync(List<Guid> ids)
     {
-        return await _dbContext.Users
-            .AsNoTracking()
-            .Include(u => u.Pii)
-            .Where(u => ids.Contains(u.Id))
-            .ToListAsync();
+        if (ids.Count == 0)
+            return [];
+
+        var results = new List<User>(ids.Count);
+        foreach (var chunk in ids.Chunk(100))
+        {
+            var chunkResults = await _dbContext.Users
+                .AsNoTracking()
+                .Include(u => u.Pii)
+                .Where(u => chunk.Contains(u.Id))
+                .ToListAsync();
+            results.AddRange(chunkResults);
+        }
+        return results;
     }
 
     public async Task<bool> ExistsByEmail(string email)
@@ -53,5 +62,12 @@ public class UserRepository : GenericRepository<User, Guid>, IUserRepository
         return await _dbContext.Users
             .AsNoTracking()
             .AnyAsync(u => u.Pii != null && u.Pii.Email == email);
+    }
+
+    public async Task<int> ForgetPiiAsync(Guid userId)
+    {
+        return await _dbContext.UserPii
+            .Where(p => p.UserId == userId)
+            .ExecuteDeleteAsync();
     }
 }

@@ -15,5 +15,9 @@ window.localization = {
     getLanguageCookie: function () {
         var match = document.cookie.match(new RegExp('(^| )lang=([^;]+)'));
         return match ? match[2] : null;
+    },
+    getDirectionCookie: function () {
+        var match = document.cookie.match(new RegExp('(^| )direction=([^;]+)'));
+        return match ? match[2] : null;
     }
 };

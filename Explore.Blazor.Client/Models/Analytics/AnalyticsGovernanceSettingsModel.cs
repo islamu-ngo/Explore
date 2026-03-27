@@ -29,6 +29,7 @@ public sealed class AnalyticsGovernanceSettingsModel
     public bool CookieBannerRequired { get; set; }
     public bool CanRunBeforeConsent { get; set; }
     public string StorageProfile { get; set; } = "Unknown";
+    public List<string> ResolveReasons { get; set; } = [];
 
     public bool IsPosthog => string.Equals(Provider, "posthog", StringComparison.OrdinalIgnoreCase);
     public bool IsRybbit => string.Equals(Provider, "rybbit", StringComparison.OrdinalIgnoreCase);

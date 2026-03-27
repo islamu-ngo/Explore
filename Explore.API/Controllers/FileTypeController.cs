@@ -1,3 +1,6 @@
+// ABOUTME: API controller for file type lookup table (read-only enumeration).
+// ABOUTME: Provides allowed file types for storage object uploads and validation.
+
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;

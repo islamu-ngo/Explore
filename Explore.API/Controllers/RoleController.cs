@@ -52,10 +52,6 @@ public class RoleController : ControllerBase
     public async Task<ActionResult<RoleDto>> GetById(int id, CancellationToken cancellationToken = default)
     {
         var role = await _mediator.Send(new GetRoleDetailsRequest { Id = id }, cancellationToken);
-        if (role == null)
-        {
-            return NotFound();
-        }
 
         return Ok(role);
     }

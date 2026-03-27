@@ -14,16 +14,16 @@
                 <MudIcon Icon="@Icons.Material.Filled.People" />
             </MudAvatar>
             <div>
-                <MudText Typo="Typo.h4" Style="font-weight: 800;">Organization Members</MudText>
+                <MudText Typo="Typo.h4" HtmlTag="h1" Style="font-weight: 800;">Organization Members</MudText>
                 <MudText Typo="Typo.body2" Color="Color.Secondary">Manage access and roles for your organization</MudText>
             </div>
         </MudStack>
 
         @if (RoleHelper.CanManage(currentUserRole))
         {
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenInviteDialog" StartIcon="@Icons.Material.Filled.PersonAdd" Class="rounded-pill">
+            <AppButton OnClick="OpenInviteDialog" StartIcon="@Icons.Material.Filled.PersonAdd" Class="rounded-pill">
                 Invite Member
-            </MudButton>
+            </AppButton>
         }
     </div>
 
@@ -36,7 +36,7 @@
 
     <MudPaper Elevation="0" Class="pa-4 border-solid border-1 mud-border-lines-default rounded-xl overflow-hidden">
         <div class="d-flex gap-4 mb-6 flex-wrap">
-            <MudTextField @bind-Value="_searchString"
+            <AppTextField T="string" @bind-Value="_searchString"
                           Placeholder="Search members..."
                           Adornment="Adornment.Start"
                           AdornmentIcon="@Icons.Material.Filled.Search"

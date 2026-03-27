@@ -13,6 +13,8 @@
 
 <PageTitle>Create Event</PageTitle>
 
+<MudText Typo="Typo.h1" HtmlTag="h1" Class="sr-only">Create Event</MudText>
+
 <MudContainer MaxWidth="MaxWidth.Large" Class="py-6">
     @if (isLoading)
     {
@@ -83,36 +85,14 @@
 
                     @* --- Appearance (under image, left column) --- *@
                     <MudExpansionPanels Class="mt-3" Elevation="0">
-                        <MudExpansionPanel Text="Event Appearance" MaxHeight="500"
+                        <MudExpansionPanel Text="Event Appearance" MaxHeight="800"
                                            Class="rounded-lg border-solid border-1 mud-border-lines-default">
-                            <MudGrid Spacing="2">
-                                <MudItem xs="12">
-                                    <MudTextField @bind-Value="_appearance.BackgroundColor"
-                                                  Label="Background Color"
-                                                  Variant="Variant.Outlined"
-                                                  Margin="Margin.Dense"
-                                                  Placeholder="#0f172a" />
-                                </MudItem>
-                                <MudItem xs="12">
-                                    <MudTextField @bind-Value="_appearance.BackgroundImageUri"
-                                                  Label="Background Image URL"
-                                                  Variant="Variant.Outlined"
-                                                  Margin="Margin.Dense"
-                                                  Placeholder="https://..." />
-                                </MudItem>
-                                <MudItem xs="12">
-                                    <MudSelect @bind-Value="_appearance.BackgroundEffect"
-                                               Label="Effect"
-                                               Variant="Variant.Outlined"
-                                               Margin="Margin.Dense"
-                                               AnchorOrigin="Origin.BottomCenter">
-                                        <MudSelectItem Value="@("None")">None</MudSelectItem>
-                                        <MudSelectItem Value="@("SoftOverlay")">Soft Overlay</MudSelectItem>
-                                        <MudSelectItem Value="@("StrongOverlay")">Strong Overlay</MudSelectItem>
-                                        <MudSelectItem Value="@("Blur")">Blur Overlay</MudSelectItem>
-                                    </MudSelect>
-                                </MudItem>
-                            </MudGrid>
+                            <AppearanceEditor @bind-BackgroundColor="_bgColor"
+                                              @bind-BackgroundEffect="_bgEffect"
+                                              @bind-ImageUri="_bgImageUri"
+                                              ShowImageField="true"
+                                              ShowPreview="true"
+                                              PreviewAdditionalCss="aspect-ratio: 16/9; position: relative" />
                         </MudExpansionPanel>
                     </MudExpansionPanels>
                 </MudItem>
@@ -122,32 +102,32 @@
                     @* --- Publish Under --- *@
                     <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">Publish Under</MudText>
                     <div class="create-event__publisher-row">
-                        <MudButton Variant="@(_publisherMode == "personal" ? Variant.Filled : Variant.Outlined)"
+                        <AppButton Variant="@(_publisherMode == "personal" ? Variant.Filled : Variant.Outlined)"
                                    Color="@(_publisherMode == "personal" ? Color.Primary : Color.Default)"
                                    Size="Size.Small"
                                    OnClick="@(() => SetPublisherMode("personal"))"
                                    Class="create-event__publisher-btn">
                             <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Class="mr-1" />
                             User
-                        </MudButton>
+                        </AppButton>
 
-                        <MudButton Variant="@(_publisherMode == "organization" ? Variant.Filled : Variant.Outlined)"
+                        <AppButton Variant="@(_publisherMode == "organization" ? Variant.Filled : Variant.Outlined)"
                                    Color="@(_publisherMode == "organization" ? Color.Primary : Color.Default)"
                                    Size="Size.Small"
                                    OnClick="@(() => SetPublisherMode("organization"))"
                                    Class="create-event__publisher-btn">
                             <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" Class="mr-1" />
                             Organization
-                        </MudButton>
+                        </AppButton>
 
-                        <MudButton Variant="@(_publisherMode == "group" ? Variant.Filled : Variant.Outlined)"
+                        <AppButton Variant="@(_publisherMode == "group" ? Variant.Filled : Variant.Outlined)"
                                    Color="@(_publisherMode == "group" ? Color.Primary : Color.Default)"
                                    Size="Size.Small"
                                    OnClick="@(() => SetPublisherMode("group"))"
                                    Class="create-event__publisher-btn">
                             <MudIcon Icon="@Icons.Material.Filled.Group" Size="Size.Small" Class="mr-1" />
                             Group
-                        </MudButton>
+                        </AppButton>
                     </div>
 
                     @if (_publisherMode == "organization")
@@ -214,7 +194,7 @@
                     }
 
                     @* --- Event Title (large, Luma-style) --- *@
-                    <MudTextField @bind-Value="createDto.Title"
+                    <AppTextField T="string" @bind-Value="createDto.Title"
                                   Placeholder="Event Name"
                                   Variant="Variant.Text"
                                   FullWidth="true"
@@ -225,7 +205,7 @@
                     @if (sessions.Count > 0)
                     {
                         <div class="d-flex align-center gap-2 mb-2">
-                            <MudButton Variant="Variant.Text"
+                            <AppButton Variant="Variant.Text"
                                        Size="Size.Small"
                                        Color="Color.Default"
                                        OnClick="@(() => _showTimezoneSelector = !_showTimezoneSelector)"
@@ -233,7 +213,7 @@
                                 <MudIcon Icon="@Icons.Material.Filled.Language" Size="Size.Small" Class="mr-1" />
                                 @_selectedTimezoneDisplay
                                 <MudIcon Icon="@(_showTimezoneSelector ? Icons.Material.Filled.ArrowDropUp : Icons.Material.Filled.ArrowDropDown)" Size="Size.Small" />
-                            </MudButton>
+                            </AppButton>
                         </div>
                         @if (_showTimezoneSelector)
                         {
@@ -308,7 +288,7 @@
                         @* Location selector (shown for In-person and Hybrid) *@
                         @if (createDto.EventFormatId is 1 or 3)
                         {
-                            <MudButton StartIcon="@Icons.Material.Filled.LocationOn"
+                            <AppButton StartIcon="@Icons.Material.Filled.LocationOn"
                                        Variant="Variant.Text"
                                        Color="Color.Default"
                                        FullWidth="true"
@@ -323,7 +303,7 @@
                                 {
                                     <span>Add event location</span>
                                 }
-                            </MudButton>
+                            </AppButton>
 
                             @if (_showFirstSessionLocation && locations != null)
                             {
@@ -348,7 +328,7 @@
                         @* Meeting link field (shown for Online and Hybrid) *@
                         @if (createDto.EventFormatId is 2 or 3)
                         {
-                            <MudTextField @bind-Value="createDto.EventUrl"
+                            <AppTextField T="string" @bind-Value="createDto.EventUrl"
                                           Label="Meeting link"
                                           Placeholder="https://zoom.us/j/... or Google Meet link"
                                           Variant="Variant.Outlined"
@@ -414,7 +394,7 @@
                     }
 
                     @* --- Add Description Button (Luma-style popup) --- *@
-                    <MudButton StartIcon="@Icons.Material.Filled.Notes"
+                    <AppButton StartIcon="@Icons.Material.Filled.Notes"
                                Variant="Variant.Text"
                                Color="Color.Default"
                                FullWidth="true"
@@ -428,7 +408,7 @@
                         {
                             <span>Add a description</span>
                         }
-                    </MudButton>
+                    </AppButton>
 
                     @* --- Additional Sessions (2+) --- *@
                     @if (sessions.Count > 1)
@@ -453,14 +433,13 @@
                         </div>
                     }
 
-                    <MudButton StartIcon="@Icons.Material.Filled.Add"
+                    <AppButton StartIcon="@Icons.Material.Filled.Add"
                                Variant="Variant.Outlined"
-                               Color="Color.Primary"
                                FullWidth="true"
                                OnClick="@(() => _sessionWorkflow.OpenForCreate(sessions, imagePreviewUrl))"
                                Class="mt-2 mb-4 rounded-lg">
                         Add Session
-                    </MudButton>
+                    </AppButton>
 
                     @* --- Event Options (Luma-style rows) --- *@
                     <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">Event Options</MudText>
@@ -564,7 +543,7 @@
                                 {
                                     <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="font-style: italic;">None</MudText>
                                 }
-                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                <AppIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
                                                OnClick="@(() => { _createTagCatMode = TagCategoryMode.Categories; _createTagCatInitialIds = selectedCategoryIds.ToList().AsReadOnly(); _showCreateTagCatPopup = true; })"
                                                aria-label="Manage categories" />
                             </div>
@@ -590,7 +569,7 @@
                                 {
                                     <MudText Typo="Typo.caption" Class="mud-text-secondary" Style="font-style: italic;">None</MudText>
                                 }
-                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                <AppIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
                                                OnClick="@(() => { _createTagCatMode = TagCategoryMode.Tags; _createTagCatInitialIds = selectedTagIds.ToList().AsReadOnly(); _showCreateTagCatPopup = true; })"
                                                aria-label="Manage tags" />
                             </div>
@@ -602,9 +581,7 @@
 
             @* ===== Create Event Button with Draft Option ===== *@
             <div class="d-flex gap-0 mt-6" style="width: 100%;">
-                <MudButton ButtonType="ButtonType.Submit"
-                           Variant="Variant.Filled"
-                           Color="Color.Primary"
+                <AppButton ButtonType="ButtonType.Submit"
                            Disabled="@(isProcessing || _isUploadingImage || !string.IsNullOrEmpty(_organizationRoleError) || !string.IsNullOrEmpty(_groupRoleError))"
                            Class="create-event__submit-button"
                            Size="Size.Large"
@@ -623,7 +600,7 @@
                     {
                         <span>Create Event</span>
                     }
-                </MudButton>
+                </AppButton>
                 <MudMenu Icon="@Icons.Material.Filled.ArrowDropDown"
                          Variant="Variant.Filled"
                          Color="Color.Primary"
@@ -653,19 +630,19 @@
                 <div class="d-flex align-center justify-space-between w-100">
                     <MudText Typo="Typo.h6">@(_sessionWorkflow.IsNewSession ? "Add Session" : "Edit Session")</MudText>
                     <div class="d-flex align-center gap-1">
-                        <MudIconButton Icon="@Icons.Material.Filled.NavigateBefore"
+                        <AppIconButton Icon="@Icons.Material.Filled.NavigateBefore"
                                        Size="Size.Small"
                                        Disabled="@(!_sessionWorkflow.CanNavigatePrevious(sessions))"
                                        OnClick="@(() => _sessionWorkflow.NavigatePrevious(sessions, imagePreviewUrl))" />
-                        <MudIconButton Icon="@Icons.Material.Filled.NavigateNext"
+                        <AppIconButton Icon="@Icons.Material.Filled.NavigateNext"
                                        Size="Size.Small"
                                        Disabled="@(!_sessionWorkflow.CanNavigateNext(sessions))"
                                        OnClick="@(() => _sessionWorkflow.NavigateNext(sessions, imagePreviewUrl))" />
-                        <MudIconButton Icon="@Icons.Material.Filled.Add"
+                        <AppIconButton Icon="@Icons.Material.Filled.Add"
                                        Size="Size.Small"
                                        Color="Color.Primary"
                                        OnClick="@(() => _sessionWorkflow.AddFromDrawer(sessions, imagePreviewUrl))" />
-                        <MudIconButton Icon="@Icons.Material.Filled.Close"
+                        <AppIconButton Icon="@Icons.Material.Filled.Close"
                                        Size="Size.Small"
                                        OnClick="@(() => _sessionWorkflow.Close())" />
                     </div>

@@ -118,6 +118,7 @@ public static class PersistenceServicesRegistration
         // User & Authentication Repositories
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IExternalApiKeyRepository, ExternalApiKeyRepository>();
+        services.AddScoped<IExternalApiKeyQuotaRepository, ExternalApiKeyQuotaRepository>();
         services.AddScoped<IUserAuthenticationTokenRepository, UserAuthenticationTokenRepository>();
         services.AddScoped<IUserExternalLoginRepository, UserExternalLoginRepository>();
 
@@ -188,6 +189,9 @@ public static class PersistenceServicesRegistration
         // PDS Synchronization Repositories
         services.AddScoped<IPdsSyncOutboxRepository, PdsSyncOutboxRepository>();
 
+        // Generic Outbox Repositories
+        services.AddScoped<IOutboxRepository, OutboxRepository>();
+
         // Authorization (RBAC) Repositories
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IPermissionRepository, PermissionRepository>();
@@ -200,6 +204,9 @@ public static class PersistenceServicesRegistration
 
         // Notification Repository
         services.AddScoped<INotificationRepository, NotificationRepository>();
+
+        // Idempotency Repository
+        services.AddScoped<IIdempotencyRepository, IdempotencyRepository>();
 
         return services;
     }

@@ -4,6 +4,9 @@ ABOUTME: Captures required reads, core constraints, and outputs.
 ---
 name: auto-error-resolver
 description: Fixes C#/.NET build or runtime errors for {Project}.
+type: diagnostic
+enforcement: suggest
+priority: high
 tools: Read, Write, Edit, Bash
 ---
 
@@ -34,3 +37,18 @@ Resolve compilation/runtime errors with minimal changes while preserving Clean A
 ## Output
 
 - Error list fixed (code/file/line) and verification command(s).
+
+### Example Output
+
+```
+## Errors Resolved: 3
+
+| # | Error | File | Line | Fix |
+|---|-------|------|------|-----|
+| 1 | CS0246: Type 'EventDto' not found | GetEventsQueryHandler.cs | 34 | Added missing `using Event.Application.Features.Events.Dtos` |
+| 2 | CS1061: No 'ToDto()' on Event entity | GetEventsQueryHandler.cs | 42 | Replaced with AutoMapper `_mapper.Map<EventDto>(entity)` — repos return entities |
+| 3 | CS0534: Missing interface member | EventValidator.cs | 8 | Implemented `ValidateAsync` — validators are manually instantiated |
+
+**Verify:** `dotnet build --configuration Release --verbosity quiet`
+**Tests:** `dotnet test --project Event.Application.UnitTests --configuration Release --verbosity quiet`
+```

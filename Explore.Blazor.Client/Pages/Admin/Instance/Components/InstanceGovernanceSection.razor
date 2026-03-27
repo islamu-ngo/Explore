@@ -46,7 +46,7 @@
                     <MudIcon Icon="@Icons.Material.Filled.SwapHoriz" Color="@(DisplayMode == "multi-tenancy" ? Color.Error : Color.Default)" Size="Size.Small" />
                     <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Deployment Mode</MudText>
                     <MudTooltip Text="Single-Tenant runs one organization per instance. Multi-Tenant enables multiple isolated tenants.">
-                        <MudIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
+                        <AppIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
                     </MudTooltip>
                 </MudStack>
 
@@ -60,12 +60,12 @@
                         Enabling Multi-Tenancy allows creating multiple isolated tenants.
                         You can revert to Single-Tenant mode as long as only one tenant exists.
                     </MudAlert>
-                    <MudButton Variant="Variant.Outlined"
+                    <AppButton Variant="Variant.Outlined"
                                Color="Color.Warning"
                                StartIcon="@Icons.Material.Filled.SwapHoriz"
                                OnClick="OnEnableMultiTenantClicked">
                         Enable Multi-Tenant Mode
-                    </MudButton>
+                    </AppButton>
                 }
                 else
                 {
@@ -75,24 +75,24 @@
                             You currently have <strong>@_tenantCount</strong> tenants.
                             Please delete @(_tenantCount - 1) tenant(s) before reverting to Single-Tenant mode.
                         </MudAlert>
-                        <MudButton Variant="Variant.Outlined"
+                        <AppButton Variant="Variant.Outlined"
                                    Color="Color.Default"
                                    StartIcon="@Icons.Material.Filled.SwapHoriz"
                                    Disabled="true">
                             Revert to Single-Tenant (delete extra tenants first)
-                        </MudButton>
+                        </AppButton>
                     }
                     else
                     {
                         <MudAlert Severity="Severity.Info" Dense="true" Class="mt-1">
                             Only @_tenantCount tenant exists. You can safely revert to Single-Tenant mode.
                         </MudAlert>
-                        <MudButton Variant="Variant.Outlined"
+                        <AppButton Variant="Variant.Outlined"
                                    Color="Color.Warning"
                                    StartIcon="@Icons.Material.Filled.SwapHoriz"
                                    OnClick="OnRevertToSingleTenantClicked">
                             Revert to Single-Tenant Mode
-                        </MudButton>
+                        </AppButton>
                     }
                 }
             </MudStack>
@@ -124,20 +124,19 @@
                 <MudAlert Severity="Severity.Info" Dense="true" Class="mb-4">
                     You can revert to Single-Tenant mode later, as long as no more than one tenant exists.
                 </MudAlert>
-                <MudTextField @bind-Value="_multiTenantConfirmText"
+                <AppTextField T="string" @bind-Value="_multiTenantConfirmText"
                               Label="Type ENABLE MULTI-TENANCY to confirm"
                               Variant="Variant.Outlined"
                               Immediate="true"
                               HelperText="This action changes how your platform is administered." />
             </DialogContent>
             <DialogActions>
-                <MudButton OnClick="CancelMultiTenantDialog">Cancel</MudButton>
-                <MudButton Color="Color.Warning"
-                           Variant="Variant.Filled"
+                <AppButton OnClick="CancelMultiTenantDialog">Cancel</AppButton>
+                <AppButton Color="Color.Warning"
                            Disabled="@(!IsMultiTenantConfirmValid)"
                            OnClick="ConfirmMultiTenant">
                     Confirm — Enable Multi-Tenant
-                </MudButton>
+                </AppButton>
             </DialogActions>
         </MudDialog>
 
@@ -156,10 +155,10 @@
                 </MudText>
             </DialogContent>
             <DialogActions>
-                <MudButton OnClick="@(() => _showSingleTenantDialog = false)">Cancel</MudButton>
-                <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="ConfirmSingleTenant">
+                <AppButton OnClick="@(() => _showSingleTenantDialog = false)">Cancel</AppButton>
+                <AppButton OnClick="ConfirmSingleTenant">
                     Confirm — Revert to Single-Tenant
-                </MudButton>
+                </AppButton>
             </DialogActions>
         </MudDialog>
         }
@@ -228,7 +227,7 @@
             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
                 <MudText Typo="Typo.h6" Style="font-weight:600;">Runtime Render Policy</MudText>
                 <MudTooltip Text="Choose a preset strategy for route rendering. All Interactive Server is recommended for most deployments.">
-                    <MudIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
+                    <AppIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
                 </MudTooltip>
             </MudStack>
 
@@ -245,7 +244,7 @@
                                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
                                     <MudText Typo="Typo.subtitle2" Style="font-weight:600;">@option.Label</MudText>
                                     <MudTooltip Text="@option.HelpText">
-                                        <MudIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
+                                        <AppIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
                                     </MudTooltip>
                                 </MudStack>
                                 @if (IsRecommendedPreset(option.Value))
@@ -274,7 +273,7 @@
                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
                             <MudText Typo="Typo.subtitle2" Style="font-weight:600;">Global Fallback</MudText>
                             <MudTooltip Text="Used when a route-group specific override is unavailable.">
-                                <MudIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
+                                <AppIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
                             </MudTooltip>
                         </MudStack>
 
@@ -303,7 +302,7 @@
                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
                                 <MudText Typo="Typo.subtitle2" Style="font-weight:600;">@group.Label</MudText>
                                 <MudTooltip Text="@group.HelpText">
-                                    <MudIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
+                                    <AppIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
                                 </MudTooltip>
                             </MudStack>
 
@@ -341,7 +340,7 @@
             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
                 <MudText Typo="Typo.subtitle1" Style="font-weight:600;">Tenant Render Policy Delegation</MudText>
                 <MudTooltip Text="When enabled, tenants can override render policy settings. Use per-route-group locks to restrict specific areas.">
-                    <MudIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
+                    <AppIconButton Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
                 </MudTooltip>
             </MudStack>
 

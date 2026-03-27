@@ -1,3 +1,6 @@
+// ABOUTME: REST API controller for event CRUD operations with advanced filtering, pagination, and HATEOAS support.
+// ABOUTME: Supports specification-based queries, soft-delete recovery, and complex event discovery with multiple filter dimensions.
+
 using Asp.Versioning;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Event;
@@ -28,18 +31,15 @@ namespace Explore.API.Controllers;
 public class EventController : ControllerBase
 {
     private readonly IMediator _mediator;
-    private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<EventController> _logger;
     private readonly IResourceAssembler<EventDto, EventListDto> _resourceAssembler;
 
     public EventController(
         IMediator mediator,
-        IHttpContextAccessor httpContextAccessor,
         ILogger<EventController> logger,
         IResourceAssembler<EventDto, EventListDto> resourceAssembler)
     {
         _mediator = mediator;
-        _httpContextAccessor = httpContextAccessor;
         _logger = logger;
         _resourceAssembler = resourceAssembler;
     }
@@ -225,11 +225,8 @@ public class EventController : ControllerBase
     public async Task<ActionResult<HalResource<EventDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var @event = await _mediator.Send(new GetEventDetailsRequest { Id = id }, cancellationToken);
-
-        if (@event is null)
-        {
+        if (@event == null)
             return NotFound();
-        }
 
         var halResource = await _resourceAssembler.ToResource(@event, HttpContext);
         return Ok(halResource);
@@ -306,9 +303,14 @@ public class EventController : ControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventCommand command, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventRequestDto dto, CancellationToken cancellationToken = default)
     {
-        command.Id = id;
+        var command = new UpdateEventCommand
+        {
+            Id = id,
+            EventDto = dto.EventDto,
+            EventStatusDto = dto.EventStatusDto
+        };
         var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)
@@ -332,30 +334,17 @@ public class EventController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        try
+        var userId = GetCurrentUserId();
+
+        if (string.IsNullOrEmpty(userId))
         {
-            var userId = GetCurrentUserId();
-
-            if (string.IsNullOrEmpty(userId))
-            {
-                return Unauthorized(new { error = "User ID not found in token" });
-            }
-
-            var command = new DeleteEventCommand { Id = id, UserId = userId };
-            var result = await _mediator.Send(command, cancellationToken);
-
-            if (!result)
-            {
-                return NotFound(new { error = "Event not found or you don't have permission to delete it" });
-            }
-
-            return NoContent();
+            return Unauthorized(new { error = "User ID not found in token" });
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error deleting event {EventId}", id);
-            return StatusCode(500, new { error = ex.Message });
-        }
+
+        var command = new DeleteEventCommand { Id = id, UserId = userId };
+        await _mediator.Send(command, cancellationToken);
+
+        return NoContent();
     }
 
     /// <summary>
@@ -363,10 +352,10 @@ public class EventController : ControllerBase
     /// </summary>
     private string? GetCurrentUserId()
     {
-        return _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
-            ?? _httpContextAccessor.HttpContext?.User?.FindFirst(
+        return HttpContext.User?.FindFirst("sub")?.Value
+            ?? HttpContext.User?.FindFirst(
                 "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-            ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
+            ?? HttpContext.User?.FindFirst("sid")?.Value;
     }
 
     #region Event Aspects
@@ -385,11 +374,6 @@ public class EventController : ControllerBase
     public async Task<ActionResult<EventIslamicAspectDto>> GetIslamicAspect(Guid id, CancellationToken cancellationToken = default)
     {
         var aspect = await _mediator.Send(new GetEventIslamicAspectRequest { EventId = id }, cancellationToken);
-
-        if (aspect == null)
-        {
-            return NotFound(new { error = "Islamic aspect not found for this event." });
-        }
 
         return Ok(aspect);
     }
@@ -444,12 +428,7 @@ public class EventController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> DeleteIslamicAspect(Guid id, CancellationToken cancellationToken = default)
     {
-        var result = await _mediator.Send(new DeleteEventIslamicAspectCommand { EventId = id }, cancellationToken);
-
-        if (!result)
-        {
-            return NotFound(new { error = "Islamic aspect not found for this event." });
-        }
+        await _mediator.Send(new DeleteEventIslamicAspectCommand { EventId = id }, cancellationToken);
 
         return NoContent();
     }
@@ -468,11 +447,6 @@ public class EventController : ControllerBase
     public async Task<ActionResult<EventTechAspectDto>> GetTechAspect(Guid id, CancellationToken cancellationToken = default)
     {
         var aspect = await _mediator.Send(new GetEventTechAspectRequest { EventId = id }, cancellationToken);
-
-        if (aspect == null)
-        {
-            return NotFound(new { error = "Tech aspect not found for this event." });
-        }
 
         return Ok(aspect);
     }
@@ -527,12 +501,7 @@ public class EventController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> DeleteTechAspect(Guid id, CancellationToken cancellationToken = default)
     {
-        var result = await _mediator.Send(new DeleteEventTechAspectCommand { EventId = id }, cancellationToken);
-
-        if (!result)
-        {
-            return NotFound(new { error = "Tech aspect not found for this event." });
-        }
+        await _mediator.Send(new DeleteEventTechAspectCommand { EventId = id }, cancellationToken);
 
         return NoContent();
     }
@@ -546,4 +515,6 @@ public class EventController : ControllerBase
             "or" => TagFilterMode.Or,
             _ => defaultValue
         };
+
+    public sealed record UpdateEventRequestDto(UpdateEventDto? EventDto, UpdateEventStatusDto? EventStatusDto);
 }

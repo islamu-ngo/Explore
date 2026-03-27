@@ -39,7 +39,7 @@ public class EventSeriesService : IEventSeriesService
     {
         try
         {
-            return await _apiClient.EventseriesGET2Async(id, ct);
+            return await _apiClient.EventseriesGET3Async(id, ct);
         }
         catch (Exception ex)
         {

@@ -94,14 +94,14 @@
 /* ===== Element: org-profile__timeline ===== */
 ::deep .org-profile__timeline {
     position: relative;
-    padding-left: 2rem;
+    padding-inline-start: 2rem;
 }
 
 /* Vertical connecting line */
 ::deep .org-profile__timeline::before {
     content: "";
     position: absolute;
-    left: 0.4375rem;
+    inset-inline-start: 0.4375rem;
     top: 0.625rem;
     bottom: 0.625rem;
     width: 2px;
@@ -125,7 +125,7 @@
     gap: var(--isl-space-3);
     margin-bottom: var(--isl-space-3);
     position: relative;
-    left: -2rem;
+    inset-inline-start: -2rem;
 }
 
 /* ===== Element: org-profile__timeline-dot ===== */
@@ -213,15 +213,15 @@
     }
 
     ::deep .org-profile__identity {
-        text-align: left;
+        text-align: start;
     }
 
     ::deep .org-profile__timeline {
-        padding-left: 1.5rem;
+        padding-inline-start: 1.5rem;
     }
 
     ::deep .org-profile__timeline-date {
-        left: -1.5rem;
+        inset-inline-start: -1.5rem;
     }
 
     ::deep .org-profile__timeline-card-image {

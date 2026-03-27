@@ -1,10 +1,11 @@
 // ABOUTME: Lists external API keys that the current user is allowed to manage.
-// ABOUTME: Combines personal keys with organization-owned keys where the caller has organization-manage permission.
+// ABOUTME: Aggregates personal, organization, group, tenant, and instance-admin keys based on caller authority.
 
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.ExternalApiKey;
 using Explore.Application.Features.ExternalApiKeys.Requests.Queries;
+using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using MediatR;
 
@@ -14,15 +15,21 @@ public class GetExternalApiKeyListRequestHandler : IRequestHandler<GetExternalAp
 {
     private readonly IExternalApiKeyRepository _externalApiKeyRepository;
     private readonly IOrganizationMemberRepository _organizationMemberRepository;
+    private readonly IGroupMemberRepository _groupMemberRepository;
+    private readonly IAdminContext _adminContext;
     private readonly IUserContext _userContext;
 
     public GetExternalApiKeyListRequestHandler(
         IExternalApiKeyRepository externalApiKeyRepository,
         IOrganizationMemberRepository organizationMemberRepository,
+        IGroupMemberRepository groupMemberRepository,
+        IAdminContext adminContext,
         IUserContext userContext)
     {
         _externalApiKeyRepository = externalApiKeyRepository;
         _organizationMemberRepository = organizationMemberRepository;
+        _groupMemberRepository = groupMemberRepository;
+        _adminContext = adminContext;
         _userContext = userContext;
     }
 
@@ -35,11 +42,33 @@ public class GetExternalApiKeyListRequestHandler : IRequestHandler<GetExternalAp
 
         var organizationIds = await _organizationMemberRepository.GetOrganizationIdsWhereUserHasPermission(
             currentUserId,
-            Explore.Domain.Constants.PermissionCodes.OrganizationManage);
+            PermissionCodes.OrganizationManage);
 
         if (organizationIds.Count > 0)
         {
             visibleKeys.AddRange(await _externalApiKeyRepository.GetByOwners(ExternalApiKeyOwnerType.Organization, organizationIds));
+        }
+
+        var groupIds = await _groupMemberRepository.GetGroupIdsWhereUserHasPermission(
+            currentUserId,
+            PermissionCodes.GroupManage);
+
+        if (groupIds.Count > 0)
+        {
+            visibleKeys.AddRange(await _externalApiKeyRepository.GetByOwners(ExternalApiKeyOwnerType.Group, groupIds));
+        }
+
+        var tenantIds = await _adminContext.GetAdminTenantIdsAsync(cancellationToken);
+
+        if (tenantIds.Count > 0)
+        {
+            visibleKeys.AddRange(await _externalApiKeyRepository.GetByOwners(ExternalApiKeyOwnerType.Tenant, tenantIds));
+        }
+
+        if (await _adminContext.IsInstanceAdminAsync(cancellationToken))
+        {
+            visibleKeys.AddRange(await _externalApiKeyRepository.GetByOwnerIgnoringTenantFilter(
+                ExternalApiKeyOwnerType.InstanceAdmin, currentUserId));
         }
 
         return visibleKeys
@@ -48,13 +77,19 @@ public class GetExternalApiKeyListRequestHandler : IRequestHandler<GetExternalAp
             {
                 Id = key.Id,
                 Name = key.Name,
+                Description = key.Description,
                 KeyId = key.KeyId,
+                MaskedKeyId = MaskKeyId(key.KeyId),
                 OwnerType = key.OwnerType,
                 OwnerId = key.OwnerId,
                 Scopes = SplitScopes(key.Scopes),
-                Status = key.Status,
+                Status = (ExternalApiKeyStatusEnum)key.ExternalApiKeyStatusId,
+                StatusName = ((ExternalApiKeyStatusEnum)key.ExternalApiKeyStatusId).ToString(),
                 ExpiresAt = key.ExpiresAt,
-                LastUsedAt = key.LastUsedAt
+                LastUsedAt = key.LastUsedAt,
+                CreditPeriod = (ExternalApiKeyCreditPeriodEnum)key.ExternalApiKeyCreditPeriodId,
+                CreditLimit = key.CreditLimit,
+                MaxRolloverCredits = key.MaxRolloverCredits
             })
             .ToList();
     }
@@ -64,5 +99,12 @@ public class GetExternalApiKeyListRequestHandler : IRequestHandler<GetExternalAp
         return scopes
             .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .ToList();
+    }
+
+    private static string MaskKeyId(string keyId)
+    {
+        return keyId.Length > 4
+            ? string.Concat("".PadLeft(keyId.Length - 4, '\u2022'), keyId.AsSpan(keyId.Length - 4))
+            : keyId;
     }
 }

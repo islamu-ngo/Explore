@@ -16,21 +16,18 @@
     <div class="d-flex flex-wrap align-end justify-space-between gap-4 mb-8">
         <div>
             <MudText Typo="Typo.overline" Class="mud-text-secondary" Style="letter-spacing: 0.18em;">MANAGE</MudText>
-            <MudText Typo="Typo.h4">My Events</MudText>
+            <MudText Typo="Typo.h4" HtmlTag="h1">My Events</MudText>
         </div>
         <div class="d-flex flex-wrap gap-3">
-            <MudButton Variant="Variant.Outlined"
-                       Color="Color.Primary"
+            <AppButton Variant="Variant.Outlined"
                        StartIcon="@Icons.Material.Filled.Business"
                        OnClick="NavigateToCreateOrganization">
                 Create Organization
-            </MudButton>
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.Add"
+            </AppButton>
+            <AppButton StartIcon="@Icons.Material.Filled.Add"
                        OnClick="NavigateToCreateEvent">
                 Organize Event
-            </MudButton>
+            </AppButton>
         </div>
     </div>
 
@@ -45,12 +42,14 @@
     }
     else if (!string.IsNullOrEmpty(_errorMessage))
     {
-        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="my-4">
-            @_errorMessage
-            <MudButton Variant="Variant.Text" Color="Color.Inherit" OnClick="RetryLoadAsync" Class="ml-4">
-                Retry
-            </MudButton>
-        </MudAlert>
+        <div role="alert">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="my-4">
+                @_errorMessage
+                <AppButton Variant="Variant.Text" Color="Color.Inherit" OnClick="RetryLoadAsync" Class="ml-4">
+                    Retry
+                </AppButton>
+            </MudAlert>
+        </div>
     }
     else
     {
@@ -77,7 +76,7 @@
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" sm="12" md="6">
-                <MudTextField @bind-Value="_searchString"
+                <AppTextField T="string" @bind-Value="_searchString"
                               Placeholder="Search events..."
                               Adornment="Adornment.Start"
                               AdornmentIcon="@Icons.Material.Filled.Search"
@@ -113,7 +112,7 @@
                 <Virtualize Items="@AllFilteredEvents" Context="evt" OverscanCount="4">
                     <ItemContent>
                         <MudItem xs="12" sm="6" md="4">
-                            <MudCard Class="h-100 d-flex flex-column position-relative">
+                            <AppCard Class="h-100 d-flex flex-column position-relative">
                                 <div style="position: absolute; top: 12px; right: 12px; z-index: 10;">
                                     <MudMenu Icon="@Icons.Material.Filled.MoreVert" AriaLabel="Event options" Dense="true" Color="Color.Default" Variant="Variant.Filled" Size="Size.Small" Style="background: rgba(255,255,255,0.8); backdrop-filter: blur(4px); border-radius: 8px;">
                                         @if (CanEditEvent(evt))
@@ -174,24 +173,23 @@
                                 </MudCardContent>
 
                                 <MudCardActions>
-                                    <MudButton Variant="Variant.Text"
-                                               Color="Color.Primary"
+                                    <AppButton Variant="Variant.Text"
                                                Href="@($"/events/{evt.Id}")"
                                                EndIcon="@Icons.Material.Filled.ArrowForward">
                                         Details
-                                    </MudButton>
+                                    </AppButton>
                                     <MudSpacer />
                                     @if (CanEditEvent(evt))
                                     {
-                                        <MudButton Variant="Variant.Text" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Edit" OnClick="@(() => EditEvent(evt))">Edit</MudButton>
+                                        <AppButton Variant="Variant.Text" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Edit" OnClick="@(() => EditEvent(evt))">Edit</AppButton>
                                     }
                                 </MudCardActions>
-                            </MudCard>
+                            </AppCard>
                         </MudItem>
                     </ItemContent>
                     <Placeholder>
                         <MudItem xs="12" sm="6" md="4">
-                            <MudCard Class="h-100 d-flex flex-column">
+                            <AppCard Class="h-100 d-flex flex-column">
                                 <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
                                 <MudCardContent>
                                     <MudSkeleton Width="40%" Class="mb-1" />
@@ -199,7 +197,7 @@
                                     <MudSkeleton Width="100%" />
                                     <MudSkeleton Width="60%" />
                                 </MudCardContent>
-                            </MudCard>
+                            </AppCard>
                         </MudItem>
                     </Placeholder>
                 </Virtualize>

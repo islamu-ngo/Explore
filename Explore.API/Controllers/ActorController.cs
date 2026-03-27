@@ -1,3 +1,6 @@
+// ABOUTME: REST API controller for actor (speaker/performer) CRUD operations with HATEOAS support.
+// ABOUTME: Manages speaker profiles, credentials, and associations with events and organizations.
+
 using Asp.Versioning;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Actor;
@@ -24,19 +27,13 @@ namespace Explore.API.Controllers;
 public class ActorController : ControllerBase
 {
     private readonly IMediator _mediator;
-    private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly ILogger<ActorController> _logger;
     private readonly IResourceAssembler<ActorDto, ActorListDto> _resourceAssembler;
 
     public ActorController(
         IMediator mediator,
-        IHttpContextAccessor httpContextAccessor,
-        ILogger<ActorController> logger,
         IResourceAssembler<ActorDto, ActorListDto> resourceAssembler)
     {
         _mediator = mediator;
-        _httpContextAccessor = httpContextAccessor;
-        _logger = logger;
         _resourceAssembler = resourceAssembler;
     }
 
@@ -85,11 +82,8 @@ public class ActorController : ControllerBase
     public async Task<ActionResult<HalResource<ActorDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var actor = await _mediator.Send(new GetActorDetailsRequest { Id = id }, cancellationToken);
-
-        if (actor is null)
-        {
-            return NotFound(new { error = "Actor not found" });
-        }
+        if (actor == null)
+            return NotFound();
 
         var halResource = await _resourceAssembler.ToResource(actor, HttpContext);
         return Ok(halResource);
@@ -108,11 +102,8 @@ public class ActorController : ControllerBase
     public async Task<ActionResult<HalResource<ActorDto>>> GetByDid(string did, CancellationToken cancellationToken = default)
     {
         var actor = await _mediator.Send(new GetActorByDidRequest { Did = did }, cancellationToken);
-
-        if (actor is null)
-        {
-            return NotFound(new { error = "Actor not found" });
-        }
+        if (actor == null)
+            return NotFound();
 
         var halResource = await _resourceAssembler.ToResource(actor, HttpContext);
         return Ok(halResource);
@@ -127,9 +118,18 @@ public class ActorController : ControllerBase
     [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<ActorListDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "ListData")]
-    public async Task<ActionResult<HalCollectionResource<ActorListDto>>> GetByTenant(Guid tenantId, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<HalCollectionResource<ActorListDto>>> GetByTenant(
+        Guid tenantId,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken cancellationToken = default)
     {
-        var actors = await _mediator.Send(new GetActorsByTenantRequest { TenantId = tenantId }, cancellationToken);
+        var actors = await _mediator.Send(new GetActorsByTenantRequest
+        {
+            TenantId = tenantId,
+            PageNumber = pageNumber,
+            PageSize = pageSize
+        }, cancellationToken);
 
         var halResource = await _resourceAssembler.ToCollectionResource(
             actors,
@@ -167,25 +167,26 @@ public class ActorController : ControllerBase
     }
 
     /// <summary>
-    /// Update an existing actor.
+    /// Update an existing actor. Supports full update (ActorDto) or targeted appearance update (AppearanceDto).
+    /// Supply only the DTO(s) to update; null DTOs are ignored.
     /// </summary>
     [HttpPut("{id:guid}", Name = RouteNames.UpdateActor)]
     [EndpointSummary("Update Actor")]
-    [EndpointDescription("Update an existing actor's information.")]
+    [EndpointDescription("Update an existing actor. Supports full update via ActorDto or targeted appearance updates via AppearanceDto. Null DTOs are ignored.")]
     [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateActorDto dto, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateActorRequestDto dto, CancellationToken cancellationToken = default)
     {
-        if (id != dto.Id)
+        var command = new UpdateActorCommand
         {
-            return BadRequest(new { error = "Actor ID mismatch" });
-        }
-
-        var command = new UpdateActorCommand { ActorDto = dto };
+            Id = id,
+            ActorDto = dto.ActorDto,
+            AppearanceDto = dto.AppearanceDto
+        };
         var response = await _mediator.Send(command, cancellationToken);
 
         if (!response.Success)
@@ -210,13 +211,10 @@ public class ActorController : ControllerBase
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteActorCommand { Id = id };
-        var result = await _mediator.Send(command, cancellationToken);
-
-        if (!result)
-        {
-            return NotFound(new { error = "Actor not found or you don't have permission to delete it" });
-        }
+        await _mediator.Send(command, cancellationToken);
 
         return NoContent();
     }
+
+    public sealed record UpdateActorRequestDto(UpdateActorDto? ActorDto, UpdateActorAppearanceDto? AppearanceDto);
 }

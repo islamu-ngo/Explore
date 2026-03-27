@@ -19,7 +19,7 @@ public class EventSessionAgendaItemService : IEventSessionAgendaItemService
     {
         try
         {
-            return await _client.BySession2Async(sessionId);
+            return await _client.BySession3Async(sessionId);
         }
         catch (Exception ex)
         {

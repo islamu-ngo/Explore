@@ -12,6 +12,21 @@ internal sealed class GlobalExceptionHandler(
     ILogger<GlobalExceptionHandler> logger,
     IHostEnvironment hostEnvironment) : IExceptionHandler
 {
+    /// <summary>
+    /// Maps HTTP status codes to stable IANA RFC 9110 type URIs for ProblemDetails.
+    /// </summary>
+    private static readonly IReadOnlyDictionary<int, string> ProblemTypeUris =
+        new Dictionary<int, string>
+        {
+            [StatusCodes.Status400BadRequest] = "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+            [StatusCodes.Status401Unauthorized] = "https://tools.ietf.org/html/rfc9110#section-15.5.2",
+            [StatusCodes.Status403Forbidden] = "https://tools.ietf.org/html/rfc9110#section-15.5.4",
+            [StatusCodes.Status404NotFound] = "https://tools.ietf.org/html/rfc9110#section-15.5.5",
+            [StatusCodes.Status409Conflict] = "https://tools.ietf.org/html/rfc9110#section-15.5.10",
+            [StatusCodes.Status422UnprocessableEntity] = "https://tools.ietf.org/html/rfc9110#section-15.5.21",
+            [StatusCodes.Status500InternalServerError] = "https://tools.ietf.org/html/rfc9110#section-15.6.1",
+        };
+
     public async ValueTask<bool> TryHandleAsync(
         HttpContext httpContext,
         Exception exception,
@@ -48,6 +63,10 @@ internal sealed class GlobalExceptionHandler(
 
         httpContext.Response.StatusCode = statusCode;
 
+        var typeUri = ProblemTypeUris.TryGetValue(statusCode, out var uri)
+            ? uri
+            : $"https://tools.ietf.org/html/rfc9110#status.{statusCode}";
+
         return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
         {
             HttpContext = httpContext,
@@ -57,7 +76,7 @@ internal sealed class GlobalExceptionHandler(
                 Status = statusCode,
                 Title = title,
                 Detail = detail,
-                Type = $"https://httpstatuses.com/{statusCode}",
+                Type = typeUri,
                 Instance = httpContext.Request.Path
             }
         });

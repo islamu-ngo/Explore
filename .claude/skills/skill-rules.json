@@ -3,7 +3,7 @@
   "version": "2.0",
   "description": "Skill activation triggers for .NET Clean Architecture solutions (API, Application, Persistence, Blazor).",
   "customizationNote": "Patterns are project-agnostic by default. If your solution uses non-standard naming, adjust path patterns to your folder structure.",
-  "lastUpdated": "2026-02-24",
+  "lastUpdated": "2026-03-27",
   "skills": {
     "clean-architecture-rules": {
       "type": "guardrail",
@@ -248,7 +248,7 @@
       "type": "domain",
       "enforcement": "suggest",
       "priority": "medium",
-      "description": "EF Core patterns for PostgreSQL including DbContext configuration, entity mappings, migrations, repository pattern, specification pattern, and JSONB querying.",
+      "description": "EF Core patterns for PostgreSQL including DbContext configuration, entity mappings, migrations, repository pattern, specification pattern.",
       "promptTriggers": {
         "keywords": [
           "database",
@@ -265,7 +265,6 @@
           "include",
           "navigation",
           "specification",
-          "jsonb",
           "query filter",
           "soft delete"
         ],
@@ -338,6 +337,220 @@
           "BusinessMetrics",
           "CorrelationId",
           "PerformanceBehavior"
+        ]
+      }
+    },
+    "blazor-css-isolation": {
+      "type": "domain",
+      "enforcement": "suggest",
+      "priority": "high",
+      "description": "Blazor CSS isolation patterns with BEM methodology, @layer architecture, scoped styling, and ::deep selector for child components.",
+      "promptTriggers": {
+        "keywords": [
+          "css isolation",
+          "scoped css",
+          "razor css",
+          "bem",
+          "@layer",
+          "css layers",
+          "::deep",
+          "css nesting",
+          "container queries",
+          "design tokens",
+          "css variables",
+          "custom properties"
+        ],
+        "intentPatterns": [
+          "(style|css).*?(component|blazor|razor)",
+          "(create|add|fix).*?(css|styling|layer)",
+          "(override).*?(mudblazor|mud)"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": [
+          "**/*.razor.css",
+          "**/wwwroot/css/**/*.css"
+        ],
+        "contentPatterns": [
+          "::deep",
+          "@layer",
+          "--isl-",
+          "display: contents",
+          ".isl-"
+        ]
+      }
+    },
+    "agentic-research": {
+      "type": "workflow",
+      "enforcement": "suggest",
+      "priority": "medium",
+      "description": "Local-first research workflow for selecting the right evidence source before using official docs or external research.",
+      "promptTriggers": {
+        "keywords": [
+          "research",
+          "investigate",
+          "look into",
+          "find out",
+          "documentation",
+          "how does",
+          "why does",
+          "what is the pattern"
+        ],
+        "intentPatterns": [
+          "(research|investigate|explore).*?(pattern|approach|library)",
+          "(find|check).*?(documentation|docs|examples)",
+          "(look into|understand).*?(how|why|what)"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": [],
+        "contentPatterns": []
+      }
+    },
+    "prd": {
+      "type": "workflow",
+      "enforcement": "suggest",
+      "priority": "medium",
+      "description": "Generate a Product Requirements Document (PRD) for feature planning and requirements gathering.",
+      "promptTriggers": {
+        "keywords": [
+          "prd",
+          "product requirements",
+          "requirements document",
+          "plan this feature",
+          "spec out",
+          "feature spec",
+          "product spec"
+        ],
+        "intentPatterns": [
+          "(create|write|generate).*?(prd|requirements|spec)",
+          "(plan|define).*?(feature|product|requirement)",
+          "(spec out|document).*?(feature|requirement)"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": [
+          "**/dev/active/prd.md",
+          "**/dev/active/**/*.md"
+        ],
+        "contentPatterns": []
+      }
+    },
+    "outbox-pattern": {
+      "type": "domain",
+      "enforcement": "suggest",
+      "priority": "high",
+      "description": "Transactional outbox pattern for reliable at-least-once event delivery with dead-letter handling.",
+      "promptTriggers": {
+        "keywords": [
+          "outbox",
+          "outbox message",
+          "outbox processor",
+          "dead letter",
+          "message dispatch",
+          "at-least-once",
+          "event delivery"
+        ],
+        "intentPatterns": [
+          "(create|implement|add).*?(outbox|message dispatch)",
+          "(dispatch|publish|send).*?(event|message|outbox)",
+          "(dead letter|retry).*?(message|outbox)"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": [
+          "**/OutboxMessage.cs",
+          "**/OutboxProcessor.cs",
+          "**/IOutboxRepository.cs",
+          "**/IOutboxMessageDispatcher.cs"
+        ],
+        "contentPatterns": [
+          "OutboxMessage",
+          "OutboxProcessor",
+          "IOutboxMessageDispatcher",
+          "OutboxMessageStatus",
+          "DeadLettered"
+        ]
+      }
+    },
+    "design-system": {
+      "type": "domain",
+      "enforcement": "suggest",
+      "priority": "high",
+      "description": "CSS @layer architecture, 3-tier design tokens, MudBlazor wrapper components, and appearance builder patterns.",
+      "promptTriggers": {
+        "keywords": [
+          "design system",
+          "design tokens",
+          "wrapper component",
+          "AppButton",
+          "AppCard",
+          "AppTextField",
+          "AppIconButton",
+          "AppDialogShell",
+          "DialogOptionsFactory",
+          "AppearanceStyleBuilder",
+          "appearance editor"
+        ],
+        "intentPatterns": [
+          "(create|modify|style).*?(wrapper|app component)",
+          "(design|token|appearance).*?(system|builder|style)",
+          "(dialog|factory).*?(options|preset)"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": [
+          "**/Components/Common/App*.razor",
+          "**/wwwroot/css/tokens.css",
+          "**/wwwroot/css/layers.css",
+          "**/Helpers/AppearanceStyleBuilder.cs",
+          "**/Services/DialogOptionsFactory.cs"
+        ],
+        "contentPatterns": [
+          "AppButton",
+          "AppCard",
+          "AppTextField",
+          "AppDialogShell",
+          "DialogOptionsFactory",
+          "AppearanceStyleBuilder",
+          "display: contents"
+        ]
+      }
+    },
+    "footer-management": {
+      "type": "domain",
+      "enforcement": "suggest",
+      "priority": "medium",
+      "description": "Footer customization system with template-based rendering, governance locking, and social link management.",
+      "promptTriggers": {
+        "keywords": [
+          "footer",
+          "footer template",
+          "footer link",
+          "footer group",
+          "footer governance",
+          "social links",
+          "footer settings"
+        ],
+        "intentPatterns": [
+          "(create|modify|configure).*?(footer|social link)",
+          "(footer).*?(template|governance|lock|setting)",
+          "(manage|admin).*?(footer|link group)"
+        ]
+      },
+      "fileTriggers": {
+        "pathPatterns": [
+          "**/Footer*.razor",
+          "**/FooterController.cs",
+          "**/FooterAdminService.cs",
+          "**/TenantFooterLink*.cs"
+        ],
+        "contentPatterns": [
+          "TenantFooterLinkGroup",
+          "TenantFooterLink",
+          "FooterAdminService",
+          "footer.template",
+          "footer.enabled"
         ]
       }
     }

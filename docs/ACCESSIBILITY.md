@@ -333,6 +333,68 @@ Key experience classes to test:
 
 ---
 
+## Architecture Test Coverage
+
+Convention tests in `Event.Architecture.Tests/` enforce accessibility rules at build time.
+
+### AccessibilityConventionTests (8 tests)
+
+| Test | Rule |
+|---|---|
+| `RoutablePages_MustContainH1Heading` | Every routable page has `<h1>` (excludes Settings wrapper pages where `<h1>` is in active tab) |
+| `MainLayout_MustContainSkipLink` | `MainLayout.razor` contains skip-to-content link |
+| `MainLayout_MustContainMainLandmark` | `<main>` landmark present |
+| `MainLayout_MustContainHeaderLandmark` | `<header>` landmark present |
+| `MainLayout_MustContainNavigationLandmark` | `<nav>` with `aria-label` present |
+| `MainLayout_MustContainAriaLiveRegions` | Polite and assertive `aria-live` regions present |
+| `ScopedCss_MustNotUsePhysicalDirectionProperties` | **ADVISORY** — flags `margin-left/right`, `padding-left/right`, `border-left/right` in `.razor.css` (Phase 5 RTL fix) |
+| `ScopedCss_MustNotUsePhysicalPositionProperties` | **ADVISORY** — flags `left:`/`right:` positioning in `.razor.css` |
+
+### AuthorizationParityTests (4 tests)
+
+| Test | Rule |
+|---|---|
+| `RegisteredResourceKinds_ShouldHave_FallbackCase` | Every resource kind has a fallback case in authorization |
+| `RegisteredResourceKinds_ShouldHave_CerbosPolicy` | Every resource kind maps to a Cerbos policy file |
+| `AllPermissionActions_ShouldBe_MappedInToActionString` | All permission actions have string mappings |
+| `CerbosPolicies_ShouldHave_FallbackCase` | Every Cerbos policy defines a fallback case |
+
+### Service Integration Guide
+
+**Announcer in data-loading pages:**
+```csharp
+@inject IAccessibilityAnnouncerService Announcer
+
+private async Task LoadData()
+{
+    _isLoading = true;
+    var result = await EventService.GetEventsAsync();
+    _isLoading = false;
+    await Announcer.AnnouncePoliteAsync($"{result.Count} events loaded");
+}
+```
+
+**Focus management after navigation:**
+```csharp
+@inject IAccessibilityFocusService Focus
+@inject NavigationManager Navigation
+
+protected override void OnInitialized()
+{
+    Navigation.LocationChanged += async (_, _) =>
+        await Focus.FocusOnNavigateAsync();
+}
+```
+
+**Focus save/restore in dialogs:**
+```csharp
+await Focus.SaveFocusAsync();
+var dialogResult = await DialogService.ShowAsync<MyDialog>();
+await Focus.RestoreFocusAsync(fallbackSelector: "#trigger-button");
+```
+
+---
+
 ## Key Files
 
 | File | Purpose |

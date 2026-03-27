@@ -12,7 +12,7 @@
         </MudText>
         @if (ShowRemoveButton)
         {
-            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+            <AppIconButton Icon="@Icons.Material.Filled.Delete"
                            Color="Color.Error"
                            Size="Size.Small"
                            OnClick="@OnRemoveClicked"
@@ -24,7 +24,7 @@
 
     <MudGrid Spacing="2">
         <MudItem xs="12">
-            <MudTextField @bind-Value="Session.Title"
+            <AppTextField T="string" @bind-Value="Session.Title"
                           Label="Session Title"
                           Variant="Variant.Outlined"
                           FullWidth
@@ -32,7 +32,7 @@
         </MudItem>
 
         <MudItem xs="12">
-            <MudTextField @bind-Value="Session.Description"
+            <AppTextField T="string" @bind-Value="Session.Description"
                           Label="Session Description"
                           Variant="Variant.Outlined"
                           Lines="2"

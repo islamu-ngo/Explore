@@ -4,9 +4,10 @@ ABOUTME: Specifies required reads, enforcement rules, and outputs.
 ---
 name: code-architecture-reviewer
 description: Reviews code for Clean Architecture + CQRS compliance.
-type: domain
+type: review
 enforcement: enforce
 priority: high
+tools: Read, Glob, Grep
 ---
 
 # Code Architecture Reviewer
@@ -36,3 +37,18 @@ Detect Clean Architecture/CQRS violations and provide exact fixes.
 ## Output
 
 - Violations list with file/line and minimal fix steps.
+
+### Example Output
+
+```
+## Architecture Review: Events Feature
+
+| # | Severity | Violation | File | Line | Fix |
+|---|----------|-----------|------|------|-----|
+| 1 | BLOCK | Repository returns EventDto | EventRepository.cs | 45 | Return Event entity; map in handler |
+| 2 | BLOCK | Validator injected via DI | CreateEventHandler.cs | 12 | `var validator = new CreateEventValidator()` |
+| 3 | WARN | Specification in Persistence | EventFilter.cs | 1 | Move to Application/Specifications/ |
+| 4 | BLOCK | POST missing [Authorize] | EventsController.cs | 67 | Add `[Authorize]` — write endpoints require auth |
+
+**Summary:** 3 blocking violations, 1 warning. All fixable without behavior change.
+```

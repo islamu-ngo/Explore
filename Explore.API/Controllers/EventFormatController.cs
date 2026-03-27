@@ -1,3 +1,6 @@
+// ABOUTME: API controller for event format lookup table (read-only enumeration).
+// ABOUTME: Provides event format options (in-person, online, hybrid) for event classification.
+
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;

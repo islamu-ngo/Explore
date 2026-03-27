@@ -25,12 +25,16 @@
     {
         @if (!string.IsNullOrWhiteSpace(_errorMessage))
         {
-            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">@_errorMessage</MudAlert>
+            <div role="alert">
+                <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">@_errorMessage</MudAlert>
+            </div>
         }
 
         @if (!string.IsNullOrWhiteSpace(_successMessage))
         {
-            <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Class="mb-4">@_successMessage</MudAlert>
+            <div role="status">
+                <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Class="mb-4">@_successMessage</MudAlert>
+            </div>
         }
 
         <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-3">Linked Sign-In Providers</MudText>
@@ -59,17 +63,14 @@
         </MudText>
 
         <MudStack Spacing="2">
-            <MudTextField @bind-Value="_atprotoDid"
+            <AppTextField T="string" @bind-Value="_atprotoDid"
                           Label="AT Protocol DID"
                           Placeholder="did:plc:example"
-                          Variant="Variant.Outlined"
                           Adornment="Adornment.Start"
                           AdornmentIcon="@Icons.Material.Filled.Link"
                           Immediate="true" />
 
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       Disabled="@(!_canLinkAtproto || _isSaving)"
+            <AppButton Disabled="@(!_canLinkAtproto || _isSaving)"
                        OnClick="LinkAtprotoAsync"
                        StartIcon="@Icons.Material.Filled.AddLink"
                        Class="rounded-pill px-6"
@@ -83,7 +84,7 @@
                 {
                     <span>Link AT Protocol DID</span>
                 }
-            </MudButton>
+            </AppButton>
         </MudStack>
 
         <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-4">

@@ -46,7 +46,10 @@ builder.Services.AddSecretManagement(builder.Configuration);
 // Service Registration
 // ──────────────────────────────────────────────
 
-builder.Services.AddMudServices();
+builder.Services.AddMudServices(config =>
+{
+    config.PopoverOptions.Duration = TimeSpan.FromMilliseconds(300);
+});
 builder.Services.AddApplicationServices();
 builder.Services.AddServerOnlyServices(builder.Configuration);
 builder.Services.AddApiHttpClients(builder.Configuration, builder.Environment);

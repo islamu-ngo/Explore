@@ -3,6 +3,7 @@
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services;
+using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Pages.Events.Components;
@@ -30,6 +31,8 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     [Inject] protected ILogger<EventList> Logger { get; set; } = null!;
     [Inject] protected IJSRuntime JsRuntime { get; set; } = null!;
     [Inject] protected ISnackbar Snackbar { get; set; } = null!;
+    [Inject] private IAccessibilityFocusService AccessibilityFocusService { get; set; } = default!;
+    [Inject] private IAccessibilityAnnouncerService AnnouncerService { get; set; } = default!;
 
     [PersistentState]
     public EventListState? PersistedState { get; set; }
@@ -350,6 +353,11 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
             _eventsLoaded = true;
             isLoading = false;
+
+            if (_totalCount > 0)
+                await AnnouncerService.AnnouncePoliteAsync($"{_totalCount} events found");
+            else
+                await AnnouncerService.AnnouncePoliteAsync("No events found");
         }
         catch (Exception ex)
         {
@@ -357,6 +365,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
             // Still flip to loaded state so the page isn't stuck on skeleton
             _eventsLoaded = true;
             isLoading = false;
+            await AnnouncerService.AnnounceAssertiveAsync("Failed to load events. Please try again.");
         }
     }
 
@@ -660,9 +669,11 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     private async Task OpenDeleteDialog(EventListDto evt)
     {
         var parameters = new DialogParameters { ["EventId"] = evt.Id, ["EventTitle"] = evt.Title };
-        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var options = DialogOptionsFactory.Small();
+        await AccessibilityFocusService.SaveFocusAsync();
         var dialog = await DeleteEventDialog.ShowAsync(DialogService, "Delete Event", parameters, options);
         var result = await dialog.Result;
+        await AccessibilityFocusService.RestoreFocusAsync();
         if (result != null && !result.Canceled)
         {
             await _virtualize?.RefreshDataAsync()!;
@@ -680,9 +691,11 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         }
         var primarySession = sessions.First();
         var parameters = new DialogParameters { ["EventSessionId"] = primarySession.Id, ["Title"] = $"Register for {evt.Title}" };
-        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var options = DialogOptionsFactory.Medium();
+        await AccessibilityFocusService.SaveFocusAsync();
         var dialog = await DialogService.ShowAsync<EventRegistration>("Register", parameters, options);
         var result = await dialog.Result;
+        await AccessibilityFocusService.RestoreFocusAsync();
         if (result != null && !result.Canceled)
         {
             _successMessage = "Successfully registered for event!";
@@ -701,11 +714,13 @@ public partial class EventList : ComponentBase, IAsyncDisposable
             return;
         }
 
+        await AccessibilityFocusService.SaveFocusAsync();
         var confirm = await DialogService.ShowMessageBoxAsync(
             "Cancel Registration",
             $"Are you sure you want to cancel your registration for \"{evt.Title}\"?",
             yesText: "Cancel Registration",
             cancelText: "Keep Registration");
+        await AccessibilityFocusService.RestoreFocusAsync();
 
         if (confirm != true) return;
 
@@ -794,6 +809,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         return actorTypeId.Value switch
         {
             2 => $"/organization/profile/{actorId.Value}",  // Organization
+            4 => $"/group/profile/{actorId.Value}",          // Group
             _ => null
         };
     }
@@ -1096,9 +1112,16 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        if (_imagePreloaderModule is not null)
+        try
         {
-            await _imagePreloaderModule.DisposeAsync();
+            if (_imagePreloaderModule is not null)
+            {
+                await _imagePreloaderModule.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            // Circuit disconnected during navigation — safe to ignore
         }
     }
 

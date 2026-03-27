@@ -1,3 +1,6 @@
+// ABOUTME: API controller for managing storage objects (files, media, attachments) with upload/download support.
+// ABOUTME: Handles file metadata, access control, and integration with object storage backends.
+
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -54,11 +57,6 @@ public class StorageObjectController : ControllerBase
     {
         var storageObject = await _mediator.Send(new GetStorageObjectDetailsRequest { Id = id }, cancellationToken);
 
-        if (storageObject == null)
-        {
-            return NotFound(new { error = "Storage object not found" });
-        }
-
         return Ok(storageObject);
     }
 
@@ -104,10 +102,8 @@ public class StorageObjectController : ControllerBase
     {
         var result = await _mediator.Send(new GetPublicImageRequest { StorageObjectId = id }, cancellationToken);
 
-        if (result is null)
-        {
+        if (result is null || !result.HasValue)
             return NotFound();
-        }
 
         var (fileStream, contentType) = result.Value;
         return File(fileStream, contentType, enableRangeProcessing: true);
@@ -128,11 +124,6 @@ public class StorageObjectController : ControllerBase
             Id = id,
             ExpirationMinutes = expirationMinutes
         }, cancellationToken);
-
-        if (result == null)
-        {
-            return NotFound(new { error = "Storage object not found or could not generate presigned URL" });
-        }
 
         return Ok(result);
     }
@@ -238,12 +229,7 @@ public class StorageObjectController : ControllerBase
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteStorageObjectCommand { Id = id };
-        var result = await _mediator.Send(command, cancellationToken);
-
-        if (!result)
-        {
-            return NotFound(new { error = "Storage Object not found" });
-        }
+        await _mediator.Send(command, cancellationToken);
 
         return NoContent();
     }

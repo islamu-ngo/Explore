@@ -28,8 +28,8 @@ public partial class OrganizationProfile
     private List<EventListDto> _upcomingEvents = new();
     private List<EventListDto> _pastEvents = new();
     private List<KeyValuePair<DateTime, List<EventListDto>>> _pastEventsByDate = new();
-    private OrganizationAppearanceSettings _appearance = new();
-    private string _bannerStyle = OrganizationAppearanceMetadataHelper.BuildBannerStyle(new OrganizationAppearanceSettings(), "#1f6feb");
+    private AppearanceSettings _appearance = new();
+    private string _bannerStyle = AppearanceStyleBuilder.BuildBannerStyle(new AppearanceSettings(), "#1f6feb");
 
     private string? _errorMessage;
 
@@ -60,10 +60,13 @@ public partial class OrganizationProfile
 
             _organization = await orgTask;
             _reviews = (await reviewsTask).ToList();
-            _appearance = OrganizationAppearanceMetadataHelper.FromColumns(
-                _organization?.ActorBackgroundColor,
-                _organization?.ActorBannerPictureUri, _organization?.ActorBackgroundEffect);
-            _bannerStyle = OrganizationAppearanceMetadataHelper.BuildBannerStyle(_appearance, "#1f6feb");
+            _appearance = new AppearanceSettings
+            {
+                BackgroundColor = _organization?.ActorBackgroundColor ?? string.Empty,
+                ImageUri = _organization?.ActorBannerPictureUri ?? string.Empty,
+                BackgroundEffect = _organization?.ActorBackgroundEffect ?? "None"
+            };
+            _bannerStyle = AppearanceStyleBuilder.BuildBannerStyle(_appearance, "#1f6feb");
 
             Logger.LogDebug("Loaded organization {OrganizationId} with {ReviewCount} reviews", Id, _reviews.Count);
 
@@ -202,10 +205,13 @@ public partial class OrganizationProfile
 
         _organization = PersistedState.Organization;
         _reviews = PersistedState.Reviews;
-        _appearance = OrganizationAppearanceMetadataHelper.FromColumns(
-            _organization?.ActorBackgroundColor,
-            _organization?.ActorBannerPictureUri, _organization?.ActorBackgroundEffect);
-        _bannerStyle = OrganizationAppearanceMetadataHelper.BuildBannerStyle(_appearance, "#1f6feb");
+        _appearance = new AppearanceSettings
+        {
+            BackgroundColor = _organization?.ActorBackgroundColor ?? string.Empty,
+            ImageUri = _organization?.ActorBannerPictureUri ?? string.Empty,
+            BackgroundEffect = _organization?.ActorBackgroundEffect ?? "None"
+        };
+        _bannerStyle = AppearanceStyleBuilder.BuildBannerStyle(_appearance, "#1f6feb");
         _isLoading = false;
         _errorMessage = null;
 

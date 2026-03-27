@@ -25,4 +25,11 @@ public interface IActorRepository : IGenericRepository<Actor, Guid>
     /// Gets the Actor associated with a specific Group.
     /// </summary>
     Task<Actor?> GetActorByGroupId(Guid groupId);
+
+    /// <summary>
+    /// Permanently deletes PII data for an actor (GDPR erasure).
+    /// Uses ExecuteDeleteAsync for efficient bulk deletion without loading entities.
+    /// </summary>
+    /// <returns>Number of PII records deleted.</returns>
+    Task<int> ForgetPiiAsync(Guid actorId);
 }

@@ -95,6 +95,41 @@ public class UpdateCurrentUserAppearancePreferencesCommandHandler : IRequestHand
             }
         }
 
+        var normalizedDirection = request.Preferences.Direction.Trim().ToLowerInvariant();
+        if (string.Equals(parentAppearance.Direction, normalizedDirection, StringComparison.Ordinal))
+        {
+            await _userPreferenceRepository.RemoveOverride(tenantId, userId.Value, GovernanceSettingKeys.Appearance.Direction);
+        }
+        else
+        {
+            var serializedDirection = SettingValueSerializer.Serialize(normalizedDirection);
+            var existingDirection = await _userPreferenceRepository.GetByUserAndKey(
+                tenantId,
+                userId.Value,
+                GovernanceSettingKeys.Appearance.Direction);
+
+            if (existingDirection is not null)
+            {
+                existingDirection.Value = serializedDirection;
+                existingDirection.UpdatedAt = DateTime.UtcNow;
+                existingDirection.UpdatedBy = userId.Value;
+                await _userPreferenceRepository.Update(existingDirection);
+            }
+            else
+            {
+                await _userPreferenceRepository.Create(new UserPreference
+                {
+                    TenantId = tenantId,
+                    Tenant = null!,
+                    UserId = userId.Value,
+                    SettingKey = GovernanceSettingKeys.Appearance.Direction,
+                    Value = serializedDirection,
+                    CreatedAt = DateTime.UtcNow,
+                    CreatedBy = userId.Value
+                });
+            }
+        }
+
         _hierarchicalSettingsResolver.InvalidateUserCache(tenantId, userId.Value);
 
         response.Success = true;

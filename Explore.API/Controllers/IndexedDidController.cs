@@ -1,3 +1,6 @@
+// ABOUTME: REST API controller for indexed DID (Decentralized Identifier) CRUD operations.
+// ABOUTME: Manages ATProto DID records and federation identity mappings with HATEOAS support.
+
 using Asp.Versioning;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.IndexedDid;
@@ -54,9 +57,7 @@ public class IndexedDidController : ControllerBase
     {
         var indexedDid = await _mediator.Send(new GetIndexedDidDetailsRequest { Did = did }, cancellationToken);
         if (indexedDid == null)
-        {
-            return NotFound(new { error = "IndexedDid not found" });
-        }
+            return NotFound();
 
         var halResource = await _resourceAssembler.ToResource(indexedDid, HttpContext);
         return Ok(halResource);
@@ -99,12 +100,7 @@ public class IndexedDidController : ControllerBase
     public async Task<ActionResult> Delete(string did, CancellationToken cancellationToken = default)
     {
         var command = new DeleteIndexedDidCommand { Did = did };
-        var result = await _mediator.Send(command, cancellationToken);
-
-        if (!result)
-        {
-            return NotFound(new { error = "IndexedDid not found or you don't have permission to delete it" });
-        }
+        await _mediator.Send(command, cancellationToken);
 
         return NoContent();
     }

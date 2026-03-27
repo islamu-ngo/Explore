@@ -1,6 +1,7 @@
 // ABOUTME: MediatR pipeline behavior that enforces authorization before command execution.
 // ABOUTME: Checks requests for IAuthorizedRequest, [AuthorizeResource] (optionally enhanced by ISecureRequest), and denies on unauthorized.
 
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Reflection;
 using Explore.Application.Authorization;
@@ -20,6 +21,9 @@ namespace Explore.Application.Behaviors;
 public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
     where TRequest : IRequest<TResponse>
 {
+    private static readonly ConcurrentDictionary<Type, AuthorizeResourceAttribute?> AttributeCache = new();
+    private static readonly ActivitySource AuthorizationActivitySource = new("Explore.Authorization");
+
     private readonly IAuthorizationProvider _authorizationProvider;
     private readonly ILogger<AuthorizationBehavior<TRequest, TResponse>> _logger;
 
@@ -50,8 +54,10 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
             return await next();
         }
 
-        // Path 2: Request class has [AuthorizeResource] attribute
-        var attribute = typeof(TRequest).GetCustomAttribute<AuthorizeResourceAttribute>();
+        // Path 2: Request class has [AuthorizeResource] attribute (cached per type)
+        var attribute = AttributeCache.GetOrAdd(
+            typeof(TRequest),
+            static t => t.GetCustomAttribute<AuthorizeResourceAttribute>());
         if (attribute is not null)
         {
             // If request also implements ISecureRequest, pull dynamic resource context from the instance
@@ -86,6 +92,11 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
         string requestType,
         CancellationToken cancellationToken)
     {
+        using var activity = AuthorizationActivitySource.StartActivity("authorization.evaluate");
+        activity?.SetTag("resource.kind", resourceKind);
+        activity?.SetTag("resource.action", action);
+        activity?.SetTag("request.type", requestType);
+
         var correlationId = Activity.Current?.Id ?? string.Empty;
 
         var isAllowed = await _authorizationProvider.IsAllowedAsync(
@@ -97,6 +108,8 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
 
         if (!isAllowed)
         {
+            activity?.SetStatus(ActivityStatusCode.Error, "Authorization denied");
+
             _logger.LogWarning(
                 "Authorization decision: {Decision} request={RequestType} resource={Resource}/{ResourceId} action={Action} correlationId={CorrelationId}",
                 "deny", requestType, resourceKind, resourceId, action, correlationId);
@@ -104,7 +117,7 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
             throw new AuthorizationException(resourceKind, action);
         }
 
-        _logger.LogInformation(
+        _logger.LogDebug(
             "Authorization decision: {Decision} request={RequestType} resource={Resource}/{ResourceId} action={Action} correlationId={CorrelationId}",
             "allow", requestType, resourceKind, resourceId, action, correlationId);
     }

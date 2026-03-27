@@ -1,3 +1,6 @@
+// ABOUTME: REST API controller for event category CRUD operations with HATEOAS support.
+// ABOUTME: Manages event categories used for discovery, filtering, and event classification.
+
 using Asp.Versioning;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Category;
@@ -82,11 +85,8 @@ public class CategoryController : ControllerBase
     public async Task<ActionResult<HalResource<CategoryDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var category = await _mediator.Send(new GetCategoryDetailsRequest { Id = id }, cancellationToken);
-
-        if (category is null)
-        {
-            return NotFound(new { error = "Category not found" });
-        }
+        if (category == null)
+            return NotFound();
 
         var halResource = await _resourceAssembler.ToResource(category, HttpContext);
         return Ok(halResource);
@@ -161,22 +161,9 @@ public class CategoryController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var command = new DeleteCategoryCommand { Id = id };
-            var result = await _mediator.Send(command, cancellationToken);
+        var command = new DeleteCategoryCommand { Id = id };
+        await _mediator.Send(command, cancellationToken);
 
-            if (!result)
-            {
-                return NotFound(new { error = "Category not found" });
-            }
-
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error deleting category {CategoryId}", id);
-            return StatusCode(500, new { error = ex.Message });
-        }
+        return NoContent();
     }
 }

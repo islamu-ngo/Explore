@@ -17,7 +17,7 @@
                              SearchFunc="@SearchActors" ToStringFunc="@(e => e?.DisplayName)"
                              Variant="Variant.Outlined" Dense="true" />
 
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AddSpeaker" Disabled="@(selectedActor == null)">Add Speaker</MudButton>
+            <AppButton OnClick="AddSpeaker" Disabled="@(selectedActor == null)">Add Speaker</AppButton>
 
             <MudText Typo="Typo.h6">Current Speakers</MudText>
             <MudList T="EventSessionSpeakerListDto" Clickable="true">
@@ -25,15 +25,15 @@
                 {
                     <MudListItem T="EventSessionSpeakerListDto">
                         @speaker.ActorDisplayName
-                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="@(() => RemoveSpeaker(speaker.Id))" />
+                        <AppIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="@(() => RemoveSpeaker(speaker.Id))" />
                     </MudListItem>
                 }
             </MudList>
         </MudStack>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" OnClick="Submit">Ok</MudButton>
+        <AppButton OnClick="Cancel">Cancel</AppButton>
+        <AppButton OnClick="Submit">Ok</AppButton>
     </DialogActions>
 </MudDialog>
 

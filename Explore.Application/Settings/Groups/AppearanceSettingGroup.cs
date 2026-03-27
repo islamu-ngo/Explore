@@ -10,11 +10,13 @@ public class AppearanceSettingGroup : ISettingGroup
 {
     public Guid? DefaultThemeId { get; private set; }
     public string ThemeMode { get; private set; } = "system";
+    public string Direction { get; private set; } = "auto";
 
     public static IEnumerable<string> SettingKeys =>
     [
         GovernanceSettingKeys.Appearance.DefaultThemeId,
-        GovernanceSettingKeys.Appearance.ThemeMode
+        GovernanceSettingKeys.Appearance.ThemeMode,
+        GovernanceSettingKeys.Appearance.Direction
     ];
 
     public void Populate(IReadOnlyDictionary<string, ResolvedSetting> settings)
@@ -31,6 +33,12 @@ public class AppearanceSettingGroup : ISettingGroup
         {
             var mode = SettingValueSerializer.DeserializeString(themeModeSetting.Value, "system");
             ThemeMode = mode is "light" or "dark" ? mode : "system";
+        }
+
+        if (settings.TryGetValue(GovernanceSettingKeys.Appearance.Direction, out var directionSetting))
+        {
+            var dir = SettingValueSerializer.DeserializeString(directionSetting.Value, "auto");
+            Direction = dir is "ltr" or "rtl" ? dir : "auto";
         }
     }
 }

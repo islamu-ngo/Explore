@@ -1,3 +1,6 @@
+// ABOUTME: API controller for audience age range lookup table (read-only enumeration).
+// ABOUTME: Provides age range options for event filtering and audience targeting.
+
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
@@ -47,10 +50,6 @@ public class AudienceAgeController : ControllerBase
     public async Task<ActionResult<AudienceAgeDto>> GetById(int id, CancellationToken cancellationToken = default)
     {
         var audienceAge = await _mediator.Send(new GetAudienceAgeDetailsRequest { Id = id }, cancellationToken);
-        if (audienceAge == null)
-        {
-            return NotFound();
-        }
 
         return Ok(audienceAge);
     }

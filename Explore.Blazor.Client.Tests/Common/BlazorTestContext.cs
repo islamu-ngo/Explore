@@ -1,4 +1,5 @@
 using Explore.Blazor.Client.Contracts.Services;
+using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Services;
 using MudBlazor;
 using MudBlazor.Services;
@@ -80,6 +81,10 @@ public class BlazorTestContext : Bunit.TestContext
         var groupService = Substitute.For<IGroupService>();
         groupService.GetMyGroupsAsync().Returns(new List<GroupPublisherListDto>());
         Services.AddSingleton(groupService);
+
+        // Accessibility services (injected by Phase 3A into NavMenu, EventList, EventDetail, etc.)
+        Services.AddScoped(_ => Substitute.For<IAccessibilityFocusService>());
+        Services.AddScoped(_ => Substitute.For<IAccessibilityAnnouncerService>());
     }
 
     /// <summary>

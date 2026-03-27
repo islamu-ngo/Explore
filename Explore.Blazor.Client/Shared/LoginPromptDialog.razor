@@ -9,7 +9,7 @@
     <DialogContent>
         <div class="login-prompt__container">
             @* Close button *@
-            <MudIconButton Icon="@Icons.Material.Filled.Close"
+            <AppIconButton Icon="@Icons.Material.Filled.Close"
                            Size="Size.Small"
                            Class="login-prompt__close"
                            OnClick="Close" />
@@ -32,18 +32,18 @@
                         Recommended
                     </MudChip>
                     <div class="login-prompt__islamu-row">
-                        <MudButton Variant="Variant.Outlined"
+                        <AppButton Variant="Variant.Outlined"
                                    FullWidth="true"
                                    Size="Size.Large"
                                    StartIcon="@Icons.Material.Filled.Login"
                                    OnClick="LoginWithIslamu"
                                    Class="login-prompt__btn login-prompt__btn--islamu">
                             Continue with ISLAMU
-                        </MudButton>
+                        </AppButton>
                         <MudTooltip Text="One account for login and registration. Your handle is auto-generated and hosted on the ISLAMU PDS."
                                     Arrow="true"
                                     Placement="Placement.Right">
-                            <MudIconButton Icon="@Icons.Material.Outlined.Info"
+                            <AppIconButton Icon="@Icons.Material.Outlined.Info"
                                            Size="Size.Small"
                                            Class="login-prompt__info-icon" />
                         </MudTooltip>
@@ -70,14 +70,14 @@
                               Immediate="true"
                               OnKeyUp="HandleKeyPress" />
 
-                <MudButton Variant="Variant.Outlined"
+                <AppButton Variant="Variant.Outlined"
                            FullWidth="true"
                            Size="Size.Large"
                            OnClick="LoginWithHandle"
                            Disabled="@string.IsNullOrWhiteSpace(_atProtoHandle)"
                            Class="login-prompt__btn login-prompt__btn--handle">
                     Continue
-                </MudButton>
+                </AppButton>
             </div>
 
             @* Footer *@

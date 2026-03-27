@@ -1,3 +1,6 @@
+// ABOUTME: REST API controller for authenticated user profile operations and preferences.
+// ABOUTME: Manages user account data, profile updates, and user-specific settings.
+
 using System.Security.Claims;
 using Asp.Versioning;
 using Explore.Application.DTOs.Organization;
@@ -170,18 +173,6 @@ public class UserController : ControllerBase
         var query = new GetUserRequest { UserId = currentUserId.Value };
         var user = await _mediator.Send(query, cancellationToken);
 
-        // FIX: Return 404 if user doesn't exist
-        if (user == null)
-        {
-            Console.WriteLine($"[USER API] User not found in database: {currentUserId.Value}");
-            return NotFound(new
-            {
-                message = "User not found in database. Please refresh the page to sync your profile.",
-                userId = currentUserId.Value
-            });
-        }
-
-        Console.WriteLine($"[USER API] User found: {user.Email}");
         return Ok(user);
     }
 

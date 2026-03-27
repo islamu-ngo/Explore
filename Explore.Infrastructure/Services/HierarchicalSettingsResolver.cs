@@ -205,18 +205,77 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
     public async Task LockAsync(
         string key, SettingScope scope, Guid scopeId, Guid actorId, CancellationToken ct = default)
     {
-        if (scope != SettingScope.Instance)
-            throw new NotSupportedException("Lock is currently only supported at Instance scope.");
+        switch (scope)
+        {
+            case SettingScope.Instance:
+                {
+                    var setting = await _systemSettingRepository.GetByKey(key);
+                    if (setting is null)
+                        throw new InvalidOperationException($"Setting '{key}' does not exist at Instance scope.");
 
-        var setting = await _systemSettingRepository.GetByKey(key);
-        if (setting is null)
-            throw new InvalidOperationException($"Setting '{key}' does not exist at Instance scope.");
+                    setting.IsLocked = true;
+                    setting.UpdatedAt = DateTime.UtcNow;
+                    setting.UpdatedBy = actorId;
+                    await _systemSettingRepository.Update(setting);
+                    InvalidateCache(SettingScope.Instance);
+                    break;
+                }
 
-        setting.IsLocked = true;
-        setting.UpdatedAt = DateTime.UtcNow;
-        setting.UpdatedBy = actorId;
-        await _systemSettingRepository.Update(setting);
-        InvalidateCache(SettingScope.Instance);
+            case SettingScope.Tenant:
+                {
+                    var locked = await _tenantSettingRepository.LockAsync(scopeId, key);
+                    if (!locked)
+                        throw new InvalidOperationException($"Setting '{key}' does not exist for tenant '{scopeId}'.");
+
+                    InvalidateCache(SettingScope.Tenant, scopeId);
+                    _logger.LogInformation(
+                        "Tenant setting locked: {SettingKey} for tenant {TenantId}. User caches refresh within {CacheTtlMinutes}m.",
+                        key, scopeId, _cacheExpiration.TotalMinutes);
+                    break;
+                }
+
+            default:
+                throw new NotSupportedException(
+                    $"Lock is only supported at Instance and Tenant scopes, not {scope}.");
+        }
+    }
+
+    public async Task UnlockAsync(
+        string key, SettingScope scope, Guid scopeId, Guid actorId, CancellationToken ct = default)
+    {
+        switch (scope)
+        {
+            case SettingScope.Instance:
+                {
+                    var setting = await _systemSettingRepository.GetByKey(key);
+                    if (setting is null)
+                        throw new InvalidOperationException($"Setting '{key}' does not exist at Instance scope.");
+
+                    setting.IsLocked = false;
+                    setting.UpdatedAt = DateTime.UtcNow;
+                    setting.UpdatedBy = actorId;
+                    await _systemSettingRepository.Update(setting);
+                    InvalidateCache(SettingScope.Instance);
+                    break;
+                }
+
+            case SettingScope.Tenant:
+                {
+                    var unlocked = await _tenantSettingRepository.UnlockAsync(scopeId, key);
+                    if (!unlocked)
+                        throw new InvalidOperationException($"Setting '{key}' does not exist for tenant '{scopeId}'.");
+
+                    InvalidateCache(SettingScope.Tenant, scopeId);
+                    _logger.LogInformation(
+                        "Tenant setting unlocked: {SettingKey} for tenant {TenantId}. Cascade restored. User caches refresh within {CacheTtlMinutes}m.",
+                        key, scopeId, _cacheExpiration.TotalMinutes);
+                    break;
+                }
+
+            default:
+                throw new NotSupportedException(
+                    $"Unlock is only supported at Instance and Tenant scopes, not {scope}.");
+        }
     }
 
     public void InvalidateCache(SettingScope? scope = null, Guid? scopeId = null)
@@ -273,37 +332,73 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
 
         var effectiveValue = systemSetting?.Value ?? definition?.DefaultValue ?? "";
         var valueType = systemSetting?.ValueType ?? definition?.ValueType ?? SettingValueType.String;
-        var source = SettingSource.SystemDefault;
-        var isLocked = systemSetting?.IsLocked ?? false;
+        var description = systemSetting?.Description ?? definition?.Description;
+        var category = systemSetting?.Category ?? definition?.Category;
+        var allowedValues = systemSetting?.AllowedValues;
 
         // Cascade: Instance → Tenant → Organization → Group → User
-        // A lock at Instance prevents all child overrides
-        if (!isLocked && tenantDict is not null && tenantDict.TryGetValue(key, out var tenantOverride))
+        // Lock precedence: Instance locked > Tenant locked > unlocked cascade
+
+        // Instance lock stops ALL overrides — highest precedence
+        var isInstanceLocked = systemSetting?.IsLocked ?? false;
+        if (isInstanceLocked)
+        {
+            return new ResolvedSetting
+            {
+                Key = key,
+                Value = effectiveValue,
+                ValueType = valueType,
+                Source = SettingSource.SystemLocked,
+                IsLocked = true,
+                Description = description,
+                Category = category,
+                AllowedValues = allowedValues
+            };
+        }
+
+        // Tenant override
+        var source = SettingSource.SystemDefault;
+        var isTenantLocked = false;
+        if (tenantDict is not null && tenantDict.TryGetValue(key, out var tenantOverride))
         {
             effectiveValue = tenantOverride.Value;
             source = SettingSource.TenantOverride;
-        }
-        else if (isLocked)
-        {
-            source = SettingSource.SystemLocked;
+            isTenantLocked = tenantOverride.IsLocked;
         }
 
-        // Organization override (only if not locked at Instance)
-        if (!isLocked && orgDict is not null && orgDict.TryGetValue(key, out var orgOverride))
+        // Tenant lock stops child overrides (org, group, user)
+        // Lower-scope values remain in storage — lock only affects resolution
+        if (isTenantLocked)
+        {
+            return new ResolvedSetting
+            {
+                Key = key,
+                Value = effectiveValue,
+                ValueType = valueType,
+                Source = SettingSource.TenantLocked,
+                IsLocked = true,
+                Description = description,
+                Category = category,
+                AllowedValues = allowedValues
+            };
+        }
+
+        // Organization override (not locked at instance or tenant)
+        if (orgDict is not null && orgDict.TryGetValue(key, out var orgOverride))
         {
             effectiveValue = orgOverride.Value;
             source = SettingSource.OrganizationOverride;
         }
 
-        // Group override (only if not locked at Instance)
-        if (!isLocked && groupDict is not null && groupDict.TryGetValue(key, out var groupOverride))
+        // Group override (not locked at instance or tenant)
+        if (groupDict is not null && groupDict.TryGetValue(key, out var groupOverride))
         {
             effectiveValue = groupOverride.Value;
             source = SettingSource.GroupOverride;
         }
 
-        // User preference (only if not locked at Instance and definition allows User scope)
-        if (!isLocked && userDict is not null && userDict.TryGetValue(key, out var userPref))
+        // User preference (not locked at instance or tenant, and definition allows User scope)
+        if (userDict is not null && userDict.TryGetValue(key, out var userPref))
         {
             var maxScope = definition?.MaxScope ?? SettingScope.Tenant;
             if (maxScope >= SettingScope.User)
@@ -319,10 +414,10 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
             Value = effectiveValue,
             ValueType = valueType,
             Source = source,
-            IsLocked = isLocked,
-            Description = systemSetting?.Description ?? definition?.Description,
-            Category = systemSetting?.Category ?? definition?.Category,
-            AllowedValues = systemSetting?.AllowedValues
+            IsLocked = false,
+            Description = description,
+            Category = category,
+            AllowedValues = allowedValues
         };
     }
 

@@ -1,5 +1,5 @@
 // ABOUTME: Fetches a single external API key visible to the current caller.
-// ABOUTME: Reuses existing owner and organization permission checks while exposing only safe metadata.
+// ABOUTME: Checks owner authority across all five owner types while exposing only safe metadata.
 
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Persistence;
@@ -15,22 +15,28 @@ public class GetExternalApiKeyDetailsRequestHandler : IRequestHandler<GetExterna
 {
     private readonly IExternalApiKeyRepository _externalApiKeyRepository;
     private readonly IOrganizationMemberRepository _organizationMemberRepository;
+    private readonly IGroupMemberRepository _groupMemberRepository;
+    private readonly IAdminContext _adminContext;
     private readonly IUserContext _userContext;
 
     public GetExternalApiKeyDetailsRequestHandler(
         IExternalApiKeyRepository externalApiKeyRepository,
         IOrganizationMemberRepository organizationMemberRepository,
+        IGroupMemberRepository groupMemberRepository,
+        IAdminContext adminContext,
         IUserContext userContext)
     {
         _externalApiKeyRepository = externalApiKeyRepository;
         _organizationMemberRepository = organizationMemberRepository;
+        _groupMemberRepository = groupMemberRepository;
+        _adminContext = adminContext;
         _userContext = userContext;
     }
 
     public async Task<ExternalApiKeyListDto?> Handle(GetExternalApiKeyDetailsRequest request, CancellationToken cancellationToken)
     {
         var currentUserId = _userContext.GetRequiredUserId();
-        var externalApiKey = await _externalApiKeyRepository.GetById(request.Id);
+        var externalApiKey = await _externalApiKeyRepository.GetByIdIgnoringTenantFilter(request.Id);
 
         if (externalApiKey is null || !await CanManageAsync(externalApiKey, currentUserId, cancellationToken))
         {
@@ -41,32 +47,35 @@ public class GetExternalApiKeyDetailsRequestHandler : IRequestHandler<GetExterna
         {
             Id = externalApiKey.Id,
             Name = externalApiKey.Name,
+            Description = externalApiKey.Description,
             KeyId = externalApiKey.KeyId,
+            MaskedKeyId = MaskKeyId(externalApiKey.KeyId),
             OwnerType = externalApiKey.OwnerType,
             OwnerId = externalApiKey.OwnerId,
             Scopes = SplitScopes(externalApiKey.Scopes),
-            Status = externalApiKey.Status,
+            Status = (ExternalApiKeyStatusEnum)externalApiKey.ExternalApiKeyStatusId,
+            StatusName = ((ExternalApiKeyStatusEnum)externalApiKey.ExternalApiKeyStatusId).ToString(),
             ExpiresAt = externalApiKey.ExpiresAt,
-            LastUsedAt = externalApiKey.LastUsedAt
+            LastUsedAt = externalApiKey.LastUsedAt,
+            CreditPeriod = (ExternalApiKeyCreditPeriodEnum)externalApiKey.ExternalApiKeyCreditPeriodId,
+            CreditLimit = externalApiKey.CreditLimit,
+            MaxRolloverCredits = externalApiKey.MaxRolloverCredits
         };
     }
 
     private async Task<bool> CanManageAsync(Explore.Domain.ExternalApiKey externalApiKey, Guid currentUserId, CancellationToken cancellationToken)
     {
-        if (externalApiKey.OwnerType == ExternalApiKeyOwnerType.User)
+        return externalApiKey.OwnerType switch
         {
-            return externalApiKey.OwnerId == currentUserId;
-        }
-
-        if (externalApiKey.OwnerType == ExternalApiKeyOwnerType.Organization)
-        {
-            return await _organizationMemberRepository.HasPermissionInOrganization(
-                externalApiKey.OwnerId,
-                currentUserId,
-                PermissionCodes.OrganizationManage);
-        }
-
-        return false;
+            ExternalApiKeyOwnerType.User => externalApiKey.OwnerId == currentUserId,
+            ExternalApiKeyOwnerType.Organization => await _organizationMemberRepository.HasPermissionInOrganization(
+                externalApiKey.OwnerId, currentUserId, PermissionCodes.OrganizationManage),
+            ExternalApiKeyOwnerType.Group => await _groupMemberRepository.HasPermissionInGroup(
+                externalApiKey.OwnerId, currentUserId, PermissionCodes.GroupManage),
+            ExternalApiKeyOwnerType.Tenant => await _adminContext.IsTenantAdminAsync(externalApiKey.TenantId!.Value, cancellationToken),
+            ExternalApiKeyOwnerType.InstanceAdmin => await _adminContext.IsInstanceAdminAsync(cancellationToken),
+            _ => false
+        };
     }
 
     private static List<string> SplitScopes(string scopes)
@@ -74,5 +83,12 @@ public class GetExternalApiKeyDetailsRequestHandler : IRequestHandler<GetExterna
         return scopes
             .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .ToList();
+    }
+
+    private static string MaskKeyId(string keyId)
+    {
+        return keyId.Length > 4
+            ? string.Concat("".PadLeft(keyId.Length - 4, '\u2022'), keyId.AsSpan(keyId.Length - 4))
+            : keyId;
     }
 }

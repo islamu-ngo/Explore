@@ -102,13 +102,13 @@ public sealed class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAu
             return null;
         }
 
-        if (persistedClient.Status != ExternalApiKeyStatus.Active)
+        if (!IsUsableStatus(persistedClient.ExternalApiKeyStatusId))
         {
             _metrics.RecordExternalApiKeyAuthentication(
                 "inactive",
-                persistedClient.TenantId.ToString(),
+                persistedClient.TenantId?.ToString() ?? "platform",
                 persistedClient.OwnerType.ToString());
-            Logger.LogWarning("[ApiKey] Authentication failed for persisted key {KeyId}: status {Status} is not active.", persistedClient.KeyId, persistedClient.Status);
+            Logger.LogWarning("[ApiKey] Authentication failed for persisted key {KeyId}: status {StatusId} is not usable.", persistedClient.KeyId, persistedClient.ExternalApiKeyStatusId);
             return AuthenticateResult.Fail("API key is not active.");
         }
 
@@ -116,7 +116,7 @@ public sealed class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAu
         {
             _metrics.RecordExternalApiKeyAuthentication(
                 "invalid",
-                persistedClient.TenantId.ToString(),
+                persistedClient.TenantId?.ToString() ?? "platform",
                 persistedClient.OwnerType.ToString());
             Logger.LogWarning("[ApiKey] Authentication failed for persisted key {KeyId}: secret hash mismatch.", persistedClient.KeyId);
             return AuthenticateResult.Fail("Invalid API key.");
@@ -126,7 +126,7 @@ public sealed class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAu
         {
             _metrics.RecordExternalApiKeyAuthentication(
                 "expired",
-                persistedClient.TenantId.ToString(),
+                persistedClient.TenantId?.ToString() ?? "platform",
                 persistedClient.OwnerType.ToString());
             Logger.LogWarning("[ApiKey] Authentication failed for persisted key {KeyId}: key expired at {ExpiresAtUtc}.", persistedClient.KeyId, expiresAtUtc);
             return AuthenticateResult.Fail("API key expired.");
@@ -150,7 +150,7 @@ public sealed class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAu
 
     private AuthenticateResult BuildSuccessResult(
         string keyId,
-        Guid tenantId,
+        Guid? tenantId,
         string ownerType,
         string ownerId,
         IEnumerable<string> scopes,
@@ -161,10 +161,14 @@ public sealed class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAu
             new(ClaimTypes.Name, $"api-key:{keyId}"),
             new(ApiAuthenticationClaimTypes.AuthMethod, "api_key"),
             new(ApiAuthenticationClaimTypes.ApiKeyId, keyId),
-            new(ApiAuthenticationClaimTypes.TenantId, tenantId.ToString()),
             new(ApiAuthenticationClaimTypes.OwnerType, ownerType),
             new(ApiAuthenticationClaimTypes.OwnerId, ownerId)
         };
+
+        if (tenantId.HasValue)
+        {
+            claims.Add(new Claim(ApiAuthenticationClaimTypes.TenantId, tenantId.Value.ToString()));
+        }
 
         claims.AddRange(scopes
             .Where(scope => !string.IsNullOrWhiteSpace(scope))
@@ -174,9 +178,15 @@ public sealed class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAu
         var principal = new ClaimsPrincipal(identity);
         var ticket = new AuthenticationTicket(principal, ApiAuthenticationSchemeNames.ApiKey);
 
-        _metrics.RecordExternalApiKeyAuthentication("success", tenantId.ToString(), ownerType);
-        Logger.LogInformation("[ApiKey] Authenticated key {KeyId} for tenant {TenantId} on {Path} via {Source}.", keyId, tenantId, Request.Path, source);
+        _metrics.RecordExternalApiKeyAuthentication("success", tenantId?.ToString() ?? "platform", ownerType);
+        Logger.LogInformation("[ApiKey] Authenticated key {KeyId} for tenant {TenantId} on {Path} via {Source}.", keyId, tenantId?.ToString() ?? "platform", Request.Path, source);
         return AuthenticateResult.Success(ticket);
+    }
+
+    private static bool IsUsableStatus(int statusId)
+    {
+        return statusId == (int)ExternalApiKeyStatusEnum.Active
+            || statusId == (int)ExternalApiKeyStatusEnum.PendingRotation;
     }
 
     private static IReadOnlyList<string> SplitScopes(string scopes)

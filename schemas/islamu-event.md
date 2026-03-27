@@ -329,6 +329,34 @@ Table "pds_sync_outbox" {
 }
 
 // ============================================================
+// General Outbox
+// ============================================================
+
+Table "outbox_messages" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "aggregate_type" varchar(200) [not null]
+  "aggregate_id" uuid [not null]
+  "event_type" varchar(200) [not null]
+  "payload" jsonb
+  "status" outbox_message_status [not null, default: 'Pending']
+  "created_at" timestamptz [not null]
+  "processed_at" timestamptz
+  "retry_count" integer [not null, default: 0]
+  "last_error" varchar(2000)
+  "next_retry_at" timestamptz
+  "max_retries" integer [not null, default: 10]
+  "dead_lettered_at" timestamptz
+
+  indexes {
+    (status, next_retry_at, created_at) [name: 'IX_OutboxMessages_WorkerPoll']
+    (aggregate_type, aggregate_id) [name: 'IX_OutboxMessages_Aggregate']
+    (aggregate_type, aggregate_id, event_type, created_at) [name: 'IX_OutboxMessages_Dedup']
+  }
+
+  Note: 'General transactional outbox. OutboxProcessor polls for pending messages with exponential backoff retry. Dead-letter after max_retries exhausted.'
+}
+
+// ============================================================
 // Modules
 // ============================================================
 
@@ -598,6 +626,54 @@ Table "tenant_capabilities" {
   "updated_by" uuid
 }
 
+// ============================================================
+// Footer
+// ============================================================
+
+Table "tenant_footer_link_groups" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid [not null]
+  "title" varchar(200) [not null]
+  "order" integer [not null, default: 0]
+  "is_active" boolean [not null, default: true]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  indexes {
+    (tenant_id, "order") [name: 'IX_FooterLinkGroups_TenantOrder']
+  }
+
+  Note: 'Ordered groups of footer links per tenant. Soft-deletable.'
+}
+
+Table "tenant_footer_links" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "footer_link_group_id" uuid [not null]
+  "label" varchar(200) [not null]
+  "url" varchar(2000) [not null]
+  "open_in_new_tab" boolean [not null, default: false]
+  "order" integer [not null, default: 0]
+  "is_active" boolean [not null, default: true]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null, default: false]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  indexes {
+    (footer_link_group_id, "order") [name: 'IX_FooterLinks_GroupOrder']
+  }
+
+  Note: 'Individual links within a footer link group. Soft-deletable.'
+}
+
 Table "tenant_invitations" {
   "id" uuid [pk, not null, note: 'uuidv7 app-side']
   "tenant_id" uuid [not null]
@@ -706,9 +782,9 @@ Table "tag_type_tags" {
 Table "custom_property_definitions" {
   "id" uuid [pk, not null]
   "entity_type_name" varchar(50) [not null]
-  "event_type_id" int
   "tenant_id" uuid [not null]
-  "name" varchar(100) [not null]
+  "namespace" varchar(100) [not null]
+  "key" varchar(100) [not null]
   "display_name" varchar(200) [not null]
   "description" varchar(500)
   "property_type" varchar(50) [not null]
@@ -716,8 +792,26 @@ Table "custom_property_definitions" {
   "is_multi" boolean [not null]
   "is_active" boolean [not null]
   "sort_order" int [not null]
-  "default_value" varchar(1000)
-  "validation_rules" varchar(2000)
+  "exposure_level" varchar(50) [not null]
+  "is_searchable" boolean [not null]
+  "is_filterable" boolean [not null]
+  "is_exportable" boolean [not null]
+  "is_moderation_relevant" boolean [not null]
+  "is_analytics_relevant" boolean [not null]
+  "is_system_owned" boolean [not null]
+  "default_text_value" varchar(1000)
+  "default_number_value" decimal(19,4)
+  "default_boolean_value" boolean
+  "default_date_time_value" timestamptz
+  "default_option_id" uuid
+  "min_length" int
+  "max_length" int
+  "regex_pattern" varchar(1000)
+  "min_number" decimal(19,4)
+  "max_number" decimal(19,4)
+  "min_date_time" timestamptz
+  "max_date_time" timestamptz
+  "allowed_url_schemes" varchar(500)
   "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
@@ -727,16 +821,19 @@ Table "custom_property_definitions" {
   "deleted_by" uuid
 
   indexes {
+    (tenant_id, entity_type_name, namespace, key) [unique, name: 'ix_cpd_tenant_entity_namespace_key']
     (tenant_id, entity_type_name, is_active) [name: 'ix_cpd_tenant_entity_active']
-    (tenant_id, entity_type_name, event_type_id, name) [unique, name: 'ix_cpd_tenant_entity_type_name']
-    event_type_id [name: 'ix_custom_property_definitions_event_type_id']
+    (tenant_id, entity_type_name, is_searchable, is_filterable) [name: 'ix_cpd_tenant_entity_search_filter']
+    default_option_id [name: 'ix_custom_property_definitions_default_option_id']
   }
 }
 
 Table "custom_property_options" {
   "id" uuid [pk, not null]
   "custom_property_definition_id" uuid [not null]
-  "name" varchar(200) [not null]
+  "namespace" varchar(100) [not null]
+  "key" varchar(100) [not null]
+  "display_name" varchar(200) [not null]
   "description" varchar(500)
   "value" varchar(500) [not null]
   "is_default" boolean [not null]
@@ -752,6 +849,7 @@ Table "custom_property_options" {
   "deleted_by" uuid
 
   indexes {
+    (custom_property_definition_id, namespace, key) [unique, name: 'ix_cpo_definition_namespace_key']
     (custom_property_definition_id, sort_order) [name: 'ix_cpo_definition_sort']
     parent_option_id [name: 'ix_custom_property_options_parent_option_id']
   }
@@ -777,9 +875,9 @@ Table "custom_property_values" {
   "deleted_by" uuid
 
   indexes {
-    (custom_property_definition_id, entity_id) [name: 'ix_cpv_definition_entity']
-    entity_id [name: 'ix_cpv_entity']
+    (custom_property_definition_id, entity_id, ordinal) [unique, name: 'ix_cpv_definition_entity_ordinal']
     (tenant_id, custom_property_definition_id) [name: 'ix_cpv_tenant_definition']
+    (tenant_id, entity_id) [name: 'ix_cpv_tenant_entity']
     option_id [name: 'ix_custom_property_values_option_id']
   }
 }
@@ -1912,6 +2010,14 @@ Enum "translation_management_provider_enum" {
   "Weblate" [note: '2']
 }
 
+Enum "outbox_message_status" {
+  "Pending" [note: '1']
+  "Processing" [note: '2']
+  "Completed" [note: '3']
+  "Failed" [note: '4']
+  "DeadLettered" [note: '5']
+}
+
 // ============================================================
 // Relationships
 // ============================================================
@@ -1952,8 +2058,8 @@ Ref: "tags"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "tag_type_tags"."tag_id" > "tags"."id" [delete: cascade]
 Ref: "tag_type_tags"."tag_type_id" > "tag_types"."id" [delete: cascade]
 Ref: "tag_type_tags"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "custom_property_definitions"."event_type_id" > "event_types"."id" [delete: restrict]
 Ref: "custom_property_definitions"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "custom_property_definitions"."default_option_id" > "custom_property_options"."id" [delete: restrict]
 Ref: "custom_property_options"."custom_property_definition_id" > "custom_property_definitions"."id" [delete: cascade]
 Ref: "custom_property_options"."parent_option_id" > "custom_property_options"."id" [delete: set null]
 Ref: "custom_property_values"."custom_property_definition_id" > "custom_property_definitions"."id" [delete: cascade]

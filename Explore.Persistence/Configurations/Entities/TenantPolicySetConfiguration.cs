@@ -1,5 +1,5 @@
 // ABOUTME: EF Core configuration for TenantPolicySet — tenant-level governance policy overrides.
-// ABOUTME: Each sub-policy section is stored as a JSON column; only fields with Allow override mode apply.
+// ABOUTME: Each sub-policy section uses table-splitting (flattened columns); only fields with Allow override mode apply.
 
 using Explore.Domain.Policies;
 using Microsoft.EntityFrameworkCore;
@@ -32,7 +32,6 @@ public class TenantPolicySetConfiguration : IEntityTypeConfiguration<TenantPolic
             ConfigureSlot(events, e => e.AllowOrganizationSubmittedEvents);
             ConfigureSlot(events, e => e.AllowGroupSubmittedEvents);
             ConfigureSlot(events, e => e.EventCardClickOpensDetailPage);
-            events.ToJson("events_policy");
         });
 
         builder.OwnsOne(x => x.Organizations, orgs =>
@@ -41,7 +40,6 @@ public class TenantPolicySetConfiguration : IEntityTypeConfiguration<TenantPolic
             ConfigureSlot(orgs, o => o.AllowTenantToOmitVerification);
             ConfigureSlot(orgs, o => o.AllowSelfRegistration);
             ConfigureSlot(orgs, o => o.AllowGroupSelfRegistration);
-            orgs.ToJson("organizations_policy");
         });
 
         builder.OwnsOne(x => x.Branding, branding =>
@@ -50,7 +48,6 @@ public class TenantPolicySetConfiguration : IEntityTypeConfiguration<TenantPolic
             ConfigureSlot(branding, b => b.LogoUrl);
             ConfigureSlot(branding, b => b.FaviconUrl);
             ConfigureSlot(branding, b => b.CustomCssUrl);
-            branding.ToJson("branding_policy");
         });
 
         builder.OwnsOne(x => x.RenderPolicy, rp =>
@@ -73,7 +70,6 @@ public class TenantPolicySetConfiguration : IEntityTypeConfiguration<TenantPolic
             ConfigureSlot(rp, r => r.LockTenantPublicSeo);
             ConfigureSlot(rp, r => r.LockTenantOperational);
             ConfigureSlot(rp, r => r.LockTenantAdmin);
-            rp.ToJson("render_policy");
         });
     }
 

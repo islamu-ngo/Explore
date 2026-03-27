@@ -1,5 +1,5 @@
 // ABOUTME: Validates external API key creation requests before handlers persist credentials.
-// ABOUTME: Enforces safe names, organization ownership requirements, and owner-scoped uniqueness.
+// ABOUTME: Enforces safe names, entity existence for Organization/Group types, and owner-scoped uniqueness.
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.ExternalApiKey;
@@ -12,19 +12,26 @@ internal class CreateExternalApiKeyDtoValidator : AbstractValidator<CreateExtern
 {
     private readonly IExternalApiKeyRepository _externalApiKeyRepository;
     private readonly IOrganizationRepository _organizationRepository;
+    private readonly IGroupRepository _groupRepository;
 
     public CreateExternalApiKeyDtoValidator(
         IExternalApiKeyRepository externalApiKeyRepository,
         IOrganizationRepository organizationRepository,
-        Guid currentUserId)
+        IGroupRepository groupRepository,
+        Guid currentUserId,
+        Guid? tenantId)
     {
         _externalApiKeyRepository = externalApiKeyRepository;
         _organizationRepository = organizationRepository;
+        _groupRepository = groupRepository;
+
+        RuleFor(x => x.OwnerType)
+            .IsInEnum().WithMessage("Invalid owner type.");
 
         RuleFor(x => x.Name)
             .NotEmpty().WithMessage("API key name is required.")
             .MaximumLength(200).WithMessage("API key name cannot exceed 200 characters.")
-            .MustAsync((dto, name, cancellationToken) => NameIsUniqueAsync(dto, currentUserId, name, cancellationToken))
+            .MustAsync((dto, name, cancellationToken) => NameIsUniqueAsync(dto, currentUserId, tenantId, name, cancellationToken))
             .WithMessage("An API key with the same name already exists for this owner.");
 
         RuleFor(x => x.Scopes)
@@ -39,13 +46,20 @@ internal class CreateExternalApiKeyDtoValidator : AbstractValidator<CreateExtern
                 .MustAsync(OrganizationExistsAsync)
                 .WithMessage("Organization does not exist.");
         });
+
+        When(x => x.OwnerType == ExternalApiKeyOwnerType.Group, () =>
+        {
+            RuleFor(x => x.GroupId)
+                .NotEmpty().WithMessage("Group ID is required for group-owned API keys.")
+                .MustAsync(GroupExistsAsync)
+                .WithMessage("Group does not exist.");
+        });
     }
 
-    private async Task<bool> NameIsUniqueAsync(CreateExternalApiKeyDto dto, Guid currentUserId, string name, CancellationToken cancellationToken)
+    private async Task<bool> NameIsUniqueAsync(
+        CreateExternalApiKeyDto dto, Guid currentUserId, Guid? tenantId, string name, CancellationToken cancellationToken)
     {
-        var ownerId = dto.OwnerType == ExternalApiKeyOwnerType.Organization
-            ? dto.OrganizationId
-            : currentUserId;
+        var ownerId = ResolveOwnerId(dto, currentUserId, tenantId);
 
         if (!ownerId.HasValue)
         {
@@ -55,8 +69,24 @@ internal class CreateExternalApiKeyDtoValidator : AbstractValidator<CreateExtern
         return !await _externalApiKeyRepository.ExistsByOwnerAndName(dto.OwnerType, ownerId.Value, name);
     }
 
+    private static Guid? ResolveOwnerId(CreateExternalApiKeyDto dto, Guid currentUserId, Guid? tenantId)
+    {
+        return dto.OwnerType switch
+        {
+            ExternalApiKeyOwnerType.Organization => dto.OrganizationId,
+            ExternalApiKeyOwnerType.Group => dto.GroupId,
+            ExternalApiKeyOwnerType.Tenant => tenantId,
+            _ => currentUserId // User and InstanceAdmin both use current user's ID
+        };
+    }
+
     private async Task<bool> OrganizationExistsAsync(Guid? organizationId, CancellationToken cancellationToken)
     {
         return organizationId.HasValue && await _organizationRepository.Exists(organizationId.Value);
+    }
+
+    private async Task<bool> GroupExistsAsync(Guid? groupId, CancellationToken cancellationToken)
+    {
+        return groupId.HasValue && await _groupRepository.Exists(groupId.Value);
     }
 }

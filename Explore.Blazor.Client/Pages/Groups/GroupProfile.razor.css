@@ -38,10 +38,10 @@
 ::deep .group-profile__avatar {
     width: 8rem;
     height: 8rem;
-    border: 0.25rem solid var(--mud-palette-surface);
+    border: 0.25rem solid var(--isl-color-surface);
     border-radius: var(--isl-radius-lg);
     box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.12);
-    background-color: var(--mud-palette-surface);
+    background-color: var(--isl-color-surface);
     object-fit: cover;
 }
 
@@ -70,11 +70,11 @@
 
 /* ===== Element: group-profile__event-card ===== */
 ::deep .group-profile__event-card {
-    border: 1px solid var(--mud-palette-lines-default);
+    border: 1px solid var(--isl-color-border);
     border-radius: var(--isl-radius-lg);
     overflow: hidden;
     transition: box-shadow 0.2s ease, transform 0.2s ease;
-    background-color: var(--mud-palette-surface);
+    background-color: var(--isl-color-surface);
 }
 
 ::deep .group-profile__event-card:hover {
@@ -94,17 +94,17 @@
 /* ===== Element: group-profile__timeline ===== */
 ::deep .group-profile__timeline {
     position: relative;
-    padding-left: 2rem;
+    padding-inline-start: 2rem;
 }
 
 ::deep .group-profile__timeline::before {
     content: "";
     position: absolute;
-    left: 0.4375rem;
+    inset-inline-start: 0.4375rem;
     top: 0.625rem;
     bottom: 0.625rem;
     width: 2px;
-    background-color: var(--mud-palette-lines-default);
+    background-color: var(--isl-color-border);
 }
 
 /* ===== Element: group-profile__timeline-group ===== */
@@ -124,7 +124,7 @@
     gap: var(--isl-space-3);
     margin-bottom: var(--isl-space-3);
     position: relative;
-    left: -2rem;
+    inset-inline-start: -2rem;
 }
 
 /* ===== Element: group-profile__timeline-dot ===== */
@@ -132,9 +132,9 @@
     width: 0.875rem;
     height: 0.875rem;
     border-radius: 50%;
-    background-color: var(--mud-palette-primary);
-    border: 2px solid var(--mud-palette-surface);
-    box-shadow: 0 0 0 2px var(--mud-palette-primary);
+    background-color: var(--isl-color-primary);
+    border: 2px solid var(--isl-color-surface);
+    box-shadow: 0 0 0 2px var(--isl-color-primary);
     flex-shrink: 0;
     position: relative;
     z-index: 1;
@@ -156,9 +156,9 @@
 /* ===== Element: group-profile__timeline-card ===== */
 ::deep .group-profile__timeline-card {
     padding: var(--isl-space-3);
-    border: 1px solid var(--mud-palette-lines-default);
+    border: 1px solid var(--isl-color-border);
     border-radius: var(--isl-radius-lg);
-    background-color: var(--mud-palette-surface);
+    background-color: var(--isl-color-surface);
     transition: box-shadow 0.2s ease, transform 0.15s ease;
 }
 
@@ -212,15 +212,15 @@
     }
 
     ::deep .group-profile__identity {
-        text-align: left;
+        text-align: start;
     }
 
     ::deep .group-profile__timeline {
-        padding-left: 1.5rem;
+        padding-inline-start: 1.5rem;
     }
 
     ::deep .group-profile__timeline-date {
-        left: -1.5rem;
+        inset-inline-start: -1.5rem;
     }
 
     ::deep .group-profile__timeline-card-image {

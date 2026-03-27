@@ -46,4 +46,41 @@ public class TenantSettingRepository : GenericRepository<TenantSetting, Guid>, I
         await _dbContext.SaveChangesAsync();
         return true;
     }
+
+    public async Task<bool> LockAsync(Guid tenantId, string key)
+    {
+        var setting = await _dbContext.TenantSettingOverrides
+            .IgnoreTenantFilter()
+            .FirstOrDefaultAsync(s => s.TenantId == tenantId && s.SettingKey == key);
+
+        if (setting == null)
+            return false;
+
+        setting.IsLocked = true;
+        await _dbContext.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> UnlockAsync(Guid tenantId, string key)
+    {
+        var setting = await _dbContext.TenantSettingOverrides
+            .IgnoreTenantFilter()
+            .FirstOrDefaultAsync(s => s.TenantId == tenantId && s.SettingKey == key);
+
+        if (setting == null)
+            return false;
+
+        setting.IsLocked = false;
+        await _dbContext.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<List<TenantSetting>> GetLockedForTenant(Guid tenantId)
+    {
+        return await _dbContext.TenantSettingOverrides
+            .IgnoreTenantFilter()
+            .AsNoTracking()
+            .Where(s => s.TenantId == tenantId && s.IsLocked)
+            .ToListAsync();
+    }
 }

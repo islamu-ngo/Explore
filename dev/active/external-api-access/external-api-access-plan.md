@@ -3,7 +3,7 @@ ABOUTME: Planning only; grounded in verified repo files, current multi-tenancy r
 
 # External API Access - Implementation Plan
 
-> **Last Updated:** 2026-03-08
+> **Last Updated:** 2026-03-26
 
 ## Executive Summary
 
@@ -11,8 +11,11 @@ ISLAMU Event should support direct non-BFF API consumers, but only as a second i
 
 - BFF user callers continue through the existing Blazor plus YARP flow.
 - Direct JWT callers are supported for external trusted clients and tools.
-- Tenant-bound API key callers are supported for server-to-server integrations.
-- Instance-admin operational APIs stay platform-scoped and must not become a backdoor into tenant business data.
+- User API-key callers are supported for personal automation and developer use cases.
+- Organization API-key callers are supported for org-level automation and production integrations.
+- Group API-key callers are supported for group-scoped automation within a tenant.
+- Tenant API-key callers are supported for tenant-wide integration services.
+- Instance-admin API-key callers are supported for platform-scoped operational automation, without tenant business data access.
 
 The design must preserve the current runtime contract:
 
@@ -66,8 +69,11 @@ The plan below assumes planning only. No implementation decisions should bypass 
 |---|---|---|---|---|
 | BFF user | No tenant selector exposed | Existing route or host flow through BFF | Keycloak JWT via BFF | API resolves from trusted forwarded slug or host |
 | Direct JWT user | No tenant selector required | Must provide explicit tenant context by host or `X-Tenant-Slug` | Direct bearer JWT | API resolves from explicit request context, then validates membership or admin authority |
-| Tenant API-key client | No tenant selector required | Must not send tenant selector as authority; tenant comes from the key binding | API key | Key itself resolves tenant and owner context |
-| Instance-admin ops client | Platform-scoped only | Platform-scoped only | JWT only, not tenant API key | No tenant-derived business scope by default |
+| User API-key client | No tenant selector required | Tenant comes from the key binding; caller-supplied slug must not override | API key (`X-API-Key`) | Key itself resolves tenant; scoped to user's permissions in that tenant |
+| Organization API-key client | No tenant selector required | Tenant comes from the key binding | API key (`X-API-Key`) | Key resolves tenant; scoped to org-admin capabilities for the bound organization |
+| Group API-key client | No tenant selector required | Tenant comes from the key binding | API key (`X-API-Key`) | Key resolves tenant; scoped to group-admin capabilities for the bound group |
+| Tenant API-key client | No tenant selector required | Tenant comes from the key binding (`OwnerId == TenantId`) | API key (`X-API-Key`) | Key resolves tenant; scoped to tenant-wide access |
+| Instance-admin API-key client | Platform-scoped only | Platform-scoped only; no tenant context (`TenantId` is NULL) | API key (`X-API-Key`) | No tenant; platform metadata ops only; must not access tenant business data |
 
 ## Credential And Principal Separation
 
@@ -101,7 +107,7 @@ Required properties:
 - stable public key identifier or prefix for lookup and support workflows
 - one-time shown secret value
 - hashed secret at rest
-- owner type (`User`, `Organization`, optionally `TenantIntegration` later)
+- owner type (`User`, `Organization`, `Group`, `Tenant`, `InstanceAdmin`)
 - owner identifier
 - tenant binding
 - scope set or permission bundle
@@ -115,17 +121,43 @@ Required properties:
 
 ### Ownership Rules
 
-- **User API key**: acts on behalf of a user inside one tenant; can only access what that user is authorized to access.
-- **Organization API key**: acts on behalf of an organization-admin-approved automation context for a specific organization within one tenant; can create and manage organization-owned resources within allowed scopes.
-- **Tenant integration key**: optional later evolution for tenant-wide integrations; should not be part of v1 unless a clear use case exists.
-- **Instance-admin operational key**: do not model this as a normal tenant key. If needed later, it should be a separate platform-client capability with narrow ops scopes and stronger auditing.
+Every actor entity in the system has a corresponding API-key ownership type. The `ExternalApiKeyOwnerType` enum maps directly to the entity hierarchy:
 
-Recommended product direction for v1:
+```
+ExternalApiKeyOwnerType
+├── User = 1          → OwnerId = User.Id,         TenantId = required
+├── Organization = 2  → OwnerId = Organization.Id,  TenantId = required
+├── Group = 3         → OwnerId = Group.Id,          TenantId = required
+├── Tenant = 4        → OwnerId = Tenant.Id (== TenantId), TenantId = required
+└── InstanceAdmin = 5 → OwnerId = User.Id (the admin), TenantId = NULL
+```
 
-- ship **user keys** for developer or personal automation use cases
-- ship **organization automation keys** for production integrations
-- defer a full **service account** abstraction unless zero-downtime rotation or bot-style ownership is required immediately
-- keep the domain ready to evolve toward service accounts later, because mature systems often move there over time
+- **User API key**: acts on behalf of a user inside one tenant; can only access what that user is authorized to access. The user creates their own key.
+- **Organization API key**: acts on behalf of an organization-admin-approved automation context within one tenant. Only an org admin (RoleId=22) can create. Machine principal — not "a user without a user."
+- **Group API key**: acts on behalf of a group-admin-approved automation context within one tenant. Only a group admin (RoleId=31) can create. Requires new `IsGroupAdminAsync()` in `AdminContext`.
+- **Tenant API key**: acts on behalf of a tenant for tenant-wide integration services. Only a tenant admin (RoleId=11) can create. `OwnerId` equals `TenantId` by convention.
+- **Instance-admin API key**: platform-scoped operational key. Only an instance admin can create. `TenantId` is NULL (no tenant binding). Must not access tenant business data per `docs/ADMIN_HIERARCHY.md`.
+
+**Key schema change**: `TenantId` on `ExternalApiKey` becomes **nullable** to support InstanceAdmin platform-scoped keys.
+
+**Scope ceiling hierarchy**: InstanceAdmin > Tenant > Organization ≈ Group > User. A key's effective permissions are the intersection of (1) its scope set and (2) the creator's authority level.
+
+**Permission model summary**:
+
+| OwnerType | OwnerId → | TenantId | Creator Authority | Scope Ceiling |
+|---|---|---|---|---|
+| User | User.Id | Required | The user themselves | User's permissions in tenant |
+| Organization | Organization.Id | Required | `IsOrganizationAdminAsync(orgId)` | Org-admin capabilities |
+| Group | Group.Id | Required | `IsGroupAdminAsync(groupId)` (NEW) | Group-admin capabilities |
+| Tenant | Tenant.Id | Required | `IsTenantAdminAsync(tenantId)` | Tenant-wide access |
+| InstanceAdmin | User.Id (the admin) | NULL | `IsInstanceAdminAsync()` | Platform metadata ops |
+
+**Design rationale — expanded OwnerType enum over Actor FK**:
+- `Tenant` is NOT an Actor entity (it is the isolation boundary, not a public-facing identity).
+- `InstanceAdmin` is a role on User, not a separate entity.
+- `Actor` is for public-facing identity (DID/handle/display name), not authorization ownership.
+- The existing `OwnerId` (Guid) pattern already handles all entity types without polymorphic FK complexity.
+- Adding an Actor FK would require hybrid handling for Tenant and InstanceAdmin which don't have Actor records.
 
 ## Secret And Rotation Handling
 
@@ -227,11 +259,12 @@ Goal: define the API-key domain model, ownership rules, lifecycle, and invariant
 
 #### Task 1.1: Define external API credential aggregate
 - **Layer:** Domain
-- **Deliverables:** new aggregate, status enum, owner-type enum or value object, audit-friendly metadata
+- **Deliverables:** new aggregate, status enum, owner-type enum (5 values), audit-friendly metadata
 - **Acceptance Criteria:**
   - key secret is never stored in plaintext
-  - aggregate explicitly binds to a tenant
-  - aggregate supports user and organization ownership
+  - aggregate explicitly binds to a tenant (nullable for InstanceAdmin platform-scoped keys)
+  - aggregate supports all five ownership types: User, Organization, Group, Tenant, InstanceAdmin
+  - `OwnerId` semantics per type: User.Id, Organization.Id, Group.Id, Tenant.Id, User.Id (admin)
   - aggregate does not give instance admins tenant business access by default
   - credential data stays separate from runtime principal construction
 - **Effort:** M
@@ -240,8 +273,13 @@ Goal: define the API-key domain model, ownership rules, lifecycle, and invariant
 - **Layer:** Domain/Application
 - **Deliverables:** scope vocabulary, mapping rules to resource permissions, v1 scope matrix
 - **Acceptance Criteria:**
-  - scopes cover read-only, event creation, organization management, and sensitive/private-event access where allowed
+  - scopes cover read-only, event creation, organization management, group management, and sensitive/private-event access where allowed
+  - scope ceiling hierarchy enforced: InstanceAdmin > Tenant > Organization ~ Group > User
+  - each owner type has a defined maximum scope ceiling that cannot be exceeded
   - organization keys cannot exceed organization-admin ceilings
+  - group keys cannot exceed group-admin ceilings
+  - tenant keys cannot exceed tenant-admin ceilings
+  - instance-admin keys are limited to platform metadata operations
   - user keys cannot exceed user-authorized capabilities
 - **Effort:** M
 
@@ -279,13 +317,17 @@ Goal: add use cases, request models, validators, repository contracts, and autho
 
 #### Task 2.3: Add authorization rules for key ownership and scope enforcement
 - **Layer:** Application
-- **Deliverables:** request authorization strategy, owner checks, organization membership checks, tenant membership checks
+- **Deliverables:** request authorization strategy, owner checks for all five ownership types, admin authority verification
 - **Acceptance Criteria:**
   - user-created keys require valid current user in tenant
-  - organization keys require org-level authority
+  - organization keys require `IsOrganizationAdminAsync(orgId)` authority
+  - group keys require `IsGroupAdminAsync(groupId)` authority (NEW — must be added to `AdminContext`)
+  - tenant keys require `IsTenantAdminAsync(tenantId)` authority
+  - instance-admin keys require `IsInstanceAdminAsync()` authority
   - instance-admin listing remains metadata-only and excludes tenant secret access
-  - disabled users, removed organization authority, and disabled tenants cause dependent keys to fail immediately
-- **Effort:** M
+  - disabled users, removed organization/group authority, and disabled tenants cause dependent keys to fail immediately
+  - scope ceiling enforcement: key scopes cannot exceed the creator's authority level
+- **Effort:** L
 
 #### Task 2.4: Define principal and claims model for authenticated API keys
 - **Layer:** Application/API
@@ -306,7 +348,10 @@ Goal: persist API-key data and usage analytics safely.
 - **Deliverables:** entity configuration, indexes, migration, optional usage table or rollup table
 - **Acceptance Criteria:**
   - hashed secret and public prefix are indexed appropriately
-  - tenant binding is enforced by schema and query filters where appropriate
+  - `TenantId` is nullable to support InstanceAdmin platform-scoped keys
+  - tenant binding is enforced by schema and query filters where appropriate; InstanceAdmin keys bypass tenant filter
+  - composite indexes updated: `(TenantId, OwnerType, OwnerId)` handles nullable TenantId correctly
+  - composite index `(TenantId, Status)` updated for nullable TenantId
   - migration is explicit and reversible in normal EF Core workflow
   - the model supports rotation overlap if that product behavior is approved
 - **Effort:** M
@@ -431,14 +476,20 @@ Goal: expose management operations and safe operational reporting after the auth
 
 Goal: expose lifecycle management and visibility in the existing admin UX.
 
-#### Task 7.1: Add tenant-admin and organization-admin API-key management UX
+#### Task 7.1: Add API-key management UX for all owner types
 - **Layer:** Blazor Client
-- **Deliverables:** pages or sections for creating, rotating, revoking, and viewing scoped metadata
+- **Deliverables:** pages or sections for creating, rotating, revoking, and viewing scoped metadata for all five key types
 - **Acceptance Criteria:**
   - secrets are shown once at creation time
   - subsequent views show only prefix, owner, scopes, status, and last-used info
-  - UX distinguishes user keys from organization keys
-- **Effort:** M
+  - UX distinguishes user keys, organization keys, group keys, tenant keys, and instance-admin keys
+  - user key management: self-service in user settings
+  - organization key management: visible to org admins in org admin panel
+  - group key management: visible to group admins in group admin panel
+  - tenant key management: visible to tenant admins in tenant admin panel
+  - instance-admin key management: visible in platform-ops admin panel, no tenant context
+  - owner type selection drives which admin authority is verified on creation
+- **Effort:** L
 
 #### Task 7.2: Add platform-ops visibility UX
 - **Layer:** Blazor Client
@@ -465,12 +516,16 @@ Goal: make the feature production-grade and repo-aligned.
 #### Task 8.2: Add unit, integration, and architecture tests
 - **Layer:** Test projects
 - **Acceptance Criteria:**
-  - auth handler tests cover valid, revoked, expired, and malformed keys
+  - auth handler tests cover valid, revoked, expired, and malformed keys for all five owner types
   - integration tests cover single-tenant and multi-tenant direct access paths
-  - rate limiting tests cover per-key partitioning
-  - authorization tests cover user, organization, and instance-admin boundaries
+  - rate limiting tests cover per-key partitioning across all owner types
+  - authorization tests cover all five ownership boundaries: user, organization, group, tenant, and instance-admin
+  - group admin authority tests verify `IsGroupAdminAsync` integration
+  - tenant admin authority tests verify tenant-scoped key creation and scope ceiling
+  - instance-admin key tests verify NULL TenantId, platform-scoped-only access, and tenant business data exclusion
   - proxy-aware integration tests cover trusted forwarded-host scenarios and mismatch rejection
   - single-tenant fast path is verified without caller-supplied tenant material
+  - scope ceiling enforcement tests verify that keys cannot exceed their owner type's authority level
 - **Effort:** L
 
 #### Task 8.3: Update repo docs
@@ -495,23 +550,24 @@ Goal: make the feature production-grade and repo-aligned.
 
 ### Phase 1 - Domain
 
-1. Design `ExternalApiKey` aggregate and related enums.
-2. Decide whether organization automation is represented as direct organization ownership or a service-account adjunct model.
-3. Define a stable scope catalog for v1.
+1. Design `ExternalApiKey` aggregate with five-value `ExternalApiKeyOwnerType` enum (User, Organization, Group, Tenant, InstanceAdmin).
+2. Define `OwnerId` semantics per owner type and nullable `TenantId` for InstanceAdmin keys.
+3. Define a stable scope catalog for v1 with scope ceiling per owner type.
 4. Define revocation, rotation, and expiration invariants.
 
 ### Phase 2 - Application
 
-1. Create repository contracts and DTOs.
-2. Create commands and queries for lifecycle management.
-3. Add validator set using manual instantiation.
-4. Define claims and principal contract for authenticated keys.
-5. Add owner- and tenant-aware authorization checks.
+1. Create repository contracts and DTOs for all five owner types.
+2. Create commands and queries for lifecycle management (create, list, detail, rotate, revoke, update policy).
+3. Add validator set using manual instantiation; validate owner type + admin authority combinations.
+4. Define claims and principal contract for authenticated keys (all five owner types).
+5. Add `IsGroupAdminAsync(groupId)` to `AdminContext` (follows `IsOrganizationAdminAsync` pattern).
+6. Add owner- and tenant-aware authorization checks with scope ceiling enforcement per owner type.
 
 ### Phase 3 - Persistence
 
-1. Add tables, configurations, indexes, and migrations.
-2. Implement auth lookup and management repositories.
+1. Add tables, configurations, indexes, and migrations (nullable TenantId, updated composite indexes).
+2. Implement auth lookup and management repositories (tenant filter bypass for InstanceAdmin keys).
 3. Add usage rollup strategy.
 
 ### Phase 4 - API
@@ -534,16 +590,21 @@ Goal: make the feature production-grade and repo-aligned.
 
 ### Phase 7 - UI
 
-1. Add tenant and organization key management pages.
-2. Add instance-admin metadata views.
-3. Ensure single-tenant mode hides multi-tenant-only platform affordances.
+1. Add user key self-service management in user settings.
+2. Add organization key management in org admin panel (visible to org admins).
+3. Add group key management in group admin panel (visible to group admins).
+4. Add tenant key management in tenant admin panel (visible to tenant admins).
+5. Add instance-admin key management in platform-ops panel (no tenant context).
+6. Add instance-admin metadata views.
+7. Ensure single-tenant mode hides multi-tenant-only platform affordances.
 
 ### Phase 8 - Quality
 
-1. Add unit tests.
-2. Add integration tests.
-3. Add authorization and architecture tests.
-4. Update docs and active task context.
+1. Add unit tests for all five owner types and scope ceiling enforcement.
+2. Add integration tests for single-tenant and multi-tenant paths across all key types.
+3. Add authorization and architecture tests (including `IsGroupAdminAsync`, nullable TenantId edge cases).
+4. Add scope ceiling boundary tests for each owner type.
+5. Update docs and active task context.
 
 ---
 
@@ -562,6 +623,10 @@ Goal: make the feature production-grade and repo-aligned.
 | Excessive scope granularity in v1 | Delays delivery and complicates policy mapping | Start with a small scope catalog aligned to existing permission groupings |
 | Assuming in-process rate limiting is cluster-wide | Self-hosted multi-node deployments may observe inconsistent enforcement | Document node-local semantics unless a shared quota store is intentionally added |
 | Weak secret handling and rotation semantics | Real integrations need safe cutover and logging discipline | Require one-time display, hashed storage, no raw-key logging, and explicit overlap-window policy |
+| Missing `IsGroupAdminAsync` in AdminContext | Group API keys cannot be authorized without it; AdminContext currently has instance, tenant, and org admin checks but no group equivalent | Implement `IsGroupAdminAsync` before group key creation; follow existing `IsOrganizationAdminAsync` pattern with `GroupMember` + RoleId=31 |
+| Nullable TenantId migration complexity | Existing `ExternalApiKey` rows all have non-null TenantId; making column nullable requires careful migration and index updates | Write explicit migration with index recreation; add CHECK constraint or application-level validation that only InstanceAdmin keys can have NULL TenantId |
+| Scope ceiling enforcement across five owner types | More owner types mean more authorization paths to validate; missing checks could allow privilege escalation | Centralize scope ceiling logic in a single service; test every owner type boundary explicitly |
+| Tenant key impersonation risk | Tenant keys have broad access; compromised key could access all tenant data | Require tenant admin authority for creation; consider shorter default expiry for tenant keys; audit all tenant key usage |
 
 ---
 
@@ -571,11 +636,14 @@ Goal: make the feature production-grade and repo-aligned.
 - single-tenant callers do not need tenant-specific configuration
 - multi-tenant direct JWT callers use an explicit, documented tenant contract
 - API-key callers authenticate without relying on caller-supplied tenant authority
+- all five owner types (User, Organization, Group, Tenant, InstanceAdmin) can create and use API keys within their authority level
+- scope ceiling enforcement prevents keys from exceeding their owner type's authority
 - auth-scheme dispatch is settled before domain and persistence work expands
 - per-key throttling produces accurate 429 behavior and usable diagnostics
 - self-hosted reverse-proxy deployments have a documented trusted-host model
 - instance-admin views provide operational visibility without exposing tenant secrets or tenant business data
-- test coverage exists for auth, revocation, ownership, and rate-limit behavior
+- group admin authority (`IsGroupAdminAsync`) is integrated into `AdminContext` and verified
+- test coverage exists for auth, revocation, ownership boundaries across all five owner types, scope ceiling enforcement, and rate-limit behavior
 
 ---
 
@@ -589,7 +657,10 @@ Goal: make the feature production-grade and repo-aligned.
 - `Explore.Application/Behaviors/AuthorizationBehavior.cs`
 - `Explore.Application/Telemetry/BusinessMetrics.cs`
 - `Explore.Application/Authorization/AdminClaimTypes.cs`
+- `Explore.Application/Authorization/AdminContext.cs` (admin authority resolution — needs `IsGroupAdminAsync` addition)
 - `Explore.Domain/UserAuthenticationToken.cs` (pattern reference only)
+- `Explore.Domain/Actor.cs` (polymorphic owner reference — design rationale for OwnerType enum over Actor FK)
+- `Explore.Domain/Group.cs`, `Explore.Domain/GroupMember.cs` (group admin authority source)
 
 ### Documentation Dependencies
 
@@ -611,22 +682,24 @@ Goal: make the feature production-grade and repo-aligned.
 
 ## Effort Estimates
 
-| Phase | Estimate |
-|---|---|
-| Phase 0 - Pipeline ADR and spike | 1-2 days |
-| Phase 1 - Domain design | 2-3 days |
-| Phase 2 - Application contracts and CQRS | 3-4 days |
-| Phase 3 - Persistence and migrations | 2-3 days |
-| Phase 4 - API auth and tenant validation seam | 3-5 days |
-| Phase 5 - Rate limiting and observability | 2-4 days |
-| Phase 6 - Management APIs and platform visibility | 2-3 days |
-| Phase 7 - Blazor admin surfaces | 2-4 days |
-| Phase 8 - Tests and docs | 3-4 days |
+| Phase | Estimate | Notes |
+|---|---|---|
+| Phase 0 - Pipeline ADR and spike | 1-2 days | COMPLETE |
+| Phase 1 - Domain design | 2-3 days | +0.5d for Group/Tenant/InstanceAdmin owner types |
+| Phase 2 - Application contracts and CQRS | 4-5 days | +1d for five owner types, `IsGroupAdminAsync`, scope ceiling enforcement |
+| Phase 3 - Persistence and migrations | 2-3 days | +0.5d for nullable TenantId migration and index updates |
+| Phase 4 - API auth and tenant validation seam | 3-5 days | Claims builder must handle all five owner types |
+| Phase 5 - Rate limiting and observability | 2-4 days | Rate-limit partitioning extended to all key types |
+| Phase 6 - Management APIs and platform visibility | 2-3 days | Endpoints must handle all five owner types |
+| Phase 7 - Blazor admin surfaces | 3-5 days | +1d for group admin panel, tenant admin panel, and owner type selection UX |
+| Phase 8 - Tests and docs | 4-6 days | +1-2d for five owner type boundaries, scope ceiling tests, nullable TenantId edge cases |
 
-Indicative total: **18-29 working days**, depending on how much of the Cerbos, proxy-hardening, and reporting surface is included in v1.
+Indicative total: **23-36 working days**, reflecting the expanded five-owner-type model (up from 18-29 days with two owner types). The increase is primarily in authorization logic, UI surfaces, and test coverage.
 
 ---
 
 ## Potential Risks & Unknowns
 
 The highest-risk area remains the API pipeline seam between tenant resolution and authentication. The current API resolves tenant before authentication, but API-key callers ideally derive tenant from the key itself. If the Phase 0 spike does not settle that cleanly, the system could drift toward trusting raw tenant hints or duplicating enforcement logic between middleware and handlers. The second major risk is host-derived tenancy in self-hosted reverse-proxy deployments: forwarded-host and forwarded-for behavior must be treated as a trust-boundary problem, not just as deployment trivia. The third likely complexity is clustered throttling semantics: the built-in in-process limiter is a good fit for node-local abuse control, but strict cross-node quotas need an explicit follow-on design rather than assumption. Platform visibility remains constrained by `docs/ADMIN_HIERARCHY.md`, so instance-admin reporting must stay metadata-only unless a separately-audited emergency path is introduced.
+
+The expanded five-owner-type model introduces additional risks: (1) `AdminContext` currently lacks `IsGroupAdminAsync`, which must be implemented before group key authorization works; (2) making `TenantId` nullable for InstanceAdmin keys requires careful migration and index updates on existing data; (3) five authorization paths instead of two increases the surface area for privilege escalation bugs — centralized scope ceiling enforcement and exhaustive boundary tests are essential; (4) tenant-level API keys have broad access and represent a higher-value target if compromised.

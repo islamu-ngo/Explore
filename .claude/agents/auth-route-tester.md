@@ -4,6 +4,9 @@ ABOUTME: Defines required reads, test matrix rules, and outputs.
 ---
 name: auth-route-tester
 description: Tests authenticated API endpoints for auth/authz regressions.
+type: diagnostic
+enforcement: suggest
+priority: high
 tools: Bash, Read, Write
 ---
 

@@ -112,11 +112,19 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
 
         if (isGuid)
         {
-            query = query.Where(e =>
-                _dbContext.Users.AsNoTracking().Any(u => u.Id == userGuid && u.ActorId == e.ActorId) ||
-                _dbContext.OrganizationMembers.AsNoTracking().Any(om =>
-                    om.UserId == userGuid &&
-                    _dbContext.Organizations.AsNoTracking().Any(o => o.Id == om.OrganizationId && o.ActorId == e.ActorId)));
+            var userActorIds = _dbContext.Users
+                .Where(u => u.Id == userGuid)
+                .Select(u => u.ActorId);
+
+            var orgActorIds = _dbContext.OrganizationMembers
+                .Where(om => om.UserId == userGuid)
+                .SelectMany(om => _dbContext.Organizations
+                    .Where(o => o.Id == om.OrganizationId)
+                    .Select(o => o.ActorId));
+
+            var allActorIds = userActorIds.Union(orgActorIds);
+
+            query = query.Where(e => allActorIds.Contains(e.ActorId));
         }
 
         return await query.ToListAsync();
@@ -381,11 +389,19 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
 
         if (isGuid)
         {
-            query = query.Where(e =>
-                _dbContext.Users.AsNoTracking().Any(u => u.Id == userGuid && u.ActorId == e.ActorId) ||
-                _dbContext.OrganizationMembers.AsNoTracking().Any(om =>
-                    om.UserId == userGuid &&
-                    _dbContext.Organizations.AsNoTracking().Any(o => o.Id == om.OrganizationId && o.ActorId == e.ActorId)));
+            var userActorIds = _dbContext.Users
+                .Where(u => u.Id == userGuid)
+                .Select(u => u.ActorId);
+
+            var orgActorIds = _dbContext.OrganizationMembers
+                .Where(om => om.UserId == userGuid)
+                .SelectMany(om => _dbContext.Organizations
+                    .Where(o => o.Id == om.OrganizationId)
+                    .Select(o => o.ActorId));
+
+            var allActorIds = userActorIds.Union(orgActorIds);
+
+            query = query.Where(e => allActorIds.Contains(e.ActorId));
         }
 
         var orderedQuery = query.OrderByDescending(e => e.FirstSessionDate);

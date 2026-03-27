@@ -14,40 +14,29 @@ Our UI follows a **neo-minimal** aesthetic inspired by modern design systems: cl
 
 ### MudTheme Configuration
 
+The actual theme is composed in `AppearanceThemeService.cs`. Key values:
+
 ```csharp
 private MudTheme _theme = new()
 {
     PaletteLight = new Palette()
     {
-        Primary = "#1a1a2e",          // deep, calm primary
-        Secondary = "#6366f1",        // subtle accent (indigo)
-        Tertiary = "#10b981",         // success green
-        Background = "#fafafa",       // off-white, not pure white
-        Surface = "#ffffff",
-        AppbarBackground = "#ffffff", // clean white appbar
-        AppbarText = "#1a1a2e",
-        DrawerBackground = "#ffffff",
-        DrawerText = "#374151",
-        TextPrimary = "#111827",      // near-black, not pure black
-        TextSecondary = "#6b7280",    // muted gray
-        ActionDefault = "#6b7280",
-        Divider = "#e5e7eb",          // subtle divider
-        LinesDefault = "#e5e7eb",
-        TableHover = "#f9fafb",
-        HoverOpacity = 0.04,
+        Primary = "#3B82F6",
+        Secondary = "#1E293B",
+        Background = "#F8FAFC",
+        Surface = "#FFFFFF",
+        AppbarBackground = "rgba(248,250,252,0.85)",
+        TextPrimary = "#0F172A",
+        TextSecondary = "#64748B",
+        // ... see AppearanceThemeService.cs for full palette
     },
     PaletteDark = new Palette()
     {
-        Primary = "#818cf8",          // soft indigo
-        Secondary = "#6366f1",
-        Background = "#0f0f17",       // deep dark, not pure black
-        Surface = "#1a1a2e",
-        AppbarBackground = "#1a1a2e",
-        TextPrimary = "#f3f4f6",
-        TextSecondary = "#9ca3af",
-        Divider = "#374151",
-        LinesDefault = "#374151",
-        TableHover = "rgba(255,255,255,0.03)",
+        Primary = "#60A5FA",
+        Background = "#0F172A",
+        Surface = "#1E293B",
+        TextPrimary = "#F1F5F9",
+        TextSecondary = "#94A3B8",
     },
     LayoutProperties = new LayoutProperties
     {
@@ -58,19 +47,17 @@ private MudTheme _theme = new()
         Default = new DefaultTypography
         {
             FontFamily = new[] { "Inter", "system-ui", "-apple-system", "sans-serif" },
-            FontSize = "0.875rem",      // 14px base — compact, modern
+            FontSize = "0.9375rem",     // 15px base
             LineHeight = "1.5",
-            LetterSpacing = "-0.011em", // subtle tightening
+            LetterSpacing = "-0.011em",
         },
-        H1 = new H1Typography { FontSize = "2rem", FontWeight = 700, LetterSpacing = "-0.025em" },
-        H2 = new H2Typography { FontSize = "1.5rem", FontWeight = 600, LetterSpacing = "-0.02em" },
-        H3 = new H3Typography { FontSize = "1.25rem", FontWeight = 600, LetterSpacing = "-0.015em" },
-        H4 = new H4Typography { FontSize = "1.125rem", FontWeight = 600 },
-        H5 = new H5Typography { FontSize = "1rem", FontWeight = 600 },
+        // H1-H5 use fluid clamp() values for responsive scaling
+        H1 = new H1Typography { FontSize = "clamp(1.875rem, 1.5rem + 1.04vw, 2.5rem)", FontWeight = 700 },
+        H2 = new H2Typography { FontSize = "clamp(1.625rem, 1.375rem + 0.625vw, 2rem)", FontWeight = 600 },
+        H3 = new H3Typography { FontSize = "clamp(1.5rem, 1.333rem + 0.42vw, 1.75rem)", FontWeight = 600 },
+        H4 = new H4Typography { FontSize = "clamp(1.25rem, 1.083rem + 0.42vw, 1.5rem)", FontWeight = 600 },
+        H5 = new H5Typography { FontSize = "clamp(1.125rem, 1.042rem + 0.21vw, 1.25rem)", FontWeight = 600 },
         H6 = new H6Typography { FontSize = "0.875rem", FontWeight = 600 },
-        Subtitle1 = new Subtitle1Typography { FontSize = "0.875rem", FontWeight = 500 },
-        Body1 = new Body1Typography { FontSize = "0.875rem", LineHeight = "1.625" },
-        Body2 = new Body2Typography { FontSize = "0.8125rem", LineHeight = "1.5" },
         Button = new ButtonTypography { FontSize = "0.875rem", FontWeight = 500, LetterSpacing = "0" },
         Caption = new CaptionTypography { FontSize = "0.75rem", LineHeight = "1.5" },
     },
@@ -102,6 +89,18 @@ private MudTheme _theme = new()
 - Set component defaults explicitly on each component, via wrapper components, or via `MudTheme` tokens.
 - Popover defaults now configured via `PopoverOptions` in `AddMudServices(config => { ... })`.
 
+## 3-Tier Design Token System
+
+See the `design-system` skill (`token-system.md`) for the complete token reference. Summary:
+
+| Tier | Purpose | Example |
+|------|---------|---------|
+| **Primitives** | Raw values (spacing grid, radii, shadows, fonts) | `--isl-space-4`, `--isl-radius-md`, `--isl-shadow-sm` |
+| **Semantic** | Purpose aliases pointing to MudBlazor or primitive tokens | `--isl-color-primary`, `--isl-space-page` |
+| **Component** | Scoped tokens for specific components (3+ usage rule) | `--isl-card-border-radius`, `--isl-button-ring` |
+
+Use `oklch()` and `color-mix(in oklch, ...)` for perceptually uniform color manipulation. Prefer over `rgba()` and `color-mix(in srgb, ...)`.
+
 ## CSS Variable Overrides
 
 Use sparingly for fine-tuning beyond the theme:
@@ -110,7 +109,7 @@ Use sparingly for fine-tuning beyond the theme:
 :root {
     --mud-palette-lines-default: #e5e7eb;
     --mud-palette-table-hover: #f9fafb;
-    --mud-elevation-1: 0 1px 3px 0 rgba(0,0,0,0.06), 0 1px 2px -1px rgba(0,0,0,0.06);
+    --mud-elevation-1: 0 1px 3px 0 oklch(0 0 0 / 0.06), 0 1px 2px -1px oklch(0 0 0 / 0.06);
 }
 ```
 

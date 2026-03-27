@@ -6,6 +6,7 @@
                    Color="@Color"
                    Size="@Size"
                    Edge="@Edge"
+                   Variant="@Variant"
                    OnClick="@OnClick"
                    @attributes="AdditionalAttributes" />
 </div>
@@ -22,6 +23,9 @@
 
     /// <summary>Edge placement for toolbar/appbar use. Defaults to false (no edge).</summary>
     [Parameter] public Edge Edge { get; set; } = Edge.False;
+
+    /// <summary>Button variant. Defaults to Text.</summary>
+    [Parameter] public Variant Variant { get; set; } = Variant.Text;
 
     /// <summary>Click callback.</summary>
     [Parameter] public EventCallback OnClick { get; set; }

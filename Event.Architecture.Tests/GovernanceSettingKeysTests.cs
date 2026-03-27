@@ -67,7 +67,8 @@ public class GovernanceSettingKeysTests
         [
             "Deployment", "Tenants", "Routing", "Events", "Organizations", "Groups",
             "Modules", "Branding", "Domains", "Email", "Storage", "Security",
-            "Cerbos", "Authentication", "Federation", "Analytics", "TenantDelegation", "Localization"
+            "Cerbos", "Authentication", "Federation", "Analytics", "TenantDelegation", "Localization",
+            "EventList"
         ];
 
         foreach (var category in expectedCategories)

@@ -117,7 +117,7 @@ public class OrganizationReviewServiceTests
         };
         var expected = ComponentDataBuilder.SuccessResponse();
 
-        _apiClient.OrganizationreviewAsync(dto, Arg.Any<CancellationToken>()).Returns(expected);
+        _apiClient.OrganizationreviewPOSTAsync(dto, Arg.Any<CancellationToken>()).Returns(expected);
 
         // Act
         var result = await _service.CreateReview(dto);
@@ -125,7 +125,7 @@ public class OrganizationReviewServiceTests
         // Assert
         await Assert.That(result).IsNotNull();
         await Assert.That(result!.Success).IsTrue();
-        await _apiClient.Received(1).OrganizationreviewAsync(dto, Arg.Any<CancellationToken>());
+        await _apiClient.Received(1).OrganizationreviewPOSTAsync(dto, Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -138,7 +138,7 @@ public class OrganizationReviewServiceTests
             Rating = 5,
             Comment = "Excellent organization!"
         };
-        _apiClient.OrganizationreviewAsync(dto, Arg.Any<CancellationToken>())
+        _apiClient.OrganizationreviewPOSTAsync(dto, Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Bad Request", 400, null, null, null));
 
         // Act & Assert

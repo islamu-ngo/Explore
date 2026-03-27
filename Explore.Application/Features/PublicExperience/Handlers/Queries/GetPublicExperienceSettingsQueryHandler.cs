@@ -85,7 +85,7 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
         // Resolve consent bootstrap via the runtime profile resolver
         var analyticsSettingGroup = await _hierarchicalSettingsResolver.ResolveGroupAsync<AnalyticsSettingGroup>(
             new SettingContext(TenantId: tenantId), cancellationToken);
-        analyticsSettingGroup.TenantSlug = effectiveTenantSettings.Subdomain;
+        analyticsSettingGroup.TenantStableKey = tenantId.ToString("N")[..8];
         var runtimeProfile = _runtimeProfileResolver.Resolve(analyticsSettingGroup);
         var consentBootstrap = MapToConsentBootstrap(runtimeProfile, analyticsProvider);
 

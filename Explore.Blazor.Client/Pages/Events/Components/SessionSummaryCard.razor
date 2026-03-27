@@ -74,19 +74,19 @@
         @* Right: action buttons *@
         <div class="session-card__actions" @onclick:stopPropagation="true">
             <MudTooltip Text="Edit Session">
-                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                <AppIconButton Icon="@Icons.Material.Filled.Edit"
                                Size="Size.Small"
                                Color="Color.Primary"
                                OnClick="@(() => OnEdit.InvokeAsync())" />
             </MudTooltip>
             <MudTooltip Text="Duplicate Session">
-                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                <AppIconButton Icon="@Icons.Material.Filled.ContentCopy"
                                Size="Size.Small"
                                Color="Color.Default"
                                OnClick="@(() => OnDuplicate.InvokeAsync())" />
             </MudTooltip>
             <MudTooltip Text="Delete Session">
-                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                <AppIconButton Icon="@Icons.Material.Filled.Delete"
                                Size="Size.Small"
                                Color="Color.Error"
                                OnClick="@(() => OnDelete.InvokeAsync())" />

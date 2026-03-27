@@ -32,6 +32,10 @@ public class TenantSettingConfiguration : IEntityTypeConfiguration<TenantSetting
         builder.Property(e => e.Value)
             .IsRequired();
 
+        builder.Property(e => e.IsLocked)
+            .IsRequired()
+            .HasDefaultValue(false);
+
         builder.Property(e => e.CreatedAt)
             .IsRequired()
             .HasDefaultValueSql("NOW()");

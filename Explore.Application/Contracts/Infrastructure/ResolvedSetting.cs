@@ -24,5 +24,6 @@ public enum SettingSource
     SystemLocked = 2,
     OrganizationOverride = 3,
     GroupOverride = 4,
-    UserPreference = 5
+    UserPreference = 5,
+    TenantLocked = 6
 }

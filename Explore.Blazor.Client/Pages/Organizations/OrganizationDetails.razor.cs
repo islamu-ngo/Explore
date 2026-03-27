@@ -37,7 +37,7 @@ public partial class OrganizationDetails
     private ICollection<EventListDto> _orgEvents = new List<EventListDto>();
 
     private UpdateOrganizationDto editModel = new();
-    private OrganizationAppearanceSettings _appearance = new();
+    private AppearanceSettings _appearance = new();
     private MudForm? form;
     private bool formValid;
 
@@ -91,9 +91,12 @@ public partial class OrganizationDetails
                 Address = organization.Address
             };
 
-            _appearance = OrganizationAppearanceMetadataHelper.FromColumns(
-                organization.ActorBackgroundColor,
-                organization.ActorBannerPictureUri, organization.ActorBackgroundEffect);
+            _appearance = new AppearanceSettings
+            {
+                BackgroundColor = organization.ActorBackgroundColor ?? string.Empty,
+                ImageUri = organization.ActorBannerPictureUri ?? string.Empty,
+                BackgroundEffect = organization.ActorBackgroundEffect ?? "None"
+            };
         }
     }
 

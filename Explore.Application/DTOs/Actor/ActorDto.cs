@@ -49,6 +49,8 @@ public class ActorDto
     public string? BannerColor { get; set; }
     public Guid? BannerPictureId { get; set; }
     public string? BannerPictureUri { get; set; }
+    public Guid? BackgroundImageId { get; set; }
+    public string? BackgroundImageUri { get; set; }
 
     // Federation metadata
     public string? PdsHost { get; set; } // Personal Data Server host

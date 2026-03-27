@@ -1,0 +1,251 @@
+// ABOUTME: Batch update handler supporting BestEffort (skip locked, apply rest) and Strict (reject all) modes.
+// ABOUTME: Validates each key independently, then applies valid updates with single cache invalidation.
+
+namespace Explore.Application.Features.Settings.Handlers.Commands;
+
+using Explore.Application.Contracts.Identity;
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.Settings;
+using Explore.Application.Features.Settings.Requests.Commands;
+using Explore.Application.Notifications;
+using Explore.Application.Settings;
+using Explore.Domain;
+using Explore.Domain.Settings;
+using MediatR;
+using Microsoft.Extensions.Logging;
+
+public class UpdateSettingBatchCommandHandler
+    : IRequestHandler<UpdateSettingBatchCommand, BatchUpdateResponseDto>
+{
+    private readonly IHierarchicalSettingsResolver _resolver;
+    private readonly IUserPreferenceRepository _userPreferenceRepository;
+    private readonly ITenantContext _tenantContext;
+    private readonly ICurrentUserService _currentUserService;
+    private readonly IAdminContext _adminContext;
+    private readonly IMediator _mediator;
+    private readonly ILogger<UpdateSettingBatchCommandHandler> _logger;
+
+    public UpdateSettingBatchCommandHandler(
+        IHierarchicalSettingsResolver resolver,
+        IUserPreferenceRepository userPreferenceRepository,
+        ITenantContext tenantContext,
+        ICurrentUserService currentUserService,
+        IAdminContext adminContext,
+        IMediator mediator,
+        ILogger<UpdateSettingBatchCommandHandler> logger)
+    {
+        _resolver = resolver;
+        _userPreferenceRepository = userPreferenceRepository;
+        _tenantContext = tenantContext;
+        _currentUserService = currentUserService;
+        _adminContext = adminContext;
+        _mediator = mediator;
+        _logger = logger;
+    }
+
+    public async Task<BatchUpdateResponseDto> Handle(
+        UpdateSettingBatchCommand request, CancellationToken cancellationToken)
+    {
+        if (request.Values.Count == 0)
+        {
+            return new BatchUpdateResponseDto
+            {
+                Success = true,
+                Results = [],
+                Message = "No settings to update."
+            };
+        }
+
+        // Authorization check (applies to all keys in batch)
+        var (authorized, authError) = await SettingCommandHelper.CheckAuthorizationAsync(
+            request.Scope, _adminContext, _tenantContext, _currentUserService, cancellationToken);
+        if (!authorized)
+        {
+            return new BatchUpdateResponseDto
+            {
+                Success = false,
+                Results = request.Values.Keys
+                    .Select(k => new SettingUpdateResultDto { Key = k, Applied = false, SkipReason = authError })
+                    .ToList(),
+                Message = authError
+            };
+        }
+
+        // Phase 1: Validate all keys
+        var context = SettingCommandHelper.BuildSettingContext(
+            request.Scope, _tenantContext, _currentUserService);
+        var allKeys = request.Values.Keys.ToList();
+        var resolved = await _resolver.ResolveBatchAsync(allKeys, context, cancellationToken);
+
+        var categoryDefinitions = SettingRegistry.GetByCategory(request.Category);
+        var categoryKeys = categoryDefinitions is not null
+            ? new HashSet<string>(categoryDefinitions.Select(d => d.Key))
+            : [];
+
+        var validationResults = new List<(string Key, string Value, SettingDefinition Definition,
+            string? SerializedValue, string? SkipReason, string? OldValue)>();
+
+        for (var i = 0; i < allKeys.Count; i++)
+        {
+            var key = allKeys[i];
+            var value = request.Values[key];
+            var currentResolved = resolved[i];
+
+            // Validate key exists in registry
+            var definition = SettingRegistry.Get(key);
+            if (definition is null)
+            {
+                validationResults.Add((key, value, null!, null, $"Key '{key}' not found in registry.", null));
+                continue;
+            }
+
+            // Validate key belongs to category
+            if (!categoryKeys.Contains(key))
+            {
+                validationResults.Add((key, value, definition, null,
+                    $"Key '{key}' does not belong to category '{request.Category}'.", null));
+                continue;
+            }
+
+            // Validate scope range
+            if (request.Scope < definition.MinScope || request.Scope > definition.MaxScope)
+            {
+                validationResults.Add((key, value, definition, null,
+                    $"Not overridable at {request.Scope} scope.", null));
+                continue;
+            }
+
+            // Check lock state
+            var (isBlocked, lockReason) = SettingCommandHelper.CheckLockState(
+                currentResolved, request.Scope);
+            if (isBlocked)
+            {
+                _logger.LogInformation(
+                    "Batch update: skipping locked key {SettingKey} at {Scope}. Reason: {Reason}",
+                    key, request.Scope, lockReason);
+                validationResults.Add((key, value, definition, null, lockReason, null));
+                continue;
+            }
+
+            // Validate and serialize value
+            var (isValid, serialized, valError) =
+                SettingCommandHelper.ValidateAndSerialize(value, definition);
+            if (!isValid)
+            {
+                validationResults.Add((key, value, definition, null, valError, null));
+                continue;
+            }
+
+            validationResults.Add((key, value, definition, serialized,
+                null, currentResolved.Value));
+        }
+
+        // Strict mode: reject all if any invalid
+        if (request.Mode == BatchUpdateMode.Strict)
+        {
+            var blocked = validationResults.Where(r => r.SkipReason is not null).ToList();
+            if (blocked.Count > 0)
+            {
+                var blockedKeys = string.Join(", ", blocked.Select(b => b.Key));
+                return new BatchUpdateResponseDto
+                {
+                    Success = false,
+                    Results = validationResults
+                        .Select(r => new SettingUpdateResultDto
+                        {
+                            Key = r.Key,
+                            Applied = false,
+                            SkipReason = r.SkipReason ?? $"Rejected: other keys in batch are blocked ({blockedKeys})"
+                        })
+                        .ToList(),
+                    Message = $"Batch rejected (strict mode): {blocked.Count} key(s) blocked."
+                };
+            }
+        }
+
+        // Phase 2: Apply valid updates
+        var (scopeId, actorId) = SettingCommandHelper.GetScopeAndActorIds(
+            request.Scope, _tenantContext, _currentUserService);
+        var results = new List<SettingUpdateResultDto>(validationResults.Count);
+        var appliedCount = 0;
+
+        foreach (var (key, _, definition, serializedValue, skipReason, oldValue) in validationResults)
+        {
+            if (skipReason is not null)
+            {
+                results.Add(new SettingUpdateResultDto { Key = key, Applied = false, SkipReason = skipReason });
+                continue;
+            }
+
+            if (request.Scope == SettingScope.User)
+            {
+                await WriteUserPreferenceAsync(key, serializedValue!, actorId, cancellationToken);
+            }
+            else
+            {
+                await _resolver.SetValueAsync(
+                    key, serializedValue!, request.Scope, scopeId, actorId, cancellationToken);
+            }
+
+            _ = _mediator.Publish(new SettingChangedNotification(
+                key, oldValue, serializedValue,
+                SettingCommandHelper.MapScopeToSource(request.Scope),
+                _tenantContext.TenantId, actorId, DateTime.UtcNow), CancellationToken.None);
+
+            results.Add(new SettingUpdateResultDto { Key = key, Applied = true });
+            appliedCount++;
+        }
+
+        // Single cache invalidation after all writes
+        if (appliedCount > 0)
+        {
+            if (request.Scope == SettingScope.User)
+                _resolver.InvalidateUserCache(_tenantContext.TenantId, actorId);
+            else
+                _resolver.InvalidateCache(request.Scope, scopeId);
+        }
+
+        var skippedCount = results.Count - appliedCount;
+        _logger.LogInformation(
+            "Batch update complete for category '{Category}' at {Scope}: {Applied} applied, {Skipped} skipped",
+            request.Category, request.Scope, appliedCount, skippedCount);
+
+        return new BatchUpdateResponseDto
+        {
+            Success = appliedCount > 0 || skippedCount == 0,
+            Results = results,
+            Message = skippedCount > 0
+                ? $"{appliedCount} setting(s) updated, {skippedCount} skipped."
+                : $"{appliedCount} setting(s) updated successfully."
+        };
+    }
+
+    private async Task WriteUserPreferenceAsync(
+        string key, string serializedValue, Guid userId, CancellationToken ct)
+    {
+        var tenantId = _tenantContext.TenantId;
+        var existing = await _userPreferenceRepository.GetByUserAndKey(tenantId, userId, key);
+
+        if (existing is not null)
+        {
+            existing.Value = serializedValue;
+            existing.UpdatedAt = DateTime.UtcNow;
+            existing.UpdatedBy = userId;
+            await _userPreferenceRepository.Update(existing);
+        }
+        else
+        {
+            await _userPreferenceRepository.Create(new UserPreference
+            {
+                TenantId = tenantId,
+                Tenant = null!,
+                UserId = userId,
+                SettingKey = key,
+                Value = serializedValue,
+                CreatedAt = DateTime.UtcNow,
+                CreatedBy = userId
+            });
+        }
+    }
+}

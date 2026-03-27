@@ -32,7 +32,7 @@
                 </MudItem>
 
                 <MudItem xs="12" sm="6">
-                    <MudTextField T="string"
+                    <AppTextField T="string" T="string"
                                   Label="GitHub Repository URL"
                                   @bind-Value="_model.GithubRepoUrl"
                                   Placeholder="https://github.com/org/repo"
@@ -42,7 +42,7 @@
                 </MudItem>
 
                 <MudItem xs="12" sm="6">
-                    <MudTextField T="string"
+                    <AppTextField T="string" T="string"
                                   Label="Hackathon Track"
                                   @bind-Value="_model.HackathonTrack"
                                   Placeholder="e.g., AI/ML, Web3, Healthcare"
@@ -50,7 +50,7 @@
                 </MudItem>
 
                 <MudItem xs="12" sm="6">
-                    <MudTextField T="string"
+                    <AppTextField T="string" T="string"
                                   Label="Tech Stack Tags"
                                   @bind-Value="_model.TechStackTags"
                                   Placeholder="e.g., .NET, React, PostgreSQL"
@@ -99,7 +99,7 @@
                     </MudItem>
 
                     <MudItem xs="12" sm="4">
-                        <MudTextField T="string"
+                        <AppTextField T="string" T="string"
                                       Label="Currency"
                                       @bind-Value="_model.PrizeCurrencyCode"
                                       Placeholder="USD"
@@ -111,10 +111,8 @@
         </MudForm>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel" Variant="Variant.Text">Cancel</MudButton>
-        <MudButton OnClick="SaveAsync"
-                   Variant="Variant.Filled"
-                   Color="Color.Primary"
+        <AppButton OnClick="Cancel" Variant="Variant.Text">Cancel</AppButton>
+        <AppButton OnClick="SaveAsync"
                    Disabled="@_isSaving">
             @if (_isSaving)
             {
@@ -125,7 +123,7 @@
             {
                 <span>Save</span>
             }
-        </MudButton>
+        </AppButton>
     </DialogActions>
 </MudDialog>
 

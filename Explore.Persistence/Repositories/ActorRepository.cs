@@ -117,4 +117,11 @@ public class ActorRepository : GenericRepository<Actor, Guid>, IActorRepository
 
         return (items, totalCount);
     }
+
+    public async Task<int> ForgetPiiAsync(Guid actorId)
+    {
+        return await _dbContext.ActorPii
+            .Where(p => p.ActorId == actorId)
+            .ExecuteDeleteAsync();
+    }
 }

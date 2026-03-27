@@ -15,6 +15,8 @@ public static class ExceptionHandlingExtensions
             {
                 context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
                 context.ProblemDetails.Extensions["timestamp"] = DateTimeOffset.UtcNow;
+                context.ProblemDetails.Extensions["correlationId"] =
+                    context.HttpContext.Items["CorrelationId"] as string;
             };
         });
 

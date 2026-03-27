@@ -1,3 +1,6 @@
+// ABOUTME: REST API controller for organization CRUD operations with verification and member management.
+// ABOUTME: Supports two-tier verification system, role-based access, and cascading organization settings.
+
 using Asp.Versioning;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Organization;
@@ -24,16 +27,13 @@ namespace Explore.API.Controllers;
 public class OrganizationController : ControllerBase
 {
     private readonly IMediator _mediator;
-    private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IResourceAssembler<OrganizationDto, OrganizationListDto> _resourceAssembler;
 
     public OrganizationController(
         IMediator mediator,
-        IHttpContextAccessor httpContextAccessor,
         IResourceAssembler<OrganizationDto, OrganizationListDto> resourceAssembler)
     {
         _mediator = mediator;
-        _httpContextAccessor = httpContextAccessor;
         _resourceAssembler = resourceAssembler;
     }
 
@@ -117,11 +117,8 @@ public class OrganizationController : ControllerBase
     public async Task<ActionResult<HalResource<OrganizationDto>>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var organization = await _mediator.Send(new GetOrganizationDetailsRequest { Id = id }, cancellationToken);
-
-        if (organization is null)
-        {
+        if (organization == null)
             return NotFound();
-        }
 
         var halResource = await _resourceAssembler.ToResource(organization, HttpContext);
         return Ok(halResource);
@@ -251,9 +248,9 @@ public class OrganizationController : ControllerBase
     /// </summary>
     private string? GetCurrentUserId()
     {
-        return _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
-            ?? _httpContextAccessor.HttpContext?.User?.FindFirst(
+        return HttpContext.User?.FindFirst("sub")?.Value
+            ?? HttpContext.User?.FindFirst(
                 "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-            ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
+            ?? HttpContext.User?.FindFirst("sid")?.Value;
     }
 }

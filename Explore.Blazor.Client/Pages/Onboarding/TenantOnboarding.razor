@@ -9,9 +9,11 @@
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 
+<PageTitle>Tenant Onboarding</PageTitle>
+
 <MudContainer MaxWidth="MaxWidth.Medium" Class="py-8">
     <MudPaper Class="pa-6">
-        <MudText Typo="Typo.h4" Class="mb-2">Tenant Onboarding</MudText>
+        <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-2">Tenant Onboarding</MudText>
         <MudText Typo="Typo.body1" Class="mb-4">
             Configure tenant-level policies for submissions, moderation, and organization verification.
         </MudText>
@@ -30,9 +32,9 @@
             <MudAlert Severity="Severity.Warning" Class="mb-4">
                 You are authenticated but do not have tenant administrator permissions for this tenant.
             </MudAlert>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/events">
+            <AppButton Href="/events">
                 Go to Events
-            </MudButton>
+            </AppButton>
         }
         else
         {
@@ -89,7 +91,7 @@
                     <MudText Typo="Typo.caption">Event card click behavior is locked by instance policy.</MudText>
                 }
 
-                <MudTextField Label="Subdomain (Optional)"
+                <AppTextField T="string" Label="Subdomain (Optional)"
                               Variant="Variant.Outlined"
                               Placeholder="tenant-slug"
                               @bind-Value="_model.Subdomain"
@@ -100,7 +102,7 @@
                     <MudText Typo="Typo.caption">Subdomain is locked by instance policy.</MudText>
                 }
 
-                <MudTextField Label="Custom Domain (Optional)"
+                <AppTextField T="string" Label="Custom Domain (Optional)"
                               Variant="Variant.Outlined"
                               Placeholder="events.example.org"
                               @bind-Value="_model.CustomDomain"
@@ -112,7 +114,7 @@
 
                 <MudDivider />
                 <MudText Typo="Typo.h6">Platform Identity</MudText>
-                <MudTextField Label="Brand Display Name (Required)"
+                <AppTextField T="string" Label="Brand Display Name (Required)"
                               Variant="Variant.Outlined"
                               Required="true"
                               RequiredError="Brand display name is required."
@@ -124,26 +126,24 @@
                 }
                 @if (_model.IsTenantWhiteLabelingEnabled)
                 {
-                    <MudTextField Label="Brand Logo URL (Optional)"
+                    <AppTextField T="string" Label="Brand Logo URL (Optional)"
                                   Variant="Variant.Outlined"
                                   @bind-Value="_model.BrandLogoUrl"
                                   Disabled="@(!_model.CanOverrideBrandLogoUrl)" />
-                    <MudTextField Label="Brand Favicon URL (Optional)"
+                    <AppTextField T="string" Label="Brand Favicon URL (Optional)"
                                   Variant="Variant.Outlined"
                                   @bind-Value="_model.BrandFaviconUrl"
                                   Disabled="@(!_model.CanOverrideBrandFaviconUrl)" />
-                    <MudTextField Label="Advanced: Custom CSS URL (Optional)"
+                    <AppTextField T="string" Label="Advanced: Custom CSS URL (Optional)"
                                   Variant="Variant.Outlined"
                                   @bind-Value="_model.BrandCustomCssUrl"
                                   Disabled="@(!_model.CanOverrideBrandCustomCssUrl)" />
                 }
 
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           OnClick="CompleteOnboardingAsync"
+                <AppButton OnClick="CompleteOnboardingAsync"
                            Disabled="_isSaving">
                     Complete Tenant Onboarding
-                </MudButton>
+                </AppButton>
             </MudStack>
         }
     </MudPaper>

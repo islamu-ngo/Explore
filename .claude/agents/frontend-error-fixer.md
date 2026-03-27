@@ -4,7 +4,10 @@ ABOUTME: Specifies required reads, UI constraints, v9 common errors, and outputs
 ---
 name: frontend-error-fixer
 description: Fixes Blazor (Server/WASM) UI errors for {Project} (MudBlazor v9).
-tools: All tools
+type: diagnostic
+enforcement: suggest
+priority: high
+tools: Read, Write, Edit, Bash, Glob
 ---
 
 # Frontend Error Fixer

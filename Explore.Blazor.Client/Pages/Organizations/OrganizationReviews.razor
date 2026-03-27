@@ -14,7 +14,7 @@
 
 <PageTitle>Organization Reviews</PageTitle>
 <MudContainer Class="organization-reviews">
-    <MudButton StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="GoBack" Class="mb-4">Back to Profile</MudButton>
+    <AppButton StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="GoBack" Class="mb-4">Back to Profile</AppButton>
 
     @if (_isLoading)
     {
@@ -26,7 +26,7 @@
     }
     else
     {
-        <MudText Typo="Typo.h4" Class="mb-2">Reviews for @_organization.FullName</MudText>
+        <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-2">Reviews for @_organization.FullName</MudText>
         <MudText Typo="Typo.subtitle1" Class="mb-6" Color="Color.Secondary">
             @_reviews.Count reviews • @(_reviews.Any() && _reviews.Any(r => r.Rating.HasValue) ? _reviews.Where(r => r.Rating.HasValue).Average(r => r.Rating!.Value).ToString("0.0") : "0.0")★ average rating
         </MudText>

@@ -46,7 +46,8 @@ public sealed class GetAnalyticsGovernanceSettingsQueryHandler(
 
             CookieBannerRequired = profile.CookieBannerEnabled,
             CanRunBeforeConsent = profile.CanRunBeforeConsent,
-            StorageProfile = profile.StorageProfile.ToString()
+            StorageProfile = profile.StorageProfile.ToString(),
+            ResolveReasons = profile.ResolveReasons.Select(r => r.ToString()).ToList()
         };
     }
 }

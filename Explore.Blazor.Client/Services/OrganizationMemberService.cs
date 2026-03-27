@@ -72,7 +72,7 @@ public class OrganizationMemberService : IOrganizationMemberService
     {
         try
         {
-            return await _apiClient.RoleAsync(updateDto);
+            return await _apiClient.RolePUT2Async(updateDto);
         }
         catch (ApiException ex)
         {

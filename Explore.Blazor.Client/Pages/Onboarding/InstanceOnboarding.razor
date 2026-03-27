@@ -14,9 +14,11 @@
 @inject IJSRuntime JSRuntime
 @inject IHttpClientFactory HttpClientFactory
 
+<PageTitle>Instance Onboarding</PageTitle>
+
 <MudContainer MaxWidth="MaxWidth.Medium" Class="py-8">
     <MudPaper Class="pa-6">
-        <MudText Typo="Typo.h4" Class="mb-2">Instance Onboarding</MudText>
+        <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-2">Instance Onboarding</MudText>
         <MudText Typo="Typo.body1" Class="mb-4">
             Set up your platform instance. You can update these settings anytime in instance settings.
         </MudText>
@@ -134,7 +136,7 @@
                             You can change it anytime in instance settings.
                         </MudText>
 
-                        <MudTextField Label="Instance Name (Required)"
+                        <AppTextField T="string" Label="Instance Name (Required)"
                                       Variant="Variant.Outlined"
                                       Required="true"
                                       RequiredError="Instance name is required."
@@ -159,52 +161,52 @@
 
                             <MudPaper Class="pa-3">
                                 <MudStack Spacing="1">
-                                    <MudButton Variant="@GetFirstHostButtonVariant(FirstHostSetupChoice.Personal)"
+                                    <AppButton Variant="@GetFirstHostButtonVariant(FirstHostSetupChoice.Personal)"
                                                Color="@GetFirstHostButtonColor(FirstHostSetupChoice.Personal)"
                                                StartIcon="@Icons.Material.Filled.Person"
                                                OnClick="@(() => SelectFirstHost(FirstHostSetupChoice.Personal))"
                                                FullWidth="true">
                                         Publish Under My Account
-                                    </MudButton>
+                                    </AppButton>
                                     <MudText Typo="Typo.caption">Quickest start. You can still add group/organization later.</MudText>
                                 </MudStack>
                             </MudPaper>
 
                             <MudPaper Class="pa-3">
                                 <MudStack Spacing="1">
-                                    <MudButton Variant="@GetFirstHostButtonVariant(FirstHostSetupChoice.GroupQuickSetup)"
+                                    <AppButton Variant="@GetFirstHostButtonVariant(FirstHostSetupChoice.GroupQuickSetup)"
                                                Color="@GetFirstHostButtonColor(FirstHostSetupChoice.GroupQuickSetup)"
                                                StartIcon="@Icons.Material.Filled.Groups"
                                                OnClick="@(() => SelectFirstHost(FirstHostSetupChoice.GroupQuickSetup))"
                                                FullWidth="true">
                                         Group (Informal Quick Setup)
-                                    </MudButton>
+                                    </AppButton>
                                     <MudText Typo="Typo.caption">We create a starter group for you automatically.</MudText>
                                 </MudStack>
                             </MudPaper>
 
                             <MudPaper Class="pa-3">
                                 <MudStack Spacing="1">
-                                    <MudButton Variant="@GetFirstHostButtonVariant(FirstHostSetupChoice.Organization)"
+                                    <AppButton Variant="@GetFirstHostButtonVariant(FirstHostSetupChoice.Organization)"
                                                Color="@GetFirstHostButtonColor(FirstHostSetupChoice.Organization)"
                                                StartIcon="@Icons.Material.Filled.Business"
                                                OnClick="@(() => SelectFirstHost(FirstHostSetupChoice.Organization))"
                                                FullWidth="true">
                                         Organization (Formal Setup)
-                                    </MudButton>
+                                    </AppButton>
                                     <MudText Typo="Typo.caption">For legal entity publishing. We redirect you to complete organization details.</MudText>
                                 </MudStack>
                             </MudPaper>
 
                             <MudPaper Class="pa-3">
                                 <MudStack Spacing="1">
-                                    <MudButton Variant="@GetFirstHostButtonVariant(FirstHostSetupChoice.DoLater)"
+                                    <AppButton Variant="@GetFirstHostButtonVariant(FirstHostSetupChoice.DoLater)"
                                                Color="@GetFirstHostButtonColor(FirstHostSetupChoice.DoLater)"
                                                StartIcon="@Icons.Material.Filled.Schedule"
                                                OnClick="@(() => SelectFirstHost(FirstHostSetupChoice.DoLater))"
                                                FullWidth="true">
                                         I Will Do This Later
-                                    </MudButton>
+                                    </AppButton>
                                     <MudText Typo="Typo.caption">Continue now and configure hosting entities later.</MudText>
                                 </MudStack>
                             </MudPaper>
@@ -230,31 +232,27 @@
                 </ChildContent>
 
                 <ActionContent Context="stepper">
-                    <MudButton Variant="Variant.Text"
+                    <AppButton Variant="Variant.Text"
                                Color="Color.Default"
                                Disabled="@(_activeStep == 0 || _isSaving)"
                                OnClick="@(() => stepper.PreviousStepAsync())">
                         Back
-                    </MudButton>
+                    </AppButton>
                     <MudSpacer />
 
                     @if (_activeStep < LastStepIndex)
                     {
-                        <MudButton Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   OnClick="@(() => stepper.NextStepAsync())"
+                        <AppButton OnClick="@(() => stepper.NextStepAsync())"
                                    Disabled="@(_isSaving)">
                             Next
-                        </MudButton>
+                        </AppButton>
                     }
                     else
                     {
-                        <MudButton Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   OnClick="CompleteOnboardingAsync"
+                        <AppButton OnClick="CompleteOnboardingAsync"
                                    Disabled="@(_isSaving || IsCompleteDisabled)">
                             @_completeButtonLabel
-                        </MudButton>
+                        </AppButton>
                     }
                 </ActionContent>
             </MudStepper>

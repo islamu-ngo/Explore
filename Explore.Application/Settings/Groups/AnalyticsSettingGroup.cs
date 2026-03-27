@@ -38,8 +38,8 @@ public class AnalyticsSettingGroup : ISettingGroup
     /// <summary>Parsed provider enum with safe fallback.</summary>
     public AnalyticsProviderEnum ProviderEnum => Enum.TryParse<AnalyticsProviderEnum>(Provider, ignoreCase: true, out var p) ? p : AnalyticsProviderEnum.None;
 
-    /// <summary>Tenant slug for consent cookie scoping, populated externally.</summary>
-    public string? TenantSlug { get; set; }
+    /// <summary>Stable tenant key for consent cookie scoping (first 8 hex chars of tenant GUID), populated externally.</summary>
+    public string? TenantStableKey { get; set; }
 
     public static IEnumerable<string> SettingKeys =>
     [

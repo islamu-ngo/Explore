@@ -1,4 +1,5 @@
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -13,6 +14,7 @@ public partial class MyRegistrations
     [Inject] protected ISnackbar Snackbar { get; set; } = null!;
     [Inject] protected IDialogService DialogService { get; set; } = null!;
     [Inject] protected NavigationManager Navigation { get; set; } = null!;
+    [Inject] private IAccessibilityFocusService AccessibilityFocusService { get; set; } = default!;
 
     private List<MyRegistrationViewModel> _registrations = new();
     private bool _loading = true;
@@ -87,10 +89,12 @@ public partial class MyRegistrations
 
     private async Task CancelRegistration(Guid registrationId)
     {
+        await AccessibilityFocusService.SaveFocusAsync();
         var result = await DialogService.ShowMessageBoxAsync(
             "Cancel Registration",
             "Are you sure you want to cancel your registration for this event?",
             yesText: "Yes, Cancel", cancelText: "No");
+        await AccessibilityFocusService.RestoreFocusAsync();
 
         if (result == true)
         {

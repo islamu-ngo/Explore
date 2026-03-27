@@ -15,7 +15,10 @@ using MudBlazor.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
-builder.Services.AddMudServices();
+builder.Services.AddMudServices(config =>
+{
+    config.PopoverOptions.Duration = TimeSpan.FromMilliseconds(300);
+});
 builder.Services.AddBlazouter();
 builder.Services.AddScoped<AuthenticatedRouteGuard>();
 builder.Services.AddScoped<AdminRouteGuard>();

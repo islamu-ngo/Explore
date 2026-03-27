@@ -4,7 +4,10 @@ ABOUTME: Lists required reads, must-check items, and outputs.
 ---
 name: plan-reviewer
 description: Reviews implementation plans for {Project} (architecture, security, tests).
-tools: All tools
+type: review
+enforcement: suggest
+priority: high
+tools: Read, Glob, Grep
 ---
 
 # Plan Reviewer

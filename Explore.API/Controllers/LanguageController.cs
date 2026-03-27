@@ -1,3 +1,6 @@
+// ABOUTME: API controller for language lookup and discovery endpoints.
+// ABOUTME: Provides read-only access to supported languages for event sessions and localization.
+
 using Asp.Versioning;
 using Explore.Application.DTOs.Language;
 using Explore.Application.Features.Languages.Requests.Queries;
@@ -41,11 +44,6 @@ public class LanguageController : ControllerBase
     public async Task<ActionResult<LanguageDto>> GetById(int id, CancellationToken cancellationToken = default)
     {
         var language = await _mediator.Send(new GetLanguageDetailsRequest { Id = id }, cancellationToken);
-
-        if (language == null)
-        {
-            return NotFound(new { error = "Language not found" });
-        }
 
         return Ok(language);
     }

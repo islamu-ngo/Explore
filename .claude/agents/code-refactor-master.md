@@ -4,7 +4,10 @@ ABOUTME: Lists required reads, must-do constraints, and outputs.
 ---
 name: code-refactor-master
 description: Enforces Clean Architecture + CQRS during refactors.
-tools: All tools
+type: implementation
+enforcement: enforce
+priority: high
+tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 
 # Code Refactor Master

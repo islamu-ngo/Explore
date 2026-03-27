@@ -2,6 +2,9 @@
  * Footer Component Styles - BEM Methodology
  * Block: site-footer
  *
+ * Shared element styles that cascade into template components via ::deep.
+ * Grid/layout-specific styles live in each template's scoped CSS file.
+ *
  * Structure:
  * .site-footer
  *   .site-footer__brand
@@ -17,63 +20,6 @@
  *     .site-footer__social
  *       .site-footer__social-btn
  */
-
-/* ========================================
-   Block: site-footer-root
-   ======================================== */
-
-/* ========================================
-   Element: site-footer__grid
-   Responsive grid layout for footer columns
-   ======================================== */
-
-/* Desktop (>960px): grid columns set dynamically via inline style based on link group count */
-::deep .site-footer__grid {
-    display: grid;
-    gap: var(--isl-space-10);
-}
-
-/* Tablet (600–960px): brand full-width, 3 link columns below, all centered */
-@media (max-width: 59.999em) {
-    ::deep .site-footer__grid {
-        grid-template-columns: auto auto auto;
-        gap: var(--isl-space-8) var(--isl-space-16);
-        justify-content: center;
-    }
-
-    ::deep .site-footer__col--brand {
-        grid-column: 1 / -1;
-        text-align: center;
-    }
-
-    ::deep .site-footer__col--brand .site-footer__brand {
-        justify-content: center;
-    }
-
-    ::deep .site-footer__col--brand .site-footer__description {
-        margin-left: auto;
-        margin-right: auto;
-    }
-}
-
-/* Mobile (≤599px): single column, centered */
-@media (max-width: 37.499em) {
-    ::deep .site-footer__grid {
-        grid-template-columns: 1fr;
-        gap: var(--isl-space-8);
-        text-align: center;
-    }
-
-    ::deep .site-footer__col--links .site-footer__section {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-    }
-
-    ::deep .site-footer__col--links .site-footer__link {
-        width: auto;
-    }
-}
 
 /* ========================================
    Block: site-footer

@@ -9,25 +9,24 @@
             <MudGrid AlignItems="AlignItems.Center" Spacing="6">
                 <MudItem xs="12" md="7">
                     <MudText Typo="Typo.overline" Style="letter-spacing: 2px; opacity: 0.9;">COMMUNITY • EVENTS • KNOWLEDGE</MudText>
-                    <MudText Typo="Typo.h2" Style="font-weight: 800; line-height: 1.2;" Class="mb-4 mt-2">Never miss<br />knowledge again</MudText>
+                    <MudText Typo="Typo.h2" HtmlTag="h1" Style="font-weight: 800; line-height: 1.2;" Class="mb-4 mt-2">Never miss<br />knowledge again</MudText>
                     <MudText Typo="Typo.h6" Style="opacity: 0.9; font-weight: 400;" Class="mb-8">"Seeking knowledge is an obligation upon every Muslim."</MudText>
 
                     <div class="d-flex gap-4 flex-wrap">
-                        <MudButton Variant="Variant.Filled" 
-                                   Color="Color.Surface" 
+                        <AppButton Color="Color.Surface" 
                                    Style="color: var(--mud-palette-primary-darken); font-weight: 700;"
                                    Size="Size.Large" 
                                    Href="/events" 
                                    Class="rounded-pill px-8 py-3">
                             Discover Events
-                        </MudButton>
-                        <MudButton Variant="Variant.Outlined" 
+                        </AppButton>
+                        <AppButton Variant="Variant.Outlined" 
                                    Color="Color.Surface" 
                                    Size="Size.Large" 
                                    Href="#explore"
                                    Class="rounded-pill px-8 py-3">
                             Explore Categories
-                        </MudButton>
+                        </AppButton>
                     </div>
                 </MudItem>
                 <MudItem xs="12" md="5" Class="d-flex justify-center">
@@ -81,7 +80,7 @@
                     <MudText Typo="Typo.h4" Style="font-weight: 700;">Featured Events</MudText>
                     <MudText Typo="Typo.body1" Color="Color.Secondary">Discover upcoming events from our community</MudText>
                 </div>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" EndIcon="@Icons.Material.Filled.ArrowForward" Href="/events" Class="rounded-pill">View All</MudButton>
+                <AppButton EndIcon="@Icons.Material.Filled.ArrowForward" Href="/events" Class="rounded-pill">View All</AppButton>
             </div>
 
             @if (_isLoading)
@@ -89,7 +88,7 @@
                 <div class="d-flex justify-center gap-6 px-12">
                     @for (int i = 0; i < 3; i++)
                     {
-                        <MudCard Elevation="0" Class="border-solid border-1 mud-border-lines-default rounded-xl overflow-hidden d-flex flex-column" Style="flex: 1; max-width: 400px;">
+                        <AppCard Class="border-solid border-1 mud-border-lines-default rounded-xl overflow-hidden d-flex flex-column" Style="flex: 1; max-width: 400px;">
                             <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
                             <MudCardContent Class="pa-4">
                                 <MudSkeleton Width="80%" Height="24px" Class="mb-2" />
@@ -97,7 +96,7 @@
                                 <MudSkeleton Width="90%" Height="16px" Class="mb-4" />
                                 <MudSkeleton Width="120px" Height="20px" />
                             </MudCardContent>
-                        </MudCard>
+                        </AppCard>
                     }
                 </div>
             }
@@ -110,7 +109,7 @@
                             <div class="d-flex justify-center gap-6 px-12 h-100 align-center">
                                 @foreach (var evt in chunk)
                                 {
-                                    <MudCard @key="evt.Id" Elevation="0" Class="border-solid border-1 mud-border-lines-default rounded-xl overflow-hidden d-flex flex-column h-100" Style="flex: 1; max-width: 400px; transition: transform 0.2s;" onclick="@(() => Nav.NavigateTo($"/events/{evt.Id}"))">
+                                    <AppCard @key="evt.Id" Class="border-solid border-1 mud-border-lines-default rounded-xl overflow-hidden d-flex flex-column h-100" Style="flex: 1; max-width: 400px; transition: transform 0.2s;" onclick="@(() => Nav.NavigateTo($"/events/{evt.Id}"))">
                                         <div style="height: 200px; background-color: var(--mud-palette-background-grey); position: relative;">
                                             @if (!string.IsNullOrEmpty(evt.FeaturedImageUri))
                                             {
@@ -144,7 +143,7 @@
                                                 </div>
                                             </div>
                                         </MudCardContent>
-                                    </MudCard>
+                                    </AppCard>
                                 }
                             </div>
                         </MudCarouselItem>

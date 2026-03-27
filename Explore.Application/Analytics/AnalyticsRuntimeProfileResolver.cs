@@ -13,7 +13,7 @@ public sealed class AnalyticsRuntimeProfileResolver : IAnalyticsRuntimeProfileRe
 {
     public AnalyticsRuntimeProfile Resolve(AnalyticsSettingGroup settings)
     {
-        var consentCookieKey = $"explore_cc_{settings.TenantSlug ?? "default"}";
+        var consentCookieKey = $"explore_cc_{settings.TenantStableKey ?? "default"}";
         var consentLifetime = settings.ConsentCookieLifetimeDays;
 
         // Global kill switch — disables all browser analytics immediately
@@ -26,7 +26,8 @@ public sealed class AnalyticsRuntimeProfileResolver : IAnalyticsRuntimeProfileRe
                 CanRunBeforeConsent = false,
                 DeclineBehavior = DeclineBehavior.Disable,
                 ConsentCookieKey = consentCookieKey,
-                ConsentCookieLifetimeDays = consentLifetime
+                ConsentCookieLifetimeDays = consentLifetime,
+                ResolveReasons = [ProfileResolveReason.GlobalKillSwitch, ProfileResolveReason.CookieBannerSuppressed]
             };
         }
 
@@ -40,7 +41,8 @@ public sealed class AnalyticsRuntimeProfileResolver : IAnalyticsRuntimeProfileRe
                 CanRunBeforeConsent = false,
                 DeclineBehavior = DeclineBehavior.Disable,
                 ConsentCookieKey = consentCookieKey,
-                ConsentCookieLifetimeDays = consentLifetime
+                ConsentCookieLifetimeDays = consentLifetime,
+                ResolveReasons = [ProfileResolveReason.AnalyticsDisabled, ProfileResolveReason.CookieBannerSuppressed]
             };
         }
 
@@ -56,7 +58,8 @@ public sealed class AnalyticsRuntimeProfileResolver : IAnalyticsRuntimeProfileRe
                 CanRunBeforeConsent = true,
                 DeclineBehavior = DeclineBehavior.Disable,
                 ConsentCookieKey = consentCookieKey,
-                ConsentCookieLifetimeDays = consentLifetime
+                ConsentCookieLifetimeDays = consentLifetime,
+                ResolveReasons = [ProfileResolveReason.ProviderInherentlyCookieless, ProfileResolveReason.CookieBannerSuppressed]
             };
         }
 
@@ -74,7 +77,9 @@ public sealed class AnalyticsRuntimeProfileResolver : IAnalyticsRuntimeProfileRe
             CanRunBeforeConsent = false,
             DeclineBehavior = DeclineBehavior.Disable,
             ConsentCookieKey = consentCookieKey,
-            ConsentCookieLifetimeDays = consentLifetime
+            ConsentCookieLifetimeDays = consentLifetime,
+            ResolveReasons = [ProfileResolveReason.ProviderRequiresFullConsent,
+                settings.CookieConsentEnabled ? ProfileResolveReason.CookieBannerEnabledByOperator : ProfileResolveReason.CookieBannerSuppressed]
         };
     }
 
@@ -103,7 +108,8 @@ public sealed class AnalyticsRuntimeProfileResolver : IAnalyticsRuntimeProfileRe
                 DeclineBehavior = DeclineBehavior.Disable,
                 ConsentCookieKey = consentCookieKey,
                 ConsentCookieLifetimeDays = consentLifetime,
-                Posthog = posthogOptions
+                Posthog = posthogOptions,
+                ResolveReasons = [ProfileResolveReason.PosthogCookielessAlways, ProfileResolveReason.CookieBannerSuppressed]
             },
             PosthogCookielessMode.OnReject => new AnalyticsRuntimeProfile
             {
@@ -113,7 +119,9 @@ public sealed class AnalyticsRuntimeProfileResolver : IAnalyticsRuntimeProfileRe
                 DeclineBehavior = settings.DeclineBehavior,
                 ConsentCookieKey = consentCookieKey,
                 ConsentCookieLifetimeDays = consentLifetime,
-                Posthog = posthogOptions
+                Posthog = posthogOptions,
+                ResolveReasons = [ProfileResolveReason.PosthogCookielessOnReject,
+                    settings.CookieConsentEnabled ? ProfileResolveReason.CookieBannerEnabledByOperator : ProfileResolveReason.CookieBannerSuppressed]
             },
             _ => new AnalyticsRuntimeProfile
             {
@@ -123,7 +131,9 @@ public sealed class AnalyticsRuntimeProfileResolver : IAnalyticsRuntimeProfileRe
                 DeclineBehavior = DeclineBehavior.Disable,
                 ConsentCookieKey = consentCookieKey,
                 ConsentCookieLifetimeDays = consentLifetime,
-                Posthog = posthogOptions
+                Posthog = posthogOptions,
+                ResolveReasons = [ProfileResolveReason.PosthogFullConsentRequired,
+                    settings.CookieConsentEnabled ? ProfileResolveReason.CookieBannerEnabledByOperator : ProfileResolveReason.CookieBannerSuppressed]
             }
         };
     }

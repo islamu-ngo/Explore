@@ -43,6 +43,10 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("background_effect");
 
+                    b.Property<Guid?>("BackgroundImageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("background_image_id");
+
                     b.Property<string>("BannerColor")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
@@ -128,6 +132,9 @@ namespace Explore.Persistence.Migrations
 
                     b.HasIndex("ActorTypeId")
                         .HasDatabaseName("ix_actors_actor_type_id");
+
+                    b.HasIndex("BackgroundImageId")
+                        .HasDatabaseName("ix_actors_background_image_id");
 
                     b.HasIndex("BannerPictureId")
                         .HasDatabaseName("ix_actors_banner_picture_id");
@@ -3449,7 +3456,7 @@ namespace Explore.Persistence.Migrations
                         .HasDefaultValue(1)
                         .HasColumnName("status");
 
-                    b.Property<Guid>("TenantId")
+                    b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
 
@@ -3863,6 +3870,63 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_group_setting_overrides_group_id_setting_key");
 
                     b.ToTable("group_setting_overrides", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.IdempotencyRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<string>("ContentType")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("content_type");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("ResponseBody")
+                        .HasColumnType("text")
+                        .HasColumnName("response_body");
+
+                    b.Property<int>("StatusCode")
+                        .HasColumnType("integer")
+                        .HasColumnName("status_code");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("UserId")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_idempotency_records");
+
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("IX_IdempotencyRecords_ExpiresAt");
+
+                    b.HasIndex("Key", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_IdempotencyRecords_Key_TenantId");
+
+                    b.ToTable("idempotency_records", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.IndexedDid", b =>
@@ -4782,6 +4846,84 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_organization_setting_overrides_organization_id_setting_key");
 
                     b.ToTable("organization_setting_overrides", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.OutboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<Guid>("AggregateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("aggregate_id");
+
+                    b.Property<string>("AggregateType")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("aggregate_type");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("DeadLetteredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("dead_lettered_at");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("event_type");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("last_error");
+
+                    b.Property<int>("MaxRetries")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(10)
+                        .HasColumnName("max_retries");
+
+                    b.Property<DateTime?>("NextRetryAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_retry_at");
+
+                    b.Property<string>("Payload")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processed_at");
+
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("retry_count");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_outbox_messages");
+
+                    b.HasIndex("AggregateType", "AggregateId")
+                        .HasDatabaseName("IX_OutboxMessages_Aggregate");
+
+                    b.HasIndex("Status", "NextRetryAt", "CreatedAt")
+                        .HasDatabaseName("IX_OutboxMessages_WorkerPoll");
+
+                    b.HasIndex("AggregateType", "AggregateId", "EventType", "CreatedAt")
+                        .HasDatabaseName("IX_OutboxMessages_Dedup");
+
+                    b.ToTable("outbox_messages", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.OwnerType", b =>
@@ -6061,6 +6203,12 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
+                    b.Property<bool>("IsLocked")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_locked");
+
                     b.Property<string>("SettingKey")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -6611,6 +6759,12 @@ namespace Explore.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_actors_actor_types_actor_type_id");
 
+                    b.HasOne("Explore.Domain.StorageObject", "BackgroundImage")
+                        .WithMany()
+                        .HasForeignKey("BackgroundImageId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_actors_storage_objects_background_image_id");
+
                     b.HasOne("Explore.Domain.StorageObject", "BannerPicture")
                         .WithMany()
                         .HasForeignKey("BannerPictureId")
@@ -6655,6 +6809,8 @@ namespace Explore.Persistence.Migrations
                         .HasConstraintName("fk_actors_users_user_id");
 
                     b.Navigation("ActorType");
+
+                    b.Navigation("BackgroundImage");
 
                     b.Navigation("BannerPicture");
 
@@ -7597,7 +7753,6 @@ namespace Explore.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
                         .HasConstraintName("fk_external_api_keys_tenants_tenant_id");
 
                     b.Navigation("Tenant");
@@ -7989,15 +8144,13 @@ namespace Explore.Persistence.Migrations
                 {
                     b.OwnsOne("Explore.Domain.Policies.DomainPolicy", "Domains", b1 =>
                         {
-                            b1.Property<Guid>("InstancePolicySetId");
+                            b1.Property<Guid>("InstancePolicySetId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("id");
 
                             b1.HasKey("InstancePolicySetId");
 
                             b1.ToTable("instance_policy_sets");
-
-                            b1
-                                .ToJson("domains_policy")
-                                .HasColumnType("jsonb");
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
@@ -8005,19 +8158,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowTenantCustomDomains", b2 =>
                                 {
-                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId");
+                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("domains_allow_tenant_custom_domains_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("domains_allow_tenant_custom_domains_override_mode");
 
                                     b2.HasKey("DomainPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("domains_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("DomainPolicyInstancePolicySetId")
@@ -8026,19 +8181,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "InstanceBaseDomain", b2 =>
                                 {
-                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId");
+                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<string>("LocalValue");
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("text")
+                                        .HasColumnName("domains_instance_base_domain_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("domains_instance_base_domain_override_mode");
 
                                     b2.HasKey("DomainPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("domains_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("DomainPolicyInstancePolicySetId")
@@ -8047,19 +8204,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantCustomDomain", b2 =>
                                 {
-                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId");
+                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("domains_lock_tenant_custom_domain_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("domains_lock_tenant_custom_domain_override_mode");
 
                                     b2.HasKey("DomainPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("domains_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("DomainPolicyInstancePolicySetId")
@@ -8068,19 +8227,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantSubdomain", b2 =>
                                 {
-                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId");
+                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("domains_lock_tenant_subdomain_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("domains_lock_tenant_subdomain_override_mode");
 
                                     b2.HasKey("DomainPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("domains_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("DomainPolicyInstancePolicySetId")
@@ -8102,107 +8263,108 @@ namespace Explore.Persistence.Migrations
 
                     b.OwnsOne("Explore.Domain.Policies.BrandingPolicy", "Branding", b1 =>
                         {
-                            b1.Property<Guid>("InstancePolicySetId");
+                            b1.Property<Guid>("InstancePolicySetId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("id");
 
-                            b1.HasKey("InstancePolicySetId")
-                                .HasName("pk_instance_policy_sets");
+                            b1.HasKey("InstancePolicySetId");
 
                             b1.ToTable("instance_policy_sets");
 
-                            b1
-                                .ToJson("branding_policy")
-                                .HasColumnType("jsonb");
-
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
-                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_instance_policy_set");
+                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "CustomCssUrl", b2 =>
                                 {
-                                    b2.Property<Guid>("BrandingPolicyInstancePolicySetId");
+                                    b2.Property<Guid>("BrandingPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<string>("LocalValue");
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("text")
+                                        .HasColumnName("branding_custom_css_url_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("branding_custom_css_url_override_mode");
 
-                                    b2.HasKey("BrandingPolicyInstancePolicySetId")
-                                        .HasName("pk_instance_policy_sets");
+                                    b2.HasKey("BrandingPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
 
-                                    b2
-                                        .ToJson("branding_policy")
-                                        .HasColumnType("jsonb");
-
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_branding_policy_ins");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
                                 });
 
                             b1.OwnsOne("PolicySlot", "DisplayName", b2 =>
                                 {
-                                    b2.Property<Guid>("BrandingPolicyInstancePolicySetId");
+                                    b2.Property<Guid>("BrandingPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<string>("LocalValue");
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("text")
+                                        .HasColumnName("branding_display_name_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("branding_display_name_override_mode");
 
-                                    b2.HasKey("BrandingPolicyInstancePolicySetId")
-                                        .HasName("pk_instance_policy_sets");
+                                    b2.HasKey("BrandingPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
 
-                                    b2
-                                        .ToJson("branding_policy")
-                                        .HasColumnType("jsonb");
-
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_branding_policy_ins");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "FaviconUrl", b2 =>
                                 {
-                                    b2.Property<Guid>("BrandingPolicyInstancePolicySetId");
+                                    b2.Property<Guid>("BrandingPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<string>("LocalValue");
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("text")
+                                        .HasColumnName("branding_favicon_url_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("branding_favicon_url_override_mode");
 
-                                    b2.HasKey("BrandingPolicyInstancePolicySetId")
-                                        .HasName("pk_instance_policy_sets");
+                                    b2.HasKey("BrandingPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
 
-                                    b2
-                                        .ToJson("branding_policy")
-                                        .HasColumnType("jsonb");
-
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_branding_policy_ins");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "LogoUrl", b2 =>
                                 {
-                                    b2.Property<Guid>("BrandingPolicyInstancePolicySetId");
+                                    b2.Property<Guid>("BrandingPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<string>("LocalValue");
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("text")
+                                        .HasColumnName("branding_logo_url_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("branding_logo_url_override_mode");
 
-                                    b2.HasKey("BrandingPolicyInstancePolicySetId")
-                                        .HasName("pk_instance_policy_sets");
+                                    b2.HasKey("BrandingPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
 
-                                    b2
-                                        .ToJson("branding_policy")
-                                        .HasColumnType("jsonb");
-
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_branding_policy_ins");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
                                 });
 
                             b1.Navigation("CustomCssUrl")
@@ -8220,107 +8382,108 @@ namespace Explore.Persistence.Migrations
 
                     b.OwnsOne("Explore.Domain.Policies.EventPolicy", "Events", b1 =>
                         {
-                            b1.Property<Guid>("InstancePolicySetId");
+                            b1.Property<Guid>("InstancePolicySetId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("id");
 
-                            b1.HasKey("InstancePolicySetId")
-                                .HasName("pk_instance_policy_sets");
+                            b1.HasKey("InstancePolicySetId");
 
                             b1.ToTable("instance_policy_sets");
 
-                            b1
-                                .ToJson("events_policy")
-                                .HasColumnType("jsonb");
-
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
-                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_instance_policy_set");
+                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowGroupSubmittedEvents", b2 =>
                                 {
-                                    b2.Property<Guid>("EventPolicyInstancePolicySetId");
+                                    b2.Property<Guid>("EventPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("events_allow_group_submitted_events_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("events_allow_group_submitted_events_override_mode");
 
-                                    b2.HasKey("EventPolicyInstancePolicySetId")
-                                        .HasName("pk_instance_policy_sets");
+                                    b2.HasKey("EventPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
 
-                                    b2
-                                        .ToJson("events_policy")
-                                        .HasColumnType("jsonb");
-
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_event_policy_instan");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowOrganizationSubmittedEvents", b2 =>
                                 {
-                                    b2.Property<Guid>("EventPolicyInstancePolicySetId");
+                                    b2.Property<Guid>("EventPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("events_allow_organization_submitted_events_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("events_allow_organization_submitted_events_override_mode");
 
-                                    b2.HasKey("EventPolicyInstancePolicySetId")
-                                        .HasName("pk_instance_policy_sets");
+                                    b2.HasKey("EventPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
 
-                                    b2
-                                        .ToJson("events_policy")
-                                        .HasColumnType("jsonb");
-
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_event_policy_instan");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowUserSubmittedEvents", b2 =>
                                 {
-                                    b2.Property<Guid>("EventPolicyInstancePolicySetId");
+                                    b2.Property<Guid>("EventPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("events_allow_user_submitted_events_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("events_allow_user_submitted_events_override_mode");
 
-                                    b2.HasKey("EventPolicyInstancePolicySetId")
-                                        .HasName("pk_instance_policy_sets");
+                                    b2.HasKey("EventPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
 
-                                    b2
-                                        .ToJson("events_policy")
-                                        .HasColumnType("jsonb");
-
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_event_policy_instan");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "EventCardClickOpensDetailPage", b2 =>
                                 {
-                                    b2.Property<Guid>("EventPolicyInstancePolicySetId");
+                                    b2.Property<Guid>("EventPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("events_event_card_click_opens_detail_page_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("events_event_card_click_opens_detail_page_override_mode");
 
-                                    b2.HasKey("EventPolicyInstancePolicySetId")
-                                        .HasName("pk_instance_policy_sets");
+                                    b2.HasKey("EventPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
 
-                                    b2
-                                        .ToJson("events_policy")
-                                        .HasColumnType("jsonb");
-
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_event_policy_instan");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
                                 });
 
                             b1.Navigation("AllowGroupSubmittedEvents")
@@ -8338,107 +8501,108 @@ namespace Explore.Persistence.Migrations
 
                     b.OwnsOne("Explore.Domain.Policies.OrganizationPolicy", "Organizations", b1 =>
                         {
-                            b1.Property<Guid>("InstancePolicySetId");
+                            b1.Property<Guid>("InstancePolicySetId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("id");
 
-                            b1.HasKey("InstancePolicySetId")
-                                .HasName("pk_instance_policy_sets");
+                            b1.HasKey("InstancePolicySetId");
 
                             b1.ToTable("instance_policy_sets");
 
-                            b1
-                                .ToJson("organizations_policy")
-                                .HasColumnType("jsonb");
-
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
-                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_instance_policy_set");
+                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowGroupSelfRegistration", b2 =>
                                 {
-                                    b2.Property<Guid>("OrganizationPolicyInstancePolicySetId");
+                                    b2.Property<Guid>("OrganizationPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("organizations_allow_group_self_registration_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("organizations_allow_group_self_registration_override_mode");
 
-                                    b2.HasKey("OrganizationPolicyInstancePolicySetId")
-                                        .HasName("pk_instance_policy_sets");
+                                    b2.HasKey("OrganizationPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
 
-                                    b2
-                                        .ToJson("organizations_policy")
-                                        .HasColumnType("jsonb");
-
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_organization_polic");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowSelfRegistration", b2 =>
                                 {
-                                    b2.Property<Guid>("OrganizationPolicyInstancePolicySetId");
+                                    b2.Property<Guid>("OrganizationPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("organizations_allow_self_registration_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("organizations_allow_self_registration_override_mode");
 
-                                    b2.HasKey("OrganizationPolicyInstancePolicySetId")
-                                        .HasName("pk_instance_policy_sets");
+                                    b2.HasKey("OrganizationPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
 
-                                    b2
-                                        .ToJson("organizations_policy")
-                                        .HasColumnType("jsonb");
-
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_organization_polic");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowTenantToOmitVerification", b2 =>
                                 {
-                                    b2.Property<Guid>("OrganizationPolicyInstancePolicySetId");
+                                    b2.Property<Guid>("OrganizationPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("organizations_allow_tenant_to_omit_verification_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("organizations_allow_tenant_to_omit_verification_override_mode");
 
-                                    b2.HasKey("OrganizationPolicyInstancePolicySetId")
-                                        .HasName("pk_instance_policy_sets");
+                                    b2.HasKey("OrganizationPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
 
-                                    b2
-                                        .ToJson("organizations_policy")
-                                        .HasColumnType("jsonb");
-
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_organization_polic");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "RequireVerification", b2 =>
                                 {
-                                    b2.Property<Guid>("OrganizationPolicyInstancePolicySetId");
+                                    b2.Property<Guid>("OrganizationPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("organizations_require_verification_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("organizations_require_verification_override_mode");
 
-                                    b2.HasKey("OrganizationPolicyInstancePolicySetId")
-                                        .HasName("pk_instance_policy_sets");
+                                    b2.HasKey("OrganizationPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
 
-                                    b2
-                                        .ToJson("organizations_policy")
-                                        .HasColumnType("jsonb");
-
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_organization_polic");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
                                 });
 
                             b1.Navigation("AllowGroupSelfRegistration")
@@ -8456,414 +8620,430 @@ namespace Explore.Persistence.Migrations
 
                     b.OwnsOne("Explore.Domain.Policies.RenderPolicy", "RenderPolicy", b1 =>
                         {
-                            b1.Property<Guid>("InstancePolicySetId");
+                            b1.Property<Guid>("InstancePolicySetId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("id");
 
-                            b1.HasKey("InstancePolicySetId")
-                                .HasName("pk_instance_policy_sets");
+                            b1.HasKey("InstancePolicySetId");
 
                             b1.ToTable("instance_policy_sets");
 
-                            b1
-                                .ToJson("render_policy")
-                                .HasColumnType("jsonb");
-
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
-                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_instance_policy_set");
+                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AdminPrerenderEnabled", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
-
-                                    b2.Property<bool>("LocalValue");
-
-                                    b2.Property<int>("OverrideMode");
-
-                                    b2.HasKey("RenderPolicyInstancePolicySetId")
-                                        .HasName("pk_instance_policy_sets");
-
-                                    b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "AdminRenderMode", b2 =>
-                                {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
-
-                                    b2.Property<string>("LocalValue");
-
-                                    b2.Property<int>("OverrideMode");
-
-                                    b2.HasKey("RenderPolicyInstancePolicySetId")
-                                        .HasName("pk_instance_policy_sets");
-
-                                    b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowTenantOverride", b2 =>
-                                {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
-
-                                    b2.Property<bool>("LocalValue");
-
-                                    b2.Property<int>("OverrideMode");
-
-                                    b2.HasKey("RenderPolicyInstancePolicySetId")
-                                        .HasName("pk_instance_policy_sets");
-
-                                    b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "DisallowInteractiveServerOnOnboarding", b2 =>
-                                {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
-
-                                    b2.Property<bool>("LocalValue");
-
-                                    b2.Property<int>("OverrideMode");
-
-                                    b2.HasKey("RenderPolicyInstancePolicySetId")
-                                        .HasName("pk_instance_policy_sets");
-
-                                    b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "EnableAdvancedOverrides", b2 =>
-                                {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
-
-                                    b2.Property<bool>("LocalValue");
-
-                                    b2.Property<int>("OverrideMode");
-
-                                    b2.HasKey("RenderPolicyInstancePolicySetId")
-                                        .HasName("pk_instance_policy_sets");
-
-                                    b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "GlobalPrerenderEnabled", b2 =>
-                                {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
-
-                                    b2.Property<bool>("LocalValue");
-
-                                    b2.Property<int>("OverrideMode");
-
-                                    b2.HasKey("RenderPolicyInstancePolicySetId")
-                                        .HasName("pk_instance_policy_sets");
-
-                                    b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "GlobalRenderMode", b2 =>
-                                {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
-
-                                    b2.Property<string>("LocalValue");
-
-                                    b2.Property<int>("OverrideMode");
-
-                                    b2.HasKey("RenderPolicyInstancePolicySetId")
-                                        .HasName("pk_instance_policy_sets");
-
-                                    b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantAdmin", b2 =>
-                                {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
-
-                                    b2.Property<bool>("LocalValue");
-
-                                    b2.Property<int>("OverrideMode");
-
-                                    b2.HasKey("RenderPolicyInstancePolicySetId")
-                                        .HasName("pk_instance_policy_sets");
-
-                                    b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantOperational", b2 =>
-                                {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
-
-                                    b2.Property<bool>("LocalValue");
-
-                                    b2.Property<int>("OverrideMode");
-
-                                    b2.HasKey("RenderPolicyInstancePolicySetId")
-                                        .HasName("pk_instance_policy_sets");
-
-                                    b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantPublicSeo", b2 =>
-                                {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
-
-                                    b2.Property<bool>("LocalValue");
-
-                                    b2.Property<int>("OverrideMode");
-
-                                    b2.HasKey("RenderPolicyInstancePolicySetId")
-                                        .HasName("pk_instance_policy_sets");
-
-                                    b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "OnboardingPrerenderEnabled", b2 =>
-                                {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
-
-                                    b2.Property<bool>("LocalValue");
-
-                                    b2.Property<int>("OverrideMode");
-
-                                    b2.HasKey("RenderPolicyInstancePolicySetId")
-                                        .HasName("pk_instance_policy_sets");
-
-                                    b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "OnboardingRenderMode", b2 =>
-                                {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
-
-                                    b2.Property<string>("LocalValue");
-
-                                    b2.Property<int>("OverrideMode");
-
-                                    b2.HasKey("RenderPolicyInstancePolicySetId")
-                                        .HasName("pk_instance_policy_sets");
-
-                                    b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "OperationalPrerenderEnabled", b2 =>
-                                {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
-
-                                    b2.Property<bool>("LocalValue");
-
-                                    b2.Property<int>("OverrideMode");
-
-                                    b2.HasKey("RenderPolicyInstancePolicySetId")
-                                        .HasName("pk_instance_policy_sets");
-
-                                    b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "OperationalRenderMode", b2 =>
-                                {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
-
-                                    b2.Property<string>("LocalValue");
-
-                                    b2.Property<int>("OverrideMode");
-
-                                    b2.HasKey("RenderPolicyInstancePolicySetId")
-                                        .HasName("pk_instance_policy_sets");
-
-                                    b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "Preset", b2 =>
-                                {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
-
-                                    b2.Property<string>("LocalValue");
-
-                                    b2.Property<int>("OverrideMode");
-
-                                    b2.HasKey("RenderPolicyInstancePolicySetId")
-                                        .HasName("pk_instance_policy_sets");
-
-                                    b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "PublicSeoPrerenderEnabled", b2 =>
-                                {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
-
-                                    b2.Property<bool>("LocalValue");
-
-                                    b2.Property<int>("OverrideMode");
-
-                                    b2.HasKey("RenderPolicyInstancePolicySetId")
-                                        .HasName("pk_instance_policy_sets");
-
-                                    b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
-                                });
-
-                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "PublicSeoRenderMode", b2 =>
-                                {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
-
-                                    b2.Property<string>("LocalValue");
-
-                                    b2.Property<int>("OverrideMode");
-
-                                    b2.HasKey("RenderPolicyInstancePolicySetId")
-                                        .HasName("pk_instance_policy_sets");
-
-                                    b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
-                                });
-
-                            b1.OwnsOne("PolicySlot", "Version", b2 =>
-                                {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
-
-                                    b2.Property<int>("LocalValue");
-
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("render_policy_admin_prerender_enabled_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_admin_prerender_enabled_override_mode");
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
 
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "AdminRenderMode", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
+
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("text")
+                                        .HasColumnName("render_policy_admin_render_mode_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_admin_render_mode_override_mode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowTenantOverride", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("render_policy_allow_tenant_override_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_allow_tenant_override_override_mode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "DisallowInteractiveServerOnOnboarding", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("render_policy_disallow_interactive_server_on_onboarding_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_disallow_interactive_server_on_onboarding_override_mode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "EnableAdvancedOverrides", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("render_policy_enable_advanced_overrides_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_enable_advanced_overrides_override_mode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "GlobalPrerenderEnabled", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("render_policy_global_prerender_enabled_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_global_prerender_enabled_override_mode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "GlobalRenderMode", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
+
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("text")
+                                        .HasColumnName("render_policy_global_render_mode_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_global_render_mode_override_mode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantAdmin", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("render_policy_lock_tenant_admin_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_lock_tenant_admin_override_mode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantOperational", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("render_policy_lock_tenant_operational_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_lock_tenant_operational_override_mode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantPublicSeo", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("render_policy_lock_tenant_public_seo_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_lock_tenant_public_seo_override_mode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "OnboardingPrerenderEnabled", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("render_policy_onboarding_prerender_enabled_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_onboarding_prerender_enabled_override_mode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "OnboardingRenderMode", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
+
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("text")
+                                        .HasColumnName("render_policy_onboarding_render_mode_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_onboarding_render_mode_override_mode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "OperationalPrerenderEnabled", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("render_policy_operational_prerender_enabled_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_operational_prerender_enabled_override_mode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "OperationalRenderMode", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
+
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("text")
+                                        .HasColumnName("render_policy_operational_render_mode_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_operational_render_mode_override_mode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "Preset", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
+
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("text")
+                                        .HasColumnName("render_policy_preset_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_preset_override_mode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "PublicSeoPrerenderEnabled", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
+
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("render_policy_public_seo_prerender_enabled_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_public_seo_prerender_enabled_override_mode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "PublicSeoRenderMode", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
+
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("text")
+                                        .HasColumnName("render_policy_public_seo_render_mode_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_public_seo_render_mode_override_mode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                });
+
+                            b1.OwnsOne("PolicySlot", "Version", b2 =>
+                                {
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
+
+                                    b2.Property<int>("LocalValue")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_version_local_value");
+
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_version_override_mode");
+
+                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+
+                                    b2.ToTable("instance_policy_sets");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("RenderPolicyInstancePolicySetId")
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
                                 });
 
                             b1.Navigation("AdminPrerenderEnabled")
@@ -8923,15 +9103,13 @@ namespace Explore.Persistence.Migrations
 
                     b.OwnsOne("Explore.Domain.Policies.ModulePolicy", "Modules", b1 =>
                         {
-                            b1.Property<Guid>("InstancePolicySetId");
+                            b1.Property<Guid>("InstancePolicySetId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("id");
 
                             b1.HasKey("InstancePolicySetId");
 
                             b1.ToTable("instance_policy_sets");
-
-                            b1
-                                .ToJson("modules_policy")
-                                .HasColumnType("jsonb");
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
@@ -8939,19 +9117,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("PolicySlot", "EnableIslamicModule", b2 =>
                                 {
-                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId");
+                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("modules_enable_islamic_module_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("modules_enable_islamic_module_override_mode");
 
                                     b2.HasKey("ModulePolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("modules_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("ModulePolicyInstancePolicySetId")
@@ -8960,19 +9140,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "EnableTechModule", b2 =>
                                 {
-                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId");
+                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("modules_enable_tech_module_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("modules_enable_tech_module_override_mode");
 
                                     b2.HasKey("ModulePolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("modules_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("ModulePolicyInstancePolicySetId")
@@ -8988,15 +9170,13 @@ namespace Explore.Persistence.Migrations
 
                     b.OwnsOne("Explore.Domain.Policies.TenantDelegationPolicy", "TenantDelegation", b1 =>
                         {
-                            b1.Property<Guid>("InstancePolicySetId");
+                            b1.Property<Guid>("InstancePolicySetId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("id");
 
                             b1.HasKey("InstancePolicySetId");
 
                             b1.ToTable("instance_policy_sets");
-
-                            b1
-                                .ToJson("tenant_delegation_policy")
-                                .HasColumnType("jsonb");
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
@@ -9004,19 +9184,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowSelfServiceRegistration", b2 =>
                                 {
-                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId");
+                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("tenant_delegation_allow_self_service_registration_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("tenant_delegation_allow_self_service_registration_override_mode");
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("tenant_delegation_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -9025,19 +9207,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowWhiteLabeling", b2 =>
                                 {
-                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId");
+                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("tenant_delegation_allow_white_labeling_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("tenant_delegation_allow_white_labeling_override_mode");
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("tenant_delegation_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -9046,19 +9230,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "AuthorizationProvider", b2 =>
                                 {
-                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId");
+                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<string>("LocalValue");
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("text")
+                                        .HasColumnName("tenant_delegation_authorization_provider_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("tenant_delegation_authorization_provider_override_mode");
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("tenant_delegation_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -9067,19 +9253,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "DecentralizationEnabled", b2 =>
                                 {
-                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId");
+                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("tenant_delegation_decentralization_enabled_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("tenant_delegation_decentralization_enabled_override_mode");
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("tenant_delegation_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -9088,19 +9276,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "DefaultPublicHomePage", b2 =>
                                 {
-                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId");
+                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<string>("LocalValue");
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("text")
+                                        .HasColumnName("tenant_delegation_default_public_home_page_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("tenant_delegation_default_public_home_page_override_mode");
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("tenant_delegation_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -9109,19 +9299,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantAnalytics", b2 =>
                                 {
-                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId");
+                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("tenant_delegation_lock_tenant_analytics_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("tenant_delegation_lock_tenant_analytics_override_mode");
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("tenant_delegation_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -9130,19 +9322,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantSmtp", b2 =>
                                 {
-                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId");
+                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("tenant_delegation_lock_tenant_smtp_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("tenant_delegation_lock_tenant_smtp_override_mode");
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("tenant_delegation_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -9151,19 +9345,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantStorage", b2 =>
                                 {
-                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId");
+                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("tenant_delegation_lock_tenant_storage_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("tenant_delegation_lock_tenant_storage_override_mode");
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
-
-                                    b2
-                                        .ToJson("tenant_delegation_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -9221,15 +9417,13 @@ namespace Explore.Persistence.Migrations
                 {
                     b.OwnsOne("Explore.Domain.Policies.EventPolicy", "Events", b1 =>
                         {
-                            b1.Property<Guid>("OrganizationPolicySetId");
+                            b1.Property<Guid>("OrganizationPolicySetId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("id");
 
                             b1.HasKey("OrganizationPolicySetId");
 
                             b1.ToTable("organization_policy_sets");
-
-                            b1
-                                .ToJson("events_policy")
-                                .HasColumnType("jsonb");
 
                             b1.WithOwner()
                                 .HasForeignKey("OrganizationPolicySetId")
@@ -9237,19 +9431,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowGroupSubmittedEvents", b2 =>
                                 {
-                                    b2.Property<Guid>("EventPolicyOrganizationPolicySetId");
+                                    b2.Property<Guid>("EventPolicyOrganizationPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("events_allow_group_submitted_events_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("events_allow_group_submitted_events_override_mode");
 
                                     b2.HasKey("EventPolicyOrganizationPolicySetId");
 
                                     b2.ToTable("organization_policy_sets");
-
-                                    b2
-                                        .ToJson("events_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyOrganizationPolicySetId")
@@ -9258,19 +9454,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowOrganizationSubmittedEvents", b2 =>
                                 {
-                                    b2.Property<Guid>("EventPolicyOrganizationPolicySetId");
+                                    b2.Property<Guid>("EventPolicyOrganizationPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("events_allow_organization_submitted_events_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("events_allow_organization_submitted_events_override_mode");
 
                                     b2.HasKey("EventPolicyOrganizationPolicySetId");
 
                                     b2.ToTable("organization_policy_sets");
-
-                                    b2
-                                        .ToJson("events_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyOrganizationPolicySetId")
@@ -9279,19 +9477,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowUserSubmittedEvents", b2 =>
                                 {
-                                    b2.Property<Guid>("EventPolicyOrganizationPolicySetId");
+                                    b2.Property<Guid>("EventPolicyOrganizationPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("events_allow_user_submitted_events_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("events_allow_user_submitted_events_override_mode");
 
                                     b2.HasKey("EventPolicyOrganizationPolicySetId");
 
                                     b2.ToTable("organization_policy_sets");
-
-                                    b2
-                                        .ToJson("events_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyOrganizationPolicySetId")
@@ -9300,19 +9500,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "EventCardClickOpensDetailPage", b2 =>
                                 {
-                                    b2.Property<Guid>("EventPolicyOrganizationPolicySetId");
+                                    b2.Property<Guid>("EventPolicyOrganizationPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("events_event_card_click_opens_detail_page_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("events_event_card_click_opens_detail_page_override_mode");
 
                                     b2.HasKey("EventPolicyOrganizationPolicySetId");
 
                                     b2.ToTable("organization_policy_sets");
-
-                                    b2
-                                        .ToJson("events_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyOrganizationPolicySetId")
@@ -9340,15 +9542,13 @@ namespace Explore.Persistence.Migrations
                 {
                     b.OwnsOne("Explore.Domain.Policies.BrandingPolicy", "Branding", b1 =>
                         {
-                            b1.Property<Guid>("TenantPolicySetId");
+                            b1.Property<Guid>("TenantPolicySetId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("id");
 
                             b1.HasKey("TenantPolicySetId");
 
                             b1.ToTable("tenant_policy_sets");
-
-                            b1
-                                .ToJson("branding_policy")
-                                .HasColumnType("jsonb");
 
                             b1.WithOwner()
                                 .HasForeignKey("TenantPolicySetId")
@@ -9356,19 +9556,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "CustomCssUrl", b2 =>
                                 {
-                                    b2.Property<Guid>("BrandingPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("BrandingPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<string>("LocalValue");
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("text")
+                                        .HasColumnName("branding_custom_css_url_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("branding_custom_css_url_override_mode");
 
                                     b2.HasKey("BrandingPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("branding_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyTenantPolicySetId")
@@ -9377,19 +9579,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "DisplayName", b2 =>
                                 {
-                                    b2.Property<Guid>("BrandingPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("BrandingPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<string>("LocalValue");
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("text")
+                                        .HasColumnName("branding_display_name_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("branding_display_name_override_mode");
 
                                     b2.HasKey("BrandingPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("branding_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyTenantPolicySetId")
@@ -9398,19 +9602,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "FaviconUrl", b2 =>
                                 {
-                                    b2.Property<Guid>("BrandingPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("BrandingPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<string>("LocalValue");
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("text")
+                                        .HasColumnName("branding_favicon_url_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("branding_favicon_url_override_mode");
 
                                     b2.HasKey("BrandingPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("branding_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyTenantPolicySetId")
@@ -9419,19 +9625,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "LogoUrl", b2 =>
                                 {
-                                    b2.Property<Guid>("BrandingPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("BrandingPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<string>("LocalValue");
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("text")
+                                        .HasColumnName("branding_logo_url_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("branding_logo_url_override_mode");
 
                                     b2.HasKey("BrandingPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("branding_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyTenantPolicySetId")
@@ -9453,15 +9661,13 @@ namespace Explore.Persistence.Migrations
 
                     b.OwnsOne("Explore.Domain.Policies.EventPolicy", "Events", b1 =>
                         {
-                            b1.Property<Guid>("TenantPolicySetId");
+                            b1.Property<Guid>("TenantPolicySetId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("id");
 
                             b1.HasKey("TenantPolicySetId");
 
                             b1.ToTable("tenant_policy_sets");
-
-                            b1
-                                .ToJson("events_policy")
-                                .HasColumnType("jsonb");
 
                             b1.WithOwner()
                                 .HasForeignKey("TenantPolicySetId")
@@ -9469,19 +9675,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowGroupSubmittedEvents", b2 =>
                                 {
-                                    b2.Property<Guid>("EventPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("EventPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("events_allow_group_submitted_events_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("events_allow_group_submitted_events_override_mode");
 
                                     b2.HasKey("EventPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("events_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyTenantPolicySetId")
@@ -9490,19 +9698,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowOrganizationSubmittedEvents", b2 =>
                                 {
-                                    b2.Property<Guid>("EventPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("EventPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("events_allow_organization_submitted_events_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("events_allow_organization_submitted_events_override_mode");
 
                                     b2.HasKey("EventPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("events_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyTenantPolicySetId")
@@ -9511,19 +9721,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowUserSubmittedEvents", b2 =>
                                 {
-                                    b2.Property<Guid>("EventPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("EventPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("events_allow_user_submitted_events_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("events_allow_user_submitted_events_override_mode");
 
                                     b2.HasKey("EventPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("events_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyTenantPolicySetId")
@@ -9532,19 +9744,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "EventCardClickOpensDetailPage", b2 =>
                                 {
-                                    b2.Property<Guid>("EventPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("EventPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("events_event_card_click_opens_detail_page_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("events_event_card_click_opens_detail_page_override_mode");
 
                                     b2.HasKey("EventPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("events_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyTenantPolicySetId")
@@ -9566,15 +9780,13 @@ namespace Explore.Persistence.Migrations
 
                     b.OwnsOne("Explore.Domain.Policies.OrganizationPolicy", "Organizations", b1 =>
                         {
-                            b1.Property<Guid>("TenantPolicySetId");
+                            b1.Property<Guid>("TenantPolicySetId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("id");
 
                             b1.HasKey("TenantPolicySetId");
 
                             b1.ToTable("tenant_policy_sets");
-
-                            b1
-                                .ToJson("organizations_policy")
-                                .HasColumnType("jsonb");
 
                             b1.WithOwner()
                                 .HasForeignKey("TenantPolicySetId")
@@ -9582,19 +9794,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowGroupSelfRegistration", b2 =>
                                 {
-                                    b2.Property<Guid>("OrganizationPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("OrganizationPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("organizations_allow_group_self_registration_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("organizations_allow_group_self_registration_override_mode");
 
                                     b2.HasKey("OrganizationPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("organizations_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyTenantPolicySetId")
@@ -9603,19 +9817,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowSelfRegistration", b2 =>
                                 {
-                                    b2.Property<Guid>("OrganizationPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("OrganizationPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("organizations_allow_self_registration_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("organizations_allow_self_registration_override_mode");
 
                                     b2.HasKey("OrganizationPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("organizations_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyTenantPolicySetId")
@@ -9624,19 +9840,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowTenantToOmitVerification", b2 =>
                                 {
-                                    b2.Property<Guid>("OrganizationPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("OrganizationPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("organizations_allow_tenant_to_omit_verification_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("organizations_allow_tenant_to_omit_verification_override_mode");
 
                                     b2.HasKey("OrganizationPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("organizations_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyTenantPolicySetId")
@@ -9645,19 +9863,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "RequireVerification", b2 =>
                                 {
-                                    b2.Property<Guid>("OrganizationPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("OrganizationPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("organizations_require_verification_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("organizations_require_verification_override_mode");
 
                                     b2.HasKey("OrganizationPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("organizations_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyTenantPolicySetId")
@@ -9679,15 +9899,13 @@ namespace Explore.Persistence.Migrations
 
                     b.OwnsOne("Explore.Domain.Policies.RenderPolicy", "RenderPolicy", b1 =>
                         {
-                            b1.Property<Guid>("TenantPolicySetId");
+                            b1.Property<Guid>("TenantPolicySetId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("id");
 
                             b1.HasKey("TenantPolicySetId");
 
                             b1.ToTable("tenant_policy_sets");
-
-                            b1
-                                .ToJson("render_policy")
-                                .HasColumnType("jsonb");
 
                             b1.WithOwner()
                                 .HasForeignKey("TenantPolicySetId")
@@ -9695,19 +9913,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AdminPrerenderEnabled", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("render_policy_admin_prerender_enabled_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_admin_prerender_enabled_override_mode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -9716,19 +9936,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "AdminRenderMode", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<string>("LocalValue");
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("text")
+                                        .HasColumnName("render_policy_admin_render_mode_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_admin_render_mode_override_mode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -9737,19 +9959,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowTenantOverride", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("render_policy_allow_tenant_override_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_allow_tenant_override_override_mode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -9758,19 +9982,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "DisallowInteractiveServerOnOnboarding", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("render_policy_disallow_interactive_server_on_onboarding_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_disallow_interactive_server_on_onboarding_override_mode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -9779,19 +10005,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "EnableAdvancedOverrides", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("render_policy_enable_advanced_overrides_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_enable_advanced_overrides_override_mode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -9800,19 +10028,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "GlobalPrerenderEnabled", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("render_policy_global_prerender_enabled_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_global_prerender_enabled_override_mode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -9821,19 +10051,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "GlobalRenderMode", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<string>("LocalValue");
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("text")
+                                        .HasColumnName("render_policy_global_render_mode_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_global_render_mode_override_mode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -9842,19 +10074,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantAdmin", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("render_policy_lock_tenant_admin_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_lock_tenant_admin_override_mode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -9863,19 +10097,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantOperational", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("render_policy_lock_tenant_operational_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_lock_tenant_operational_override_mode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -9884,19 +10120,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantPublicSeo", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("render_policy_lock_tenant_public_seo_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_lock_tenant_public_seo_override_mode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -9905,19 +10143,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "OnboardingPrerenderEnabled", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("render_policy_onboarding_prerender_enabled_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_onboarding_prerender_enabled_override_mode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -9926,19 +10166,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "OnboardingRenderMode", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<string>("LocalValue");
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("text")
+                                        .HasColumnName("render_policy_onboarding_render_mode_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_onboarding_render_mode_override_mode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -9947,19 +10189,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "OperationalPrerenderEnabled", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("render_policy_operational_prerender_enabled_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_operational_prerender_enabled_override_mode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -9968,19 +10212,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "OperationalRenderMode", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<string>("LocalValue");
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("text")
+                                        .HasColumnName("render_policy_operational_render_mode_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_operational_render_mode_override_mode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -9989,19 +10235,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "Preset", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<string>("LocalValue");
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("text")
+                                        .HasColumnName("render_policy_preset_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_preset_override_mode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -10010,19 +10258,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "PublicSeoPrerenderEnabled", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<bool>("LocalValue");
+                                    b2.Property<bool>("LocalValue")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("render_policy_public_seo_prerender_enabled_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_public_seo_prerender_enabled_override_mode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -10031,19 +10281,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "PublicSeoRenderMode", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<string>("LocalValue");
+                                    b2.Property<string>("LocalValue")
+                                        .HasColumnType("text")
+                                        .HasColumnName("render_policy_public_seo_render_mode_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_public_seo_render_mode_override_mode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -10052,19 +10304,21 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<int>", "Version", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
 
-                                    b2.Property<int>("LocalValue");
+                                    b2.Property<int>("LocalValue")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_version_local_value");
 
-                                    b2.Property<int>("OverrideMode");
+                                    b2.Property<int>("OverrideMode")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("render_policy_version_override_mode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
-
-                                    b2
-                                        .ToJson("render_policy")
-                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")

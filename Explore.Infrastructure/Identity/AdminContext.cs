@@ -15,7 +15,7 @@ namespace Explore.Infrastructure.Identity;
 /// <summary>
 /// Resolves the current user's administrative authority using database tables only.
 /// Identity is read from authenticated claims (sub/nameidentifier/sid) and authority
-/// is resolved from platform role assignments, TenantMembers, and OrganizationMembers.
+/// is resolved from platform role assignments, TenantMembers, OrganizationMembers, and GroupMembers.
 /// </summary>
 public class AdminContext : IAdminContext, IAdminCacheInvalidator
 {
@@ -25,6 +25,7 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
     private readonly IInstanceBootstrapStateRepository _instanceBootstrapStateRepository;
     private readonly ITenantMemberRepository _tenantAdminRepo;
     private readonly IOrganizationMemberRepository _orgMemberRepo;
+    private readonly IGroupMemberRepository _groupMemberRepo;
     private readonly IMemoryCache _cache;
     private readonly ILogger<AdminContext> _logger;
 
@@ -37,6 +38,7 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         IInstanceBootstrapStateRepository instanceBootstrapStateRepository,
         ITenantMemberRepository tenantAdminRepo,
         IOrganizationMemberRepository orgMemberRepo,
+        IGroupMemberRepository groupMemberRepo,
         IMemoryCache cache,
         ILogger<AdminContext> logger)
     {
@@ -45,6 +47,7 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         _instanceBootstrapStateRepository = instanceBootstrapStateRepository;
         _tenantAdminRepo = tenantAdminRepo;
         _orgMemberRepo = orgMemberRepo;
+        _groupMemberRepo = groupMemberRepo;
         _cache = cache;
         _logger = logger;
     }
@@ -199,9 +202,55 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         }) ?? Array.Empty<Guid>();
     }
 
+    public async Task<bool> IsGroupAdminAsync(Guid groupId, CancellationToken cancellationToken = default)
+    {
+        var uid = UserId;
+        if (uid == null)
+            return false;
+
+        var cacheKey = $"{CacheKeyPrefix}Group_{uid}_{groupId}";
+        return await _cache.GetOrCreateAsync(cacheKey, async entry =>
+        {
+            entry.SlidingExpiration = CacheExpiration;
+            var membership = await _groupMemberRepo.GetByGroupAndUser(groupId, uid.Value);
+            return membership != null && IsGroupAdminRole(membership.RoleId);
+        });
+    }
+
+    public Task<IReadOnlyList<Guid>> GetAdminGroupIdsAsync(CancellationToken cancellationToken = default)
+    {
+        var uid = UserId;
+        return uid == null
+            ? Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>())
+            : GetAdminGroupIdsAsync(uid.Value, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetAdminGroupIdsAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var cacheKey = $"{CacheKeyPrefix}GroupIds_{userId}";
+        return await _cache.GetOrCreateAsync(cacheKey, async entry =>
+        {
+            entry.SlidingExpiration = CacheExpiration;
+            var memberships = await _groupMemberRepo.GetMembershipsByUser(userId);
+            var adminGroupIds = memberships
+                .Where(m => IsGroupAdminRole(m.RoleId))
+                .Select(m => m.GroupId)
+                .Distinct()
+                .ToList()
+                .AsReadOnly();
+
+            return (IReadOnlyList<Guid>)adminGroupIds;
+        }) ?? Array.Empty<Guid>();
+    }
+
     private static bool IsOrganizationAdminRole(int roleId)
     {
         return roleId == (int)RoleEnum.OrgAdmin;
+    }
+
+    private static bool IsGroupAdminRole(int roleId)
+    {
+        return roleId == (int)RoleEnum.GroupAdmin;
     }
 
     /// <inheritdoc />
@@ -210,9 +259,10 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         _cache.Remove($"{CacheKeyPrefix}Instance_{userId}");
         _cache.Remove($"{CacheKeyPrefix}TenantIds_{userId}");
         _cache.Remove($"{CacheKeyPrefix}OrgIds_{userId}");
+        _cache.Remove($"{CacheKeyPrefix}GroupIds_{userId}");
         _logger.LogDebug("AdminContext: Invalidated cache for user {UserId}", userId);
-        // Note: Tenant_{userId}_{tenantId} and Org_{userId}_{orgId} entries are not
-        // evicted here because we don't track which tenant/org combinations are cached.
+        // Note: Tenant_{userId}_{tenantId}, Org_{userId}_{orgId}, and Group_{userId}_{groupId}
+        // entries are not evicted here because we don't track which combinations are cached.
         // They will expire naturally via the 5-minute sliding window.
     }
 

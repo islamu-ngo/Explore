@@ -6,7 +6,7 @@ namespace Explore.Application.Specifications.Events;
 /// Fluent builder for composing event query filters and sorting.
 /// Follows the specification pattern with immutable builder semantics.
 /// Supports core event filters, aspect-specific filters (Islamic/Tech),
-/// subquery filters (junction tables), JSONB metadata filters, and sorting.
+/// subquery filters (junction tables), and sorting.
 /// </summary>
 /// <remarks>
 /// Usage:
@@ -104,7 +104,7 @@ public sealed class EventQuerySpecification : IQuerySpecification<Event>
 
     /// <summary>
     /// Adds a subquery filter that requires DbContext access (AND composition).
-    /// Includes junction table filters and JSONB metadata filters.
+    /// Includes junction table filters.
     /// Returns a new specification instance (immutable builder).
     /// </summary>
     public EventQuerySpecification And(EventSubqueryFilter filter) =>

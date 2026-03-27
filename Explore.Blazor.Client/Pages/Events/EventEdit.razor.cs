@@ -3,6 +3,7 @@
 
 using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Pages.Events.Components;
 using Explore.Blazor.Client.Pages.Events.Models;
@@ -27,6 +28,7 @@ public partial class EventEdit
     [Inject] protected RouterStateService RouterState { get; set; } = null!;
     [Inject] protected IDialogService DialogService { get; set; } = null!;
     [Inject] protected ILogger<EventEdit> Logger { get; set; } = null!;
+    [Inject] private IAccessibilityFocusService AccessibilityFocusService { get; set; } = default!;
 
     private Guid EventId { get; set; }
 
@@ -68,7 +70,7 @@ public partial class EventEdit
     // Sessions
     private List<SessionEditorModel> sessions = new();
     private readonly SessionEditorWorkflow _sessionWorkflow = new();
-    private EventAppearanceSettings _appearance = new();
+    private AppearanceSettings _appearance = new();
 
     // UI toggles
     private bool _showFirstSessionLocation = false;
@@ -194,8 +196,12 @@ public partial class EventEdit
             BackgroundEffect = currentEvent.BackgroundEffect
         };
 
-        _appearance = EventAppearanceMetadataHelper.FromColumns(
-            currentEvent.BackgroundColor, currentEvent.BackgroundImageUri, currentEvent.BackgroundEffect);
+        _appearance = new AppearanceSettings
+        {
+            BackgroundColor = currentEvent.BackgroundColor ?? string.Empty,
+            ImageUri = currentEvent.BackgroundImageUri ?? string.Empty,
+            BackgroundEffect = currentEvent.BackgroundEffect ?? "None"
+        };
         imagePreviewUrl = currentEvent.FeaturedImageUri;
 
         if (!string.IsNullOrEmpty(currentEvent.Timezone))
@@ -289,16 +295,12 @@ public partial class EventEdit
             { x => x.Description, updateDto.Description }
         };
 
-        var options = new DialogOptions
-        {
-            MaxWidth = MaxWidth.Medium,
-            FullWidth = true,
-            CloseButton = true,
-            BackdropClick = true
-        };
+        var options = DialogOptionsFactory.Editor();
 
+        await AccessibilityFocusService.SaveFocusAsync();
         var dialog = await DialogService.ShowAsync<DescriptionDialog>("", parameters, options);
         var result = await dialog.Result;
+        await AccessibilityFocusService.RestoreFocusAsync();
 
         if (result is not null && !result.Canceled)
         {
@@ -361,10 +363,12 @@ public partial class EventEdit
 
             if (session.Id.HasValue && session.Id != Guid.Empty)
             {
+                await AccessibilityFocusService.SaveFocusAsync();
                 bool? confirm = await DialogService.ShowMessageBoxAsync(
                     "Delete Session",
                     "This session already exists. Deleting it here will remove it permanently. Continue?",
                     yesText: "Delete", cancelText: "Cancel");
+                await AccessibilityFocusService.RestoreFocusAsync();
 
                 if (confirm == true)
                 {

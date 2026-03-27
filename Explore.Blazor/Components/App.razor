@@ -21,8 +21,16 @@
         "form-action 'self';");
 }
 
+@{
+    // Read the language cookie server-side for correct SSR lang/dir attributes.
+    // After hydration, LanguageProvider updates these via JS interop for dynamic changes.
+    var langCookie = HttpContextAccessor.HttpContext?.Request.Cookies["lang"];
+    var pageLang = !string.IsNullOrWhiteSpace(langCookie) ? langCookie.Trim().ToLowerInvariant() : "en";
+    var pageDir = _rtlLanguages.Contains(pageLang) ? "rtl" : "ltr";
+}
+
 <!DOCTYPE html>
-<html lang="en">
+<html lang="@pageLang" dir="@pageDir">
 
 <head>
 	<meta charset="utf-8" />
@@ -31,7 +39,7 @@
 	<base href="/" />
 	<link href=@Assets["_content/MudBlazor/MudBlazor.min.css"] rel="stylesheet" />
 	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-	<link href="css/StyleGlobal.css" rel="stylesheet" />
+	<link href="css/layers.css" rel="stylesheet" />
 	<link href="Explore.Blazor.styles.css" rel="stylesheet" />
 	<link rel="stylesheet" href="_content/Blazouter/blazouter.min.css" />
 	<ImportMap nonce="@cspNonce" />
@@ -76,6 +84,10 @@
 </html>
 
 @code {
+    // RTL language codes — must match LanguageContext.RtlLanguages for consistency.
+    private static readonly HashSet<string> _rtlLanguages =
+        new(StringComparer.OrdinalIgnoreCase) { "ar", "he", "fa", "ur" };
+
     // Resolved asynchronously from governance settings for non-onboarding paths.
     private IComponentRenderMode? _asyncResolvedMode;
 

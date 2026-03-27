@@ -1,0 +1,27 @@
+// ABOUTME: EF Core configuration for ExternalApiKeyCreditPeriod lookup table entity.
+// ABOUTME: Uses ValueGeneratedNever for explicit int IDs matching ExternalApiKeyCreditPeriodEnum values.
+
+using Explore.Domain;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Explore.Persistence.Configurations.Entities;
+
+public class ExternalApiKeyCreditPeriodConfiguration : IEntityTypeConfiguration<ExternalApiKeyCreditPeriod>
+{
+    public void Configure(EntityTypeBuilder<ExternalApiKeyCreditPeriod> builder)
+    {
+        builder.Property(e => e.Id).ValueGeneratedNever();
+
+        builder.Property(e => e.MasterCode)
+            .IsRequired()
+            .HasMaxLength(50);
+
+        builder.Property(e => e.FullName)
+            .IsRequired()
+            .HasMaxLength(100);
+
+        builder.Property(e => e.Description)
+            .HasMaxLength(500);
+    }
+}

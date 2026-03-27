@@ -6,12 +6,11 @@
 
 Event Platform & Management System
 
-**v0.1.0 Beta**
-
-⚠️ **Beta Release:** ready for beta testing, self-hosted evaluation, and early adopters. The API and operational experience may still change before `1.0.0`.
-
 ISLAMU Event is a self-hostable, white-label event discovery and management platform for communities, organizations, and SaaS operators.
 The public ISLAMU instance is Islamic-focused, but the software itself is purpose-agnostic and designed to be rebranded for any event ecosystem.
+
+Until we reach version 1 you should expect breaking changes from release to release. Watch the changelogs to learn about them.
+We try to not introduce breaking changes that result in a definitive loss of data, but you should expect to have to redo your configuration from time to time.
 
 ![GitHub Workflow Status][github-workflow-status-shield]
 [![Codecov][codecov-shield]][codecov-link]
@@ -385,9 +384,9 @@ Banner from: [support-palestine-banner repository][support-palestine-banner-sour
 [back-to-top]: https://img.shields.io/badge/-BACK_TO_TOP-151515?style=flat-square
 [back-to-top-link]: #readme-top
 [islamu-platform]: https://event.openislamu.org
-[event-list-image]: images/event-list-image.png
+[event-list-image]: assets/event-list-image.png
 [roadmap-link]: https://sites.plane.so/views/b8b7d9fced694f5a9d9a546e9d40d988
-[roadmap-image]: images/Roadmap%20Kanban%20View.png
+[roadmap-image]: assets/Roadmap%20Kanban%20View.png
 [code-of-conduct]: CODE_OF_CONDUCT.md
 [master-reference-doc]: docs/index.md
 [project-doc]: docs/PROJECT.md

@@ -1,3 +1,6 @@
+// ABOUTME: REST API controller for group member CRUD operations with role-based access control.
+// ABOUTME: Manages user membership in groups and associated permissions via CQRS/MediatR.
+
 using Asp.Versioning;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.GroupMember;
@@ -18,12 +21,10 @@ namespace Explore.API.Controllers;
 public class GroupMemberController : ControllerBase
 {
     private readonly IMediator _mediator;
-    private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public GroupMemberController(IMediator mediator, IHttpContextAccessor httpContextAccessor)
+    public GroupMemberController(IMediator mediator)
     {
         _mediator = mediator;
-        _httpContextAccessor = httpContextAccessor;
     }
 
     [HttpGet("{groupId:guid}", Name = RouteNames.GetGroupMembers)]
@@ -44,10 +45,7 @@ public class GroupMemberController : ControllerBase
     public async Task<ActionResult<GroupMemberDto>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var member = await _mediator.Send(new GetGroupMemberDetailsRequest { Id = id }, cancellationToken);
-        if (member is null)
-        {
-            return NotFound();
-        }
+
         return Ok(member);
     }
 
@@ -131,8 +129,8 @@ public class GroupMemberController : ControllerBase
 
     private string? GetCurrentUserId()
     {
-        return _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
-            ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-            ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
+        return HttpContext.User?.FindFirst("sub")?.Value
+            ?? HttpContext.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
+            ?? HttpContext.User?.FindFirst("sid")?.Value;
     }
 }

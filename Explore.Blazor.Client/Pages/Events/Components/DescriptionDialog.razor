@@ -10,16 +10,15 @@
         </div>
     </TitleContent>
     <DialogContent>
-        <MudTextField @bind-Value="Description"
-                      Variant="Variant.Outlined"
+        <AppTextField T="string" @bind-Value="Description"
                       Lines="10"
                       FullWidth="true"
                       Placeholder="Tell people more about your event..."
                       Class="mt-2" />
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel" Variant="Variant.Text" Color="Color.Secondary">Cancel</MudButton>
-        <MudButton OnClick="Submit" Variant="Variant.Filled" Color="Color.Primary">Save</MudButton>
+        <AppButton OnClick="Cancel" Variant="Variant.Text" Color="Color.Secondary">Cancel</AppButton>
+        <AppButton OnClick="Submit">Save</AppButton>
     </DialogActions>
 </MudDialog>
 

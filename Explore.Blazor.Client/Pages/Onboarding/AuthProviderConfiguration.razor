@@ -10,9 +10,11 @@
 @inject IHttpClientFactory HttpClientFactory
 @inject ILogger<AuthProviderConfiguration> Logger
 
+<PageTitle>Authentication Providers</PageTitle>
+
 <MudContainer MaxWidth="MaxWidth.Small" Class="py-8">
     <MudPaper Class="pa-6">
-        <MudText Typo="Typo.h4" Class="mb-2">Authentication Providers</MudText>
+        <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-2">Authentication Providers</MudText>
         <MudText Typo="Typo.body2" Class="mb-4">
             Choose how users will authenticate. At least one provider must be enabled.
         </MudText>
@@ -31,7 +33,9 @@
         {
             @if (!string.IsNullOrWhiteSpace(_errorMessage))
             {
-                <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+                <div role="alert">
+                    <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+                </div>
             }
 
             @if (!string.IsNullOrWhiteSpace(_successMessage))
@@ -73,20 +77,17 @@
                         }
                         else
                         {
-                            <MudTextField T="string"
+                            <AppTextField T="string"
                                           Label="Authority URL (Required)"
-                                          Variant="Variant.Outlined"
                                           @bind-Value="_model.KeycloakAuthority"
                                           Placeholder="https://keycloak.example.com/realms/myrealm"
                                           HelperText="The Keycloak realm URL used for OIDC discovery." />
-                            <MudTextField T="string"
+                            <AppTextField T="string"
                                           Label="Client ID (Required)"
-                                          Variant="Variant.Outlined"
                                           @bind-Value="_model.KeycloakClientId"
                                           Placeholder="my-client" />
-                            <MudTextField T="string"
+                            <AppTextField T="string"
                                           Label="Client Secret"
-                                          Variant="Variant.Outlined"
                                           InputType="InputType.Password"
                                           @bind-Value="_model.KeycloakClientSecret"
                                           HelperText="Optional for public clients. Required for confidential clients." />
@@ -109,9 +110,8 @@
 
                     @if (_model.AtprotoLoginEnabled)
                     {
-                        <MudTextField T="string"
+                        <AppTextField T="string"
                                       Label="Public URL (Required)"
-                                      Variant="Variant.Outlined"
                                       @bind-Value="_model.AtprotoPublicUrl"
                                       Placeholder="https://event.example.com"
                                       HelperText="Must be publicly accessible. AT Protocol OAuth requires a reachable client metadata URL." />
@@ -142,14 +142,12 @@
 
                     @if (_model.GoogleSsoEnabled)
                     {
-                        <MudTextField T="string"
+                        <AppTextField T="string"
                                       Label="Google Client ID (Required)"
-                                      Variant="Variant.Outlined"
                                       @bind-Value="_model.GoogleClientId"
                                       Placeholder="123456789.apps.googleusercontent.com" />
-                        <MudTextField T="string"
+                        <AppTextField T="string"
                                       Label="Google Client Secret (Required)"
-                                      Variant="Variant.Outlined"
                                       InputType="InputType.Password"
                                       @bind-Value="_model.GoogleClientSecret" />
                     }
@@ -166,9 +164,7 @@
 
             @* ── Actions ── *@
             <MudStack Row="true" Spacing="2" Class="mt-2">
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           Disabled="@(!CanSave)"
+                <AppButton Disabled="@(!CanSave)"
                            OnClick="SaveAndContinueAsync">
                     @if (_isSaving)
                     {
@@ -179,7 +175,7 @@
                     {
                         @:Save & Continue to Login
                     }
-                </MudButton>
+                </AppButton>
             </MudStack>
         }
     </MudPaper>

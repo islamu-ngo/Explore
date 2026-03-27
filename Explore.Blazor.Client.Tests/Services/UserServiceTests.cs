@@ -89,7 +89,7 @@ public class UserServiceTests
     {
         // Arrange
         var expectedUser = ComponentDataBuilder.UserDto.Generate();
-        _apiClient.UserGETAsync(Arg.Any<CancellationToken>())
+        _apiClient.UserGET2Async(Arg.Any<CancellationToken>())
             .Returns(expectedUser);
 
         // Act
@@ -108,7 +108,7 @@ public class UserServiceTests
         var expectedUser = ComponentDataBuilder.UserDto.Generate();
         var callCount = 0;
 
-        _apiClient.UserGETAsync(Arg.Any<CancellationToken>())
+        _apiClient.UserGET2Async(Arg.Any<CancellationToken>())
             .Returns(_ =>
             {
                 callCount++;
@@ -135,7 +135,7 @@ public class UserServiceTests
     public async Task GetCurrentUserAsync_ReturnsNull_WhenInitialCallReturns404AndSyncFails()
     {
         // Arrange
-        _apiClient.UserGETAsync(Arg.Any<CancellationToken>())
+        _apiClient.UserGET2Async(Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Not Found", 404));
 
         _apiClient.SyncAsync(Arg.Any<CancellationToken>())
@@ -157,7 +157,7 @@ public class UserServiceTests
     public async Task GetCurrentUserAsync_ReturnsNull_WhenInitialCallReturns404AndSyncThrows()
     {
         // Arrange
-        _apiClient.UserGETAsync(Arg.Any<CancellationToken>())
+        _apiClient.UserGET2Async(Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Not Found", 404));
 
         _apiClient.SyncAsync(Arg.Any<CancellationToken>())
@@ -174,7 +174,7 @@ public class UserServiceTests
     public async Task GetCurrentUserAsync_ReturnsNull_WhenRetryAfterSyncStillFails()
     {
         // Arrange
-        _apiClient.UserGETAsync(Arg.Any<CancellationToken>())
+        _apiClient.UserGET2Async(Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Not Found", 404));
 
         _apiClient.SyncAsync(Arg.Any<CancellationToken>())
@@ -185,14 +185,14 @@ public class UserServiceTests
 
         // Assert
         await Assert.That(result).IsNull();
-        await _apiClient.Received(2).UserGETAsync(Arg.Any<CancellationToken>());
+        await _apiClient.Received(2).UserGET2Async(Arg.Any<CancellationToken>());
     }
 
     [Test]
     public async Task GetCurrentUserAsync_ReturnsNull_WhenApiReturns401()
     {
         // Arrange
-        _apiClient.UserGETAsync(Arg.Any<CancellationToken>())
+        _apiClient.UserGET2Async(Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Unauthorized", 401));
 
         // Act
@@ -207,7 +207,7 @@ public class UserServiceTests
     public async Task GetCurrentUserAsync_ReturnsNull_WhenApiThrowsNon404Non401()
     {
         // Arrange
-        _apiClient.UserGETAsync(Arg.Any<CancellationToken>())
+        _apiClient.UserGET2Async(Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Server Error", 500));
 
         // Act
@@ -234,7 +234,7 @@ public class UserServiceTests
         };
         var expectedResponse = ComponentDataBuilder.SuccessResponse();
 
-        _apiClient.UserPUTAsync(Arg.Any<UpdateUserDto>(), Arg.Any<CancellationToken>())
+        _apiClient.UserPUT2Async(Arg.Any<UpdateUserDto>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
@@ -255,7 +255,7 @@ public class UserServiceTests
             LastName = "User"
         };
 
-        _apiClient.UserPUTAsync(Arg.Any<UpdateUserDto>(), Arg.Any<CancellationToken>())
+        _apiClient.UserPUT2Async(Arg.Any<UpdateUserDto>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Bad Request", 400));
 
         // Act

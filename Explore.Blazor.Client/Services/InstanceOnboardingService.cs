@@ -54,6 +54,10 @@ public interface IInstanceOnboardingService
     // Analytics governance
     Task<Models.Analytics.AnalyticsGovernanceSettingsModel> GetAnalyticsGovernanceSettingsAsync();
     Task<InstanceCommandResponseModel> UpdateAnalyticsGovernanceSettingsAsync(Models.Analytics.AnalyticsGovernanceSettingsModel settings);
+
+    // Footer governance
+    Task<FooterGovernanceSettingsModel> GetFooterGovernanceSettingsAsync();
+    Task<InstanceCommandResponseModel> UpdateFooterGovernanceSettingsAsync(FooterGovernanceSettingsModel settings);
 }
 
 public class InstanceOnboardingService : IInstanceOnboardingService
@@ -253,6 +257,15 @@ public class InstanceOnboardingService : IInstanceOnboardingService
 
     public Task<InstanceCommandResponseModel> UpdateAnalyticsGovernanceSettingsAsync(Models.Analytics.AnalyticsGovernanceSettingsModel settings) =>
         SendCommandAsync(HttpMethod.Put, "api/instance/settings/analytics-governance", settings);
+
+    // ── Footer Governance ────────────────────────────────────────────────
+
+    public async Task<FooterGovernanceSettingsModel> GetFooterGovernanceSettingsAsync() =>
+        await GetAsync<FooterGovernanceSettingsModel>("api/instance/settings/footer-governance")
+        ?? new FooterGovernanceSettingsModel();
+
+    public Task<InstanceCommandResponseModel> UpdateFooterGovernanceSettingsAsync(FooterGovernanceSettingsModel settings) =>
+        SendCommandAsync(HttpMethod.Put, "api/instance/settings/footer-governance", settings);
 
     // ── Shared Helpers ───────────────────────────────────────────────────
 
@@ -586,4 +599,15 @@ public class AuthProviderConfigurationModel
 public class AuthProviderConfiguredResult
 {
     public bool Configured { get; set; }
+}
+
+// ── Footer Governance Model ──────────────────────────────────────────────
+
+public class FooterGovernanceSettingsModel
+{
+    public bool LockTenantTemplate { get; set; }
+    public bool LockTenantLinkGroups { get; set; }
+    public bool LockTenantSocialLinks { get; set; }
+    public bool LockTenantDescription { get; set; }
+    public bool LockTenantCopyright { get; set; }
 }

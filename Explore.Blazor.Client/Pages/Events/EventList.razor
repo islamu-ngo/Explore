@@ -22,6 +22,8 @@
 
 <PageTitle>Explore Events</PageTitle>
 
+<MudText Typo="Typo.h1" HtmlTag="h1" Class="sr-only">Explore Events</MudText>
+
 
 
 @* ── Overlay for right sidebar: separate from MudDrawer so we can use LockScroll ── *@
@@ -49,36 +51,33 @@
             @if (_selectedEvent != null)
             {
                 <MudDrawerHeader Class="d-flex align-center gap-1 px-2 py-1">
-                    <MudIconButton Icon="@Icons.Material.Filled.KeyboardDoubleArrowRight"
+                    <AppIconButton Icon="@Icons.Material.Filled.KeyboardDoubleArrowRight"
                                    Size="Size.Small"
                                    OnClick="@HandleDrawerCloseClick"
                                    aria-label="Close" />
 
                     @* ── Prev / Next navigation arrows ── *@
-                    <MudIconButton Icon="@Icons.Material.Filled.KeyboardArrowUp"
+                    <AppIconButton Icon="@Icons.Material.Filled.KeyboardArrowUp"
                                    Size="Size.Small"
                                    Disabled="@(!CanNavigatePrevEvent())"
                                    OnClick="@NavigatePrevEvent"
                                    aria-label="Previous event" />
-                    <MudIconButton Icon="@Icons.Material.Filled.KeyboardArrowDown"
+                    <AppIconButton Icon="@Icons.Material.Filled.KeyboardArrowDown"
                                    Size="Size.Small"
                                    Disabled="@(!CanNavigateNextEvent())"
                                    OnClick="@NavigateNextEvent"
                                    aria-label="Next event" />
 
                     <div class="d-flex gap-2 mx-auto">
-                        <MudButton Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   StartIcon="@Icons.Material.Filled.OpenInNew"
+                        <AppButton StartIcon="@Icons.Material.Filled.OpenInNew"
                                    OnClick="@(() => Navigation.NavigateTo($"/events/{_selectedEvent!.Id}"))">
                             Event Page
-                        </MudButton>
-                        <MudButton Variant="Variant.Filled"
-                                   Color="Color.Default"
+                        </AppButton>
+                        <AppButton Color="Color.Default"
                                    StartIcon="@Icons.Material.Outlined.ContentCopy"
                                    OnClick="@CopyEventLinkAsync">
                             Copy Link
-                        </MudButton>
+                        </AppButton>
                     </div>
 
                     @* ── Three-dots menu (edit / delete) ── *@
@@ -323,7 +322,7 @@
                             <MudText Typo="Typo.overline" Style="font-weight: 600;">TAGS</MudText>
                             @if (_selectedEvent.HasManagementLinks())
                             {
-                                <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
+                                <AppIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
                                                OnClick="@OpenTagManagement"
                                                aria-label="Manage tags" />
                             }
@@ -352,7 +351,7 @@
                             <MudText Typo="Typo.overline" Style="font-weight: 600;">CATEGORIES</MudText>
                             @if (_selectedEvent.HasManagementLinks())
                             {
-                                <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
+                                <AppIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
                                                OnClick="@OpenCategoryManagement"
                                                aria-label="Manage categories" />
                             }
@@ -687,25 +686,24 @@
                     @* ── Action Buttons ── *@
                     @if (IsUserRegistered(_selectedEvent.Id ?? Guid.Empty))
                     {
-                        <MudButton Variant="Variant.Outlined"
+                        <AppButton Variant="Variant.Outlined"
                                    Color="Color.Success"
                                    FullWidth="true"
                                    StartIcon="@Icons.Material.Filled.EventAvailable"
                                    Disabled="true"
                                    Class="rounded-lg">
                             Registered
-                        </MudButton>
+                        </AppButton>
                     }
                     else
                     {
-                        <MudButton Variant="Variant.Outlined"
-                                   Color="Color.Primary"
+                        <AppButton Variant="Variant.Outlined"
                                    FullWidth="true"
                                    StartIcon="@Icons.Material.Outlined.HowToReg"
                                    OnClick="@(() => OpenInlineRegistration())"
                                    Class="rounded-lg">
                             Register for this Event
-                        </MudButton>
+                        </AppButton>
                     }
                 </div>
 
@@ -718,7 +716,7 @@
                                 <MudText Typo="Typo.h6" Class="drawer-reg-popup__title">
                                     Register for Event
                                 </MudText>
-                                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                                <AppIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
                                                OnClick="CloseInlineRegistration" />
                             </div>
 
@@ -739,18 +737,18 @@
                                         You have been successfully registered for this event.
                                     </MudText>
 
-                                    <MudButton Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg mb-2"
+                                    <AppButton Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg mb-2"
                                                FullWidth="true"
                                                StartIcon="@Icons.Material.Outlined.CalendarMonth"
                                                Disabled="true">
                                         Add to Google Calendar
-                                    </MudButton>
+                                    </AppButton>
 
-                                    <MudButton Variant="Variant.Text" Color="Color.Primary" Class="rounded-lg"
+                                    <AppButton Variant="Variant.Text" Class="rounded-lg"
                                                FullWidth="true"
                                                OnClick="CloseInlineRegistration">
                                         Done
-                                    </MudButton>
+                                    </AppButton>
                                 </div>
                             }
                             else if (_regIsAlreadyRegistered)
@@ -763,11 +761,11 @@
                                     <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
                                         You are already registered for this event.
                                     </MudText>
-                                    <MudButton Variant="Variant.Text" Color="Color.Primary" Class="rounded-lg"
+                                    <AppButton Variant="Variant.Text" Class="rounded-lg"
                                                FullWidth="true"
                                                OnClick="CloseInlineRegistration">
                                         Close
-                                    </MudButton>
+                                    </AppButton>
                                 </div>
                             }
                             else
@@ -826,20 +824,20 @@
                                 }
 
                                 @* ── Google Calendar (placeholder) ── *@
-                                <MudButton Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg mb-3"
+                                <AppButton Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg mb-3"
                                            FullWidth="true"
                                            StartIcon="@Icons.Material.Outlined.CalendarMonth"
                                            Disabled="true">
                                     Add to Google Calendar
-                                </MudButton>
+                                </AppButton>
 
                                 @* ── Submit ── *@
                                 <div class="d-flex gap-3">
-                                    <MudButton Variant="Variant.Text" Color="Color.Default" Class="rounded-lg flex-1"
+                                    <AppButton Variant="Variant.Text" Color="Color.Default" Class="rounded-lg flex-1"
                                                OnClick="CloseInlineRegistration" Disabled="_regIsSubmitting">
                                         Cancel
-                                    </MudButton>
-                                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="rounded-lg flex-1"
+                                    </AppButton>
+                                    <AppButton Class="rounded-lg flex-1"
                                                OnClick="HandleInlineRegistrationSubmit"
                                                Disabled="@(_regIsSubmitting || !_regSelectedSessionIds.Any())">
                                         @if (_regIsSubmitting)
@@ -851,7 +849,7 @@
                                         {
                                             <span>Register (@_regSelectedSessionIds.Count)</span>
                                         }
-                                    </MudButton>
+                                    </AppButton>
                                 </div>
                             }
                         </div>
@@ -1026,7 +1024,7 @@
                                     </MudCard>
                                 }
 
-                                @* ── Mode 2: Detailed List — horizontal card with image left ── *@
+                                @* ── Mode 2: Detailed List — horizontal card with image left, metadata right ── *@
                                 else if (_currentLayout == LayoutMode.DetailedList)
                                 {
                                     <MudCard @onclick="@(() => SelectEvent(evt))" Class="@GetCardCssClass(evt)" Outlined="true" Elevation="0" Style="overflow: hidden; cursor: pointer;">
@@ -1039,9 +1037,12 @@
                                                           Class="event-card__image-foreground" />
                                             </div>
                                             <div class="event-card__horizontal-content">
-                                                <div class="d-flex justify-space-between align-center mb-1">
-                                                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="ml-n1 font-weight-bold">@GetEventTypeName(evt)</MudChip>
-                                                    <div class="d-flex align-center gap-1">
+                                                @* ── Upper: Title + Chips ── *@
+                                                <div class="event-card__dl-header">
+                                                    <MudText Typo="Typo.subtitle1" Class="event-card__dl-title">
+                                                        @evt.Title
+                                                    </MudText>
+                                                    <div class="d-flex align-center gap-1 flex-shrink-0">
                                                         @if (evt.IsUserReported == true)
                                                         {
                                                             <MudTooltip Text="Community Reported">
@@ -1066,46 +1067,55 @@
                                                         }
                                                     </div>
                                                 </div>
-                                                <MudText Typo="Typo.subtitle1" Style="font-weight: 700; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;" Class="mb-1">
-                                                    @evt.Title
-                                                </MudText>
-                                                @if (!string.IsNullOrEmpty(evt.Subtitle))
-                                                {
-                                                    <MudText Typo="Typo.caption" Color="Color.Primary" Style="font-weight: 500; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;" Class="mb-1">
-                                                        @evt.Subtitle
-                                                    </MudText>
-                                                }
-                                                <MudText Typo="Typo.body2" Color="Color.Secondary" Style="overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+
+                                                @* ── Chips row: type, status, format, price ── *@
+                                                <div class="event-card__dl-chips">
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="font-weight-bold">@GetEventTypeName(evt)</MudChip>
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@evt.EventStatusFullName</MudChip>
+                                                    @if (!string.IsNullOrEmpty(evt.EventFormatFullName))
+                                                    {
+                                                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text">@evt.EventFormatFullName</MudChip>
+                                                    }
+                                                    @if ((evt.Price ?? 0) == 0)
+                                                    {
+                                                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled" Class="px-1">Free</MudChip>
+                                                    }
+                                                    else
+                                                    {
+                                                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text">@($"{evt.CurrencyCode ?? "€"}{evt.Price:F2}")</MudChip>
+                                                    }
+                                                </div>
+
+                                                @* ── Middle: Description ── *@
+                                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="event-card__dl-description">
                                                     @GetTruncatedDescription(evt.Description)
                                                 </MudText>
-                                                @* ── Organizer ── *@
-                                                @{
-                                                    var dlOrganizerUrl = GetActorProfileUrl(evt.ActorId, evt.ActorTypeId);
-                                                    var dlOrganizerClass = $"d-flex align-center gap-2 mt-2{(dlOrganizerUrl != null ? " cursor-pointer" : "")}";
-                                                    var dlOrganizerNameStyle = dlOrganizerUrl != null ? "text-decoration: underline dotted;" : "";
-                                                }
-                                                <div class="@dlOrganizerClass"
-                                                     @onclick:stopPropagation="true"
-                                                     @onclick="@(() => NavigateToActorProfile(evt.ActorId, evt.ActorTypeId))">
-                                                    <MudAvatar Size="Size.Small" Image="@evt.ActorProfilePictureUri" Color="Color.Primary">
-                                                        @if (string.IsNullOrEmpty(evt.ActorProfilePictureUri))
-                                                        {
-                                                            @(evt.ActorDisplayName.FirstOrDefault())
-                                                        }
-                                                    </MudAvatar>
-                                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="@dlOrganizerNameStyle">
-                                                        @evt.ActorDisplayName
-                                                    </MudText>
-                                                </div>
-                                                <div class="d-flex align-center gap-3 mt-auto pt-2">
-                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                                        <MudIcon Icon="@Icons.Material.Outlined.CalendarToday" Size="Size.Small" Class="mr-1" Style="vertical-align: text-bottom;" />
-                                                        @(evt.FirstSessionDate?.ToString("MMM dd") ?? "TBD")
-                                                    </MudText>
-                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                                        <MudIcon Icon="@Icons.Material.Outlined.LocationOn" Size="Size.Small" Class="mr-1" Style="vertical-align: text-bottom;" />
+
+                                                @* ── Bottom: Date, location, organizer ── *@
+                                                <div class="event-card__dl-meta">
+                                                    <span class="event-card__dl-meta-item">
+                                                        <MudIcon Icon="@Icons.Material.Outlined.CalendarToday" Size="Size.Small" />
+                                                        @(evt.FirstSessionDate?.ToString("MMM dd, yyyy") ?? "TBD")
+                                                    </span>
+                                                    <span class="event-card__dl-meta-item">
+                                                        <MudIcon Icon="@Icons.Material.Outlined.LocationOn" Size="Size.Small" />
                                                         @GetLocationText(evt)
-                                                    </MudText>
+                                                    </span>
+                                                    @{
+                                                        var dlOrgUrl = GetActorProfileUrl(evt.ActorId, evt.ActorTypeId);
+                                                        var dlOrgClass = $"event-card__dl-meta-item{(dlOrgUrl != null ? " cursor-pointer" : "")}";
+                                                    }
+                                                    <span class="@dlOrgClass"
+                                                          @onclick:stopPropagation="true"
+                                                          @onclick="@(() => NavigateToActorProfile(evt.ActorId, evt.ActorTypeId))">
+                                                        <MudAvatar Size="Size.Small" Image="@evt.ActorProfilePictureUri" Color="Color.Primary" Style="width: 20px; height: 20px; font-size: 0.65rem;">
+                                                            @if (string.IsNullOrEmpty(evt.ActorProfilePictureUri) && !string.IsNullOrEmpty(evt.ActorDisplayName))
+                                                            {
+                                                                @(evt.ActorDisplayName.FirstOrDefault())
+                                                            }
+                                                        </MudAvatar>
+                                                        <span style="@(dlOrgUrl != null ? "text-decoration: underline dotted;" : "")">@evt.ActorDisplayName</span>
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
@@ -1125,7 +1135,7 @@
                                                           Class="event-card__image-foreground" />
                                             </div>
                                             <div class="event-card__full-row-content">
-                                                @* ── Top: Title area ── *@
+                                                @* ── Upper: Title + chips ── *@
                                                 <div class="event-card__sr-header">
                                                     <div class="event-card__sr-title-block">
                                                         <MudText Typo="Typo.subtitle1" Style="font-weight: 700; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
@@ -1139,14 +1149,6 @@
                                                         }
                                                     </div>
                                                     <div class="event-card__sr-status-chips">
-                                                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="font-weight-bold">@GetEventTypeName(evt)</MudChip>
-                                                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@evt.EventStatusFullName</MudChip>
-                                                        @if (evt.IsUserReported == true)
-                                                        {
-                                                            <MudTooltip Text="Community Reported">
-                                                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Color="Color.Info" />
-                                                            </MudTooltip>
-                                                        }
                                                         @if (evt.HasManagementLinks())
                                                         {
                                                             <div @onclick:stopPropagation="true">
@@ -1166,12 +1168,41 @@
                                                     </div>
                                                 </div>
 
-                                                @* ── Middle: Description (1-2 lines) ── *@
+                                                @* ── Chips: type, status, format, audience, madhab, price ── *@
+                                                <div class="event-card__sr-chips">
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="font-weight-bold">@GetEventTypeName(evt)</MudChip>
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@evt.EventStatusFullName</MudChip>
+                                                    @if (!string.IsNullOrEmpty(evt.EventFormatFullName))
+                                                    {
+                                                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text">@evt.EventFormatFullName</MudChip>
+                                                    }
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Text">@evt.AudienceGenderFullName</MudChip>
+                                                    @if (!string.IsNullOrEmpty(evt.MadhabFullName))
+                                                    {
+                                                        <MudChip T="string" Size="Size.Small" Color="Color.Dark" Variant="Variant.Text">@evt.MadhabFullName</MudChip>
+                                                    }
+                                                    @if ((evt.Price ?? 0) == 0)
+                                                    {
+                                                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled" Class="px-1">Free</MudChip>
+                                                    }
+                                                    else
+                                                    {
+                                                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text">@($"{evt.CurrencyCode ?? "€"}{evt.Price:F2}")</MudChip>
+                                                    }
+                                                    @if (evt.IsUserReported == true)
+                                                    {
+                                                        <MudTooltip Text="Community Reported">
+                                                            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Color="Color.Info" />
+                                                        </MudTooltip>
+                                                    }
+                                                </div>
+
+                                                @* ── Middle: Description ── *@
                                                 <MudText Typo="Typo.body2" Color="Color.Secondary" Class="event-card__sr-description">
                                                     @GetTruncatedDescription(evt.Description)
                                                 </MudText>
 
-                                                @* ── Bottom: Metadata grid using horizontal space ── *@
+                                                @* ── Bottom: Date, location, sessions, organizer ── *@
                                                 <div class="event-card__sr-meta">
                                                     <span class="event-card__sr-meta-item">
                                                         <MudIcon Icon="@Icons.Material.Outlined.CalendarToday" Size="Size.Small" />
@@ -1185,48 +1216,20 @@
                                                         <MudIcon Icon="@Icons.Material.Outlined.LocationOn" Size="Size.Small" />
                                                         @GetLocationText(evt)
                                                     </span>
-                                                    <span class="event-card__sr-meta-item">
-                                                        <MudIcon Icon="@Icons.Material.Outlined.Tv" Size="Size.Small" />
-                                                        @evt.EventFormatFullName
-                                                    </span>
-                                                    <span class="event-card__sr-meta-item">
-                                                        <MudIcon Icon="@Icons.Material.Outlined.People" Size="Size.Small" />
-                                                        @evt.AudienceGenderFullName · @evt.AudienceAgeFullName
-                                                    </span>
-                                                    @if (!string.IsNullOrEmpty(evt.MadhabFullName))
-                                                    {
-                                                        <span class="event-card__sr-meta-item">
-                                                            <MudIcon Icon="@Icons.Material.Outlined.MenuBook" Size="Size.Small" />
-                                                            @evt.MadhabFullName
-                                                        </span>
-                                                    }
-                                                    <span class="event-card__sr-meta-item">
-                                                        @if (evt.Price.HasValue && evt.Price > 0)
-                                                        {
-                                                            <MudIcon Icon="@Icons.Material.Outlined.Payments" Size="Size.Small" />
-                                                            @($"{evt.CurrencyCode ?? "€"}{evt.Price:F2}")
-                                                        }
-                                                        else
-                                                        {
-                                                            <MudIcon Icon="@Icons.Material.Outlined.Payments" Size="Size.Small" />
-                                                            <span style="color: var(--mud-palette-success); font-weight: 600;">Free</span>
-                                                        }
-                                                    </span>
                                                     @{
-                                                        var srOrganizerUrl = GetActorProfileUrl(evt.ActorId, evt.ActorTypeId);
-                                                        var srOrganizerClass = $"event-card__sr-meta-item{(srOrganizerUrl != null ? " cursor-pointer" : "")}";
-                                                        var srOrganizerNameStyle = srOrganizerUrl != null ? "text-decoration: underline dotted;" : "";
+                                                        var srOrgUrl = GetActorProfileUrl(evt.ActorId, evt.ActorTypeId);
+                                                        var srOrgClass = $"event-card__sr-meta-item{(srOrgUrl != null ? " cursor-pointer" : "")}";
                                                     }
-                                                    <span class="@srOrganizerClass"
+                                                    <span class="@srOrgClass"
                                                           @onclick:stopPropagation="true"
                                                           @onclick="@(() => NavigateToActorProfile(evt.ActorId, evt.ActorTypeId))">
                                                         <MudAvatar Size="Size.Small" Image="@evt.ActorProfilePictureUri" Color="Color.Primary" Style="width: 20px; height: 20px; font-size: 0.65rem;">
-                                                            @if (string.IsNullOrEmpty(evt.ActorProfilePictureUri))
+                                                            @if (string.IsNullOrEmpty(evt.ActorProfilePictureUri) && !string.IsNullOrEmpty(evt.ActorDisplayName))
                                                             {
                                                                 @(evt.ActorDisplayName.FirstOrDefault())
                                                             }
                                                         </MudAvatar>
-                                                        <span style="@srOrganizerNameStyle">@evt.ActorDisplayName</span>
+                                                        <span style="@(srOrgUrl != null ? "text-decoration: underline dotted;" : "")">@evt.ActorDisplayName</span>
                                                     </span>
                                                 </div>
                                             </div>

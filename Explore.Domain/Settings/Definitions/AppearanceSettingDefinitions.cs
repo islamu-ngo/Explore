@@ -22,6 +22,15 @@ public static class AppearanceSettingDefinitions
         MaxScope: SettingScope.User,
         AllowedValues: ["system", "light", "dark"]);
 
+    public static readonly SettingDefinition Direction = new(
+        Key: "appearance.direction",
+        ValueType: SettingValueType.String,
+        DefaultValue: "\"auto\"",
+        Category: "Appearance",
+        Description: "Text direction preference. auto = language-based, ltr = force left-to-right, rtl = force right-to-left",
+        MaxScope: SettingScope.User,
+        AllowedValues: ["auto", "ltr", "rtl"]);
+
     public static IReadOnlyList<SettingDefinition> All =>
-        [DefaultThemeId, ThemeMode];
+        [DefaultThemeId, ThemeMode, Direction];
 }

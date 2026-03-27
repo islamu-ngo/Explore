@@ -1,3 +1,6 @@
+// ABOUTME: API controller for managing external login provider configurations and user external identities.
+// ABOUTME: Handles OAuth/OIDC provider linking, unlinking, and identity verification flows.
+
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
@@ -49,10 +52,6 @@ public class UserExternalLoginController : ControllerBase
     public async Task<ActionResult<UserExternalLoginDto>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var login = await _mediator.Send(new GetUserExternalLoginDetailsRequest { Id = id }, cancellationToken);
-        if (login == null)
-        {
-            return NotFound();
-        }
 
         return Ok(login);
     }
@@ -113,12 +112,7 @@ public class UserExternalLoginController : ControllerBase
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var command = new DeleteUserExternalLoginCommand { Id = id };
-        var result = await _mediator.Send(command, cancellationToken);
-
-        if (!result)
-        {
-            return NotFound(new { error = "User External Login not found" });
-        }
+        await _mediator.Send(command, cancellationToken);
 
         return NoContent();
     }

@@ -248,7 +248,7 @@ PostHog privacy defaults for self-hosters:
 
 Consent cookie operational notes:
 
-- Consent cookies are tenant-scoped (`explore_cc_{tenantSlug}`) — never shared across tenants.
+- Consent cookies are tenant-scoped (`explore_cc_{stableShortKey}` where `stableShortKey` is the first 8 hex chars of the tenant's immutable GUID) — never shared across tenants. Cookie scope is per effective public host (`SameSite=Lax`, `Secure`, `path=/`).
 - Default lifetime is 180 days (configurable via `analytics.consent_cookie_lifetime_days`).
 - Cookie values are minimal (`accepted`/`declined` only) — not identity artifacts.
 - The consent cookie is classified as strictly necessary and does not require its own consent.
@@ -259,6 +259,8 @@ Admin settings management:
 - `GET /api/InstanceOnboarding/analytics-governance` returns current governance settings plus computed advisory fields.
 - `PUT /api/InstanceOnboarding/analytics-governance` updates all 10 consent/privacy governance keys.
 - Auto-computation is advisory: the resolver suggests recommended settings but does not silently overwrite operator choices.
+- The resolver returns `ResolveReasons` (e.g., `GlobalKillSwitch`, `ProviderInherentlyCookieless`, `PosthogCookielessOnReject`, `CookieBannerEnabledByOperator`) for diagnostics and admin UX. These are surfaced in the admin settings panel but never exposed in public-facing DTOs.
+- Save-time validation rejects illegal combinations (e.g., `Cookieless` decline behavior for providers that don't support cookieless mode, out-of-range cookie lifetime) and returns warnings for suboptimal but allowed configurations (e.g., PostHog features enabled on a non-PostHog provider, session replay with always-cookieless mode).
 
 ## Single-Tenant Endpoint Exposure
 

@@ -1,3 +1,6 @@
+// ABOUTME: API controller for approval status lookup table (read-only enumeration).
+// ABOUTME: Provides approval status values for event and organization verification workflows.
+
 using Asp.Versioning;
 using Explore.Application.DTOs.StatusType;
 using Explore.Application.Features.StatusTypes.Requests.Queries;
@@ -16,12 +19,10 @@ namespace Explore.API.Controllers;
 public class ApprovalStatusController : ControllerBase
 {
     private readonly IMediator _mediator;
-    private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public ApprovalStatusController(IMediator mediator, IHttpContextAccessor httpContextAccessor)
+    public ApprovalStatusController(IMediator mediator)
     {
         _mediator = mediator;
-        _httpContextAccessor = httpContextAccessor;
     }
 
     // GET: api/<StatusTypeController>

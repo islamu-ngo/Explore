@@ -50,21 +50,19 @@
         </MudStack>
 
         <div class="d-flex gap-4 align-center">
-            <MudButton Variant="Variant.Filled" 
-                       Color="Color.Primary" 
-                       Size="Size.Large" 
+            <AppButton Size="Size.Large" 
                        Class="rounded-pill px-10 py-4 font-weight-bold" 
                        Style="font-size: 1.1rem; letter-spacing: 1px;"
                        Href="@($"/events/{Event.Id}")">
                 VIEW EVENT
-            </MudButton>
+            </AppButton>
             
-            <MudIconButton Icon="@Icons.Material.Filled.BookmarkBorder" 
+            <AppIconButton Icon="@Icons.Material.Filled.BookmarkBorder" 
                            Color="Color.Inherit" 
                            Class="rounded-circle pa-4" 
                            Style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px);" />
             
-            <MudIconButton Icon="@Icons.Material.Filled.Share" 
+            <AppIconButton Icon="@Icons.Material.Filled.Share" 
                            Color="Color.Inherit" 
                            Class="rounded-circle pa-4" 
                            Style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px);" />

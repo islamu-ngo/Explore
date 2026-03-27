@@ -1,3 +1,6 @@
+// ABOUTME: REST API controller for group CRUD operations with member management and HATEOAS support.
+// ABOUTME: Manages user groups, group settings, and group-level permissions.
+
 using Asp.Versioning;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Group;
@@ -24,16 +27,13 @@ namespace Explore.API.Controllers;
 public class GroupController : ControllerBase
 {
     private readonly IMediator _mediator;
-    private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IResourceAssembler<GroupDto, GroupListDto> _resourceAssembler;
 
     public GroupController(
         IMediator mediator,
-        IHttpContextAccessor httpContextAccessor,
         IResourceAssembler<GroupDto, GroupListDto> resourceAssembler)
     {
         _mediator = mediator;
-        _httpContextAccessor = httpContextAccessor;
         _resourceAssembler = resourceAssembler;
     }
 
@@ -107,10 +107,8 @@ public class GroupController : ControllerBase
     {
         var group = await _mediator.Send(new GetGroupDetailsRequest { Id = id }, cancellationToken);
 
-        if (group is null)
-        {
+        if (group == null)
             return NotFound();
-        }
 
         var halResource = await _resourceAssembler.ToResource(group, HttpContext);
         return Ok(halResource);
@@ -202,8 +200,8 @@ public class GroupController : ControllerBase
 
     private string? GetCurrentUserId()
     {
-        return _httpContextAccessor.HttpContext?.User?.FindFirst("sub")?.Value
-            ?? _httpContextAccessor.HttpContext?.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-            ?? _httpContextAccessor.HttpContext?.User?.FindFirst("sid")?.Value;
+        return HttpContext.User?.FindFirst("sub")?.Value
+            ?? HttpContext.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
+            ?? HttpContext.User?.FindFirst("sid")?.Value;
     }
 }

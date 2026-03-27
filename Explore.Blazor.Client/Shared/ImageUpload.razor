@@ -23,7 +23,9 @@
 
     @if (!string.IsNullOrEmpty(_errorMessage))
     {
-        <MudAlert Severity="Severity.Error" Dense="true" Class="my-1" ShowCloseIcon="true" CloseIconClicked="@(() => _errorMessage = null)">@_errorMessage</MudAlert>
+        <div role="alert">
+            <MudAlert Severity="Severity.Error" Dense="true" Class="my-1" ShowCloseIcon="true" CloseIconClicked="@(() => _errorMessage = null)">@_errorMessage</MudAlert>
+        </div>
     }
 
     <div class="d-flex justify-center gap-2">
@@ -33,25 +35,25 @@
                        Accept="@AcceptedFormats"
                        MaximumFileCount="1">
             <CustomContent Context="fileUpload">
-                <MudButton Variant="Variant.Outlined"
+                <AppButton Variant="Variant.Outlined"
                            StartIcon="@Icons.Material.Filled.CloudUpload"
                            Color="Color.Primary"
                            Size="Size.Small"
                            OnClick="@fileUpload.OpenFilePickerAsync">
                     @(UploadButtonText ?? "Select Image")
-                </MudButton>
+                </AppButton>
             </CustomContent>
         </MudFileUpload>
 
         @if (HasImage)
         {
-            <MudButton Variant="Variant.Text"
+            <AppButton Variant="Variant.Text"
                        Color="Color.Error"
                        StartIcon="@Icons.Material.Filled.Delete"
                        Size="Size.Small"
                        OnClick="RemoveImage">
                 Remove
-            </MudButton>
+            </AppButton>
         }
     </div>
 

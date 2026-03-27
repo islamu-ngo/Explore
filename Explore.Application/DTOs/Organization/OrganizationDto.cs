@@ -35,4 +35,6 @@ public class OrganizationDto
     public string? ActorBannerColor { get; set; }
     public Guid? ActorBannerPictureId { get; set; }
     public string? ActorBannerPictureUri { get; set; }
+    public Guid? ActorBackgroundImageId { get; set; }
+    public string? ActorBackgroundImageUri { get; set; }
 }

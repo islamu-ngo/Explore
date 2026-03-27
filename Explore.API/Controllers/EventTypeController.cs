@@ -1,3 +1,6 @@
+// ABOUTME: API controller for event type lookup table (read-only enumeration).
+// ABOUTME: Provides available event types for event creation and filtering.
+
 using Asp.Versioning;
 using Explore.Application.DTOs.EventType;
 using Explore.Application.Features.EventTypes.Requests.Queries;
@@ -16,12 +19,10 @@ namespace Explore.API.Controllers;
 public class EventTypeController : ControllerBase
 {
     private readonly IMediator _mediator;
-    private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public EventTypeController(IMediator mediator, IHttpContextAccessor httpContextAccessor)
+    public EventTypeController(IMediator mediator)
     {
         _mediator = mediator;
-        _httpContextAccessor = httpContextAccessor;
     }
 
     // GET: api/<EventTypeController>

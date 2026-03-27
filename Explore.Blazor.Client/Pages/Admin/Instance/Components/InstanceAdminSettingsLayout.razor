@@ -16,7 +16,7 @@
     <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
         <!-- Header -->
         <div class="settings-header mb-8">
-            <MudText Typo="Typo.h4" Style="font-weight: 800;">
+            <MudText Typo="Typo.h4" HtmlTag="h1" Style="font-weight: 800;">
                 @(IsSingleTenantMode ? "Administration" : "Instance Administration")
             </MudText>
             <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">
@@ -34,21 +34,21 @@
 
                 @if (IsSingleTenantMode)
                 {
-                    <MudButton Variant="Variant.Text"
+                    <AppButton Variant="Variant.Text"
                                Color="Color.Warning"
                                StartIcon="@Icons.Material.Filled.RocketLaunch"
                                OnClick="@(() => SelectSection("multi-tenancy"))">
                         Enable SaaS Mode
-                    </MudButton>
+                    </AppButton>
                 }
                 else
                 {
-                    <MudButton Variant="Variant.Text"
+                    <AppButton Variant="Variant.Text"
                                Color="Color.Primary"
                                StartIcon="@Icons.Material.Filled.DomainAdd"
                                OnClick="@(() => SelectSection("tenants"))">
                         Manage Platform
-                    </MudButton>
+                    </AppButton>
                 }
             </MudStack>
         </div>
@@ -157,6 +157,10 @@
                                                            LockForTenants="_delegation.LockTenantAnalytics"
                                                            LockForTenantsChanged="@(v => _delegation.LockTenantAnalytics = v)" />
                         }
+                        else if (_currentSection == "footer-governance")
+                        {
+                            <InstanceFooterGovernanceSection Model="_footerGovernance" IsSingleTenant="IsSingleTenantMode" />
+                        }
                         else if (_currentSection == "members" && IsSingleTenantMode)
                         {
                             <TenantMembersSection />
@@ -192,12 +196,10 @@
                                                 Create and manage API access tokens for programmatic access.
                                             </MudText>
                                         </div>
-                                        <MudButton Variant="Variant.Filled"
-                                                   Color="Color.Primary"
-                                                   StartIcon="@Icons.Material.Filled.Add"
+                                        <AppButton StartIcon="@Icons.Material.Filled.Add"
                                                    Disabled="true">
                                             Add Access Token
-                                        </MudButton>
+                                        </AppButton>
                                     </MudStack>
                                 </div>
                                 <MudAlert Severity="Severity.Info" Class="mt-4">
@@ -216,12 +218,10 @@
                                                 Configure webhook endpoints to receive event notifications.
                                             </MudText>
                                         </div>
-                                        <MudButton Variant="Variant.Filled"
-                                                   Color="Color.Primary"
-                                                   StartIcon="@Icons.Material.Filled.Add"
+                                        <AppButton StartIcon="@Icons.Material.Filled.Add"
                                                    Disabled="true">
                                             Add Webhook
-                                        </MudButton>
+                                        </AppButton>
                                     </MudStack>
                                 </div>
                                 <MudAlert Severity="Severity.Info" Class="mt-4">
@@ -240,13 +240,11 @@
                             <MudDivider Class="my-4" />
 
                             <MudStack Row="true" Justify="Justify.FlexEnd">
-                                <MudButton Variant="Variant.Filled"
-                                           Color="Color.Primary"
-                                           OnClick="SaveAsync"
+                                <AppButton OnClick="SaveAsync"
                                            Disabled="_isSaving"
                                            StartIcon="@(_isSaving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
                                     @(_isSaving ? "Saving..." : "Save Settings")
-                                </MudButton>
+                                </AppButton>
                             </MudStack>
                         }
                     </MudPaper>
@@ -276,6 +274,7 @@
     private AuthProviderConfigurationModel _authProviderModel = new();
     private TenantPolicySettingsModel _tenantModel = new();
     private Explore.Blazor.Client.Models.Analytics.AnalyticsGovernanceSettingsModel _analyticsModel = new();
+    private FooterGovernanceSettingsModel _footerGovernance = new();
     private int _tenantCount;
     private bool _isLoading = true;
     private bool _isSaving;
@@ -287,7 +286,7 @@
                                        || string.IsNullOrWhiteSpace(_deploymentMode);
 
     private static bool IsSettingsSection(string section) =>
-        section is "governance" or "domain" or "branding" or "auth-providers" or "modules" or "storage" or "smtp" or "policies" or "render-policies" or "multi-tenancy" or "appearance" or "analytics-privacy";
+        section is "governance" or "domain" or "branding" or "auth-providers" or "modules" or "storage" or "smtp" or "policies" or "render-policies" or "multi-tenancy" or "appearance" or "analytics-privacy" or "footer-governance";
 
     protected override async Task OnInitializedAsync()
     {
@@ -313,11 +312,12 @@
         var smtpTask = InstanceOnboardingService.GetSmtpSettingsAsync();
         var authTask = InstanceOnboardingService.GetAuthProviderConfigurationAsync();
         var analyticsTask = InstanceOnboardingService.GetAnalyticsGovernanceSettingsAsync();
+        var footerGovTask = InstanceOnboardingService.GetFooterGovernanceSettingsAsync();
         var tenantCountTask = InstanceOnboardingService.GetActiveTenantCountAsync();
 
         await Task.WhenAll(deploymentTask, modulesTask, eventTask, orgTask, brandingTask,
             domainTask, delegationTask, renderTask, storageTask, smtpTask, authTask,
-            analyticsTask, tenantCountTask);
+            analyticsTask, footerGovTask, tenantCountTask);
 
         _deploymentMode = deploymentTask.Result.Mode;
         _loadedDeploymentMode = _deploymentMode;
@@ -332,6 +332,7 @@
         _smtpModel = smtpTask.Result;
         _authProviderModel = authTask.Result;
         _analyticsModel = analyticsTask.Result;
+        _footerGovernance = footerGovTask.Result;
         _tenantCount = tenantCountTask.Result;
 
         if (IsSingleTenantMode)
@@ -444,6 +445,9 @@
             case "render-policies":
                 tasks.Add(InstanceOnboardingService.UpdateRenderPolicyAsync(_renderPolicy));
                 break;
+            case "footer-governance":
+                tasks.Add(InstanceOnboardingService.UpdateFooterGovernanceSettingsAsync(_footerGovernance));
+                break;
             case "multi-tenancy":
                 tasks.Add(InstanceOnboardingService.UpdateDeploymentModeAsync(_deploymentMode));
                 break;
@@ -499,6 +503,7 @@
                 new("storage",          Icons.Material.Filled.Cloud,           "Object Storage"),
                 new("smtp",             Icons.Material.Filled.AlternateEmail,  "SMTP"),
                 new("analytics-privacy",Icons.Material.Filled.Analytics,       "Analytics & Privacy"),
+                new("footer-governance",Icons.Material.Filled.ViewAgenda,      "Footer"),
                 new("render-policies",  Icons.Material.Filled.DisplaySettings, "Render Policies",  Group: "Advanced"),
                 new("multi-tenancy",    Icons.Material.Filled.SwapHoriz,       "Multi-Tenancy",    IconColor: Color.Warning, Group: "Advanced"),
                 new("access-tokens",    Icons.Material.Filled.Key,             "Access Tokens",    Group: "Developer"),
@@ -516,6 +521,7 @@
             new("storage",          Icons.Material.Filled.Cloud,           "Object Storage"),
             new("smtp",             Icons.Material.Filled.AlternateEmail,  "SMTP"),
             new("analytics-privacy",Icons.Material.Filled.Analytics,       "Analytics & Privacy"),
+            new("footer-governance",Icons.Material.Filled.ViewAgenda,      "Footer"),
             new("render-policies",  Icons.Material.Filled.DisplaySettings, "Render Policies", Group: "Advanced"),
         ];
     }
