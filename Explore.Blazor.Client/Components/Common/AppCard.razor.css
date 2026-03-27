@@ -1,0 +1,19 @@
+/* ABOUTME: Scoped styles for AppCard — flat card with subtle border (neo-minimal aesthetic).
+   ABOUTME: Uses BEM .app-card block + ::deep to style MudCard internals. */
+
+.app-card {
+    display: contents;
+}
+
+/* ── Card chrome: border, radius, hover lift ── */
+.app-card ::deep .mud-card {
+    border-radius: var(--isl-card-border-radius);
+    border: var(--isl-card-border);
+    overflow: hidden;
+    transition: var(--isl-card-transition);
+}
+
+.app-card ::deep .mud-card:hover {
+    box-shadow: var(--isl-card-hover-shadow);
+    border-color: var(--isl-card-hover-border-color);
+}

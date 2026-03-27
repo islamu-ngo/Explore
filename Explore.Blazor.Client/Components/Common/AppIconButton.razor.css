@@ -1,0 +1,11 @@
+/* ABOUTME: Scoped styles for AppIconButton — consistent icon button styling.
+   ABOUTME: Uses BEM .app-icon-button block + ::deep to style MudIconButton internals. */
+
+.app-icon-button {
+    display: contents;
+}
+
+/* ── Icon button: consistent transition ── */
+.app-icon-button ::deep .mud-icon-button {
+    transition: var(--isl-button-transition);
+}

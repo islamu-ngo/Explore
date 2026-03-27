@@ -1,0 +1,31 @@
+@* ABOUTME: Thin wrapper around MudIconButton providing project default styling. *@
+@* ABOUTME: Replaces MudGlobal defaults removed in V9. Use instead of bare MudIconButton. *@
+
+<div class="app-icon-button">
+    <MudIconButton Icon="@Icon"
+                   Color="@Color"
+                   Size="@Size"
+                   Edge="@Edge"
+                   OnClick="@OnClick"
+                   @attributes="AdditionalAttributes" />
+</div>
+
+@code {
+    /// <summary>Icon svg path. Required.</summary>
+    [Parameter] public string? Icon { get; set; }
+
+    /// <summary>Icon color. Defaults to Default.</summary>
+    [Parameter] public Color Color { get; set; } = Color.Default;
+
+    /// <summary>Icon button size. Defaults to Medium.</summary>
+    [Parameter] public Size Size { get; set; } = Size.Medium;
+
+    /// <summary>Edge placement for toolbar/appbar use. Defaults to false (no edge).</summary>
+    [Parameter] public Edge Edge { get; set; } = Edge.False;
+
+    /// <summary>Click callback.</summary>
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IDictionary<string, object>? AdditionalAttributes { get; set; }
+}

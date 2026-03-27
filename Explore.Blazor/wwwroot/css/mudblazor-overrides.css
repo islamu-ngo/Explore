@@ -1,0 +1,170 @@
+/* ABOUTME: Justified global MudBlazor CSS overrides for elements rendered outside Blazor scope.
+   ABOUTME: Loaded into @layer mudblazor-overrides via layers.css.
+
+   ╔══════════════════════════════════════════════════════════════════════╗
+   ║  APPROVED GLOBAL .mud-* OVERRIDE WHITELIST                         ║
+   ║                                                                    ║
+   ║  This file contains the ONLY approved global .mud-* selectors.     ║
+   ║  Each block MUST have a justification comment explaining why       ║
+   ║  it cannot be scoped via CSS isolation or Class parameter.         ║
+   ║                                                                    ║
+    ║  Approved categories:                                              ║
+    ║  1. Drawer overrides: MudDrawerContainer renders <div>/<aside>     ║
+    ║     outside Blazor component scope boundary                        ║
+    ║  2. Overlay z-index: MudOverlay renders outside component scope    ║
+   ║                                                                    ║
+   ║  Adding new overrides requires documented justification.           ║
+   ║  No bare .mud-* selectors allowed outside this file.               ║
+   ╚══════════════════════════════════════════════════════════════════════╝
+*/
+
+/* ========================================
+   EventList Page — Drawer Container & Detail Drawer
+   JUSTIFICATION: MudDrawerContainer renders <div> and <aside> elements
+   outside the Blazor component scope boundary. CSS isolation cannot
+   reach these elements — ::deep in EventList.razor.css would not work
+   because the DOM nodes are not descendants of the scoped component root.
+   ======================================== */
+
+/* MudDrawerContainer wraps event cards + right detail drawer.
+   min-height ensures the content area fills at least the viewport. */
+.event-list__drawer-container {
+    position: relative;
+    min-height: calc(100vh - var(--mud-appbar-height, 4rem));
+}
+
+/* When the event-list drawer container is present, remove the
+   content-wrapper's bottom padding so the content touches the footer.
+   The right detail drawer is position:fixed, so it sits at the
+   viewport edge regardless of container padding — no need to zero
+   padding-right. !important overrides the Blazor-scoped rule. */
+.main-layout__content-wrapper:has(.event-list__drawer-container) {
+    padding-bottom: 0 !important;
+}
+
+/* ── Right detail drawer (Temporary/overlay mode) ──
+   MudBlazor renders a Temporary drawer inside MudDrawerContainer
+   as position:absolute. We override to position:fixed so it covers
+   the full viewport height and sits above every other layer
+   (navbar z-index 1300, left drawer 1100). */
+.event-list__detail-drawer,
+.create-event__session-drawer,
+.edit-event__session-drawer {
+    position: fixed !important;
+    z-index: 1400 !important;
+    overflow: hidden !important;
+    /* Dynamic width: at least 560px, scales with viewport, caps at 700px on large screens */
+    max-width: clamp(560px, 35vw, 700px);
+    width: clamp(560px, 35vw, 700px) !important;
+    transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1), visibility 300ms;
+}
+
+.event-list__detail-drawer:not(.mud-drawer--open),
+.create-event__session-drawer:not(.mud-drawer--open),
+.edit-event__session-drawer:not(.mud-drawer--open) {
+    visibility: hidden !important;
+    pointer-events: none;
+    transform: translateX(105%) !important; /* Slide out slightly more than 100% to ensure shadow is hidden */
+}
+
+/* On small screens, allow the drawer to shrink to 90vw */
+@media (max-width: 767px) {
+    .event-list__detail-drawer {
+        max-width: 90vw;
+        width: 90vw !important;
+    }
+}
+
+.event-list__detail-drawer.mud-drawer--open,
+.create-event__session-drawer.mud-drawer--open,
+.edit-event__session-drawer.mud-drawer--open {
+    top: var(--isl-space-2) !important;
+    right: var(--isl-space-2) !important;
+    height: calc(100vh - var(--isl-space-4)) !important;
+    border-radius: var(--isl-radius-md);
+}
+
+/* ── Standalone overlay for right drawer (LockScroll enabled) ──
+   JUSTIFICATION: MudOverlay renders outside MudDrawerContainer so
+   MudBlazor's LockScroll works. Sits above navbar (1300) but below
+   the drawer (1400). */
+.event-list__overlay {
+    z-index: 1399 !important;
+}
+
+/* Stronger dimming effect to draw focus to the drawer */
+.event-list__overlay .mud-overlay-scrim {
+    background-color: var(--isl-overlay-scrim) !important;
+}
+
+/* Content fills the aside via flex; header stays pinned, body scrolls. */
+.event-list__detail-drawer .mud-drawer-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Pin the drawer header (close/action buttons) at the top of the sidebar */
+.event-list__detail-drawer .mud-drawer-header {
+    flex-shrink: 0;
+    background: var(--mud-palette-surface);
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+    z-index: 1;
+}
+
+/* Scrollable body below the pinned header */
+.event-list__detail-body {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+/* ========================================
+   Filter Bar — Mobile Drawer
+   JUSTIFICATION: Same as event-list drawer — MudBlazor places <aside>
+   outside the scoped CSS boundary of EventFilterBar. Rules must be
+   global. Overrides only applied when open to not interfere with
+   MudBlazor's default closed/hidden behaviour.
+   ======================================== */
+.filter-bar__mobile-drawer:not(.mud-drawer--open) {
+    visibility: hidden !important;
+    pointer-events: none;
+}
+
+.filter-bar__mobile-drawer.mud-drawer--open {
+    position: fixed !important;
+    z-index: 1400 !important;
+    top: 0 !important;
+    left: 0 !important;
+    height: 100dvh !important;
+    width: 100vw !important;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden !important;
+    visibility: visible !important;
+    pointer-events: auto;
+}
+
+.filter-bar__mobile-drawer .mud-drawer-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.filter-bar__mobile-drawer .mud-drawer-header {
+    flex-shrink: 0;
+    background: var(--mud-palette-surface);
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+    z-index: 1;
+}
+
+/* Overlay for mobile filter drawer — above navbar, below drawer */
+.filter-bar__drawer-overlay {
+    z-index: 1399 !important;
+}
+
+.filter-bar__drawer-overlay .mud-overlay-scrim {
+    background-color: var(--isl-overlay-scrim) !important;
+}

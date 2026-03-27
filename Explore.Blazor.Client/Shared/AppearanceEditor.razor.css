@@ -1,0 +1,42 @@
+/* ==========================================================================
+   AppearanceEditor Component - BEM Methodology
+   Block: appearance-editor
+   ========================================================================== */
+
+/* Block: appearance-editor
+   Container for the preview panel and appearance controls.
+   -------------------------------------------------------------------------- */
+.appearance-editor {
+    width: 100%;
+}
+
+/* Element: appearance-editor__preview
+   Live preview panel showing the computed background style.
+   -------------------------------------------------------------------------- */
+.appearance-editor__preview {
+    width: 100%;
+    min-height: 8rem;
+    border-radius: var(--isl-radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: var(--isl-space-4);
+    overflow: hidden;
+    border: 0.0625rem solid var(--mud-palette-lines-default);
+    transition: background 0.3s ease;
+}
+
+/* Element: appearance-editor__preview-hint
+   Placeholder text shown when no appearance customization is applied.
+   -------------------------------------------------------------------------- */
+.appearance-editor__preview-hint {
+    opacity: 0.6;
+    user-select: none;
+}
+
+/* Element: appearance-editor__controls
+   Container for the color picker, image URL, effect selector, and reset.
+   -------------------------------------------------------------------------- */
+.appearance-editor__controls {
+    width: 100%;
+}

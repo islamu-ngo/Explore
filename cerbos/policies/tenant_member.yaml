@@ -1,0 +1,27 @@
+# ABOUTME: Cerbos resource policy for tenant_member resources.
+# Tenant members are tenant-scoped: tenant admins manage membership within their tenant.
+
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: "tenant_member"
+  version: "default"
+  importDerivedRoles:
+    - explore_admin_roles
+  rules:
+    # Instance admins can do everything
+    - actions: ["*"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - instance_admin
+
+    # Tenant admins can manage members within their tenant
+    - actions: ["view", "create", "update", "delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - tenant_admin
+
+    # All authenticated users can view tenant members
+    - actions: ["view"]
+      effect: EFFECT_ALLOW
+      roles:
+        - authenticated_user

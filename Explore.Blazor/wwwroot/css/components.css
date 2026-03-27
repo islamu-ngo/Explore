@@ -1,0 +1,233 @@
+/* ABOUTME: Application component styles — cards, footer, pills, popovers, forms.
+   ABOUTME: Loaded into @layer components via layers.css. */
+
+/* ========================================
+   Component: isl-card
+   ======================================== */
+.isl-card {
+    border-radius: var(--isl-card-border-radius);
+    overflow: hidden;
+    border: var(--isl-card-border);
+    transition: var(--isl-card-transition);
+
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--isl-card-hover-shadow);
+        border-color: var(--isl-card-hover-border-color);
+    }
+
+    &:has(:focus-visible) {
+        outline: 2px solid var(--mud-palette-primary);
+        outline-offset: 2px;
+    }
+}
+
+/* ========================================
+   Component: footer
+   ======================================== */
+.footer {
+    background: var(--mud-palette-background-grey);
+    flex-shrink: 0;
+    padding: 3rem 0 1rem;
+    margin-top: auto;
+    bottom: 0;
+    position: fixed;
+    width: 100%;
+}
+
+.footer__top {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--isl-space-5);
+    margin-bottom: 0;
+    flex-wrap: wrap;
+}
+
+.footer__link-group {
+    flex: 1;
+    flex-direction: column;
+}
+
+.link-group__title {
+    font-weight: bold;
+    color: var(--mud-palette-text-primary);
+}
+
+.link-group__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.link-group__link {
+    color: var(--mud-palette-text-secondary);
+    font-size: 0.875rem;
+    transition: color 0.2s;
+
+    &:hover {
+        color: var(--mud-palette-primary);
+    }
+}
+
+.footer__separator {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    margin: 1rem 0;
+}
+
+.separator__line {
+    flex: 1;
+    height: 1px;
+    background: var(--mud-palette-lines-default);
+}
+
+.footer__bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.footer__copyright {
+    font-size: 0.875rem;
+    color: var(--mud-palette-text-secondary);
+}
+
+@media (max-width: 48em) {
+    .footer__top {
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .footer__bottom {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+    }
+}
+
+@media (max-width: 30em) {
+    .footer__link-group {
+        min-width: auto;
+    }
+}
+
+/* ========================================
+   Component: isl-button-pill
+   ======================================== */
+.isl-button-pill {
+    background-color: var(--mud-palette-surface);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--isl-radius-full);
+    cursor: pointer;
+    transition:
+        box-shadow 150ms ease,
+        border-color 150ms ease,
+        background 150ms ease;
+    color: var(--mud-palette-text-primary);
+    padding-inline: var(--isl-space-3);
+
+    &:hover {
+        background-color: color-mix(
+            in oklch,
+            var(--mud-palette-primary) 6%,
+            var(--mud-palette-surface)
+        );
+        border-color: var(--mud-palette-primary);
+        box-shadow: 0 0 0 0.1875rem var(--isl-button-ring);
+    }
+}
+
+/* ========================================
+   Component: isl-popover-menu
+   ======================================== */
+.isl-popover-menu {
+    background-color: var(--mud-palette-surface) !important;
+    border: 1px solid var(--mud-palette-lines-default) !important;
+    box-shadow: var(--mud-elevation-8) !important;
+    border-radius: var(--isl-radius-md) !important;
+}
+
+.isl-popover-menu .mud-text {
+    color: var(--mud-palette-text-primary) !important;
+}
+
+.isl-popover-menu__option {
+    padding: var(--isl-space-1) 0.625rem;
+    border-radius: var(--isl-radius-sm);
+    transition:
+        background 0.12s ease,
+        color 0.12s ease;
+    cursor: pointer;
+
+    &:hover {
+        background: color-mix(in oklch, var(--mud-palette-primary) 10%, transparent);
+    }
+}
+
+/* ========================================
+   Component: isl-form-card
+   Inherits from isl-card and adds padding/background
+   ======================================== */
+.isl-form-card {
+    padding: var(--isl-space-5);
+    background: var(--mud-palette-background-paper);
+}
+
+/* ========================================
+   Component: isl-form-section
+   Consistent styling for form sections
+   ======================================== */
+.isl-form-section {
+    padding: var(--isl-space-4);
+    margin-bottom: var(--isl-space-4);
+    background-color: var(--mud-palette-background-grey);
+    border-radius: var(--isl-radius-sm);
+}
+
+/* ========================================
+   Component: isl-form-actions
+   Consistent styling for form action buttons
+   ======================================== */
+.isl-form-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: var(--isl-space-6);
+    gap: var(--isl-space-4);
+}
+
+/* ========================================
+   Component: isl-form__title
+   Consistent styling for main form titles
+   ======================================== */
+.isl-form__title {
+    margin: var(--isl-space-1) 0 var(--isl-space-4);
+    font-weight: 600;
+    font-size: var(--isl-typography-h4-size);
+    line-height: var(--isl-typography-h4-line-height);
+    color: var(--mud-palette-text-primary);
+}
+
+/* ========================================
+   Component: isl-form__section-title
+   Consistent styling for section headings within forms
+   ======================================== */
+.isl-form__section-title {
+    margin-bottom: var(--isl-space-3);
+    font-weight: 500;
+    font-size: var(--isl-typography-h6-size);
+    line-height: var(--isl-typography-h6-line-height);
+    color: var(--mud-palette-text-primary);
+}
+
+/* ========================================
+   Component: isl-status-card
+   Consistent styling for error/warning/info status cards
+   ======================================== */
+.isl-status-card {
+    padding: var(--isl-space-5);
+    border-radius: var(--isl-radius-md);
+    background: var(--mud-palette-background-paper);
+    border: 1px solid var(--mud-palette-lines-default);
+}

@@ -1,0 +1,26 @@
+/* ABOUTME: Scoped CSS for AppDialogShell — consistent dialog structural chrome. */
+/* ABOUTME: BEM block .app-dialog-shell with __header, __body, __actions elements. */
+
+.app-dialog-shell {
+    display: flex;
+    flex-direction: column;
+    gap: var(--isl-space-4);
+}
+
+.app-dialog-shell__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--isl-space-4) var(--isl-space-6) 0;
+}
+
+.app-dialog-shell__body {
+    padding: 0 var(--isl-space-6);
+}
+
+.app-dialog-shell__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--isl-space-3);
+    padding: var(--isl-space-4) var(--isl-space-6) var(--isl-space-6);
+}

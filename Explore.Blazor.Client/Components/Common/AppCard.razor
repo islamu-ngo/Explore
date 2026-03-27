@@ -1,0 +1,19 @@
+@* ABOUTME: Thin wrapper around MudCard providing project default styling (Elevation=0, subtle border). *@
+@* ABOUTME: Replaces MudGlobal defaults removed in V9. Use instead of bare MudCard for consistent card chrome. *@
+
+<div class="app-card">
+    <MudCard Elevation="@Elevation"
+             Outlined="@Outlined"
+             @attributes="AdditionalAttributes">
+        @ChildContent
+    </MudCard>
+</div>
+
+@code {
+    [Parameter] public int Elevation { get; set; } = 0;
+    [Parameter] public bool Outlined { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IDictionary<string, object>? AdditionalAttributes { get; set; }
+}

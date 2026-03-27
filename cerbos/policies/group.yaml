@@ -1,0 +1,33 @@
+# ABOUTME: Cerbos resource policy for group resources.
+# Groups are org-scoped: org admins manage their groups, tenant admins manage all groups in their tenant.
+
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: "group"
+  version: "default"
+  importDerivedRoles:
+    - explore_admin_roles
+  rules:
+    # Instance admins can do everything
+    - actions: ["*"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - instance_admin
+
+    # Tenant admins can manage all groups within their tenant
+    - actions: ["view", "create", "update", "delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - tenant_admin
+
+    # Org admins can manage groups for their organization
+    - actions: ["view", "create", "update", "delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - org_admin
+
+    # All authenticated users can view groups
+    - actions: ["view"]
+      effect: EFFECT_ALLOW
+      roles:
+        - authenticated_user

@@ -1,0 +1,23 @@
+/* ABOUTME: CSS layer declaration and import order for the ISLAMU Event application.
+   ABOUTME: Layer priority (lowest to highest): reset, base, tokens, mudblazor-overrides, components, utilities.
+
+   Unlayered styles (Blazor CSS isolation .razor.css, MudThemeProvider :root injection)
+   naturally beat all layered styles — this is by design.
+
+   Layer order rationale:
+   - reset:               Lowest — universal margin/padding/list normalization
+   - base:                HTML/body defaults (overflow, font-family, scroll-lock)
+   - tokens:              Design tokens (:root custom properties)
+   - mudblazor-overrides: Justified global .mud-* overrides (drawers, portals)
+   - components:          Application components (.isl-card, footer, forms)
+   - utilities:           Highest — typography helpers, a11y utilities, skip-link
+*/
+
+@layer reset, base, tokens, mudblazor-overrides, components, utilities;
+
+@import url("reset.css") layer(reset);
+@import url("base.css") layer(base);
+@import url("tokens.css") layer(tokens);
+@import url("mudblazor-overrides.css") layer(mudblazor-overrides);
+@import url("components.css") layer(components);
+@import url("utilities.css") layer(utilities);

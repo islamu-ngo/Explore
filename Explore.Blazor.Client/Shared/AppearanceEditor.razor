@@ -1,0 +1,179 @@
+@* ABOUTME: Shared appearance editor component with MudColorPicker, effect selector, and live preview. *@
+@* ABOUTME: Used across CreateEvent, OrganizationProfile, GroupProfile, and UserProfile pages. *@
+
+<div class="appearance-editor">
+    @if (ShowPreview)
+    {
+        <div class="appearance-editor__preview" style="@_previewStyle">
+            @if (_isPreviewEmpty)
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary"
+                         Class="appearance-editor__preview-hint">
+                    Choose a color or image to preview
+                </MudText>
+            }
+        </div>
+    }
+
+    <div class="appearance-editor__controls">
+        <MudGrid Spacing="2">
+            <MudItem xs="12">
+                <MudColorPicker Value="_colorValue"
+                                ValueChanged="OnColorChanged"
+                                Label="Background Color"
+                                Variant="Variant.Outlined"
+                                Margin="Margin.Dense"
+                                ColorPickerView="ColorPickerView.Spectrum"
+                                ShowAlpha="false"
+                                ShowPreview="true"
+                                ShowSliders="true"
+                                ShowInputs="true"
+                                DragEffect="true"
+                                ThrottleInterval="100" />
+            </MudItem>
+
+            @if (ShowImageField)
+            {
+                <MudItem xs="12">
+                    <AppTextField T="string"
+                                  Value="@ImageUri"
+                                  ValueChanged="OnImageUriChanged"
+                                  Label="Background Image URL"
+                                  Margin="Margin.Dense"
+                                  Placeholder="https://..." />
+                </MudItem>
+            }
+
+            <MudItem xs="12">
+                <MudSelect T="string"
+                           Value="@BackgroundEffect"
+                           ValueChanged="OnEffectChanged"
+                           Label="Effect"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           AnchorOrigin="Origin.BottomCenter">
+                    <MudSelectItem Value="@("None")">None</MudSelectItem>
+                    <MudSelectItem Value="@("SoftOverlay")">Soft Overlay</MudSelectItem>
+                    <MudSelectItem Value="@("StrongOverlay")">Strong Overlay</MudSelectItem>
+                    <MudSelectItem Value="@("Blur")">Blur Overlay</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" Class="d-flex justify-end">
+                <AppButton Variant="Variant.Text"
+                           Color="Color.Default"
+                           StartIcon="@Icons.Material.Filled.RestartAlt"
+                           Size="Size.Small"
+                           OnClick="OnReset">
+                    Reset
+                </AppButton>
+            </MudItem>
+        </MudGrid>
+    </div>
+</div>
+
+@code {
+    /// <summary>Hex color string (e.g., "#0f172a"). Two-way bindable.</summary>
+    [Parameter] public string BackgroundColor { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> BackgroundColorChanged { get; set; }
+
+    /// <summary>Background effect name. Two-way bindable.</summary>
+    [Parameter] public string BackgroundEffect { get; set; } = "None";
+    [Parameter] public EventCallback<string> BackgroundEffectChanged { get; set; }
+
+    /// <summary>Background image URL. Two-way bindable.</summary>
+    [Parameter] public string ImageUri { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> ImageUriChanged { get; set; }
+
+    /// <summary>Show the image URL text field. Default true.</summary>
+    [Parameter] public bool ShowImageField { get; set; } = true;
+
+    /// <summary>Show the live preview panel above controls. Default true.</summary>
+    [Parameter] public bool ShowPreview { get; set; } = true;
+
+    /// <summary>Fallback color when no background color is set.</summary>
+    [Parameter] public string FallbackColor { get; set; } = "#f5f5f5";
+
+    /// <summary>Additional CSS for the preview style (e.g., "aspect-ratio: 16/9;").</summary>
+    [Parameter] public string? PreviewAdditionalCss { get; set; }
+
+    private MudColor? _colorValue;
+    private string _previewStyle = string.Empty;
+    private bool _isPreviewEmpty = true;
+    private string _lastSyncedColorHex = string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        SyncColorFromParameter();
+        UpdatePreview();
+    }
+
+    private void SyncColorFromParameter()
+    {
+        if (BackgroundColor == _lastSyncedColorHex)
+            return;
+
+        _lastSyncedColorHex = BackgroundColor;
+
+        if (!string.IsNullOrWhiteSpace(BackgroundColor))
+        {
+            try { _colorValue = new MudColor(BackgroundColor); }
+            catch { _colorValue = null; }
+        }
+        else
+        {
+            _colorValue = null;
+        }
+    }
+
+    private async Task OnColorChanged(MudColor? color)
+    {
+        _colorValue = color;
+        var hex = color?.ToString(MudColorOutputFormats.Hex) ?? string.Empty;
+        BackgroundColor = hex;
+        _lastSyncedColorHex = hex;
+        UpdatePreview();
+        await BackgroundColorChanged.InvokeAsync(hex);
+    }
+
+    private async Task OnEffectChanged(string value)
+    {
+        BackgroundEffect = value;
+        UpdatePreview();
+        await BackgroundEffectChanged.InvokeAsync(value);
+    }
+
+    private async Task OnImageUriChanged(string value)
+    {
+        ImageUri = value;
+        UpdatePreview();
+        await ImageUriChanged.InvokeAsync(value);
+    }
+
+    private async Task OnReset()
+    {
+        _colorValue = null;
+        BackgroundColor = string.Empty;
+        BackgroundEffect = "None";
+        ImageUri = string.Empty;
+        _lastSyncedColorHex = string.Empty;
+        UpdatePreview();
+
+        await BackgroundColorChanged.InvokeAsync(string.Empty);
+        await BackgroundEffectChanged.InvokeAsync("None");
+        await ImageUriChanged.InvokeAsync(string.Empty);
+    }
+
+    private void UpdatePreview()
+    {
+        var settings = new AppearanceSettings
+        {
+            BackgroundColor = BackgroundColor,
+            ImageUri = ImageUri,
+            BackgroundEffect = BackgroundEffect
+        };
+
+        _isPreviewEmpty = settings.IsEmpty;
+        _previewStyle = AppearanceStyleBuilder.BuildStyle(settings, FallbackColor, PreviewAdditionalCss);
+    }
+}

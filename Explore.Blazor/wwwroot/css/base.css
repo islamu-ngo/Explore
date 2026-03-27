@@ -1,0 +1,33 @@
+/* ABOUTME: HTML and body defaults — scroll behavior, font family, overflow control.
+   ABOUTME: Loaded into @layer base via layers.css. */
+
+html {
+    overflow-x: hidden;
+}
+
+/* MudBlazor LockScroll adds .scroll-locked to <body>, but the scroll
+   container is <html> (due to overflow-x: hidden above). Propagate the
+   lock to <html> so the page scrollbar is truly removed. */
+html:has(body.scroll-locked) {
+    overflow-y: hidden !important;
+}
+
+body {
+    font-family: var(--isl-font-family-primary);
+}
+
+/* ── Target Size Baseline ──
+   WCAG 2.5.8 (Target Size Minimum) — Level AA: 24×24 CSS px minimum.
+   Applied to interactive elements via min-height/min-width.
+   Inline text links are exempt per the spec (constrained by line-height).
+   MudBlazor components typically meet this via internal padding;
+   these rules catch native and custom interactive elements. */
+button,
+[role="button"],
+input[type="checkbox"],
+input[type="radio"],
+select,
+summary {
+    min-height: var(--isl-target-min);
+    min-width: var(--isl-target-min);
+}

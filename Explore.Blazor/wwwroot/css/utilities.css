@@ -1,0 +1,181 @@
+/* ABOUTME: Typography utility classes and accessibility helpers.
+   ABOUTME: Loaded into @layer utilities via layers.css (highest layer priority). */
+
+/* ========================================
+   Typography Utility Classes
+   ======================================== */
+.isl-typo-h1 {
+    font-size: var(--isl-typography-h1-size);
+    font-weight: var(--isl-typography-h1-weight);
+    line-height: var(--isl-typography-h1-line-height);
+}
+
+.isl-typo-h2 {
+    font-size: var(--isl-typography-h2-size);
+    font-weight: var(--isl-typography-h2-weight);
+    line-height: var(--isl-typography-h2-line-height);
+}
+
+.isl-typo-h3 {
+    font-size: var(--isl-typography-h3-size);
+    font-weight: var(--isl-typography-h3-weight);
+    line-height: var(--isl-typography-h3-line-height);
+}
+
+.isl-typo-h4 {
+    font-size: var(--isl-typography-h4-size);
+    font-weight: var(--isl-typography-h4-weight);
+    line-height: var(--isl-typography-h4-line-height);
+}
+
+.isl-typo-h5 {
+    font-size: var(--isl-typography-h5-size);
+    font-weight: var(--isl-typography-h5-weight);
+    line-height: var(--isl-typography-h5-line-height);
+}
+
+.isl-typo-h6 {
+    font-size: var(--isl-typography-h6-size);
+    font-weight: var(--isl-typography-h6-weight);
+    line-height: var(--isl-typography-h6-line-height);
+}
+
+.isl-typo-body1 {
+    font-size: var(--isl-typography-body1-size);
+    font-weight: var(--isl-typography-body1-weight);
+    line-height: var(--isl-typography-body1-line-height);
+}
+
+.isl-typo-body2 {
+    font-size: var(--isl-typography-body2-size);
+    font-weight: var(--isl-typography-body2-weight);
+    line-height: var(--isl-typography-body2-line-height);
+}
+
+.isl-typo-button {
+    font-size: var(--isl-typography-button-size);
+    font-weight: var(--isl-typography-button-weight);
+    line-height: var(--isl-typography-button-line-height);
+    text-transform: var(--isl-typography-button-text-transform);
+}
+
+.isl-typo-caption {
+    font-size: var(--isl-typography-caption-size);
+    font-weight: var(--isl-typography-caption-weight);
+    line-height: var(--isl-typography-caption-line-height);
+}
+
+.isl-typo-overline {
+    font-size: var(--isl-typography-overline-size);
+    font-weight: var(--isl-typography-overline-weight);
+    line-height: var(--isl-typography-overline-line-height);
+    text-transform: var(--isl-typography-overline-text-transform);
+}
+
+/* ==========================================================================
+   Accessibility Utilities
+   WCAG 2.2 AA compliant helpers for screen readers, focus, and motion.
+   ========================================================================== */
+
+/* Utility: sr-only
+   Visually hidden but accessible to screen readers and assistive technology.
+   Use for labels, descriptions, and status text that shouldn't be visible.
+   -------------------------------------------------------------------------- */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Utility: skip-link
+   Skip-to-content link — first focusable element on every page.
+   Hidden until focused via keyboard Tab, then appears fixed at top-left.
+   WCAG 2.4.1 (Bypass Blocks) — Level A requirement.
+   -------------------------------------------------------------------------- */
+.skip-link {
+    position: fixed;
+    top: -100%;
+    left: var(--isl-space-3);
+    z-index: 10000;
+    padding: var(--isl-space-2) var(--isl-space-4);
+    background: var(--mud-palette-primary);
+    color: var(--mud-palette-primary-text);
+    border-radius: 0 0 var(--isl-radius-sm) var(--isl-radius-sm);
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-decoration: none;
+    transition: top 150ms ease-in-out;
+}
+
+.skip-link:focus {
+    top: 0;
+    outline: 3px solid var(--mud-palette-primary);
+    outline-offset: 2px;
+}
+
+/* Utility: Global focus-visible
+   WCAG 2.4.7 (Focus Visible) — ensures all interactive elements show a visible
+   focus indicator when navigated via keyboard. Uses :focus-visible to suppress
+   the ring for mouse/touch. MudBlazor components handle their own focus styles;
+   this catches custom elements, native elements, and role-based interactives.
+   SC 1.4.11 requires 3:1 contrast — #2563EB on white = 5.18:1 ✅
+   SC 2.4.13 (AAA target) requires ≥2px area — 2px outline + 2px offset ✅
+   -------------------------------------------------------------------------- */
+:focus-visible {
+    outline: 2px solid var(--mud-palette-primary);
+    outline-offset: 2px;
+}
+
+/* Suppress focus ring for mouse/touch clicks on elements that don't use
+   :focus-visible natively (older MudBlazor internals). */
+:focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* ==========================================================================
+   Accessibility Media Queries
+   ========================================================================== */
+
+/* Reduced Motion: Disable transitions and animations for users who prefer it.
+   WCAG 2.3.3 (Animation from Interactions) — respects OS-level setting.
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    .skip-link {
+        transition: none;
+    }
+}
+
+/* High Contrast: Ensure outlines are visible in forced-colors (Windows High Contrast) mode.
+   WCAG 1.4.11 (Non-text Contrast) — ensures interactive elements remain distinguishable.
+   -------------------------------------------------------------------------- */
+@media (forced-colors: active) {
+    .skip-link {
+        border: 2px solid ButtonText;
+    }
+
+    .skip-link:focus {
+        outline: 3px solid Highlight;
+    }
+
+    /* Global forced-colors focus: box-shadow is stripped in this mode,
+       so outline is the only reliable indicator. */
+    :focus-visible {
+        outline: 3px solid Highlight;
+        outline-offset: 2px;
+    }
+}

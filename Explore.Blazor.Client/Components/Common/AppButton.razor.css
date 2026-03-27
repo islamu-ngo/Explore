@@ -1,0 +1,33 @@
+/* ABOUTME: Scoped styles for AppButton — absorbs global .mud-button-* overrides from Phase 1.
+   ABOUTME: Uses BEM .app-button block + ::deep to style MudButton internals. */
+
+.app-button {
+    display: contents;
+}
+
+/* ── Base button styling (neo-minimal: flat, custom radius/padding/transition) ── */
+.app-button ::deep .mud-button-root {
+    border-radius: var(--isl-button-border-radius);
+    padding: var(--isl-button-padding-y) var(--isl-button-padding-x);
+    font-size: var(--isl-button-font-size);
+    transition: var(--isl-button-transition);
+}
+
+/* ── Filled variant: no elevation shadow ── */
+.app-button ::deep .mud-button-filled {
+    box-shadow: none;
+}
+
+.app-button ::deep .mud-button-filled:hover {
+    box-shadow: none;
+}
+
+/* ── Outlined variant: subtle border + ring on hover ── */
+.app-button ::deep .mud-button-outlined {
+    border: 1px solid var(--mud-palette-lines-default);
+}
+
+.app-button ::deep .mud-button-outlined:hover {
+    border-color: var(--mud-palette-primary);
+    box-shadow: 0 0 0 1px var(--isl-button-ring);
+}

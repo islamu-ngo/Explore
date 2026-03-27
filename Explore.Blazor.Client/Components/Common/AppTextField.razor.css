@@ -1,0 +1,11 @@
+/* ABOUTME: Scoped styles for AppTextField — outlined input with consistent radius.
+   ABOUTME: Uses BEM .app-text-field block + ::deep to style MudTextField internals. */
+
+.app-text-field {
+    display: contents;
+}
+
+/* ── Input container: consistent border-radius ── */
+.app-text-field ::deep .mud-input-outlined .mud-input-outlined-border {
+    border-radius: var(--isl-radius-input);
+}

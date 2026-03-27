@@ -1,0 +1,27 @@
+# ABOUTME: Cerbos resource policy for notification resources.
+# Notifications are personal data: all authenticated users can manage their own notifications.
+
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: "notification"
+  version: "default"
+  importDerivedRoles:
+    - explore_admin_roles
+  rules:
+    # Instance admins can do everything
+    - actions: ["*"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - instance_admin
+
+    # Tenant admins can manage all notifications within their tenant
+    - actions: ["view", "create", "update", "delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - tenant_admin
+
+    # All authenticated users can manage their own notifications
+    - actions: ["view", "create", "update", "delete"]
+      effect: EFFECT_ALLOW
+      roles:
+        - authenticated_user

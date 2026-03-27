@@ -1,0 +1,33 @@
+@* ABOUTME: Optional structural shell providing consistent dialog chrome (title, content, actions). *@
+@* ABOUTME: Use inside MudDialog to get standardized layout without forcing all dialogs to change. *@
+
+<div class="app-dialog-shell">
+    @if (!string.IsNullOrWhiteSpace(Title))
+    {
+        <div class="app-dialog-shell__header">
+            <MudText Typo="Typo.h6">@Title</MudText>
+            @if (HeaderContent is not null)
+            {
+                @HeaderContent
+            }
+        </div>
+    }
+
+    <div class="app-dialog-shell__body">
+        @ChildContent
+    </div>
+
+    @if (ActionsContent is not null)
+    {
+        <div class="app-dialog-shell__actions">
+            @ActionsContent
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public RenderFragment? HeaderContent { get; set; }
+    [Parameter, EditorRequired] public RenderFragment ChildContent { get; set; } = default!;
+    [Parameter] public RenderFragment? ActionsContent { get; set; }
+}

@@ -1,0 +1,182 @@
+/* ABOUTME: Design tokens — 3-tier architecture (primitives → semantic → component).
+   ABOUTME: Loaded into @layer tokens via layers.css. oklch color mixing for perceptual uniformity. */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TIER 1: PRIMITIVES — Raw values with no semantic meaning.
+   Building blocks only. Prefer semantic (Tier 2) or component (Tier 3) tokens
+   in component CSS. Primitives are stable and rarely change.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+    /* ── Spacing Scale (4px grid) ── */
+    --isl-space-1: 0.25rem;    /* 4px */
+    --isl-space-2: 0.5rem;     /* 8px */
+    --isl-space-3: 0.75rem;    /* 12px */
+    --isl-space-4: 1rem;       /* 16px */
+    --isl-space-5: 1.25rem;    /* 20px */
+    --isl-space-6: 1.5rem;     /* 24px */
+    --isl-space-8: 2rem;       /* 32px */
+    --isl-space-10: 2.5rem;    /* 40px */
+    --isl-space-16: 4rem;      /* 64px */
+
+    /* ── Border Radii ── */
+    --isl-radius-sm: 0.5rem;   /* 8px */
+    --isl-radius-md: 0.75rem;  /* 12px */
+    --isl-radius-lg: 1rem;     /* 16px */
+    --isl-radius-full: 999px;  /* pill shape — px is intentional */
+
+    /* ── Shadow Scale ── */
+    --isl-shadow-xs: 0 0.125rem 0.5rem oklch(0 0 0 / 0.05);
+    --isl-shadow-sm: 0 0.25rem 1.25rem oklch(0 0 0 / 0.08);
+    --isl-shadow-md: 0 0.625rem 2.5rem -0.625rem oklch(0 0 0 / 0.2);
+    --isl-shadow-lg: 0 1rem 2.25rem oklch(0 0 0 / 0.16);
+
+    /* ── Font Families ── */
+    --isl-font-family-primary: "Inter", system-ui, -apple-system, sans-serif;
+    --isl-font-family-secondary: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TIER 2: SEMANTIC — Purpose-driven aliases.
+   Colors map to MudBlazor palette variables (--mud-palette-*) so dark mode
+   works automatically via MudThemeProvider. Spacing/radius map to primitives
+   for contextual meaning. Component CSS should prefer semantic tokens.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+    /* ── Color Semantics (sourced from MudTheme via --mud-palette-*) ──
+       Dark mode is automatic: MudThemeProvider swaps the palette values,
+       these aliases follow without any media query or :root override. */
+    --isl-color-primary: var(--mud-palette-primary);
+    --isl-color-secondary: var(--mud-palette-secondary);
+    --isl-color-surface: var(--mud-palette-surface);
+    --isl-color-background: var(--mud-palette-background);
+    --isl-color-text: var(--mud-palette-text-primary);
+    --isl-color-text-secondary: var(--mud-palette-text-secondary);
+    --isl-color-border: var(--mud-palette-lines-default);
+    --isl-color-divider: var(--mud-palette-divider);
+    --isl-color-error: var(--mud-palette-error);
+    --isl-color-success: var(--mud-palette-success);
+    --isl-color-warning: var(--mud-palette-warning);
+    --isl-color-info: var(--mud-palette-info);
+
+    /* ── Spacing Semantics ── */
+    --isl-space-inline: var(--isl-space-2);    /* 8px — inline gaps */
+    --isl-space-block: var(--isl-space-4);     /* 16px — vertical gaps */
+    --isl-space-page: var(--isl-space-6);      /* 24px — page padding */
+    --isl-space-section: var(--isl-space-8);   /* 32px — section spacing */
+
+    /* ── Radius Semantics ── */
+    --isl-radius-card: var(--isl-radius-lg);   /* 16px — card surfaces */
+    --isl-radius-input: var(--isl-radius-sm);  /* 8px — form inputs */
+    --isl-radius-button: var(--isl-radius-sm); /* 8px — buttons */
+
+    /* ── Typography (Fluid) ──
+       Headings use clamp() for fluid scaling between 320px and 1280px viewports.
+       Body/caption/overline are static — too small to benefit from fluid scaling.
+       Values mirror MudTheme (AppearanceThemeService.cs) at their max sizes.
+       Kept as explicit values for SSR reliability — MudThemeProvider's <style>
+       tag must render before --mud-typography-* variables exist. */
+    --isl-typography-h1-size: clamp(1.875rem, 1.5rem + 1.04vw, 2.5rem);     /* 30px → 40px */
+    --isl-typography-h1-weight: 700;
+    --isl-typography-h1-line-height: 1.2;
+
+    --isl-typography-h2-size: clamp(1.625rem, 1.375rem + 0.625vw, 2rem);    /* 26px → 32px */
+    --isl-typography-h2-weight: 600;
+    --isl-typography-h2-line-height: 1.3;
+
+    --isl-typography-h3-size: clamp(1.5rem, 1.333rem + 0.42vw, 1.75rem);    /* 24px → 28px */
+    --isl-typography-h3-weight: 600;
+    --isl-typography-h3-line-height: 1.3;
+
+    --isl-typography-h4-size: clamp(1.25rem, 1.083rem + 0.42vw, 1.5rem);    /* 20px → 24px */
+    --isl-typography-h4-weight: 600;
+    --isl-typography-h4-line-height: 1.4;
+
+    --isl-typography-h5-size: clamp(1.125rem, 1.042rem + 0.21vw, 1.25rem);  /* 18px → 20px */
+    --isl-typography-h5-weight: 600;
+    --isl-typography-h5-line-height: 1.5;
+
+    --isl-typography-h6-size: 1.125rem;
+    --isl-typography-h6-weight: 600;
+    --isl-typography-h6-line-height: 1.6;
+
+    --isl-typography-body1-size: 0.9375rem;
+    --isl-typography-body1-weight: 400;
+    --isl-typography-body1-line-height: 1.6;
+
+    --isl-typography-body2-size: 0.875rem;
+    --isl-typography-body2-weight: 400;
+    --isl-typography-body2-line-height: 1.5;
+
+    --isl-typography-button-size: 0.875rem;
+    --isl-typography-button-weight: 500;
+    --isl-typography-button-line-height: 1.75;
+    --isl-typography-button-text-transform: none;
+
+    --isl-typography-caption-size: 0.8125rem;
+    --isl-typography-caption-weight: 400;
+    --isl-typography-caption-line-height: 1.5;
+
+    --isl-typography-overline-size: 0.75rem;
+    --isl-typography-overline-weight: 500;
+    --isl-typography-overline-line-height: 2.66;
+    --isl-typography-overline-text-transform: uppercase;
+
+    /* ── Overlay / Scrim ── */
+    --isl-overlay-text: #fff;
+    --isl-overlay-text-muted: oklch(1 0 0 / 0.7);
+    --isl-overlay-gradient: linear-gradient(
+        to top,
+        oklch(0 0 0 / 0.85) 0%,
+        oklch(0 0 0 / 0.4) 60%,
+        transparent 100%
+    );
+    --isl-overlay-scrim: oklch(0 0 0 / 0.6);
+
+    /* ── Accessibility Tokens ── */
+    --isl-target-min: 1.5rem;     /* 24px — WCAG 2.5.8 AA minimum target size */
+    --isl-focus-ring-width: 2px;
+    --isl-focus-ring-offset: 2px;
+
+    /* ── Interaction State Tokens ──
+       oklch mixing produces perceptually uniform tints for hover/active states.
+       These adapt automatically to dark mode via --isl-color-primary. */
+    --isl-state-hover: color-mix(in oklch, var(--isl-color-primary) 8%, transparent);
+    --isl-state-active: color-mix(in oklch, var(--isl-color-primary) 16%, transparent);
+    --isl-state-disabled-opacity: 0.38;
+    --isl-state-focus-ring: color-mix(in oklch, var(--isl-color-primary) 40%, transparent);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TIER 3: COMPONENT — Scoped to specific component abstractions.
+   Global because used in 3+ places across CSS files. Components with
+   single-use tokens should define them in their own .razor.css instead.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+    /* ── Card ── */
+    --isl-card-border-radius: var(--isl-radius-card);
+    --isl-card-border: 1px solid color-mix(in oklch, var(--isl-color-border) 70%, transparent);
+    --isl-card-transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    --isl-card-hover-shadow: var(--isl-shadow-lg);
+    --isl-card-hover-border-color: color-mix(in oklch, var(--isl-color-primary) 40%, var(--isl-color-border));
+
+    /* ── Button ── */
+    --isl-button-border-radius: var(--isl-radius-button);
+    --isl-button-padding-x: var(--isl-space-4);
+    --isl-button-padding-y: var(--isl-space-2);
+    --isl-button-font-size: var(--isl-typography-button-size);
+    --isl-button-transition: background-color 150ms ease, box-shadow 150ms ease, border-color 150ms ease, opacity 150ms ease;
+    --isl-button-ring: color-mix(in oklch, var(--isl-color-primary) 30%, transparent);
+}
+
+/* ── Accessibility: Increased Contrast ──
+   WCAG 1.4.11 (Non-text Contrast) — strengthens borders/shadows for users
+   who prefer more contrast. Overrides Tier 1 primitives only. */
+@media (prefers-contrast: more) {
+    :root {
+        --isl-shadow-sm: 0 1px 3px oklch(0 0 0 / 0.3);
+        --isl-shadow-md: 0 4px 12px oklch(0 0 0 / 0.3);
+    }
+}
