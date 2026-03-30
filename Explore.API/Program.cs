@@ -124,6 +124,11 @@ builder.Services.AddOutputCache(options =>
         .SetVaryByHeader(TenantHeaderNames.TenantSlug, "Host", "Authorization")
         .SetVaryByRouteValue("id")
         .Tag("detail-data"));
+    // TenantNav: tenant navigation links — short expiry, evicted on write by "tenant-nav" tag
+    options.AddPolicy("TenantNav", builder => builder
+        .Expire(TimeSpan.FromMinutes(5))
+        .SetVaryByHeader(TenantHeaderNames.TenantSlug, "Host")
+        .Tag("tenant-nav"));
 });
 
 // Performance: HybridCache (L1 in-memory + optional L2 distributed)

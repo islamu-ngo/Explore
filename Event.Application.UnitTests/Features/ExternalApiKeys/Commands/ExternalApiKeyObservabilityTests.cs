@@ -64,7 +64,7 @@ public class ExternalApiKeyObservabilityTests
             {
                 Name = "Deploy Bot",
                 OwnerType = ExternalApiKeyOwnerType.User,
-                Scopes = ["events.read", "events.write"]
+                Scopes = ["events:read", "events:write"]
             }
         };
 
@@ -100,7 +100,7 @@ public class ExternalApiKeyObservabilityTests
             Name = "Ops Bot",
             KeyId = "key-1234567890",
             SecretHash = "hash",
-            Scopes = "events.read",
+            Scopes = "events:read",
             OwnerType = ExternalApiKeyOwnerType.User,
             OwnerId = userId,
             ExternalApiKeyStatusId = (int)ExternalApiKeyStatusEnum.Active,

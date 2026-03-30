@@ -3,6 +3,8 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.ExternalApiKey;
+using Explore.Application.Features.ExternalApiKeys;
+using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using FluentValidation;
 
@@ -37,7 +39,11 @@ internal class CreateExternalApiKeyDtoValidator : AbstractValidator<CreateExtern
         RuleFor(x => x.Scopes)
             .NotEmpty().WithMessage("At least one scope is required.")
             .Must(scopes => scopes.All(scope => !string.IsNullOrWhiteSpace(scope)))
-            .WithMessage("Scopes cannot contain empty values.");
+            .WithMessage("Scopes cannot contain empty values.")
+            .Must(scopes => ExternalApiKeyScopes.AreAllValid(scopes))
+            .WithMessage((dto, _) => $"Invalid scopes: {string.Join(", ", ExternalApiKeyScopes.GetInvalid(dto.Scopes))}.")
+            .Must((dto, scopes) => ExternalApiKeyScopeCeiling.AreWithinCeiling(dto.OwnerType, scopes))
+            .WithMessage((dto, _) => $"Scopes exceed ceiling for {dto.OwnerType}: {string.Join(", ", ExternalApiKeyScopeCeiling.GetExceeding(dto.OwnerType, dto.Scopes))}.");
 
         When(x => x.OwnerType == ExternalApiKeyOwnerType.Organization, () =>
         {
@@ -64,6 +70,13 @@ internal class CreateExternalApiKeyDtoValidator : AbstractValidator<CreateExtern
         if (!ownerId.HasValue)
         {
             return false;
+        }
+
+        // InstanceAdmin keys have TenantId=null, so the standard tenant query filter
+        // would never match them. Use the tenant-filter-bypass variant.
+        if (dto.OwnerType == ExternalApiKeyOwnerType.InstanceAdmin)
+        {
+            return !await _externalApiKeyRepository.ExistsByOwnerAndNameIgnoringTenantFilter(dto.OwnerType, ownerId.Value, name);
         }
 
         return !await _externalApiKeyRepository.ExistsByOwnerAndName(dto.OwnerType, ownerId.Value, name);

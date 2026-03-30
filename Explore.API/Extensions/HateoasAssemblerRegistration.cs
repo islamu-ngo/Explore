@@ -9,9 +9,13 @@ using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.DTOs.Category;
 using Explore.Application.DTOs.CustomPropertyDefinition;
 using Explore.Application.DTOs.Event;
+using Explore.Application.DTOs.EventCustomProperty;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionAgendaItem;
+using Explore.Application.DTOs.EventSessionCustomProperty;
+using Explore.Application.DTOs.EventSessionTemplate;
+using Explore.Application.DTOs.EventTemplate;
 using Explore.Application.DTOs.Group;
 using Explore.Application.DTOs.GroupMember;
 using Explore.Application.DTOs.IndexedDid;
@@ -72,6 +76,26 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<CustomPropertyDefinitionDto>, CustomPropertyDefinitionDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<CustomPropertyDefinitionListDto>, CustomPropertyDefinitionCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<CustomPropertyDefinitionDto, CustomPropertyDefinitionListDto>, CustomPropertyDefinitionResourceAssembler>();
+
+        // EventTemplate
+        services.AddScoped<ILinkPolicy<EventTemplateDto>, EventTemplateDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<EventTemplateListDto>, EventTemplateCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<EventTemplateDto, EventTemplateListDto>, EventTemplateResourceAssembler>();
+
+        // EventCustomProperty
+        services.AddScoped<ILinkPolicy<EventCustomPropertyDefinitionDto>, EventCustomPropertyDefinitionDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<EventCustomPropertyDefinitionListDto>, EventCustomPropertyDefinitionCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<EventCustomPropertyDefinitionDto, EventCustomPropertyDefinitionListDto>, EventCustomPropertyResourceAssembler>();
+
+        // EventSessionTemplate
+        services.AddScoped<ILinkPolicy<EventSessionTemplateDto>, EventSessionTemplateDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<EventSessionTemplateListDto>, EventSessionTemplateCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<EventSessionTemplateDto, EventSessionTemplateListDto>, EventSessionTemplateResourceAssembler>();
+
+        // EventSessionCustomProperty
+        services.AddScoped<ILinkPolicy<EventSessionCustomPropertyDefinitionDto>, EventSessionCustomPropertyDefinitionDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<EventSessionCustomPropertyDefinitionListDto>, EventSessionCustomPropertyDefinitionCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<EventSessionCustomPropertyDefinitionDto, EventSessionCustomPropertyDefinitionListDto>, EventSessionCustomPropertyResourceAssembler>();
 
         // Group
         services.AddScoped<ILinkPolicy<GroupDto>, GroupDetailLinkPolicy>();

@@ -185,27 +185,9 @@
                         {
                             <InstanceGovernanceSection Delegation="_delegation" EventPolicy="_eventPolicy" OrganizationPolicy="_orgPolicy" RenderPolicy="_renderPolicy" DeploymentMode="@_deploymentMode" TenantCount="_tenantCount" DeploymentModeChanged="OnDeploymentModeChanged" DisplayMode="multi-tenancy" />
                         }
-                        else if (_currentSection == "access-tokens" && IsSingleTenantMode)
+                        else if (_currentSection == "access-tokens")
                         {
-                            <div class="settings-section">
-                                <div class="settings-section-header">
-                                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
-                                        <div>
-                                            <MudText Typo="Typo.h5" Style="font-weight: 700;">Access Tokens</MudText>
-                                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
-                                                Create and manage API access tokens for programmatic access.
-                                            </MudText>
-                                        </div>
-                                        <AppButton StartIcon="@Icons.Material.Filled.Add"
-                                                   Disabled="true">
-                                            Add Access Token
-                                        </AppButton>
-                                    </MudStack>
-                                </div>
-                                <MudAlert Severity="Severity.Info" Class="mt-4">
-                                    Access token management is coming soon.
-                                </MudAlert>
-                            </div>
+                            <Explore.Blazor.Client.Pages.Admin.Components.ApiKeysSection OwnerType="5" Title="Platform API Keys" Description="Create and manage instance-level API keys for platform-wide programmatic access." />
                         }
                         else if (_currentSection == "webhooks" && IsSingleTenantMode)
                         {
@@ -361,7 +343,7 @@
     private static string NormalizeSection(string section, bool isSingleTenant)
     {
         // Sections only valid in single-tenant mode
-        var singleTenantOnly = new HashSet<string> { "members", "organizations", "lookups", "policies", "appearance", "access-tokens", "webhooks", "multi-tenancy" };
+        var singleTenantOnly = new HashSet<string> { "members", "organizations", "lookups", "policies", "appearance", "webhooks", "multi-tenancy" };
         // Sections only valid in multi-tenant mode
         var multiTenantOnly = new HashSet<string> { "tenants" };
 
@@ -523,6 +505,7 @@
             new("analytics-privacy",Icons.Material.Filled.Analytics,       "Analytics & Privacy"),
             new("footer-governance",Icons.Material.Filled.ViewAgenda,      "Footer"),
             new("render-policies",  Icons.Material.Filled.DisplaySettings, "Render Policies", Group: "Advanced"),
+            new("access-tokens",    Icons.Material.Filled.Key,             "Access Tokens",    Group: "Developer"),
         ];
     }
 

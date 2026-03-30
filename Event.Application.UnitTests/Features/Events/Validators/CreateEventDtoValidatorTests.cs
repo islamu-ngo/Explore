@@ -15,6 +15,7 @@ public class CreateEventDtoValidatorTests
     private readonly IOrganizationRepository _organizationRepository;
     private readonly IGroupRepository _groupRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
+    private readonly IEventTemplateRepository _eventTemplateRepository;
     private readonly CreateEventDtoValidator _validator;
 
     public CreateEventDtoValidatorTests()
@@ -25,6 +26,7 @@ public class CreateEventDtoValidatorTests
         _organizationRepository = Substitute.For<IOrganizationRepository>();
         _groupRepository = Substitute.For<IGroupRepository>();
         _storageObjectRepository = Substitute.For<IStorageObjectRepository>();
+        _eventTemplateRepository = Substitute.For<IEventTemplateRepository>();
 
         _validator = new CreateEventDtoValidator(
             _audienceAgeRepository,
@@ -32,7 +34,8 @@ public class CreateEventDtoValidatorTests
             _eventTypeRepository,
             _organizationRepository,
             _groupRepository,
-            _storageObjectRepository
+            _storageObjectRepository,
+            _eventTemplateRepository
         );
     }
 

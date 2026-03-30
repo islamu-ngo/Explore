@@ -1,0 +1,33 @@
+// ABOUTME: Validates event session template creation payload shape before persistence.
+// ABOUTME: Checks field lengths, version positivity, and nested definition validation.
+
+using FluentValidation;
+
+namespace Explore.Application.DTOs.EventSessionTemplate.Validators;
+
+public class CreateEventSessionTemplateDtoValidator : AbstractValidator<CreateEventSessionTemplateDto>
+{
+    public CreateEventSessionTemplateDtoValidator()
+    {
+        RuleFor(x => x.EventTemplateId)
+            .NotEmpty().WithMessage("EventTemplateId is required.");
+
+        RuleFor(x => x.SessionTemplateKey)
+            .NotEmpty().WithMessage("SessionTemplateKey is required.")
+            .MaximumLength(100).WithMessage("SessionTemplateKey must not exceed 100 characters.");
+
+        RuleFor(x => x.DisplayName)
+            .NotEmpty().WithMessage("DisplayName is required.")
+            .MaximumLength(200).WithMessage("DisplayName must not exceed 200 characters.");
+
+        RuleFor(x => x.Description)
+            .MaximumLength(500).WithMessage("Description must not exceed 500 characters.")
+            .When(x => !string.IsNullOrWhiteSpace(x.Description));
+
+        RuleFor(x => x.Version)
+            .GreaterThan(0).WithMessage("Version must be greater than 0.");
+
+        RuleForEach(x => x.Definitions)
+            .SetValidator(new CreateEventSessionTemplateDefinitionDtoValidator());
+    }
+}

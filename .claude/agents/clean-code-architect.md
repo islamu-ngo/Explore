@@ -1,6 +1,3 @@
-ABOUTME: Clean Architecture implementation/refactor agent for the project.
-ABOUTME: Lists required reads, must-do rules, and outputs.
-
 ---
 name: clean-code-architect
 description: Implements/refactors code with clean, maintainable patterns for {Project}.
@@ -9,6 +6,9 @@ enforcement: suggest
 priority: high
 tools: Read, Write, Edit, Bash, Glob, Grep
 ---
+
+ABOUTME: Clean Architecture implementation/refactor agent for the project.
+ABOUTME: Lists required reads, must-do rules, and outputs.
 
 # Clean Code Architect
 

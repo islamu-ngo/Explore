@@ -1,0 +1,72 @@
+/* ABOUTME: Scoped styles for RightSidebar — sticky desktop panel, fixed mobile overlay. */
+/* ABOUTME: Mirrors left sidebar (MainLayout) behavior: content pushes, viewport-height sticky. */
+
+/* ══════════════════════════════════════════════
+   Desktop — Sticky content-pushing sidebar
+   ══════════════════════════════════════════════ */
+
+.right-sidebar {
+    position: sticky;
+    top: var(--mud-appbar-height, 4rem);
+    height: calc(100vh - var(--mud-appbar-height, 4rem));
+    align-self: flex-start;
+
+    width: 0;
+    min-width: 0;
+    overflow: hidden;
+    flex-shrink: 0;
+
+    transition: width 300ms ease, min-width 300ms ease, border-color 300ms ease;
+    border-left: 1px solid transparent;
+
+    &.right-sidebar--open {
+        width: var(--right-sidebar-width, 320px);
+        min-width: var(--right-sidebar-width, 320px);
+        overflow-y: auto;
+        border-left-color: var(--mud-palette-lines-default);
+    }
+}
+
+/* ── Backdrop — hidden on desktop ── */
+
+.right-sidebar__backdrop {
+    display: none;
+}
+
+/* ══════════════════════════════════════════════
+   Mobile (<960px) — Fixed overlay with backdrop
+   ══════════════════════════════════════════════ */
+
+@media (max-width: 959.98px) {
+    .right-sidebar {
+        position: fixed;
+        top: var(--mud-appbar-height, 4rem);
+        right: 0;
+        bottom: 0;
+        height: auto;
+        z-index: 1300;
+        background: var(--mud-palette-surface);
+        box-shadow: var(--mud-elevation-8);
+
+        transition: transform 300ms ease, visibility 300ms ease;
+        transform: translateX(100%);
+        visibility: hidden;
+
+        width: var(--right-sidebar-width, 320px);
+        min-width: var(--right-sidebar-width, 320px);
+        overflow-y: auto;
+
+        &.right-sidebar--open {
+            transform: translateX(0);
+            visibility: visible;
+        }
+    }
+
+    .right-sidebar__backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 1299;
+        background: rgba(0, 0, 0, 0.5);
+    }
+}

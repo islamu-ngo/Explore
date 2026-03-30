@@ -127,6 +127,17 @@
     flex-shrink: 0;
 }
 
+/* Element: main-layout__drawer-custom-links-label
+   Overline heading for tenant custom nav links in the sidebar drawer.
+   -------------------------------------------------------------------------- */
+.main-layout__drawer-custom-links-label {
+    padding-inline: var(--isl-space-4, 1rem);
+    padding-block-end: var(--isl-space-1, 0.25rem);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--mud-palette-text-secondary);
+}
+
 /* Modifier: main-layout-root--hide-chrome
    When chrome is hidden (setup/onboarding), remove all content gutters so pages
    can implement their own full-bleed layouts (like split screens). */

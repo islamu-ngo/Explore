@@ -3,6 +3,8 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.ExternalApiKey;
+using Explore.Application.Features.ExternalApiKeys;
+using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using FluentValidation;
 
@@ -28,7 +30,11 @@ internal class UpdateExternalApiKeyPolicyDtoValidator : AbstractValidator<Update
         RuleFor(x => x.Scopes)
             .NotEmpty().WithMessage("At least one scope is required.")
             .Must(scopes => scopes.All(scope => !string.IsNullOrWhiteSpace(scope)))
-            .WithMessage("Scopes cannot contain empty values.");
+            .WithMessage("Scopes cannot contain empty values.")
+            .Must(scopes => ExternalApiKeyScopes.AreAllValid(scopes))
+            .WithMessage((dto, _) => $"Invalid scopes: {string.Join(", ", ExternalApiKeyScopes.GetInvalid(dto.Scopes))}.")
+            .Must((dto, scopes) => ExternalApiKeyScopeCeiling.AreWithinCeiling(existingApiKey.OwnerType, scopes))
+            .WithMessage((dto, _) => $"Scopes exceed ceiling for {existingApiKey.OwnerType}: {string.Join(", ", ExternalApiKeyScopeCeiling.GetExceeding(existingApiKey.OwnerType, dto.Scopes))}.");
     }
 
     private async Task<bool> NameIsUniqueAsync(Explore.Domain.ExternalApiKey existingApiKey, string name, CancellationToken cancellationToken)

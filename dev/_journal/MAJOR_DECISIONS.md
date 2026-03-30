@@ -1,6 +1,64 @@
 # Major Decisions
 
-Last Updated: 2026-03-26 Europe/Brussels
+Last Updated: 2026-03-29 Europe/Brussels
+
+## 2026-03-29 Europe/Brussels - Customization Sidebar: UX Architecture Decisions
+
+### Sticky RightSidebar Over Overlay Drawer
+- Decision: Replaced MudDrawer overlay with a custom content-pushing sticky `RightSidebar` common component (`Components/Common/RightSidebar.razor`).
+- Why: Overlay drawers obscure page content, making it impossible to see customization effects in real-time. Sticky sidebar pushes main content left, preserving visibility. Component is reusable for future AI assistant panel.
+
+### EventCard Progressive Disclosure (Icons + Hover)
+- Decision: Replace verbose text labels with icon badges (visibility/audience/format) using MudTooltip. CompactGrid uses `+N more` chip with hover reveal for hidden fields.
+- Why: Reduces visual clutter while keeping all information accessible. Icons are universally understood; tooltips provide full labels on demand. Hover reveal avoids permanent information overload in compact layouts.
+
+### UserSettingsService Auth Branching (API vs localStorage)
+- Decision: Single `UserSettingsService` branches on authentication state — authenticated users persist via API settings endpoints, anonymous users use browser localStorage. SSR-safe via `IJSRuntime` availability check.
+- Why: Avoids two separate service implementations. Anonymous users get instant UX without account creation. No anonymous→authenticated migration (D7 decision) keeps implementation simple. localStorage is acceptable for non-critical display preferences.
+
+### Feature-Flag Bypass for Development
+- Decision: Hardcode `_showCustomizationButton = true` instead of reading from settings feature-flag infrastructure.
+- Why: Feature-flag infrastructure depends on tenant config that isn't reliably available in all dev environments. Must re-enable before production deployment.
+
+## 2026-03-29 Europe/Brussels - EAV Milestone C: EventSession Layer 3 Parity
+
+### Session Templates: Owned Children of Event Templates
+- Decision: `EventSessionTemplate` has `EventTemplateId` FK — session blueprints exist only under an event template. Uniqueness is `(EventTemplateId, SessionTemplateKey, Version)`.
+- Why: Sessions are child aggregates of events. Template hierarchy mirrors runtime hierarchy. Prevents orphaned session templates.
+
+### Session Instantiation: Mirror Event Pattern Exactly
+- Decision: `EventSessionTemplateInstantiationService` uses identical in-memory instantiation + handler persistence pattern as `EventTemplateInstantiationService`. Same two-pass provenance matching algorithm.
+- Why: Architectural consistency — same patterns reduce cognitive load and enable shared test strategies. Session-specific differences are minimal (FK target is EventSessionId instead of EventId).
+
+### Session Creation: Optional SessionTemplateId (Guid?)
+- Decision: `CreateEventSessionDto.SessionTemplateId` is `Guid?`. Null = no template. Non-null = fetch, guard published+active, instantiate inside transaction.
+- Why: Mirrors event creation pattern exactly. Zero breaking changes to existing session creation flow.
+
+### Session Projection: Mirror Event Projection Shape
+- Decision: `EventSessionCustomPropertyProjection` uses same column structure as `EventCustomPropertyProjection` (Namespace, Key, PropertyType, value columns, exposure flags, provenance).
+- Why: Unified projection shape enables shared discovery/search/filter infrastructure in Milestone D without session-specific query paths.
+
+## 2026-03-29 Europe/Brussels - EAV Milestone B: Event Template + Runtime Baseline
+
+### Template Instantiation: In-Memory Service + Handler Persistence
+- Decision: `EventTemplateInstantiationService` creates in-memory entities only. The `CreateEventCommandHandler` persists via repository calls inside a transaction.
+- Why: Keeps instantiation logic testable without DbContext. Handler owns the persistence strategy and transaction boundary.
+
+### Provenance Matching: Two-Pass Algorithm
+- Decision: Match existing runtime definitions to template definitions first by `SourceTemplateDefinitionId` (exact lineage), then unmatched by normalized `Namespace+Key` (repair/backfill). Track consumed matches to prevent double-matching.
+- Why: SourceId is the canonical provenance link. Namespace+Key fallback only for definitions that lost their lineage (manual creation, data migration).
+
+### Event Creation: Optional TemplateId (Guid?)
+- Decision: `CreateEventDto.TemplateId` is `Guid?`. Null = no template, existing flow untouched. Non-null = fetch template, guard published+active, instantiate inside existing transaction.
+- Why: Zero breaking changes to existing event creation. Template selection is purely additive. Guard prevents instantiating draft/inactive templates.
+
+### Runtime Definition Edit Flows: Event-Local Only
+- Decision: Runtime queries and edit commands operate exclusively on event-local definitions (`GetDefinitionsForEventPaged(eventId)`). No implicit template re-reads during editing.
+- Why: Event-local state is the source of truth after instantiation. Template changes require explicit sync (Milestone E).
+
+### Ad-Hoc Definitions: No Provenance
+- Decision: Runtime definitions created without a template get `InstantiatedAt = DateTimeOffset.UtcNow` but null provenance fields (SourceTemplateId, SourceTemplateKey, etc.).
+- Why: Clean distinction between template-derived and manually-created definitions. Provenance fields are only meaningful for template lineage.
 
 ## 2026-03-26 Europe/Brussels - Enterprise Footer Customization: Blazor UI Implementation
 

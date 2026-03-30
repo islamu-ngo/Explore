@@ -1,6 +1,3 @@
-ABOUTME: Footer management skill covering templates, governance, and CQRS endpoints.
-ABOUTME: Enforces governance locking, template selection, and footer data model patterns.
-
 ---
 name: footer-management
 description: Footer customization system with templates, governance locking, and link management.
@@ -8,6 +5,9 @@ type: domain
 enforcement: suggest
 priority: medium
 ---
+
+ABOUTME: Footer management skill covering templates, governance, and CQRS endpoints.
+ABOUTME: Enforces governance locking, template selection, and footer data model patterns.
 
 # Footer Management
 

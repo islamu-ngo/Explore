@@ -1,6 +1,3 @@
-ABOUTME: CSS design system skill covering @layer architecture, design tokens, and wrapper components.
-ABOUTME: Enforces layer ordering, token usage, and MudBlazor wrapper patterns.
-
 ---
 name: design-system
 description: CSS @layer architecture, 3-tier design tokens, and MudBlazor wrapper components.
@@ -8,6 +5,9 @@ type: domain
 enforcement: enforce
 priority: high
 ---
+
+ABOUTME: CSS design system skill covering @layer architecture, design tokens, and wrapper components.
+ABOUTME: Enforces layer ordering, token usage, and MudBlazor wrapper patterns.
 
 # Design System
 

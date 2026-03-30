@@ -1,6 +1,3 @@
-ABOUTME: Blazor component design/review agent for InteractiveAuto + MudBlazor v9.
-ABOUTME: Specifies required reads, UI constraints, v9 migration rules, and outputs.
-
 ---
 name: blazor-component-architect
 description: Designs/reviews Blazor components for {Project} (InteractiveAuto + MudBlazor v9 + BFF).
@@ -9,6 +6,9 @@ enforcement: suggest
 priority: high
 tools: Read, Write, Edit, Glob, Grep
 ---
+
+ABOUTME: Blazor component design/review agent for InteractiveAuto + MudBlazor v9.
+ABOUTME: Specifies required reads, UI constraints, v9 migration rules, and outputs.
 
 # Blazor Component Architect
 

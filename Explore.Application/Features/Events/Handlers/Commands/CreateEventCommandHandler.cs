@@ -8,6 +8,7 @@ using AutoMapper;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
@@ -35,6 +36,9 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     private readonly IAudienceGenderRepository _audienceGenderRepository;
     private readonly IEventTypeRepository _eventTypeRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
+    private readonly IEventTemplateRepository _eventTemplateRepository;
+    private readonly IEventCustomPropertyRepository _eventCustomPropertyRepository;
+    private readonly IEventTemplateInstantiationService _instantiationService;
     private readonly IUserContext _userContext;
     private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
@@ -55,6 +59,9 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         IAudienceGenderRepository audienceGenderRepository,
         IEventTypeRepository eventTypeRepository,
         IStorageObjectRepository storageObjectRepository,
+        IEventTemplateRepository eventTemplateRepository,
+        IEventCustomPropertyRepository eventCustomPropertyRepository,
+        IEventTemplateInstantiationService instantiationService,
         IUserContext userContext,
         ITenantContext tenantContext,
         IMapper mapper,
@@ -74,6 +81,9 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         _audienceGenderRepository = audienceGenderRepository;
         _eventTypeRepository = eventTypeRepository;
         _storageObjectRepository = storageObjectRepository;
+        _eventTemplateRepository = eventTemplateRepository;
+        _eventCustomPropertyRepository = eventCustomPropertyRepository;
+        _instantiationService = instantiationService;
         _userContext = userContext;
         _tenantContext = tenantContext;
         _mapper = mapper;
@@ -96,7 +106,8 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             _eventTypeRepository,
             _organizationRepository,
             _groupRepository,
-            _storageObjectRepository);
+            _storageObjectRepository,
+            _eventTemplateRepository);
 
         var validationResult = await validator.ValidateAsync(request.EventDto, cancellationToken);
         if (!validationResult.IsValid)
@@ -256,6 +267,36 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
 
             await _eventSessionRepository.Create(eventSession);
             Console.WriteLine($"[CREATE EVENT] Default EventSession created with ID: {eventSession.Id}");
+
+            // Template instantiation: copy template definitions/options/defaults to event-local runtime
+            if (request.EventDto.TemplateId.HasValue)
+            {
+                var template = await _eventTemplateRepository.GetTemplateWithDetails(request.EventDto.TemplateId.Value);
+                if (template is { IsPublished: true, IsActive: true })
+                {
+                    var instantiationResult = _instantiationService.InstantiateFromTemplate(
+                        @event.Id, _tenantContext.TenantId, template, currentUserId.ToString());
+
+                    foreach (var defWithOptions in instantiationResult.Definitions)
+                    {
+                        // Clear DefaultOptionId before initial save; repo re-sets it after options exist
+                        defWithOptions.Definition.DefaultOptionId = null;
+
+                        await _eventCustomPropertyRepository.CreateWithOptions(
+                            defWithOptions.Definition,
+                            defWithOptions.Options,
+                            defWithOptions.DefaultOptionId,
+                            ct);
+
+                        if (defWithOptions.DefaultValue != null)
+                        {
+                            await _eventCustomPropertyRepository.SetValue(defWithOptions.DefaultValue, ct);
+                        }
+                    }
+
+                    Console.WriteLine($"[CREATE EVENT] Template '{template.TemplateKey}' v{template.Version} instantiated with {instantiationResult.Definitions.Count} definitions");
+                }
+            }
 
             return @event.Id;
         }, cancellationToken);

@@ -1,6 +1,3 @@
-ABOUTME: Error-fixing agent for build/runtime issues in the codebase.
-ABOUTME: Captures required reads, core constraints, and outputs.
-
 ---
 name: auto-error-resolver
 description: Fixes C#/.NET build or runtime errors for {Project}.
@@ -9,6 +6,9 @@ enforcement: suggest
 priority: high
 tools: Read, Write, Edit, Bash
 ---
+
+ABOUTME: Error-fixing agent for build/runtime issues in the codebase.
+ABOUTME: Captures required reads, core constraints, and outputs.
 
 # Auto Error Resolver
 

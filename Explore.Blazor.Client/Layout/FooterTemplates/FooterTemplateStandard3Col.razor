@@ -1,9 +1,9 @@
-@* ABOUTME: Standard 3-column footer template with brand column and dynamic link group columns.
-   ABOUTME: Preserves the original Footer.razor grid layout as a reusable template component. *@
+@* ABOUTME: Standard 3-column footer template with brand column and auto-fit link group columns.
+   ABOUTME: Uses CSS Grid auto-fit for natural responsiveness without inline styles (fixes inline specificity bug). *@
 
-<div class="site-footer__grid" style="@GridColumns">
+<div class="footer-std3__main">
     <!-- Brand Column -->
-    <div class="site-footer__col site-footer__col--brand">
+    <div class="footer-std3__brand">
         <div class="site-footer__brand">
             @if (!string.IsNullOrWhiteSpace(BrandLogoUrl))
             {
@@ -22,22 +22,25 @@
         }
     </div>
 
-    <!-- Dynamic Link Group Columns -->
-    @foreach (var group in LinkGroups)
+    <!-- Dynamic Link Group Columns (auto-fit grid) -->
+    @if (LinkGroups.Count > 0)
     {
-        <div class="site-footer__col site-footer__col--links">
-            <div class="site-footer__section">
-                <div class="site-footer__heading">@group.Title</div>
-                @foreach (var link in group.Links)
-                {
-                    <a href="@link.Url"
-                       class="site-footer__link"
-                       target="@(link.OpenInNewTab ? "_blank" : "_self")"
-                       rel="@(link.OpenInNewTab ? "noopener noreferrer" : null)">
-                        @link.Label
-                    </a>
-                }
-            </div>
+        <div class="footer-std3__links">
+            @foreach (var group in LinkGroups)
+            {
+                <div class="site-footer__section">
+                    <div class="site-footer__heading">@group.Title</div>
+                    @foreach (var link in group.Links)
+                    {
+                        <a href="@link.Url"
+                           class="site-footer__link"
+                           target="@(link.OpenInNewTab ? "_blank" : "_self")"
+                           rel="@(link.OpenInNewTab ? "noopener noreferrer" : null)">
+                            @link.Label
+                        </a>
+                    }
+                </div>
+            }
         </div>
     }
 </div>
@@ -46,9 +49,29 @@
 
 <div class="site-footer__bottom">
     <div class="site-footer__copyright">@CopyrightText</div>
-    <div class="site-footer__social">
-        @if (ShowSocialLinks)
-        {
+
+    @if (ShowCommunityGuidelinesLink || ShowCookieSettingsLink)
+    {
+        <div class="site-footer__bottom-links">
+            @if (ShowCommunityGuidelinesLink)
+            {
+                <a href="/community-guidelines" class="site-footer__link">Community Guidelines</a>
+            }
+            @if (ShowCookieSettingsLink)
+            {
+                <AppButton Variant="Variant.Text"
+                           Size="Size.Small"
+                           Class="site-footer__link"
+                           OnClick="OnCookieSettingsClick">
+                    Cookie Settings
+                </AppButton>
+            }
+        </div>
+    }
+
+    @if (ShowSocialLinks && SocialLinks.Count > 0)
+    {
+        <div class="site-footer__social">
             @foreach (var social in SocialLinks)
             {
                 <AppIconButton Icon="@FooterIconHelper.GetSocialIcon(social.Platform)"
@@ -60,21 +83,8 @@
                                Target="_blank"
                                rel="noopener noreferrer" />
             }
-        }
-        @if (ShowCommunityGuidelinesLink)
-        {
-            <a href="/community-guidelines" class="site-footer__link">Community Guidelines</a>
-        }
-        @if (ShowCookieSettingsLink)
-        {
-            <AppButton Variant="Variant.Text"
-                       Size="Size.Small"
-                       Class="site-footer__link"
-                       OnClick="OnCookieSettingsClick">
-                Cookie Settings
-            </AppButton>
-        }
-    </div>
+        </div>
+    }
 </div>
 
 @code {
@@ -89,15 +99,4 @@
     [Parameter] public bool ShowCommunityGuidelinesLink { get; set; }
     [Parameter] public List<FooterLinkGroupModel> LinkGroups { get; set; } = [];
     [Parameter] public EventCallback OnCookieSettingsClick { get; set; }
-
-    private string GridColumns
-    {
-        get
-        {
-            var cols = 1 + LinkGroups.Count;
-            return cols <= 1
-                ? "grid-template-columns: 1fr;"
-                : $"grid-template-columns: 1.5fr {string.Join(" ", Enumerable.Repeat("1fr", LinkGroups.Count))};";
-        }
-    }
 }

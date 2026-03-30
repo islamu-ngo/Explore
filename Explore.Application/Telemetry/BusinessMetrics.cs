@@ -23,6 +23,8 @@ public sealed class BusinessMetrics
     private readonly Counter<long> _externalApiKeysRevoked;
     private readonly Counter<long> _externalApiKeyAuthenticationAttempts;
     private readonly Counter<long> _externalApiKeyThrottleEvents;
+    private readonly Counter<long> _externalApiKeyPolicyUpdated;
+    private readonly Counter<long> _externalApiKeyRotated;
 
     public BusinessMetrics(IMeterFactory meterFactory)
     {
@@ -72,6 +74,16 @@ public sealed class BusinessMetrics
             "explore.external_api_keys.throttled",
             unit: "{throttle}",
             description: "Total external API key throttle events by policy");
+
+        _externalApiKeyPolicyUpdated = meter.CreateCounter<long>(
+            "explore.external_api_keys.policy_updated",
+            unit: "{update}",
+            description: "Total external API key policy updates");
+
+        _externalApiKeyRotated = meter.CreateCounter<long>(
+            "explore.external_api_keys.rotated",
+            unit: "{rotation}",
+            description: "Total external API key rotations");
     }
 
     public void RecordEventCreated(string? tenantId = null, string? eventType = null)
@@ -135,5 +147,19 @@ public sealed class BusinessMetrics
             new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
             new KeyValuePair<string, object?>("owner_type", ownerType ?? "unknown"),
             new KeyValuePair<string, object?>("policy", policy));
+    }
+
+    public void RecordExternalApiKeyPolicyUpdated(string? tenantId = null, string? ownerType = null)
+    {
+        _externalApiKeyPolicyUpdated.Add(1,
+            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
+            new KeyValuePair<string, object?>("owner_type", ownerType ?? "unknown"));
+    }
+
+    public void RecordExternalApiKeyRotated(string? tenantId = null, string? ownerType = null)
+    {
+        _externalApiKeyRotated.Add(1,
+            new KeyValuePair<string, object?>("tenant_id", tenantId ?? "default"),
+            new KeyValuePair<string, object?>("owner_type", ownerType ?? "unknown"));
     }
 }

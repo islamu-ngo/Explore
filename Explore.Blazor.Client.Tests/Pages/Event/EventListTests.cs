@@ -46,6 +46,8 @@ public class EventListTests : IDisposable
         _ctx.Services.AddSingleton(Substitute.For<IAuthStateService>());
         _ctx.Services.AddSingleton(Substitute.For<IContactShareConsentService>());
         _ctx.Services.AddSingleton(new Explore.Blazor.Client.Services.SidebarState());
+        _ctx.Services.AddSingleton(Substitute.For<IUserSettingsService>());
+        _ctx.Services.AddSingleton(new FeatureStateContainer());
 
         SetupDefaultLookupResponses();
         _publicExperienceService.GetSettingsAsync().Returns(new PublicExperienceSettingsModel

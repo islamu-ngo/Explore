@@ -1,0 +1,192 @@
+@* ABOUTME: Two-phase dialog for creating external API keys — form entry then one-time secret display. *@
+@* ABOUTME: Injects IExternalApiKeyService to create the key and show the secret before closing. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Constants
+@using Explore.Blazor.Client.Services
+@inject IExternalApiKeyService ApiKeyService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        @if (!_created)
+        {
+            <MudForm @ref="_form" @bind-IsValid="_formValid">
+                <MudStack Spacing="4">
+                    <AppTextField T="string"
+                                  @bind-Value="_dto.Name"
+                                  Label="Name"
+                                  Required="true"
+                                  RequiredError="Name is required"
+                                  HelperText="A descriptive name for this API key" />
+
+                    <AppTextField T="string"
+                                  @bind-Value="_dto.Description"
+                                  Label="Description"
+                                  Lines="2"
+                                  HelperText="Optional description of what this key is used for" />
+
+                    <MudText Typo="Typo.subtitle2" Class="mt-2">Scopes</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Select the permissions this API key should have.
+                    </MudText>
+
+                    @foreach (var scopeGroup in ExternalApiKeyConstants.GetAvailableScopesForOwnerType(OwnerType).GroupBy(s => s.Category))
+                    {
+                        <MudText Typo="Typo.overline" Color="Color.Secondary" Class="mt-2">@scopeGroup.Key</MudText>
+                        @foreach (var scope in scopeGroup)
+                        {
+                            <MudCheckBox T="bool"
+                                         Value="@_selectedScopes.Contains(scope.Value)"
+                                         ValueChanged="@(v => ToggleScope(scope.Value, v))"
+                                         Label="@($"{scope.Value} — {scope.Description}")"
+                                         Dense="true"
+                                         Size="Size.Small" />
+                        }
+                    }
+
+                    <MudDatePicker Label="Expires At (optional)"
+                                   @bind-Date="_expiresAt"
+                                   MinDate="DateTime.Today.AddDays(1)"
+                                   Clearable="true"
+                                   HelperText="Leave empty for no expiration" />
+                </MudStack>
+            </MudForm>
+
+            @if (!string.IsNullOrWhiteSpace(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mt-4" Dense="true">@_errorMessage</MudAlert>
+            }
+        }
+        else
+        {
+            <MudStack Spacing="4">
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Filled">
+                    Copy this API key now. You will not be able to see it again.
+                </MudAlert>
+
+                <MudTextField T="string"
+                              Value="@_createdSecret"
+                              Label="API Key"
+                              ReadOnly="true"
+                              Variant="Variant.Outlined"
+                              Adornment="Adornment.End"
+                              AdornmentIcon="@Icons.Material.Filled.ContentCopy"
+                              OnAdornmentClick="CopyToClipboard"
+                              Style="font-family: monospace;" />
+
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    Use this key in the <code>X-API-Key</code> header for API requests.
+                </MudText>
+            </MudStack>
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (!_created)
+        {
+            <AppButton OnClick="Cancel" Disabled="_isSubmitting">Cancel</AppButton>
+            <AppButton OnClick="Submit" Disabled="@(_isSubmitting || !_selectedScopes.Any())">
+                @(_isSubmitting ? "Creating..." : "Create API Key")
+            </AppButton>
+        }
+        else
+        {
+            <AppButton OnClick="Close">Done</AppButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public int OwnerType { get; set; } = 1;
+    [Parameter] public Guid? OrganizationId { get; set; }
+    [Parameter] public Guid? GroupId { get; set; }
+
+    private MudForm _form = default!;
+    private bool _formValid;
+    private bool _isSubmitting;
+    private bool _created;
+    private string? _errorMessage;
+    private string? _createdSecret;
+
+    private readonly CreateExternalApiKeyDto _dto = new() { Name = string.Empty };
+    private readonly HashSet<string> _selectedScopes = new(StringComparer.OrdinalIgnoreCase);
+    private DateTime? _expiresAt;
+
+    private void ToggleScope(string scope, bool selected)
+    {
+        if (selected)
+            _selectedScopes.Add(scope);
+        else
+            _selectedScopes.Remove(scope);
+    }
+
+    private async Task Submit()
+    {
+        await _form.Validate();
+
+        if (!_form.IsValid || !_selectedScopes.Any())
+        {
+            _errorMessage = _selectedScopes.Any() ? null : "Select at least one scope.";
+            return;
+        }
+
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        _dto.OwnerType = OwnerType;
+        _dto.OrganizationId = OrganizationId;
+        _dto.GroupId = GroupId;
+        _dto.Scopes = _selectedScopes.OrderBy(s => s).ToList();
+        _dto.ExpiresAt = _expiresAt.HasValue ? new DateTimeOffset(_expiresAt.Value, TimeSpan.Zero) : null;
+
+        try
+        {
+            var response = await ApiKeyService.CreateApiKeyAsync(_dto);
+
+            if (response?.Success == true && !string.IsNullOrWhiteSpace(response.ApiKey))
+            {
+                _createdSecret = response.ApiKey;
+                _created = true;
+            }
+            else
+            {
+                _errorMessage = response?.Message ?? "Failed to create API key.";
+                if (response?.Errors?.Any() == true)
+                {
+                    _errorMessage += " " + string.Join("; ", response.Errors);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error creating API key: {ex.Message}";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task CopyToClipboard()
+    {
+        // Clipboard API isn't available in all render modes — best-effort
+        try
+        {
+            await DialogService.ShowMessageBoxAsync(
+                "Copied!",
+                "The API key has been shown. Please select and copy it manually if clipboard access is unavailable.",
+                yesText: "OK");
+        }
+        catch
+        {
+            // Ignore
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+    private void Close() => MudDialog.Close(DialogResult.Ok(true));
+}

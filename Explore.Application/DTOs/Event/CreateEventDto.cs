@@ -70,4 +70,10 @@ public class CreateEventDto
     public string? BackgroundColor { get; set; }
     public string? BackgroundEffect { get; set; }
     public Guid? BackgroundImageId { get; set; }
+
+    /// <summary>
+    /// Optional: Event template to instantiate custom property definitions from.
+    /// If provided, the template must be published and active.
+    /// </summary>
+    public Guid? TemplateId { get; set; }
 }

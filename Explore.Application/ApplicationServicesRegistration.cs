@@ -37,6 +37,8 @@ public static class ApplicationServicesRegistration
         // Authorization: dynamic permission infrastructure
         services.AddScoped<ICapabilityCeilingService, CapabilityCeilingService>();
         services.AddScoped<ICustomPropertyGovernancePolicy, CustomPropertyGovernancePolicy>();
+        services.AddScoped<IEventTemplateInstantiationService, EventTemplateInstantiationService>();
+        services.AddScoped<IEventSessionTemplateInstantiationService, EventSessionTemplateInstantiationService>();
         services.AddScoped<IPermissionRegistryService, PermissionRegistryService>();
         services.AddScoped<IContactShareConsentService, ContactShareConsentService>();
 

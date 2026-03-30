@@ -1,6 +1,7 @@
 using AutoMapper;
 using Event.Application.UnitTests.Common;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.Features.EventSessions.Handlers.Commands;
 using Explore.Application.Features.EventSessions.Requests.Commands;
@@ -18,6 +19,9 @@ public class CreateEventSessionCommandHandlerTests
     private readonly ILocationRepository _locationRepository;
     private readonly IRegistrationModeRepository _registrationModeRepository;
     private readonly IEventSessionIslamicAspectRepository _eventSessionIslamicAspectRepository;
+    private readonly IEventSessionTemplateRepository _eventSessionTemplateRepository;
+    private readonly IEventSessionCustomPropertyRepository _eventSessionCustomPropertyRepository;
+    private readonly IEventSessionTemplateInstantiationService _instantiationService;
     private readonly IMapper _mapper;
     private readonly CreateEventSessionCommandHandler _handler;
 
@@ -28,6 +32,9 @@ public class CreateEventSessionCommandHandlerTests
         _locationRepository = Substitute.For<ILocationRepository>();
         _registrationModeRepository = Substitute.For<IRegistrationModeRepository>();
         _eventSessionIslamicAspectRepository = Substitute.For<IEventSessionIslamicAspectRepository>();
+        _eventSessionTemplateRepository = Substitute.For<IEventSessionTemplateRepository>();
+        _eventSessionCustomPropertyRepository = Substitute.For<IEventSessionCustomPropertyRepository>();
+        _instantiationService = Substitute.For<IEventSessionTemplateInstantiationService>();
         _mapper = Substitute.For<IMapper>();
 
         _handler = new CreateEventSessionCommandHandler(
@@ -36,6 +43,9 @@ public class CreateEventSessionCommandHandlerTests
             _locationRepository,
             _registrationModeRepository,
             _eventSessionIslamicAspectRepository,
+            _eventSessionTemplateRepository,
+            _eventSessionCustomPropertyRepository,
+            _instantiationService,
             _mapper
         );
     }

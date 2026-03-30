@@ -145,6 +145,14 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IEventSessionLanguageRepository, EventSessionLanguageRepository>();
         services.AddScoped<IEventSessionSpeakerRepository, EventSessionSpeakerRepository>();
 
+        // Event Custom Property Repositories
+        services.AddScoped<IEventTemplateRepository, EventTemplateRepository>();
+        services.AddScoped<IEventCustomPropertyRepository, EventCustomPropertyRepository>();
+
+        // Event Session Custom Property Repositories
+        services.AddScoped<IEventSessionTemplateRepository, EventSessionTemplateRepository>();
+        services.AddScoped<IEventSessionCustomPropertyRepository, EventSessionCustomPropertyRepository>();
+
         // Event Aspect Repositories
         services.AddScoped<IEventIslamicAspectRepository, EventIslamicAspectRepository>();
         services.AddScoped<IEventTechAspectRepository, EventTechAspectRepository>();

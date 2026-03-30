@@ -14,6 +14,7 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
     private readonly IOrganizationRepository _organizationRepository;
     private readonly IGroupRepository _groupRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
+    private readonly IEventTemplateRepository _eventTemplateRepository;
 
     public CreateEventDtoValidator(
         IAudienceAgeRepository audienceAgeRepository,
@@ -21,7 +22,8 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
         IEventTypeRepository eventTypeRepository,
         IOrganizationRepository organizationRepository,
         IGroupRepository groupRepository,
-        IStorageObjectRepository storageObjectRepository)
+        IStorageObjectRepository storageObjectRepository,
+        IEventTemplateRepository eventTemplateRepository)
     {
         _audienceAgeRepository = audienceAgeRepository;
         _audienceGenderRepository = audienceGenderRepository;
@@ -29,6 +31,7 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
         _organizationRepository = organizationRepository;
         _groupRepository = groupRepository;
         _storageObjectRepository = storageObjectRepository;
+        _eventTemplateRepository = eventTemplateRepository;
 
         RuleFor(p => p.Title)
             .NotEmpty().WithMessage("{PropertyName} is required.")
@@ -139,6 +142,16 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
             .MaximumLength(500)
             .When(p => !string.IsNullOrEmpty(p.EventUrl))
             .WithMessage("{PropertyName} must not exceed 500 characters.");
+
+        // TemplateId is optional - if provided, validate it exists
+        RuleFor(p => p.TemplateId)
+            .MustAsync(async (id, cancellation) =>
+            {
+                if (!id.HasValue) return true;
+                return await _eventTemplateRepository.Exists(id.Value);
+            })
+            .When(p => p.TemplateId.HasValue)
+            .WithMessage("Event template does not exist.");
 
         // TenantId is set by the handler from context, not by the client
         // No validation needed here

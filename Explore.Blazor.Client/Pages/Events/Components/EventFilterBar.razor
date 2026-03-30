@@ -502,6 +502,14 @@
             </MudText>
         }
         <MudSpacer />
+        @if (ShowCustomizationButton)
+        {
+            <AppIconButton Icon="@Icons.Material.Filled.Tune"
+                           Color="Color.Default"
+                           Size="Size.Medium"
+                           OnClick="@(() => OnCustomizationRequested.InvokeAsync())"
+                           aria-label="Customize view" />
+        }
         <MudToggleGroup T="LayoutMode" Value="CurrentLayout" ValueChanged="OnLayoutChanged"
                         Size="Size.Medium" Color="Color.Primary"
                         Class="filter-bar__layout-switcher">

@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.ExternalApiKey.Validators;
 using Explore.Application.Features.ExternalApiKeys.Requests.Commands;
 using Explore.Application.Responses;
+using Explore.Application.Telemetry;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using MediatR;
@@ -20,6 +21,7 @@ public class UpdateExternalApiKeyPolicyCommandHandler : IRequestHandler<UpdateEx
     private readonly IGroupMemberRepository _groupMemberRepository;
     private readonly IAdminContext _adminContext;
     private readonly IUserContext _userContext;
+    private readonly BusinessMetrics _metrics;
     private readonly ILogger<UpdateExternalApiKeyPolicyCommandHandler> _logger;
 
     public UpdateExternalApiKeyPolicyCommandHandler(
@@ -28,6 +30,7 @@ public class UpdateExternalApiKeyPolicyCommandHandler : IRequestHandler<UpdateEx
         IGroupMemberRepository groupMemberRepository,
         IAdminContext adminContext,
         IUserContext userContext,
+        BusinessMetrics metrics,
         ILogger<UpdateExternalApiKeyPolicyCommandHandler> logger)
     {
         _externalApiKeyRepository = externalApiKeyRepository;
@@ -35,6 +38,7 @@ public class UpdateExternalApiKeyPolicyCommandHandler : IRequestHandler<UpdateEx
         _groupMemberRepository = groupMemberRepository;
         _adminContext = adminContext;
         _userContext = userContext;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -69,6 +73,10 @@ public class UpdateExternalApiKeyPolicyCommandHandler : IRequestHandler<UpdateEx
         externalApiKey.UpdatedBy = currentUserId;
 
         await _externalApiKeyRepository.Update(externalApiKey);
+
+        _metrics.RecordExternalApiKeyPolicyUpdated(
+            externalApiKey.TenantId?.ToString() ?? "platform",
+            externalApiKey.OwnerType.ToString());
 
         _logger.LogInformation(
             "External API key {KeyId} policy updated for tenant {TenantId} by user {UserId}.",

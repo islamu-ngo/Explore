@@ -86,7 +86,7 @@ public static class RateLimitingExtensions
                     var metrics = ctx.HttpContext.RequestServices.GetRequiredService<BusinessMetrics>();
                     metrics.RecordExternalApiKeyThrottle(
                         GlobalPolicy.ToLowerInvariant(),
-                        apiKeyPrincipal.TenantId.ToString(),
+                        apiKeyPrincipal.TenantId?.ToString() ?? "platform",
                         apiKeyPrincipal.OwnerType.ToString());
 
                     var loggerFactory = ctx.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>();
@@ -94,7 +94,7 @@ public static class RateLimitingExtensions
                     logger.LogWarning(
                         "External API key {KeyId} for tenant {TenantId} was throttled by rate-limit policy {Policy} on {Path}.",
                         apiKeyPrincipal.KeyId,
-                        apiKeyPrincipal.TenantId,
+                        apiKeyPrincipal.TenantId?.ToString() ?? "platform",
                         GlobalPolicy,
                         ctx.HttpContext.Request.Path);
                 }

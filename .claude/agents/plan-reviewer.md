@@ -1,6 +1,3 @@
-ABOUTME: Plan review agent focusing on architecture, security, and tests.
-ABOUTME: Lists required reads, must-check items, and outputs.
-
 ---
 name: plan-reviewer
 description: Reviews implementation plans for {Project} (architecture, security, tests).
@@ -9,6 +6,9 @@ enforcement: suggest
 priority: high
 tools: Read, Glob, Grep
 ---
+
+ABOUTME: Plan review agent focusing on architecture, security, and tests.
+ABOUTME: Lists required reads, must-check items, and outputs.
 
 # Plan Reviewer
 

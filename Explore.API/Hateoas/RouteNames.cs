@@ -281,6 +281,52 @@ public static class RouteNames
 
     #endregion
 
+    #region Event Template Routes
+
+    public const string GetEventTemplates = "GetEventTemplates";
+    public const string GetEventTemplateById = "GetEventTemplateById";
+    public const string CreateEventTemplate = "CreateEventTemplate";
+    public const string UpdateEventTemplate = "UpdateEventTemplate";
+    public const string DeleteEventTemplate = "DeleteEventTemplate";
+
+    #endregion
+
+    #region Event Custom Property Routes
+
+    public const string GetEventCustomPropertyDefinitions = "GetEventCustomPropertyDefinitions";
+    public const string GetEventCustomPropertyDefinitionById = "GetEventCustomPropertyDefinitionById";
+    public const string CreateEventCustomPropertyDefinition = "CreateEventCustomPropertyDefinition";
+    public const string UpdateEventCustomPropertyDefinition = "UpdateEventCustomPropertyDefinition";
+    public const string DeleteEventCustomPropertyDefinition = "DeleteEventCustomPropertyDefinition";
+    public const string GetEventCustomPropertyValues = "GetEventCustomPropertyValues";
+    public const string SetEventCustomPropertyValue = "SetEventCustomPropertyValue";
+    public const string SetEventCustomPropertyMultiValues = "SetEventCustomPropertyMultiValues";
+
+    #endregion
+
+    #region Event Session Template Routes
+
+    public const string GetEventSessionTemplates = "GetEventSessionTemplates";
+    public const string GetEventSessionTemplateById = "GetEventSessionTemplateById";
+    public const string CreateEventSessionTemplate = "CreateEventSessionTemplate";
+    public const string UpdateEventSessionTemplate = "UpdateEventSessionTemplate";
+    public const string DeleteEventSessionTemplate = "DeleteEventSessionTemplate";
+
+    #endregion
+
+    #region Event Session Custom Property Routes
+
+    public const string GetEventSessionCustomPropertyDefinitions = "GetEventSessionCustomPropertyDefinitions";
+    public const string GetEventSessionCustomPropertyDefinitionById = "GetEventSessionCustomPropertyDefinitionById";
+    public const string CreateEventSessionCustomPropertyDefinition = "CreateEventSessionCustomPropertyDefinition";
+    public const string UpdateEventSessionCustomPropertyDefinition = "UpdateEventSessionCustomPropertyDefinition";
+    public const string DeleteEventSessionCustomPropertyDefinition = "DeleteEventSessionCustomPropertyDefinition";
+    public const string GetEventSessionCustomPropertyValues = "GetEventSessionCustomPropertyValues";
+    public const string SetEventSessionCustomPropertyValue = "SetEventSessionCustomPropertyValue";
+    public const string SetEventSessionCustomPropertyMultiValues = "SetEventSessionCustomPropertyMultiValues";
+
+    #endregion
+
     #region Settings Routes
 
     public const string GetUserSettings = "GetUserSettings";

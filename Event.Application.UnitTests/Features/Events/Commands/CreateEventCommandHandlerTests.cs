@@ -3,6 +3,7 @@ using AutoMapper;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Events.Handlers.Commands;
 using Explore.Application.Features.Events.Requests.Commands;
@@ -32,6 +33,9 @@ public class CreateEventCommandHandlerTests
     private readonly IAudienceGenderRepository _audienceGenderRepository;
     private readonly IEventTypeRepository _eventTypeRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
+    private readonly IEventTemplateRepository _eventTemplateRepository;
+    private readonly IEventCustomPropertyRepository _eventCustomPropertyRepository;
+    private readonly IEventTemplateInstantiationService _instantiationService;
     private readonly IUserContext _userContext;
     private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
@@ -54,6 +58,9 @@ public class CreateEventCommandHandlerTests
         _audienceGenderRepository = Substitute.For<IAudienceGenderRepository>();
         _eventTypeRepository = Substitute.For<IEventTypeRepository>();
         _storageObjectRepository = Substitute.For<IStorageObjectRepository>();
+        _eventTemplateRepository = Substitute.For<IEventTemplateRepository>();
+        _eventCustomPropertyRepository = Substitute.For<IEventCustomPropertyRepository>();
+        _instantiationService = Substitute.For<IEventTemplateInstantiationService>();
         _userContext = Substitute.For<IUserContext>();
         _tenantContext = Substitute.For<ITenantContext>();
         _mapper = Substitute.For<IMapper>();
@@ -85,6 +92,9 @@ public class CreateEventCommandHandlerTests
             _audienceGenderRepository,
             _eventTypeRepository,
             _storageObjectRepository,
+            _eventTemplateRepository,
+            _eventCustomPropertyRepository,
+            _instantiationService,
             _userContext,
             _tenantContext,
             _mapper,

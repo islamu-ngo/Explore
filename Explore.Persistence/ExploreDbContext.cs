@@ -144,6 +144,32 @@ public class ExploreDbContext : DbContext
         modelBuilder.Entity<EventCustomPropertyProjection>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
 
+        // ===== Event Session EAV Entities =====
+        modelBuilder.Entity<EventSessionTemplate>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
+        modelBuilder.Entity<EventSessionTemplateCustomPropertyDefinition>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
+        modelBuilder.Entity<EventSessionTemplateCustomPropertyOption>()
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
+        modelBuilder.Entity<EventSessionCustomPropertyDefinition>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
+        modelBuilder.Entity<EventSessionCustomPropertyOption>()
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
+        modelBuilder.Entity<EventSessionCustomPropertyValue>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
+
+        modelBuilder.Entity<EventSessionCustomPropertyProjection>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+
         // ===== Actor Entities =====
         // Entities with both Tenant and Soft Delete filters
         modelBuilder.Entity<Actor>()
@@ -214,7 +240,8 @@ public class ExploreDbContext : DbContext
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
 
         modelBuilder.Entity<TenantNavigationLink>()
-            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty))
+            .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
 
         // Footer link groups: instance-default groups (TenantId = null) are always visible;
         // tenant-owned groups respect the tenant filter (same pattern as EventType).
@@ -386,6 +413,13 @@ public class ExploreDbContext : DbContext
     public DbSet<EventSessionLanguage> EventSessionLanguages { get; set; }
     public DbSet<EventSessionSpeaker> EventSessionSpeakers { get; set; }
     public DbSet<EventSessionAgendaItem> EventSessionAgendaItems { get; set; }
+    public DbSet<EventSessionTemplate> EventSessionTemplates { get; set; }
+    public DbSet<EventSessionTemplateCustomPropertyDefinition> EventSessionTemplateCustomPropertyDefinitions { get; set; }
+    public DbSet<EventSessionTemplateCustomPropertyOption> EventSessionTemplateCustomPropertyOptions { get; set; }
+    public DbSet<EventSessionCustomPropertyDefinition> EventSessionCustomPropertyDefinitions { get; set; }
+    public DbSet<EventSessionCustomPropertyOption> EventSessionCustomPropertyOptions { get; set; }
+    public DbSet<EventSessionCustomPropertyValue> EventSessionCustomPropertyValues { get; set; }
+    public DbSet<EventSessionCustomPropertyProjection> EventSessionCustomPropertyProjections { get; set; }
     public DbSet<EventIslamicAspect> EventIslamicAspects { get; set; }
     public DbSet<EventTechAspect> EventTechAspects { get; set; }
 

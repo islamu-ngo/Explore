@@ -1,6 +1,3 @@
-ABOUTME: Debugging agent for auth/authz route issues in the project.
-ABOUTME: Lists required reads, must-do checks, and expected outputs.
-
 ---
 name: auth-route-debugger
 description: Debugs ASP.NET Core auth (OIDC/JWT) issues for {Project}.
@@ -9,6 +6,9 @@ enforcement: suggest
 priority: high
 tools: Read, Glob, Grep, Bash
 ---
+
+ABOUTME: Debugging agent for auth/authz route issues in the project.
+ABOUTME: Lists required reads, must-do checks, and expected outputs.
 
 # Auth Route Debugger
 

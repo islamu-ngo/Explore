@@ -1,0 +1,365 @@
+@* ABOUTME: Multi-layout event card component for the event list page.
+   ABOUTME: Supports CompactGrid, DetailedList, and SingleRow layout modes with icon badges and progressive disclosure. *@
+
+<div class="event-card-root">
+    @if (Layout == LayoutMode.CompactGrid)
+    {
+        @* ── Mode 1: Compact Grid — image-dominant with overlay + progressive disclosure ── *@
+        <MudCard @onclick="HandleClick" Class="@CardCssClass" Outlined="true" Elevation="0" Style="overflow: hidden; cursor: pointer;">
+            <div class="event-card__image-wrapper">
+                @if (HasManagementMenu)
+                {
+                    <div class="event-card__action-menu event-card__action-menu--overlay" @onclick:stopPropagation="true">
+                        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
+                                 AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                                 Class="event-card__menu-button">
+                            @if (CanEdit)
+                            {
+                                <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => HandleEdit())">Edit</MudMenuItem>
+                            }
+                            @if (CanDelete)
+                            {
+                                <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" OnClick="@(() => HandleDelete())">Delete</MudMenuItem>
+                            }
+                        </MudMenu>
+                    </div>
+                }
+                <div class="event-card__image-blur" style="background-image: url('@ImageSource');"></div>
+                <MudImage Src="@ImageSource" ObjectFit="ObjectFit.Contain" Class="event-card__image" />
+
+                @* Icon badges (top-left) — always visible *@
+                <div class="event-card__icon-badges event-card__icon-badges--compact">
+                    <MudTooltip Text="@Event.VisibilityTypeFullName">
+                        <MudIcon Icon="@VisibilityIcon" Size="Size.Small" />
+                    </MudTooltip>
+                    <MudTooltip Text="@Event.AudienceGenderFullName">
+                        <MudIcon Icon="@AudienceGenderIcon" Size="Size.Small" />
+                    </MudTooltip>
+                    <MudTooltip Text="@FormatTooltip">
+                        <MudIcon Icon="@FormatIcon" Size="Size.Small" />
+                    </MudTooltip>
+                </div>
+
+                @* Overlay — title + date + progressive disclosure *@
+                <div class="event-card__overlay">
+                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled" Class="event-card__overlay-chip">
+                        @EventTypeName
+                    </MudChip>
+                    <MudText Typo="Typo.subtitle2" Class="event-card__overlay-title">@Event.Title</MudText>
+                    @if (IsFieldVisible("event_list.card.show_date"))
+                    {
+                        <div class="event-card__overlay-meta">
+                            <MudText Typo="Typo.caption">@(Event.FirstSessionDate?.ToString("MMM dd") ?? "TBD")</MudText>
+                        </div>
+                    }
+                    @if (CompactExtraFieldCount > 0)
+                    {
+                        <div class="event-card__more-badge">
+                            <MudChip T="string" Size="Size.Small" Color="Color.Dark" Variant="Variant.Filled" Class="event-card__more-chip">
+                                +@CompactExtraFieldCount more
+                            </MudChip>
+                        </div>
+                    }
+                </div>
+
+                @* Hover reveal — hidden fields shown on hover *@
+                @if (CompactExtraFieldCount > 0)
+                {
+                    <div class="event-card__hover-reveal">
+                        @if (IsFieldVisible("event_list.card.show_price"))
+                        {
+                            <span class="event-card__hover-item">
+                                <MudIcon Icon="@Icons.Material.Outlined.Sell" Size="Size.Small" />
+                                @if ((Event.Price ?? 0) == 0)
+                                {
+                                    <span>Free</span>
+                                }
+                                else
+                                {
+                                    <span>@($"{Event.CurrencyCode ?? "€"}{Event.Price:F2}")</span>
+                                }
+                            </span>
+                        }
+                        @if (IsFieldVisible("event_list.card.show_status"))
+                        {
+                            <span class="event-card__hover-item">
+                                <MudIcon Icon="@Icons.Material.Outlined.Info" Size="Size.Small" />
+                                @Event.EventStatusFullName
+                            </span>
+                        }
+                        @if (IsFieldVisible("event_list.card.show_location"))
+                        {
+                            <span class="event-card__hover-item">
+                                <MudIcon Icon="@Icons.Material.Outlined.LocationOn" Size="Size.Small" />
+                                @LocationText
+                            </span>
+                        }
+                        @if (IsFieldVisible("event_list.card.show_organizer"))
+                        {
+                            <span class="event-card__hover-item">
+                                <MudIcon Icon="@Icons.Material.Outlined.Business" Size="Size.Small" />
+                                @Event.ActorDisplayName
+                            </span>
+                        }
+                        @if (IsFieldVisible("event_list.card.show_description"))
+                        {
+                            <span class="event-card__hover-item event-card__hover-item--description">
+                                @TruncatedDescription
+                            </span>
+                        }
+                    </div>
+                }
+            </div>
+        </MudCard>
+    }
+    else if (Layout == LayoutMode.DetailedList)
+    {
+        @* ── Mode 2: Detailed List — horizontal card with icon badges ── *@
+        <MudCard @onclick="HandleClick" Class="@CardCssClass" Outlined="true" Elevation="0" Style="overflow: hidden; cursor: pointer;">
+            <div class="event-card__horizontal">
+                <div class="event-card__horizontal-image">
+                    <div class="event-card__image-blur" style="background-image: url('@ImageSource');"></div>
+                    <MudImage Src="@ImageSource" ObjectFit="ObjectFit.Contain" Class="event-card__image-foreground" />
+                </div>
+                <div class="event-card__horizontal-content">
+                    @* Header: Title + icon badges + Actions *@
+                    <div class="event-card__dl-header">
+                        <MudText Typo="Typo.subtitle1" Class="event-card__dl-title">@Event.Title</MudText>
+                        <div class="d-flex align-center gap-1 flex-shrink-0">
+                            @* Icon badges inline *@
+                            <div class="event-card__icon-badges">
+                                <MudTooltip Text="@Event.VisibilityTypeFullName">
+                                    <MudIcon Icon="@VisibilityIcon" Size="Size.Small" Color="Color.Default" />
+                                </MudTooltip>
+                                <MudTooltip Text="@Event.AudienceGenderFullName">
+                                    <MudIcon Icon="@AudienceGenderIcon" Size="Size.Small" Color="Color.Default" />
+                                </MudTooltip>
+                                <MudTooltip Text="@FormatTooltip">
+                                    <MudIcon Icon="@FormatIcon" Size="Size.Small" Color="Color.Default" />
+                                </MudTooltip>
+                            </div>
+                            @if (Event.IsUserReported == true)
+                            {
+                                <MudTooltip Text="Community Reported">
+                                    <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Color="Color.Info" />
+                                </MudTooltip>
+                            }
+                            @if (HasManagementMenu)
+                            {
+                                <div @onclick:stopPropagation="true">
+                                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
+                                             AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                                        @if (CanEdit)
+                                        {
+                                            <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => HandleEdit())">Edit</MudMenuItem>
+                                        }
+                                        @if (CanDelete)
+                                        {
+                                            <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" OnClick="@(() => HandleDelete())">Delete</MudMenuItem>
+                                        }
+                                    </MudMenu>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    @* Chips: type + price (reduced from full chip row) *@
+                    <div class="event-card__dl-chips">
+                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="font-weight-bold">@EventTypeName</MudChip>
+                        @if (IsFieldVisible("event_list.card.show_status"))
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@Event.EventStatusFullName</MudChip>
+                        }
+                        @if (IsFieldVisible("event_list.card.show_price"))
+                        {
+                            @if ((Event.Price ?? 0) == 0)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled" Class="px-1">Free</MudChip>
+                            }
+                            else
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text">@($"{Event.CurrencyCode ?? "€"}{Event.Price:F2}")</MudChip>
+                            }
+                        }
+                    </div>
+
+                    @* Description *@
+                    @if (IsFieldVisible("event_list.card.show_description"))
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="event-card__dl-description">@TruncatedDescription</MudText>
+                    }
+
+                    @* Meta: Date, location, organizer *@
+                    <div class="event-card__dl-meta">
+                        @if (IsFieldVisible("event_list.card.show_date"))
+                        {
+                            <span class="event-card__dl-meta-item">
+                                <MudIcon Icon="@Icons.Material.Outlined.CalendarToday" Size="Size.Small" />
+                                @(Event.FirstSessionDate?.ToString("MMM dd, yyyy") ?? "TBD")
+                            </span>
+                        }
+                        @if (IsFieldVisible("event_list.card.show_location"))
+                        {
+                            <span class="event-card__dl-meta-item">
+                                <MudIcon Icon="@Icons.Material.Outlined.LocationOn" Size="Size.Small" />
+                                @LocationText
+                            </span>
+                        }
+                        @if (IsFieldVisible("event_list.card.show_organizer"))
+                        {
+                            var dlOrgUrl = GetActorProfileUrl(Event.ActorId, Event.ActorTypeId);
+                            <span class="event-card__organizer @(dlOrgUrl != null ? "event-card__organizer--clickable" : "")"
+                                  @onclick:stopPropagation="true"
+                                  @onclick="@(() => NavigateToActorProfile(Event.ActorId, Event.ActorTypeId))">
+                                <MudAvatar Size="Size.Small" Image="@Event.ActorProfilePictureUri" Color="Color.Primary" Style="width: 20px; height: 20px; font-size: 0.65rem;">
+                                    @if (string.IsNullOrEmpty(Event.ActorProfilePictureUri) && !string.IsNullOrEmpty(Event.ActorDisplayName))
+                                    {
+                                        @(Event.ActorDisplayName.FirstOrDefault())
+                                    }
+                                </MudAvatar>
+                                <span class="event-card__organizer-name">@Event.ActorDisplayName</span>
+                            </span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </MudCard>
+    }
+    else
+    {
+        @* ── Mode 3: Single Row — full-width with all fields + icon badges ── *@
+        <MudCard @onclick="HandleClick" Class="@CardCssClass" Outlined="true" Elevation="0" Style="overflow: hidden; cursor: pointer;">
+            <div class="event-card__full-row">
+                <div class="event-card__full-row-image">
+                    <div class="event-card__image-blur" style="background-image: url('@ImageSource');"></div>
+                    <MudImage Src="@ImageSource" ObjectFit="ObjectFit.Contain" Class="event-card__image-foreground" />
+                </div>
+                <div class="event-card__full-row-content">
+                    @* Header: Title + subtitle + actions *@
+                    <div class="event-card__sr-header">
+                        <div class="event-card__sr-title-block">
+                            <MudText Typo="Typo.subtitle1" Style="font-weight: 700; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                @Event.Title
+                            </MudText>
+                            @if (!string.IsNullOrEmpty(Event.Subtitle))
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Primary" Style="font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    @Event.Subtitle
+                                </MudText>
+                            }
+                        </div>
+                        <div class="event-card__sr-status-chips">
+                            @if (HasManagementMenu)
+                            {
+                                <div @onclick:stopPropagation="true">
+                                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
+                                             AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                                        @if (CanEdit)
+                                        {
+                                            <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => HandleEdit())">Edit</MudMenuItem>
+                                        }
+                                        @if (CanDelete)
+                                        {
+                                            <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" OnClick="@(() => HandleDelete())">Delete</MudMenuItem>
+                                        }
+                                    </MudMenu>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    @* Chips + icon badges: type, status, price + visibility/gender/format icons *@
+                    <div class="event-card__sr-chips">
+                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="font-weight-bold">@EventTypeName</MudChip>
+                        @if (IsFieldVisible("event_list.card.show_status"))
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@Event.EventStatusFullName</MudChip>
+                        }
+                        @if (IsFieldVisible("event_list.card.show_price"))
+                        {
+                            @if ((Event.Price ?? 0) == 0)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled" Class="px-1">Free</MudChip>
+                            }
+                            else
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text">@($"{Event.CurrencyCode ?? "€"}{Event.Price:F2}")</MudChip>
+                            }
+                        }
+                        @if (!string.IsNullOrEmpty(Event.MadhabFullName))
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Dark" Variant="Variant.Text">@Event.MadhabFullName</MudChip>
+                        }
+                        @* Icon badges inline with chips *@
+                        <div class="event-card__icon-badges event-card__icon-badges--inline">
+                            <MudTooltip Text="@Event.VisibilityTypeFullName">
+                                <MudIcon Icon="@VisibilityIcon" Size="Size.Small" Color="Color.Default" />
+                            </MudTooltip>
+                            <MudTooltip Text="@Event.AudienceGenderFullName">
+                                <MudIcon Icon="@AudienceGenderIcon" Size="Size.Small" Color="Color.Default" />
+                            </MudTooltip>
+                            <MudTooltip Text="@FormatTooltip">
+                                <MudIcon Icon="@FormatIcon" Size="Size.Small" Color="Color.Default" />
+                            </MudTooltip>
+                            @if (!string.IsNullOrEmpty(Event.AudienceAgeFullName))
+                            {
+                                <MudTooltip Text="@Event.AudienceAgeFullName">
+                                    <MudIcon Icon="@Icons.Material.Outlined.Escalator" Size="Size.Small" Color="Color.Default" />
+                                </MudTooltip>
+                            }
+                        </div>
+                        @if (Event.IsUserReported == true)
+                        {
+                            <MudTooltip Text="Community Reported">
+                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Color="Color.Info" />
+                            </MudTooltip>
+                        }
+                    </div>
+
+                    @* Description *@
+                    @if (IsFieldVisible("event_list.card.show_description"))
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="event-card__sr-description">@TruncatedDescription</MudText>
+                    }
+
+                    @* Meta: Date, sessions, location, organizer *@
+                    <div class="event-card__sr-meta">
+                        @if (IsFieldVisible("event_list.card.show_date"))
+                        {
+                            <span class="event-card__sr-meta-item">
+                                <MudIcon Icon="@Icons.Material.Outlined.CalendarToday" Size="Size.Small" />
+                                @(Event.FirstSessionDate?.ToString("MMM dd, yyyy") ?? "TBD")
+                                @if (Event.SessionCount > 1)
+                                {
+                                    <span class="mud-secondary-text">(@Event.SessionCount sessions)</span>
+                                }
+                            </span>
+                        }
+                        @if (IsFieldVisible("event_list.card.show_location"))
+                        {
+                            <span class="event-card__sr-meta-item">
+                                <MudIcon Icon="@Icons.Material.Outlined.LocationOn" Size="Size.Small" />
+                                @LocationText
+                            </span>
+                        }
+                        @if (IsFieldVisible("event_list.card.show_organizer"))
+                        {
+                            var srOrgUrl = GetActorProfileUrl(Event.ActorId, Event.ActorTypeId);
+                            <span class="event-card__organizer @(srOrgUrl != null ? "event-card__organizer--clickable" : "")"
+                                  @onclick:stopPropagation="true"
+                                  @onclick="@(() => NavigateToActorProfile(Event.ActorId, Event.ActorTypeId))">
+                                <MudAvatar Size="Size.Small" Image="@Event.ActorProfilePictureUri" Color="Color.Primary" Style="width: 20px; height: 20px; font-size: 0.65rem;">
+                                    @if (string.IsNullOrEmpty(Event.ActorProfilePictureUri) && !string.IsNullOrEmpty(Event.ActorDisplayName))
+                                    {
+                                        @(Event.ActorDisplayName.FirstOrDefault())
+                                    }
+                                </MudAvatar>
+                                <span class="event-card__organizer-name">@Event.ActorDisplayName</span>
+                            </span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </MudCard>
+    }
+</div>

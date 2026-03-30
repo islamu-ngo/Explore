@@ -1,6 +1,3 @@
-ABOUTME: Web research agent for vetted .NET libraries and patterns.
-ABOUTME: Specifies required reads, sourcing rules, and outputs.
-
 ---
 name: web-research-specialist
 description: Researches .NET ecosystem libraries and patterns for {Project}.
@@ -9,6 +6,9 @@ enforcement: suggest
 priority: medium
 tools: Read, Bash, WebFetch
 ---
+
+ABOUTME: Web research agent for vetted .NET libraries and patterns.
+ABOUTME: Specifies required reads, sourcing rules, and outputs.
 
 # Web Research Specialist
 

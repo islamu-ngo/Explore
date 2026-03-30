@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "https://localhost:52781/"
+      "url": "https://localhost:59023/"
     }
   ],
   "paths": {
@@ -8274,6 +8274,1120 @@
         }
       }
     },
+    "/api/eventcustomproperty": {
+      "get": {
+        "tags": [
+          "EventCustomProperty"
+        ],
+        "summary": "Get all EventCustomPropertyDefinitions",
+        "description": "Get a paginated list of custom property definitions for a specific event. Includes both template-instantiated and ad-hoc definitions. Default page size is 20, max is 100. Response includes HATEOAS navigation links (first, prev, next, last). Send \u0027Prefer: return=minimal\u0027 header to strip links.",
+        "operationId": "GetEventCustomPropertyDefinitions",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventCustomPropertyDefinitionListDto"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventCustomPropertyDefinitionListDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "EventCustomProperty"
+        ],
+        "summary": "Create EventCustomPropertyDefinition",
+        "description": "Create a new ad-hoc custom property definition for a specific event. For template-based definitions, use the event creation endpoint with a templateId instead.",
+        "operationId": "CreateEventCustomPropertyDefinition",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventCustomPropertyDefinitionDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventCustomPropertyDefinitionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v0.1/eventcustomproperty": {
+      "get": {
+        "tags": [
+          "EventCustomProperty"
+        ],
+        "summary": "Get all EventCustomPropertyDefinitions",
+        "description": "Get a paginated list of custom property definitions for a specific event. Includes both template-instantiated and ad-hoc definitions. Default page size is 20, max is 100. Response includes HATEOAS navigation links (first, prev, next, last). Send \u0027Prefer: return=minimal\u0027 header to strip links.",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventCustomPropertyDefinitionListDto"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventCustomPropertyDefinitionListDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "EventCustomProperty"
+        ],
+        "summary": "Create EventCustomPropertyDefinition",
+        "description": "Create a new ad-hoc custom property definition for a specific event. For template-based definitions, use the event creation endpoint with a templateId instead.",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventCustomPropertyDefinitionDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventCustomPropertyDefinitionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/eventcustomproperty/{id}": {
+      "get": {
+        "tags": [
+          "EventCustomProperty"
+        ],
+        "summary": "Get EventCustomPropertyDefinition Details",
+        "description": "Get full details of an event-local custom property definition including its options and provenance information. Response includes links to related resources.",
+        "operationId": "GetEventCustomPropertyDefinitionById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventCustomPropertyDefinitionDto"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventCustomPropertyDefinitionDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "EventCustomProperty"
+        ],
+        "summary": "Update EventCustomPropertyDefinition",
+        "description": "Update an existing event-local custom property definition and replace its option set. Provenance fields (source template information) are read-only and preserved.",
+        "operationId": "UpdateEventCustomPropertyDefinition",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventCustomPropertyDefinitionDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventCustomPropertyDefinitionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "EventCustomProperty"
+        ],
+        "operationId": "DeleteEventCustomPropertyDefinition",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v0.1/eventcustomproperty/{id}": {
+      "get": {
+        "tags": [
+          "EventCustomProperty"
+        ],
+        "summary": "Get EventCustomPropertyDefinition Details",
+        "description": "Get full details of an event-local custom property definition including its options and provenance information. Response includes links to related resources.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventCustomPropertyDefinitionDto"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventCustomPropertyDefinitionDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "EventCustomProperty"
+        ],
+        "summary": "Update EventCustomPropertyDefinition",
+        "description": "Update an existing event-local custom property definition and replace its option set. Provenance fields (source template information) are read-only and preserved.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventCustomPropertyDefinitionDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventCustomPropertyDefinitionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "EventCustomProperty"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/eventcustomproperty/values": {
+      "get": {
+        "tags": [
+          "EventCustomProperty"
+        ],
+        "summary": "Get EventCustomPropertyValues",
+        "description": "Get all custom property values for a specific event across all definitions.",
+        "operationId": "GetEventCustomPropertyValues",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EventCustomPropertyValueDto"
+                  }
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EventCustomPropertyValueDto"
+                  }
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "EventCustomProperty"
+        ],
+        "summary": "Set EventCustomPropertyMultiValues",
+        "description": "Atomically replace all values for a multi-value custom property definition. All existing values for the definition\u002Bevent combination are removed and replaced.",
+        "operationId": "SetEventCustomPropertyMultiValues",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SetEventCustomPropertyMultiValuesDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SetEventCustomPropertyMultiValuesDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v0.1/eventcustomproperty/values": {
+      "get": {
+        "tags": [
+          "EventCustomProperty"
+        ],
+        "summary": "Get EventCustomPropertyValues",
+        "description": "Get all custom property values for a specific event across all definitions.",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EventCustomPropertyValueDto"
+                  }
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EventCustomPropertyValueDto"
+                  }
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "EventCustomProperty"
+        ],
+        "summary": "Set EventCustomPropertyMultiValues",
+        "description": "Atomically replace all values for a multi-value custom property definition. All existing values for the definition\u002Bevent combination are removed and replaced.",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SetEventCustomPropertyMultiValuesDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SetEventCustomPropertyMultiValuesDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/eventcustomproperty/value": {
+      "put": {
+        "tags": [
+          "EventCustomProperty"
+        ],
+        "summary": "Set EventCustomPropertyValue",
+        "description": "Set or update a single custom property value for an event. Uses upsert semantics based on definition ID, event ID, and ordinal.",
+        "operationId": "SetEventCustomPropertyValue",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SetEventCustomPropertyValueDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SetEventCustomPropertyValueDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v0.1/eventcustomproperty/value": {
+      "put": {
+        "tags": [
+          "EventCustomProperty"
+        ],
+        "summary": "Set EventCustomPropertyValue",
+        "description": "Set or update a single custom property value for an event. Uses upsert semantics based on definition ID, event ID, and ordinal.",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SetEventCustomPropertyValueDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SetEventCustomPropertyValueDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      }
+    },
     "/api/eventformat": {
       "get": {
         "tags": [
@@ -11532,6 +12646,1839 @@
         }
       }
     },
+    "/api/eventsessioncustomproperty": {
+      "get": {
+        "tags": [
+          "EventSessionCustomProperty"
+        ],
+        "summary": "Get all EventSessionCustomPropertyDefinitions",
+        "description": "Get a paginated list of custom property definitions for a specific event session. Includes both template-instantiated and ad-hoc definitions. Default page size is 20, max is 100. Response includes HATEOAS navigation links (first, prev, next, last). Send \u0027Prefer: return=minimal\u0027 header to strip links.",
+        "operationId": "GetEventSessionCustomPropertyDefinitions",
+        "parameters": [
+          {
+            "name": "eventSessionId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventSessionCustomPropertyDefinitionListDto"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventSessionCustomPropertyDefinitionListDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "EventSessionCustomProperty"
+        ],
+        "summary": "Create EventSessionCustomPropertyDefinition",
+        "description": "Create a new ad-hoc custom property definition for a specific event session. For template-based definitions, use the event session creation endpoint with a sessionTemplateId instead.",
+        "operationId": "CreateEventSessionCustomPropertyDefinition",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventSessionCustomPropertyDefinitionDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventSessionCustomPropertyDefinitionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v0.1/eventsessioncustomproperty": {
+      "get": {
+        "tags": [
+          "EventSessionCustomProperty"
+        ],
+        "summary": "Get all EventSessionCustomPropertyDefinitions",
+        "description": "Get a paginated list of custom property definitions for a specific event session. Includes both template-instantiated and ad-hoc definitions. Default page size is 20, max is 100. Response includes HATEOAS navigation links (first, prev, next, last). Send \u0027Prefer: return=minimal\u0027 header to strip links.",
+        "parameters": [
+          {
+            "name": "eventSessionId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventSessionCustomPropertyDefinitionListDto"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventSessionCustomPropertyDefinitionListDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "EventSessionCustomProperty"
+        ],
+        "summary": "Create EventSessionCustomPropertyDefinition",
+        "description": "Create a new ad-hoc custom property definition for a specific event session. For template-based definitions, use the event session creation endpoint with a sessionTemplateId instead.",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventSessionCustomPropertyDefinitionDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventSessionCustomPropertyDefinitionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/eventsessioncustomproperty/{id}": {
+      "get": {
+        "tags": [
+          "EventSessionCustomProperty"
+        ],
+        "summary": "Get EventSessionCustomPropertyDefinition Details",
+        "description": "Get full details of an event-session-local custom property definition including its options and provenance information. Response includes links to related resources.",
+        "operationId": "GetEventSessionCustomPropertyDefinitionById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventSessionCustomPropertyDefinitionDto"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventSessionCustomPropertyDefinitionDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "EventSessionCustomProperty"
+        ],
+        "summary": "Update EventSessionCustomPropertyDefinition",
+        "description": "Update an existing event-session-local custom property definition and replace its option set. Provenance fields (source template information) are read-only and preserved.",
+        "operationId": "UpdateEventSessionCustomPropertyDefinition",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventSessionCustomPropertyDefinitionDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventSessionCustomPropertyDefinitionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "EventSessionCustomProperty"
+        ],
+        "operationId": "DeleteEventSessionCustomPropertyDefinition",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v0.1/eventsessioncustomproperty/{id}": {
+      "get": {
+        "tags": [
+          "EventSessionCustomProperty"
+        ],
+        "summary": "Get EventSessionCustomPropertyDefinition Details",
+        "description": "Get full details of an event-session-local custom property definition including its options and provenance information. Response includes links to related resources.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventSessionCustomPropertyDefinitionDto"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventSessionCustomPropertyDefinitionDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "EventSessionCustomProperty"
+        ],
+        "summary": "Update EventSessionCustomPropertyDefinition",
+        "description": "Update an existing event-session-local custom property definition and replace its option set. Provenance fields (source template information) are read-only and preserved.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventSessionCustomPropertyDefinitionDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventSessionCustomPropertyDefinitionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "EventSessionCustomProperty"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/eventsessioncustomproperty/values": {
+      "get": {
+        "tags": [
+          "EventSessionCustomProperty"
+        ],
+        "summary": "Get EventSessionCustomPropertyValues",
+        "description": "Get all custom property values for a specific event session across all definitions.",
+        "operationId": "GetEventSessionCustomPropertyValues",
+        "parameters": [
+          {
+            "name": "eventSessionId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EventSessionCustomPropertyValueDto"
+                  }
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EventSessionCustomPropertyValueDto"
+                  }
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "EventSessionCustomProperty"
+        ],
+        "summary": "Set EventSessionCustomPropertyMultiValues",
+        "description": "Atomically replace all values for a multi-value custom property definition. All existing values for the definition\u002Bevent session combination are removed and replaced.",
+        "operationId": "SetEventSessionCustomPropertyMultiValues",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SetEventSessionCustomPropertyMultiValuesDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SetEventSessionCustomPropertyMultiValuesDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v0.1/eventsessioncustomproperty/values": {
+      "get": {
+        "tags": [
+          "EventSessionCustomProperty"
+        ],
+        "summary": "Get EventSessionCustomPropertyValues",
+        "description": "Get all custom property values for a specific event session across all definitions.",
+        "parameters": [
+          {
+            "name": "eventSessionId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EventSessionCustomPropertyValueDto"
+                  }
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EventSessionCustomPropertyValueDto"
+                  }
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "EventSessionCustomProperty"
+        ],
+        "summary": "Set EventSessionCustomPropertyMultiValues",
+        "description": "Atomically replace all values for a multi-value custom property definition. All existing values for the definition\u002Bevent session combination are removed and replaced.",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SetEventSessionCustomPropertyMultiValuesDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SetEventSessionCustomPropertyMultiValuesDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/eventsessioncustomproperty/value": {
+      "put": {
+        "tags": [
+          "EventSessionCustomProperty"
+        ],
+        "summary": "Set EventSessionCustomPropertyValue",
+        "description": "Set or update a single custom property value for an event session. Uses upsert semantics based on definition ID, event session ID, and ordinal.",
+        "operationId": "SetEventSessionCustomPropertyValue",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SetEventSessionCustomPropertyValueDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SetEventSessionCustomPropertyValueDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v0.1/eventsessioncustomproperty/value": {
+      "put": {
+        "tags": [
+          "EventSessionCustomProperty"
+        ],
+        "summary": "Set EventSessionCustomPropertyValue",
+        "description": "Set or update a single custom property value for an event session. Uses upsert semantics based on definition ID, event session ID, and ordinal.",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SetEventSessionCustomPropertyValueDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/SetEventSessionCustomPropertyValueDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/eventsessiontemplate": {
+      "get": {
+        "tags": [
+          "EventSessionTemplate"
+        ],
+        "summary": "Get all EventSessionTemplates",
+        "description": "Get a paginated list of event session templates for a specific event template. Default page size is 20, max is 100. Response includes HATEOAS navigation links (first, prev, next, last). Send \u0027Prefer: return=minimal\u0027 header to strip links.",
+        "operationId": "GetEventSessionTemplates",
+        "parameters": [
+          {
+            "name": "eventTemplateId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventSessionTemplateListDto"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventSessionTemplateListDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "EventSessionTemplate"
+        ],
+        "summary": "Create EventSessionTemplate",
+        "description": "Create a new event session template with optional custom property definitions.",
+        "operationId": "CreateEventSessionTemplate",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventSessionTemplateDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventSessionTemplateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v0.1/eventsessiontemplate": {
+      "get": {
+        "tags": [
+          "EventSessionTemplate"
+        ],
+        "summary": "Get all EventSessionTemplates",
+        "description": "Get a paginated list of event session templates for a specific event template. Default page size is 20, max is 100. Response includes HATEOAS navigation links (first, prev, next, last). Send \u0027Prefer: return=minimal\u0027 header to strip links.",
+        "parameters": [
+          {
+            "name": "eventTemplateId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventSessionTemplateListDto"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventSessionTemplateListDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "EventSessionTemplate"
+        ],
+        "summary": "Create EventSessionTemplate",
+        "description": "Create a new event session template with optional custom property definitions.",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventSessionTemplateDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventSessionTemplateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/eventsessiontemplate/{id}": {
+      "get": {
+        "tags": [
+          "EventSessionTemplate"
+        ],
+        "summary": "Get EventSessionTemplate Details",
+        "description": "Get full details of an event session template including its custom property definitions and options. Response includes links to related resources.",
+        "operationId": "GetEventSessionTemplateById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventSessionTemplateDto"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventSessionTemplateDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "EventSessionTemplate"
+        ],
+        "summary": "Update EventSessionTemplate",
+        "description": "Update an existing event session template and replace its definition set.",
+        "operationId": "UpdateEventSessionTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventSessionTemplateDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventSessionTemplateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "EventSessionTemplate"
+        ],
+        "operationId": "DeleteEventSessionTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v0.1/eventsessiontemplate/{id}": {
+      "get": {
+        "tags": [
+          "EventSessionTemplate"
+        ],
+        "summary": "Get EventSessionTemplate Details",
+        "description": "Get full details of an event session template including its custom property definitions and options. Response includes links to related resources.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventSessionTemplateDto"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventSessionTemplateDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "EventSessionTemplate"
+        ],
+        "summary": "Update EventSessionTemplate",
+        "description": "Update an existing event session template and replace its definition set.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventSessionTemplateDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventSessionTemplateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "EventSessionTemplate"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      }
+    },
     "/api/eventstatus": {
       "get": {
         "tags": [
@@ -11739,6 +14686,733 @@
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
+            }
+          }
+        }
+      }
+    },
+    "/api/eventtemplate": {
+      "get": {
+        "tags": [
+          "EventTemplate"
+        ],
+        "summary": "Get all EventTemplates",
+        "description": "Get a paginated list of event templates for the current tenant. Optionally filter by event type. Default page size is 20, max is 100. Response includes HATEOAS navigation links (first, prev, next, last). Send \u0027Prefer: return=minimal\u0027 header to strip links.",
+        "operationId": "GetEventTemplates",
+        "parameters": [
+          {
+            "name": "eventTypeId",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventTemplateListDto"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventTemplateListDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "EventTemplate"
+        ],
+        "summary": "Create EventTemplate",
+        "description": "Create a new event template with optional custom property definitions.",
+        "operationId": "CreateEventTemplate",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventTemplateDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventTemplateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v0.1/eventtemplate": {
+      "get": {
+        "tags": [
+          "EventTemplate"
+        ],
+        "summary": "Get all EventTemplates",
+        "description": "Get a paginated list of event templates for the current tenant. Optionally filter by event type. Default page size is 20, max is 100. Response includes HATEOAS navigation links (first, prev, next, last). Send \u0027Prefer: return=minimal\u0027 header to strip links.",
+        "parameters": [
+          {
+            "name": "eventTypeId",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageNumber",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventTemplateListDto"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalCollectionResourceOfEventTemplateListDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "EventTemplate"
+        ],
+        "summary": "Create EventTemplate",
+        "description": "Create a new event template with optional custom property definitions.",
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventTemplateDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventTemplateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/eventtemplate/{id}": {
+      "get": {
+        "tags": [
+          "EventTemplate"
+        ],
+        "summary": "Get EventTemplate Details",
+        "description": "Get full details of an event template including its custom property definitions and options. Response includes links to related resources.",
+        "operationId": "GetEventTemplateById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventTemplateDto"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventTemplateDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "EventTemplate"
+        ],
+        "summary": "Update EventTemplate",
+        "description": "Update an existing event template and replace its definition set.",
+        "operationId": "UpdateEventTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventTemplateDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventTemplateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "EventTemplate"
+        ],
+        "operationId": "DeleteEventTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v0.1/eventtemplate/{id}": {
+      "get": {
+        "tags": [
+          "EventTemplate"
+        ],
+        "summary": "Get EventTemplate Details",
+        "description": "Get full details of an event template including its custom property definitions and options. Response includes links to related resources.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventTemplateDto"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/HalResourceOfEventTemplateDto"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "EventTemplate"
+        ],
+        "summary": "Update EventTemplate",
+        "description": "Update an existing event template and replace its definition set.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventTemplateDto"
+              }
+            },
+            "application/*\u002Bjson; v=0.1": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventTemplateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "EventTemplate"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/hal\u002Bjson; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {}
             }
           }
         }
@@ -12733,6 +16407,138 @@
               "text/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/externalapikey/usage-report": {
+      "get": {
+        "tags": [
+          "ExternalApiKey"
+        ],
+        "summary": "Get API key usage report",
+        "description": "Aggregated request counts and credit usage per API key. Instance admins see platform-wide data; tenant admins see their tenant only. Does not expose secret material.",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "tenantId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExternalApiKeyUsageReportDto"
+                  }
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExternalApiKeyUsageReportDto"
+                  }
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExternalApiKeyUsageReportDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v0.1/externalapikey/usage-report": {
+      "get": {
+        "tags": [
+          "ExternalApiKey"
+        ],
+        "summary": "Get API key usage report",
+        "description": "Aggregated request counts and credit usage per API key. Instance admins see platform-wide data; tenant admins see their tenant only. Does not expose secret material.",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "tenantId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExternalApiKeyUsageReportDto"
+                  }
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExternalApiKeyUsageReportDto"
+                  }
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExternalApiKeyUsageReportDto"
+                  }
                 }
               }
             }
@@ -38238,6 +42044,211 @@
           }
         }
       },
+      "CreateEventCustomPropertyDefinitionDto": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "namespace": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "propertyType": {
+            "$ref": "#/components/schemas/PropertyType"
+          },
+          "isRequired": {
+            "type": "boolean"
+          },
+          "isMulti": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "exposureLevel": {
+            "$ref": "#/components/schemas/ExposureLevel"
+          },
+          "isSearchable": {
+            "type": "boolean"
+          },
+          "isFilterable": {
+            "type": "boolean"
+          },
+          "isExportable": {
+            "type": "boolean"
+          },
+          "isModerationRelevant": {
+            "type": "boolean"
+          },
+          "isAnalyticsRelevant": {
+            "type": "boolean"
+          },
+          "isSystemOwned": {
+            "type": "boolean"
+          },
+          "defaultTextValue": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "defaultNumberValue": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "defaultBooleanValue": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "defaultDateTimeValue": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "defaultOptionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "minLength": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "maxLength": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "regexPattern": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "minNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "maxNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "minDateTime": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "maxDateTime": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "allowedUrlSchemes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateEventCustomPropertyOptionDto"
+            }
+          }
+        }
+      },
+      "CreateEventCustomPropertyOptionDto": {
+        "type": "object",
+        "properties": {
+          "namespace": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "value": {
+            "type": "string"
+          },
+          "isDefault": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "CreateEventDto": {
         "required": [
           "title"
@@ -38434,6 +42445,13 @@
               "string"
             ],
             "format": "uuid"
+          },
+          "templateId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -38547,6 +42565,211 @@
           }
         }
       },
+      "CreateEventSessionCustomPropertyDefinitionDto": {
+        "type": "object",
+        "properties": {
+          "eventSessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "namespace": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "propertyType": {
+            "$ref": "#/components/schemas/PropertyType"
+          },
+          "isRequired": {
+            "type": "boolean"
+          },
+          "isMulti": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "exposureLevel": {
+            "$ref": "#/components/schemas/ExposureLevel"
+          },
+          "isSearchable": {
+            "type": "boolean"
+          },
+          "isFilterable": {
+            "type": "boolean"
+          },
+          "isExportable": {
+            "type": "boolean"
+          },
+          "isModerationRelevant": {
+            "type": "boolean"
+          },
+          "isAnalyticsRelevant": {
+            "type": "boolean"
+          },
+          "isSystemOwned": {
+            "type": "boolean"
+          },
+          "defaultTextValue": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "defaultNumberValue": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "defaultBooleanValue": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "defaultDateTimeValue": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "defaultOptionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "minLength": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "maxLength": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "regexPattern": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "minNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "maxNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "minDateTime": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "maxDateTime": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "allowedUrlSchemes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateEventSessionCustomPropertyOptionDto"
+            }
+          }
+        }
+      },
+      "CreateEventSessionCustomPropertyOptionDto": {
+        "type": "object",
+        "properties": {
+          "namespace": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "value": {
+            "type": "string"
+          },
+          "isDefault": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "CreateEventSessionDto": {
         "type": "object",
         "properties": {
@@ -38619,6 +42842,13 @@
               "null",
               "string"
             ]
+          },
+          "sessionTemplateId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           },
           "islamicAspect": {
             "oneOf": [
@@ -38719,6 +42949,511 @@
               ],
               "format": "int32"
             }
+          }
+        }
+      },
+      "CreateEventSessionTemplateDefinitionDto": {
+        "type": "object",
+        "properties": {
+          "namespace": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "propertyType": {
+            "$ref": "#/components/schemas/PropertyType"
+          },
+          "isRequired": {
+            "type": "boolean"
+          },
+          "isMulti": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "exposureLevel": {
+            "$ref": "#/components/schemas/ExposureLevel"
+          },
+          "isSearchable": {
+            "type": "boolean"
+          },
+          "isFilterable": {
+            "type": "boolean"
+          },
+          "isExportable": {
+            "type": "boolean"
+          },
+          "isModerationRelevant": {
+            "type": "boolean"
+          },
+          "isAnalyticsRelevant": {
+            "type": "boolean"
+          },
+          "isSystemOwned": {
+            "type": "boolean"
+          },
+          "defaultTextValue": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "defaultNumberValue": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "defaultBooleanValue": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "defaultDateTimeValue": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "defaultOptionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "minLength": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "maxLength": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "regexPattern": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "minNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "maxNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "minDateTime": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "maxDateTime": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "allowedUrlSchemes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateEventSessionTemplateOptionDto"
+            }
+          }
+        }
+      },
+      "CreateEventSessionTemplateDto": {
+        "type": "object",
+        "properties": {
+          "eventTemplateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sessionTemplateKey": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "version": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "isPublished": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "definitions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateEventSessionTemplateDefinitionDto"
+            }
+          }
+        }
+      },
+      "CreateEventSessionTemplateOptionDto": {
+        "type": "object",
+        "properties": {
+          "namespace": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "value": {
+            "type": "string"
+          },
+          "isDefault": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "CreateEventTemplateDefinitionDto": {
+        "type": "object",
+        "properties": {
+          "namespace": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "propertyType": {
+            "$ref": "#/components/schemas/PropertyType"
+          },
+          "isRequired": {
+            "type": "boolean"
+          },
+          "isMulti": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "exposureLevel": {
+            "$ref": "#/components/schemas/ExposureLevel"
+          },
+          "isSearchable": {
+            "type": "boolean"
+          },
+          "isFilterable": {
+            "type": "boolean"
+          },
+          "isExportable": {
+            "type": "boolean"
+          },
+          "isModerationRelevant": {
+            "type": "boolean"
+          },
+          "isAnalyticsRelevant": {
+            "type": "boolean"
+          },
+          "isSystemOwned": {
+            "type": "boolean"
+          },
+          "defaultTextValue": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "defaultNumberValue": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "defaultBooleanValue": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "defaultDateTimeValue": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "defaultOptionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "minLength": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "maxLength": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "regexPattern": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "minNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "maxNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "minDateTime": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "maxDateTime": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "allowedUrlSchemes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateEventTemplateOptionDto"
+            }
+          }
+        }
+      },
+      "CreateEventTemplateDto": {
+        "type": "object",
+        "properties": {
+          "templateKey": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "eventTypeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "version": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "isPublished": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "definitions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateEventTemplateDefinitionDto"
+            }
+          }
+        }
+      },
+      "CreateEventTemplateOptionDto": {
+        "type": "object",
+        "properties": {
+          "namespace": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "value": {
+            "type": "string"
+          },
+          "isDefault": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -38919,6 +43654,12 @@
           "name": {
             "type": "string"
           },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "ownerType": {
             "$ref": "#/components/schemas/ExternalApiKeyOwnerType"
           },
@@ -38948,6 +43689,33 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "creditPeriodId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "creditLimit": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "maxRolloverCredits": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -39660,6 +44428,66 @@
       },
       "EntityTypeName": {
         "type": "integer"
+      },
+      "EventCustomPropertyValueDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventCustomPropertyDefinitionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ordinal": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "textValue": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "numberValue": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "booleanValue": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "dateTimeValue": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "optionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        }
       },
       "EventDto": {
         "required": [
@@ -40956,6 +45784,66 @@
           }
         }
       },
+      "EventSessionCustomPropertyValueDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventSessionCustomPropertyDefinitionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventSessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ordinal": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "textValue": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "numberValue": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "booleanValue": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "dateTimeValue": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "optionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
       "EventSessionDto": {
         "required": [
           "eventTitle"
@@ -41594,10 +46482,14 @@
       "ExposureLevel": {
         "type": "integer"
       },
+      "ExternalApiKeyCreditPeriodEnum": {
+        "type": "integer"
+      },
       "ExternalApiKeyListDto": {
         "required": [
           "name",
-          "keyId"
+          "keyId",
+          "maskedKeyId"
         ],
         "type": "object",
         "properties": {
@@ -41608,7 +46500,16 @@
           "name": {
             "type": "string"
           },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "keyId": {
+            "type": "string"
+          },
+          "maskedKeyId": {
             "type": "string"
           },
           "ownerType": {
@@ -41625,7 +46526,10 @@
             }
           },
           "status": {
-            "$ref": "#/components/schemas/ExternalApiKeyStatus"
+            "$ref": "#/components/schemas/ExternalApiKeyStatusEnum"
+          },
+          "statusName": {
+            "type": "string"
           },
           "expiresAt": {
             "type": [
@@ -41640,14 +46544,88 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "creditPeriod": {
+            "$ref": "#/components/schemas/ExternalApiKeyCreditPeriodEnum"
+          },
+          "creditLimit": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "maxRolloverCredits": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },
       "ExternalApiKeyOwnerType": {
         "type": "integer"
       },
-      "ExternalApiKeyStatus": {
+      "ExternalApiKeyStatusEnum": {
         "type": "integer"
+      },
+      "ExternalApiKeyUsageReportDto": {
+        "required": [
+          "apiKeyName"
+        ],
+        "type": "object",
+        "properties": {
+          "apiKeyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "apiKeyName": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "ownerType": {
+            "$ref": "#/components/schemas/ExternalApiKeyOwnerType"
+          },
+          "ownerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "totalRequestCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "totalCreditsUsed": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "creditLimit": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
       },
       "FileContentResult": {
         "type": "object",
@@ -42103,6 +47081,14 @@
           }
         }
       },
+      "HalCollectionEmbeddedOfEventCustomPropertyDefinitionListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array"
+          }
+        }
+      },
       "HalCollectionEmbeddedOfEventListDto": {
         "type": "object",
         "properties": {
@@ -42111,7 +47097,31 @@
           }
         }
       },
+      "HalCollectionEmbeddedOfEventSessionCustomPropertyDefinitionListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array"
+          }
+        }
+      },
       "HalCollectionEmbeddedOfEventSessionListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array"
+          }
+        }
+      },
+      "HalCollectionEmbeddedOfEventSessionTemplateListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array"
+          }
+        }
+      },
+      "HalCollectionEmbeddedOfEventTemplateListDto": {
         "type": "object",
         "properties": {
           "items": {
@@ -42323,6 +47333,58 @@
           }
         }
       },
+      "HalCollectionResourceOfEventCustomPropertyDefinitionListDto": {
+        "type": "object",
+        "properties": {
+          "pageNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalPages": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "hasPrevious": {
+            "type": "boolean"
+          },
+          "hasNext": {
+            "type": "boolean"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            }
+          },
+          "_embedded": {
+            "$ref": "#/components/schemas/HalCollectionEmbeddedOfEventCustomPropertyDefinitionListDto"
+          }
+        }
+      },
       "HalCollectionResourceOfEventListDto": {
         "type": "object",
         "properties": {
@@ -42375,6 +47437,58 @@
           }
         }
       },
+      "HalCollectionResourceOfEventSessionCustomPropertyDefinitionListDto": {
+        "type": "object",
+        "properties": {
+          "pageNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalPages": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "hasPrevious": {
+            "type": "boolean"
+          },
+          "hasNext": {
+            "type": "boolean"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            }
+          },
+          "_embedded": {
+            "$ref": "#/components/schemas/HalCollectionEmbeddedOfEventSessionCustomPropertyDefinitionListDto"
+          }
+        }
+      },
       "HalCollectionResourceOfEventSessionListDto": {
         "type": "object",
         "properties": {
@@ -42424,6 +47538,110 @@
           },
           "_embedded": {
             "$ref": "#/components/schemas/HalCollectionEmbeddedOfEventSessionListDto"
+          }
+        }
+      },
+      "HalCollectionResourceOfEventSessionTemplateListDto": {
+        "type": "object",
+        "properties": {
+          "pageNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalPages": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "hasPrevious": {
+            "type": "boolean"
+          },
+          "hasNext": {
+            "type": "boolean"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            }
+          },
+          "_embedded": {
+            "$ref": "#/components/schemas/HalCollectionEmbeddedOfEventSessionTemplateListDto"
+          }
+        }
+      },
+      "HalCollectionResourceOfEventTemplateListDto": {
+        "type": "object",
+        "properties": {
+          "pageNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "totalPages": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "hasPrevious": {
+            "type": "boolean"
+          },
+          "hasNext": {
+            "type": "boolean"
+          },
+          "_links": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HalLink"
+            }
+          },
+          "_embedded": {
+            "$ref": "#/components/schemas/HalCollectionEmbeddedOfEventTemplateListDto"
           }
         }
       },
@@ -43046,6 +48264,7 @@
         }
       },
       "HalResourceOfCustomPropertyDefinitionDto": {},
+      "HalResourceOfEventCustomPropertyDefinitionDto": {},
       "HalResourceOfEventDto": {
         "type": "object",
         "properties": {
@@ -43561,6 +48780,7 @@
           }
         }
       },
+      "HalResourceOfEventSessionCustomPropertyDefinitionDto": {},
       "HalResourceOfEventSessionDto": {
         "type": "object",
         "properties": {
@@ -43752,6 +48972,8 @@
           }
         }
       },
+      "HalResourceOfEventSessionTemplateDto": {},
+      "HalResourceOfEventTemplateDto": {},
       "HalResourceOfGroupDto": {},
       "HalResourceOfIndexedDidDto": {},
       "HalResourceOfLocationDto": {
@@ -46047,6 +51269,156 @@
       "SessionStartTimeType": {
         "type": "integer"
       },
+      "SetEventCustomPropertyMultiValuesDto": {
+        "type": "object",
+        "properties": {
+          "definitionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SetEventCustomPropertyValueDto"
+            }
+          }
+        }
+      },
+      "SetEventCustomPropertyValueDto": {
+        "type": "object",
+        "properties": {
+          "eventCustomPropertyDefinitionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ordinal": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "textValue": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "numberValue": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "booleanValue": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "dateTimeValue": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "optionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "SetEventSessionCustomPropertyMultiValuesDto": {
+        "type": "object",
+        "properties": {
+          "definitionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventSessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SetEventSessionCustomPropertyValueDto"
+            }
+          }
+        }
+      },
+      "SetEventSessionCustomPropertyValueDto": {
+        "type": "object",
+        "properties": {
+          "eventSessionCustomPropertyDefinitionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventSessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ordinal": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "textValue": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "numberValue": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "booleanValue": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "dateTimeValue": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "optionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
       "SettingGroupResponseDto": {
         "required": [
           "category",
@@ -47398,6 +52770,178 @@
           }
         }
       },
+      "UpdateEventCustomPropertyDefinitionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "namespace": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "propertyType": {
+            "$ref": "#/components/schemas/PropertyType"
+          },
+          "isRequired": {
+            "type": "boolean"
+          },
+          "isMulti": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "exposureLevel": {
+            "$ref": "#/components/schemas/ExposureLevel"
+          },
+          "isSearchable": {
+            "type": "boolean"
+          },
+          "isFilterable": {
+            "type": "boolean"
+          },
+          "isExportable": {
+            "type": "boolean"
+          },
+          "isModerationRelevant": {
+            "type": "boolean"
+          },
+          "isAnalyticsRelevant": {
+            "type": "boolean"
+          },
+          "isSystemOwned": {
+            "type": "boolean"
+          },
+          "defaultTextValue": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "defaultNumberValue": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "defaultBooleanValue": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "defaultDateTimeValue": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "defaultOptionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "minLength": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "maxLength": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "regexPattern": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "minNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "maxNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "minDateTime": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "maxDateTime": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "allowedUrlSchemes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateEventCustomPropertyOptionDto"
+            }
+          }
+        }
+      },
       "UpdateEventDto": {
         "required": [
           "title"
@@ -47735,6 +53279,178 @@
           }
         }
       },
+      "UpdateEventSessionCustomPropertyDefinitionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventSessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "namespace": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "propertyType": {
+            "$ref": "#/components/schemas/PropertyType"
+          },
+          "isRequired": {
+            "type": "boolean"
+          },
+          "isMulti": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "exposureLevel": {
+            "$ref": "#/components/schemas/ExposureLevel"
+          },
+          "isSearchable": {
+            "type": "boolean"
+          },
+          "isFilterable": {
+            "type": "boolean"
+          },
+          "isExportable": {
+            "type": "boolean"
+          },
+          "isModerationRelevant": {
+            "type": "boolean"
+          },
+          "isAnalyticsRelevant": {
+            "type": "boolean"
+          },
+          "isSystemOwned": {
+            "type": "boolean"
+          },
+          "defaultTextValue": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "defaultNumberValue": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "defaultBooleanValue": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "defaultDateTimeValue": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "defaultOptionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "minLength": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "maxLength": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "regexPattern": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "minNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "maxNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "minDateTime": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "maxDateTime": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "allowedUrlSchemes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateEventSessionCustomPropertyOptionDto"
+            }
+          }
+        }
+      },
       "UpdateEventSessionDto": {
         "type": "object",
         "properties": {
@@ -47824,6 +53540,59 @@
           }
         }
       },
+      "UpdateEventSessionTemplateDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventTemplateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sessionTemplateKey": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "version": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "isPublished": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "definitions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateEventSessionTemplateDefinitionDto"
+            }
+          }
+        }
+      },
       "UpdateEventStatusDto": {
         "type": "object",
         "properties": {
@@ -47834,6 +53603,64 @@
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "UpdateEventTemplateDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "templateKey": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "eventTypeId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "version": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "isPublished": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "definitions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateEventTemplateDefinitionDto"
+            }
           }
         }
       },
@@ -49124,6 +54951,9 @@
       "name": "Event"
     },
     {
+      "name": "EventCustomProperty"
+    },
+    {
       "name": "EventFormat"
     },
     {
@@ -49139,7 +54969,16 @@
       "name": "EventSession"
     },
     {
+      "name": "EventSessionCustomProperty"
+    },
+    {
+      "name": "EventSessionTemplate"
+    },
+    {
       "name": "EventStatus"
+    },
+    {
+      "name": "EventTemplate"
     },
     {
       "name": "EventType"

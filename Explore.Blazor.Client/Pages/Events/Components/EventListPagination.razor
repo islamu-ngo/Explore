@@ -1,0 +1,46 @@
+@* ABOUTME: Pagination controls for the event list in Pagination browse mode. *@
+@* ABOUTME: Shows MudPagination with page size selector and result count summary. *@
+
+<div class="event-list-pagination" role="navigation" aria-label="Event list pagination">
+    <div class="event-list-pagination__summary">
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            @if (TotalCount > 0)
+            {
+                <text>Showing @StartItem–@EndItem of @TotalCount events</text>
+            }
+        </MudText>
+    </div>
+
+    <div class="event-list-pagination__controls">
+        <MudPagination Count="@TotalPages"
+                       Selected="@CurrentPage"
+                       SelectedChanged="HandlePageChanged"
+                       Variant="Variant.Outlined"
+                       Size="Size.Small"
+                       BoundaryCount="1"
+                       MiddleCount="3"
+                       ShowFirstButton="true"
+                       ShowLastButton="true"
+                       Disabled="@IsLoading"
+                       Class="event-list-pagination__pager"
+                       aria-label="Page navigation" />
+    </div>
+
+    <div class="event-list-pagination__page-size">
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mr-2">Per page:</MudText>
+        <MudSelect T="int"
+                   Value="@PageSize"
+                   ValueChanged="HandlePageSizeChanged"
+                   Variant="Variant.Outlined"
+                   Dense="true"
+                   Margin="Margin.Dense"
+                   Class="event-list-pagination__size-select"
+                   Disabled="@IsLoading"
+                   aria-label="Events per page">
+            @foreach (var size in PageSizeOptions)
+            {
+                <MudSelectItem T="int" Value="@size">@size</MudSelectItem>
+            }
+        </MudSelect>
+    </div>
+</div>

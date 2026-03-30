@@ -5,6 +5,7 @@ using Explore.Application.Authentication;
 using Explore.Application.Constants;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Telemetry;
+using Explore.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Explore.API.Middleware;
@@ -77,6 +78,13 @@ public sealed class ApiTenantPostAuthenticationMiddleware
 
             if (hasApiKeyHeader)
             {
+                // InstanceAdmin keys operate cross-tenant without a bound tenant context.
+                if (apiKeyPrincipal?.OwnerType == ExternalApiKeyOwnerType.InstanceAdmin)
+                {
+                    await _next(context);
+                    return;
+                }
+
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
 
                 await problemDetailsService.TryWriteAsync(new ProblemDetailsContext

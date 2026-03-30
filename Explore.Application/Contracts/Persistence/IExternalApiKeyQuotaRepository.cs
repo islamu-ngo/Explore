@@ -34,7 +34,38 @@ public interface IExternalApiKeyQuotaRepository : IGenericRepository<ExternalApi
     Task<bool> TryConsumeCredits(Guid quotaId, int amount, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Atomically increments request count for a quota period without consuming credits.
+    /// Used for unlimited keys or separate request tracking.
+    /// </summary>
+    Task IncrementRequestCount(Guid quotaId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets all quota periods for an API key, ordered by period start descending.
     /// </summary>
     Task<IReadOnlyList<ExternalApiKeyQuota>> GetQuotaHistory(Guid externalApiKeyId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets aggregated usage data for all API keys belonging to a tenant within a date range.
+    /// Returns per-key totals of credits used and request count. Does not expose secret material.
+    /// </summary>
+    Task<IReadOnlyList<TenantApiKeyUsageSummary>> GetUsageByTenant(Guid tenantId, DateOnly from, DateOnly to, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets aggregated usage across all API keys (platform-wide) within a date range.
+    /// For instance-admin reporting. Does not expose secret material.
+    /// </summary>
+    Task<IReadOnlyList<TenantApiKeyUsageSummary>> GetUsagePlatformWide(DateOnly from, DateOnly to, CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// Aggregated usage summary per API key for reporting. Does not expose secret material (hash, full key ID).
+/// </summary>
+public record TenantApiKeyUsageSummary(
+    Guid ApiKeyId,
+    string ApiKeyName,
+    Guid? TenantId,
+    int OwnerType,
+    Guid OwnerId,
+    long TotalRequestCount,
+    int TotalCreditsUsed,
+    int CreditLimit);

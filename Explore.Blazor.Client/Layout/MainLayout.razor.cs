@@ -2,6 +2,7 @@
 // ABOUTME: Uses MudBlazor theme switching with cookie persistence, and manages focus-on-navigate for screen readers.
 
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
+using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -41,6 +42,12 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     protected SidebarState SidebarState { get; set; } = null!;
 
     [Inject]
+    protected TenantNavLinksState TenantNavLinksState { get; set; } = null!;
+
+    [Inject]
+    protected ITenantNavigationService TenantNavigationService { get; set; } = null!;
+
+    [Inject]
     protected IPublicExperienceService PublicExperienceService { get; set; } = null!;
 
     [Inject]
@@ -78,6 +85,7 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
         UpdateChromeVisibility();
         NavigationManager.LocationChanged += OnLocationChanged;
         SidebarState.OnChange += StateHasChanged;
+        TenantNavLinksState.OnChange += StateHasChanged;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -111,6 +119,16 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
             catch (Exception ex)
             {
                 Logger.LogWarning(ex, "Error loading public experience settings for sidebar");
+            }
+
+            // Load tenant navigation links for the sidebar drawer
+            try
+            {
+                await TenantNavLinksState.EnsureLoadedAsync(TenantNavigationService);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Error loading tenant navigation links for sidebar");
             }
 
             // If no cookie-based theme was provided, detect system preference via MudBlazor
@@ -199,6 +217,7 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     {
         NavigationManager.LocationChanged -= OnLocationChanged;
         SidebarState.OnChange -= StateHasChanged;
+        TenantNavLinksState.OnChange -= StateHasChanged;
         GC.SuppressFinalize(this);
     }
 }

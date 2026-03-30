@@ -278,51 +278,123 @@ This slice exists and should not be described as missing:
 
 But this slice stores external-provider auth artifacts, not the machine-consumer API keys requested by the user.
 
-### Current Direct-Access Risks
+### Resolved Direct-Access Risks
 
-- `X-Tenant-Slug` is acceptable today for the trusted BFF-forwarded flow, but it is not sufficient as the final authority model for arbitrary API-key callers.
-- Current rate limiting cannot protect one noisy API key separately from another because partitioning is not keyed by API key.
-- Global direct-consumer throttling is now keyed per authenticated API-key id, but aggregated usage rollups and audit-style throttle reporting still do not exist.
-- Current metrics now cover create, revoke, auth outcomes, tenant mismatch, and throttle events, and `LastUsedAt`/`LastUsedIp` still update on successful persisted-key auth, but there is still no aggregated API-key usage rollup or reporting surface.
-- The API has no current policy-scheme dispatch for multi-auth direct callers.
-- Host-derived tenanting depends on forwarded-host trust that needs explicit hardening for self-hosted direct API ingress.
-- API-key claim constants already existed, but claim parsing was duplicated until the new shared principal helper centralized the contract.
-- General authenticated API integration fixtures in this repo still assume multi-tenant resolution and can 404 before controller logic; tenant-scoped management endpoint tests need a single-tenant test host or explicit tenant-resolution setup.
+The following risks identified during planning have been addressed:
 
-### Persisted Slice Status
+- ✅ **Multi-auth dispatch**: `MultiAuth` policy-scheme dispatches `X-API-Key` to API-key handler, other callers to JWT bearer.
+- ✅ **Per-key rate limiting**: Global limiter partitions API-key callers by `api-key:{apiKeyId}` instead of sharing IP buckets.
+- ✅ **Usage rollups**: `ExternalApiKeyQuota` entity tracks per-period `CreditsUsed` and `RequestCount`; `GetUsageByTenant` and `GetUsagePlatformWide` repository methods provide reporting.
+- ✅ **Metrics coverage**: 6 counters (created, revoked, policy_updated, rotated, authentication_attempts, throttled) all with `tenant_id` (nullable for InstanceAdmin) and `owner_type` dimensions.
+- ✅ **Proxy trust**: `ForwardedHeadersTrust` configuration and `UseForwardedHeaders()` applied before tenant-sensitive middleware.
+- ✅ **Centralized principal parsing**: `ApiAuthenticationPrincipalExtensions.TryGetApiKeyPrincipalContext()` provides single source of truth.
+- ✅ **InstanceAdmin tenant bypass**: `ApiTenantPostAuthenticationMiddleware` allows InstanceAdmin keys without tenant context.
 
-- The first persisted vertical slice is intentionally auth-first, not management-first.
-- Current persisted behavior covers: storage model, migration, repository lookup, handler authentication, and integration-test seeding.
-- It does **not** yet cover: CQRS management commands, safe one-time secret reveal APIs, revoke or rotate endpoints, usage rollups, or admin visibility.
+### Remaining Open Risks
+
+- General authenticated API integration fixtures still assume multi-tenant resolution; tenant-scoped management tests need a single-tenant test host or explicit setup.
+- Rotation overlap semantics not yet decided for v1 (rotation counter is stubbed but the feature is not implemented).
 
 ---
 
-## Remaining Work Before Implementation Continues
+## Clustered Deployment Semantics
 
-1. Decide whether rotation overlap is required in v1 before building rotation handlers and endpoints.
-2. Add aggregated usage rollup and reporting storage beyond the new `LastUsedAt`/`LastUsedIp` path.
-3. Extend the new API-key metrics and audit-style logging slice with reveal, rotate, and usage-rollup coverage so observability is complete without reading raw tenant secrets.
-4. Reconcile the existing broad `Event.API.IntegrationTests` `404` baseline before relying on whole-project API integration runs as a signal.
-5. Keep instance-admin reporting metadata-only unless a separate audited emergency-access design is approved.
-6. **Expand `ExternalApiKeyOwnerType` enum** from 2 values (User, Organization) to 5 values (User, Organization, Group, Tenant, InstanceAdmin).
-7. **Make `TenantId` nullable** on `ExternalApiKey` for InstanceAdmin platform-scoped keys; update EF configuration, indexes, and migration.
-8. **Add `IsGroupAdminAsync(groupId)` to `AdminContext`** following the `IsOrganizationAdminAsync` pattern with `GroupMember` + RoleId=31.
-9. **Update CreateExternalApiKeyCommand/Handler** for all 5 owner types with admin authority verification per type.
-10. **Update CreateExternalApiKeyDto** with GroupId field and Tenant/InstanceAdmin handling.
-11. **Update validation** for scope ceiling enforcement per owner type.
-12. **Update list query** to aggregate by new owner types (group-admin-visible, tenant-admin-visible, instance-admin-visible keys).
-13. **Update auth handler claims** for Group, Tenant, and InstanceAdmin owner types.
-14. **Update rate-limit partitioning** for new key types.
-15. **Update metrics dimensions** for the expanded owner type taxonomy.
-16. **Expand tests** for all 5 owner type boundaries, scope ceiling enforcement, and nullable TenantId edge cases.
+### Rate Limiting: Node-Local
+
+ASP.NET Core `AddRateLimiter` stores rate-limit state **in-process memory**. In a multi-node deployment:
+
+- Each node enforces limits independently.
+- Effective cluster-wide limit = `configured_limit × node_count`.
+- A single API key hitting different nodes can consume up to `N × limit` requests before being throttled on any one node.
+
+**Self-hoster guidance**: For single-node deployments (most self-hosted scenarios), rate limiting works as documented. For multi-node clusters requiring strict enforcement, add a shared backing store (e.g., Redis via `AspNetCoreRateLimit` or a custom `IRateLimiterPolicy` backed by distributed cache). This is a standard ASP.NET Core extension point and can be configured without code changes to the rate-limit policy definitions.
+
+**Partition keys** (per-key, not per-owner-type):
+- API-key callers: `api-key:{apiKeyId}` (token bucket)
+- JWT/anonymous callers: IP-based (token bucket)
+- Authenticated endpoints: user identity or `api-key:{apiKeyId}` (sliding window)
+- Write endpoints: same key as authenticated (fixed window)
+
+### Quota Credits: Cluster-Safe
+
+`ExternalApiKeyQuota` credit consumption uses **PostgreSQL atomic SQL operations**:
+
+- `INSERT ... ON CONFLICT` for lazy period provisioning (race-safe)
+- `UPDATE ... WHERE credits_used + amount <= credit_limit + rollover_credits` for atomic credit consumption (row-level locking)
+- `RequestCount` increment is part of the same atomic UPDATE
+
+All nodes share the same database, so credit enforcement is globally consistent regardless of cluster size.
+
+### Usage Metadata: Eventually Consistent
+
+`TouchUsageMetadata` (updates `LastUsedAt`/`LastUsedIp`) uses a 5-minute in-memory throttle per key. In a cluster, different nodes may race to update the same key's metadata. This is acceptable: the goal is approximate recency, not exact ordering.
+
+---
+
+## Direct Caller Contract Documentation
+
+### Authentication Flows
+
+External callers authenticate via one of two schemes, dispatched by `MultiAuth` policy:
+
+**1. API Key Authentication** (`X-API-Key` header)
+```
+X-API-Key: {keyId}.{secret}
+```
+- Key format: `{keyId}` (short identifier) `.` `{base64Secret}`
+- Persisted keys are looked up by `keyId`, then `secret` is verified against `SecretHash` (HMAC-SHA256)
+- Produces claims: `explore:api-key:id`, `explore:tenant:id` (absent for InstanceAdmin), `explore:api-key:owner:type`, `explore:api-key:owner:id`, `explore:api-key:scope` (repeated per scope)
+- Usable statuses: `Active`, `PendingRotation`
+
+**2. JWT Bearer Authentication** (standard `Authorization: Bearer {token}`)
+- Configured via Keycloak OIDC
+- Tenant resolved from host or `X-Tenant-Slug` header (BFF-trusted)
+- Standard user claims: `sub`, `nameidentifier`, `sid` (fallback order for user ID)
+
+### Tenant Resolution for API-Key Callers
+
+1. API-key auth handler sets `explore:tenant:id` claim from persisted key's `TenantId`
+2. `ApiTenantPostAuthenticationMiddleware` uses authenticated tenant from claims
+3. If key has `TenantId`: tenant must match request context or → `401`
+4. If key has `null TenantId` (InstanceAdmin only): bypasses tenant requirement, produces platform-scoped principal
+5. Non-InstanceAdmin keys without resolvable tenant → `401`
+
+### Scope Model
+
+Scopes follow `{resource}:{action}` convention (colon-separated):
+
+| Category | Scopes |
+|----------|--------|
+| Read | `events:read`, `organizations:read`, `groups:read`, `users:read`, `lookups:read` |
+| Write | `events:write`, `organizations:write`, `groups:write`, `users:write`, `registrations:write` |
+| Management | `api-keys:manage` |
+| Admin | `admin:tenant`, `admin:instance` |
+
+Scope ceilings per owner type:
+- **User**: events r/w, users r/w, lookups:read, registrations:write, api-keys:manage
+- **Organization**: User scopes + organizations r/w
+- **Group**: User scopes + groups r/w
+- **Tenant**: All except `admin:instance`
+- **InstanceAdmin**: All scopes
+
+### Management Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/ExternalApiKey` | List visible API keys (owner-scoped) |
+| `GET` | `/api/ExternalApiKey/{id}` | Get key details (metadata only, no secret) |
+| `POST` | `/api/ExternalApiKey` | Create key (secret revealed once in response) |
+| `PUT` | `/api/ExternalApiKey/{id}` | Update key policy (name, scopes, expiry) |
+| `DELETE` | `/api/ExternalApiKey/{id}` | Revoke key |
+| `GET` | `/api/ExternalApiKey/usage-report?from=&to=&tenantId=` | Usage report (admin only) |
+
+All endpoints require `[Authorize]`. The usage-report endpoint requires tenant-admin or instance-admin authority.
 
 ---
 
 ## Quick Resume
 
 1. Read `dev/active/external-api-access/external-api-access-plan.md` — updated 2026-03-26 with five-owner-type model.
-2. Inspect `Explore.Domain/ExternalApiKey.cs`, `Explore.Application/Contracts/Persistence/IExternalApiKeyRepository.cs`, `Explore.Persistence/Repositories/ExternalApiKeyRepository.cs`, and `Explore.Persistence/Migrations/20260309122122_AddExternalApiKey.cs` for the persisted auth slice.
-3. Inspect `Explore.API/Authentication/ApiKeyAuthenticationHandler.cs` and `Explore.API/Authentication/ApiKeyHashing.cs` for the new `keyId.secret` auth path and fallback behavior.
-4. Inspect `Event.API.IntegrationTests/Fixtures/ExternalApiPhase0WebApplicationFactory.cs` and `Event.API.IntegrationTests/Features/ExternalApiPhase0IntegrationTests.cs` for the updated `11/11` seam verification harness.
-5. Inspect `Explore.Application/Authorization/AdminContext.cs` — needs `IsGroupAdminAsync(groupId)` addition.
-6. Next priorities: expand OwnerType enum to 5 values, make TenantId nullable, add IsGroupAdminAsync, update CQRS handlers for all owner types, then continue with usage rollups, reveal/rotate events, clustered limiter semantics, and metadata-only instance-admin reporting.
+2. **Phases 0–6 COMPLETE**: Auth seam, domain (5 owner types, scope catalog, quota defaults), application (all CQRS, scope-ceiling enforcement, nullable TenantId principal), persistence (IgnoreTenantFilter, usage rollup with RequestCount), API auth/tenant (InstanceAdmin escape), metrics (6 counters, all dimensions), instance-admin reporting endpoint.
+3. **Next priorities (Phase 7)**: Blazor admin panels for all 5 owner types — user settings, org admin, group admin, tenant admin, instance admin.
+4. **Then (Phase 8)**: Cerbos integration for machine principals, full unit/integration/rate-limit test suite for all 5 owner types, and documentation updates to `docs/API.md`, `docs/SECURITY.md`, `docs/OPERATIONS.md`, `docs/CONFIGURATION.md`, `docs/ADMIN_HIERARCHY.md`.

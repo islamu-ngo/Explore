@@ -1,0 +1,133 @@
+// ABOUTME: Handles creation of ad-hoc session-local custom property definitions with governance and option persistence.
+// ABOUTME: Used when organizers add properties directly without a template; mirrors event runtime create flow scoped to EventSessionId.
+
+using AutoMapper;
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.EventSessionCustomProperty.Validators;
+using Explore.Application.Features.EventSessionCustomProperties.Requests.Commands;
+using Explore.Application.Responses;
+using Explore.Domain;
+using Explore.Domain.Constants;
+using MediatR;
+using Microsoft.Extensions.Caching.Hybrid;
+
+namespace Explore.Application.Features.EventSessionCustomProperties.Handlers.Commands;
+
+public class CreateEventSessionCustomPropertyDefinitionCommandHandler : IRequestHandler<CreateEventSessionCustomPropertyDefinitionCommand, BaseCommandResponse<Guid>>
+{
+    private readonly IEventSessionCustomPropertyRepository _sessionCustomPropertyRepository;
+    private readonly ICustomPropertyGovernancePolicy _customPropertyGovernancePolicy;
+    private readonly ITenantContext _tenantContext;
+    private readonly ICurrentUserService _currentUserService;
+    private readonly IMapper _mapper;
+    private readonly HybridCache _cache;
+    private readonly IUnitOfWork _unitOfWork;
+
+    public CreateEventSessionCustomPropertyDefinitionCommandHandler(
+        IEventSessionCustomPropertyRepository sessionCustomPropertyRepository,
+        ICustomPropertyGovernancePolicy customPropertyGovernancePolicy,
+        ITenantContext tenantContext,
+        ICurrentUserService currentUserService,
+        IMapper mapper,
+        HybridCache cache,
+        IUnitOfWork unitOfWork)
+    {
+        _sessionCustomPropertyRepository = sessionCustomPropertyRepository;
+        _customPropertyGovernancePolicy = customPropertyGovernancePolicy;
+        _tenantContext = tenantContext;
+        _currentUserService = currentUserService;
+        _mapper = mapper;
+        _cache = cache;
+        _unitOfWork = unitOfWork;
+    }
+
+    public async Task<BaseCommandResponse<Guid>> Handle(CreateEventSessionCustomPropertyDefinitionCommand request, CancellationToken cancellationToken)
+    {
+        var response = new BaseCommandResponse<Guid>();
+
+        var validator = new CreateEventSessionCustomPropertyDefinitionDtoValidator();
+        var validationResult = await validator.ValidateAsync(request.DefinitionDto, cancellationToken);
+        if (!validationResult.IsValid)
+        {
+            response.Success = false;
+            response.Message = "Event session custom property definition creation failed.";
+            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+            return response;
+        }
+
+        var governance = _customPropertyGovernancePolicy.EvaluateDefinition(request.DefinitionDto.Namespace, request.DefinitionDto.Key);
+        if (!governance.IsValid)
+        {
+            response.Success = false;
+            response.Message = "Event session custom property definition creation failed.";
+            response.Errors = governance.Errors.ToList();
+            return response;
+        }
+
+        if (await _sessionCustomPropertyRepository.ExistsDefinitionKey(
+                request.DefinitionDto.EventSessionId,
+                governance.NormalizedNamespace,
+                governance.NormalizedKey))
+        {
+            response.Success = false;
+            response.Message = "Event session custom property definition creation failed.";
+            response.Errors = ["A custom property definition with the same Namespace + Key already exists for this session."];
+            return response;
+        }
+
+        var definition = _mapper.Map<EventSessionCustomPropertyDefinition>(request.DefinitionDto);
+        definition.TenantId = _tenantContext.TenantId;
+        definition.Namespace = governance.NormalizedNamespace;
+        definition.Key = governance.NormalizedKey;
+        definition.InstantiatedAt = DateTimeOffset.UtcNow;
+        definition.CreatedBy = _currentUserService.UserId;
+        definition.UpdatedBy = _currentUserService.UserId;
+
+        var options = CreateOptionEntities(request.DefinitionDto.Options, definition.Id);
+        var defaultOption = options.SingleOrDefault(x => x.IsDefault);
+
+        definition = await _unitOfWork.ExecuteInTransactionAsync(
+            ct => _sessionCustomPropertyRepository.CreateWithOptions(definition, options, defaultOption?.Id, ct),
+            cancellationToken);
+
+        response.Success = true;
+        response.Id = definition.Id;
+        response.Message = "Event session custom property definition created successfully.";
+
+        await _cache.RemoveAsync(
+            GetListCacheKey(request.DefinitionDto.EventSessionId, 1, PaginatedResult<object>.DefaultPageSize),
+            cancellationToken);
+
+        return response;
+    }
+
+    private List<EventSessionCustomPropertyOption> CreateOptionEntities(
+        IReadOnlyCollection<DTOs.EventSessionCustomProperty.CreateEventSessionCustomPropertyOptionDto> optionDtos,
+        Guid definitionId)
+    {
+        return optionDtos
+            .Select(optionDto => new EventSessionCustomPropertyOption
+            {
+                Id = Guid.NewGuid(),
+                EventSessionCustomPropertyDefinitionId = definitionId,
+                Namespace = CustomPropertyIdentity.NormalizeNamespace(optionDto.Namespace),
+                Key = CustomPropertyIdentity.NormalizeKey(optionDto.Key),
+                DisplayName = optionDto.DisplayName,
+                Description = optionDto.Description,
+                Value = optionDto.Value,
+                IsDefault = optionDto.IsDefault,
+                IsActive = optionDto.IsActive,
+                SortOrder = optionDto.SortOrder,
+                CreatedBy = _currentUserService.UserId,
+                UpdatedBy = _currentUserService.UserId,
+            })
+            .ToList();
+    }
+
+    private static string GetListCacheKey(Guid eventSessionId, int pageNumber, int pageSize)
+    {
+        return $"session-custom-properties:list:{eventSessionId}:{pageNumber}:{pageSize}";
+    }
+}

@@ -1,0 +1,210 @@
+@* ABOUTME: Shared section component for managing external API keys across all 5 admin panels. *@
+@* ABOUTME: Parameterized by OwnerType (User/Org/Group/Tenant/InstanceAdmin) with create, list, and revoke. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Constants
+@using Explore.Blazor.Client.Services
+@using Explore.Blazor.Client.Pages.Admin.Dialogs
+@inject IExternalApiKeyService ApiKeyService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<div class="settings-section">
+    <div class="settings-section-header">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <div>
+                <MudText Typo="Typo.h5" Style="font-weight: 700;">@Title</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+                    @Description
+                </MudText>
+            </div>
+            <AppButton StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="OpenCreateDialog">
+                Create API Key
+            </AppButton>
+        </MudStack>
+    </div>
+
+    @if (_loading)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Small" Class="mt-4" />
+    }
+    else if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Dense="true" Class="mt-4">
+            @_errorMessage
+        </MudAlert>
+    }
+
+    @if (!_loading && !_apiKeys.Any())
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mt-4">
+            No API keys have been created yet.
+        </MudAlert>
+    }
+    else if (!_loading)
+    {
+        <MudTable Items="_apiKeys" Hover="true" Striped="true" Elevation="0" Class="mt-4">
+            <HeaderContent>
+                <MudTh>Name</MudTh>
+                <MudTh>Key ID</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Scopes</MudTh>
+                <MudTh>Last Used</MudTh>
+                <MudTh>Expires</MudTh>
+                <MudTh Style="text-align:right">Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Name">
+                    <MudText Typo="Typo.body2" Style="font-weight: 600;">@context.Name</MudText>
+                    @if (!string.IsNullOrWhiteSpace(context.Description))
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@context.Description</MudText>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Key ID">
+                    <MudText Typo="Typo.body2" Style="font-family: monospace; font-size: 0.8rem;">
+                        @(context.MaskedKeyId ?? context.KeyId)
+                    </MudText>
+                </MudTd>
+                <MudTd DataLabel="Status">
+                    <MudChip T="string"
+                             Color="@ExternalApiKeyConstants.GetStatusColor(context.Status)"
+                             Size="Size.Small"
+                             Variant="Variant.Outlined">
+                        @ExternalApiKeyConstants.GetStatusLabel(context.Status)
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Scopes">
+                    <MudStack Row="true" Spacing="1" Wrap="Wrap.Wrap">
+                        @if (context.Scopes != null)
+                        {
+                            @foreach (var scope in context.Scopes.Take(3))
+                            {
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">
+                                    @scope
+                                </MudChip>
+                            }
+                            @if (context.Scopes.Count > 3)
+                            {
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="Color.Default">
+                                    +@(context.Scopes.Count - 3)
+                                </MudChip>
+                            }
+                        }
+                    </MudStack>
+                </MudTd>
+                <MudTd DataLabel="Last Used">
+                    <MudText Typo="Typo.body2">
+                        @(context.LastUsedAt.HasValue ? context.LastUsedAt.Value.ToString("yyyy-MM-dd") : "Never")
+                    </MudText>
+                </MudTd>
+                <MudTd DataLabel="Expires">
+                    <MudText Typo="Typo.body2">
+                        @(context.ExpiresAt.HasValue ? context.ExpiresAt.Value.ToString("yyyy-MM-dd") : "Never")
+                    </MudText>
+                </MudTd>
+                <MudTd DataLabel="Actions" Style="text-align:right">
+                    @if (context.Status == 1)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Color="Color.Error"
+                                       Size="Size.Small"
+                                       Title="Revoke"
+                                       OnClick="@(() => RevokeKey(context))" />
+                    }
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</div>
+
+@code {
+    [Parameter] public int OwnerType { get; set; } = 1;
+    [Parameter] public Guid? OrganizationId { get; set; }
+    [Parameter] public Guid? GroupId { get; set; }
+    [Parameter] public string Title { get; set; } = "API Keys";
+    [Parameter] public string Description { get; set; } = "Create and manage API access keys for programmatic access.";
+
+    private List<ExternalApiKeyListDto> _apiKeys = new();
+    private bool _loading = true;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadKeysAsync();
+    }
+
+    private async Task LoadKeysAsync()
+    {
+        _loading = true;
+        _errorMessage = null;
+        try
+        {
+            var all = await ApiKeyService.GetApiKeysAsync();
+            _apiKeys = all
+                .Where(k => k.OwnerType == OwnerType)
+                .OrderByDescending(k => k.Status == 1)
+                .ThenByDescending(k => k.LastUsedAt)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load API keys: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            ["OwnerType"] = OwnerType,
+            ["OrganizationId"] = OrganizationId,
+            ["GroupId"] = GroupId,
+        };
+
+        var dialog = await CreateApiKeyDialog.ShowAsync(DialogService, "Create API Key", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            Snackbar.Add("API key created.", Severity.Success);
+            await LoadKeysAsync();
+        }
+    }
+
+    private async Task RevokeKey(ExternalApiKeyListDto key)
+    {
+        if (!key.Id.HasValue)
+        {
+            return;
+        }
+
+        bool? result = await DialogService.ShowMessageBoxAsync(
+            "Revoke API Key",
+            $"Are you sure you want to revoke \"{key.Name}\"? This action cannot be undone. Any applications using this key will immediately lose access.",
+            yesText: "Revoke",
+            cancelText: "Cancel");
+
+        if (result != true)
+        {
+            return;
+        }
+
+        try
+        {
+            await ApiKeyService.RevokeApiKeyAsync(key.Id.Value);
+            Snackbar.Add("API key revoked.", Severity.Success);
+            await LoadKeysAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to revoke API key: {ex.Message}";
+        }
+    }
+}

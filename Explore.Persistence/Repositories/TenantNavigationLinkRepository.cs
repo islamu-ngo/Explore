@@ -42,8 +42,16 @@ public class TenantNavigationLinkRepository : GenericRepository<TenantNavigation
 
     public async Task<int> DeleteByTenantIdAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
-        return await _dbContext.TenantNavigationLinks
+        // Use tracked entities + SaveChanges to trigger ISoftDeletable interceptor.
+        // ExecuteDeleteAsync bypasses SaveChanges and would hard-delete.
+        var links = await _dbContext.TenantNavigationLinks
             .Where(l => l.TenantId == tenantId)
-            .ExecuteDeleteAsync(cancellationToken);
+            .ToListAsync(cancellationToken);
+
+        if (links.Count == 0)
+            return 0;
+
+        _dbContext.TenantNavigationLinks.RemoveRange(links);
+        return await _dbContext.SaveChangesAsync(cancellationToken);
     }
 }

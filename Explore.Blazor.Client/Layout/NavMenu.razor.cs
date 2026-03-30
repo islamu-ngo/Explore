@@ -34,6 +34,9 @@ public partial class NavMenu : IDisposable
     protected ITenantNavigationService TenantNavigationService { get; set; } = null!;
 
     [Inject]
+    protected TenantNavLinksState TenantNavLinksState { get; set; } = null!;
+
+    [Inject]
     protected IEventCreationEligibilityService EventCreationEligibilityService { get; set; } = null!;
 
     [Inject]
@@ -61,7 +64,7 @@ public partial class NavMenu : IDisposable
     private string _brandLogoUrl = string.Empty;
     public string SearchQuery { get; set; } = "";
     private MudTextField<string> _searchField = null!;
-    private ICollection<TenantNavigationLinkDto> _navigationLinks = new List<TenantNavigationLinkDto>();
+    private IReadOnlyList<TenantNavigationLinkDto> _navigationLinks = [];
     private EventCreationEligibility _eventCreationEligibility = EventCreationEligibility.NotEligible;
     private bool _isSingleTenantMode = true;
     private bool _showAddEventForAnonymous;
@@ -73,6 +76,7 @@ public partial class NavMenu : IDisposable
     protected override async Task OnInitializedAsync()
     {
         SidebarState.OnChange += StateHasChanged;
+        TenantNavLinksState.OnChange += StateHasChanged;
         await LoadPublicExperienceAsync();
         await LoadCurrentUserAsync();
         await LoadNavigationLinksAsync();
@@ -210,15 +214,8 @@ public partial class NavMenu : IDisposable
 
     private async Task LoadNavigationLinksAsync()
     {
-        try
-        {
-            _navigationLinks = await TenantNavigationService.GetNavigationLinksAsync();
-        }
-        catch
-        {
-            // Silently fail - navigation links are optional
-            _navigationLinks = new List<TenantNavigationLinkDto>();
-        }
+        await TenantNavLinksState.EnsureLoadedAsync(TenantNavigationService);
+        _navigationLinks = TenantNavLinksState.Links;
     }
 
     private async Task LoadEventCreationEligibilityAsync()
@@ -298,6 +295,7 @@ public partial class NavMenu : IDisposable
     public void Dispose()
     {
         SidebarState.OnChange -= StateHasChanged;
+        TenantNavLinksState.OnChange -= StateHasChanged;
         GC.SuppressFinalize(this);
     }
 }

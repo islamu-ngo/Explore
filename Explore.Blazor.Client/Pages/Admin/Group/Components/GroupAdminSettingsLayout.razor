@@ -62,6 +62,10 @@
                                          Text="Members"
                                          Class="@GetNavItemClass("members")"
                                          OnClick="@(() => SelectSection("members"))" />
+                            <MudListItem Icon="@Icons.Material.Filled.Key"
+                                         Text="API Keys"
+                                         Class="@GetNavItemClass("api-keys")"
+                                         OnClick="@(() => SelectSection("api-keys"))" />
                         </MudList>
                     </MudPaper>
                 </MudItem>
@@ -78,6 +82,10 @@
                         else if (_currentSection == "members")
                         {
                             <GroupMembersSection GroupId="GroupId" />
+                        }
+                        else if (_currentSection == "api-keys")
+                        {
+                            <Explore.Blazor.Client.Pages.Admin.Components.ApiKeysSection OwnerType="3" GroupId="GroupId" Title="Group API Keys" Description="Create and manage API keys for this group." />
                         }
                     </MudPaper>
                 </MudItem>

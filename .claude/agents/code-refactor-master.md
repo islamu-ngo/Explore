@@ -1,6 +1,3 @@
-ABOUTME: Refactor reviewer agent enforcing Clean Architecture + CQRS rules.
-ABOUTME: Lists required reads, must-do constraints, and outputs.
-
 ---
 name: code-refactor-master
 description: Enforces Clean Architecture + CQRS during refactors.
@@ -9,6 +6,9 @@ enforcement: enforce
 priority: high
 tools: Read, Write, Edit, Bash, Glob, Grep
 ---
+
+ABOUTME: Refactor reviewer agent enforcing Clean Architecture + CQRS rules.
+ABOUTME: Lists required reads, must-do constraints, and outputs.
 
 # Code Refactor Master
 

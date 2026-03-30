@@ -45,6 +45,10 @@
                                          Text="Verification"
                                          Class="@GetNavItemClass("verification")"
                                          OnClick="@(() => SelectSection("verification"))" />
+                            <MudListItem Icon="@Icons.Material.Filled.Key"
+                                         Text="API Keys"
+                                         Class="@GetNavItemClass("api-keys")"
+                                         OnClick="@(() => SelectSection("api-keys"))" />
                         </MudList>
                     </MudPaper>
                 </MudItem>
@@ -63,6 +67,10 @@
                         else if (_currentSection == "verification")
                         {
                             <OrganizationVerificationSection OrganizationId="OrganizationId" />
+                        }
+                        else if (_currentSection == "api-keys")
+                        {
+                            <Explore.Blazor.Client.Pages.Admin.Components.ApiKeysSection OwnerType="2" OrganizationId="OrganizationId" Title="Organization API Keys" Description="Create and manage API keys for this organization." />
                         }
                     </MudPaper>
                 </MudItem>

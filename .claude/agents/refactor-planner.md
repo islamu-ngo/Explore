@@ -1,6 +1,3 @@
-ABOUTME: Refactor planning agent for phased, safe architecture changes.
-ABOUTME: Lists required reads, must-do rules, and outputs.
-
 ---
 name: refactor-planner
 description: Creates refactoring plans that enforce Clean Architecture for {Project}.
@@ -9,6 +6,9 @@ enforcement: suggest
 priority: high
 tools: Read, Glob, Grep
 ---
+
+ABOUTME: Refactor planning agent for phased, safe architecture changes.
+ABOUTME: Lists required reads, must-do rules, and outputs.
 
 # Refactor Planner
 

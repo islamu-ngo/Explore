@@ -2712,6 +2712,560 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("event_session_agenda_items", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyDefinition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AllowedUrlSchemes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("allowed_url_schemes");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<bool?>("DefaultBooleanValue")
+                        .HasColumnType("boolean")
+                        .HasColumnName("default_boolean_value");
+
+                    b.Property<DateTimeOffset?>("DefaultDateTimeValue")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("default_date_time_value");
+
+                    b.Property<decimal?>("DefaultNumberValue")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("numeric(19,4)")
+                        .HasColumnName("default_number_value");
+
+                    b.Property<Guid?>("DefaultOptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("default_option_id");
+
+                    b.Property<string>("DefaultTextValue")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("default_text_value");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("display_name");
+
+                    b.Property<Guid>("EventSessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_session_id");
+
+                    b.Property<string>("ExposureLevel")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("exposure_level");
+
+                    b.Property<DateTimeOffset>("InstantiatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("instantiated_at");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsAnalyticsRelevant")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_analytics_relevant");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<bool>("IsExportable")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_exportable");
+
+                    b.Property<bool>("IsFilterable")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_filterable");
+
+                    b.Property<bool>("IsModerationRelevant")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_moderation_relevant");
+
+                    b.Property<bool>("IsMulti")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_multi");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_required");
+
+                    b.Property<bool>("IsSearchable")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_searchable");
+
+                    b.Property<bool>("IsSystemOwned")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_system_owned");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("key");
+
+                    b.Property<DateTimeOffset?>("LastSyncedFromTemplateAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_synced_from_template_at");
+
+                    b.Property<DateTimeOffset?>("MaxDateTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("max_date_time");
+
+                    b.Property<int?>("MaxLength")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_length");
+
+                    b.Property<decimal?>("MaxNumber")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("numeric(19,4)")
+                        .HasColumnName("max_number");
+
+                    b.Property<DateTimeOffset?>("MinDateTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("min_date_time");
+
+                    b.Property<int?>("MinLength")
+                        .HasColumnType("integer")
+                        .HasColumnName("min_length");
+
+                    b.Property<decimal?>("MinNumber")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("numeric(19,4)")
+                        .HasColumnName("min_number");
+
+                    b.Property<string>("Namespace")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("namespace");
+
+                    b.Property<string>("PropertyType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("property_type");
+
+                    b.Property<string>("RegexPattern")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("regex_pattern");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<Guid?>("SourceTemplateDefinitionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_template_definition_id");
+
+                    b.Property<Guid?>("SourceTemplateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_template_id");
+
+                    b.Property<string>("SourceTemplateKey")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("source_template_key");
+
+                    b.Property<int?>("SourceTemplateVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("source_template_version");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_session_custom_property_definitions");
+
+                    b.HasIndex("DefaultOptionId")
+                        .HasDatabaseName("ix_event_session_custom_property_definitions_default_option_id");
+
+                    b.HasIndex("SourceTemplateId")
+                        .HasDatabaseName("ix_event_session_custom_property_definitions_source_template_id");
+
+                    b.HasIndex("EventSessionId", "Namespace", "Key")
+                        .IsUnique()
+                        .HasDatabaseName("ix_escpd_session_namespace_key");
+
+                    b.HasIndex("TenantId", "EventSessionId", "IsSearchable", "IsFilterable")
+                        .HasDatabaseName("ix_escpd_tenant_session_search_filter");
+
+                    b.ToTable("event_session_custom_property_definitions", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyOption", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("display_name");
+
+                    b.Property<Guid>("EventSessionCustomPropertyDefinitionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_session_custom_property_definition_id");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_default");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("Namespace")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("namespace");
+
+                    b.Property<Guid?>("ParentOptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("parent_option_id");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<Guid?>("SourceTemplateOptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_template_option_id");
+
+                    b.Property<int?>("SourceTemplateVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("source_template_version");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("value");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_session_custom_property_options");
+
+                    b.HasIndex("ParentOptionId")
+                        .HasDatabaseName("ix_event_session_custom_property_options_parent_option_id");
+
+                    b.HasIndex("EventSessionCustomPropertyDefinitionId", "SortOrder")
+                        .HasDatabaseName("ix_escpo_definition_sort");
+
+                    b.HasIndex("EventSessionCustomPropertyDefinitionId", "Namespace", "Key")
+                        .IsUnique()
+                        .HasDatabaseName("ix_escpo_definition_namespace_key");
+
+                    b.ToTable("event_session_custom_property_options", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyProjection", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool?>("BooleanValue")
+                        .HasColumnType("boolean")
+                        .HasColumnName("boolean_value");
+
+                    b.Property<DateTimeOffset?>("DateTimeValue")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_time_value");
+
+                    b.Property<Guid>("EventSessionCustomPropertyDefinitionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_session_custom_property_definition_id");
+
+                    b.Property<Guid>("EventSessionCustomPropertyValueId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_session_custom_property_value_id");
+
+                    b.Property<Guid>("EventSessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_session_id");
+
+                    b.Property<string>("ExposureLevel")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("exposure_level");
+
+                    b.Property<bool>("IsAnalyticsRelevant")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_analytics_relevant");
+
+                    b.Property<bool>("IsExportable")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_exportable");
+
+                    b.Property<bool>("IsFilterable")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_filterable");
+
+                    b.Property<bool>("IsModerationRelevant")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_moderation_relevant");
+
+                    b.Property<bool>("IsSearchable")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_searchable");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("Namespace")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("namespace");
+
+                    b.Property<string>("NormalizedValue")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("normalized_value");
+
+                    b.Property<decimal?>("NumberValue")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("numeric(19,4)")
+                        .HasColumnName("number_value");
+
+                    b.Property<Guid?>("OptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("option_id");
+
+                    b.Property<int>("Ordinal")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("ordinal");
+
+                    b.Property<string>("PropertyType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("property_type");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("TextValue")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("text_value");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_session_custom_property_projections");
+
+                    b.HasIndex("EventSessionCustomPropertyDefinitionId")
+                        .HasDatabaseName("ix_event_session_custom_property_projections_event_session_cus");
+
+                    b.HasIndex("EventSessionCustomPropertyValueId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_escpp_value");
+
+                    b.HasIndex("EventSessionId")
+                        .HasDatabaseName("ix_event_session_custom_property_projections_event_session_id");
+
+                    b.HasIndex("OptionId")
+                        .HasDatabaseName("ix_event_session_custom_property_projections_option_id");
+
+                    b.HasIndex("TenantId", "ExposureLevel")
+                        .HasDatabaseName("ix_escpp_tenant_exposure");
+
+                    b.HasIndex("TenantId", "Namespace", "Key", "NormalizedValue")
+                        .HasDatabaseName("ix_escpp_tenant_namespace_key_normalized");
+
+                    b.HasIndex("TenantId", "EventSessionId", "Namespace", "Key", "Ordinal")
+                        .HasDatabaseName("ix_escpp_tenant_session_namespace_key_ordinal");
+
+                    b.ToTable("event_session_custom_property_projections", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyValue", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool?>("BooleanValue")
+                        .HasColumnType("boolean")
+                        .HasColumnName("boolean_value");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset?>("DateTimeValue")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_time_value");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<Guid>("EventSessionCustomPropertyDefinitionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_session_custom_property_definition_id");
+
+                    b.Property<Guid>("EventSessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_session_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<decimal?>("NumberValue")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("numeric(19,4)")
+                        .HasColumnName("number_value");
+
+                    b.Property<Guid?>("OptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("option_id");
+
+                    b.Property<int>("Ordinal")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("ordinal");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("TextValue")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("text_value");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_session_custom_property_values");
+
+                    b.HasIndex("EventSessionId")
+                        .HasDatabaseName("ix_event_session_custom_property_values_event_session_id");
+
+                    b.HasIndex("OptionId")
+                        .HasDatabaseName("ix_event_session_custom_property_values_option_id");
+
+                    b.HasIndex("TenantId", "EventSessionId")
+                        .HasDatabaseName("ix_escpv_tenant_session");
+
+                    b.HasIndex("EventSessionCustomPropertyDefinitionId", "EventSessionId", "Ordinal")
+                        .IsUnique()
+                        .HasDatabaseName("ix_escpv_definition_session_ordinal");
+
+                    b.ToTable("event_session_custom_property_values", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.EventSessionIslamicAspect", b =>
                 {
                     b.Property<Guid>("EventSessionId")
@@ -2820,6 +3374,387 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_event_session_speakers_tenant_id");
 
                     b.ToTable("event_session_speakers", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("display_name");
+
+                    b.Property<Guid>("EventTemplateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_template_id");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<bool>("IsPublished")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_published");
+
+                    b.Property<string>("SessionTemplateKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("session_template_key");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_session_templates");
+
+                    b.HasIndex("EventTemplateId", "SessionTemplateKey", "Version")
+                        .IsUnique()
+                        .HasDatabaseName("ix_est_template_key_version");
+
+                    b.HasIndex("TenantId", "IsPublished", "IsActive")
+                        .HasDatabaseName("ix_est_tenant_published_active");
+
+                    b.ToTable("event_session_templates", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionTemplateCustomPropertyDefinition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AllowedUrlSchemes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("allowed_url_schemes");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<bool?>("DefaultBooleanValue")
+                        .HasColumnType("boolean")
+                        .HasColumnName("default_boolean_value");
+
+                    b.Property<DateTimeOffset?>("DefaultDateTimeValue")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("default_date_time_value");
+
+                    b.Property<decimal?>("DefaultNumberValue")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("numeric(19,4)")
+                        .HasColumnName("default_number_value");
+
+                    b.Property<Guid?>("DefaultOptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("default_option_id");
+
+                    b.Property<string>("DefaultTextValue")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("default_text_value");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("display_name");
+
+                    b.Property<Guid>("EventSessionTemplateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_session_template_id");
+
+                    b.Property<string>("ExposureLevel")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("exposure_level");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsAnalyticsRelevant")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_analytics_relevant");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<bool>("IsExportable")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_exportable");
+
+                    b.Property<bool>("IsFilterable")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_filterable");
+
+                    b.Property<bool>("IsModerationRelevant")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_moderation_relevant");
+
+                    b.Property<bool>("IsMulti")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_multi");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_required");
+
+                    b.Property<bool>("IsSearchable")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_searchable");
+
+                    b.Property<bool>("IsSystemOwned")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_system_owned");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("key");
+
+                    b.Property<DateTimeOffset?>("MaxDateTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("max_date_time");
+
+                    b.Property<int?>("MaxLength")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_length");
+
+                    b.Property<decimal?>("MaxNumber")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("numeric(19,4)")
+                        .HasColumnName("max_number");
+
+                    b.Property<DateTimeOffset?>("MinDateTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("min_date_time");
+
+                    b.Property<int?>("MinLength")
+                        .HasColumnType("integer")
+                        .HasColumnName("min_length");
+
+                    b.Property<decimal?>("MinNumber")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("numeric(19,4)")
+                        .HasColumnName("min_number");
+
+                    b.Property<string>("Namespace")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("namespace");
+
+                    b.Property<string>("PropertyType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("property_type");
+
+                    b.Property<string>("RegexPattern")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("regex_pattern");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_session_template_custom_property_definitions");
+
+                    b.HasIndex("DefaultOptionId")
+                        .HasDatabaseName("ix_event_session_template_custom_property_definitions_default_");
+
+                    b.HasIndex("EventSessionTemplateId", "Namespace", "Key")
+                        .IsUnique()
+                        .HasDatabaseName("ix_estcpd_template_namespace_key");
+
+                    b.HasIndex("TenantId", "IsSearchable", "IsFilterable")
+                        .HasDatabaseName("ix_estcpd_tenant_search_filter");
+
+                    b.ToTable("event_session_template_custom_property_definitions", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionTemplateCustomPropertyOption", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("display_name");
+
+                    b.Property<Guid>("EventSessionTemplateCustomPropertyDefinitionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_session_template_custom_property_definition_id");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_default");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("Namespace")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("namespace");
+
+                    b.Property<Guid?>("ParentOptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("parent_option_id");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("value");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_session_template_custom_property_options");
+
+                    b.HasIndex("ParentOptionId")
+                        .HasDatabaseName("ix_event_session_template_custom_property_options_parent_optio");
+
+                    b.HasIndex("EventSessionTemplateCustomPropertyDefinitionId", "SortOrder")
+                        .HasDatabaseName("ix_estcpo_definition_sort");
+
+                    b.HasIndex("EventSessionTemplateCustomPropertyDefinitionId", "Namespace", "Key")
+                        .IsUnique()
+                        .HasDatabaseName("ix_estcpo_definition_namespace_key");
+
+                    b.ToTable("event_session_template_custom_property_options", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventStatus", b =>
@@ -3405,9 +4340,30 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
+                    b.Property<int?>("CreditLimit")
+                        .HasColumnType("integer")
+                        .HasColumnName("credit_limit");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
+
                     b.Property<DateTime?>("ExpiresAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
+
+                    b.Property<int>("ExternalApiKeyCreditPeriodId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("external_api_key_credit_period_id");
+
+                    b.Property<int>("ExternalApiKeyStatusId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("external_api_key_status_id");
 
                     b.Property<string>("KeyId")
                         .IsRequired()
@@ -3423,6 +4379,10 @@ namespace Explore.Persistence.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
                         .HasColumnName("last_used_ip");
+
+                    b.Property<int?>("MaxRolloverCredits")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_rollover_credits");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -3450,12 +4410,6 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("secret_hash");
 
-                    b.Property<int>("Status")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(1)
-                        .HasColumnName("status");
-
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
@@ -3471,17 +4425,146 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_external_api_keys");
 
+                    b.HasIndex("ExternalApiKeyCreditPeriodId")
+                        .HasDatabaseName("ix_external_api_keys_external_api_key_credit_period_id");
+
+                    b.HasIndex("ExternalApiKeyStatusId")
+                        .HasDatabaseName("ix_external_api_keys_external_api_key_status_id");
+
                     b.HasIndex("KeyId")
                         .IsUnique()
                         .HasDatabaseName("ix_external_api_keys_key_id");
 
-                    b.HasIndex("TenantId", "Status")
-                        .HasDatabaseName("ix_external_api_keys_tenant_id_status");
+                    b.HasIndex("TenantId", "ExternalApiKeyStatusId")
+                        .HasDatabaseName("ix_external_api_keys_tenant_id_external_api_key_status_id");
 
                     b.HasIndex("TenantId", "OwnerType", "OwnerId")
                         .HasDatabaseName("ix_external_api_keys_tenant_id_owner_type_owner_id");
 
                     b.ToTable("external_api_keys", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.ExternalApiKeyCreditPeriod", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_external_api_key_credit_periods");
+
+                    b.ToTable("external_api_key_credit_periods", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.ExternalApiKeyQuota", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("CreditLimit")
+                        .HasColumnType("integer")
+                        .HasColumnName("credit_limit");
+
+                    b.Property<int>("CreditsUsed")
+                        .HasColumnType("integer")
+                        .HasColumnName("credits_used");
+
+                    b.Property<Guid>("ExternalApiKeyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("external_api_key_id");
+
+                    b.Property<DateOnly>("PeriodEnd")
+                        .HasColumnType("date")
+                        .HasColumnName("period_end");
+
+                    b.Property<DateOnly>("PeriodStart")
+                        .HasColumnType("date")
+                        .HasColumnName("period_start");
+
+                    b.Property<long>("RequestCount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("request_count");
+
+                    b.Property<int>("RolloverCredits")
+                        .HasColumnType("integer")
+                        .HasColumnName("rollover_credits");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_external_api_key_quotas");
+
+                    b.HasIndex("ExternalApiKeyId", "PeriodStart")
+                        .IsUnique()
+                        .HasDatabaseName("ix_external_api_key_quotas_external_api_key_id_period_start");
+
+                    b.ToTable("external_api_key_quotas", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.ExternalApiKeyStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("full_name");
+
+                    b.Property<bool>("IsUsable")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_usable");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_external_api_key_statuses");
+
+                    b.ToTable("external_api_key_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Federation.PdsSyncOutbox", b =>
@@ -6078,6 +7161,22 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
                     b.Property<string>("Icon")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
@@ -6088,6 +7187,10 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(true)
                         .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
 
                     b.Property<string>("Label")
                         .IsRequired()
@@ -6110,6 +7213,14 @@ namespace Explore.Persistence.Migrations
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
 
                     b.Property<string>("Url")
                         .IsRequired()
@@ -7553,6 +8664,148 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyDefinition", b =>
+                {
+                    b.HasOne("Explore.Domain.EventSessionCustomPropertyOption", "DefaultOption")
+                        .WithMany()
+                        .HasForeignKey("DefaultOptionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_event_session_custom_property_definitions_event_session_cus");
+
+                    b.HasOne("Explore.Domain.EventSession", "EventSession")
+                        .WithMany()
+                        .HasForeignKey("EventSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_custom_property_definitions_event_sessions_ev");
+
+                    b.HasOne("Explore.Domain.EventSessionTemplate", "SourceTemplate")
+                        .WithMany()
+                        .HasForeignKey("SourceTemplateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_event_session_custom_property_definitions_event_session_tem");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_custom_property_definitions_tenants_tenant_id");
+
+                    b.Navigation("DefaultOption");
+
+                    b.Navigation("EventSession");
+
+                    b.Navigation("SourceTemplate");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyOption", b =>
+                {
+                    b.HasOne("Explore.Domain.EventSessionCustomPropertyDefinition", "Definition")
+                        .WithMany("Options")
+                        .HasForeignKey("EventSessionCustomPropertyDefinitionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_escpo_definition");
+
+                    b.HasOne("Explore.Domain.EventSessionCustomPropertyOption", "ParentOption")
+                        .WithMany("ChildOptions")
+                        .HasForeignKey("ParentOptionId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_escpo_parent_option");
+
+                    b.Navigation("Definition");
+
+                    b.Navigation("ParentOption");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyProjection", b =>
+                {
+                    b.HasOne("Explore.Domain.EventSessionCustomPropertyDefinition", "Definition")
+                        .WithMany()
+                        .HasForeignKey("EventSessionCustomPropertyDefinitionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_custom_property_projections_event_session_cus");
+
+                    b.HasOne("Explore.Domain.EventSessionCustomPropertyValue", "Value")
+                        .WithMany()
+                        .HasForeignKey("EventSessionCustomPropertyValueId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_custom_property_projections_event_session_cus1");
+
+                    b.HasOne("Explore.Domain.EventSession", "EventSession")
+                        .WithMany()
+                        .HasForeignKey("EventSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_custom_property_projections_event_sessions_ev");
+
+                    b.HasOne("Explore.Domain.EventSessionCustomPropertyOption", "Option")
+                        .WithMany()
+                        .HasForeignKey("OptionId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_event_session_custom_property_projections_event_session_cus2");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_custom_property_projections_tenants_tenant_id");
+
+                    b.Navigation("Definition");
+
+                    b.Navigation("EventSession");
+
+                    b.Navigation("Option");
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("Value");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyValue", b =>
+                {
+                    b.HasOne("Explore.Domain.EventSessionCustomPropertyDefinition", "Definition")
+                        .WithMany("Values")
+                        .HasForeignKey("EventSessionCustomPropertyDefinitionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_custom_property_values_event_session_custom_p");
+
+                    b.HasOne("Explore.Domain.EventSession", "EventSession")
+                        .WithMany()
+                        .HasForeignKey("EventSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_custom_property_values_event_sessions_event_s");
+
+                    b.HasOne("Explore.Domain.EventSessionCustomPropertyOption", "Option")
+                        .WithMany()
+                        .HasForeignKey("OptionId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_event_session_custom_property_values_event_session_custom_p1");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_custom_property_values_tenants_tenant_id");
+
+                    b.Navigation("Definition");
+
+                    b.Navigation("EventSession");
+
+                    b.Navigation("Option");
+
+                    b.Navigation("Tenant");
+                });
+
             modelBuilder.Entity("Explore.Domain.EventSessionIslamicAspect", b =>
                 {
                     b.HasOne("Explore.Domain.EventSession", "EventSession")
@@ -7623,6 +8876,76 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("EventSession");
 
                     b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionTemplate", b =>
+                {
+                    b.HasOne("Explore.Domain.EventTemplate", "EventTemplate")
+                        .WithMany()
+                        .HasForeignKey("EventTemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_templates_event_templates_event_template_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_templates_tenants_tenant_id");
+
+                    b.Navigation("EventTemplate");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionTemplateCustomPropertyDefinition", b =>
+                {
+                    b.HasOne("Explore.Domain.EventSessionTemplateCustomPropertyOption", "DefaultOption")
+                        .WithMany()
+                        .HasForeignKey("DefaultOptionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_event_session_template_custom_property_definitions_event_se");
+
+                    b.HasOne("Explore.Domain.EventSessionTemplate", "EventSessionTemplate")
+                        .WithMany("Definitions")
+                        .HasForeignKey("EventSessionTemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_template_custom_property_definitions_event_se1");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_template_custom_property_definitions_tenants_");
+
+                    b.Navigation("DefaultOption");
+
+                    b.Navigation("EventSessionTemplate");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionTemplateCustomPropertyOption", b =>
+                {
+                    b.HasOne("Explore.Domain.EventSessionTemplateCustomPropertyDefinition", "Definition")
+                        .WithMany("Options")
+                        .HasForeignKey("EventSessionTemplateCustomPropertyDefinitionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_estcpo_definition");
+
+                    b.HasOne("Explore.Domain.EventSessionTemplateCustomPropertyOption", "ParentOption")
+                        .WithMany("ChildOptions")
+                        .HasForeignKey("ParentOptionId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_estcpo_parent_option");
+
+                    b.Navigation("Definition");
+
+                    b.Navigation("ParentOption");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventTags", b =>
@@ -7749,13 +9072,43 @@ namespace Explore.Persistence.Migrations
 
             modelBuilder.Entity("Explore.Domain.ExternalApiKey", b =>
                 {
+                    b.HasOne("Explore.Domain.ExternalApiKeyCreditPeriod", "ExternalApiKeyCreditPeriod")
+                        .WithMany()
+                        .HasForeignKey("ExternalApiKeyCreditPeriodId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_external_api_keys_external_api_key_credit_periods_external_");
+
+                    b.HasOne("Explore.Domain.ExternalApiKeyStatus", "ExternalApiKeyStatus")
+                        .WithMany()
+                        .HasForeignKey("ExternalApiKeyStatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_external_api_keys_external_api_key_statuses_external_api_ke");
+
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_external_api_keys_tenants_tenant_id");
 
+                    b.Navigation("ExternalApiKeyCreditPeriod");
+
+                    b.Navigation("ExternalApiKeyStatus");
+
                     b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.ExternalApiKeyQuota", b =>
+                {
+                    b.HasOne("Explore.Domain.ExternalApiKey", "ExternalApiKey")
+                        .WithMany()
+                        .HasForeignKey("ExternalApiKeyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_external_api_key_quotas_external_api_keys_external_api_key_");
+
+                    b.Navigation("ExternalApiKey");
                 });
 
             modelBuilder.Entity("Explore.Domain.Group", b =>
@@ -11042,6 +12395,33 @@ namespace Explore.Persistence.Migrations
             modelBuilder.Entity("Explore.Domain.EventSession", b =>
                 {
                     b.Navigation("IslamicAspect");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyDefinition", b =>
+                {
+                    b.Navigation("Options");
+
+                    b.Navigation("Values");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyOption", b =>
+                {
+                    b.Navigation("ChildOptions");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionTemplate", b =>
+                {
+                    b.Navigation("Definitions");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionTemplateCustomPropertyDefinition", b =>
+                {
+                    b.Navigation("Options");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionTemplateCustomPropertyOption", b =>
+                {
+                    b.Navigation("ChildOptions");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventTemplate", b =>

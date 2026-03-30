@@ -23,7 +23,10 @@
                            OnClick="@(() => SidebarState.Toggle())"
                            Title="Toggle sidebar"
                            Class="navbar__sidebar-toggle"
-                           Edge="Edge.Start" />
+                           Edge="Edge.Start"
+                           aria-expanded="@(SidebarState.IsOpen ? "true" : "false")"
+                           aria-label="Toggle sidebar navigation"
+                           aria-controls="sidebar-drawer" />
         }
 
         <!-- Brand -->

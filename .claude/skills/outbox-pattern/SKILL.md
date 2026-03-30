@@ -1,6 +1,3 @@
-ABOUTME: Transactional outbox pattern skill for reliable at-least-once event delivery.
-ABOUTME: Covers OutboxMessage entity, OutboxProcessor, retry/dead-letter, and specialized variants.
-
 ---
 name: outbox-pattern
 description: Transactional outbox pattern for reliable at-least-once messaging in Clean Architecture.
@@ -8,6 +5,9 @@ type: domain
 enforcement: enforce
 priority: high
 ---
+
+ABOUTME: Transactional outbox pattern skill for reliable at-least-once event delivery.
+ABOUTME: Covers OutboxMessage entity, OutboxProcessor, retry/dead-letter, and specialized variants.
 
 # Outbox Pattern
 

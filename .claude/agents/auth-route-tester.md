@@ -1,6 +1,3 @@
-ABOUTME: Testing agent for authenticated API endpoints and auth regressions.
-ABOUTME: Defines required reads, test matrix rules, and outputs.
-
 ---
 name: auth-route-tester
 description: Tests authenticated API endpoints for auth/authz regressions.
@@ -9,6 +6,9 @@ enforcement: suggest
 priority: high
 tools: Bash, Read, Write
 ---
+
+ABOUTME: Testing agent for authenticated API endpoints and auth regressions.
+ABOUTME: Defines required reads, test matrix rules, and outputs.
 
 # Auth Route Tester
 

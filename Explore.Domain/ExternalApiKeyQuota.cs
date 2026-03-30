@@ -18,6 +18,7 @@ public class ExternalApiKeyQuota : IAuditableEntity
     public int CreditLimit { get; set; }
     public int CreditsUsed { get; set; }
     public int RolloverCredits { get; set; }
+    public long RequestCount { get; set; }
 
     public DateTime CreatedAt { get; set; }
     public Guid? CreatedBy { get; set; }

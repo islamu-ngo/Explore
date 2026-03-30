@@ -1,50 +1,65 @@
-/* ABOUTME: Scoped styles for the Standard 3-column footer template layout.
-   ABOUTME: Handles responsive grid column arrangement (desktop dynamic, tablet 3-col, mobile 1-col). */
+/* ABOUTME: Scoped layout styles for the Standard 3-column footer template.
+   ABOUTME: Uses CSS Grid auto-fit for naturally responsive link columns — no inline styles needed. */
 
-/* Desktop (>960px): grid columns set dynamically via inline style based on link group count */
-::deep .site-footer__grid {
+/* ========================================
+   Main grid: brand column + links area
+   ======================================== */
+::deep .footer-std3__main {
     display: grid;
+    grid-template-columns: minmax(14rem, 1fr) minmax(0, 3fr);
     gap: var(--isl-space-10);
+    align-items: start;
 }
 
-/* Tablet (600-960px): brand full-width, 3 link columns below, all centered */
+/* ========================================
+   Links area: auto-fit grid (max ~4 cols)
+   Wraps naturally without media queries.
+   ======================================== */
+::deep .footer-std3__links {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: var(--isl-space-8);
+}
+
+/* ========================================
+   Tablet (<=960px): single column layout
+   ======================================== */
 @media (max-width: 59.999em) {
-    ::deep .site-footer__grid {
-        grid-template-columns: auto auto auto;
-        gap: var(--isl-space-8) var(--isl-space-16);
-        justify-content: center;
+    ::deep .footer-std3__main {
+        grid-template-columns: 1fr;
+        gap: var(--isl-space-8);
     }
 
-    ::deep .site-footer__col--brand {
-        grid-column: 1 / -1;
+    ::deep .footer-std3__brand {
         text-align: center;
     }
 
-    ::deep .site-footer__col--brand .site-footer__brand {
+    ::deep .footer-std3__brand .site-footer__brand {
         justify-content: center;
     }
 
-    ::deep .site-footer__col--brand .site-footer__description {
+    ::deep .footer-std3__brand .site-footer__description {
         margin-left: auto;
         margin-right: auto;
     }
 }
 
-/* Mobile (<=599px): single column, centered */
+/* ========================================
+   Mobile (<=600px): links stack vertically
+   ======================================== */
 @media (max-width: 37.499em) {
-    ::deep .site-footer__grid {
+    ::deep .footer-std3__links {
         grid-template-columns: 1fr;
-        gap: var(--isl-space-8);
         text-align: center;
     }
 
-    ::deep .site-footer__col--links .site-footer__section {
+    ::deep .footer-std3__links .site-footer__section {
         display: flex;
         flex-direction: column;
         align-items: center;
     }
 
-    ::deep .site-footer__col--links .site-footer__link {
+    ::deep .footer-std3__links .site-footer__link {
         width: auto;
     }
 }

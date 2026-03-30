@@ -1,6 +1,3 @@
-ABOUTME: Architecture reviewer agent for Clean Architecture/CQRS compliance.
-ABOUTME: Specifies required reads, enforcement rules, and outputs.
-
 ---
 name: code-architecture-reviewer
 description: Reviews code for Clean Architecture + CQRS compliance.
@@ -9,6 +6,9 @@ enforcement: enforce
 priority: high
 tools: Read, Glob, Grep
 ---
+
+ABOUTME: Architecture reviewer agent for Clean Architecture/CQRS compliance.
+ABOUTME: Specifies required reads, enforcement rules, and outputs.
 
 # Code Architecture Reviewer
 

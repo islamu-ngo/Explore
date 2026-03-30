@@ -22,12 +22,14 @@ public static class ApiAuthenticationPrincipalExtensions
         var ownerIdValue = principal.FindFirst(ApiAuthenticationClaimTypes.OwnerId)?.Value;
 
         if (string.IsNullOrWhiteSpace(keyId) ||
-            !Guid.TryParse(tenantIdValue, out var tenantId) ||
             !Enum.TryParse<ExternalApiKeyOwnerType>(ownerTypeValue, ignoreCase: true, out var ownerType) ||
             !Guid.TryParse(ownerIdValue, out var ownerId))
         {
             return null;
         }
+
+        // TenantId is optional — InstanceAdmin keys have no tenant claim.
+        Guid? tenantId = Guid.TryParse(tenantIdValue, out var parsedTenantId) ? parsedTenantId : null;
 
         var scopes = principal.FindAll(ApiAuthenticationClaimTypes.Scope)
             .Select(claim => claim.Value)
@@ -56,7 +58,7 @@ public static class ApiAuthenticationPrincipalExtensions
 
 public sealed record ApiKeyPrincipalContext(
     string KeyId,
-    Guid TenantId,
+    Guid? TenantId,
     ExternalApiKeyOwnerType OwnerType,
     Guid OwnerId,
     IReadOnlyList<string> Scopes);

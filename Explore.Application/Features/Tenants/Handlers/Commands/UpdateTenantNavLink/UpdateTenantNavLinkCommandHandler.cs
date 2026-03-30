@@ -1,11 +1,13 @@
 // ABOUTME: Handler for updating a tenant navigation link.
-// ABOUTME: Validates input, fetches entity, applies updates.
+// ABOUTME: Validates input, normalizes values, fetches entity, applies updates.
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.Tenant.Validators;
 using Explore.Application.Features.Tenants.Requests.Commands.UpdateTenantNavLink;
 using Explore.Application.Responses;
 using MediatR;
@@ -37,6 +39,18 @@ public class UpdateTenantNavLinkCommandHandler : IRequestHandler<UpdateTenantNav
     {
         var response = new BaseCommandResponse<bool>();
 
+        // Validate the DTO
+        var validator = new UpdateTenantNavigationLinkDtoValidator();
+        var validationResult = await validator.ValidateAsync(request.NavigationLinkDto, cancellationToken);
+
+        if (!validationResult.IsValid)
+        {
+            response.Success = false;
+            response.Message = "Validation failed.";
+            response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+            return response;
+        }
+
         // Verify the navigation link exists and belongs to the current tenant
         var existingLink = await _navigationLinkRepository.GetByIdAndTenantAsync(
             request.NavigationLinkDto.Id,
@@ -51,10 +65,10 @@ public class UpdateTenantNavLinkCommandHandler : IRequestHandler<UpdateTenantNav
             return response;
         }
 
-        // Update the navigation link properties
-        existingLink.Label = request.NavigationLinkDto.Label;
-        existingLink.Url = request.NavigationLinkDto.Url;
-        existingLink.Icon = request.NavigationLinkDto.Icon;
+        // Update with normalized values: trim, blank icon → null
+        existingLink.Label = request.NavigationLinkDto.Label.Trim();
+        existingLink.Url = request.NavigationLinkDto.Url.Trim();
+        existingLink.Icon = string.IsNullOrWhiteSpace(request.NavigationLinkDto.Icon) ? null : request.NavigationLinkDto.Icon.Trim();
         existingLink.OpenInNewTab = request.NavigationLinkDto.OpenInNewTab;
 
         // Update the entity

@@ -1,0 +1,138 @@
+@* ABOUTME: Customization sidebar for event list settings (browse mode, layout, card fields).
+   ABOUTME: Persistent sidebar that pushes content on large screens, overlay on mobile. *@
+
+<div class="customization-drawer">
+
+    @* ── Header ── *@
+    <div class="customization-drawer__header">
+        <MudText Typo="Typo.h6" Class="customization-drawer__title">Customize View</MudText>
+        @if (IsSaving)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Tertiary" Class="customization-drawer__saving">Saving…</MudText>
+        }
+        <MudSpacer />
+        <AppIconButton Icon="@Icons.Material.Filled.Close"
+                       Size="Size.Small"
+                       OnClick="HandleClose"
+                       aria-label="Close customization" />
+    </div>
+
+    @* ── Body ── *@
+    <div class="customization-drawer__body">
+
+        @* ── Browse Mode Section ── *@
+        <div class="customization-drawer__section">
+            <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="customization-drawer__section-title">Browse Mode</MudText>
+            <div class="customization-drawer__toggle-wrapper">
+                <MudToggleGroup T="string" Value="@BrowseModeValue" ValueChanged="HandleBrowseModeChanged"
+                                Color="Color.Primary" Size="Size.Small"
+                                Disabled="@IsLocked(KeyBrowseMode)"
+                                Class="customization-drawer__toggle-group">
+                    <MudToggleItem Value="@("pagination")" Text="Pages" />
+                    <MudToggleItem Value="@("infinite_scroll")" Text="Scroll" />
+                </MudToggleGroup>
+                @if (IsLocked(KeyBrowseMode))
+                {
+                    <MudTooltip Text="@GetLockReason(KeyBrowseMode)">
+                        <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Color="Color.Warning" />
+                    </MudTooltip>
+                }
+            </div>
+
+            @if (IsPaginationMode)
+            {
+                <div class="customization-drawer__page-size">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Items per page</MudText>
+                    <div class="customization-drawer__select-wrapper">
+                        <MudSelect T="int" Value="@PageSizeValue" ValueChanged="HandlePageSizeChanged"
+                                   Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense"
+                                   Disabled="@IsLocked(KeyPageSize)"
+                                   Class="customization-drawer__page-size-select">
+                            @foreach (var size in PageSizeOptions)
+                            {
+                                <MudSelectItem T="int" Value="@size">@size</MudSelectItem>
+                            }
+                        </MudSelect>
+                        @if (IsLocked(KeyPageSize))
+                        {
+                            <MudTooltip Text="@GetLockReason(KeyPageSize)">
+                                <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Color="Color.Warning" />
+                            </MudTooltip>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        <MudDivider Class="my-2" />
+
+        @* ── Default Layout Section ── *@
+        <div class="customization-drawer__section">
+            <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="customization-drawer__section-title">Default Layout</MudText>
+            <div class="customization-drawer__toggle-wrapper">
+                <MudToggleGroup T="string" Value="@LayoutValue" ValueChanged="HandleLayoutChanged"
+                                Color="Color.Primary" Size="Size.Small"
+                                Disabled="@IsLocked(KeyDefaultLayout)"
+                                Class="customization-drawer__toggle-group">
+                    <MudToggleItem Value="@("SingleRow")" Title="Single Row">
+                        <MudIcon Icon="@Icons.Material.Filled.ViewList" Size="Size.Small" />
+                    </MudToggleItem>
+                    <MudToggleItem Value="@("DetailedList")" Title="Detailed List">
+                        <MudIcon Icon="@Icons.Material.Filled.ViewModule" Size="Size.Small" />
+                    </MudToggleItem>
+                    <MudToggleItem Value="@("CompactGrid")" Title="Compact Grid">
+                        <MudIcon Icon="@Icons.Material.Filled.GridView" Size="Size.Small" />
+                    </MudToggleItem>
+                </MudToggleGroup>
+                @if (IsLocked(KeyDefaultLayout))
+                {
+                    <MudTooltip Text="@GetLockReason(KeyDefaultLayout)">
+                        <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Color="Color.Warning" />
+                    </MudTooltip>
+                }
+            </div>
+        </div>
+
+        <MudDivider Class="my-2" />
+
+        @* ── Card Information Section ── *@
+        <div class="customization-drawer__section">
+            <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="customization-drawer__section-title">Card Information</MudText>
+            <div class="customization-drawer__fields">
+                @foreach (var field in CardFields)
+                {
+                    var isFieldLocked = IsLocked(field.Key);
+                    var fieldValue = GetBoolValue(field.Key);
+                    <div class="customization-drawer__field">
+                        <div class="customization-drawer__field-label">
+                            <MudIcon Icon="@field.Icon" Size="Size.Small" Color="Color.Secondary" />
+                            <MudText Typo="Typo.body2">@field.Label</MudText>
+                        </div>
+                        <div class="customization-drawer__field-control">
+                            @if (isFieldLocked)
+                            {
+                                <MudTooltip Text="@GetLockReason(field.Key)">
+                                    <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Color="Color.Warning" />
+                                </MudTooltip>
+                            }
+                            <MudSwitch T="bool" Value="@fieldValue"
+                                       ValueChanged="@(v => HandleFieldToggled(field.Key, v))"
+                                       Color="Color.Primary" Size="Size.Small"
+                                       Disabled="@isFieldLocked" />
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* ── Footer ── *@
+    <div class="customization-drawer__footer">
+        <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small"
+                   StartIcon="@Icons.Material.Filled.RestartAlt"
+                   OnClick="HandleReset"
+                   Class="customization-drawer__reset-btn">
+            Reset to Defaults
+        </MudButton>
+    </div>
+</div>

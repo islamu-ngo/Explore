@@ -1,6 +1,3 @@
-ABOUTME: Frontend error-fixing agent for Blazor UI issues (MudBlazor v9).
-ABOUTME: Specifies required reads, UI constraints, v9 common errors, and outputs.
-
 ---
 name: frontend-error-fixer
 description: Fixes Blazor (Server/WASM) UI errors for {Project} (MudBlazor v9).
@@ -9,6 +6,9 @@ enforcement: suggest
 priority: high
 tools: Read, Write, Edit, Bash, Glob
 ---
+
+ABOUTME: Frontend error-fixing agent for Blazor UI issues (MudBlazor v9).
+ABOUTME: Specifies required reads, UI constraints, v9 common errors, and outputs.
 
 # Frontend Error Fixer
 

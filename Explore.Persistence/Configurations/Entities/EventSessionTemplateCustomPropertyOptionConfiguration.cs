@@ -1,0 +1,58 @@
+// ABOUTME: EF Core configuration for session-template-owned custom-property options.
+// ABOUTME: Keeps namespaced option identity stable within each session template definition.
+
+using Explore.Domain;
+using Explore.Persistence.ValueGenerators;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Explore.Persistence.Configurations.Entities;
+
+public class EventSessionTemplateCustomPropertyOptionConfiguration : IEntityTypeConfiguration<EventSessionTemplateCustomPropertyOption>
+{
+    public void Configure(EntityTypeBuilder<EventSessionTemplateCustomPropertyOption> builder)
+    {
+        builder.ToTable("event_session_template_custom_property_options");
+
+        builder.Property(e => e.Id)
+            .HasValueGenerator<GuidVersion7ValueGenerator>();
+
+        builder.Property(e => e.Namespace)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        builder.Property(e => e.Key)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        builder.Property(e => e.DisplayName)
+            .HasMaxLength(200)
+            .IsRequired();
+
+        builder.Property(e => e.Description)
+            .HasMaxLength(500);
+
+        builder.Property(e => e.Value)
+            .HasMaxLength(500)
+            .IsRequired();
+
+        builder.HasOne(e => e.ParentOption)
+            .WithMany(e => e.ChildOptions)
+            .HasForeignKey(e => e.ParentOptionId)
+            .HasConstraintName("fk_estcpo_parent_option")
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(e => e.Definition)
+            .WithMany(e => e.Options)
+            .HasForeignKey(e => e.EventSessionTemplateCustomPropertyDefinitionId)
+            .HasConstraintName("fk_estcpo_definition")
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasIndex(e => new { e.EventSessionTemplateCustomPropertyDefinitionId, e.SortOrder })
+            .HasDatabaseName("ix_estcpo_definition_sort");
+
+        builder.HasIndex(e => new { e.EventSessionTemplateCustomPropertyDefinitionId, e.Namespace, e.Key })
+            .HasDatabaseName("ix_estcpo_definition_namespace_key")
+            .IsUnique();
+    }
+}

@@ -90,6 +90,10 @@
                                          Text="Lookup Tables"
                                          Class="@GetNavItemClass("lookups")"
                                          OnClick="@(() => SelectSection("lookups"))" />
+                            <MudListItem Icon="@Icons.Material.Filled.Link"
+                                         Text="Navigation Links"
+                                         Class="@GetNavItemClass("nav-links")"
+                                         OnClick="@(() => SelectSection("nav-links"))" />
                             @if (_model.CanOverrideSmtp)
                             {
                                 <MudListItem Icon="@Icons.Material.Filled.Email"
@@ -111,6 +115,10 @@
                                              Class="@GetNavItemClass("analytics")"
                                              OnClick="@(() => SelectSection("analytics"))" />
                             }
+                            <MudListItem Icon="@Icons.Material.Filled.Key"
+                                         Text="API Keys"
+                                         Class="@GetNavItemClass("api-keys")"
+                                         OnClick="@(() => SelectSection("api-keys"))" />
                             <MudListItem Icon="@Icons.Material.Outlined.Gavel"
                                          Text="Community Guidelines"
                                          Class="@GetNavItemClass("community-guidelines")"
@@ -152,6 +160,10 @@
                         else if (_currentSection == "lookups")
                         {
                             <TenantLookupTablesSection />
+                        }
+                        else if (_currentSection == "nav-links")
+                        {
+                            <TenantNavigationLinksSection />
                         }
                         else if (_currentSection == "smtp" && _model.CanOverrideSmtp)
                         {
@@ -197,6 +209,10 @@
                                     Currently, analytics settings are inherited from the platform configuration.
                                 </MudAlert>
                             </div>
+                        }
+                        else if (_currentSection == "api-keys")
+                        {
+                            <Explore.Blazor.Client.Pages.Admin.Components.ApiKeysSection OwnerType="4" Title="Tenant API Keys" Description="Create and manage API keys for this tenant." />
                         }
                         else if (_currentSection == "community-guidelines")
                         {
@@ -251,15 +267,18 @@
                             </div>
                         }
 
-                        <MudDivider Class="my-4" />
+                        @if (_currentSection != "nav-links")
+                        {
+                            <MudDivider Class="my-4" />
 
-                        <MudStack Row="true" Justify="Justify.FlexEnd">
-                            <AppButton OnClick="SaveAsync"
-                                       Disabled="_isSaving"
-                                       StartIcon="@(_isSaving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
-                                @(_isSaving ? "Saving..." : "Save Tenant Settings")
-                            </AppButton>
-                        </MudStack>
+                            <MudStack Row="true" Justify="Justify.FlexEnd">
+                                <AppButton OnClick="SaveAsync"
+                                           Disabled="_isSaving"
+                                           StartIcon="@(_isSaving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)">
+                                    @(_isSaving ? "Saving..." : "Save Tenant Settings")
+                                </AppButton>
+                            </MudStack>
+                        }
                     </MudPaper>
                 </MudItem>
             </MudGrid>

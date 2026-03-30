@@ -1,0 +1,45 @@
+@* ABOUTME: Reusable right sidebar component with sticky positioning and responsive behavior. *@
+@* ABOUTME: Content pushes main area on desktop; becomes fixed overlay on mobile (<960px). *@
+
+@if (IsOpen)
+{
+    <div class="right-sidebar__backdrop" @onclick="HandleBackdropClick"></div>
+}
+
+<aside class="right-sidebar @(IsOpen ? "right-sidebar--open" : "") @Class"
+       style="--right-sidebar-width: @(Width)px;"
+       aria-label="@AriaLabel">
+    @ChildContent
+</aside>
+
+@code
+{
+    /// <summary>Whether the sidebar is currently open.</summary>
+    [Parameter, EditorRequired]
+    public bool IsOpen { get; set; }
+
+    /// <summary>Callback when the user requests to close the sidebar (backdrop click or child close button).</summary>
+    [Parameter, EditorRequired]
+    public EventCallback OnCloseRequested { get; set; }
+
+    /// <summary>Content rendered inside the sidebar panel.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Sidebar width in pixels (default 320).</summary>
+    [Parameter]
+    public int Width { get; set; } = 320;
+
+    /// <summary>Accessible label for the sidebar landmark.</summary>
+    [Parameter]
+    public string? AriaLabel { get; set; }
+
+    /// <summary>Additional CSS classes appended to the aside element.</summary>
+    [Parameter]
+    public string? Class { get; set; }
+
+    private async Task HandleBackdropClick()
+    {
+        await OnCloseRequested.InvokeAsync();
+    }
+}

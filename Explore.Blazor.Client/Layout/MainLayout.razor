@@ -19,7 +19,8 @@
                 <NavMenu OnToggleTheme="DarkModeToggle" />
             </header>
 
-            <MudDrawer Open="@SidebarState.IsOpen"    
+            <MudDrawer id="sidebar-drawer"
+                       Open="@SidebarState.IsOpen"    
                        OpenChanged="@OnDrawerOpenChanged"
                        Anchor="Anchor.Start"
                        Variant="DrawerVariant.Responsive"
@@ -71,6 +72,39 @@
                                     Icon="@Icons.Material.Outlined.ContactMail">
                             Contact
                         </MudNavLink>
+
+                        @if (TenantNavLinksState.Links.Count > 0)
+                        {
+                            <MudDivider Class="my-2" />
+                            <MudText Typo="Typo.overline"
+                                     Class="main-layout__drawer-custom-links-label">
+                                Quick Links
+                            </MudText>
+                            @foreach (var link in TenantNavLinksState.Links)
+                            {
+                                var icon = string.IsNullOrWhiteSpace(link.Icon)
+                                    ? Icons.Material.Filled.Link
+                                    : link.Icon;
+
+                                @if (link.OpenInNewTab == true)
+                                {
+                                    <MudNavLink Href="@link.Url"
+                                                Icon="@icon"
+                                                Target="_blank"
+                                                rel="noopener noreferrer">
+                                        @link.Label
+                                    </MudNavLink>
+                                }
+                                else
+                                {
+                                    <MudNavLink Href="@link.Url"
+                                                Icon="@icon"
+                                                Match="NavLinkMatch.Prefix">
+                                        @link.Label
+                                    </MudNavLink>
+                                }
+                            }
+                        }
                     </MudNavMenu>
                 </nav>
             </MudDrawer>

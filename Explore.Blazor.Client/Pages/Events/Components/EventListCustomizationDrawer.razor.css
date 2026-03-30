@@ -1,0 +1,107 @@
+/* ABOUTME: Scoped styles for EventListCustomizationDrawer sidebar component.
+   ABOUTME: BEM naming, 320px width, flex column layout. Parent controls visibility. */
+
+.customization-drawer {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 320px;
+    min-width: 320px;
+    background: var(--mud-palette-surface);
+}
+
+.customization-drawer__header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+    flex-shrink: 0;
+}
+
+.customization-drawer__title {
+    font-weight: 600;
+}
+
+.customization-drawer__body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+.customization-drawer__section {
+    margin-bottom: 0.25rem;
+}
+
+.customization-drawer__section-title {
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+}
+
+::deep .customization-drawer__toggle-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+::deep .customization-drawer__toggle-group {
+    flex: 1;
+}
+
+::deep .customization-drawer__page-size {
+    margin-top: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+::deep .customization-drawer__select-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+::deep .customization-drawer__page-size-select {
+    width: 80px;
+}
+
+.customization-drawer__fields {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+::deep .customization-drawer__field {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.125rem 0;
+    min-height: 36px;
+}
+
+::deep .customization-drawer__field-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+::deep .customization-drawer__field-control {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.customization-drawer__footer {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--mud-palette-lines-default);
+    flex-shrink: 0;
+}
+
+::deep .customization-drawer__reset-btn {
+    width: 100%;
+    justify-content: center;
+}

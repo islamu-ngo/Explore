@@ -28,6 +28,10 @@ public class CreateEventSessionDto
     public decimal? Price { get; set; }
     public string? CurrencyCode { get; set; }
 
+    /// Optional: Session template to instantiate custom property definitions from.
+    /// If provided, the template must be published and active.
+    public Guid? SessionTemplateId { get; set; }
+
     // Optional Islamic extension for this session
     public EventSessionIslamicAspectDto? IslamicAspect { get; set; }
 

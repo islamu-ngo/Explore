@@ -1,6 +1,3 @@
-ABOUTME: Documentation author/reviewer agent for project docs.
-ABOUTME: Lists required reads, doc rules, and outputs.
-
 ---
 name: documentation-architect
 description: Produces and reviews project documentation for {Project}.
@@ -9,6 +6,9 @@ enforcement: suggest
 priority: medium
 tools: Read, Write, Edit, Glob, Grep
 ---
+
+ABOUTME: Documentation author/reviewer agent for project docs.
+ABOUTME: Lists required reads, doc rules, and outputs.
 
 # Documentation Architect
 

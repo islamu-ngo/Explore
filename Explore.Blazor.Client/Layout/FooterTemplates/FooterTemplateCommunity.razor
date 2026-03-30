@@ -58,18 +58,24 @@
         <span class="site-footer__brand-text footer-community__brand-text--sm">@BrandDisplayName</span>
     </div>
     <div class="site-footer__copyright">@CopyrightText</div>
-    @if (ShowCommunityGuidelinesLink)
+
+    @if (ShowCommunityGuidelinesLink || ShowCookieSettingsLink)
     {
-        <a href="/community-guidelines" class="site-footer__link">Community Guidelines</a>
-    }
-    @if (ShowCookieSettingsLink)
-    {
-        <AppButton Variant="Variant.Text"
-                   Size="Size.Small"
-                   Class="site-footer__link"
-                   OnClick="OnCookieSettingsClick">
-            Cookie Settings
-        </AppButton>
+        <div class="site-footer__bottom-links">
+            @if (ShowCommunityGuidelinesLink)
+            {
+                <a href="/community-guidelines" class="site-footer__link">Community Guidelines</a>
+            }
+            @if (ShowCookieSettingsLink)
+            {
+                <AppButton Variant="Variant.Text"
+                           Size="Size.Small"
+                           Class="site-footer__link"
+                           OnClick="OnCookieSettingsClick">
+                    Cookie Settings
+                </AppButton>
+            }
+        </div>
     }
 </div>
 

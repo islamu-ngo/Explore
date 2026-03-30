@@ -1,0 +1,61 @@
+/* ABOUTME: Scoped styles for EventListPagination — responsive flexbox layout with BEM naming. */
+/* ABOUTME: Summary on left, pagination center, page size right. Stacks vertically on mobile. */
+
+.event-list-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 0;
+    flex-wrap: wrap;
+}
+
+.event-list-pagination__summary {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.event-list-pagination__controls {
+    flex: 1 1 auto;
+    display: flex;
+    justify-content: center;
+}
+
+.event-list-pagination__page-size {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
+::deep .event-list-pagination__size-select {
+    width: 80px;
+    min-width: 80px;
+}
+
+::deep .event-list-pagination__pager {
+    & .mud-pagination-item {
+        min-width: 32px;
+        height: 32px;
+    }
+}
+
+@container (max-width: 599.98px) {
+    .event-list-pagination {
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .event-list-pagination__summary {
+        order: 2;
+    }
+
+    .event-list-pagination__controls {
+        order: 1;
+    }
+
+    .event-list-pagination__page-size {
+        order: 3;
+    }
+}

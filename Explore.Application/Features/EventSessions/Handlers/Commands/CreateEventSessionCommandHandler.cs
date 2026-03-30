@@ -1,11 +1,12 @@
-// ABOUTME: Handler for creating a new event session with validation.
-// ABOUTME: Validates input, maps DTO, sets defaults, persists via repository.
+// ABOUTME: Handler for creating a new event session with validation and optional template instantiation.
+// ABOUTME: Validates input, maps DTO, sets defaults, persists via repository, instantiates session custom properties from template.
 using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventSession.Validators;
 using Explore.Application.Features.EventSessions.Requests.Commands;
 using Explore.Application.Responses;
@@ -21,6 +22,9 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
     private readonly ILocationRepository _locationRepository;
     private readonly IRegistrationModeRepository _registrationModeRepository;
     private readonly IEventSessionIslamicAspectRepository _eventSessionIslamicAspectRepository;
+    private readonly IEventSessionTemplateRepository _eventSessionTemplateRepository;
+    private readonly IEventSessionCustomPropertyRepository _eventSessionCustomPropertyRepository;
+    private readonly IEventSessionTemplateInstantiationService _instantiationService;
     private readonly IMapper _mapper;
 
     public CreateEventSessionCommandHandler(
@@ -29,6 +33,9 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
         ILocationRepository locationRepository,
         IRegistrationModeRepository registrationModeRepository,
         IEventSessionIslamicAspectRepository eventSessionIslamicAspectRepository,
+        IEventSessionTemplateRepository eventSessionTemplateRepository,
+        IEventSessionCustomPropertyRepository eventSessionCustomPropertyRepository,
+        IEventSessionTemplateInstantiationService instantiationService,
         IMapper mapper)
     {
         _eventSessionRepository = eventSessionRepository;
@@ -36,6 +43,9 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
         _locationRepository = locationRepository;
         _registrationModeRepository = registrationModeRepository;
         _eventSessionIslamicAspectRepository = eventSessionIslamicAspectRepository;
+        _eventSessionTemplateRepository = eventSessionTemplateRepository;
+        _eventSessionCustomPropertyRepository = eventSessionCustomPropertyRepository;
+        _instantiationService = instantiationService;
         _mapper = mapper;
     }
 
@@ -43,7 +53,7 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
     {
         var response = new BaseCommandResponse<Guid>();
 
-        var validator = new CreateEventSessionDtoValidator(_eventRepository, _locationRepository, _registrationModeRepository);
+        var validator = new CreateEventSessionDtoValidator(_eventRepository, _locationRepository, _registrationModeRepository, _eventSessionTemplateRepository);
         var validationResult = await validator.ValidateAsync(request.EventSessionDto, cancellationToken);
 
         if (!validationResult.IsValid)
@@ -76,6 +86,40 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
             islamicAspect.EventSession = null;
 
             await _eventSessionIslamicAspectRepository.Create(islamicAspect);
+        }
+
+        // Template instantiation: copy session template definitions to runtime
+        if (request.EventSessionDto.SessionTemplateId.HasValue)
+        {
+            var sessionTemplate = await _eventSessionTemplateRepository.GetSessionTemplateWithDetails(
+                request.EventSessionDto.SessionTemplateId.Value);
+
+            if (sessionTemplate is { IsPublished: true, IsActive: true })
+            {
+                var instantiationResult = _instantiationService.InstantiateFromSessionTemplate(
+                    eventSession.Id,
+                    parentEvent.TenantId,
+                    sessionTemplate,
+                    "system");
+
+                foreach (var runtimeDef in instantiationResult.Definitions)
+                {
+                    // Clear DefaultOptionId before initial save to avoid FK violation
+                    runtimeDef.Definition.DefaultOptionId = null;
+
+                    await _eventSessionCustomPropertyRepository.CreateWithOptions(
+                        runtimeDef.Definition,
+                        runtimeDef.Options,
+                        runtimeDef.DefaultOptionId,
+                        cancellationToken);
+
+                    if (runtimeDef.DefaultValue != null)
+                    {
+                        await _eventSessionCustomPropertyRepository.SetValue(
+                            runtimeDef.DefaultValue, cancellationToken);
+                    }
+                }
+            }
         }
 
         response.Success = true;

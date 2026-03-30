@@ -17,6 +17,7 @@
  *     .site-footer__link
  *   .site-footer__bottom
  *     .site-footer__copyright
+ *     .site-footer__bottom-links  (community guidelines + cookie settings)
  *     .site-footer__social
  *       .site-footer__social-btn
  */
@@ -135,18 +136,18 @@
 
 /* ========================================
    Element: site-footer__bottom
-   Bottom section with copyright and social
+   3-zone flex layout: copyright | links | social
    ======================================== */
 ::deep .site-footer__bottom {
     display: flex;
-    flex-direction: column;
-    gap: var(--isl-space-4);
+    flex-wrap: wrap;
     align-items: center;
+    justify-content: center;
+    gap: var(--isl-space-4);
 }
 
 @media (min-width: 37.5em) {
     ::deep .site-footer__bottom {
-        flex-direction: row;
         justify-content: space-between;
     }
 }
@@ -154,6 +155,19 @@
 /* Element: site-footer__copyright */
 ::deep .site-footer__copyright {
     color: var(--mud-palette-text-disabled);
+    font-size: 0.875rem;
+}
+
+/* Element: site-footer__bottom-links
+   Community guidelines, cookie settings, and other text links */
+::deep .site-footer__bottom-links {
+    display: flex;
+    align-items: center;
+    gap: var(--isl-space-4);
+}
+
+::deep .site-footer__bottom-links .site-footer__link {
+    margin-bottom: 0;
     font-size: 0.875rem;
 }
 

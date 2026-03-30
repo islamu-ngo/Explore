@@ -599,3 +599,52 @@ Step 3: Normal cascade (highest scope wins):
 | `blazor-css-isolation` | Phases B1, B5 — scoped CSS, BEM | B |
 | `blazor-bff-patterns` | Phase B7 — service + proxy | B |
 | `error-tracking` | Phases A4, A5 — observability, metrics | A |
+
+---
+
+## Session Progress (Final State — 2026-03-29)
+
+### Status: ✅ Feature Complete (V1)
+
+All Track A (backend) and Track B (frontend) tasks complete. Post-implementation UX refinements done.
+
+### Post-B8 Work (Not in Original Task List)
+
+#### Right Sidebar Refactor
+- **What**: Replaced MudDrawer overlay with content-pushing sticky `RightSidebar` common component
+- **File**: `Explore.Blazor.Client/Components/Common/RightSidebar.razor` (reusable)
+- **Why**: Overlay drawer obscured content; sticky sidebar pushes main content left, better UX
+- **Reusability**: Designed for future AI assistant panel or other sidebar features
+
+#### EventCard UX Improvements
+- Icon badges for visibility/audience/format with MudTooltip (replaced verbose text labels)
+- CompactGrid progressive disclosure: `+N more` chip with hover reveal for hidden fields
+- DetailedList clutter reduction: removed redundant labels, used icon-only badges
+- Organizer hover treatment: subtle opacity transition on organizer info
+
+#### Bug Fixes
+- Drawer peeking fix: sidebar no longer partially visible when closed
+- Missing Tune button: feature-flag bypass (`_showCustomizationButton = true`) so button always renders
+
+### Key Implementation Files (Final)
+
+| Layer | File | Status |
+|---|---|---|
+| Common UI | `Components/Common/RightSidebar.razor` | ✅ New — reusable sticky sidebar |
+| EventCard | `Pages/Events/Components/EventCard.razor` | ✅ Extracted from EventList |
+| EventCard CSS | `Pages/Events/Components/EventCard.razor.css` | ✅ Scoped styles with BEM |
+| EventList | `Pages/Events/EventList.razor` | ✅ Refactored — uses EventCard + RightSidebar |
+| EventList Code | `Pages/Events/EventList.razor.cs` | ✅ Customization state, autosave, pagination |
+| Drawer | `Pages/Events/Components/EventListCustomizationDrawer.razor` | ✅ Settings sections |
+| Pagination | `Pages/Events/Components/EventListPagination.razor` | ✅ MudPagination wrapper |
+| Settings Service | `Services/UserSettingsService.cs` | ✅ Auth=API, Anon=localStorage, SSR-safe |
+| Tests | `Explore.Blazor.Client.Tests/Pages/Events/` | ✅ EventCard + drawer + pagination tests |
+
+### Build & Test Verification
+- **Build**: `dotnet build --configuration Release` — ✅ Clean
+- **Tests**: 654 passed, 1 pre-existing skip, 0 failures
+
+### Remaining Optional Work
+- Visual verification via Playwriter (screenshots of all layouts)
+- Re-enable feature-flag gating (currently bypassed for development)
+- E2E tests (B8.2/B8.3 deferred — need running app + Aspire)

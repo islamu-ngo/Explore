@@ -26,13 +26,16 @@
 
 
 
-@* ── Overlay for right sidebar: separate from MudDrawer so we can use LockScroll ── *@
+@* ── Overlay for right sidebar (detail): separate from MudDrawer so we can use LockScroll ── *@
 <MudOverlay Visible="_detailDrawerOpen"
             DarkBackground="true"
             LockScroll="true"
             OnClick="@HandleOutsideDrawerClick"
             Class="event-list__overlay"
             ZIndex="1399" />
+
+
+
 
 <div class="event-list__drawer-container">
 
@@ -866,9 +869,8 @@
             }
         </MudDrawer>
 
-
-
-        @* ── Main Content Area ── *@
+        @* ── Main Content Area (flex container with optional sidebar) ── *@
+        <div class="event-list__page">
 
         <main class="event-list__main">
 
@@ -942,11 +944,21 @@
 
                             EventStatuses="@eventStatuses"
 
-                            TagGroups="@tagGroups" />
+                            TagGroups="@tagGroups"
+
+                            ShowCustomizationButton="@_showCustomizationButton"
+
+                            OnCustomizationRequested="OpenCustomizationDrawer" />
 
 
 
             @{ var bp = GetGridBreakpoints(); }
+
+            @if (_isLoadingPage)
+            {
+                <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
+            }
+
             <MudGrid Spacing="0" Justify="Justify.FlexStart" Class="@GetGridCssClass()">
                 @if (!_eventsLoaded)
                 {
@@ -974,269 +986,33 @@
                         </MudItem>
                     }
                 }
+                else if (_browseMode == BrowseMode.Pagination)
+                {
+                    @foreach (var evt in _pagedEvents)
+                    {
+                        <MudItem @key="evt.Id" xs="@bp.Xs" sm="@bp.Sm" md="@bp.Md" lg="@bp.Lg">
+                            <EventCard Event="@evt"
+                                       Layout="@_currentLayout"
+                                       IsSelected="@(_selectedEvent?.Id == evt.Id && _detailDrawerOpen)"
+                                       CardFieldVisibility="@_cardFieldVisibility"
+                                       OnClick="SelectEvent"
+                                       OnEditRequested="NavigateToEdit"
+                                       OnDeleteRequested="OpenDeleteDialog" />
+                        </MudItem>
+                    }
+                }
                 else
                 {
                     <Virtualize @ref="_virtualize" ItemsProvider="LoadEventsAsync" ItemSize="350" OverscanCount="4" Context="evt">
                         <ItemContent>
                             <MudItem @key="evt.Id" xs="@bp.Xs" sm="@bp.Sm" md="@bp.Md" lg="@bp.Lg">
-
-                                @* ── Mode 1: Compact Grid — image-dominant with overlay ── *@
-                                @if (_currentLayout == LayoutMode.CompactGrid)
-                                {
-                                    <MudCard @onclick="@(() => SelectEvent(evt))" Class="@GetCardCssClass(evt)" Outlined="true" Elevation="0" Style="overflow: hidden; cursor: pointer;">
-                                        <div class="event-card__image-wrapper">
-                                            @if (evt.HasManagementLinks())
-                                            {
-                                                <div class="event-card__action-menu event-card__action-menu--overlay" @onclick:stopPropagation="true">
-                                                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
-                                                             AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
-                                                             Class="event-card__menu-button">
-                                                        @if (evt.HasHalLink("edit"))
-                                                        {
-                                                            <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => NavigateToEdit(evt))">Edit</MudMenuItem>
-                                                        }
-                                                        @if (evt.HasHalLink("delete"))
-                                                        {
-                                                            <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" OnClick="@(() => OpenDeleteDialog(evt))">Delete</MudMenuItem>
-                                                        }
-                                                    </MudMenu>
-                                                </div>
-                                            }
-                                            @{ var compactImgSrc = string.IsNullOrEmpty(evt.FeaturedImageUri) ? GetEventImage(evt) : evt.FeaturedImageUri; }
-                                            <div class="event-card__image-blur" style="background-image: url('@compactImgSrc');"></div>
-                                            <MudImage Src="@compactImgSrc"
-                                                      ObjectFit="ObjectFit.Contain"
-                                                      Class="event-card__image" />
-                                            <div class="event-card__overlay">
-                                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled" Class="event-card__overlay-chip">
-                                                    @GetEventTypeName(evt)
-                                                </MudChip>
-                                                <MudText Typo="Typo.subtitle2" Class="event-card__overlay-title">
-                                                    @evt.Title
-                                                </MudText>
-                                                <div class="event-card__overlay-meta">
-                                                    <MudText Typo="Typo.caption">
-                                                        @(evt.FirstSessionDate?.ToString("MMM dd") ?? "TBD")
-                                                    </MudText>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </MudCard>
-                                }
-
-                                @* ── Mode 2: Detailed List — horizontal card with image left, metadata right ── *@
-                                else if (_currentLayout == LayoutMode.DetailedList)
-                                {
-                                    <MudCard @onclick="@(() => SelectEvent(evt))" Class="@GetCardCssClass(evt)" Outlined="true" Elevation="0" Style="overflow: hidden; cursor: pointer;">
-                                        <div class="event-card__horizontal">
-                                            <div class="event-card__horizontal-image">
-                                                @{ var detailImgSrc = string.IsNullOrEmpty(evt.FeaturedImageUri) ? GetEventImage(evt) : evt.FeaturedImageUri; }
-                                                <div class="event-card__image-blur" style="background-image: url('@detailImgSrc');"></div>
-                                                <MudImage Src="@detailImgSrc"
-                                                          ObjectFit="ObjectFit.Contain"
-                                                          Class="event-card__image-foreground" />
-                                            </div>
-                                            <div class="event-card__horizontal-content">
-                                                @* ── Upper: Title + Chips ── *@
-                                                <div class="event-card__dl-header">
-                                                    <MudText Typo="Typo.subtitle1" Class="event-card__dl-title">
-                                                        @evt.Title
-                                                    </MudText>
-                                                    <div class="d-flex align-center gap-1 flex-shrink-0">
-                                                        @if (evt.IsUserReported == true)
-                                                        {
-                                                            <MudTooltip Text="Community Reported">
-                                                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Color="Color.Info" />
-                                                            </MudTooltip>
-                                                        }
-                                                        @if (evt.HasManagementLinks())
-                                                        {
-                                                            <div @onclick:stopPropagation="true">
-                                                                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
-                                                                         AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
-                                                                    @if (evt.HasHalLink("edit"))
-                                                                    {
-                                                                        <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => NavigateToEdit(evt))">Edit</MudMenuItem>
-                                                                    }
-                                                                    @if (evt.HasHalLink("delete"))
-                                                                    {
-                                                                        <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" OnClick="@(() => OpenDeleteDialog(evt))">Delete</MudMenuItem>
-                                                                    }
-                                                                </MudMenu>
-                                                            </div>
-                                                        }
-                                                    </div>
-                                                </div>
-
-                                                @* ── Chips row: type, status, format, price ── *@
-                                                <div class="event-card__dl-chips">
-                                                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="font-weight-bold">@GetEventTypeName(evt)</MudChip>
-                                                    <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@evt.EventStatusFullName</MudChip>
-                                                    @if (!string.IsNullOrEmpty(evt.EventFormatFullName))
-                                                    {
-                                                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text">@evt.EventFormatFullName</MudChip>
-                                                    }
-                                                    @if ((evt.Price ?? 0) == 0)
-                                                    {
-                                                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled" Class="px-1">Free</MudChip>
-                                                    }
-                                                    else
-                                                    {
-                                                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text">@($"{evt.CurrencyCode ?? "€"}{evt.Price:F2}")</MudChip>
-                                                    }
-                                                </div>
-
-                                                @* ── Middle: Description ── *@
-                                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="event-card__dl-description">
-                                                    @GetTruncatedDescription(evt.Description)
-                                                </MudText>
-
-                                                @* ── Bottom: Date, location, organizer ── *@
-                                                <div class="event-card__dl-meta">
-                                                    <span class="event-card__dl-meta-item">
-                                                        <MudIcon Icon="@Icons.Material.Outlined.CalendarToday" Size="Size.Small" />
-                                                        @(evt.FirstSessionDate?.ToString("MMM dd, yyyy") ?? "TBD")
-                                                    </span>
-                                                    <span class="event-card__dl-meta-item">
-                                                        <MudIcon Icon="@Icons.Material.Outlined.LocationOn" Size="Size.Small" />
-                                                        @GetLocationText(evt)
-                                                    </span>
-                                                    @{
-                                                        var dlOrgUrl = GetActorProfileUrl(evt.ActorId, evt.ActorTypeId);
-                                                        var dlOrgClass = $"event-card__dl-meta-item{(dlOrgUrl != null ? " cursor-pointer" : "")}";
-                                                    }
-                                                    <span class="@dlOrgClass"
-                                                          @onclick:stopPropagation="true"
-                                                          @onclick="@(() => NavigateToActorProfile(evt.ActorId, evt.ActorTypeId))">
-                                                        <MudAvatar Size="Size.Small" Image="@evt.ActorProfilePictureUri" Color="Color.Primary" Style="width: 20px; height: 20px; font-size: 0.65rem;">
-                                                            @if (string.IsNullOrEmpty(evt.ActorProfilePictureUri) && !string.IsNullOrEmpty(evt.ActorDisplayName))
-                                                            {
-                                                                @(evt.ActorDisplayName.FirstOrDefault())
-                                                            }
-                                                        </MudAvatar>
-                                                        <span style="@(dlOrgUrl != null ? "text-decoration: underline dotted;" : "")">@evt.ActorDisplayName</span>
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </MudCard>
-                                }
-
-                                @* ── Mode 3: Single Row — full-width with large image and rich metadata ── *@
-                                else
-                                {
-                                    <MudCard @onclick="@(() => SelectEvent(evt))" Class="@GetCardCssClass(evt)" Outlined="true" Elevation="0" Style="overflow: hidden; cursor: pointer;">
-                                        <div class="event-card__full-row">
-                                            <div class="event-card__full-row-image">
-                                                @{ var rowImgSrc = string.IsNullOrEmpty(evt.FeaturedImageUri) ? GetEventImage(evt) : evt.FeaturedImageUri; }
-                                                <div class="event-card__image-blur" style="background-image: url('@rowImgSrc');"></div>
-                                                <MudImage Src="@rowImgSrc"
-                                                          ObjectFit="ObjectFit.Contain"
-                                                          Class="event-card__image-foreground" />
-                                            </div>
-                                            <div class="event-card__full-row-content">
-                                                @* ── Upper: Title + chips ── *@
-                                                <div class="event-card__sr-header">
-                                                    <div class="event-card__sr-title-block">
-                                                        <MudText Typo="Typo.subtitle1" Style="font-weight: 700; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                                            @evt.Title
-                                                        </MudText>
-                                                        @if (!string.IsNullOrEmpty(evt.Subtitle))
-                                                        {
-                                                            <MudText Typo="Typo.caption" Color="Color.Primary" Style="font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                                                @evt.Subtitle
-                                                            </MudText>
-                                                        }
-                                                    </div>
-                                                    <div class="event-card__sr-status-chips">
-                                                        @if (evt.HasManagementLinks())
-                                                        {
-                                                            <div @onclick:stopPropagation="true">
-                                                                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
-                                                                         AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
-                                                                    @if (evt.HasHalLink("edit"))
-                                                                    {
-                                                                        <MudMenuItem Icon="@Icons.Material.Filled.Edit" OnClick="@(() => NavigateToEdit(evt))">Edit</MudMenuItem>
-                                                                    }
-                                                                    @if (evt.HasHalLink("delete"))
-                                                                    {
-                                                                        <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error" OnClick="@(() => OpenDeleteDialog(evt))">Delete</MudMenuItem>
-                                                                    }
-                                                                </MudMenu>
-                                                            </div>
-                                                        }
-                                                    </div>
-                                                </div>
-
-                                                @* ── Chips: type, status, format, audience, madhab, price ── *@
-                                                <div class="event-card__sr-chips">
-                                                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="font-weight-bold">@GetEventTypeName(evt)</MudChip>
-                                                    <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@evt.EventStatusFullName</MudChip>
-                                                    @if (!string.IsNullOrEmpty(evt.EventFormatFullName))
-                                                    {
-                                                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text">@evt.EventFormatFullName</MudChip>
-                                                    }
-                                                    <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Text">@evt.AudienceGenderFullName</MudChip>
-                                                    @if (!string.IsNullOrEmpty(evt.MadhabFullName))
-                                                    {
-                                                        <MudChip T="string" Size="Size.Small" Color="Color.Dark" Variant="Variant.Text">@evt.MadhabFullName</MudChip>
-                                                    }
-                                                    @if ((evt.Price ?? 0) == 0)
-                                                    {
-                                                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled" Class="px-1">Free</MudChip>
-                                                    }
-                                                    else
-                                                    {
-                                                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text">@($"{evt.CurrencyCode ?? "€"}{evt.Price:F2}")</MudChip>
-                                                    }
-                                                    @if (evt.IsUserReported == true)
-                                                    {
-                                                        <MudTooltip Text="Community Reported">
-                                                            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Color="Color.Info" />
-                                                        </MudTooltip>
-                                                    }
-                                                </div>
-
-                                                @* ── Middle: Description ── *@
-                                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="event-card__sr-description">
-                                                    @GetTruncatedDescription(evt.Description)
-                                                </MudText>
-
-                                                @* ── Bottom: Date, location, sessions, organizer ── *@
-                                                <div class="event-card__sr-meta">
-                                                    <span class="event-card__sr-meta-item">
-                                                        <MudIcon Icon="@Icons.Material.Outlined.CalendarToday" Size="Size.Small" />
-                                                        @(evt.FirstSessionDate?.ToString("MMM dd, yyyy") ?? "TBD")
-                                                        @if (evt.SessionCount > 1)
-                                                        {
-                                                            <span class="mud-secondary-text">(@evt.SessionCount sessions)</span>
-                                                        }
-                                                    </span>
-                                                    <span class="event-card__sr-meta-item">
-                                                        <MudIcon Icon="@Icons.Material.Outlined.LocationOn" Size="Size.Small" />
-                                                        @GetLocationText(evt)
-                                                    </span>
-                                                    @{
-                                                        var srOrgUrl = GetActorProfileUrl(evt.ActorId, evt.ActorTypeId);
-                                                        var srOrgClass = $"event-card__sr-meta-item{(srOrgUrl != null ? " cursor-pointer" : "")}";
-                                                    }
-                                                    <span class="@srOrgClass"
-                                                          @onclick:stopPropagation="true"
-                                                          @onclick="@(() => NavigateToActorProfile(evt.ActorId, evt.ActorTypeId))">
-                                                        <MudAvatar Size="Size.Small" Image="@evt.ActorProfilePictureUri" Color="Color.Primary" Style="width: 20px; height: 20px; font-size: 0.65rem;">
-                                                            @if (string.IsNullOrEmpty(evt.ActorProfilePictureUri) && !string.IsNullOrEmpty(evt.ActorDisplayName))
-                                                            {
-                                                                @(evt.ActorDisplayName.FirstOrDefault())
-                                                            }
-                                                        </MudAvatar>
-                                                        <span style="@(srOrgUrl != null ? "text-decoration: underline dotted;" : "")">@evt.ActorDisplayName</span>
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </MudCard>
-                                }
-
+                                <EventCard Event="@evt"
+                                           Layout="@_currentLayout"
+                                           IsSelected="@(_selectedEvent?.Id == evt.Id && _detailDrawerOpen)"
+                                           CardFieldVisibility="@_cardFieldVisibility"
+                                           OnClick="SelectEvent"
+                                           OnEditRequested="NavigateToEdit"
+                                           OnDeleteRequested="OpenDeleteDialog" />
                             </MudItem>
                         </ItemContent>
                         <Placeholder>
@@ -1255,6 +1031,17 @@
                     </Virtualize>
                 }
             </MudGrid>
+
+            @if (_browseMode == BrowseMode.Pagination && _eventsLoaded && _totalCount > 0)
+            {
+                <EventListPagination CurrentPage="@_currentPage"
+                                     TotalPages="@((_totalCount + _pageSize - 1) / _pageSize)"
+                                     PageSize="@_pageSize"
+                                     TotalCount="@_totalCount"
+                                     IsLoading="@_isLoadingPage"
+                                     CurrentPageChanged="OnPageChanged"
+                                     PageSizeChanged="OnPageSizeChanged" />
+            }
 
 
 
@@ -1288,4 +1075,20 @@
 
     </main>
 
-    </div>
+        @* ── Customization Sidebar (right, content-pushing like left nav) ── *@
+        @if (_showCustomizationButton)
+        {
+            <RightSidebar IsOpen="_customizationDrawerOpen"
+                          OnCloseRequested="CloseCustomizationDrawer"
+                          AriaLabel="Customize event list">
+                <EventListCustomizationDrawer Settings="@_userSettings"
+                                              IsSaving="@_isSaving"
+                                              OnCloseRequested="CloseCustomizationDrawer"
+                                              OnSettingsChanged="HandleSettingsChanged"
+                                              OnResetRequested="HandleResetSettings" />
+            </RightSidebar>
+        }
+
+        </div> @* .event-list__page *@
+
+    </div> @* .event-list__drawer-container *@

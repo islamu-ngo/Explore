@@ -1,20 +1,24 @@
-/* ABOUTME: Scoped styles for EventList page with triple-mode grid layout. */
-/* ABOUTME: Covers drawers, card modes (CompactGrid, DetailedList, SingleRow), and responsive breakpoints. */
+/* ABOUTME: Scoped styles for EventList page layout, grid columns, sidebar, and drawer overlays. */
+/* ABOUTME: Card-internal styles live in Components/EventCard.razor.css. */
 
 /* ══════════════════════════════════════════════
-   Page Layout — Drawers + Main Content
-   NOTE: Drawer container and detail drawer rules are in
-   StyleGlobal.css because MudDrawerContainer renders the
-   <aside> and <div> wrapper outside the component scope boundary.
+   Page Layout — Flex container + Sidebar
    ══════════════════════════════════════════════ */
+
+.event-list__page {
+    display: flex;
+    width: 100%;
+    min-height: calc(100vh - var(--mud-appbar-height, 4rem));
+}
 
 .event-list__main {
     flex: 1;
     min-width: 0;
     position: relative;
-    min-height: calc(100vh - var(--mud-appbar-height, 4rem));
     container-type: inline-size;
 }
+
+/* Sidebar layout delegated to Components/Common/RightSidebar.razor.css */
 
 /* ══════════════════════════════════════════════
    Event Grid — Shared MudGrid normalization
@@ -48,124 +52,17 @@
 }
 
 /* ══════════════════════════════════════════════
-   Event Card — Base styles (all modes)
+   Event Card — Grid Layout & Skeleton
+   (Card-internal styles moved to EventCard.razor.css)
    ══════════════════════════════════════════════ */
-
-::deep .event-card {
-    width: 100% !important;
-    transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
-    background-color: var(--mud-palette-surface);
-
-    &:hover {
-        border-color: var(--mud-palette-primary) !important;
-        box-shadow: 0 0 0 2px var(--mud-palette-primary);
-    }
-
-    &.event-card--selected {
-        border-color: var(--mud-palette-primary) !important;
-        box-shadow: 0 0 0 2px var(--mud-palette-primary);
-    }
-}
-
-/* ══════════════════════════════════════════════
-   Smart Image Container — Blurry background fill
-   ══════════════════════════════════════════════ */
-
-::deep .event-card__image-blur {
-    position: absolute;
-    inset: 0;
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    filter: blur(20px);
-    transform: scale(1.1);
-    z-index: 0;
-}
-
-::deep .event-card__image-foreground,
-::deep .event-card__image-foreground > img {
-    position: relative;
-    z-index: 1;
-    width: 100% !important;
-    height: 100% !important;
-    object-fit: contain !important;
-    display: block;
-}
-
-/* ══════════════════════════════════════════════
-   Mode 1: Compact Grid — Image-dominant overlay cards
-   ══════════════════════════════════════════════ */
-
-::deep .event-card--CompactGrid {
-    height: 100% !important;
-    display: flex !important;
-    flex-direction: column;
-    position: relative;
-    aspect-ratio: 3 / 4;
-    overflow: hidden;
-}
-
-::deep .event-card__image-wrapper {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    flex: 1;
-    overflow: hidden;
-}
-
-::deep .event-card__image {
-    position: relative;
-    z-index: 1;
-    width: 100% !important;
-    height: 100% !important;
-    display: block;
-}
-
-::deep .event-card__image > img {
-    width: 100% !important;
-    height: 100% !important;
-    object-fit: contain !important;
-    display: block;
-}
-
-::deep .event-card__overlay {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 12px;
-    background: linear-gradient(to top, oklch(0 0 0 / 0.85) 0%, oklch(0 0 0 / 0.4) 60%, transparent 100%);
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    z-index: 2;
-}
-
-::deep .event-card__overlay-chip {
-    align-self: flex-start;
-}
-
-::deep .event-card__overlay-title {
-    color: #fff !important;
-    font-weight: 700;
-    line-height: 1.3;
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-}
-
-::deep .event-card__overlay-meta {
-    color: oklch(1 0 0 / 0.7);
-}
-
-::deep .event-card__overlay-meta .mud-typography {
-    color: oklch(1 0 0 / 0.7) !important;
-}
 
 ::deep .event-card__skeleton-fill {
     position: absolute;
     inset: 0;
+}
+
+::deep .event-card--skeleton {
+    width: 100% !important;
 }
 
 /* Compact Grid — container-responsive columns via fixed min-width.
@@ -188,106 +85,6 @@
         width: 314px !important;
         max-width: 314px !important;
     }
-}
-
-/* ══════════════════════════════════════════════
-   Mode 2: Detailed List — MangaDex-inspired horizontal card
-   ══════════════════════════════════════════════ */
-
-::deep .event-card--DetailedList {
-    height: 280px !important;
-    display: flex !important;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-::deep .event-card__horizontal {
-    display: flex;
-    flex-direction: row;
-    height: 280px;
-}
-
-::deep .event-card__horizontal-image {
-    flex: 0 0 200px;
-    height: 280px;
-    overflow: hidden;
-    position: relative;
-}
-
-::deep .event-card__horizontal-content {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    padding: 12px 16px;
-    overflow: hidden;
-    gap: 6px;
-}
-
-/* Detailed List — Header: title left, actions right */
-::deep .event-card__dl-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 8px;
-    flex-shrink: 0;
-}
-
-::deep .event-card__dl-title {
-    font-weight: 700;
-    line-height: 1.3;
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    flex: 1;
-    min-width: 0;
-}
-
-/* Detailed List — Chips row */
-::deep .event-card__dl-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    align-items: center;
-    flex-shrink: 0;
-    overflow: hidden;
-    max-height: 2rem;
-}
-
-::deep .event-card__dl-chips .mud-chip {
-    margin: 0 !important;
-}
-
-/* Detailed List — Description: fills remaining space */
-::deep .event-card__dl-description {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    line-height: 1.5;
-    flex: 1;
-    min-height: 0;
-}
-
-/* Detailed List — Metadata: bottom row */
-::deep .event-card__dl-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px 14px;
-    align-items: center;
-    margin-top: auto;
-    flex-shrink: 0;
-    overflow: hidden;
-}
-
-::deep .event-card__dl-meta-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 0.8125rem;
-    color: var(--mud-palette-text-secondary);
-    white-space: nowrap;
 }
 
 /* Detailed List responsive columns — container queries on .event-list__main */
@@ -318,106 +115,6 @@
         flex-basis: 33.333% !important;
         max-width: 33.333% !important;
     }
-}
-
-/* ══════════════════════════════════════════════
-   Mode 3: Single Row — Full-width MangaDex-inspired card
-   ══════════════════════════════════════════════ */
-
-::deep .event-card--SingleRow {
-    height: 280px !important;
-    display: flex !important;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-::deep .event-card__full-row {
-    display: flex;
-    flex-direction: row;
-    height: 280px;
-}
-
-::deep .event-card__full-row-image {
-    flex: 0 0 210px;
-    height: 280px;
-    overflow: hidden;
-    position: relative;
-}
-
-::deep .event-card__full-row-content {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    padding: 12px 16px;
-    overflow: hidden;
-    gap: 6px;
-}
-
-/* Single Row — Chips row */
-::deep .event-card__sr-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    align-items: center;
-    flex-shrink: 0;
-    overflow: hidden;
-    max-height: 2rem;
-}
-
-::deep .event-card__sr-chips .mud-chip {
-    margin: 0 !important;
-}
-
-/* Single Row — Header: title left, chips right */
-::deep .event-card__sr-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-    flex-shrink: 0;
-}
-
-::deep .event-card__sr-title-block {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-}
-
-::deep .event-card__sr-status-chips {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    flex-shrink: 0;
-}
-
-/* Single Row — Description: max 2 lines */
-::deep .event-card__sr-description {
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    line-height: 1.4;
-    flex-shrink: 0;
-}
-
-/* Single Row — Metadata: horizontal wrapping grid */
-::deep .event-card__sr-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px 16px;
-    align-items: center;
-    margin-top: auto;
-    overflow: hidden;
-}
-
-::deep .event-card__sr-meta-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 0.8125rem;
-    color: var(--mud-palette-text-secondary);
-    white-space: nowrap;
 }
 
 /* Single Row: always full width */
@@ -586,7 +283,3 @@
     object-fit: cover;
     display: block;
 }
-
-
-
-

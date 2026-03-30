@@ -9,15 +9,18 @@ public class CreateEventSessionDtoValidator : AbstractValidator<CreateEventSessi
     private readonly IEventRepository _eventRepository;
     private readonly ILocationRepository _locationRepository;
     private readonly IRegistrationModeRepository _registrationModeRepository;
+    private readonly IEventSessionTemplateRepository _eventSessionTemplateRepository;
 
     public CreateEventSessionDtoValidator(
         IEventRepository eventRepository,
         ILocationRepository locationRepository,
-        IRegistrationModeRepository registrationModeRepository)
+        IRegistrationModeRepository registrationModeRepository,
+        IEventSessionTemplateRepository eventSessionTemplateRepository)
     {
         _eventRepository = eventRepository;
         _locationRepository = locationRepository;
         _registrationModeRepository = registrationModeRepository;
+        _eventSessionTemplateRepository = eventSessionTemplateRepository;
 
         RuleFor(p => p.EventId)
             .NotEmpty().WithMessage("{PropertyName} is required.")
@@ -92,6 +95,15 @@ public class CreateEventSessionDtoValidator : AbstractValidator<CreateEventSessi
                     && p.LocationId.HasValue;
             })
             .WithMessage("Islamic session scheduling requires LocationId, ReferencePrayer, and OffsetMinutes when StartTimeType is RelativeToPrayer.");
+
+        RuleFor(p => p.SessionTemplateId)
+            .MustAsync(async (id, cancellation) =>
+            {
+                if (!id.HasValue) return true;
+                return await _eventSessionTemplateRepository.Exists(id.Value);
+            })
+            .When(p => p.SessionTemplateId.HasValue)
+            .WithMessage("Event session template does not exist.");
 
         // TenantId is set by the handler from ITenantContext, not by the client
         // No validation needed here

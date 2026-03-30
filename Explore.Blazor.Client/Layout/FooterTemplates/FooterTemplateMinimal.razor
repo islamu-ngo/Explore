@@ -1,11 +1,31 @@
-@* ABOUTME: Minimal footer template rendering only copyright text and social links.
+@* ABOUTME: Minimal footer template rendering only copyright text, bottom links, and social icons.
    ABOUTME: Compact single-row layout for sites that prefer a lightweight footer. *@
 
 <div class="site-footer__bottom">
     <div class="site-footer__copyright">@CopyrightText</div>
-    <div class="site-footer__social">
-        @if (ShowSocialLinks)
-        {
+
+    @if (ShowCommunityGuidelinesLink || ShowCookieSettingsLink)
+    {
+        <div class="site-footer__bottom-links">
+            @if (ShowCommunityGuidelinesLink)
+            {
+                <a href="/community-guidelines" class="site-footer__link">Community Guidelines</a>
+            }
+            @if (ShowCookieSettingsLink)
+            {
+                <AppButton Variant="Variant.Text"
+                           Size="Size.Small"
+                           Class="site-footer__link"
+                           OnClick="OnCookieSettingsClick">
+                    Cookie Settings
+                </AppButton>
+            }
+        </div>
+    }
+
+    @if (ShowSocialLinks && SocialLinks.Count > 0)
+    {
+        <div class="site-footer__social">
             @foreach (var social in SocialLinks)
             {
                 <AppIconButton Icon="@FooterIconHelper.GetSocialIcon(social.Platform)"
@@ -17,21 +37,8 @@
                                Target="_blank"
                                rel="noopener noreferrer" />
             }
-        }
-        @if (ShowCommunityGuidelinesLink)
-        {
-            <a href="/community-guidelines" class="site-footer__link">Community Guidelines</a>
-        }
-        @if (ShowCookieSettingsLink)
-        {
-            <AppButton Variant="Variant.Text"
-                       Size="Size.Small"
-                       Class="site-footer__link"
-                       OnClick="OnCookieSettingsClick">
-                Cookie Settings
-            </AppButton>
-        }
-    </div>
+        </div>
+    }
 </div>
 
 @code {

@@ -85,6 +85,9 @@ public class BlazorTestContext : Bunit.TestContext
         // Accessibility services (injected by Phase 3A into NavMenu, EventList, EventDetail, etc.)
         Services.AddScoped(_ => Substitute.For<IAccessibilityFocusService>());
         Services.AddScoped(_ => Substitute.For<IAccessibilityAnnouncerService>());
+
+        // Tenant navigation links state (injected by NavMenu, MainLayout)
+        Services.AddScoped<TenantNavLinksState>();
     }
 
     /// <summary>

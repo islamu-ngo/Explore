@@ -1,3 +1,5 @@
+// ABOUTME: Domain entity for tenant-scoped customizable navigation links.
+// ABOUTME: Supports auditing (IAuditableEntity) and soft-delete (ISoftDeletable).
 using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
@@ -6,7 +8,7 @@ namespace Explore.Domain;
 /// Represents a customizable navigation link for a tenant.
 /// Allows tenants to define custom navigation items in their navbar.
 /// </summary>
-public class TenantNavigationLink : ITenantEntity
+public class TenantNavigationLink : ITenantEntity, IAuditableEntity, ISoftDeletable
 {
     /// <summary>
     /// Unique identifier for this navigation link.
@@ -51,6 +53,17 @@ public class TenantNavigationLink : ITenantEntity
     /// Indicates whether this navigation link is currently active/visible.
     /// </summary>
     public bool IsActive { get; set; } = true;
+
+    // IAuditableEntity
+    public DateTime CreatedAt { get; set; }
+    public Guid? CreatedBy { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public Guid? UpdatedBy { get; set; }
+
+    // ISoftDeletable
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public Guid? DeletedBy { get; set; }
 
     /// <summary>
     /// Navigation property to the parent Tenant.

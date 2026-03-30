@@ -110,4 +110,25 @@ public class ExternalApiKeyController : ControllerBase
 
         return NoContent();
     }
+
+    [HttpGet("usage-report")]
+    [EndpointSummary("Get API key usage report")]
+    [EndpointDescription("Aggregated request counts and credit usage per API key. Instance admins see platform-wide data; tenant admins see their tenant only. Does not expose secret material.")]
+    [ProducesResponseType(typeof(List<ExternalApiKeyUsageReportDto>), StatusCodes.Status200OK)]
+    [OutputCache(PolicyName = "ListData")]
+    public async Task<ActionResult<List<ExternalApiKeyUsageReportDto>>> GetUsageReport(
+        [FromQuery] DateOnly from,
+        [FromQuery] DateOnly to,
+        [FromQuery] Guid? tenantId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var report = await _mediator.Send(new GetExternalApiKeyUsageReportRequest
+        {
+            From = from,
+            To = to,
+            TenantId = tenantId
+        }, cancellationToken);
+
+        return Ok(report);
+    }
 }

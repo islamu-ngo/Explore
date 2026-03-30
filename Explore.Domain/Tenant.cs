@@ -26,5 +26,5 @@ public class Tenant : IAuditableEntity
     /// <summary>
     /// Collection of customizable navigation links for this tenant.
     /// </summary>
-    public ICollection<TenantNavigationLink> NavigationLinks { get; set; } = new List<TenantNavigationLink>();
+    public ICollection<TenantNavigationLink> NavigationLinks { get; private set; } = new List<TenantNavigationLink>();
 }

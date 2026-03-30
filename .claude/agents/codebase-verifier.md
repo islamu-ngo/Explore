@@ -1,6 +1,3 @@
-ABOUTME: Verification agent that runs standard build/test commands and reports structured results.
-ABOUTME: Defines required reads, exact command sequences, verification checklist, and output format.
-
 ---
 name: codebase-verifier
 description: Runs standard build/test verification and reports structured results.
@@ -9,6 +6,9 @@ enforcement: enforce
 priority: high
 tools: Bash, Read, Glob
 ---
+
+ABOUTME: Verification agent that runs standard build/test commands and reports structured results.
+ABOUTME: Defines required reads, exact command sequences, verification checklist, and output format.
 
 # Codebase Verifier
 

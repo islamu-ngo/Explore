@@ -154,7 +154,7 @@ public class TenantController : ControllerBase
     [EndpointDescription("Retrieve all navigation links for the current tenant")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(List<TenantNavigationLinkDto>), StatusCodes.Status200OK)]
-    [OutputCache(PolicyName = "ListData")]
+    [OutputCache(PolicyName = "TenantNav")]
     public async Task<ActionResult<List<TenantNavigationLinkDto>>> GetNavigation(CancellationToken cancellationToken = default)
     {
         var links = await _mediator.Send(new GetTenantNavLinksQuery(), cancellationToken);

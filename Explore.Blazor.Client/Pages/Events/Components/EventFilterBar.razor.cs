@@ -24,6 +24,8 @@ public partial class EventFilterBar : IBrowserViewportObserver, IAsyncDisposable
     [Parameter] public EventCallback<LayoutMode> CurrentLayoutChanged { get; set; }
     [Parameter] public int ResultCount { get; set; }
     [Parameter] public bool ShowResultCount { get; set; }
+    [Parameter] public bool ShowCustomizationButton { get; set; }
+    [Parameter] public EventCallback OnCustomizationRequested { get; set; }
 
     // Data Sources
     [Parameter] public ICollection<EventTypeListDto> EventTypes { get; set; } = new List<EventTypeListDto>();

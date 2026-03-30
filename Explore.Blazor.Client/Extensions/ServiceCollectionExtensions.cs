@@ -25,6 +25,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddSharedApplicationServices(this IServiceCollection services)
     {
         // Domain services (NSwag IEventApiClient consumers)
+        services.AddScoped<IExternalApiKeyService, ExternalApiKeyService>();
         services.AddScoped<IEventService, EventService>();
         services.AddScoped<IOrganizationService, OrganizationService>();
         services.AddScoped<IOrganizationMemberService, OrganizationMemberService>();
@@ -78,6 +79,10 @@ public static class ServiceCollectionExtensions
 
         // UI state
         services.AddScoped<SidebarState>();
+        services.AddScoped<TenantNavLinksState>();
+
+        // User-scoped settings (auth-branching: API for authenticated, localStorage for anonymous)
+        services.AddScoped<IUserSettingsService, UserSettingsService>();
 
         // Accessibility services (ARIA announcements + focus management)
         services.AddScoped<IAccessibilityAnnouncerService, AccessibilityAnnouncerService>();
