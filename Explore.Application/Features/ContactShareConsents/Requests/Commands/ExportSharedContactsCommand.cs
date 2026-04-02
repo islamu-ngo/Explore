@@ -8,7 +8,7 @@ using MediatR;
 
 namespace Explore.Application.Features.ContactShareConsents.Requests.Commands;
 
-[AuthorizeResource("event_contact_share_consent", PermissionAction.ExportSharedContacts)]
+[AuthorizeResource("event_contact_share_consent", AuthorizationActions.ExportSharedContacts)]
 public class ExportSharedContactsCommand : IRequest<BaseCommandResponse<SharedContactExportResultDto>>, ISecureRequest
 {
     public Guid RecipientActorId { get; set; }

@@ -1,0 +1,91 @@
+// ABOUTME: Wraps Respawn to provide deterministic database reset between integration tests.
+// Preserves lookup tables and migration history; resets all other data to a clean state.
+
+using Npgsql;
+using Respawn;
+using Respawn.Graph;
+
+namespace Event.Api.IntegrationTests.Fixtures;
+
+/// <summary>
+/// Deterministic database reset using Respawn. Preserves seed/lookup data,
+/// clears all transactional data between tests.
+/// </summary>
+public sealed class TestDatabaseReset
+{
+    private readonly Respawner _respawner;
+    private readonly string _connectionString;
+
+    private TestDatabaseReset(Respawner respawner, string connectionString)
+    {
+        _respawner = respawner;
+        _connectionString = connectionString;
+    }
+
+    /// <summary>
+    /// Creates a new <see cref="TestDatabaseReset"/> initialized against the target database.
+    /// Must be called after migrations and lookup table seeding are complete.
+    /// </summary>
+    public static async Task<TestDatabaseReset> CreateAsync(string connectionString)
+    {
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+
+        var respawner = await Respawner.CreateAsync(connection, new RespawnerOptions
+        {
+            DbAdapter = DbAdapter.Postgres,
+            SchemasToInclude = ["public"],
+            TablesToIgnore = LookupTables,
+        });
+
+        return new TestDatabaseReset(respawner, connectionString);
+    }
+
+    /// <summary>
+    /// Resets the database to its post-migration, post-seed state.
+    /// Call at the start of each test for deterministic isolation.
+    /// </summary>
+    public async Task ResetAsync()
+    {
+        await using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync();
+        await _respawner.ResetAsync(connection);
+    }
+
+    /// <summary>
+    /// Tables preserved across resets: migration history and all lookup/seed tables.
+    /// Derived from LookupTableSeeder entity types with snake_case naming convention.
+    /// </summary>
+    private static readonly Table[] LookupTables =
+    [
+        new("__EFMigrationsHistory"),
+        new("actor_types"),
+        new("analytics_providers"),
+        new("approval_statuses"),
+        new("audience_ages"),
+        new("audience_genders"),
+        new("did_custody_types"),
+        new("event_formats"),
+        new("event_statuses"),
+        new("event_types"),
+        new("external_api_key_credit_periods"),
+        new("external_api_key_statuses"),
+        new("file_types"),
+        new("group_positions"),
+        new("languages"),
+        new("madhabs"),
+        new("module_definitions"),
+        new("notification_entity_types"),
+        new("notification_types"),
+        new("organization_positions"),
+        new("permissions"),
+        new("registration_modes"),
+        new("roles"),
+        new("system_settings"),
+        new("tag_types"),
+        new("tenant_footer_link_groups"),
+        new("tenant_footer_links"),
+        new("tenant_statuses"),
+        new("visibility_types"),
+    ];
+}

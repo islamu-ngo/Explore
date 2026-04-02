@@ -1,5 +1,7 @@
 // ABOUTME: Unit tests for AuthorizationBehavior MediatR pipeline behavior.
-// Verifies authorization enforcement via IAuthorizedRequest, [AuthorizeResource], and pass-through.
+// ABOUTME: Verifies authorization enforcement via IAuthorizedRequest (legacy), [AuthorizeResource], and pass-through.
+
+#pragma warning disable CS0618 // IAuthorizedRequest is obsolete — tests must still exercise the legacy code path
 
 using Explore.Application.Authorization;
 using Explore.Application.Behaviors;
@@ -238,7 +240,7 @@ public class AuthorizationBehaviorTests
     public void AuthorizeResourceAttribute_EnumConstructor_ConvertsActionToString()
     {
         // Arrange & Act
-        var attribute = new AuthorizeResourceAttribute("organization", PermissionAction.Update);
+        var attribute = new AuthorizeResourceAttribute("organization", AuthorizationActions.Update);
 
         // Assert
         Assert.That(attribute.Resource == "organization");
@@ -266,7 +268,7 @@ public class TestPlainCommand : IRequest<BaseCommandResponse<Guid>>
 }
 
 // Test command with [AuthorizeResource] enum + ISecureRequest providing dynamic ResourceId
-[AuthorizeResource("organization", PermissionAction.Update)]
+[AuthorizeResource("organization", AuthorizationActions.Update)]
 public class TestSecureCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid OrganizationId { get; set; } = Guid.NewGuid();
@@ -275,7 +277,7 @@ public class TestSecureCommand : IRequest<BaseCommandResponse<Guid>>, ISecureReq
 }
 
 // Test command with [AuthorizeResource] enum + ISecureRequest providing ResourceId and ResourceAttributes
-[AuthorizeResource("organization", PermissionAction.Delete)]
+[AuthorizeResource("organization", AuthorizationActions.Delete)]
 public class TestSecureCommandWithAttributes : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid OrganizationId { get; set; } = Guid.NewGuid();
@@ -287,7 +289,7 @@ public class TestSecureCommandWithAttributes : IRequest<BaseCommandResponse<Guid
 }
 
 // Test command with [AuthorizeResource] enum + ISecureRequest but null ResourceId — should fall back to type name
-[AuthorizeResource("organization", PermissionAction.Delete)]
+[AuthorizeResource("organization", AuthorizationActions.Delete)]
 public class TestSecureCommandWithNullId : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     // Uses default null ResourceId — should fall back to type name

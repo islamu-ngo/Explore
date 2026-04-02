@@ -56,15 +56,7 @@ public sealed class OrganizationReviewDetailLinkPolicy : ILinkPolicy<Organizatio
             "PUT",
             "Update review",
             RequiresAuth: true)
-            .RequirePermission(
-                PermissionAction.Update,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["organizationId"] = dto.OrganizationId.ToString(),
-                    ["userId"] = dto.UserId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.OrganizationReview, dto);
 
         // Delete link - requires authentication (review owner or admin)
         yield return new LinkDefinition(
@@ -74,15 +66,7 @@ public sealed class OrganizationReviewDetailLinkPolicy : ILinkPolicy<Organizatio
             "DELETE",
             "Delete review",
             RequiresAuth: true)
-            .RequirePermission(
-                PermissionAction.Delete,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["organizationId"] = dto.OrganizationId.ToString(),
-                    ["userId"] = dto.UserId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Delete, ResourceDescriptors.OrganizationReview, dto);
     }
 }
 
@@ -122,6 +106,6 @@ public sealed class OrganizationReviewCollectionLinkPolicy : ICollectionLinkPoli
             "POST",
             "Create review",
             RequiresAuth: true)
-            .RequirePermission(PermissionAction.Create, typeof(OrganizationReviewDto), "organization_review");
+            .RequirePermission(AuthorizationActions.Create, typeof(OrganizationReviewDto), "organization_review");
     }
 }

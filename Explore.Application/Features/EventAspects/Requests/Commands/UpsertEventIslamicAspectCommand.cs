@@ -12,7 +12,7 @@ using MediatR;
 /// <summary>
 /// Command to create or update the Islamic aspect for an event.
 /// </summary>
-[AuthorizeResource("event", PermissionAction.Update)]
+[AuthorizeResource("event", AuthorizationActions.Update)]
 public class UpsertEventIslamicAspectCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     /// <summary>

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Resource attributes for event_registration resources. Populated by ResourceDescriptors.EventRegistration.",
+  "type": "object",
+  "properties": {
+    "tenantId": {
+      "type": "string",
+      "description": "Owning tenant identifier. Used by tenant_admin derived role."
+    },
+    "eventSessionId": {
+      "type": "string",
+      "description": "Parent event session identifier."
+    },
+    "userId": {
+      "type": "string",
+      "description": "Registered user identifier."
+    }
+  },
+  "required": ["tenantId", "eventSessionId", "userId"]
+}

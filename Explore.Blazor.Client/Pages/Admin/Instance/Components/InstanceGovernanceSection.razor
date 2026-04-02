@@ -213,6 +213,18 @@
             <MudSwitch T="bool" @bind-Value="Delegation.LockTenantHomePagePreference" Color="Color.Primary">
                 Lock tenant home page preference
             </MudSwitch>
+
+            @if (!IsSingleTenant)
+            {
+                <MudDivider Class="my-2" />
+                <MudText Typo="Typo.subtitle1" Style="font-weight:600;">AI Assistant (Beta)</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+                    When unlocked, tenants can provide their own API keys to enable AI features.
+                </MudText>
+                <MudSwitch T="bool" @bind-Value="Delegation.LockTenantAiAssistant" Color="Color.Primary">
+                    Lock tenant AI Assistant configuration
+                </MudSwitch>
+            }
         }
         }
 

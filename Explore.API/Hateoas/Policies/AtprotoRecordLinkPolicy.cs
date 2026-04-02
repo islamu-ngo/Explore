@@ -58,10 +58,7 @@ public sealed class AtprotoRecordDetailLinkPolicy : ILinkPolicy<AtprotoRecordDto
             "DELETE",
             "Delete record",
             RequiresAuth: true)
-            .RequirePermission(
-                PermissionAction.Delete,
-                dto,
-                dto.Id.ToString());
+            .RequirePermission(AuthorizationActions.Delete, ResourceDescriptors.AtprotoRecord, dto);
     }
 }
 
@@ -101,6 +98,6 @@ public sealed class AtprotoRecordCollectionLinkPolicy : ICollectionLinkPolicy<At
             "POST",
             "Create ATProto record",
             RequiresAuth: true)
-            .RequirePermission(PermissionAction.Create, typeof(AtprotoRecordDto), "atproto_record");
+            .RequirePermission(AuthorizationActions.Create, typeof(AtprotoRecordDto), "atproto_record");
     }
 }

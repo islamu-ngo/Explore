@@ -76,19 +76,20 @@
    Blazor Virtualize. Horizontal overflow is handled on <html> in StyleGlobal.css.
    -------------------------------------------------------------------------- */
 .main-layout__content-wrapper {
+    --layout-padding-inline: 8%;
     width: 100%;
-    padding-inline: 8%;
+    padding-inline: var(--layout-padding-inline);
     padding-block-start: 0;
     padding-block-end: var(--isl-space-6);
     flex: 1 0 auto;
     transition: padding 300ms cubic-bezier(0.4, 0, 0.2, 1);
 
     @media (max-width: 48em) {
-        padding-inline: 4%;
+        --layout-padding-inline: 4%;
     }
 
     @media (max-width: 30em) {
-        padding-inline: var(--isl-space-3);
+        --layout-padding-inline: var(--isl-space-3);
     }
 }
 
@@ -103,7 +104,15 @@
 /* Modifier: main-layout__content-wrapper--drawer-open
    Reduce gutter to 5% when sidebar is open so content fills more space */
 .main-layout__content-wrapper--drawer-open {
-    padding-inline: 2.5%;
+    --layout-padding-inline: 2.5%;
+}
+
+/* Modifier: main-layout__main--ai-open
+   Push content to the left when the AI rail is open so they don't overlap.
+   We use margin-right for desktop screens where the rail is 360px wide.
+   ========================================================================== */
+::deep .main-layout__main--ai-open {
+    margin-right: 360px !important;
 }
 
 /* Element: main-layout__main
@@ -117,6 +126,13 @@
     padding-top: 0 !important;
     margin-top: 0 !important;
     background-color: var(--mud-palette-background-grey);
+    transition: margin-right 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (max-width: 959.98px) {
+    ::deep .main-layout__main--ai-open {
+        margin-right: 0 !important;
+    }
 }
 
 /* Footer lives INSIDE MudMainContent so it automatically adapts

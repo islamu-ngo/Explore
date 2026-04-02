@@ -8,6 +8,11 @@ resourcePolicy:
   version: "default"
   importDerivedRoles:
     - explore_admin_roles
+  schemas:
+    principalSchema:
+      ref: cerbos:///principal.json
+    resourceSchema:
+      ref: cerbos:///tenant_setting.json
   rules:
     # Instance admins can do everything regardless of locks
     - actions: ["view", "update", "delete"]

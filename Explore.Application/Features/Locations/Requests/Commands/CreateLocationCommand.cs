@@ -8,7 +8,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Locations.Requests.Commands;
 
-[AuthorizeResource("location", PermissionAction.Create)]
+[AuthorizeResource("location", AuthorizationActions.Create)]
 public class CreateLocationCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public required CreateLocationDto LocationDto { get; set; }

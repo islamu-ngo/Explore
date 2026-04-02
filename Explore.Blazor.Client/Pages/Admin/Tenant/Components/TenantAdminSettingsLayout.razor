@@ -7,6 +7,8 @@
 
 @inject ITenantOnboardingService TenantOnboardingService
 @inject IInstanceOnboardingService InstanceOnboardingService
+@inject IPublicExperienceService PublicExperienceService
+@inject AiAssistantState AiAssistantState
 @inject ISnackbar Snackbar
 
 <div class="settings-layout">
@@ -327,6 +329,7 @@
 
         if (response.Success)
         {
+            await RefreshShellExperienceAsync();
             Snackbar.Add("Tenant settings saved.", Severity.Success);
             return;
         }
@@ -339,6 +342,17 @@
     private void SelectSection(string section)
     {
         _currentSection = section;
+    }
+
+    private async Task RefreshShellExperienceAsync()
+    {
+        PublicExperienceService.ResetCache();
+
+        var settings = await PublicExperienceService.GetSettingsAsync();
+        if (settings is not null)
+        {
+            AiAssistantState.SetAvailable(settings.IsAiAssistantAvailable);
+        }
     }
 
     private string GetNavItemClass(string section)

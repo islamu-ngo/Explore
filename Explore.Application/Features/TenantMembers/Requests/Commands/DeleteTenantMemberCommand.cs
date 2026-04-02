@@ -6,7 +6,7 @@ using MediatR;
 
 namespace Explore.Application.Features.TenantMembers.Requests.Commands;
 
-[AuthorizeResource("tenant_member", PermissionAction.Delete)]
+[AuthorizeResource("tenant_member", AuthorizationActions.Delete)]
 public class DeleteTenantMemberCommand : IRequest<bool>, ISecureRequest
 {
     public Guid Id { get; set; }

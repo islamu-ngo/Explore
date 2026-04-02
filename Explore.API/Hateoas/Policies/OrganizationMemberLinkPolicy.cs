@@ -48,15 +48,7 @@ public sealed class OrganizationMemberDetailLinkPolicy : ILinkPolicy<Organizatio
             "PUT",
             "Update membership",
             RequiresAuth: true)
-            .RequirePermission(
-                PermissionAction.Update,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["organizationId"] = dto.OrganizationId.ToString(),
-                    ["userId"] = dto.UserId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.OrganizationMember, dto);
 
         // Delete link - requires authentication (organization admin)
         yield return new LinkDefinition(
@@ -66,15 +58,7 @@ public sealed class OrganizationMemberDetailLinkPolicy : ILinkPolicy<Organizatio
             "DELETE",
             "Remove member",
             RequiresAuth: true)
-            .RequirePermission(
-                PermissionAction.Delete,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["organizationId"] = dto.OrganizationId.ToString(),
-                    ["userId"] = dto.UserId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Delete, ResourceDescriptors.OrganizationMember, dto);
     }
 }
 
@@ -114,6 +98,6 @@ public sealed class OrganizationMemberCollectionLinkPolicy : ICollectionLinkPoli
             "POST",
             "Add organization member",
             RequiresAuth: true)
-            .RequirePermission(PermissionAction.Create, typeof(OrganizationMemberDto), "organization_member");
+            .RequirePermission(AuthorizationActions.Create, typeof(OrganizationMemberDto), "organization_member");
     }
 }

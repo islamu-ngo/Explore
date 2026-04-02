@@ -67,16 +67,7 @@ public sealed class EventRegistrationDetailLinkPolicy : ILinkPolicy<EventRegistr
             "PUT",
             "Update registration",
             RequiresAuth: true)
-            .RequirePermission(
-                PermissionAction.Update,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["eventSessionId"] = dto.EventSessionId.ToString(),
-                    ["userId"] = dto.UserId.ToString(),
-                    ["tenantId"] = dto.TenantId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.EventRegistration, dto);
 
         // Delete link - requires authentication
         yield return new LinkDefinition(
@@ -86,16 +77,7 @@ public sealed class EventRegistrationDetailLinkPolicy : ILinkPolicy<EventRegistr
             "DELETE",
             "Cancel registration",
             RequiresAuth: true)
-            .RequirePermission(
-                PermissionAction.Delete,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["eventSessionId"] = dto.EventSessionId.ToString(),
-                    ["userId"] = dto.UserId.ToString(),
-                    ["tenantId"] = dto.TenantId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Delete, ResourceDescriptors.EventRegistration, dto);
     }
 }
 
@@ -151,6 +133,6 @@ public sealed class EventRegistrationCollectionLinkPolicy : ICollectionLinkPolic
             "POST",
             "Register for event",
             RequiresAuth: true)
-            .RequirePermission(PermissionAction.Create, typeof(EventRegistrationDto), "event_registration");
+            .RequirePermission(AuthorizationActions.Create, typeof(EventRegistrationDto), "event_registration");
     }
 }

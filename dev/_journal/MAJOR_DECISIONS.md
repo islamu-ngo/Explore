@@ -1,6 +1,29 @@
 # Major Decisions
 
-Last Updated: 2026-03-29 Europe/Brussels
+Last Updated: 2026-03-30 Europe/Brussels
+
+## 2026-03-30 Europe/Brussels - API Testing Enterprise Grade: Technology Stack Decisions
+
+### Database Reset: Respawn v7.0.0
+- Decision: Use Respawn v7.0.0 with `DbAdapter.Postgres` for deterministic intertest data cleanup.
+- Why: Industry standard for .NET test database reset. Analyzes FK relationships once, then performs fast ordered truncation. Lookup tables preserved via `TablesToIgnore`.
+- Impact: Must add `Respawn v7.0.0` to `Directory.Packages.props` and `Event.API.IntegrationTests.csproj`.
+
+### Schema Setup: MigrateAsync() Over EnsureCreated()
+- Decision: Use `MigrateAsync()` for all PostgreSQL-backed test fixtures (both API and persistence).
+- Why: Exercises the real migration chain, catching migration ordering issues and schema drift.
+
+### Test Parallelism: Parallel From Day One
+- Decision: Run PostgreSQL-backed API tests in parallel with per-test Respawn reset for isolation.
+- Why: TUnit runs parallel by default. Per-test `ResetAsync()` before seeding gives each test a deterministically clean database.
+
+### Contract Host Database: Keep EF InMemory
+- Decision: Keep EF InMemory for the Contract host only. RealRuntime and Stress use PostgreSQL.
+- Why: Contract tests verify serialization/ProblemDetails/HAL/headers — provider doesn't matter. Keeps them fast and Docker-independent.
+
+### TUnit Fixture Model: SharedType.Keyed for Host Profiles
+- Decision: Use TUnit `SharedType.Keyed` with keys "Contract", "RealRuntime", "Stress" for API test fixtures.
+- Why: Allows multiple fixture types to coexist in the same assembly without lifecycle interference.
 
 ## 2026-03-29 Europe/Brussels - Customization Sidebar: UX Architecture Decisions
 

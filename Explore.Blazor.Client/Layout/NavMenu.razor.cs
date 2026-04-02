@@ -54,6 +54,9 @@ public partial class NavMenu : IDisposable
     [Inject]
     private IAccessibilityFocusService AccessibilityFocusService { get; set; } = default!;
 
+    [Inject]
+    protected AiAssistantState AiAssistantState { get; set; } = null!;
+
     [Parameter]
     public EventCallback OnToggleTheme { get; set; }
 
@@ -76,6 +79,7 @@ public partial class NavMenu : IDisposable
     protected override async Task OnInitializedAsync()
     {
         SidebarState.OnChange += StateHasChanged;
+        AiAssistantState.OnChange += StateHasChanged;
         TenantNavLinksState.OnChange += StateHasChanged;
         await LoadPublicExperienceAsync();
         await LoadCurrentUserAsync();
@@ -115,6 +119,7 @@ public partial class NavMenu : IDisposable
         }
 
         _brandLogoUrl = settings.BrandLogoUrl ?? string.Empty;
+        AiAssistantState.SetAvailable(settings.IsAiAssistantAvailable);
 
         // Show "Add Event" button to anonymous visitors when at least one
         // submission type is enabled, prompting them to log in on click.
@@ -295,6 +300,7 @@ public partial class NavMenu : IDisposable
     public void Dispose()
     {
         SidebarState.OnChange -= StateHasChanged;
+        AiAssistantState.OnChange -= StateHasChanged;
         TenantNavLinksState.OnChange -= StateHasChanged;
         GC.SuppressFinalize(this);
     }

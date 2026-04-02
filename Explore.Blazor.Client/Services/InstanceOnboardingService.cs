@@ -498,6 +498,7 @@ public class TenantDelegationModel
     public bool DecentralizationEnabled { get; set; }
     public bool LockDecentralizationEnabled { get; set; }
     public string AuthorizationProvider { get; set; } = "local";
+    public bool LockTenantAiAssistant { get; set; }
 }
 
 public class RenderPolicyModel

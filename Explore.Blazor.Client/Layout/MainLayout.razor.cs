@@ -42,6 +42,9 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     protected SidebarState SidebarState { get; set; } = null!;
 
     [Inject]
+    protected AiAssistantState AiAssistantState { get; set; } = null!;
+
+    [Inject]
     protected TenantNavLinksState TenantNavLinksState { get; set; } = null!;
 
     [Inject]
@@ -85,6 +88,7 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
         UpdateChromeVisibility();
         NavigationManager.LocationChanged += OnLocationChanged;
         SidebarState.OnChange += StateHasChanged;
+        AiAssistantState.OnChange += StateHasChanged;
         TenantNavLinksState.OnChange += StateHasChanged;
     }
 
@@ -114,6 +118,7 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
                     || settings.AllowOrganizationSubmittedEvents
                     || settings.AllowGroupSubmittedEvents;
                 _brandDisplayName = settings.BrandDisplayName;
+                AiAssistantState.SetAvailable(settings.IsAiAssistantAvailable);
                 await InvokeAsync(StateHasChanged);
             }
             catch (Exception ex)
@@ -217,6 +222,7 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     {
         NavigationManager.LocationChanged -= OnLocationChanged;
         SidebarState.OnChange -= StateHasChanged;
+        AiAssistantState.OnChange -= StateHasChanged;
         TenantNavLinksState.OnChange -= StateHasChanged;
         GC.SuppressFinalize(this);
     }

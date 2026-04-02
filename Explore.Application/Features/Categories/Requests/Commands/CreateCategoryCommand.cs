@@ -8,7 +8,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Categories.Requests.Commands;
 
-[AuthorizeResource("category", PermissionAction.Create)]
+[AuthorizeResource("category", AuthorizationActions.Create)]
 public class CreateCategoryCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public required CreateCategoryDto CategoryDto { get; set; }

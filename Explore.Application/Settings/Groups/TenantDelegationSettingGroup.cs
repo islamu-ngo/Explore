@@ -11,12 +11,14 @@ public class TenantDelegationSettingGroup : ISettingGroup
     public bool LockSmtp { get; private set; } = true;
     public bool LockStorage { get; private set; } = true;
     public bool LockAnalytics { get; private set; } = true;
+    public bool LockAiAssistant { get; private set; } = true;
 
     public static IEnumerable<string> SettingKeys =>
     [
         GovernanceSettingKeys.TenantDelegation.LockSmtp,
         GovernanceSettingKeys.TenantDelegation.LockStorage,
-        GovernanceSettingKeys.TenantDelegation.LockAnalytics
+        GovernanceSettingKeys.TenantDelegation.LockAnalytics,
+        GovernanceSettingKeys.TenantDelegation.LockAiAssistant
     ];
 
     public void Populate(IReadOnlyDictionary<string, ResolvedSetting> settings)
@@ -27,5 +29,7 @@ public class TenantDelegationSettingGroup : ISettingGroup
             LockStorage = SettingValueSerializer.Deserialize(storage.Value, true);
         if (settings.TryGetValue(GovernanceSettingKeys.TenantDelegation.LockAnalytics, out var analytics))
             LockAnalytics = SettingValueSerializer.Deserialize(analytics.Value, true);
+        if (settings.TryGetValue(GovernanceSettingKeys.TenantDelegation.LockAiAssistant, out var aiAssistant))
+            LockAiAssistant = SettingValueSerializer.Deserialize(aiAssistant.Value, true);
     }
 }

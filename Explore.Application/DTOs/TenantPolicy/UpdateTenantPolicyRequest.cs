@@ -35,4 +35,9 @@ public class UpdateTenantPolicyRequest
     public bool OperationalPrerenderEnabled { get; set; }
     public string AdminRenderMode { get; set; } = string.Empty;
     public bool AdminPrerenderEnabled { get; set; }
+
+    // AI assistant integration
+    public bool AiAssistantEnabled { get; set; }
+    public string AiAssistantEndpointUrl { get; set; } = string.Empty;
+    public string AiAssistantApiKey { get; set; } = string.Empty;
 }

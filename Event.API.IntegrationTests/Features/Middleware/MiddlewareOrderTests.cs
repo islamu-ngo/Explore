@@ -5,8 +5,11 @@ using System.Net;
 using System.Net.Http.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using Event.Api.IntegrationTests.Helpers;
+using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Exceptions;
 using MediatR;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -33,13 +36,47 @@ public class MiddlewareOrderTests
     }
 
     [Test]
-    public async Task TenantResolution_SkipsExemptPath_PublicExperienceSettings()
+    public async Task PublicExperienceSettings_SingleTenant_UsesDefaultTenantWithout404()
     {
-        // /api/PublicExperience/settings is tenant-exempt
+        // Single-tenant mode should resolve the configured default tenant automatically.
         var response = await _fixture.Client.GetAsync("/api/PublicExperience/settings");
 
-        // Should not get 404 from tenant middleware — may get other status but not tenant-blocked
         await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.NotFound);
+    }
+
+    [Test]
+    public async Task PublicExperienceSettings_MultiTenant_ResolvesTenantFromSlugHeader()
+    {
+        var tenantId = Guid.NewGuid();
+
+        var app = _fixture.Factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, config) =>
+            {
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Deployment:Mode"] = "MultiTenant"
+                });
+            });
+
+            builder.ConfigureServices(services =>
+            {
+                services.RemoveAll<ITenantSlugCache>();
+                services.AddSingleton<ITenantSlugCache>(new TestTenantSlugCache(tenantId));
+            });
+        });
+
+        using var client = app.CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/PublicExperience/settings");
+        request.Headers.Add("X-Tenant-Slug", "alpha");
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        var payload = await response.Content.ReadFromJsonAsync<PublicExperienceSettingsDto>();
+        await Assert.That(payload).IsNotNull();
+        await Assert.That(payload!.TenantId).IsEqualTo(tenantId);
     }
 
     [Test]
@@ -112,5 +149,23 @@ public class MiddlewareOrderTests
 
         public IAsyncEnumerable<object?> CreateStream(object request, CancellationToken cancellationToken = default)
             => throw exception;
+    }
+
+    private sealed class TestTenantSlugCache(Guid tenantId) : ITenantSlugCache
+    {
+        public Task WarmAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task RefreshAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public ValueTask<Guid?> GetTenantIdBySlugAsync(string slug, CancellationToken cancellationToken = default)
+        {
+            Guid? resolved = string.Equals(slug, "alpha", StringComparison.OrdinalIgnoreCase)
+                ? tenantId
+                : null;
+            return ValueTask.FromResult(resolved);
+        }
+
+        public ValueTask<Guid?> GetTenantIdByDomainAsync(string domain, CancellationToken cancellationToken = default)
+            => ValueTask.FromResult<Guid?>(null);
     }
 }

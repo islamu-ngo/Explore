@@ -8,7 +8,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Organizations.Requests.Commands;
 
-[AuthorizeResource("organization", PermissionAction.Update)]
+[AuthorizeResource("organization", AuthorizationActions.Update)]
 public class UpdateOrganizationDetailsCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid Id { get; set; }

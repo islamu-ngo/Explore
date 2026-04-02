@@ -10,7 +10,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Organizations.Requests.Commands;
 
-[AuthorizeResource("organization", PermissionAction.Create)]
+[AuthorizeResource("organization", AuthorizationActions.Create)]
 public class CreateOrganizationCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public required CreateOrganizationDto OrganizationDto { get; set; }

@@ -102,6 +102,10 @@ public class TenantPolicySettingService : ITenantPolicySettingService
         var systemLockSmtp = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockSmtp);
         var systemLockStorage = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockStorage);
         var systemLockAnalytics = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockAnalytics);
+        var systemLockAiAssistant = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockAiAssistant);
+        var systemAiAssistantEnabled = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.Enabled);
+        var systemAiAssistantEndpointUrl = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.EndpointUrl);
+        var systemAiAssistantApiKey = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.AiAssistant.ApiKey);
         var systemCommunityGuidelines = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Policies.CommunityGuidelinesContent);
         var systemRenderPreset = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.Preset);
         var systemRenderAdvanced = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.AdvancedEnabled);
@@ -129,16 +133,21 @@ public class TenantPolicySettingService : ITenantPolicySettingService
         var tenantBrandLogoUrl = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Branding.LogoUrl);
         var tenantBrandFaviconUrl = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Branding.FaviconUrl);
         var tenantBrandCustomCssUrl = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Branding.CustomCssUrl);
+        var tenantAiAssistantEnabled = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.AiAssistant.Enabled);
+        var tenantAiAssistantEndpointUrl = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.AiAssistant.EndpointUrl);
+        var tenantAiAssistantApiKey = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.AiAssistant.ApiKey);
         var tenantCommunityGuidelines = await _tenantSettingRepository.GetByTenantAndKey(tenantId, GovernanceSettingKeys.Policies.CommunityGuidelinesContent);
 
-        var allowTenantRenderOverride = DeserializeBoolean(systemAllowTenantRenderOverride?.Value, false);
-        var canOverridePublicSeo = allowTenantRenderOverride && !DeserializeBoolean(systemLockPublicSeo?.Value, false);
-        var canOverrideOperational = allowTenantRenderOverride && !DeserializeBoolean(systemLockOperational?.Value, false);
-        var canOverrideAdmin = allowTenantRenderOverride && !DeserializeBoolean(systemLockAdmin?.Value, false);
+        var isMultiTenant = DeserializeString(systemDeploymentMode?.Value, "SingleTenant").Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
+
+        var allowTenantRenderOverride = !isMultiTenant || DeserializeBoolean(systemAllowTenantRenderOverride?.Value, false);
+        var canOverridePublicSeo = allowTenantRenderOverride && (!isMultiTenant || !DeserializeBoolean(systemLockPublicSeo?.Value, false));
+        var canOverrideOperational = allowTenantRenderOverride && (!isMultiTenant || !DeserializeBoolean(systemLockOperational?.Value, false));
+        var canOverrideAdmin = allowTenantRenderOverride && (!isMultiTenant || !DeserializeBoolean(systemLockAdmin?.Value, false));
 
         var tenant = await _tenantRepository.GetById(tenantId);
         var fallbackSubdomain = NormalizeSubdomain(tenant?.Slug) ?? "default";
-        var isMultiTenant = DeserializeString(systemDeploymentMode?.Value, "SingleTenant").Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
+
         var isTenantWhiteLabelingEnabled = isMultiTenant && DeserializeBoolean(systemTenantWhiteLabeling?.Value, false);
         var canOverrideHomePage = systemHomePage?.IsLocked != true;
         var canOverrideEventCardClickBehavior = systemEventCardClickOpensDetailPage?.IsLocked != true;
@@ -301,9 +310,25 @@ public class TenantPolicySettingService : ITenantPolicySettingService
             CanOverridePublicSeoRenderPolicy = canOverridePublicSeo,
             CanOverrideOperationalRenderPolicy = canOverrideOperational,
             CanOverrideAdminRenderPolicy = canOverrideAdmin,
-            CanOverrideSmtp = !DeserializeBoolean(systemLockSmtp?.Value, true),
-            CanOverrideStorage = !DeserializeBoolean(systemLockStorage?.Value, true),
-            CanOverrideAnalytics = !DeserializeBoolean(systemLockAnalytics?.Value, true),
+            CanOverrideSmtp = !isMultiTenant || !DeserializeBoolean(systemLockSmtp?.Value, true),
+            CanOverrideStorage = !isMultiTenant || !DeserializeBoolean(systemLockStorage?.Value, true),
+            CanOverrideAnalytics = !isMultiTenant || !DeserializeBoolean(systemLockAnalytics?.Value, true),
+            CanOverrideAiAssistant = !isMultiTenant || !DeserializeBoolean(systemLockAiAssistant?.Value, true),
+            AiAssistantEnabled = ResolveBoolean(
+                tenantAiAssistantEnabled?.Value,
+                systemAiAssistantEnabled?.Value,
+                false,
+                !isMultiTenant || !DeserializeBoolean(systemLockAiAssistant?.Value, true)),
+            AiAssistantEndpointUrl = ResolveString(
+                tenantAiAssistantEndpointUrl?.Value,
+                systemAiAssistantEndpointUrl?.Value,
+                string.Empty,
+                !isMultiTenant || !DeserializeBoolean(systemLockAiAssistant?.Value, true)),
+            AiAssistantApiKey = ResolveString(
+                tenantAiAssistantApiKey?.Value,
+                systemAiAssistantApiKey?.Value,
+                string.Empty,
+                !isMultiTenant || !DeserializeBoolean(systemLockAiAssistant?.Value, true)),
             CommunityGuidelinesContent = ResolveString(
                 tenantCommunityGuidelines?.Value,
                 systemCommunityGuidelines?.Value,
@@ -339,6 +364,7 @@ public class TenantPolicySettingService : ITenantPolicySettingService
         var lockPublicSeoSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.LockTenantPublicSeo);
         var lockOperationalSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.LockTenantOperational);
         var lockAdminSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Routing.RenderPolicy.LockTenantAdmin);
+        var lockAiAssistantSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.TenantDelegation.LockAiAssistant);
         var tenant = await _tenantRepository.GetById(tenantId);
         var fallbackSubdomain = NormalizeSubdomain(tenant?.Slug) ?? "default";
         var isMultiTenant = DeserializeString(deploymentModeSetting?.Value, "SingleTenant").Equals("MultiTenant", StringComparison.OrdinalIgnoreCase);
@@ -462,10 +488,10 @@ public class TenantPolicySettingService : ITenantPolicySettingService
             communityGuidelinesSetting?.IsLocked != true,
             actorUserId);
 
-        var allowTenantRenderOverride = DeserializeBoolean(allowTenantRenderOverrideSetting?.Value, false);
-        var canOverridePublicSeo = allowTenantRenderOverride && !DeserializeBoolean(lockPublicSeoSetting?.Value, false);
-        var canOverrideOperational = allowTenantRenderOverride && !DeserializeBoolean(lockOperationalSetting?.Value, false);
-        var canOverrideAdmin = allowTenantRenderOverride && !DeserializeBoolean(lockAdminSetting?.Value, false);
+        var allowTenantRenderOverride = !isMultiTenant || DeserializeBoolean(allowTenantRenderOverrideSetting?.Value, false);
+        var canOverridePublicSeo = allowTenantRenderOverride && (!isMultiTenant || !DeserializeBoolean(lockPublicSeoSetting?.Value, false));
+        var canOverrideOperational = allowTenantRenderOverride && (!isMultiTenant || !DeserializeBoolean(lockOperationalSetting?.Value, false));
+        var canOverrideAdmin = allowTenantRenderOverride && (!isMultiTenant || !DeserializeBoolean(lockAdminSetting?.Value, false));
 
         await SetStringTenantOverrideAsync(
             tenantId,
@@ -535,6 +561,33 @@ public class TenantPolicySettingService : ITenantPolicySettingService
             GovernanceSettingKeys.Routing.RenderPolicy.Admin.PrerenderEnabled,
             settings.AdminPrerenderEnabled,
             canOverrideAdmin,
+            actorUserId);
+
+        var canOverrideAiAssistant = !isMultiTenant || !DeserializeBoolean(lockAiAssistantSetting?.Value, true);
+
+        // AI enablement validation: cannot enable without a configured API key
+        var effectiveAiEnabled = settings.AiAssistantEnabled
+            && !string.IsNullOrWhiteSpace(settings.AiAssistantApiKey);
+
+        await SetBooleanTenantOverrideAsync(
+            tenantId,
+            GovernanceSettingKeys.AiAssistant.Enabled,
+            effectiveAiEnabled,
+            canOverrideAiAssistant,
+            actorUserId);
+
+        await SetStringTenantOverrideAsync(
+            tenantId,
+            GovernanceSettingKeys.AiAssistant.EndpointUrl,
+            settings.AiAssistantEndpointUrl,
+            canOverrideAiAssistant,
+            actorUserId);
+
+        await SetStringTenantOverrideAsync(
+            tenantId,
+            GovernanceSettingKeys.AiAssistant.ApiKey,
+            settings.AiAssistantApiKey,
+            canOverrideAiAssistant,
             actorUserId);
     }
 

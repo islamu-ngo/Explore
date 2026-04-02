@@ -110,6 +110,19 @@
                     <!-- Notification Bell -->
                     <NotificationBell />
 
+                    @* AI Assistant toggle — only when tenant has AI configured and enabled *@
+                    @if (AiAssistantState.IsAvailable)
+                    {
+                        <AppIconButton Icon="@Icons.Material.Filled.AutoAwesome"
+                                       Color="Color.Inherit"
+                                       Size="Size.Medium"
+                                       OnClick="@(() => AiAssistantState.Toggle())"
+                                       Title="AI Assistant"
+                                       Class="@($"navbar__ai-toggle {(AiAssistantState.IsOpen ? "navbar__ai-toggle--active" : "")}")"
+                                       aria-label="Toggle AI Assistant"
+                                       aria-expanded="@(AiAssistantState.IsOpen ? "true" : "false")" />
+                    }
+
                     <!-- User Dropdown -->
                     <div class="navbar__user-dropdown">
                         <div class="navbar__user-btn" @onclick="ToggleDropdown" @onclick:stopPropagation

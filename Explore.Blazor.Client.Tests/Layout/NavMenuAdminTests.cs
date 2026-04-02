@@ -20,6 +20,7 @@ public class NavMenuAdminTests : IDisposable
     public NavMenuAdminTests()
     {
         _ctx = new BlazorTestContext();
+        _ctx.AddShellStateMocks();
     }
 
     public void Dispose()
@@ -225,41 +226,6 @@ public class NavMenuAdminTests : IDisposable
 
     private void SetupNavMenuServices(string deploymentMode = "MultiTenant")
     {
-        var userService = Substitute.For<IUserService>();
-        userService.GetCurrentUserAsync().Returns((UserDto?)null);
-        _ctx.Services.AddSingleton(userService);
-
-        var publicExperienceService = Substitute.For<IPublicExperienceService>();
-        publicExperienceService.GetSettingsAsync().Returns((PublicExperienceSettingsModel?)null);
-        _ctx.Services.AddSingleton(publicExperienceService);
-
-        var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
-        instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
-        {
-            IsCompleted = true,
-            SelectedDeploymentMode = deploymentMode
-        });
-        _ctx.Services.AddSingleton(instanceOnboardingService);
-
-        var tenantNavigationService = Substitute.For<ITenantNavigationService>();
-        tenantNavigationService.GetNavigationLinksAsync().Returns(new List<TenantNavigationLinkDto>());
-        _ctx.Services.AddSingleton(tenantNavigationService);
-
-        var eligibilityService = Substitute.For<IEventCreationEligibilityService>();
-        eligibilityService.GetEligibilityAsync().Returns(EventCreationEligibility.NotEligible);
-        _ctx.Services.AddSingleton(eligibilityService);
-
-        var organizationService = Substitute.For<IOrganizationService>();
-        organizationService.GetMyOrganizationsAsync().Returns(new List<OrganizationListDto>());
-        _ctx.Services.AddSingleton(organizationService);
-
-        var groupService = Substitute.For<IGroupService>();
-        groupService.GetMyGroupsAsync().Returns(new List<GroupPublisherListDto>());
-        _ctx.Services.AddSingleton(groupService);
-
-        _ctx.Services.AddSingleton(new Explore.Blazor.Client.Services.SidebarState());
-        _ctx.Services.AddSingleton(MockServiceFactory.CreateNotificationService());
-        _ctx.Services.AddSingleton(MockServiceFactory.CreateTranslationService());
-        _ctx.Services.AddSingleton(Substitute.For<IHttpClientFactory>());
+        NavMenuTestServices.Register(_ctx, deploymentMode: deploymentMode);
     }
 }

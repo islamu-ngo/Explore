@@ -73850,6 +73850,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("disallowInteractiveServerOnOnboarding")]
         public bool? DisallowInteractiveServerOnOnboarding { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("isAiAssistantAvailable")]
+        public bool? IsAiAssistantAvailable { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("footerConfig")]
         public FooterConfigDto? FooterConfig { get; set; } = default!;
 
@@ -74763,6 +74766,9 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("lockTenantAnalytics")]
         public bool? LockTenantAnalytics { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("lockTenantAiAssistant")]
+        public bool? LockTenantAiAssistant { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("decentralizationEnabled")]
         public bool? DecentralizationEnabled { get; set; } = default!;
 
@@ -75161,6 +75167,18 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("canOverrideAnalytics")]
         public bool? CanOverrideAnalytics { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("canOverrideAiAssistant")]
+        public bool? CanOverrideAiAssistant { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("aiAssistantEnabled")]
+        public bool? AiAssistantEnabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("aiAssistantEndpointUrl")]
+        public string? AiAssistantEndpointUrl { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("aiAssistantApiKey")]
+        public string? AiAssistantApiKey { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
@@ -76864,6 +76882,15 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("adminPrerenderEnabled")]
         public bool? AdminPrerenderEnabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("aiAssistantEnabled")]
+        public bool? AiAssistantEnabled { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("aiAssistantEndpointUrl")]
+        public string? AiAssistantEndpointUrl { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("aiAssistantApiKey")]
+        public string? AiAssistantApiKey { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 

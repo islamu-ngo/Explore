@@ -37,28 +37,12 @@ public sealed class GroupDetailLinkPolicy : ILinkPolicy<GroupDto>
         yield return LinkDefinition.Edit(
             RouteNames.UpdateGroup,
             new { id = dto.Id })
-            .RequirePermission(
-                PermissionAction.Update,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["groupId"] = dto.Id.ToString(),
-                    ["tenantId"] = dto.TenantId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.Group, dto);
 
         yield return LinkDefinition.Delete(
             RouteNames.DeleteGroup,
             new { id = dto.Id })
-            .RequirePermission(
-                PermissionAction.Delete,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["groupId"] = dto.Id.ToString(),
-                    ["tenantId"] = dto.TenantId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Delete, ResourceDescriptors.Group, dto);
     }
 }
 
@@ -82,6 +66,6 @@ public sealed class GroupCollectionLinkPolicy : ICollectionLinkPolicy<GroupListD
     public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)
     {
         yield return LinkDefinition.Create(RouteNames.CreateGroup)
-            .RequirePermission(PermissionAction.Create, typeof(GroupDto), "group");
+            .RequirePermission(AuthorizationActions.Create, typeof(GroupDto), "group");
     }
 }

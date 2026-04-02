@@ -58,14 +58,7 @@ public sealed class TenantDetailLinkPolicy : ILinkPolicy<TenantDto>
             "PUT",
             "Update tenant",
             RequiresAuth: true)
-            .RequirePermission(
-                PermissionAction.Update,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["tenantId"] = dto.Id.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.Tenant, dto);
 
         // Delete link - requires authentication
         yield return new LinkDefinition(
@@ -75,14 +68,7 @@ public sealed class TenantDetailLinkPolicy : ILinkPolicy<TenantDto>
             "DELETE",
             "Delete tenant",
             RequiresAuth: true)
-            .RequirePermission(
-                PermissionAction.Delete,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["tenantId"] = dto.Id.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Delete, ResourceDescriptors.Tenant, dto);
     }
 }
 
@@ -122,6 +108,6 @@ public sealed class TenantCollectionLinkPolicy : ICollectionLinkPolicy<TenantLis
             "POST",
             "Create new tenant",
             RequiresAuth: true)
-            .RequirePermission(PermissionAction.Create, typeof(TenantDto), "tenant");
+            .RequirePermission(AuthorizationActions.Create, typeof(TenantDto), "tenant");
     }
 }

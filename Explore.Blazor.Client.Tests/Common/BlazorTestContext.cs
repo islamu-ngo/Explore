@@ -2,6 +2,7 @@ using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Services;
 using MudBlazor;
+using MudBlazor.Interop;
 using MudBlazor.Services;
 using NSubstitute;
 
@@ -17,7 +18,8 @@ namespace Explore.Blazor.Client.Tests.Common;
 /// - User IDs are Guid (matching domain model) - converted to string for JWT claims
 /// - Tenant IDs are Guid (matching domain model and service interface)
 /// - MudBlazor services are pre-registered for proper component rendering
-/// - JSInterop is in loose mode to allow unmocked JS calls to pass
+/// - JSInterop runs in strict mode (bUnit default) — all JS calls must be explicitly set up
+/// - MudBlazor JS-dependent services are mocked at the DI level (not via JSInterop handlers)
 /// </para>
 /// <para>
 /// Usage:
@@ -38,33 +40,44 @@ public class BlazorTestContext : Bunit.TestContext
     /// </summary>
     public BlazorTestContext()
     {
-        // Add MudBlazor services for proper component rendering
-        // Configure popover service to use testing-friendly mode
+        // Mock all JS-dependent MudBlazor services BEFORE AddMudServices().
+        // MudBlazor registers services internally with TryAdd* — our pre-registered
+        // mocks won't be overridden, eliminating all MudBlazor JS interop calls.
+        // This follows MudBlazor's own testing pattern (see their BunitTest base class).
+        MockMudBlazorJsServices();
+
+        // Add MudBlazor non-JS services (dialog, snackbar, localization, etc.)
+        // JS-dependent services see our mocks already registered and skip via TryAdd*.
         Services.AddMudServices(config =>
         {
-            // Configure popover service for testing (no JS interop required)
             config.PopoverOptions.ThrowOnDuplicateProvider = false;
         });
 
         // Add bUnit's fake authorization (provides CascadingAuthenticationState)
         _authContext = this.AddTestAuthorization();
 
-        // Configure JSInterop to loose mode (allows unmocked JS calls to pass)
-        JSInterop.Mode = JSRuntimeMode.Loose;
+        // JSInterop runs in strict mode (bUnit default).
+        // MudBlazor JS calls are mostly eliminated by service-level mocks above.
+        // Some MudBlazor components (MudInput) still call IJSRuntime directly for blur events.
+        // These residual calls need explicit JSInterop handlers:
+        SetupResidualMudBlazorJsInterop();
 
-        // Mock IBrowserViewportService to prevent viewport detection issues in tests.
-        // MudBlazor's real service uses JS interop to detect viewport size, which defaults
-        // to 0x0 in bUnit (triggering mobile mode). This mock keeps desktop mode in tests.
-        var viewportService = Substitute.For<IBrowserViewportService>();
-        Services.AddSingleton(viewportService);
-
-        // Setup common MudBlazor JSInterop handlers
-        SetupMudBlazorJsInterop();
-
-        // Add common infrastructure services
+        // ── Infrastructure services (needed by virtually all component tests) ──
         Services.AddLogging();
+        AddLocalizationMocks();
+        Services.AddSingleton(Substitute.For<IHttpClientFactory>());
+        AddAccessibilityMocks();
+    }
 
-        // Localization services (required by LanguagePicker in NavMenu/MainLayout)
+    // ── Opt-in domain mock groups ──
+    // Tests call these explicitly to declare their dependencies.
+    // Use AddAllDefaultMocks() for backward-compatible convenience when many services are needed.
+
+    /// <summary>
+    /// Add localization service mocks. Called by constructor — most components use T["key"].
+    /// </summary>
+    public void AddLocalizationMocks()
+    {
         var translationService = Substitute.For<ITranslationService>();
         translationService.CurrentLanguage.Returns("en");
         translationService.T(Arg.Any<string>(), Arg.Any<string?>()).Returns(ci => ci.ArgAt<string>(0));
@@ -73,54 +86,137 @@ public class BlazorTestContext : Bunit.TestContext
         translationService.PreloadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
         Services.AddSingleton(translationService);
-        Services.AddSingleton(Substitute.For<IHttpClientFactory>());
-
-        // Notification services (required by NotificationBell in NavMenu/MainLayout)
-        Services.AddSingleton(MockServiceFactory.CreateNotificationService());
-
-        var groupService = Substitute.For<IGroupService>();
-        groupService.GetMyGroupsAsync().Returns(new List<GroupPublisherListDto>());
-        Services.AddSingleton(groupService);
-
-        // Accessibility services (injected by Phase 3A into NavMenu, EventList, EventDetail, etc.)
-        Services.AddScoped(_ => Substitute.For<IAccessibilityFocusService>());
-        Services.AddScoped(_ => Substitute.For<IAccessibilityAnnouncerService>());
-
-        // Tenant navigation links state (injected by NavMenu, MainLayout)
-        Services.AddScoped<TenantNavLinksState>();
     }
 
     /// <summary>
-    /// Configure JSInterop handlers for MudBlazor components.
-    /// MudBlazor uses JS interop for various features - we mock these for testing.
+    /// Add accessibility service mocks. Called by constructor — widely injected across components.
     /// </summary>
-    private void SetupMudBlazorJsInterop()
+    public void AddAccessibilityMocks()
     {
-        // MudBlazor resize observer
-        JSInterop.SetupVoid("mudResizeObserver.connect");
-        JSInterop.SetupVoid("mudResizeObserver.disconnect");
+        Services.AddScoped(_ => Substitute.For<IAccessibilityFocusService>());
+        Services.AddScoped(_ => Substitute.For<IAccessibilityAnnouncerService>());
+    }
 
-        // MudBlazor event listener
-        JSInterop.SetupVoid("mudEventListener.connect");
-        JSInterop.SetupVoid("mudEventListener.disconnect");
+    /// <summary>
+    /// Add shell state mocks (AiAssistantState, TenantNavLinksState, NotificationService).
+    /// Required by MainLayout, NavMenu, and admin settings layouts.
+    /// NOT registered by constructor — call explicitly when testing shell/layout components.
+    /// </summary>
+    public void AddShellStateMocks()
+    {
+        Services.AddScoped<AiAssistantState>();
+        Services.AddScoped<TenantNavLinksState>();
+        Services.AddSingleton(MockServiceFactory.CreateNotificationService());
+        Services.AddSingleton(Substitute.For<IPublicExperienceService>());
+    }
 
-        // MudBlazor scroll manager
-        JSInterop.SetupVoid("mudScrollManager.lockScroll");
-        JSInterop.SetupVoid("mudScrollManager.unlockScroll");
+    /// <summary>
+    /// Add group service mock with empty defaults.
+    /// Required by GroupProfile, CreateEvent, NavMenu admin sections.
+    /// NOT registered by constructor — call explicitly when testing group-dependent components.
+    /// </summary>
+    public void AddGroupServiceMock()
+    {
+        var groupService = Substitute.For<IGroupService>();
+        groupService.GetMyGroupsAsync().Returns(new List<GroupPublisherListDto>());
+        Services.AddSingleton(groupService);
+    }
 
-        // MudBlazor popover
-        JSInterop.SetupVoid("mudPopover.initialize");
-        JSInterop.SetupVoid("mudPopover.connect");
-        JSInterop.SetupVoid("mudPopover.disconnect");
-        JSInterop.Setup<int>("mudPopover.countProviders").SetResult(1);
+    /// <summary>
+    /// Register all optional domain mocks for convenience.
+    /// Use for tests that render complex components with many dependencies.
+    /// Equivalent to calling AddShellStateMocks() + AddGroupServiceMock() individually.
+    /// </summary>
+    public void AddAllDefaultMocks()
+    {
+        AddShellStateMocks();
+        AddGroupServiceMock();
+    }
 
-        // MudBlazor element reference - use object since BoundingClientRect may be internal
-        // JSInterop.Mode is Loose, so this mock is optional but helps avoid warnings
-        JSInterop.SetupVoid("mudElementRef.getBoundingClientRect");
+    /// <summary>
+    /// Mock all JS-dependent MudBlazor services at the DI level.
+    /// This prevents MudBlazor components from making any JS interop calls,
+    /// following the same pattern used by MudBlazor's own test suite.
+    /// Must be called BEFORE <see cref="ServiceCollectionExtensions.AddMudServices(IServiceCollection)"/>
+    /// because MudBlazor uses TryAdd* (won't override existing registrations).
+    /// </summary>
+    private void MockMudBlazorJsServices()
+    {
+        // Register concrete mock implementations that return proper non-null defaults.
+        // NSubstitute mocks would return null for factory methods and properties,
+        // causing NullReferenceException during MudBlazor component rendering.
 
-        // MudBlazor keyboard
-        JSInterop.SetupVoid("mudKeyInterceptor.connect");
-        JSInterop.SetupVoid("mudKeyInterceptor.disconnect");
+        // Popover — prevents mudPopover.initialize, connect, disconnect
+        Services.AddScoped<IPopoverService, MockPopoverService>();
+
+        // Resize observer factory — prevents mudResizeObserver.connect, disconnect
+        Services.AddScoped<IResizeObserverFactory, MockResizeObserverFactory>();
+
+        // Key interceptor — prevents mudKeyInterceptor.connect, disconnect
+        Services.AddScoped<IKeyInterceptorService, MockKeyInterceptorService>();
+
+        // JS event factory — prevents mudJsEvent.* calls
+        Services.AddTransient<IJsEventFactory, MockJsEventFactory>();
+
+        // JS API service — prevents mudElementRef.* calls (getBoundingClientRect, addOnBlurEvent, etc.)
+        // Uses NSubstitute because MudBlazor v9 declares UpdateStyleProperty as internal —
+        // concrete classes outside MudBlazor's assembly cannot implement IJsApiService.
+        // NSubstitute (Castle.DynamicProxy) handles this at runtime. All methods return ValueTask (no NRE risk).
+        Services.AddTransient(_ => Substitute.For<IJsApiService>());
+
+        // Scroll manager — prevents mudScrollManager.lockScroll, unlockScroll
+        Services.AddTransient<IScrollManager, MockScrollManager>();
+
+        // Scroll listener factory — prevents scroll listener JS calls
+        Services.AddTransient<IScrollListenerFactory, MockScrollListenerFactory>();
+
+        // Scroll spy factory — prevents scroll spy JS calls
+        Services.AddTransient<IScrollSpyFactory, MockScrollSpyFactory>();
+
+        // Browser viewport service — prevents viewport detection JS calls.
+        // Returns desktop-sized viewport (1920x1080, Breakpoint.Lg) to avoid mobile mode.
+        Services.AddSingleton<IBrowserViewportService, MockBrowserViewportService>();
+    }
+
+    /// <summary>
+    /// Sets up JSInterop handlers for MudBlazor JS calls that bypass the service layer.
+    /// Some MudBlazor components (e.g., MudInput) call IJSRuntime directly
+    /// instead of going through injectable services like IJsApiService.
+    /// These calls cannot be intercepted by DI-level mocks and need bUnit JSInterop handlers.
+    /// </summary>
+    private void SetupResidualMudBlazorJsInterop()
+    {
+        // Some MudBlazor components call IJSRuntime directly, bypassing injectable services.
+        // Must use catch-all argument matcher because calls include ElementReference
+        // and DotNetObjectReference arguments that vary per component instance.
+
+        // MudInput<T> directly calls IJSRuntime for blur event management
+        JSInterop.SetupVoid("mudElementRef.addOnBlurEvent", _ => true);
+        JSInterop.SetupVoid("mudElementRef.removeOnBlurEvent", _ => true);
+
+        // MudComponentBase and related components call getBoundingClientRect directly.
+        // This is a typed return call (InvokeAsync<BoundingClientRect>), not void.
+        JSInterop.Setup<BoundingClientRect>("mudElementRef.getBoundingClientRect", _ => true)
+            .SetResult(new BoundingClientRect());
+
+        // MudHotkey registers keyboard shortcuts directly through IJSRuntime
+        JSInterop.SetupVoid("mudHotkeyListener.registerOrUpdateHotkey", _ => true);
+        JSInterop.SetupVoid("mudHotkeyListener.unregisterHotkey", _ => true);
+
+        // MudThemeProvider calls watchDarkMode during OnAfterRenderAsync when rendered directly
+        // (e.g., in MainLayout tests that include the full layout tree).
+        JSInterop.SetupVoid("mudThemeProvider.watchDarkMode", _ => true);
+
+        // MudOverlay/PointerEventsNoneService calls these during dispose (e.g., on navigation).
+        // IPointerEventsNoneService is internal in MudBlazor v9 — cannot mock at DI level.
+        JSInterop.SetupVoid("mudPointerEventsNone.addListener", _ => true);
+        JSInterop.SetupVoid("mudPointerEventsNone.cancelListener", _ => true);
+
+        // Browser storage APIs used by ProtectedBrowserStorage or component dependencies.
+        // Returns empty string by default — individual tests can override with specific setups.
+        JSInterop.Setup<string>("sessionStorage.getItem", _ => true).SetResult("");
+        JSInterop.SetupVoid("sessionStorage.setItem", _ => true);
+        JSInterop.SetupVoid("sessionStorage.removeItem", _ => true);
     }
 
     /// <summary>
@@ -168,7 +264,7 @@ public class BlazorTestContext : Bunit.TestContext
         var claims = new List<Claim>
         {
             // Primary user ID claims - stored as string (JWT standard)
-            // Fallback order in AuthStateService: nameidentifier -> sub -> sid
+            // Fallback order in AuthStateService: sub -> nameidentifier -> sid
             new("sub", userIdString),
             new(ClaimTypes.NameIdentifier, userIdString)
         };
@@ -301,14 +397,22 @@ public class BlazorTestContext : Bunit.TestContext
     /// <summary>
     /// Add TenantConfiguration options for multi-tenancy testing.
     /// </summary>
-    /// <param name="tenantId">Default tenant ID</param>
+    /// <param name="tenantId">Default tenant ID (falls back to standard default tenant)</param>
     /// <param name="enabled">Whether multi-tenancy is enabled</param>
-    public void AddTenantConfiguration(Guid? tenantId = null, bool enabled = false)
+    /// <param name="slug">Tenant slug for URL routing (default: "default")</param>
+    /// <param name="tenantName">Display name of the default tenant (default: "Default")</param>
+    public void AddTenantConfiguration(
+        Guid? tenantId = null,
+        bool enabled = false,
+        string slug = "default",
+        string tenantName = "Default")
     {
         var config = new TenantConfiguration
         {
             DefaultTenantId = tenantId ?? Guid.Parse("018e4e5c-7f00-7000-8000-000000000001"),
-            Enabled = enabled
+            Enabled = enabled,
+            DefaultTenant = slug,
+            DefaultTenantName = tenantName
         };
         Services.AddSingleton(Options.Create(config));
     }

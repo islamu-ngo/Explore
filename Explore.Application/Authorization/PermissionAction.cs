@@ -1,12 +1,12 @@
-// ABOUTME: Enum representing standard policy actions (read, create, update, delete).
-// ABOUTME: Used by ResourceDescriptorRegistry and HATEOAS RequirePermission extensions for typed action references.
+// ABOUTME: Legacy enum for policy actions. Superseded by AuthorizationActions string constants.
+// ABOUTME: Marked obsolete — migrate callers to use AuthorizationActions constants directly.
 
 namespace Explore.Application.Authorization;
 
 /// <summary>
-/// Standard policy actions used across the application.
-/// Mapped to lowercase string values for authorization checks.
+/// Legacy policy action enum. Use <see cref="AuthorizationActions"/> string constants instead.
 /// </summary>
+[Obsolete("Use AuthorizationActions string constants instead. This enum will be removed in a future release.")]
 public enum PermissionAction
 {
     Read,

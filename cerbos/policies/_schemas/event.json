@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Resource attributes for event resources. Populated by ResourceDescriptors.Event.",
+  "type": "object",
+  "properties": {
+    "tenantId": {
+      "type": "string",
+      "description": "Owning tenant identifier. Used by tenant_admin derived role."
+    },
+    "actorId": {
+      "type": "string",
+      "description": "Actor (creator/owner) identifier."
+    }
+  },
+  "required": ["tenantId", "actorId"]
+}

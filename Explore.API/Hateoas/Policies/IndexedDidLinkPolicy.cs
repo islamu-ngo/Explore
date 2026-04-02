@@ -47,10 +47,7 @@ public sealed class IndexedDidDetailLinkPolicy : ILinkPolicy<IndexedDidDto>
             "PUT",
             "Update indexed DID",
             RequiresAuth: true)
-            .RequirePermission(
-                PermissionAction.Update,
-                dto,
-                dto.Did);
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.IndexedDid, dto);
     }
 }
 
@@ -98,6 +95,6 @@ public sealed class IndexedDidCollectionLinkPolicy : ICollectionLinkPolicy<Index
             "POST",
             "Index new DID",
             RequiresAuth: true)
-            .RequirePermission(PermissionAction.Create, typeof(IndexedDidDto), "indexed_did");
+            .RequirePermission(AuthorizationActions.Create, typeof(IndexedDidDto), "indexed_did");
     }
 }

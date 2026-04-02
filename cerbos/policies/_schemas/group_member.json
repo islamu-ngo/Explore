@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Resource attributes for group_member resources. Populated by ResourceDescriptors.GroupMember.",
+  "type": "object",
+  "properties": {
+    "groupId": {
+      "type": "string",
+      "description": "Parent group identifier."
+    },
+    "userId": {
+      "type": "string",
+      "description": "Member user identifier."
+    }
+  },
+  "required": ["groupId", "userId"]
+}

@@ -27,6 +27,7 @@ public class UpdateTenantPolicySettingsCommandHandlerTests
     private readonly IAdminContext _adminContext;
     private readonly ITenantPolicySettingService _policySettingService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IHierarchicalSettingsResolver _hierarchicalSettingsResolver;
     private readonly UpdateTenantPolicySettingsCommandHandler _handler;
 
     public UpdateTenantPolicySettingsCommandHandlerTests()
@@ -36,6 +37,7 @@ public class UpdateTenantPolicySettingsCommandHandlerTests
         _adminContext = Substitute.For<IAdminContext>();
         _policySettingService = Substitute.For<ITenantPolicySettingService>();
         _unitOfWork = Substitute.For<IUnitOfWork>();
+        _hierarchicalSettingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
 
         _tenantContext.TenantId.Returns(TestTenantId);
 
@@ -53,7 +55,8 @@ public class UpdateTenantPolicySettingsCommandHandlerTests
             _onboardingStateRepository,
             _adminContext,
             _policySettingService,
-            _unitOfWork);
+            _unitOfWork,
+            _hierarchicalSettingsResolver);
 
         _policySettingService.ReadEffectiveTenantSettingsAsync(TestTenantId).Returns(new TenantPolicySettingsDto
         {

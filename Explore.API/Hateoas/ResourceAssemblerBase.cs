@@ -1,3 +1,6 @@
+// ABOUTME: Base class for HAL resource assemblers with batched, deduplicated link authorization.
+// ABOUTME: Flow: candidate links → normalized checks → batch auth (with dedup) → materialized HAL links.
+
 namespace Explore.API.Hateoas;
 
 using System.Security.Claims;
@@ -9,6 +12,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 /// <summary>
 /// Base class for resource assemblers that provides common link generation logic.
+/// Implements a four-phase capability planning pipeline:
+/// 1. Candidate links — link policies yield link definitions for each resource
+/// 2. Normalized checks — evaluator extracts authorization checks from permission-bearing links
+/// 3. Batch decisions — deduplicated checks are sent to IAuthorizationProvider in a single call
+/// 4. Materialized links — allowed links are resolved to URLs via HateoasLinkGenerator
 /// </summary>
 /// <typeparam name="TDto">The detail DTO type.</typeparam>
 /// <typeparam name="TListDto">The list DTO type.</typeparam>
@@ -77,19 +85,25 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
         var user = httpContext.User;
         var isMinimal = IsMinimalResponse(httpContext);
 
-        var items = await BuildListResourcesWithBatch(paginatedResult.Items, user, httpContext);
-
+        // Minimal response: wrap items without link generation (skip auth evaluation entirely)
         if (isMinimal)
         {
+            var minimalItems = paginatedResult.Items
+                .Select(item => new HalResource<TListDto>(item))
+                .ToList();
+
             return new HalCollectionResource<TListDto>
             {
                 PageNumber = paginatedResult.PageNumber,
                 PageSize = paginatedResult.PageSize,
                 TotalCount = paginatedResult.TotalCount,
                 TotalPages = paginatedResult.TotalPages,
-                Embedded = new HalCollectionEmbedded<TListDto> { Items = items }
+                Embedded = new HalCollectionEmbedded<TListDto> { Items = minimalItems }
             };
         }
+
+        // Full response: candidate links → batch auth → materialized links
+        var items = await BuildListResourcesWithBatch(paginatedResult.Items, user, httpContext);
 
         // Generate pagination links
         var links = _linkGenerator.GeneratePaginationLinks(
@@ -100,7 +114,7 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
             additionalRouteValues,
             httpContext);
 
-        // Add collection-level links (create, search, etc.)
+        // Add collection-level links (create, search, etc.) — separate batch for collection actions
         var collectionActionLinks = await GenerateLinks(_collectionLinkPolicy.GetCollectionLinks(user), user, httpContext);
         foreach (var pair in collectionActionLinks)
         {
@@ -126,25 +140,39 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
         var user = httpContext.User;
         var isMinimal = IsMinimalResponse(httpContext);
 
+        // Minimal response: wrap items without link generation
+        if (isMinimal)
+        {
+            var minimalItems = itemsList
+                .Select(item => new HalResource<TListDto>(item))
+                .ToList();
+
+            return new HalCollectionResource<TListDto>
+            {
+                PageNumber = 1,
+                PageSize = itemsList.Count,
+                TotalCount = itemsList.Count,
+                TotalPages = 1,
+                Embedded = new HalCollectionEmbedded<TListDto> { Items = minimalItems }
+            };
+        }
+
         var halItems = await BuildListResourcesWithBatch(itemsList, user, httpContext);
 
         var links = new Dictionary<string, HalLink>();
 
-        if (!isMinimal)
+        // Self link for the collection
+        var selfPath = _linkGenerator.GeneratePath(routeName, null, httpContext);
+        if (selfPath is not null)
         {
-            // Self link for the collection
-            var selfPath = _linkGenerator.GeneratePath(routeName, null, httpContext);
-            if (selfPath is not null)
-            {
-                links[LinkRelations.Self] = HalLink.Create(selfPath);
-            }
+            links[LinkRelations.Self] = HalLink.Create(selfPath);
+        }
 
-            // Collection-level links
-            var collectionActionLinks = await GenerateLinks(_collectionLinkPolicy.GetCollectionLinks(user), user, httpContext);
-            foreach (var pair in collectionActionLinks)
-            {
-                links[pair.Key] = pair.Value;
-            }
+        // Collection-level links
+        var collectionActionLinks = await GenerateLinks(_collectionLinkPolicy.GetCollectionLinks(user), user, httpContext);
+        foreach (var pair in collectionActionLinks)
+        {
+            links[pair.Key] = pair.Value;
         }
 
         return new HalCollectionResource<TListDto>
@@ -168,6 +196,7 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
 
     /// <summary>
     /// Generates HAL links from link definitions, filtering by authorization.
+    /// Pipeline: definitions → evaluator (static + batch auth with dedup) → link generator (URL resolution).
     /// </summary>
     protected async Task<Dictionary<string, HalLink>> GenerateLinks(
         IEnumerable<LinkDefinition> definitions,
@@ -200,6 +229,11 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
         return links;
     }
 
+    /// <summary>
+    /// Builds HAL resources for list items with batched link authorization.
+    /// All item link definitions are flattened into a single batch for the evaluator,
+    /// which deduplicates identical checks before calling the authorization provider.
+    /// </summary>
     private async Task<List<HalResource<TListDto>>> BuildListResourcesWithBatch(
         IEnumerable<TListDto> items,
         ClaimsPrincipal? user,
@@ -209,14 +243,17 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
         if (itemList.Count == 0)
             return [];
 
+        // Phase 1: Collect candidate link definitions for every item
         var definitionsByItem = itemList
             .Select(item => _collectionLinkPolicy.GetItemLinks(item, user).ToList())
             .ToList();
 
+        // Phase 2-3: Flatten and batch evaluate (evaluator handles dedup internally)
         var flattenedDefinitions = definitionsByItem.SelectMany(x => x).ToList();
         var evaluator = httpContext.RequestServices.GetRequiredService<IHateoasAuthorizationEvaluator>();
         var decisions = await evaluator.AreLinksAllowedAsync(flattenedDefinitions, user, httpContext);
 
+        // Phase 4: Materialize allowed links into HAL resources
         var resources = new List<HalResource<TListDto>>(itemList.Count);
         var cursor = 0;
 

@@ -63,6 +63,12 @@ audit:
     # Retention period for audit logs (7 days)
     retentionPeriod: 168h
 
+schema:
+  # Validate principal and resource attributes against JSON schemas in _schemas/.
+  # 'warn' logs validation errors without denying access (safe for rollout).
+  # Switch to 'reject' in production to enforce schema compliance.
+  enforcement: warn
+
 compile:
   # Cache compiled policies for 60 seconds (production performance)
   cacheDuration: 60s

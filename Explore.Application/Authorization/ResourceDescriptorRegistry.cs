@@ -134,20 +134,23 @@ public static class ResourceDescriptorRegistry
     }
 
     /// <summary>
-    /// Converts a <see cref="PermissionAction"/> enum value to its string representation.
+    /// Converts a <see cref="PermissionAction"/> enum value to its Cerbos-compatible string representation.
+    /// Prefer using <see cref="AuthorizationActions"/> constants directly instead of this method.
     /// </summary>
+#pragma warning disable CS0618 // Intentional: bridge method for legacy PermissionAction callers
     public static string ToActionString(PermissionAction action)
     {
         return action switch
         {
-            PermissionAction.Read => "read",
-            PermissionAction.Create => "create",
-            PermissionAction.Update => "update",
-            PermissionAction.Delete => "delete",
-            PermissionAction.ManageMembers => "manage_members",
-            PermissionAction.ViewSharedContacts => "viewsharedcontacts",
-            PermissionAction.ExportSharedContacts => "exportsharedcontacts",
+            PermissionAction.Read => AuthorizationActions.View,
+            PermissionAction.Create => AuthorizationActions.Create,
+            PermissionAction.Update => AuthorizationActions.Update,
+            PermissionAction.Delete => AuthorizationActions.Delete,
+            PermissionAction.ManageMembers => AuthorizationActions.ManageMembers,
+            PermissionAction.ViewSharedContacts => AuthorizationActions.ViewSharedContacts,
+            PermissionAction.ExportSharedContacts => AuthorizationActions.ExportSharedContacts,
             _ => throw new ArgumentOutOfRangeException(nameof(action), action, null)
         };
     }
+#pragma warning restore CS0618
 }

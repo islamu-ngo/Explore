@@ -5,7 +5,7 @@ using MediatR;
 
 namespace Explore.Application.Features.IndexedDids.Requests.Commands;
 
-[AuthorizeResource("indexed_did", PermissionAction.Delete)]
+[AuthorizeResource("indexed_did", AuthorizationActions.Delete)]
 public class DeleteIndexedDidCommand : IRequest<bool>, ISecureRequest
 {
     public required string Did { get; set; }

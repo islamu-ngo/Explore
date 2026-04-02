@@ -19,19 +19,22 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
     private readonly IAdminContext _adminContext;
     private readonly ITenantPolicySettingService _policySettingService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IHierarchicalSettingsResolver _hierarchicalSettingsResolver;
 
     public CompleteTenantOnboardingCommandHandler(
         ITenantContext tenantContext,
         ITenantOnboardingStateRepository tenantOnboardingStateRepository,
         IAdminContext adminContext,
         ITenantPolicySettingService policySettingService,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IHierarchicalSettingsResolver hierarchicalSettingsResolver)
     {
         _tenantContext = tenantContext;
         _tenantOnboardingStateRepository = tenantOnboardingStateRepository;
         _adminContext = adminContext;
         _policySettingService = policySettingService;
         _unitOfWork = unitOfWork;
+        _hierarchicalSettingsResolver = hierarchicalSettingsResolver;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(CompleteTenantOnboardingCommand request, CancellationToken cancellationToken)
@@ -81,6 +84,8 @@ public class CompleteTenantOnboardingCommandHandler : IRequestHandler<CompleteTe
             await _tenantOnboardingStateRepository.Update(existingState);
             return existingState.Id;
         }, cancellationToken);
+
+        _hierarchicalSettingsResolver.InvalidateCache(Explore.Domain.Settings.SettingScope.Tenant, tenantId);
 
         response.Success = true;
         response.Message = "Tenant onboarding completed successfully.";

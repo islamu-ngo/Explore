@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Resource attributes for indexed_did resources. Populated by ResourceDescriptors.IndexedDid. Minimal attributes (DID is used as resource ID).",
+  "type": "object",
+  "properties": {
+    "tenantId": {
+      "type": "string",
+      "description": "Tenant context when available. Not always present for DID resources."
+    }
+  }
+}

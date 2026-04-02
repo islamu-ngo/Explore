@@ -79,6 +79,7 @@ public static class ServiceCollectionExtensions
 
         // UI state
         services.AddScoped<SidebarState>();
+        services.AddScoped<AiAssistantState>();
         services.AddScoped<TenantNavLinksState>();
 
         // User-scoped settings (auth-branching: API for authenticated, localStorage for anonymous)

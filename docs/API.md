@@ -215,10 +215,11 @@ Collection responses include standard pagination links:
 - `last` — last page
 
 ### Authorization-Aware Links
-Links are conditionally included based on:
-1. **Static checks**: `RequiresAuth`, `RequiredRoles`, `Condition` lambda.
-2. **Permission checks**: `PermissionResourceKind` + `PermissionAction` evaluated via `IAuthorizationProvider`.
-3. HTTP method → permission action mapping: GET→read, POST→create, PUT/PATCH→update, DELETE→delete.
+Links are conditionally included via a 4-phase capability planning pipeline:
+1. **Static checks**: `RequiresAuth`, `RequiredRoles`, `Condition` lambda filter links before any provider call.
+2. **Permission checks**: `PermissionResourceKind` + `PermissionAction` (from `AuthorizationActions` constants) evaluated via `IAuthorizationProvider`. Link policies use `ResourceDescriptors` to extract resource metadata from DTOs.
+3. **Deduplication**: Identical `AuthorizationCheck` records (same resource kind + id + action) collapse before batch evaluation.
+4. **Fail-closed**: If batch authorization fails, all permission-bound links are denied. Non-permission links are unaffected.
 
 ---
 

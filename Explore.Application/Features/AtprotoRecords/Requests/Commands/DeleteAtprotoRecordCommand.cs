@@ -5,7 +5,7 @@ using MediatR;
 
 namespace Explore.Application.Features.AtprotoRecords.Requests.Commands;
 
-[AuthorizeResource("atproto_record", PermissionAction.Delete)]
+[AuthorizeResource("atproto_record", AuthorizationActions.Delete)]
 public class DeleteAtprotoRecordCommand : IRequest<bool>, ISecureRequest
 {
     public Guid Id { get; set; }

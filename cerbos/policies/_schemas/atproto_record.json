@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Resource attributes for atproto_record resources. Populated by ResourceDescriptors.AtprotoRecord. Minimal attributes.",
+  "type": "object",
+  "properties": {
+    "tenantId": {
+      "type": "string",
+      "description": "Tenant context when available. Not always present for AT Protocol records."
+    }
+  }
+}

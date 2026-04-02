@@ -1,14 +1,26 @@
+// ABOUTME: PostgreSQL container fixture for persistence integration tests using Testcontainers.
+// ABOUTME: Provides container lifecycle, schema migration via MigrateAsync, lookup seeding, and Respawn-based reset.
+
 using Explore.Persistence;
+using Explore.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using Respawn;
+using Respawn.Graph;
 using Testcontainers.PostgreSql;
 using TUnit.Core;
 using TUnit.Core.Interfaces;
 
 namespace Event.Persistence.IntegrationTests.Fixtures;
 
+/// <summary>
+/// Shared PostgreSQL container fixture that provides production-faithful schema via MigrateAsync
+/// and deterministic state reset via Respawn between tests.
+/// </summary>
 public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
 {
     private readonly PostgreSqlContainer _container;
+    private Respawner? _respawner;
 
     public PostgreSqlContainerFixture()
     {
@@ -17,15 +29,32 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
             .WithDatabase("explore_db_test")
             .WithUsername("postgres")
             .WithPassword("postgres")
-            // Ensure Docker socket is accessible or configure for environment
             .Build();
     }
 
+    /// <summary>
+    /// Connection string for the running PostgreSQL container.
+    /// </summary>
     public string ConnectionString => _container.GetConnectionString();
 
     public async Task InitializeAsync()
     {
         await _container.StartAsync();
+
+        // Apply all migrations for production-faithful schema
+        await using var context = CreateDbContextInternal();
+        await context.Database.MigrateAsync();
+        await LookupTableSeeder.SeedAsync(context);
+
+        // Initialize Respawn for deterministic reset between tests
+        await using var connection = new NpgsqlConnection(ConnectionString);
+        await connection.OpenAsync();
+        _respawner = await Respawner.CreateAsync(connection, new RespawnerOptions
+        {
+            DbAdapter = DbAdapter.Postgres,
+            SchemasToInclude = ["public"],
+            TablesToIgnore = LookupTables
+        });
     }
 
     public async ValueTask DisposeAsync()
@@ -34,19 +63,72 @@ public class PostgreSqlContainerFixture : IAsyncInitializer, IAsyncDisposable
         await _container.DisposeAsync();
     }
 
+    /// <summary>
+    /// Creates a fresh DbContext connected to the test container.
+    /// Schema and lookup data are already present from initialization.
+    /// </summary>
     public ExploreDbContext CreateDbContext()
+    {
+        return CreateDbContextInternal();
+    }
+
+    /// <summary>
+    /// Resets the database to a clean state, preserving schema and lookup data.
+    /// Call at the start of tests that need deterministic state.
+    /// </summary>
+    public async Task ResetAsync()
+    {
+        if (_respawner is null)
+            throw new InvalidOperationException("Fixture not initialized. Call InitializeAsync first.");
+
+        await using var connection = new NpgsqlConnection(ConnectionString);
+        await connection.OpenAsync();
+        await _respawner.ResetAsync(connection);
+    }
+
+    private ExploreDbContext CreateDbContextInternal()
     {
         var options = new DbContextOptionsBuilder<ExploreDbContext>()
             .UseNpgsql(_container.GetConnectionString())
             .UseSnakeCaseNamingConvention()
             .Options;
 
-        var context = new ExploreDbContext(options);
-        context.Database.EnsureCreated();
-
-        // Seed lookups required for integration tests
-        Explore.Persistence.Seed.LookupTableSeeder.SeedAsync(context).GetAwaiter().GetResult();
-
-        return context;
+        return new ExploreDbContext(options);
     }
+
+    /// <summary>
+    /// Lookup tables seeded by LookupTableSeeder that Respawn must preserve.
+    /// </summary>
+    private static readonly Table[] LookupTables =
+    [
+        new("__EFMigrationsHistory"),
+        new("actor_types"),
+        new("analytics_providers"),
+        new("approval_statuses"),
+        new("audience_ages"),
+        new("audience_genders"),
+        new("did_custody_types"),
+        new("event_formats"),
+        new("event_statuses"),
+        new("event_types"),
+        new("external_api_key_credit_periods"),
+        new("external_api_key_statuses"),
+        new("file_types"),
+        new("group_positions"),
+        new("languages"),
+        new("madhabs"),
+        new("module_definitions"),
+        new("notification_entity_types"),
+        new("notification_types"),
+        new("organization_positions"),
+        new("permissions"),
+        new("registration_modes"),
+        new("roles"),
+        new("system_settings"),
+        new("tag_types"),
+        new("tenant_footer_link_groups"),
+        new("tenant_footer_links"),
+        new("tenant_statuses"),
+        new("visibility_types"),
+    ];
 }

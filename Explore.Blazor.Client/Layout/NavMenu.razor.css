@@ -93,10 +93,7 @@
     }
 }
 
-/* Element: navbar__brand-icon */
-.navbar__brand-icon {
-    /* Styling handled by MudBlazor */
-}
+/* Element: navbar__brand-icon handled by MudBlazor */
 
 /* Element: navbar__brand-text */
 .navbar__brand-text {
@@ -188,10 +185,7 @@
     flex-shrink: 0;
 }
 
-/* Element: navbar__theme-toggle */
-.navbar__theme-toggle {
-    /* Styling handled by MudBlazor */
-}
+/* Element: navbar__theme-toggle handled by MudBlazor */
 
 /* Element: navbar__create-event-btn */
 ::deep .navbar__create-event-btn {
@@ -205,6 +199,27 @@
     border-radius: var(--isl-radius-full) !important;
     padding: 0.625rem var(--isl-space-5) !important;
     font-weight: 700 !important;
+}
+
+/* ========================================
+   Element: navbar__ai-toggle
+   AI Assistant toggle button in navbar
+   ======================================== */
+::deep .navbar__ai-toggle {
+    transition: color 0.2s ease, background 0.2s ease;
+    border-radius: var(--isl-radius-md);
+}
+
+::deep .navbar__ai-toggle:hover {
+    color: var(--mud-palette-primary);
+    background: color-mix(in oklch, var(--mud-palette-primary) 10%, transparent);
+}
+
+/* Modifier: navbar__ai-toggle--active */
+::deep .navbar__ai-toggle--active {
+    color: var(--mud-palette-primary) !important;
+    background: color-mix(in oklch, var(--mud-palette-primary) 12%, transparent) !important;
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--mud-palette-primary) 20%, transparent);
 }
 
 /* ========================================
@@ -248,10 +263,7 @@
     color: var(--mud-palette-text-primary);
 }
 
-/* Element: navbar__user-arrow */
-.navbar__user-arrow {
-    /* Styling handled by MudBlazor */
-}
+/* Element: navbar__user-arrow handled by MudBlazor */
 
 /* ========================================
    Element: navbar__dropdown-menu

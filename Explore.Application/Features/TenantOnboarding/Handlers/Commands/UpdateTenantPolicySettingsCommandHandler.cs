@@ -21,19 +21,22 @@ public class UpdateTenantPolicySettingsCommandHandler : IRequestHandler<UpdateTe
     private readonly IAdminContext _adminContext;
     private readonly ITenantPolicySettingService _policySettingService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IHierarchicalSettingsResolver _hierarchicalSettingsResolver;
 
     public UpdateTenantPolicySettingsCommandHandler(
         ITenantContext tenantContext,
         ITenantOnboardingStateRepository tenantOnboardingStateRepository,
         IAdminContext adminContext,
         ITenantPolicySettingService policySettingService,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IHierarchicalSettingsResolver hierarchicalSettingsResolver)
     {
         _tenantContext = tenantContext;
         _tenantOnboardingStateRepository = tenantOnboardingStateRepository;
         _adminContext = adminContext;
         _policySettingService = policySettingService;
         _unitOfWork = unitOfWork;
+        _hierarchicalSettingsResolver = hierarchicalSettingsResolver;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateTenantPolicySettingsCommand request, CancellationToken cancellationToken)
@@ -54,6 +57,8 @@ public class UpdateTenantPolicySettingsCommandHandler : IRequestHandler<UpdateTe
         // Atomic writes: all tenant policy settings
         await _unitOfWork.ExecuteInTransactionAsync(ct =>
             _policySettingService.ApplyTenantSettingsAsync(tenantId, request.UserId, request.Settings), cancellationToken);
+
+        _hierarchicalSettingsResolver.InvalidateCache(Explore.Domain.Settings.SettingScope.Tenant, tenantId);
 
         var onboardingState = await _tenantOnboardingStateRepository.GetByTenantId(tenantId);
         response.Id = onboardingState?.Id ?? Guid.Empty;

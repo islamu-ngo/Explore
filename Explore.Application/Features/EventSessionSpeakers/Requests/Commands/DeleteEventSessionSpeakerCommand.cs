@@ -6,7 +6,7 @@ using MediatR;
 
 namespace Explore.Application.Features.EventSessionSpeakers.Requests.Commands;
 
-[AuthorizeResource("event_session", PermissionAction.Update)]
+[AuthorizeResource("event_session", AuthorizationActions.Update)]
 public class DeleteEventSessionSpeakerCommand : IRequest<bool>, ISecureRequest
 {
     public Guid Id { get; set; }

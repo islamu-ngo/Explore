@@ -6,7 +6,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Categories.Requests.Commands;
 
-[AuthorizeResource("category", PermissionAction.Delete)]
+[AuthorizeResource("category", AuthorizationActions.Delete)]
 public class DeleteCategoryCommand : IRequest<bool>, ISecureRequest
 {
     public Guid Id { get; set; }

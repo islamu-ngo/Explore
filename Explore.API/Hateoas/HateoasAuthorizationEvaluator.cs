@@ -1,5 +1,9 @@
+// ABOUTME: Evaluates HATEOAS link visibility by batching authorization checks with deduplication.
+// ABOUTME: Static checks (auth, roles, conditions) run first; permission-bound links are batch-evaluated via IAuthorizationProvider.
+
 namespace Explore.API.Hateoas;
 
+using System.Diagnostics;
 using System.Reflection;
 using System.Security.Claims;
 using Explore.Application.Contracts.Infrastructure;
@@ -9,6 +13,8 @@ using Microsoft.Extensions.Logging;
 
 public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluator
 {
+    private static readonly ActivitySource HateoasAuthorizationSource = new("Explore.Hateoas.Authorization");
+
     private readonly IAuthorizationProvider _authorizationProvider;
     private readonly ILogger<HateoasAuthorizationEvaluator> _logger;
 
@@ -20,14 +26,23 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
         _logger = logger;
     }
 
-    public async Task<IReadOnlyList<bool>> AreLinksAllowedAsync(IReadOnlyList<LinkDefinition> definitions, ClaimsPrincipal? user, HttpContext httpContext)
+    /// <summary>
+    /// Evaluates which links are allowed for the current user.
+    /// Flow: static checks → build normalized checks → deduplicate → batch evaluate → map decisions back.
+    /// Fail-closed: batch failure denies all permission-bound links.
+    /// </summary>
+    public async Task<IReadOnlyList<bool>> AreLinksAllowedAsync(
+        IReadOnlyList<LinkDefinition> definitions,
+        ClaimsPrincipal? user,
+        HttpContext httpContext)
     {
         if (definitions.Count == 0)
             return [];
 
         var results = new bool[definitions.Count];
-        var checks = new List<(int Index, AuthorizationCheck Check)>();
+        var pendingChecks = new List<(int Index, AuthorizationCheck Check, string Key)>();
 
+        // Phase 1: Static checks (no provider call needed)
         for (var i = 0; i < definitions.Count; i++)
         {
             var definition = definitions[i];
@@ -44,32 +59,63 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
                 continue;
             }
 
-            checks.Add((i, check));
+            pendingChecks.Add((i, check, check.ToDeduplicationKey()));
         }
 
-        if (checks.Count == 0)
+        if (pendingChecks.Count == 0)
             return results;
+
+        // Phase 2: Deduplicate — collapse identical checks before provider invocation
+        var uniqueChecks = new List<AuthorizationCheck>();
+        var keyToDecisionIndex = new Dictionary<string, int>(StringComparer.Ordinal);
+
+        foreach (var (_, check, key) in pendingChecks)
+        {
+            if (keyToDecisionIndex.ContainsKey(key))
+                continue;
+
+            keyToDecisionIndex[key] = uniqueChecks.Count;
+            uniqueChecks.Add(check);
+        }
+
+        var deduplicatedCount = pendingChecks.Count - uniqueChecks.Count;
+        if (deduplicatedCount > 0)
+        {
+            _logger.LogDebug(
+                "HATEOAS authorization dedup: {InputCount} checks reduced to {UniqueCount} unique ({DeduplicatedCount} duplicates removed).",
+                pendingChecks.Count,
+                uniqueChecks.Count,
+                deduplicatedCount);
+        }
+
+        // Phase 3: Batch evaluate unique checks with telemetry
+        using var activity = HateoasAuthorizationSource.StartActivity("hateoas.capability_planning");
+        activity?.SetTag("checks.total", pendingChecks.Count);
+        activity?.SetTag("checks.unique", uniqueChecks.Count);
+        activity?.SetTag("checks.deduplicated", deduplicatedCount);
 
         try
         {
-            var batch = checks.Select(x => x.Check).ToArray();
-            var allowed = await _authorizationProvider.IsAllowedBatchAsync(batch);
+            var allowed = await _authorizationProvider.IsAllowedBatchAsync(uniqueChecks);
 
-            for (var i = 0; i < checks.Count; i++)
+            // Phase 4: Map decisions back to all original link indices via dedup key
+            foreach (var (index, _, key) in pendingChecks)
             {
-                var index = checks[i].Index;
-                results[index] = i < allowed.Count && allowed[i];
+                var decisionIndex = keyToDecisionIndex[key];
+                results[index] = decisionIndex < allowed.Count && allowed[decisionIndex];
             }
 
+            activity?.SetTag("outcome", "success");
             return results;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "HATEOAS batch authorization failed; denying permission-bound links.");
+            _logger.LogWarning(ex, "HATEOAS batch authorization failed; denying all {Count} permission-bound links (fail-closed).", pendingChecks.Count);
+            activity?.SetTag("outcome", "fail_closed");
 
-            foreach (var check in checks)
+            foreach (var (index, _, _) in pendingChecks)
             {
-                results[check.Index] = false;
+                results[index] = false;
             }
 
             return results;
@@ -97,12 +143,29 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
         return true;
     }
 
-    private static AuthorizationCheck? BuildCheck(LinkDefinition definition)
+    private AuthorizationCheck? BuildCheck(LinkDefinition definition)
     {
         if (string.IsNullOrWhiteSpace(definition.PermissionResourceKind))
             return null;
 
-        var action = definition.PermissionAction ?? MapMethodToAction(definition.Method);
+        var action = definition.PermissionAction;
+
+        // Fallback: infer action from HTTP method (legacy path — all migrated policies now set explicit actions).
+        if (string.IsNullOrWhiteSpace(action))
+        {
+            action = MapMethodToAction(definition.Method);
+
+            if (!string.IsNullOrWhiteSpace(action))
+            {
+                _logger.LogWarning(
+                    "Link '{Rel}' for resource '{ResourceKind}' used HTTP method inference for action '{Action}'. " +
+                    "Migrate to explicit AuthorizationActions constant via RequirePermission().",
+                    definition.Rel,
+                    definition.PermissionResourceKind,
+                    action);
+            }
+        }
+
         if (string.IsNullOrWhiteSpace(action))
             return null;
 
@@ -114,6 +177,13 @@ public sealed class HateoasAuthorizationEvaluator : IHateoasAuthorizationEvaluat
         return new AuthorizationCheck(definition.PermissionResourceKind, resourceId, action, attrs);
     }
 
+    /// <summary>
+    /// Legacy fallback: infers authorization action from HTTP method.
+    /// All migrated link policies now set explicit actions via RequirePermission() with AuthorizationActions constants.
+    /// This method only fires if a link has PermissionResourceKind set but no PermissionAction — which should
+    /// no longer occur after the Phase 2 descriptor migration.
+    /// </summary>
+    [Obsolete("All link policies should use explicit AuthorizationActions constants. Remove when no callers remain.")]
     private static string? MapMethodToAction(string? method)
     {
         return method?.ToUpperInvariant() switch

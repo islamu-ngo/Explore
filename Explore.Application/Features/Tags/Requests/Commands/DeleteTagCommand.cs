@@ -6,7 +6,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Tags.Requests.Commands;
 
-[AuthorizeResource("tag", PermissionAction.Delete)]
+[AuthorizeResource("tag", AuthorizationActions.Delete)]
 public class DeleteTagCommand : IRequest<bool>, ISecureRequest
 {
     public Guid Id { get; set; }

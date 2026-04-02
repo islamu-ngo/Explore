@@ -8,7 +8,7 @@ using MediatR;
 
 namespace Explore.Application.Features.EventSessionSpeakers.Requests.Commands;
 
-[AuthorizeResource("event_session", PermissionAction.Update)]
+[AuthorizeResource("event_session", AuthorizationActions.Update)]
 public class CreateEventSessionSpeakerCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public required CreateEventSessionSpeakerDto SpeakerDto { get; set; }

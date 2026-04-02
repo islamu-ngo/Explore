@@ -66,15 +66,7 @@ public sealed class EventSessionDetailLinkPolicy : ILinkPolicy<EventSessionDto>
             "PUT",
             "Update session",
             RequiresAuth: true)
-            .RequirePermission(
-                PermissionAction.Update,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["eventId"] = dto.EventId.ToString(),
-                    ["tenantId"] = dto.TenantId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.EventSession, dto);
 
         // Delete link - requires authentication
         yield return new LinkDefinition(
@@ -84,15 +76,7 @@ public sealed class EventSessionDetailLinkPolicy : ILinkPolicy<EventSessionDto>
             "DELETE",
             "Delete session",
             RequiresAuth: true)
-            .RequirePermission(
-                PermissionAction.Delete,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["eventId"] = dto.EventId.ToString(),
-                    ["tenantId"] = dto.TenantId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Delete, ResourceDescriptors.EventSession, dto);
     }
 }
 
@@ -143,6 +127,6 @@ public sealed class EventSessionCollectionLinkPolicy : ICollectionLinkPolicy<Eve
             "POST",
             "Create new session",
             RequiresAuth: true)
-            .RequirePermission(PermissionAction.Create, typeof(EventSessionDto), "event_session");
+            .RequirePermission(AuthorizationActions.Create, typeof(EventSessionDto), "event_session");
     }
 }

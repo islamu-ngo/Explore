@@ -28,6 +28,7 @@ public class CreateEventTests : IDisposable
     public CreateEventTests()
     {
         _ctx = new BlazorTestContext();
+        _ctx.AddGroupServiceMock();
 
         // Create mocks for all required services
         _eventService = Substitute.For<IEventService>();

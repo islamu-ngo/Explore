@@ -7,6 +7,11 @@ resourcePolicy:
   version: "default"
   importDerivedRoles:
     - explore_admin_roles
+  schemas:
+    principalSchema:
+      ref: cerbos:///principal.json
+    resourceSchema:
+      ref: cerbos:///event_session.json
   rules:
     # Instance admins can do everything
     - actions: ["*"]

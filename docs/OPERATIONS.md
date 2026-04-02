@@ -113,6 +113,60 @@ Added to every response by `SecurityHeadersMiddleware`:
 Meter `Explore.Business` exposes counters tagged with `tenant_id` and `resource_type`:
 - `events.created`, `events.published`, `registrations.created`, `organizations.created`, `authorization.decisions`
 
+## Cerbos PDP Operations
+
+### Storage Topology
+
+Cerbos uses overlay storage (`.cerbos.yaml`):
+
+| Store | Purpose | Notes |
+|---|---|---|
+| PostgreSQL (primary) | Dynamic policies from `PolicySyncService` | Admin API writes here |
+| Disk (fallback) | Static resource policies + derived roles | `cerbos/policies/*.yaml` |
+
+Admin API: basic auth, port 3592. Compile cache: 60s. Audit retention: 7 days.
+
+### Policy Sync
+
+`PolicySyncService` generates Cerbos derived role policies from `Role`/`RolePermission` tables:
+
+| Operation | Trigger | Scope |
+|---|---|---|
+| `SyncRolePoliciesAsync(roleId)` | Custom role create/update/delete | Single role |
+| `SyncAllPoliciesAsync()` | Admin-triggered full resync | All roles as bundle |
+| `ReloadAllInstancesAsync()` | After any policy push | All PDP instances |
+
+Push flow: read roles → build typed policy documents → push to primary endpoint → broadcast reload → invalidate admin cache.
+
+Resilience: push and reload failures are logged but never fail the calling command.
+
+### Admin API Configuration (`Cerbos:AdminApi`)
+
+| Key | Type | Description |
+|---|---|---|
+| `Endpoints` | `List<string>` | All PDP instance URLs for reload broadcast |
+| `AdminUsername` | `string` | Basic Auth username |
+| `AdminPassword` | `string` | Basic Auth password |
+
+### Monitoring
+
+| Log Message | Severity | Meaning |
+|---|---|---|
+| `Starting full policy sync to Cerbos` | Info | Full resync started |
+| `Synced policies for role {RoleId}` | Info | Single role sync succeeded |
+| `Failed to sync policies for role {RoleId}` | Error | Push failure (policies may be stale) |
+| `Reload broadcast: {Succeeded} succeeded, {Failed} failed` | Warning | Partial reload failure |
+| `BYO Cerbos PDP unreachable` | Warning | Tenant's custom PDP failed |
+| `Cerbos batch request: {CheckCount} checks` | Debug | Authorization batch sent |
+
+### Incident Triage (Cerbos)
+
+1. Check PDP health: `GET {endpoint}/health` on each Cerbos instance.
+2. Verify `Cerbos:AdminApi:Endpoints` matches running instances.
+3. Check PostgreSQL store connectivity in Cerbos logs.
+4. For stale policies: trigger `SyncAllPoliciesAsync` or re-save the affected custom role.
+5. For BYO failures: check tenant's `failure_mode` and look for `SafeMode` activation in logs.
+
 ## Setup Secret Lifecycle
 
 Instance bootstrap uses `ISetupSecretProvider`:

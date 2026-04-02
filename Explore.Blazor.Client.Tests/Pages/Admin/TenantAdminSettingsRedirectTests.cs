@@ -14,6 +14,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
     public TenantAdminSettingsRedirectTests()
     {
         _ctx = new BlazorTestContext();
+        _ctx.AddShellStateMocks();
         _ctx.SetAuthenticatedUser(Guid.NewGuid(), "Instance Admin", "admin@example.com");
 
         _onboardingService = _ctx.AddMockService<IInstanceOnboardingService>();

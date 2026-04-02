@@ -6,7 +6,7 @@ using MediatR;
 
 namespace Explore.Application.Features.EventSessionAgendaItems.Requests.Commands;
 
-[AuthorizeResource("event_session_agenda_item", PermissionAction.Delete)]
+[AuthorizeResource("event_session_agenda_item", AuthorizationActions.Delete)]
 public class DeleteEventSessionAgendaItemCommand : IRequest<bool>, ISecureRequest
 {
     public Guid Id { get; set; }

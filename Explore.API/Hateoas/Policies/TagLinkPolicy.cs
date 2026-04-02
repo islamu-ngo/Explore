@@ -55,14 +55,7 @@ public sealed class TagDetailLinkPolicy : ILinkPolicy<TagDto>
             "PUT",
             "Update tag",
             RequiresAuth: true)
-            .RequirePermission(
-                PermissionAction.Update,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["tenantId"] = dto.TenantId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.Tag, dto);
 
         // Delete link - requires authentication
         yield return new LinkDefinition(
@@ -72,14 +65,7 @@ public sealed class TagDetailLinkPolicy : ILinkPolicy<TagDto>
             "DELETE",
             "Delete tag",
             RequiresAuth: true)
-            .RequirePermission(
-                PermissionAction.Delete,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["tenantId"] = dto.TenantId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Delete, ResourceDescriptors.Tag, dto);
     }
 }
 
@@ -111,6 +97,6 @@ public sealed class TagCollectionLinkPolicy : ICollectionLinkPolicy<TagListDto>
             "POST",
             "Create new tag",
             RequiresAuth: true)
-            .RequirePermission(PermissionAction.Create, typeof(TagDto), "tag");
+            .RequirePermission(AuthorizationActions.Create, typeof(TagDto), "tag");
     }
 }

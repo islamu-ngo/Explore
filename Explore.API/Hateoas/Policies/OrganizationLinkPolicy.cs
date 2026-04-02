@@ -48,29 +48,13 @@ public sealed class OrganizationDetailLinkPolicy : ILinkPolicy<OrganizationDto>
         yield return LinkDefinition.Edit(
             RouteNames.UpdateOrganization,
             new { id = dto.Id })
-            .RequirePermission(
-                PermissionAction.Update,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["organizationId"] = dto.Id.ToString(),
-                    ["tenantId"] = dto.TenantId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.Organization, dto);
 
         // Delete link - requires admin role
         yield return LinkDefinition.Delete(
             RouteNames.DeleteOrganization,
             new { id = dto.Id })
-            .RequirePermission(
-                PermissionAction.Delete,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["organizationId"] = dto.Id.ToString(),
-                    ["tenantId"] = dto.TenantId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Delete, ResourceDescriptors.Organization, dto);
     }
 }
 
@@ -103,6 +87,6 @@ public sealed class OrganizationCollectionLinkPolicy : ICollectionLinkPolicy<Org
     {
         // Create link - requires authentication
         yield return LinkDefinition.Create(RouteNames.CreateOrganization)
-            .RequirePermission(PermissionAction.Create, typeof(OrganizationDto), "organization");
+            .RequirePermission(AuthorizationActions.Create, typeof(OrganizationDto), "organization");
     }
 }

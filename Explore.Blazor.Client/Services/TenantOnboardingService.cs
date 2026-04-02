@@ -160,4 +160,10 @@ public class TenantPolicySettingsModel
     public bool CanOverrideSmtp { get; set; }
     public bool CanOverrideStorage { get; set; }
     public bool CanOverrideAnalytics { get; set; }
+
+    // AI Assistant
+    public bool AiAssistantEnabled { get; set; }
+    public string AiAssistantEndpointUrl { get; set; } = string.Empty;
+    public string AiAssistantApiKey { get; set; } = string.Empty;
+    public bool CanOverrideAiAssistant { get; set; }
 }

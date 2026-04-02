@@ -35,5 +35,15 @@ public static class TenantDelegationSettingDefinitions
         MaxScope: SettingScope.Instance,
         IsLockable: false);
 
-    public static IReadOnlyList<SettingDefinition> All => [LockSmtp, LockStorage, LockAnalytics];
+    public static readonly SettingDefinition LockAiAssistant = new(
+        Key: "governance.lock_tenant_ai_assistant",
+        ValueType: SettingValueType.Boolean,
+        DefaultValue: "true",
+        Category: "TenantDelegation",
+        Description: "Whether tenant administrators can configure their own AI assistant integration",
+        MinScope: SettingScope.Instance,
+        MaxScope: SettingScope.Instance,
+        IsLockable: false);
+
+    public static IReadOnlyList<SettingDefinition> All => [LockSmtp, LockStorage, LockAnalytics, LockAiAssistant];
 }

@@ -5,7 +5,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Users.Requests.Commands;
 
-[AuthorizeResource("user", PermissionAction.Delete)]
+[AuthorizeResource("user", AuthorizationActions.Delete)]
 public class DeleteUserCommand : IRequest<Unit>, ISecureRequest
 {
     public Guid UserId { get; set; }

@@ -66,14 +66,7 @@ public sealed class CategoryDetailLinkPolicy : ILinkPolicy<CategoryDto>
             "PUT",
             "Update category",
             RequiresAuth: true)
-            .RequirePermission(
-                PermissionAction.Update,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["tenantId"] = dto.TenantId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.Category, dto);
 
         // Delete link - requires authentication
         yield return new LinkDefinition(
@@ -83,14 +76,7 @@ public sealed class CategoryDetailLinkPolicy : ILinkPolicy<CategoryDto>
             "DELETE",
             "Delete category",
             RequiresAuth: true)
-            .RequirePermission(
-                PermissionAction.Delete,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["tenantId"] = dto.TenantId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Delete, ResourceDescriptors.Category, dto);
     }
 }
 
@@ -133,6 +119,6 @@ public sealed class CategoryCollectionLinkPolicy : ICollectionLinkPolicy<Categor
             "POST",
             "Create new category",
             RequiresAuth: true)
-            .RequirePermission(PermissionAction.Create, typeof(CategoryDto), "category");
+            .RequirePermission(AuthorizationActions.Create, typeof(CategoryDto), "category");
     }
 }

@@ -1,5 +1,5 @@
 // ABOUTME: MediatR pipeline behavior that enforces authorization before command execution.
-// ABOUTME: Checks requests for IAuthorizedRequest, [AuthorizeResource] (optionally enhanced by ISecureRequest), and denies on unauthorized.
+// ABOUTME: Primary path: [AuthorizeResource] + optional ISecureRequest. Legacy path: IAuthorizedRequest (deprecated, zero production usages).
 
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -40,7 +40,9 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
         RequestHandlerDelegate<TResponse> next,
         CancellationToken cancellationToken)
     {
-        // Path 1: Request implements IAuthorizedRequest directly
+        // Path 1 (Legacy): Request implements IAuthorizedRequest directly — deprecated, zero production usages.
+        // Retained for backward compatibility. New commands should use [AuthorizeResource] attribute instead.
+#pragma warning disable CS0618 // IAuthorizedRequest is obsolete — bridge code must still support it
         if (request is IAuthorizedRequest authorizedRequest)
         {
             await EnforceAuthorizationAsync(
@@ -53,6 +55,7 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
 
             return await next();
         }
+#pragma warning restore CS0618
 
         // Path 2: Request class has [AuthorizeResource] attribute (cached per type)
         var attribute = AttributeCache.GetOrAdd(

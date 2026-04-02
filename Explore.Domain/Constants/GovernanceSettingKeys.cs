@@ -206,11 +206,19 @@ public static class GovernanceSettingKeys
         public const string PosthogToolbar = "analytics.posthog_toolbar";
     }
 
+    public static class AiAssistant
+    {
+        public const string Enabled = "ai_assistant.enabled";
+        public const string EndpointUrl = "ai_assistant.endpoint_url";
+        public const string ApiKey = "ai_assistant.api_key";
+    }
+
     public static class TenantDelegation
     {
         public const string LockSmtp = "governance.lock_tenant_smtp";
         public const string LockStorage = "governance.lock_tenant_storage";
         public const string LockAnalytics = "governance.lock_tenant_analytics";
+        public const string LockAiAssistant = "governance.lock_tenant_ai_assistant";
     }
 
     public static class Policies

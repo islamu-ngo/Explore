@@ -1,3 +1,4 @@
+@using Explore.Blazor.Client.Components.Shell
 @inherits LayoutComponentBase
 
 <MudThemeProvider @ref="_mudThemeProvider" Theme="@_theme" @bind-IsDarkMode="@_isDarkMode" />
@@ -125,7 +126,7 @@
             </div>
         }
 
-        <MudMainContent Class="main-layout__main" Style="padding-top: 0 !important;">
+        <MudMainContent Class="@($"main-layout__main {(AiAssistantState.IsOpen ? "main-layout__main--ai-open" : "")}")" Style="padding-top: 0 !important;">
             <main id="main-content" tabindex="-1" class="main-layout__content-wrapper @(SidebarState.IsOpen ? "main-layout__content-wrapper--drawer-open" : "")">
                 @Body
             </main>
@@ -134,6 +135,12 @@
                 <Footer DrawerOpen="@SidebarState.IsOpen" />
             }
         </MudMainContent>
+
+        @* Shell-level AI assistant rail — persists across page navigations *@
+        @if (!_hideChrome)
+        {
+            <AiAssistantRail />
+        }
     </MudLayout>
 </MudRTLProvider>
 </div>

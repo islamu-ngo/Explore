@@ -39,14 +39,7 @@ public sealed class LocationDetailLinkPolicy : ILinkPolicy<LocationDto>
             "PUT",
             "Update location",
             RequiresAuth: true)
-            .RequirePermission(
-                PermissionAction.Update,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["tenantId"] = dto.TenantId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.Location, dto);
 
         // Delete link - requires authentication
         yield return new LinkDefinition(
@@ -56,14 +49,7 @@ public sealed class LocationDetailLinkPolicy : ILinkPolicy<LocationDto>
             "DELETE",
             "Delete location",
             RequiresAuth: true)
-            .RequirePermission(
-                PermissionAction.Delete,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["tenantId"] = dto.TenantId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Delete, ResourceDescriptors.Location, dto);
     }
 }
 
@@ -95,6 +81,6 @@ public sealed class LocationCollectionLinkPolicy : ICollectionLinkPolicy<Locatio
             "POST",
             "Create new location",
             RequiresAuth: true)
-            .RequirePermission(PermissionAction.Create, typeof(LocationDto), "location");
+            .RequirePermission(AuthorizationActions.Create, typeof(LocationDto), "location");
     }
 }

@@ -7,7 +7,7 @@ using MediatR;
 
 namespace Explore.Application.Features.TenantSettings.Requests.Commands;
 
-[AuthorizeResource("tenant_setting", PermissionAction.Update)]
+[AuthorizeResource("tenant_setting", AuthorizationActions.Update)]
 public class UpdateTenantSettingsCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public required UpdateTenantSettingsDto TenantSettingsDto { get; set; }

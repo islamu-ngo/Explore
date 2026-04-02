@@ -40,14 +40,7 @@ public sealed class StorageObjectDetailLinkPolicy : ILinkPolicy<StorageObjectDto
             "DELETE",
             "Delete storage object",
             RequiresAuth: true)
-            .RequirePermission(
-                PermissionAction.Delete,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["tenantId"] = dto.TenantId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Delete, ResourceDescriptors.StorageObject, dto);
     }
 }
 
@@ -79,6 +72,6 @@ public sealed class StorageObjectCollectionLinkPolicy : ICollectionLinkPolicy<St
             "POST",
             "Upload storage object",
             RequiresAuth: true)
-            .RequirePermission(PermissionAction.Create, typeof(StorageObjectDto), "storage_object");
+            .RequirePermission(AuthorizationActions.Create, typeof(StorageObjectDto), "storage_object");
     }
 }

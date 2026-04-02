@@ -111,11 +111,23 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
             userDict = userPrefs.ToDictionary(s => s.SettingKey, s => s);
         }
 
+        // Determine deployment mode to bypass system locks for single-tenant
+        systemDict.TryGetValue(Explore.Domain.Constants.GovernanceSettingKeys.Deployment.Mode, out var deploymentModeSetting);
+        var isMultiTenant = false;
+        if (deploymentModeSetting != null)
+        {
+            var value = SettingValueSerializer.DeserializeString(deploymentModeSetting.Value);
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                isMultiTenant = string.Equals(value, "MultiTenant", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
         // Resolve each key through the full cascade
         var results = new List<ResolvedSetting>(keyList.Count);
         foreach (var key in keyList)
         {
-            var resolved = ResolveSingleKey(key, systemDict, tenantDict, orgDict, groupDict, userDict);
+            var resolved = ResolveSingleKey(key, systemDict, tenantDict, orgDict, groupDict, userDict, isMultiTenant);
             if (resolved is not null)
                 results.Add(resolved);
         }
@@ -322,7 +334,8 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
         Dictionary<string, TenantSetting>? tenantDict,
         Dictionary<string, OrganizationSetting>? orgDict,
         Dictionary<string, GroupSetting>? groupDict,
-        Dictionary<string, UserPreference>? userDict)
+        Dictionary<string, UserPreference>? userDict,
+        bool isMultiTenant)
     {
         systemDict.TryGetValue(key, out var systemSetting);
         var definition = SettingRegistry.Get(key);
@@ -339,8 +352,8 @@ public class HierarchicalSettingsResolver : IHierarchicalSettingsResolver
         // Cascade: Instance → Tenant → Organization → Group → User
         // Lock precedence: Instance locked > Tenant locked > unlocked cascade
 
-        // Instance lock stops ALL overrides — highest precedence
-        var isInstanceLocked = systemSetting?.IsLocked ?? false;
+        // Instance lock stops ALL overrides — highest precedence (bypassed in SingleTenant mode)
+        var isInstanceLocked = isMultiTenant && (systemSetting?.IsLocked ?? false);
         if (isInstanceLocked)
         {
             return new ResolvedSetting

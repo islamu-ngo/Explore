@@ -1,0 +1,22 @@
+<!-- ABOUTME: E2E browser test project configuration using TUnit, Playwright, and Aspire testing. -->
+<!-- ABOUTME: Targets net10.0 and references Explore.AppHost for full-stack orchestration. -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="TUnit" />
+    <PackageReference Include="Microsoft.Playwright" />
+    <PackageReference Include="Aspire.Hosting.Testing" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Explore.AppHost\Explore.AppHost.csproj">
+      <IsAspireHost>true</IsAspireHost>
+    </ProjectReference>
+  </ItemGroup>
+</Project>

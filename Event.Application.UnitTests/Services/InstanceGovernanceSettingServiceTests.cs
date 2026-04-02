@@ -89,6 +89,20 @@ public class InstanceGovernanceSettingServiceTests
     }
 
     [Test]
+    public async Task ApplySettingsAsync_InSingleTenantMode_UpsertsDefaultPublicHomePageOnlyOnce()
+    {
+        _systemSettingRepository.GetByKey(Arg.Any<string>()).Returns((SystemSetting?)null);
+
+        var settings = CreateValidSettings();
+
+        await _service.ApplySettingsAsync(Guid.NewGuid(), settings, Guid.NewGuid());
+
+        await _systemSettingRepository.Received(1).Create(Arg.Is<SystemSetting>(
+            s => s.SettingKey == GovernanceSettingKeys.Routing.DefaultPublicHomePage
+                 && s.Value == "\"EventList\""));
+    }
+
+    [Test]
     public async Task ReadEffectiveSettingsForTenantAsync_WhenOverrideDisabled_ReturnsInstanceSettings()
     {
         SetupEmptyBatchResolve();

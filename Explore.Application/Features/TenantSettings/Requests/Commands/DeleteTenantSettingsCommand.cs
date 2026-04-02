@@ -5,7 +5,7 @@ using MediatR;
 
 namespace Explore.Application.Features.TenantSettings.Requests.Commands;
 
-[AuthorizeResource("tenant_setting", PermissionAction.Delete)]
+[AuthorizeResource("tenant_setting", AuthorizationActions.Delete)]
 public class DeleteTenantSettingsCommand : IRequest<bool>, ISecureRequest
 {
     public Guid Id { get; set; }

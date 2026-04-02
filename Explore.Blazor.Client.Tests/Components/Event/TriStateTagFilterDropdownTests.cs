@@ -1,4 +1,6 @@
-using System.Reflection;
+// ABOUTME: Behavioral bUnit tests for TriStateTagFilterDropdown component.
+// ABOUTME: Verifies tag filter cycling, reset, and filter state via public API and rendered markup.
+
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Pages.Events.Components;
@@ -21,7 +23,7 @@ public class TriStateTagFilterDropdownTests : IDisposable
         _ctx.Dispose();
     }
 
-    private List<TagTypeWithTagsDto> GetMockTagGroups()
+    private static List<TagTypeWithTagsDto> GetMockTagGroups()
     {
         return new List<TagTypeWithTagsDto>
         {
@@ -47,108 +49,120 @@ public class TriStateTagFilterDropdownTests : IDisposable
         };
     }
 
-    [Test]
-    public async Task TriStateTagFilterDropdown_RendersTriggerButton_ByDefault()
+    /// <summary>
+    /// Simulates a tag state toggle via the component's internal method.
+    /// Required because MudPopover content is not rendered in test context
+    /// (MockPopoverService returns empty ActivePopovers), making MudChip
+    /// elements inside the popover inaccessible for direct UI interaction.
+    /// All test assertions use the public GetCurrentFilter() API.
+    /// </summary>
+    private static async Task SimulateTagToggle(IRenderedComponent<TriStateTagFilterDropdownComponent> cut, Guid tagId)
     {
-        // Act
-        _ctx.RenderComponent<MudPopoverProvider>();
-        var cut = _ctx.RenderComponent<TriStateTagFilterDropdownComponent>(parameters => parameters
-            .Add(x => x.TagGroups, GetMockTagGroups()));
+        var method = typeof(TriStateTagFilterDropdownComponent)
+            .GetMethod("ToggleTagState", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("ToggleTagState not found — component API may have changed.");
 
-        // Assert
+        await cut.InvokeAsync(() => method.Invoke(cut.Instance, [tagId]));
+    }
+
+    private IRenderedComponent<TriStateTagFilterDropdownComponent> RenderDropdown(List<TagTypeWithTagsDto>? groups = null)
+    {
+        _ctx.RenderComponent<MudPopoverProvider>();
+        return _ctx.RenderComponent<TriStateTagFilterDropdownComponent>(p => p
+            .Add(x => x.TagGroups, groups ?? GetMockTagGroups()));
+    }
+
+    [Test]
+    public async Task RendersTriggerButton_WithDefaultBadgeText()
+    {
+        var cut = RenderDropdown();
+
         await Assert.That(cut.Markup).Contains("Filter Tags");
     }
 
     [Test]
-    public async Task TriStateTagFilterDropdown_TogglePopover_OpensAndCloses()
+    public async Task ClickTriggerButton_TogglesPopoverVisibility()
     {
-        // Act
-        _ctx.RenderComponent<MudPopoverProvider>();
-        var cut = _ctx.RenderComponent<TriStateTagFilterDropdownComponent>(parameters => parameters
-            .Add(x => x.TagGroups, GetMockTagGroups()));
+        var cut = RenderDropdown();
+        var markupBefore = cut.Markup;
 
-        var toggleMethod = typeof(TriStateTagFilterDropdownComponent).GetMethod("TogglePopover", BindingFlags.Instance | BindingFlags.NonPublic);
-        await Assert.That(toggleMethod is not null).IsTrue();
+        // Click trigger to open — should change EndIcon and overlay visibility
+        var triggerButton = cut.Find(".tri-state-tag-filter__trigger");
+        await cut.InvokeAsync(() => triggerButton.Click());
 
-        // Open
-        toggleMethod!.Invoke(cut.Instance, null);
-        await Assert.That(cut.Instance.GetType().GetField("_isOpen", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(cut.Instance)).IsEqualTo(true);
+        var markupAfterOpen = cut.Markup;
+        await Assert.That(markupAfterOpen).IsNotEqualTo(markupBefore);
 
-        // Close
-        toggleMethod!.Invoke(cut.Instance, null);
-        await Assert.That(cut.Instance.GetType().GetField("_isOpen", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(cut.Instance)).IsEqualTo(false);
+        // Click trigger to close — markup should revert from the open state
+        triggerButton = cut.Find(".tri-state-tag-filter__trigger");
+        await cut.InvokeAsync(() => triggerButton.Click());
+
+        var markupAfterClose = cut.Markup;
+        await Assert.That(markupAfterClose).IsNotEqualTo(markupAfterOpen);
     }
 
     [Test]
-    public async Task TriStateTagFilterDropdown_TagCycling_UpdatesStateAndBadge()
+    public async Task TagCycling_CyclesThroughNeutralIncludeExclude()
     {
-        // Arrange
         var groups = GetMockTagGroups();
         var tagId = groups[0].Tags!.First().Id!.Value;
-        _ctx.RenderComponent<MudPopoverProvider>();
-        var cut = _ctx.RenderComponent<TriStateTagFilterDropdownComponent>(parameters => parameters
-            .Add(x => x.TagGroups, groups));
+        var cut = RenderDropdown(groups);
 
-        var toggleTagMethod = typeof(TriStateTagFilterDropdownComponent).GetMethod("ToggleTagState", BindingFlags.Instance | BindingFlags.NonPublic);
-        var getBadgeTextMethod = typeof(TriStateTagFilterDropdownComponent).GetMethod("GetBadgeText", BindingFlags.Instance | BindingFlags.NonPublic);
+        // Cycle 1: Neutral → Include
+        await SimulateTagToggle(cut, tagId);
+        var filter = cut.Instance.GetCurrentFilter();
+        await Assert.That(filter.IncludedTagIds).Contains(tagId);
+        await Assert.That(filter.ExcludedTagIds).DoesNotContain(tagId);
 
-        // Act & Assert 1: Include
-        toggleTagMethod!.Invoke(cut.Instance, new object[] { tagId });
-        await Assert.That(getBadgeTextMethod!.Invoke(cut.Instance, null)).IsEqualTo("Filter Tags +1");
+        // Cycle 2: Include → Exclude
+        await SimulateTagToggle(cut, tagId);
+        filter = cut.Instance.GetCurrentFilter();
+        await Assert.That(filter.IncludedTagIds).DoesNotContain(tagId);
+        await Assert.That(filter.ExcludedTagIds).Contains(tagId);
 
-        // Act & Assert 2: Exclude
-        toggleTagMethod!.Invoke(cut.Instance, new object[] { tagId });
-        await Assert.That(getBadgeTextMethod!.Invoke(cut.Instance, null)).IsEqualTo("Filter Tags -1");
-
-        // Act & Assert 3: Neutral
-        toggleTagMethod!.Invoke(cut.Instance, new object[] { tagId });
-        await Assert.That(getBadgeTextMethod!.Invoke(cut.Instance, null)).IsEqualTo("Filter Tags");
+        // Cycle 3: Exclude → Neutral
+        await SimulateTagToggle(cut, tagId);
+        filter = cut.Instance.GetCurrentFilter();
+        await Assert.That(filter.IncludedTagIds).DoesNotContain(tagId);
+        await Assert.That(filter.ExcludedTagIds).DoesNotContain(tagId);
     }
 
     [Test]
-    public async Task TriStateTagFilterDropdown_ResetAll_ClearsStates()
+    public async Task ResetAll_ClearsAllTagStates()
     {
-        // Arrange
         var groups = GetMockTagGroups();
         var tagId = groups[0].Tags!.First().Id!.Value;
-        _ctx.RenderComponent<MudPopoverProvider>();
-        var cut = _ctx.RenderComponent<TriStateTagFilterDropdownComponent>(parameters => parameters
-            .Add(x => x.TagGroups, groups));
+        var cut = RenderDropdown(groups);
 
-        var toggleTagMethod = typeof(TriStateTagFilterDropdownComponent).GetMethod("ToggleTagState", BindingFlags.Instance | BindingFlags.NonPublic);
-        toggleTagMethod!.Invoke(cut.Instance, new object[] { tagId });
+        // Setup: include a tag
+        await SimulateTagToggle(cut, tagId);
+        await Assert.That(cut.Instance.GetCurrentFilter().IncludedTagIds).Contains(tagId);
 
-        // Act
-        cut.Instance.ResetAll();
+        // Act: reset via public API
+        await cut.InvokeAsync(() => cut.Instance.ResetAll());
 
-        // Assert
-        var getBadgeTextMethod = typeof(TriStateTagFilterDropdownComponent).GetMethod("GetBadgeText", BindingFlags.Instance | BindingFlags.NonPublic);
-        await Assert.That(getBadgeTextMethod!.Invoke(cut.Instance, null)).IsEqualTo("Filter Tags");
+        // Assert: filter state is empty
+        var filter = cut.Instance.GetCurrentFilter();
+        await Assert.That(filter.IncludedTagIds).IsEmpty();
+        await Assert.That(filter.ExcludedTagIds).IsEmpty();
     }
 
     [Test]
-    public async Task TriStateTagFilterDropdown_GetCurrentFilter_ReturnsCorrectState()
+    public async Task GetCurrentFilter_ReturnsIncludedExcludedAndDefaultModes()
     {
-        // Arrange
         var groups = GetMockTagGroups();
         var tagId1 = groups[0].Tags!.ElementAt(0).Id!.Value;
         var tagId2 = groups[0].Tags!.ElementAt(1).Id!.Value;
-        _ctx.RenderComponent<MudPopoverProvider>();
-        var cut = _ctx.RenderComponent<TriStateTagFilterDropdownComponent>(parameters => parameters
-            .Add(x => x.TagGroups, groups));
+        var cut = RenderDropdown(groups);
 
-        var toggleTagMethod = typeof(TriStateTagFilterDropdownComponent).GetMethod("ToggleTagState", BindingFlags.Instance | BindingFlags.NonPublic);
+        // tagId1 → Include (1 toggle)
+        await SimulateTagToggle(cut, tagId1);
+        // tagId2 → Exclude (2 toggles: Neutral→Include→Exclude)
+        await SimulateTagToggle(cut, tagId2);
+        await SimulateTagToggle(cut, tagId2);
 
-        // tagId1 -> Include
-        toggleTagMethod!.Invoke(cut.Instance, new object[] { tagId1 });
-        // tagId2 -> Include -> Exclude
-        toggleTagMethod!.Invoke(cut.Instance, new object[] { tagId2 });
-        toggleTagMethod!.Invoke(cut.Instance, new object[] { tagId2 });
-
-        // Act
         var filter = cut.Instance.GetCurrentFilter();
 
-        // Assert
         await Assert.That(filter.IncludedTagIds).Contains(tagId1);
         await Assert.That(filter.ExcludedTagIds).Contains(tagId2);
         await Assert.That(filter.InclusionMode).IsEqualTo("and");

@@ -164,14 +164,6 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         await ApplyOrganizationPolicyAsync(settings.OrganizationPolicy, actorUserId);
         await ApplyBrandingSettingsAsync(settings.Branding, actorUserId);
         await ApplyDomainSettingsAsync(settings.Domains, actorUserId);
-
-        if (defaultTenantId.HasValue)
-        {
-            await _upsertService.UpsertValueAsync(
-                GovernanceSettingKeys.Routing.DefaultPublicHomePage,
-                SettingValueSerializer.Serialize(settings.TenantDelegation.DefaultPublicHomePage),
-                actorUserId);
-        }
     }
 
     public async Task ApplyModuleSettingsAsync(Guid? defaultTenantId, ModuleSettingsDto modules, Guid? actorUserId)
@@ -355,6 +347,7 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
             LockTenantSmtp = delegation.LockSmtp,
             LockTenantStorage = delegation.LockStorage,
             LockTenantAnalytics = delegation.LockAnalytics,
+            LockTenantAiAssistant = delegation.LockAiAssistant,
             DecentralizationEnabled = decentralization,
             LockDecentralizationEnabled = IsLocked(resolved, GovernanceSettingKeys.Federation.DecentralizationEnabled),
             AuthorizationProvider = authProvider
@@ -428,6 +421,10 @@ public class InstanceGovernanceSettingService : IInstanceGovernanceSettingServic
         await _upsertService.UpsertValueAsync(
             GovernanceSettingKeys.TenantDelegation.LockAnalytics,
             SettingValueSerializer.Serialize(d.LockTenantAnalytics), actorUserId);
+
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.TenantDelegation.LockAiAssistant,
+            SettingValueSerializer.Serialize(d.LockTenantAiAssistant), actorUserId);
     }
 
     private async Task ApplyRenderPolicySettingsInternalAsync(RenderPolicySettingsDto rp, Guid? actorUserId)

@@ -42,15 +42,7 @@ public sealed class GroupMemberDetailLinkPolicy : ILinkPolicy<GroupMemberDto>
             "PUT",
             "Update membership",
             RequiresAuth: true)
-            .RequirePermission(
-                PermissionAction.Update,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["groupId"] = dto.GroupId.ToString(),
-                    ["userId"] = dto.UserId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.GroupMember, dto);
 
         yield return new LinkDefinition(
             "delete",
@@ -59,15 +51,7 @@ public sealed class GroupMemberDetailLinkPolicy : ILinkPolicy<GroupMemberDto>
             "DELETE",
             "Remove member",
             RequiresAuth: true)
-            .RequirePermission(
-                PermissionAction.Delete,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["groupId"] = dto.GroupId.ToString(),
-                    ["userId"] = dto.UserId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Delete, ResourceDescriptors.GroupMember, dto);
     }
 }
 
@@ -99,6 +83,6 @@ public sealed class GroupMemberCollectionLinkPolicy : ICollectionLinkPolicy<Grou
             "POST",
             "Add group member",
             RequiresAuth: true)
-            .RequirePermission(PermissionAction.Create, typeof(GroupMemberDto), "group_member");
+            .RequirePermission(AuthorizationActions.Create, typeof(GroupMemberDto), "group_member");
     }
 }

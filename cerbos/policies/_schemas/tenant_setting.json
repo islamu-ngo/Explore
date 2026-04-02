@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Resource attributes for tenant_setting resources. Populated by ResourceDescriptors.TenantSettings.",
+  "type": "object",
+  "properties": {
+    "tenantId": {
+      "type": "string",
+      "description": "Owning tenant identifier. Used by tenant_admin derived role."
+    },
+    "isLockedByInstance": {
+      "type": "boolean",
+      "description": "Whether this setting is locked by an instance admin. Used in policy condition to prevent tenant admin updates."
+    }
+  },
+  "required": ["tenantId"]
+}

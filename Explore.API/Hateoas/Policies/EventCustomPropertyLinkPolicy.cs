@@ -38,29 +38,13 @@ public sealed class EventCustomPropertyDefinitionDetailLinkPolicy : ILinkPolicy<
         yield return LinkDefinition.Edit(
             RouteNames.UpdateEventCustomPropertyDefinition,
             new { id = dto.Id })
-            .RequirePermission(
-                PermissionAction.Update,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["eventCustomPropertyDefinitionId"] = dto.Id.ToString(),
-                    ["tenantId"] = dto.TenantId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.EventCustomPropertyDefinition, dto);
 
         // Delete link - requires Delete permission
         yield return LinkDefinition.Delete(
             RouteNames.DeleteEventCustomPropertyDefinition,
             new { id = dto.Id })
-            .RequirePermission(
-                PermissionAction.Delete,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["eventCustomPropertyDefinitionId"] = dto.Id.ToString(),
-                    ["tenantId"] = dto.TenantId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Delete, ResourceDescriptors.EventCustomPropertyDefinition, dto);
     }
 }
 
@@ -81,6 +65,6 @@ public sealed class EventCustomPropertyDefinitionCollectionLinkPolicy : ICollect
     {
         // Create link - requires Create permission
         yield return LinkDefinition.Create(RouteNames.CreateEventCustomPropertyDefinition)
-            .RequirePermission(PermissionAction.Create, typeof(EventCustomPropertyDefinitionDto), "eventCustomPropertyDefinition");
+            .RequirePermission(AuthorizationActions.Create, typeof(EventCustomPropertyDefinitionDto), "eventCustomPropertyDefinition");
     }
 }

@@ -132,13 +132,18 @@ public class EventListTests : IDisposable
             .Returns(resultTask);
     }
 
+    /// <summary>
+    /// Invokes the private LoadEventsAsync Virtualize provider callback via reflection.
+    /// This is an intentional workaround because bUnit cannot directly trigger a
+    /// Virtualize component's ItemsProvider delegate. The method is the sole entry
+    /// point for paged event loading and must be invoked to test empty-state transitions.
+    /// All assertions use rendered markup (public output), not internal state.
+    /// </summary>
     private static async Task InvokeLoadEventsAsync(IRenderedComponent<EventList> cut)
     {
-        var loadEventsMethod = typeof(EventList).GetMethod("LoadEventsAsync", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-        if (loadEventsMethod is null)
-        {
-            throw new InvalidOperationException("LoadEventsAsync method was not found on EventList.");
-        }
+        var loadEventsMethod = typeof(EventList)
+            .GetMethod("LoadEventsAsync", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("LoadEventsAsync not found — Virtualize provider method may have been renamed.");
 
         var request = new ItemsProviderRequest(startIndex: 0, count: 20, cancellationToken: CancellationToken.None);
         await cut.InvokeAsync(async () =>
@@ -149,61 +154,49 @@ public class EventListTests : IDisposable
     }
 
     [Test]
-    public async Task EventList_DoesNotShowEmptyState_BeforeFirstEventsLoadCompletes()
+    public async Task DoesNotShowEmptyState_BeforeFirstEventsLoadCompletes()
     {
-        // Arrange
+        // Arrange — result stays pending
         var pendingResult = new TaskCompletionSource<PaginatedResult<EventListDto>>();
         SetupPagedResult(pendingResult.Task);
 
         // Act
         var cut = _ctx.RenderMudComponent<EventList>();
 
-        // Assert
-        if (cut.Markup.Contains("No events found"))
-        {
-            throw new InvalidOperationException("Empty state should not be displayed before first events load completes.");
-        }
+        // Assert — empty state must not appear while load is pending
+        await Assert.That(cut.Markup).DoesNotContain("No events found");
 
         // Cleanup to avoid dangling async work
         pendingResult.TrySetResult(CreateResult(1, 20, []));
-        await Task.CompletedTask;
     }
 
     [Test]
-    public async Task EventList_ShowsNoEventsState_OnlyAfterInitialLoadCompletesWithEmptyResult()
+    public async Task ShowsNoEventsState_OnlyAfterInitialLoadCompletesWithEmptyResult()
     {
-        // Arrange
+        // Arrange — start with pending result
         var pendingResult = new TaskCompletionSource<PaginatedResult<EventListDto>>();
         SetupPagedResult(pendingResult.Task);
 
-        // Act
         var cut = _ctx.RenderMudComponent<EventList>();
 
-        // Assert pre-condition: while pending, empty state is not shown
+        // Pre-condition: while pending, empty state is not shown
         cut.WaitForAssertion(() =>
         {
-            if (cut.Markup.Contains("No events found"))
-            {
-                throw new InvalidOperationException("Empty state should not be visible before first event load completes.");
-            }
+            Assert.That(cut.Markup).DoesNotContain("No events found");
         });
 
-        // Complete with empty result and manually trigger the virtualized provider
+        // Complete with empty result and trigger the Virtualize provider
         pendingResult.SetResult(CreateResult(1, 20, []));
         await InvokeLoadEventsAsync(cut);
 
-        if (!cut.Markup.Contains("No events found"))
-        {
-            throw new InvalidOperationException("Expected empty-state message after completed empty load.");
-        }
-
-        await Task.CompletedTask;
+        // Assert — empty state now visible
+        await Assert.That(cut.Markup).Contains("No events found");
     }
 
     [Test]
-    public async Task EventList_HidesNoEventsState_WhenResultsExist()
+    public async Task HidesNoEventsState_WhenResultsExist()
     {
-        // Arrange
+        // Arrange — immediate result with one event
         var events = new List<EventListDto>
         {
             new() { Id = Guid.NewGuid(), Title = "Blazor Summit", Description = "Event description" }
@@ -212,20 +205,10 @@ public class EventListTests : IDisposable
 
         // Act
         var cut = _ctx.RenderMudComponent<EventList>();
-
-        // Assert
         await InvokeLoadEventsAsync(cut);
 
-        if (!cut.Markup.Contains("Blazor Summit"))
-        {
-            throw new InvalidOperationException("Expected event title in rendered markup.");
-        }
-
-        if (cut.Markup.Contains("No events found"))
-        {
-            throw new InvalidOperationException("Empty-state message should not be visible when events exist.");
-        }
-
-        await Task.CompletedTask;
+        // Assert — event visible, empty state hidden
+        await Assert.That(cut.Markup).Contains("Blazor Summit");
+        await Assert.That(cut.Markup).DoesNotContain("No events found");
     }
 }

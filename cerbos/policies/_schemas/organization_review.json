@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Resource attributes for organization_review resources. Populated by ResourceDescriptors.OrganizationReview.",
+  "type": "object",
+  "properties": {
+    "organizationId": {
+      "type": "string",
+      "description": "Parent organization identifier. Used by org_admin derived role."
+    },
+    "userId": {
+      "type": "string",
+      "description": "Reviewer user identifier."
+    }
+  },
+  "required": ["organizationId", "userId"]
+}

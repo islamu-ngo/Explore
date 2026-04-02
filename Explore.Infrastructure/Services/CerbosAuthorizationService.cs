@@ -1,5 +1,5 @@
 // ABOUTME: Cerbos PDP authorization service using HTTP API for policy decisions.
-// Calls the Cerbos server's /api/check/resources endpoint without requiring the gRPC SDK NuGet.
+// ABOUTME: Calls /api/check/resources, prefers AuthorizationCheck.Scope over ambient tenant context.
 
 using System.Diagnostics;
 using System.Net.Http.Json;
@@ -93,6 +93,12 @@ public class CerbosAuthorizationService : IAuthorizationProvider
         var principal = await _principalBuilder.BuildAsync(userId.Value, cancellationToken);
         var resources = BuildResources(checks);
 
+        _logger.LogDebug(
+            "Cerbos batch request: {CheckCount} checks, requestId={RequestId} correlationId={CorrelationId}",
+            checks.Count,
+            requestId,
+            correlationId);
+
         try
         {
             var response = await _httpClient.PostAsJsonAsync(
@@ -181,7 +187,7 @@ public class CerbosAuthorizationService : IAuthorizationProvider
 
     private CerbosResourceAction[] BuildResources(IReadOnlyList<AuthorizationCheck> checks)
     {
-        var tenantId = _tenantContext.TenantId;
+        var ambientTenantId = _tenantContext.TenantId;
 
         return checks
             .Select(check =>
@@ -190,10 +196,19 @@ public class CerbosAuthorizationService : IAuthorizationProvider
                     ? new Dictionary<string, object>()
                     : new Dictionary<string, object>(check.ResourceAttributes);
 
-                // Auto-enrich with tenantId from current context when not explicitly provided.
+                // Resolve tenant ID: prefer explicit scope from the check, fall back to ambient tenant context.
+                // Explicit scope comes from resource descriptors (e.g., dto.TenantId) and is more precise
+                // than the ambient context, which is resolved from the HTTP request.
+                var effectiveTenantId = !string.IsNullOrEmpty(check.Scope?.TenantId)
+                    ? check.Scope.TenantId
+                    : ambientTenantId != Guid.Empty
+                        ? ambientTenantId.ToString()
+                        : null;
+
+                // Auto-enrich with tenantId when not explicitly provided in resource attributes.
                 // Required for Cerbos derived role evaluation (tenant_admin checks resource.attr.tenantId).
-                if (!attr.ContainsKey("tenantId") && tenantId != Guid.Empty)
-                    attr["tenantId"] = tenantId.ToString();
+                if (!attr.ContainsKey("tenantId") && effectiveTenantId is not null)
+                    attr["tenantId"] = effectiveTenantId;
 
                 return new CerbosResourceAction
                 {
@@ -204,7 +219,7 @@ public class CerbosAuthorizationService : IAuthorizationProvider
                         Attr = attr,
                         // Scope enables per-tenant policy overrides. When a tenant has custom policies,
                         // Cerbos resolves the most specific scoped policy and falls back to root.
-                        Scope = tenantId != Guid.Empty ? tenantId.ToString() : null
+                        Scope = effectiveTenantId
                     },
                     Actions = [check.Action]
                 };

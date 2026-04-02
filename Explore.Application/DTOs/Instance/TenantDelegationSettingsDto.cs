@@ -12,6 +12,7 @@ public class TenantDelegationSettingsDto
     public bool LockTenantSmtp { get; set; } = true;
     public bool LockTenantStorage { get; set; } = true;
     public bool LockTenantAnalytics { get; set; } = true;
+    public bool LockTenantAiAssistant { get; set; } = true;
     public bool DecentralizationEnabled { get; set; }
     public bool LockDecentralizationEnabled { get; set; }
     public string AuthorizationProvider { get; set; } = "local";

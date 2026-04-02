@@ -9,7 +9,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Events.Requests.Commands;
 
-[AuthorizeResource("event", PermissionAction.Update)]
+[AuthorizeResource("event", AuthorizationActions.Update)]
 public class UpdateEventCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public Guid Id { get; set; }

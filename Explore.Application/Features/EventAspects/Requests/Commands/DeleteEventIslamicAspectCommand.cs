@@ -10,7 +10,7 @@ using MediatR;
 /// <summary>
 /// Command to delete the Islamic aspect from an event.
 /// </summary>
-[AuthorizeResource("event", PermissionAction.Update)]
+[AuthorizeResource("event", AuthorizationActions.Update)]
 public class DeleteEventIslamicAspectCommand : IRequest<bool>, ISecureRequest
 {
     /// <summary>

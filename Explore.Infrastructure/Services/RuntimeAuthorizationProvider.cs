@@ -11,17 +11,28 @@ using Microsoft.Extensions.Logging;
 namespace Explore.Infrastructure.Services;
 
 /// <summary>
-/// Authorization provider that routes decisions based on per-tenant and instance-level configuration:
+/// Authorization provider that routes decisions based on per-tenant and instance-level configuration.
+/// <para><b>Decision flow (evaluated in order):</b></para>
 /// <list type="number">
-/// <item>If tenant has BYO Cerbos → route to tenant's PDP endpoint (regardless of instance mode)</item>
-/// <item>If instance mode is "cerbos" → route to instance PDP with scope-based tenant isolation</item>
-/// <item>Otherwise → use FallbackAuthorizationService (database-driven RBAC)</item>
+/// <item><b>BYO Cerbos</b>: If tenant has a custom Cerbos endpoint configured via
+/// <see cref="ICerbosConfigResolver"/>, route ALL resource checks there (regardless of instance mode).
+/// This allows tenants to enforce stricter or custom policies.</item>
+/// <item><b>Instance Cerbos</b>: If the <c>AuthorizationProvider</c> system setting is <c>"cerbos"</c>,
+/// route to the shared instance PDP. <see cref="Application.Authorization.AuthorizationScope"/> on each
+/// check provides tenant context for scoped policy resolution.</item>
+/// <item><b>Fallback RBAC</b>: Otherwise, use <see cref="FallbackAuthorizationService"/>
+/// (database-driven role/permission checks).</item>
 /// </list>
-/// BYO failure handling:
+/// <para><b>Failure handling:</b></para>
 /// <list type="bullet">
-/// <item>FailureMode.Closed → Safe-Mode: only instance admin, deny all else (prevents bypassing stricter tenant policies)</item>
-/// <item>FailureMode.Open → Standard FallbackAuthorizationService (tenant accepts risk of permissive fallback)</item>
+/// <item>Instance Cerbos failure → transparent fallback to <see cref="FallbackAuthorizationService"/>.</item>
+/// <item>BYO Cerbos failure with <c>FailureMode.Closed</c> → Safe-Mode activated (one-way latch):
+/// deny all except instance admin. Prevents bypassing stricter tenant policies.</item>
+/// <item>BYO Cerbos failure with <c>FailureMode.Open</c> → Standard fallback RBAC
+/// (tenant accepts permissive fallback risk).</item>
 /// </list>
+/// <para><b>Setting access</b>: Always uses instance-level provider (never BYO).
+/// Settings are platform governance, not tenant-customizable.</para>
 /// </summary>
 public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider
 {

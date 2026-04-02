@@ -459,9 +459,9 @@ public static class LookupTableSeeder
             }
         }
 
-        string[] crud = ["read", "create", "update", "delete"];
-        string[] readOnly = ["read"];
-        string[] noDelete = ["read", "create", "update"];
+        string[] crud = ["view", "create", "update", "delete"];
+        string[] readOnly = ["view"];
+        string[] noDelete = ["view", "create", "update"];
 
         // Events group
         AddPermissions("event", "Events", RoleScopeEnum.Organization, crud);
@@ -482,14 +482,14 @@ public static class LookupTableSeeder
 
         // Users group
         AddPermissions("user", "Users", RoleScopeEnum.Platform, readOnly);
-        AddPermissions("tenant_user", "Users", RoleScopeEnum.Tenant, crud);
+        AddPermissions("tenant_member", "Users", RoleScopeEnum.Tenant, crud);
 
         // Tenant management group
         AddPermissions("tenant", "Tenants", RoleScopeEnum.Platform, crud, isFiltered: true);
-        AddPermissions("tenant_setting", "Settings", RoleScopeEnum.Tenant, ["read", "update"]);
+        AddPermissions("tenant_setting", "Settings", RoleScopeEnum.Tenant, ["view", "update"]);
 
         // Instance settings (platform-only, filtered from non-super-admins)
-        AddPermissions("instance_setting", "Settings", RoleScopeEnum.Platform, ["read", "update"], isFiltered: true);
+        AddPermissions("instance_setting", "Settings", RoleScopeEnum.Platform, ["view", "update"], isFiltered: true);
 
         // Federation group
         AddPermissions("indexed_did", "Federation", RoleScopeEnum.Platform, noDelete);

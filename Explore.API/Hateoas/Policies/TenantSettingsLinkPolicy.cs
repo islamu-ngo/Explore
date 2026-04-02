@@ -40,14 +40,7 @@ public sealed class TenantSettingsDetailLinkPolicy : ILinkPolicy<TenantSettingsD
             "PUT",
             "Update settings",
             RequiresAuth: true)
-            .RequirePermission(
-                PermissionAction.Update,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["tenantId"] = dto.TenantId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.TenantSettings, dto);
     }
 }
 

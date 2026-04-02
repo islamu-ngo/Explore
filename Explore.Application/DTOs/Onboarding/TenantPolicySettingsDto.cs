@@ -56,4 +56,10 @@ public class TenantPolicySettingsDto
     public bool CanOverrideSmtp { get; set; }
     public bool CanOverrideStorage { get; set; }
     public bool CanOverrideAnalytics { get; set; }
+    public bool CanOverrideAiAssistant { get; set; }
+
+    // AI assistant integration
+    public bool AiAssistantEnabled { get; set; }
+    public string AiAssistantEndpointUrl { get; set; } = string.Empty;
+    public string AiAssistantApiKey { get; set; } = string.Empty;
 }

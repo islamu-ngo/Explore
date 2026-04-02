@@ -12,7 +12,7 @@ using MediatR;
 /// <summary>
 /// Command to create or update the Tech aspect for an event.
 /// </summary>
-[AuthorizeResource("event", PermissionAction.Update)]
+[AuthorizeResource("event", AuthorizationActions.Update)]
 public class UpsertEventTechAspectCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     /// <summary>

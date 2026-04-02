@@ -69,14 +69,7 @@ public sealed class UserDetailLinkPolicy : ILinkPolicy<UserDto>
             "PUT",
             "Update user",
             RequiresAuth: true)
-            .RequirePermission(
-                PermissionAction.Update,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["actorId"] = dto.ActorId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.User, dto);
     }
 }
 

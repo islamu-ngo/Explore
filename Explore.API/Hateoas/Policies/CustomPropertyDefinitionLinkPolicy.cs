@@ -29,29 +29,13 @@ public sealed class CustomPropertyDefinitionDetailLinkPolicy : ILinkPolicy<Custo
         yield return LinkDefinition.Edit(
             RouteNames.UpdateCustomPropertyDefinition,
             new { id = dto.Id })
-            .RequirePermission(
-                PermissionAction.Update,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["customPropertyDefinitionId"] = dto.Id.ToString(),
-                    ["tenantId"] = dto.TenantId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.CustomPropertyDefinition, dto);
 
         // Delete link - requires admin role
         yield return LinkDefinition.Delete(
             RouteNames.DeleteCustomPropertyDefinition,
             new { id = dto.Id })
-            .RequirePermission(
-                PermissionAction.Delete,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["customPropertyDefinitionId"] = dto.Id.ToString(),
-                    ["tenantId"] = dto.TenantId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Delete, ResourceDescriptors.CustomPropertyDefinition, dto);
     }
 }
 
@@ -72,6 +56,6 @@ public sealed class CustomPropertyDefinitionCollectionLinkPolicy : ICollectionLi
     {
         // Create link - requires admin role
         yield return LinkDefinition.Create(RouteNames.CreateCustomPropertyDefinition)
-            .RequirePermission(PermissionAction.Create, typeof(CustomPropertyDefinitionDto), "customPropertyDefinition");
+            .RequirePermission(AuthorizationActions.Create, typeof(CustomPropertyDefinitionDto), "customPropertyDefinition");
     }
 }

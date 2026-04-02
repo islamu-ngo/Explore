@@ -35,9 +35,16 @@ namespace Explore.Blazor.Client.Tests.Integration;
 public class AuthenticationFlowTests
 {
     /// <summary>
-    /// Creates a fresh BlazorTestContext for each test.
+    /// Creates a fresh BlazorTestContext for each test with shell-level service mocks.
+    /// NavMenu requires TenantNavLinksState, NotificationService, and IPublicExperienceService.
     /// </summary>
-    private static BlazorTestContext CreateContext() => new BlazorTestContext();
+    private static BlazorTestContext CreateContext()
+    {
+        var ctx = new BlazorTestContext();
+        ctx.AddShellStateMocks();
+        ctx.AddGroupServiceMock();
+        return ctx;
+    }
 
     #region NavMenu Authentication State Tests
 
@@ -499,55 +506,16 @@ public class AuthenticationFlowTests
 
     private static void RegisterNavMenuServices(BlazorTestContext ctx)
     {
+        var settings = PublicExperienceSettingsBuilder.DefaultBranded().Build();
+        NavMenuTestServices.Register(ctx, publicExperienceSettings: settings);
+
+        // AuthenticationFlowTests additionally needs IEventService and IAuthStateService
         var eventService = Substitute.For<IEventService>();
         eventService.GetAllEventsAsync().Returns(new List<EventListDto>());
         ctx.Services.AddSingleton(eventService);
 
-        var organizationService = Substitute.For<IOrganizationService>();
-        organizationService.GetMyOrganizationsAsync().Returns(new List<OrganizationListDto>());
-        ctx.Services.AddSingleton(organizationService);
-
         var authStateService = Substitute.For<IAuthStateService>();
         ctx.Services.AddSingleton(authStateService);
-
-        var userService = Substitute.For<IUserService>();
-        ctx.Services.AddSingleton(userService);
-
-        var publicExperienceService = Substitute.For<IPublicExperienceService>();
-        publicExperienceService.GetSettingsAsync()
-            .Returns(Task.FromResult<PublicExperienceSettingsModel?>(new PublicExperienceSettingsModel
-            {
-                PreferredHomePage = "EventList",
-                BrandDisplayName = "ISLAMU Explore"
-            }));
-        publicExperienceService.ResolveHomeRoute(Arg.Any<PublicExperienceSettingsModel?>()).Returns("/events");
-        ctx.Services.AddSingleton(publicExperienceService);
-
-        var tenantNavigationService = Substitute.For<ITenantNavigationService>();
-        tenantNavigationService.GetNavigationLinksAsync().Returns(new List<TenantNavigationLinkDto>());
-        ctx.Services.AddSingleton(tenantNavigationService);
-
-        var eligibilityService = Substitute.For<IEventCreationEligibilityService>();
-        eligibilityService.GetEligibilityAsync().Returns(EventCreationEligibility.NotEligible);
-        ctx.Services.AddSingleton(eligibilityService);
-
-        ctx.Services.AddSingleton(new Explore.Blazor.Client.Services.SidebarState());
-
-        var groupService = Substitute.For<IGroupService>();
-        groupService.GetMyGroupsAsync().Returns(new List<GroupPublisherListDto>());
-        ctx.Services.AddSingleton(groupService);
-
-        var instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
-        instanceOnboardingService.GetStatusAsync().Returns(new InstanceOnboardingStatusModel
-        {
-            IsCompleted = true,
-            SelectedDeploymentMode = "MultiTenant"
-        });
-        ctx.Services.AddSingleton(instanceOnboardingService);
-
-        ctx.Services.AddSingleton(MockServiceFactory.CreateNotificationService());
-        ctx.Services.AddSingleton(MockServiceFactory.CreateTranslationService());
-        ctx.Services.AddSingleton(Substitute.For<IHttpClientFactory>());
     }
 
     private static void RegisterOrganizationServices(BlazorTestContext ctx)

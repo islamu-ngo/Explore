@@ -1,4 +1,10 @@
 ## Technical Insights
+- [2026-03-30 Europe/Brussels] API Testing Research: TUnit `SharedType.Keyed` is the correct fixture sharing model for host profiles (Contract/RealRuntime/Stress). It allows multiple fixture types to coexist in the same assembly without lifecycle interference. `SharedType.PerAssembly` (current pattern) forces a single shared instance across all tests.
+- [2026-03-30 Europe/Brussels] API Testing Research: `ConfigureTestServices` runs AFTER the app's `ConfigureServices` in `WebApplicationFactory`, so it can reliably override any registration. `ConfigureAppConfiguration` runs BEFORE services are built. Order: `ConfigureAppConfiguration` → app `ConfigureServices` → `ConfigureTestServices`.
+- [2026-03-30 Europe/Brussels] API Testing Research: Respawn v7.0.0 uses `Respawner.CreateAsync()` (renamed from `Checkpoint` in older versions). Must use `DbAdapter.Postgres` for PostgreSQL. The `CreateAsync` call analyzes FK relationships once, then `ResetAsync` is fast (just truncates in FK-safe order).
+- [2026-03-30 Europe/Brussels] API Testing Research: `Program.cs` has three `Testing` environment seams: L76-83 (auto-trust loopback proxy), L156-158 (`skipDbContextRegistration: true`), L468 (skip `MigrateAsync` + `DatabaseSeeder`). Rate limiting also disabled via `RateLimiting:DisableInTesting`.
+- [2026-03-30 Europe/Brussels] API Testing Research: TUnit fixtures implementing `IAsyncInitializer` get their `InitializeAsync()` called automatically before any test uses them. `IAsyncDisposable.DisposeAsync()` is called after the last test finishes — cleanup is guaranteed even if tests throw.
+- [2026-03-30 Europe/Brussels] API Testing Research: Bogus `StrictMode(true)` on `Faker<T>` forces explicit rules for every property — catches missing properties when domain entities gain new required fields.
 - [2026-03-29 Europe/Brussels] Customization Sidebar: RightSidebar component (`Components/Common/RightSidebar.razor`) uses CSS `position: sticky; top: var(--header-height)` with `flex-shrink: 0` to push main content left rather than overlay it. Reusable for future AI assistant panel.
 - [2026-03-29 Europe/Brussels] Customization Sidebar: UserSettingsService branches on auth state — authenticated users hit API settings endpoints, anonymous users fall back to localStorage. SSR-safe via `IJSRuntime` availability check. 500ms debounce on autosave via `System.Timers.Timer`.
 - [2026-03-29 Europe/Brussels] Customization Sidebar: EventCard progressive disclosure in CompactGrid uses `+N more` MudChip with `@onmouseenter`/`@onmouseleave` to reveal hidden field badges on hover. No JS interop needed.
@@ -108,6 +114,13 @@
 - [2026-02-27 Europe/Brussels] Run the full mandatory multi-project test matrix from `CLAUDE.md` before final release/merge gate for this large restructure.
 
 ## Key Decisions
+- [2026-03-30 Europe/Brussels] API Testing Research: Use Respawn v7.0.0 (`DbAdapter.Postgres`) for deterministic database reset between parallel tests. Lookup tables preserved via `TablesToIgnore`. Resolved over manual TRUNCATE or TransactionScope rollback.
+- [2026-03-30 Europe/Brussels] API Testing Research: Use `MigrateAsync()` (not `EnsureCreated()`) for all PostgreSQL-backed test fixtures. Exercises real migration chain. Applies to both API and persistence test projects.
+- [2026-03-30 Europe/Brussels] API Testing Research: Use parallel execution from the start with per-test Respawn reset. TUnit runs parallel by default. Each test resets → seeds → executes independently.
+- [2026-03-30 Europe/Brussels] API Testing Research: Keep EF InMemory for Contract host only. Contract tests verify serialization/ProblemDetails/HAL/headers — provider doesn't matter. RealRuntime and Stress hosts use PostgreSQL.
+- [2026-03-30 Europe/Brussels] `RightSidebar` CSS needs to cleanly attach to the edge of the `.event-list__page` by decoupling from `MainLayout` padding. Used `margin-right: calc(var(--layout-padding-inline, 0px) * -1)` on `.event-list__page` combined with restoring padding via `padding-right` on `.event-list__main`. This allows custom contextual sidebars to expand fully to the window bounds.
+- [2026-03-30 Europe/Brussels] Treat right-side panels as two containment modes, not one reusable behavior: event-list customization stays page-contained/contextual, while the AI assistant is shell-level app chrome hosted outside page content.
+- [2026-03-30 Europe/Brussels] The `AI Assistant` trigger must stay hidden unless the effective tenant AI configuration is both enabled and configured. For the current branch, configured means at least a non-empty API key is present.
 - [2026-03-22 Europe/Brussels] For hierarchical settings preferences, keep the settings engine responsible for precedence and references only; model tenant theme catalogs as first-class relational entities and keep user theme selection as sparse `UserPreference` overrides.
 - [2026-03-22 Europe/Brussels] Do not let `MainLayout` or `SetupLayout` own theme precedence or palette mapping rules. Introduce a dedicated runtime service boundary (`IThemeCompositionService` / `IAppearanceRuntimeService`) before implementation.
 - [2026-03-16 Europe/Brussels] For event scheduling refactor planning, keep registration modeling as: parent rows preserve intent/policy semantics, child rows remain concrete session entitlements/access records. This is easier to migrate from the current session-only `EventRegistration` table and keeps attendance/capacity logic understandable.
@@ -159,6 +172,10 @@
 - [2026-03-04 Europe/Brussels] Bots/System are senders not receivers — they should consume domain events directly, not notifications. But they CAN be SourceActorId.
 
 ### Deferred Fixes
+- [2026-03-30 Europe/Brussels] API Testing Research: Respawn `7.0.0` must be added to `Directory.Packages.props` before implementation begins. Also need `Testcontainers.PostgreSql` and `Bogus` refs in `Event.API.IntegrationTests.csproj`.
+- [2026-03-30 Europe/Brussels] API Testing Research: Persistence tests should also migrate from `EnsureCreated()` to `MigrateAsync()` for consistency (Phase 4 task).
+- [2026-03-30 Europe/Brussels] API Testing Research: Exact list of lookup tables for Respawn's `TablesToIgnore` must be extracted from `LookupTableSeeder.SeedAsync()` during Phase 2 implementation.
+- [2026-03-30 Europe/Brussels] Implement validation so AI settings cannot be enabled with an empty integration configuration, then wire layout/navigation availability to that effective state before adding the navbar trigger.
 - [2026-03-04 Europe/Brussels] EF migration for notification system not yet created. All schema changes are in EF configs but no migration generated.
 - [2026-03-04 Europe/Brussels] Notification dispatch handlers (domain events → fan-out logic) not yet implemented — will need OrganizationMember/GroupMember queries.
 - [2026-03-04 Europe/Brussels] Push delivery (WebSocket/SSE) for real-time notifications not yet implemented.

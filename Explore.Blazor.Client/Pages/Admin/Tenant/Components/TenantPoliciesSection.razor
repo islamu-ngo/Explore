@@ -76,6 +76,42 @@
                 Event card click behavior is locked by instance policy.
             </MudText>
         }
+
+        <MudDivider />
+
+        <MudText Typo="Typo.subtitle1" Style="font-weight:600;">AI Assistant (Beta)</MudText>
+        
+        <MudSwitch T="bool"
+                   @bind-Value="Model.AiAssistantEnabled"
+                   Color="Color.Primary"
+                   Disabled="@(!Model.CanOverrideAiAssistant)">
+            Enable AI Assistant capabilities
+        </MudSwitch>
+
+        @if (!Model.CanOverrideAiAssistant)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Warning">
+                AI Assistant configuration is locked by instance policy.
+            </MudText>
+        }
+
+        @if (Model.AiAssistantEnabled)
+        {
+            <MudTextField T="string"
+                          @bind-Value="Model.AiAssistantEndpointUrl"
+                          Label="API Endpoint URL"
+                          Variant="Variant.Outlined"
+                          Disabled="@(!Model.CanOverrideAiAssistant)"
+                          HelperText="Full URL to the AI model endpoint (e.g., OpenAI or compatible)" />
+                          
+            <MudTextField T="string"
+                          @bind-Value="Model.AiAssistantApiKey"
+                          Label="API Key"
+                          InputType="InputType.Password"
+                          Variant="Variant.Outlined"
+                          Disabled="@(!Model.CanOverrideAiAssistant)"
+                          HelperText="Required to enable AI Assistant features" />
+        }
     </MudStack>
 </div>
 

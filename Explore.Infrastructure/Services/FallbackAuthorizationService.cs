@@ -94,7 +94,6 @@ public class FallbackAuthorizationService : IAuthorizationProvider
 
             // Tenant-scoped: tenant admin only
             "tenant" => false, // Only instance admins can create/update/delete tenants
-            "tenant_user" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "tenant_member" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "category" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "tag" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
@@ -238,15 +237,15 @@ public class FallbackAuthorizationService : IAuthorizationProvider
             "instance_setting" => false,
             "tenant_setting" => EvaluateTenantSettingWithProfile(profile, resourceId, action, resourceAttributes),
             "tenant" => false,
-            "tenant_user" or "tenant_member" or "category" or "tag" or "location"
+            "tenant_member" or "category" or "tag" or "location"
                 => profile.IsTenantAdmin,
             "custom_property_definition" or "actor"
-                => action is "view" or "read" || profile.IsTenantAdmin,
+                => action is "view" || profile.IsTenantAdmin,
             "organization" => profile.IsTenantAdmin || IsOrgAdminFromProfile(profile, resourceAttributes, resourceId),
             "organization_member" => IsAdminForOrgScope(profile, resourceAttributes, resourceId),
             "organization_review" => action is "create" or "view" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
-            "group" => action is "view" or "read" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
-            "group_member" => action is "view" or "read" or "create" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
+            "group" => action is "view" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
+            "group_member" => action is "view" or "create" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
             "event" or "event_session" or "event_session_agenda_item"
                 => IsAdminForOrgScope(profile, resourceAttributes, resourceId),
             "event_registration" => action is "create" or "view" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
@@ -461,7 +460,7 @@ public class FallbackAuthorizationService : IAuthorizationProvider
     }
 
     /// <summary>
-    /// Evaluates access for tenant-scoped resources (category, tag, location, tenant_user).
+    /// Evaluates access for tenant-scoped resources (category, tag, location, tenant_member).
     /// Tenant admins can perform all CRUD operations within their tenant.
     /// </summary>
     private async Task<bool> EvaluateTenantScopedAccessAsync(
@@ -601,7 +600,7 @@ public class FallbackAuthorizationService : IAuthorizationProvider
         IDictionary<string, object>? resourceAttributes,
         CancellationToken cancellationToken)
     {
-        if (action is "view" or "read")
+        if (action is "view")
             return true;
 
         return await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken);
@@ -619,7 +618,7 @@ public class FallbackAuthorizationService : IAuthorizationProvider
         IDictionary<string, object>? resourceAttributes,
         CancellationToken cancellationToken)
     {
-        if (action is "view" or "read")
+        if (action is "view")
             return true;
 
         return await EvaluateOrgScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken);
@@ -635,7 +634,7 @@ public class FallbackAuthorizationService : IAuthorizationProvider
         IDictionary<string, object>? resourceAttributes,
         CancellationToken cancellationToken)
     {
-        if (action is "view" or "read" or "create")
+        if (action is "view" or "create")
             return true;
 
         return await EvaluateOrgScopedAccessAsync("group_member", resourceId, action, resourceAttributes, cancellationToken);
@@ -669,7 +668,7 @@ public class FallbackAuthorizationService : IAuthorizationProvider
         IDictionary<string, object>? resourceAttributes,
         CancellationToken cancellationToken)
     {
-        if (action is "view" or "read")
+        if (action is "view")
             return true;
 
         return await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken);

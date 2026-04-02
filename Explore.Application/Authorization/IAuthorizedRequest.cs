@@ -1,13 +1,19 @@
-// ABOUTME: Marker interface for MediatR requests that require authorization.
-// ABOUTME: Requests implementing this provide resource context for the AuthorizationBehavior pipeline.
+// ABOUTME: Legacy marker interface for MediatR requests that require authorization.
+// ABOUTME: Deprecated in favor of [AuthorizeResource] attribute. Zero production implementations exist.
+
+using System.ComponentModel;
 
 namespace Explore.Application.Authorization;
 
 /// <summary>
-/// Marker interface for MediatR requests that require authorization checks.
-/// The AuthorizationBehavior pipeline behavior inspects requests for this interface
-/// and calls IAuthorizationProvider before the handler executes.
+/// Legacy marker interface for MediatR requests that require authorization checks.
+/// <para>
+/// <b>Deprecated</b>: Use <see cref="AuthorizeResourceAttribute"/> instead (optionally with <see cref="ISecureRequest"/>
+/// for dynamic resource context). All production commands use the attribute path. This interface is retained only
+/// for backward compatibility in <see cref="Behaviors.AuthorizationBehavior{TRequest, TResponse}"/>.
+/// </para>
 /// </summary>
+[Obsolete("Use [AuthorizeResource] attribute (+ ISecureRequest for dynamic context) instead. No production implementations exist.")]
 public interface IAuthorizedRequest
 {
     /// <summary>

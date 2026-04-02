@@ -9,7 +9,7 @@ namespace Explore.Blazor.Client.Tests.Services;
 /// Key design decisions tested:
 /// - GetCurrentUserIdAsync returns string (JWT claims are strings)
 /// - GetCurrentTenantIdAsync returns Guid (parsed from string claims)
-/// - Fallback chain for user ID: nameidentifier → sub → sid
+/// - Fallback chain for user ID: sub → nameidentifier → sid (CLAUDE.md rule #8)
 /// - Multi-tenant vs single-tenant mode behavior
 /// </para>
 /// <para>
@@ -76,6 +76,40 @@ public class AuthStateServiceTests
 
         // Assert
         await Assert.That(result).IsEqualTo(userId.ToString());
+    }
+
+    [Test]
+    public async Task GetCurrentUserIdAsync_PrefersSubClaim_WhenBothSubAndNameIdentifierPresent()
+    {
+        // Arrange — both sub and nameidentifier present; sub must win per CLAUDE.md rule #8
+        var subUserId = Guid.NewGuid();
+        var nameIdUserId = Guid.NewGuid();
+        var authStateProvider = Substitute.For<AuthenticationStateProvider>();
+        var logger = Substitute.For<ILogger<AuthStateService>>();
+        var claims = new[]
+        {
+            new Claim("sub", subUserId.ToString()),
+            new Claim(ClaimTypes.NameIdentifier, nameIdUserId.ToString())
+        };
+        var identity = new ClaimsIdentity(claims, "TestAuth");
+        var principal = new ClaimsPrincipal(identity);
+        var authState = new AuthenticationState(principal);
+        authStateProvider.GetAuthenticationStateAsync().Returns(Task.FromResult(authState));
+
+        var config = new TenantConfiguration
+        {
+            Enabled = false,
+            DefaultTenantId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000001"),
+            DefaultTenant = "test"
+        };
+        var service = new AuthStateService(authStateProvider, logger, Options.Create(config));
+
+        // Act
+        var result = await service.GetCurrentUserIdAsync();
+
+        // Assert — sub claim takes priority over nameidentifier
+        await Assert.That(result).IsEqualTo(subUserId.ToString());
+        await Assert.That(result).IsNotEqualTo(nameIdUserId.ToString());
     }
 
     [Test]

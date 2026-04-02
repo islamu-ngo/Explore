@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http;
 
 namespace Explore.Blazor.Client.Tests.Services;
 
+[NotInParallel("CircuitAccessTokenStore")]
 public class CircuitAccessTokenServiceTests
 {
     [Test]

@@ -7,7 +7,10 @@
 
 .event-list__page {
     display: flex;
-    width: 100%;
+    /* Use calc() to add the layout padding to the width, and negative right margin to pull it flush right.
+       This assumes the parent (.main-layout__content-wrapper) left padding stays intact. */
+    width: calc(100% + var(--layout-padding-inline, 0px));
+    margin-right: calc(var(--layout-padding-inline, 0px) * -1);
     min-height: calc(100vh - var(--mud-appbar-height, 4rem));
 }
 
@@ -16,6 +19,10 @@
     min-width: 0;
     position: relative;
     container-type: inline-size;
+    
+    /* Restore the padding internally so the filterbar/grid doesn't hit the right edge when drawer is closed */
+    padding-right: var(--layout-padding-inline, 0px);
+    transition: padding-right 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Sidebar layout delegated to Components/Common/RightSidebar.razor.css */

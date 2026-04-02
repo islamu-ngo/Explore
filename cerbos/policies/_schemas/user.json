@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Resource attributes for user resources. Populated by ResourceDescriptors.User.",
+  "type": "object",
+  "properties": {
+    "actorId": {
+      "type": "string",
+      "description": "Associated actor identifier."
+    }
+  },
+  "required": ["actorId"]
+}

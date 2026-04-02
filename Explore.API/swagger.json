@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "https://localhost:59023/"
+      "url": "https://localhost:63169/"
     }
   ],
   "paths": {
@@ -50988,6 +50988,9 @@
           "disallowInteractiveServerOnOnboarding": {
             "type": "boolean"
           },
+          "isAiAssistantAvailable": {
+            "type": "boolean"
+          },
           "footerConfig": {
             "$ref": "#/components/schemas/FooterConfigDto"
           }
@@ -51904,6 +51907,9 @@
           "lockTenantAnalytics": {
             "type": "boolean"
           },
+          "lockTenantAiAssistant": {
+            "type": "boolean"
+          },
           "decentralizationEnabled": {
             "type": "boolean"
           },
@@ -52291,6 +52297,18 @@
           },
           "canOverrideAnalytics": {
             "type": "boolean"
+          },
+          "canOverrideAiAssistant": {
+            "type": "boolean"
+          },
+          "aiAssistantEnabled": {
+            "type": "boolean"
+          },
+          "aiAssistantEndpointUrl": {
+            "type": "string"
+          },
+          "aiAssistantApiKey": {
+            "type": "string"
           }
         }
       },
@@ -54294,6 +54312,15 @@
           },
           "adminPrerenderEnabled": {
             "type": "boolean"
+          },
+          "aiAssistantEnabled": {
+            "type": "boolean"
+          },
+          "aiAssistantEndpointUrl": {
+            "type": "string"
+          },
+          "aiAssistantApiKey": {
+            "type": "string"
           }
         }
       },

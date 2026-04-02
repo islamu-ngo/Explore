@@ -8,7 +8,7 @@ using MediatR;
 
 namespace Explore.Application.Features.Tags.Requests.Commands;
 
-[AuthorizeResource("tag", PermissionAction.Update)]
+[AuthorizeResource("tag", AuthorizationActions.Update)]
 public class UpdateTagCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public required UpdateTagDto TagDto { get; set; }

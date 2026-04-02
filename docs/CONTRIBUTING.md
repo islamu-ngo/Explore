@@ -70,7 +70,9 @@ Architecture tests are CI gates — not optional. They enforce:
 - **Layer dependencies** — Domain has no upstream references
 - **Naming conventions** — handlers, validators, specifications follow suffixes
 - **Accessibility** — routable pages have `<h1>`, MainLayout has landmarks
-- **Authorization parity** — every resource kind has a Cerbos policy
+- **Authorization parity** — every `ResourceKinds` constant has a Cerbos policy, a `FallbackAuthorizationService` case, and a JSON schema
+- **Descriptor coverage** — every `ResourceDescriptors` kind is a valid `ResourceKinds` constant
+- **Schema coverage** — every Cerbos policy YAML references both principal and resource schemas
 - **ABOUTME headers** — all C# files start with `ABOUTME:` comments
 
 See [TESTING.md](TESTING.md) for the full list of architecture convention tests.

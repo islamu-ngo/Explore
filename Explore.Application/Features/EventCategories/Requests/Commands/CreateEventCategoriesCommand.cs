@@ -8,7 +8,7 @@ using MediatR;
 
 namespace Explore.Application.Features.EventCategories.Requests.Commands;
 
-[AuthorizeResource("event", PermissionAction.Update)]
+[AuthorizeResource("event", AuthorizationActions.Update)]
 public class CreateEventCategoriesCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public required CreateEventCategoriesDto EventCategoriesDto { get; set; }

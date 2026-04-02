@@ -1,0 +1,56 @@
+@* ABOUTME: Shell-level AI assistant rail hosted in MainLayout, outside page content. *@
+@* ABOUTME: Slides in from the right; persists across page navigations. *@
+@implements IDisposable
+
+@if (AiAssistantState.IsAvailable)
+{
+    @if (AiAssistantState.IsOpen)
+    {
+        <div class="ai-rail__backdrop" @onclick="AiAssistantState.Close" aria-hidden="true"></div>
+    }
+
+    <aside class="ai-rail @(AiAssistantState.IsOpen ? "ai-rail--open" : "")"
+           aria-label="AI Assistant"
+           role="complementary">
+        <div class="ai-rail__header">
+            <MudIcon Icon="@Icons.Material.Filled.AutoAwesome" Size="Size.Small" Class="ai-rail__header-icon" />
+            <MudText Typo="Typo.subtitle1" Class="ai-rail__header-title">AI Assistant</MudText>
+            <MudSpacer />
+            <AppIconButton Icon="@Icons.Material.Filled.Close"
+                           Color="Color.Inherit"
+                           Size="Size.Small"
+                           OnClick="AiAssistantState.Close"
+                           Title="Close AI Assistant"
+                           aria-label="Close AI Assistant" />
+        </div>
+
+        <div class="ai-rail__body">
+            <div class="ai-rail__placeholder">
+                <MudIcon Icon="@Icons.Material.Outlined.SmartToy"
+                         Size="Size.Large"
+                         Color="Color.Primary"
+                         Class="ai-rail__placeholder-icon" />
+                <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary"
+                         Class="ai-rail__placeholder-text">
+                    AI Assistant is ready. Chat functionality is coming soon.
+                </MudText>
+            </div>
+        </div>
+    </aside>
+}
+
+@code
+{
+    [Inject]
+    protected AiAssistantState AiAssistantState { get; set; } = null!;
+
+    protected override void OnInitialized()
+    {
+        AiAssistantState.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        AiAssistantState.OnChange -= StateHasChanged;
+    }
+}

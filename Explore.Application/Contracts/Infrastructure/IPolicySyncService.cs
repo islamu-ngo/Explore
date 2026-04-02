@@ -1,5 +1,7 @@
 // ABOUTME: Contract for synchronizing authorization policies to the Cerbos PDP.
-// ABOUTME: Generates policies from Permission/RolePermission data and pushes via Admin API.
+// ABOUTME: Supports incremental per-role sync, full bundle sync, reload broadcast, and policy summary.
+
+using Explore.Application.Authorization;
 
 namespace Explore.Application.Contracts.Infrastructure;
 
@@ -11,7 +13,8 @@ namespace Explore.Application.Contracts.Infrastructure;
 public interface IPolicySyncService
 {
     /// <summary>
-    /// Generates and pushes all policies from the current Permission and RolePermission state.
+    /// Builds all derived role policies from the current Permission and RolePermission state,
+    /// pushes them as a bundle to the primary Cerbos endpoint, then broadcasts reload.
     /// Used for full resync (e.g., admin-triggered, initial setup).
     /// </summary>
     Task SyncAllPoliciesAsync(CancellationToken cancellationToken = default);
@@ -28,4 +31,11 @@ public interface IPolicySyncService
     /// Used after critical permission changes that require immediate consistency.
     /// </summary>
     Task ReloadAllInstancesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Computes a summary of the current dynamic policy state without pushing anything.
+    /// Reads all roles and permissions, builds policies in memory, and returns metadata
+    /// including a content hash for staleness detection.
+    /// </summary>
+    Task<PolicyPackageInfo> GetPolicySummaryAsync(CancellationToken cancellationToken = default);
 }

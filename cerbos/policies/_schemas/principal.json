@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Principal attributes built by CerbosPrincipalBuilder. Validated on every Cerbos check request.",
+  "type": "object",
+  "properties": {
+    "isInstanceAdmin": {
+      "type": "boolean",
+      "description": "Whether the principal is an instance-level administrator."
+    },
+    "tenantMemberships": {
+      "type": "object",
+      "description": "Map of tenantId to role string (e.g. 'admin') for tenant membership checks.",
+      "additionalProperties": { "type": "string" }
+    },
+    "orgMemberships": {
+      "type": "object",
+      "description": "Map of organizationId to role string (e.g. 'admin') for organization membership checks.",
+      "additionalProperties": { "type": "string" }
+    }
+  },
+  "required": ["isInstanceAdmin", "tenantMemberships", "orgMemberships"]
+}

@@ -4,6 +4,7 @@
 namespace Explore.Application.Contracts.Infrastructure;
 
 using System.Collections.Generic;
+using Explore.Application.Authorization;
 
 /// <summary>
 /// Authorization provider that evaluates access control decisions.
@@ -54,8 +55,27 @@ public interface IAuthorizationProvider
         CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Transport-neutral authorization check request.
+/// Captures all metadata needed for a single Cerbos resource check.
+/// </summary>
+/// <param name="ResourceKind">Resource kind string from <see cref="ResourceKinds"/>.</param>
+/// <param name="ResourceId">Unique resource identifier (typically entity primary key).</param>
+/// <param name="Action">Action string from <see cref="AuthorizationActions"/>.</param>
+/// <param name="ResourceAttributes">Additional attributes for policy evaluation (e.g., tenantId, ownerId).</param>
+/// <param name="Scope">Tenant/org scope for per-tenant policy resolution. Null for unscoped checks.</param>
 public sealed record AuthorizationCheck(
     string ResourceKind,
     string ResourceId,
     string Action,
-    IReadOnlyDictionary<string, object>? ResourceAttributes = null);
+    IReadOnlyDictionary<string, object>? ResourceAttributes = null,
+    AuthorizationScope? Scope = null)
+{
+    /// <summary>
+    /// Generates a deduplication key for batch authorization requests.
+    /// Two checks with the same key are semantically identical and only need
+    /// to be evaluated once. Key is based on resource kind, id, and action —
+    /// the triple that uniquely identifies a Cerbos check.
+    /// </summary>
+    public string ToDeduplicationKey() => $"{ResourceKind}|{ResourceId}|{Action}";
+}

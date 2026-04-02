@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Resource attributes for organization resources. Populated by ResourceDescriptors.Organization.",
+  "type": "object",
+  "properties": {
+    "tenantId": {
+      "type": "string",
+      "description": "Owning tenant identifier. Used by tenant_admin derived role."
+    },
+    "organizationId": {
+      "type": "string",
+      "description": "Organization identifier (same as resource ID). Used by org_admin derived role."
+    }
+  },
+  "required": ["tenantId", "organizationId"]
+}

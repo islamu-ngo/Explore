@@ -51,15 +51,7 @@ public sealed class EventSessionAgendaItemDetailLinkPolicy : ILinkPolicy<EventSe
             "PUT",
             "Update agenda item",
             RequiresAuth: true)
-            .RequirePermission(
-                PermissionAction.Update,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["eventSessionId"] = dto.EventSessionId.ToString(),
-                    ["tenantId"] = dto.TenantId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.EventSessionAgendaItem, dto);
 
         // Delete link - requires authentication
         yield return new LinkDefinition(
@@ -69,15 +61,7 @@ public sealed class EventSessionAgendaItemDetailLinkPolicy : ILinkPolicy<EventSe
             "DELETE",
             "Delete agenda item",
             RequiresAuth: true)
-            .RequirePermission(
-                PermissionAction.Delete,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["eventSessionId"] = dto.EventSessionId.ToString(),
-                    ["tenantId"] = dto.TenantId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Delete, ResourceDescriptors.EventSessionAgendaItem, dto);
     }
 }
 
@@ -117,6 +101,6 @@ public sealed class EventSessionAgendaItemCollectionLinkPolicy : ICollectionLink
             "POST",
             "Create agenda item",
             RequiresAuth: true)
-            .RequirePermission(PermissionAction.Create, typeof(EventSessionAgendaItemDto), "event_session_agenda_item");
+            .RequirePermission(AuthorizationActions.Create, typeof(EventSessionAgendaItemDto), "event_session_agenda_item");
     }
 }

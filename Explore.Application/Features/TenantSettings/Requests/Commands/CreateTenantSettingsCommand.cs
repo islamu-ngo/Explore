@@ -7,7 +7,7 @@ using MediatR;
 
 namespace Explore.Application.Features.TenantSettings.Requests.Commands;
 
-[AuthorizeResource("tenant_setting", PermissionAction.Create)]
+[AuthorizeResource("tenant_setting", AuthorizationActions.Create)]
 public class CreateTenantSettingsCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public required CreateTenantSettingsDto TenantSettingsDto { get; set; }

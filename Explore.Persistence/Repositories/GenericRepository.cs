@@ -1,6 +1,9 @@
+// ABOUTME: Generic EF Core repository with basic CRUD operations for aggregate and settings entities.
+// ABOUTME: Update logic reuses already-tracked entities to avoid duplicate-key tracking conflicts inside one DbContext.
+
 using System;
 using System.Collections.Generic;
-using System.Text;
+using System.Linq;
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -97,7 +100,47 @@ public class GenericRepository<T, TKey> : IGenericRepository<T, TKey> where T : 
 
     public async Task Update(T entity)
     {
-        _dbContext.Entry(entity).State = EntityState.Modified;
+        var entry = _dbContext.Entry(entity);
+        if (entry.State != EntityState.Detached)
+        {
+            entry.State = EntityState.Modified;
+            await _dbContext.SaveChangesAsync();
+            return;
+        }
+
+        var entityType = _dbContext.Model.FindEntityType(typeof(T))
+            ?? throw new InvalidOperationException($"Entity type metadata not found for {typeof(T).Name}.");
+        var primaryKey = entityType.FindPrimaryKey()
+            ?? throw new InvalidOperationException($"Primary key metadata not found for {typeof(T).Name}.");
+
+        var trackedEntity = _dbContext.Set<T>().Local.FirstOrDefault(localEntity => HasSamePrimaryKey(localEntity, entity, primaryKey.Properties));
+
+        if (trackedEntity is not null)
+        {
+            _dbContext.Entry(trackedEntity).CurrentValues.SetValues(entity);
+            _dbContext.Entry(trackedEntity).State = EntityState.Modified;
+        }
+        else
+        {
+            entry.State = EntityState.Modified;
+        }
+
         await _dbContext.SaveChangesAsync();
+    }
+
+    private bool HasSamePrimaryKey(T trackedEntity, T candidateEntity, IReadOnlyList<Microsoft.EntityFrameworkCore.Metadata.IProperty> keyProperties)
+    {
+        foreach (var property in keyProperties)
+        {
+            var trackedValue = property.PropertyInfo?.GetValue(trackedEntity);
+            var candidateValue = property.PropertyInfo?.GetValue(candidateEntity);
+
+            if (!Equals(trackedValue, candidateValue))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

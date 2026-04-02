@@ -5,11 +5,13 @@ on:
     branches: [ "main", "develop" ]
     paths:
       - "cerbos/**"
+      - "Explore.Application/Authorization/**"
       - ".github/workflows/cerbos-policy-check.yml"
   pull_request:
     branches: [ "main", "develop" ]
     paths:
       - "cerbos/**"
+      - "Explore.Application/Authorization/**"
 
 jobs:
   cerbos-policy-check:

@@ -6,7 +6,7 @@ using MediatR;
 
 namespace Explore.Application.Features.EventTags.Requests.Commands;
 
-[AuthorizeResource("event", PermissionAction.Update)]
+[AuthorizeResource("event", AuthorizationActions.Update)]
 public class DeleteEventTagsCommand : IRequest<bool>, ISecureRequest
 {
     public Guid Id { get; set; }

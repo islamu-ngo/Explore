@@ -46,15 +46,7 @@ public sealed class TenantMemberDetailLinkPolicy : ILinkPolicy<TenantMemberDto>
             "PUT",
             "Update role assignment",
             RequiresAuth: true)
-            .RequirePermission(
-                PermissionAction.Update,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["tenantId"] = dto.TenantId.ToString(),
-                    ["userId"] = dto.UserId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.TenantMember, dto);
 
         yield return new LinkDefinition(
             "delete",
@@ -63,15 +55,7 @@ public sealed class TenantMemberDetailLinkPolicy : ILinkPolicy<TenantMemberDto>
             "DELETE",
             "Remove member from tenant",
             RequiresAuth: true)
-            .RequirePermission(
-                PermissionAction.Delete,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["tenantId"] = dto.TenantId.ToString(),
-                    ["userId"] = dto.UserId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Delete, ResourceDescriptors.TenantMember, dto);
     }
 }
 
@@ -106,6 +90,6 @@ public sealed class TenantMemberCollectionLinkPolicy : ICollectionLinkPolicy<Ten
             "POST",
             "Add member to tenant",
             RequiresAuth: true)
-            .RequirePermission(PermissionAction.Create, typeof(TenantMemberDto), "tenant_member");
+            .RequirePermission(AuthorizationActions.Create, typeof(TenantMemberDto), "tenant_member");
     }
 }

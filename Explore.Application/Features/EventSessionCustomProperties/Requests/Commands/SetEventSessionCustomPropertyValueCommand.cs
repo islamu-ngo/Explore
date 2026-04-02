@@ -8,7 +8,7 @@ using MediatR;
 
 namespace Explore.Application.Features.EventSessionCustomProperties.Requests.Commands;
 
-[AuthorizeResource("tenant", PermissionAction.Update)]
+[AuthorizeResource("tenant", AuthorizationActions.Update)]
 public class SetEventSessionCustomPropertyValueCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public required SetEventSessionCustomPropertyValueDto ValueDto { get; set; }

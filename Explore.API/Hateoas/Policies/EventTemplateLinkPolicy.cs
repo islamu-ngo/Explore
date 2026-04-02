@@ -32,29 +32,13 @@ public sealed class EventTemplateDetailLinkPolicy : ILinkPolicy<EventTemplateDto
         yield return LinkDefinition.Edit(
             RouteNames.UpdateEventTemplate,
             new { id = dto.Id })
-            .RequirePermission(
-                PermissionAction.Update,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["eventTemplateId"] = dto.Id.ToString(),
-                    ["tenantId"] = dto.TenantId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.EventTemplate, dto);
 
         // Delete link - requires Delete permission
         yield return LinkDefinition.Delete(
             RouteNames.DeleteEventTemplate,
             new { id = dto.Id })
-            .RequirePermission(
-                PermissionAction.Delete,
-                dto,
-                dto.Id.ToString(),
-                new Dictionary<string, object>
-                {
-                    ["eventTemplateId"] = dto.Id.ToString(),
-                    ["tenantId"] = dto.TenantId.ToString()
-                });
+            .RequirePermission(AuthorizationActions.Delete, ResourceDescriptors.EventTemplate, dto);
     }
 }
 
@@ -75,6 +59,6 @@ public sealed class EventTemplateCollectionLinkPolicy : ICollectionLinkPolicy<Ev
     {
         // Create link - requires Create permission
         yield return LinkDefinition.Create(RouteNames.CreateEventTemplate)
-            .RequirePermission(PermissionAction.Create, typeof(EventTemplateDto), "eventTemplate");
+            .RequirePermission(AuthorizationActions.Create, typeof(EventTemplateDto), "eventTemplate");
     }
 }

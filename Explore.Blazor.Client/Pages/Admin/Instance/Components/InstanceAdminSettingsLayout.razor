@@ -9,6 +9,7 @@
 @inject IInstanceOnboardingService InstanceOnboardingService
 @inject ITenantOnboardingService TenantOnboardingService
 @inject IPublicExperienceService PublicExperienceService
+@inject AiAssistantState AiAssistantState
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 
@@ -453,7 +454,7 @@
         }
 
         _isSaving = false;
-        PublicExperienceService.ResetCache();
+        await RefreshShellExperienceAsync();
 
         var modeChanged = !string.Equals(_deploymentMode, _loadedDeploymentMode, StringComparison.OrdinalIgnoreCase);
         if (modeChanged)
@@ -512,6 +513,17 @@
     private void SelectSection(string section)
     {
         _currentSection = section;
+    }
+
+    private async Task RefreshShellExperienceAsync()
+    {
+        PublicExperienceService.ResetCache();
+
+        var settings = await PublicExperienceService.GetSettingsAsync();
+        if (settings is not null)
+        {
+            AiAssistantState.SetAvailable(settings.IsAiAssistantAvailable);
+        }
     }
 
     private string GetNavItemClass(string section)

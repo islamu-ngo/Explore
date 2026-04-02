@@ -8,7 +8,7 @@ using MediatR;
 
 namespace Explore.Application.Features.EventSessionAgendaItems.Requests.Commands;
 
-[AuthorizeResource("event_session_agenda_item", PermissionAction.Update)]
+[AuthorizeResource("event_session_agenda_item", AuthorizationActions.Update)]
 public class UpdateEventSessionAgendaItemCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
 {
     public required UpdateEventSessionAgendaItemDto AgendaItemDto { get; set; }

@@ -110,6 +110,10 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
             LinkGroups = _mapper.Map<List<FooterLinkGroupDto>>(footerLinkGroups),
         };
 
+        // Resolve AI assistant availability (enabled + configured API key)
+        var aiSettingGroup = await _hierarchicalSettingsResolver.ResolveGroupAsync<AiAssistantSettingGroup>(
+            new SettingContext(TenantId: tenantId), cancellationToken);
+
         return new PublicExperienceSettingsDto
         {
             TenantId = tenantId,
@@ -154,6 +158,7 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
             OnboardingRenderMode = governanceSettings.RenderPolicy.OnboardingRenderMode,
             OnboardingPrerenderEnabled = governanceSettings.RenderPolicy.OnboardingPrerenderEnabled,
             DisallowInteractiveServerOnOnboarding = governanceSettings.RenderPolicy.DisallowInteractiveServerOnOnboarding,
+            IsAiAssistantAvailable = aiSettingGroup.IsAvailable,
             FooterConfig = footerConfig,
         };
     }

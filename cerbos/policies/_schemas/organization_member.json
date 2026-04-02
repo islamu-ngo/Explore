@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Resource attributes for organization_member resources. Populated by ResourceDescriptors.OrganizationMember.",
+  "type": "object",
+  "properties": {
+    "organizationId": {
+      "type": "string",
+      "description": "Parent organization identifier. Used by org_admin derived role."
+    },
+    "userId": {
+      "type": "string",
+      "description": "Member user identifier."
+    }
+  },
+  "required": ["organizationId", "userId"]
+}

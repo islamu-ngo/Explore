@@ -40,11 +40,14 @@ Dependency direction is inward: presentation -> application -> domain.
 4. EF query filters enforce tenant isolation centrally in `ExploreDbContext`.
 
 ## Authorization Architecture
-1. Endpoint-level auth is handled via ASP.NET attributes/policies.
-2. Resource-level auth is handled in application pipeline behaviors.
-3. Runtime authorization provider can route checks to Cerbos PDP or local authorization logic depending on settings.
-4. BYO Cerbos is supported per tenant through configuration resolver logic.
-5. SafeMode is a one-way latch via `ActivateSafeMode()` — once activated by a Cerbos failure, it cannot be deactivated until restart. Logs `LogCritical` once.
+1. Endpoint-level auth is handled via ASP.NET attributes/policies. `[AuthorizeResource]` attribute pairs a resource kind with a domain action constant from `AuthorizationActions`.
+2. Resource-level auth is handled in the `AuthorizationBehavior` MediatR pipeline. Checks route to `IAuthorizationProvider` which resolves to Cerbos PDP or local fallback.
+3. `AuthorizationActions` (string constants) and `ResourceKinds` (string constants) form the canonical action/resource catalogs shared by commands, link policies, and Cerbos policies.
+4. `IAuthorizableResourceDescriptor<T>` + `ResourceDescriptors` extract resource metadata (kind, id, attributes, scope) from DTOs — eliminating manual attribute dictionaries in HATEOAS link policies.
+5. HATEOAS capability planning uses a 4-phase pipeline: candidate links → normalized `AuthorizationCheck` with dedup key → batch evaluate unique checks → map decisions back to links. Fail-closed on batch failure.
+6. Runtime authorization provider routes checks: BYO Cerbos (per-tenant) → Instance Cerbos (if enabled) → FallbackAuthorizationService (DB-driven RBAC).
+7. SafeMode is a one-way latch via `ActivateSafeMode()` — once activated by a Cerbos failure, it cannot be deactivated until restart. Logs `LogCritical` once.
+8. Cerbos policies reference JSON schemas (`_schemas/`) for principal and resource attribute contracts. Schema enforcement is `warn` by default.
 
 ## API Representation
 1. HAL/HATEOAS wrappers are used for discoverable responses.

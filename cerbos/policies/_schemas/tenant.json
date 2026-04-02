@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Resource attributes for tenant resources. Populated by ResourceDescriptors.Tenant. TenantId equals the resource ID.",
+  "type": "object",
+  "properties": {
+    "tenantId": {
+      "type": "string",
+      "description": "Tenant identifier (same as resource ID). Used by tenant_admin derived role."
+    }
+  },
+  "required": ["tenantId"]
+}
