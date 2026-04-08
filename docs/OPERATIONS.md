@@ -288,9 +288,9 @@ Provider consent matrix:
 | `plausible` | Always cookieless | No | N/A |
 | `rybbit` | Always cookieless | No | N/A |
 | `posthog` (`cookieless_mode=always`) | Always cookieless | No | N/A |
-| `posthog` (`cookieless_mode=on_reject`) | Cookieless after decline | Yes | Cookieless analytics continues |
-| `posthog` (`cookieless_mode=off`) | Consent-managed | Yes | Configurable: `disable` or `cookieless` |
-| `rudderstack` | Full consent (v1) | Yes | Configurable: `disable` or `cookieless` |
+| `posthog` (`cookieless_mode=on_reject`) | Cookieless after decline | Yes | Configurable: `disable` or `cookieless` (default: `cookieless`) |
+| `posthog` (`cookieless_mode=off`) | Consent-managed | Yes | Disable (no cookieless fallback) |
+| `rudderstack` | Full consent (v1) | Yes | Disable (full consent required) |
 
 PostHog privacy defaults for self-hosters:
 

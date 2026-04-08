@@ -235,6 +235,8 @@ public static class RouteNames
     public const string GetUnreadNotificationCount = "GetUnreadNotificationCount";
     public const string MarkNotificationAsRead = "MarkNotificationAsRead";
     public const string MarkAllNotificationsAsRead = "MarkAllNotificationsAsRead";
+    public const string ArchiveNotification = "ArchiveNotification";
+    public const string SnoozeNotification = "SnoozeNotification";
     public const string DeleteNotification = "DeleteNotification";
 
     #endregion

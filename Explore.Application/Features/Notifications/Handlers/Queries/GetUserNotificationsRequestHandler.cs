@@ -36,7 +36,8 @@ public class GetUserNotificationsRequestHandler : IRequestHandler<GetUserNotific
         var (pageNumber, pageSize) = PaginatedResult<NotificationListDto>.NormalizeParameters(request.PageNumber, request.PageSize);
 
         var (items, totalCount) = await _notificationRepository.GetUserNotificationsPaged(
-            userId.Value, pageNumber, pageSize, request.IsRead, request.NotificationTypeId, request.NotificationScopeId);
+            userId.Value, pageNumber, pageSize, request.IsRead, request.NotificationTypeId,
+            request.NotificationScopeId, request.NotificationReasonId, request.IsArchived, request.IsSnoozed);
 
         var dtos = _mapper.Map<List<NotificationListDto>>(items);
 

@@ -1,110 +1,187 @@
 # Blazor Notification UI — Implementation Plan
 
-> Last Updated: 2026-03-04
+> Last Updated: 2026-04-08
 
 ## Executive Summary
 
-Implement a YouTube-style notification center in the Blazor frontend for the ISLAMU Event platform. The API backend (6 endpoints) is already complete. This plan covers the Blazor client-side only: a bell icon with unread badge in the navbar, a popover panel showing notifications with scope grouping (personal/organization/group/system), and mark-all-read-on-open behavior.
+In-app notification center for the Blazor frontend. The backend (8 API endpoints, full CQRS stack with archive/snooze support) and all Blazor components are complete. The popover bell, scope-filtered inbox page, notification service with tests, setting definitions, and backend entity extensions (NotificationReason, archive, snooze) are all implemented and verified. Pending: migration + NSwag regen + Phase 10 filter wiring.
 
-## Current State
+## Current State — All Implemented
 
-### ✅ Backend API (Complete)
-- `NotificationController` with 6 endpoints (all `[Authorize]`)
-- DTOs: `NotificationDto`, `NotificationListDto`, `UnreadCountDto`
-- Scope metadata: `NotificationScopeId/Name`, `SourceActorId/Name`, `RecipientContextActorId/Name`
-- See `dev/active/notification-system/` for full backend context
+### ✅ Phase 0: Prerequisites
+- `swagger.json` has 29 notification matches
+- `EventApiClient.g.cs` has all notification methods generated
+- NSwag client fully operational
 
-### ❌ NSwag Client (NOT Generated)
-- `swagger.json` does NOT contain notification endpoints yet
-- `EventApiClient.g.cs` has zero notification methods
-- **Must regenerate before any Blazor work can compile**
+### ✅ Phase 1: Service Layer
+- `INotificationService` — 6 methods including scope/read filter params
+- `NotificationService` — wraps IEventApiClient with try-catch + logging
+- DI registered in `ServiceCollectionExtensions.cs`
 
-### ❌ Blazor Client (Nothing Exists)
-- No `INotificationService` / `NotificationService`
-- No notification components
-- No bell icon in NavMenu
-- No notification state management
+### ✅ Phase 2: Components
+- `NotificationBell.razor` — bell icon + MudBadge + panel toggle + 60s polling
+- `NotificationPanel.razor` — popover with scope tabs, loading/empty states, load-more, "view all" footer
+- `NotificationItem.razor` — type icon mapping, scope color, relative time, delete
+
+### ✅ Phase 3: NavMenu Integration
+- `<NotificationBell />` in NavMenu inside `<Authorized>` section
+- Polling + unread count + panel toggle all handled by NotificationBell
+
+### ✅ Phase 4: Deep Linking + Polish
+- Deep linking via `GetEntityUrl()` for event/org/group/eventsession
+- Mark-all-read-on-open (YouTube style)
+- Loading + empty states
+
+### ✅ Phase 5: Scope Filtering Tabs
+- MudToggleGroup added to NotificationPanel header: All / Personal / Organization / Group
+- Maps to `notificationScopeId`: null / 1 / 2 / 4
+- `SelectedScope` + `OnScopeChanged` parameters on NotificationPanel
+- NotificationBell manages `_selectedScope` state, passes to service calls
+- `HandleScopeChanged` clears list, resets page, reloads with new scope
+
+### ✅ Phase 6+7: Notification Inbox Page + View All
+- `Pages/Notifications/Notifications.razor` — route `/notifications`, InteractiveServer, Authorize
+- Single-column layout (MudContainer MaxWidth.Medium)
+- Header with title + "Mark all read" button
+- Scope tabs (same MudToggleGroup as popover) + unread filter toggle (FilterList icon)
+- Loading/empty/list states using NotificationItem + load more
+- "View all notifications" footer in NotificationPanel popover
+- NotificationBell `HandleViewAll` closes panel and navigates to `/notifications`
+
+### ✅ Phase 8: Notification Setting Definitions
+- `NotificationSettingDefinitions.cs` in `Explore.Domain/Settings/Definitions/`
+- 4 settings: DisplayDensity (User), DefaultScope (User), PollIntervalSeconds (Tenant), MaxBadgeCount (Tenant)
+- Registered in `SettingRegistry.cs`
+- **Settings defined but not yet consumed by UI components**
+
+### ✅ Phase 11: Testing
+- `NotificationServiceTests.cs` — 25 tests covering all 6 service methods
+- Success paths, error paths (ApiException + general Exception), edge cases (null values)
+- Follows EventRegistrationServiceTests pattern (TUnit + NSubstitute)
+- All 606 Blazor client tests passing
 
 ## Architecture
 
 ### Data Flow
 ```
-NavMenu                      NotificationService        NSwag Client         API
-  │                                │                        │                 │
-  ├─ OnInit ──────────────────────►│ GetUnreadCountAsync ──►│ ──────────────►│
-  │◄── badge count ────────────────┤◄──────────────────────┤◄───────────────┤
-  │                                │                        │                 │
-  ├─ Bell Click ──────────────────►│ MarkAllAsReadAsync ──►│ ──────────────►│
-  │  (opens popover)               │ GetNotificationsAsync►│ ──────────────►│
-  │◄── notification list ──────────┤◄──────────────────────┤◄───────────────┤
-  │                                │                        │                 │
-  ├─ Scroll/Load More ────────────►│ GetNotificationsAsync►│ ──────────────►│
-  │◄── next page ──────────────────┤◄──────────────────────┤◄───────────────┤
+NavMenu                    NotificationBell           NotificationService      NSwag Client         API
+  |                              |                          |                      |                 |
+  |-- renders ------------------>| OnInit                   |                      |                 |
+  |                              |-- GetUnreadCount ------->| ------------------->| --------------->|
+  |                              |<-- badge count ----------|<-------------------|<----------------|
+  |                              |                          |                      |                 |
+  |                              |-- Bell Click ----------->| MarkAllAsRead ----->| --------------->|
+  |                              |  (opens popover/nav)     | GetNotifications -->| --------------->|
+  |                              |<-- notification list ----|<-------------------|<----------------|
+  |                              |                          |                      |                 |
+  |                              |-- Scope Changed -------->| GetNotifications -->| --------------->|
+  |                              |  (clears + reloads)      |  (with scopeId)    |                 |
+  |                              |<-- filtered list --------|<-------------------|<----------------|
 ```
 
 ### Component Hierarchy
 ```
 NavMenu.razor
-  └─ NotificationBell.razor          (bell icon + badge + popover trigger)
-       └─ NotificationPanel.razor    (popover: header + scope tabs + list + actions)
-            └─ NotificationItem.razor (individual notification row)
+  +-- NotificationBell.razor               (bell icon + badge + popover trigger)
+       +-- NotificationPanel.razor         (popover: scope tabs + list + footer)
+            +-- NotificationItem.razor     (individual notification row)
+
+/notifications (full page)
+  +-- Notifications.razor                  (standalone: scope tabs + unread filter + list)
+       +-- NotificationItem.razor          (reused)
 ```
 
-### YouTube-Style Behavior
-1. Bell icon shows **unread count badge** (red dot with number, max "99+")
-2. Clicking bell opens popover panel
-3. **Opening popover auto-marks all as read** (like YouTube)
-4. Badge count resets to 0 after opening
-5. Panel shows notifications grouped/filtered by scope tabs (All / Personal / Organization / Group)
-6. Each notification row: icon + title + body preview + relative timestamp + scope indicator
-7. Click notification → navigate to entity (deep link via `EntityType` + `EntityId`)
-8. Polling: refresh unread count every 60 seconds
+### Scope Tab Mapping
+| Tab Label     | notificationScopeId | ActorType |
+|---------------|---------------------|-----------|
+| All           | null                | —         |
+| Personal      | 1                   | User      |
+| Organization  | 2                   | Organization |
+| Group         | 4                   | Group     |
 
-## Implementation Phases
+---
 
-### Phase 0: Prerequisites (Swagger + NSwag Regeneration)
-Generate the swagger.json from the running API, then rebuild the NSwag client to get notification methods.
+### ✅ Phase 9: Backend Entity Extensions
+- `NotificationReason` lookup entity (Direct=1, Mention=2, Assignment=3, Subscription=4, Membership=5, System=6)
+- `Notification` entity: added `NotificationReasonId`, `IsArchived`, `ArchivedAt`, `SnoozedUntil`
+- EF config: `NotificationReasonConfiguration`, updated `NotificationConfiguration` (FK + archive index)
+- `DbSet<NotificationReason>` in ExploreDbContext, seeder for 6 values
+- DTOs updated with new fields + reason name mapping
+- Repository: new filters (reason, archive, snooze) + `ArchiveNotification()` + `SnoozeNotification()`
+- `ArchiveNotificationCommand/Handler` + `SnoozeNotificationCommand/Handler`
+- Controller: 3 new query params on GetAll + archive/snooze PATCH endpoints
+- **Pending**: migration + swagger/NSwag regen
 
-### Phase 1: Service Layer
-- `INotificationService` contract interface
-- `NotificationService` implementation wrapping `IEventApiClient`
-- `NotificationState` scoped service for cross-component state (unread count, panel open state)
-- DI registration in `ServiceCollectionExtensions.cs`
+---
 
-### Phase 2: Notification Components
-- `NotificationBell.razor` — bell icon with MudBadge, click handler
-- `NotificationPanel.razor` — popover with scope tabs, notification list, infinite scroll
-- `NotificationItem.razor` — individual notification row with icon, text, timestamp
-- CSS isolation files for all three components
+## Remaining Work
 
-### Phase 3: NavMenu Integration
-- Inject `INotificationService` + `NotificationState` in NavMenu
-- Place `NotificationBell` in the `navbar__actions` div (before user dropdown)
-- Load unread count on init
-- Timer-based polling for unread count refresh
+### Phase 10: Wire All Filters End-to-End (After Migration + NSwag Regen)
 
-### Phase 4: HAL Extensions + Deep Linking
-- Add notification HAL resource extensions to `HalResourceExtensions.cs`
-- Notification item click → navigate to entity URL based on EntityType + EntityId
-- Handle scope-specific navigation (org dashboard vs personal vs group)
+- Run migration + regenerate swagger.json + NSwag client
+- Update `INotificationService` + `NotificationService` — add reason/archive/snooze params
+- "Mentions" filter → `notificationReasonId=2` (Mention)
+- Archive/snooze action buttons on NotificationItem
+- "Show archived" / "Show snoozed" toggles
+- Update `NotificationServiceTests` for new params
 
-### Phase 5: Testing
-- Blazor component tests for NotificationBell, NotificationPanel, NotificationItem
-- Service unit tests for NotificationService
+### Future Enhancements
+
+| Enhancement | Description |
+|---|---|
+| Wire settings to UI | Consume NotificationSettingDefinitions in NotificationBell (display density, default scope, poll interval, badge count) |
+| Split-pane inbox | Email-client layout with NotificationDetail component for `/notifications` |
+| Toolbar component | Extract NotificationToolbar from panel header (Inbox label + action icons) |
+| FilterBar component | Extract NotificationFilterBar with reason/archive/snooze filters |
+| Component tests | Render tests for NotificationPanel and Notifications page |
+| Notification preferences page | Wire SettingsNotifications.razor (currently placeholder) |
+| Archive/snooze UX | Swipe-to-archive, snooze picker, visual indicators for archived/snoozed items |
+
+---
 
 ## Risk Assessment
 
-### High Risk
-- **NSwag regeneration may fail** if API doesn't start properly or swagger.json format changes. Mitigation: Manual swagger.json export if needed.
-- **HAL wrapper complexity**: Notification endpoints may generate HAL-wrapped types. Mitigation: Follow existing `HalResourceExtensions` pattern.
-
 ### Medium Risk
-- **Popover positioning on mobile**: Custom navbar dropdown + MudBlazor popover may clash. Mitigation: Use the same custom dropdown pattern as user menu.
-- **Polling performance**: 60s timer on every authenticated page. Mitigation: Only poll when user is authenticated; cancel timer on dispose.
+- **Setting consumption timing**: `IHierarchicalSettingsResolver` needs server-side access. In InteractiveAuto, first render may be WASM where resolver isn't available. Mitigation: Default to standard values, resolve on server prerender.
+- **Split layout responsive**: If split-pane is added later, email-client layout needs careful mobile handling. Mitigation: Use MudGrid responsive breakpoints.
 
 ### Low Risk
-- **Scope tabs UX**: Users may not understand scope filtering initially. Mitigation: Default to "All" tab, clear labels.
+- **Filter state complexity**: Multiple filter dimensions (unread, scope, future reason) compound into complex query state. Mitigation: Centralize filter state in a record if needed.
 
-## Potential Risks & Unknowns
+---
 
-The biggest risk is the NSwag client regeneration step. The notification API endpoints haven't been included in `swagger.json` yet, so the entire Blazor implementation depends on successfully exporting a new OpenAPI spec and regenerating the NSwag client. If the API has build issues or the OpenAPI export service doesn't pick up the new controller, this will block all subsequent work. The second risk is that the notification endpoints may generate HAL-wrapped response types (like `HalCollectionResourceOfNotificationListDto`) rather than plain `PaginatedResult`, which would require new entries in `HalResourceExtensions.cs` — the exact generated types won't be known until NSwag runs.
+## API Endpoints (Backend — 8 Total)
+
+```
+GET    /api/notification?pageNumber&pageSize&isRead&notificationTypeId&notificationScopeId&notificationReasonId&isArchived&isSnoozed
+GET    /api/notification/unread-count?notificationScopeId
+GET    /api/notification/{id}
+PATCH  /api/notification/{id}/read
+POST   /api/notification/read-all
+PATCH  /api/notification/{id}/archive?archive=true
+PATCH  /api/notification/{id}/snooze?snoozedUntil=ISO8601
+DELETE /api/notification/{id}
+```
+
+## Key Files
+
+| File | Purpose |
+|---|---|
+| `Explore.Blazor.Client/Layout/NotificationBell.razor(.cs/.css)` | Bell trigger + popover orchestration |
+| `Explore.Blazor.Client/Layout/NotificationPanel.razor(.cs/.css)` | Popover panel with scope tabs + footer |
+| `Explore.Blazor.Client/Layout/NotificationItem.razor(.cs/.css)` | Notification row component |
+| `Explore.Blazor.Client/Pages/Notifications/Notifications.razor(.cs/.css)` | Inbox page |
+| `Explore.Blazor.Client/Contracts/Services/Notifications/INotificationService.cs` | Service contract |
+| `Explore.Blazor.Client/Services/NotificationService.cs` | Service implementation |
+| `Explore.Blazor.Client/Extensions/ServiceCollectionExtensions.cs` | DI registration |
+| `Explore.Domain/Settings/Definitions/NotificationSettingDefinitions.cs` | 4 notification settings |
+| `Explore.Domain/Settings/SettingRegistry.cs` | Setting definitions registry |
+| `Explore.Domain/NotificationReason.cs` | Lookup entity |
+| `Explore.Domain/Enums/NotificationReasonEnum.cs` | 6 enum values |
+| `Explore.Persistence/Configurations/Entities/NotificationReasonConfiguration.cs` | EF config |
+| `Explore.Application/Features/Notifications/Requests/Commands/ArchiveNotificationCommand.cs` | Archive command |
+| `Explore.Application/Features/Notifications/Requests/Commands/SnoozeNotificationCommand.cs` | Snooze command |
+| `Explore.Application/Features/Notifications/Handlers/Commands/ArchiveNotificationCommandHandler.cs` | Archive handler |
+| `Explore.Application/Features/Notifications/Handlers/Commands/SnoozeNotificationCommandHandler.cs` | Snooze handler |
+| `Explore.Blazor.Client.Tests/Services/NotificationServiceTests.cs` | 25 service tests |
+| `Explore.Blazor/Pages/Settings/Components/SettingsNotifications.razor` | Settings page (placeholder) |

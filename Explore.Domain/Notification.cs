@@ -59,6 +59,15 @@ public class Notification : ITenantEntity, IAuditableEntity, ISoftDeletable
     public Guid? RecipientContextActorId { get; set; }
     public Actor? RecipientContextActor { get; set; }
 
+    [ForeignKey("NotificationReason")]
+    public int? NotificationReasonId { get; set; }
+    public NotificationReason? NotificationReason { get; set; }
+
+    public bool IsArchived { get; set; }
+    public DateTime? ArchivedAt { get; set; }
+
+    public DateTime? SnoozedUntil { get; set; }
+
     [ForeignKey("Tenant")]
     public Guid TenantId { get; set; }
     public required Tenant Tenant { get; set; }

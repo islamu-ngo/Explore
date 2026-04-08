@@ -1,0 +1,506 @@
+// ABOUTME: Unit tests for NotificationService covering all six notification operations.
+// ABOUTME: Tests GetNotifications, GetById, GetUnreadCount, MarkAsRead, MarkAllAsRead, and Delete.
+
+namespace Explore.Blazor.Client.Tests.Services;
+
+/// <summary>
+/// Tests NotificationService across six areas:
+/// 1. GetNotificationsAsync (success, maps fields, empty on API error, empty on general error, null items)
+/// 2. GetNotificationByIdAsync (success, null on 404, null on API error, null on general error)
+/// 3. GetUnreadCountAsync (success, with scope, zero on API error, zero on general error)
+/// 4. MarkAsReadAsync (success, false on API error, false on general error)
+/// 5. MarkAllAsReadAsync (success, false on API error, false on general error)
+/// 6. DeleteAsync (success, false on API error, false on general error)
+/// </summary>
+public class NotificationServiceTests
+{
+    private readonly IEventApiClient _apiClient;
+    private readonly ILogger<NotificationService> _logger;
+    private readonly NotificationService _service;
+
+    public NotificationServiceTests()
+    {
+        _apiClient = Substitute.For<IEventApiClient>();
+        _logger = Substitute.For<ILogger<NotificationService>>();
+        _service = new NotificationService(_apiClient, _logger);
+    }
+
+    // ========== GetNotificationsAsync ==========
+
+    #region GetNotificationsAsync Tests
+
+    [Test]
+    public async Task GetNotificationsAsync_ReturnsPaginatedResult_WhenApiSucceeds()
+    {
+        // Arrange
+        var notifications = new List<NotificationListDto>
+        {
+            new() { Id = Guid.NewGuid(), Title = "Event Updated", IsRead = false },
+            new() { Id = Guid.NewGuid(), Title = "New Registration", IsRead = true }
+        };
+        var response = new PaginatedResultOfNotificationListDto
+        {
+            Items = notifications,
+            PageNumber = 1,
+            PageSize = 20,
+            TotalCount = 2
+        };
+
+        _apiClient.GetNotificationsAsync(
+                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<bool?>(),
+                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(response);
+
+        // Act
+        var result = await _service.GetNotificationsAsync(1, 20);
+
+        // Assert
+        await Assert.That(result.Items.Count).IsEqualTo(2);
+        await Assert.That(result.PageNumber).IsEqualTo(1);
+        await Assert.That(result.PageSize).IsEqualTo(20);
+        await Assert.That(result.TotalCount).IsEqualTo(2);
+    }
+
+    [Test]
+    public async Task GetNotificationsAsync_PassesScopeFilter_WhenProvided()
+    {
+        // Arrange
+        var response = new PaginatedResultOfNotificationListDto
+        {
+            Items = new List<NotificationListDto>(),
+            PageNumber = 1,
+            PageSize = 20,
+            TotalCount = 0
+        };
+
+        _apiClient.GetNotificationsAsync(
+                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<bool?>(),
+                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(response);
+
+        // Act
+        await _service.GetNotificationsAsync(1, 20, isRead: false, notificationScopeId: 2);
+
+        // Assert
+        await _apiClient.Received(1).GetNotificationsAsync(
+            1, 20, false, Arg.Any<int?>(), 2, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task GetNotificationsAsync_ReturnsEmpty_WhenApiThrows()
+    {
+        // Arrange
+        _apiClient.GetNotificationsAsync(
+                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<bool?>(),
+                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(CreateApiException("Server Error", 500));
+
+        // Act
+        var result = await _service.GetNotificationsAsync(1, 20);
+
+        // Assert
+        await Assert.That(result.Items).IsEmpty();
+        await Assert.That(result.TotalCount).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task GetNotificationsAsync_ReturnsEmpty_WhenGeneralExceptionThrown()
+    {
+        // Arrange
+        _apiClient.GetNotificationsAsync(
+                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<bool?>(),
+                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Network failure"));
+
+        // Act
+        var result = await _service.GetNotificationsAsync(1, 20);
+
+        // Assert
+        await Assert.That(result.Items).IsEmpty();
+        await Assert.That(result.TotalCount).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task GetNotificationsAsync_HandlesNullItems_FromApi()
+    {
+        // Arrange
+        var response = new PaginatedResultOfNotificationListDto
+        {
+            Items = null,
+            PageNumber = 1,
+            PageSize = 20,
+            TotalCount = 0
+        };
+
+        _apiClient.GetNotificationsAsync(
+                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<bool?>(),
+                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(response);
+
+        // Act
+        var result = await _service.GetNotificationsAsync(1, 20);
+
+        // Assert
+        await Assert.That(result.Items).IsEmpty();
+    }
+
+    #endregion
+
+    // ========== GetNotificationByIdAsync ==========
+
+    #region GetNotificationByIdAsync Tests
+
+    [Test]
+    public async Task GetNotificationByIdAsync_ReturnsNotification_WhenApiSucceeds()
+    {
+        // Arrange
+        var notificationId = Guid.NewGuid();
+        var notification = new NotificationDto { Id = notificationId, Title = "Test Notification" };
+
+        _apiClient.GetNotificationByIdAsync(notificationId, Arg.Any<CancellationToken>())
+            .Returns(notification);
+
+        // Act
+        var result = await _service.GetNotificationByIdAsync(notificationId);
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Id).IsEqualTo(notificationId);
+    }
+
+    [Test]
+    public async Task GetNotificationByIdAsync_ReturnsNull_WhenNotFound()
+    {
+        // Arrange
+        var notificationId = Guid.NewGuid();
+        _apiClient.GetNotificationByIdAsync(notificationId, Arg.Any<CancellationToken>())
+            .ThrowsAsync(CreateApiException("Not Found", 404));
+
+        // Act
+        var result = await _service.GetNotificationByIdAsync(notificationId);
+
+        // Assert
+        await Assert.That(result).IsNull();
+    }
+
+    [Test]
+    public async Task GetNotificationByIdAsync_ReturnsNull_WhenApiThrows()
+    {
+        // Arrange
+        var notificationId = Guid.NewGuid();
+        _apiClient.GetNotificationByIdAsync(notificationId, Arg.Any<CancellationToken>())
+            .ThrowsAsync(CreateApiException("Server Error", 500));
+
+        // Act
+        var result = await _service.GetNotificationByIdAsync(notificationId);
+
+        // Assert
+        await Assert.That(result).IsNull();
+    }
+
+    [Test]
+    public async Task GetNotificationByIdAsync_ReturnsNull_WhenGeneralExceptionThrown()
+    {
+        // Arrange
+        var notificationId = Guid.NewGuid();
+        _apiClient.GetNotificationByIdAsync(notificationId, Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Network failure"));
+
+        // Act
+        var result = await _service.GetNotificationByIdAsync(notificationId);
+
+        // Assert
+        await Assert.That(result).IsNull();
+    }
+
+    #endregion
+
+    // ========== GetUnreadCountAsync ==========
+
+    #region GetUnreadCountAsync Tests
+
+    [Test]
+    public async Task GetUnreadCountAsync_ReturnsCount_WhenApiSucceeds()
+    {
+        // Arrange
+        var response = new UnreadCountDto { UnreadCount = 5 };
+        _apiClient.GetUnreadNotificationCountAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(response);
+
+        // Act
+        var result = await _service.GetUnreadCountAsync();
+
+        // Assert
+        await Assert.That(result).IsEqualTo(5);
+    }
+
+    [Test]
+    public async Task GetUnreadCountAsync_PassesScopeFilter_WhenProvided()
+    {
+        // Arrange
+        var response = new UnreadCountDto { UnreadCount = 3 };
+        _apiClient.GetUnreadNotificationCountAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(response);
+
+        // Act
+        var result = await _service.GetUnreadCountAsync(notificationScopeId: 2);
+
+        // Assert
+        await _apiClient.Received(1).GetUnreadNotificationCountAsync(2, Arg.Any<CancellationToken>());
+        await Assert.That(result).IsEqualTo(3);
+    }
+
+    [Test]
+    public async Task GetUnreadCountAsync_ReturnsZero_WhenNullUnreadCount()
+    {
+        // Arrange
+        var response = new UnreadCountDto { UnreadCount = null };
+        _apiClient.GetUnreadNotificationCountAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns(response);
+
+        // Act
+        var result = await _service.GetUnreadCountAsync();
+
+        // Assert
+        await Assert.That(result).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task GetUnreadCountAsync_ReturnsZero_WhenApiThrows()
+    {
+        // Arrange
+        _apiClient.GetUnreadNotificationCountAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(CreateApiException("Server Error", 500));
+
+        // Act
+        var result = await _service.GetUnreadCountAsync();
+
+        // Assert
+        await Assert.That(result).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task GetUnreadCountAsync_ReturnsZero_WhenGeneralExceptionThrown()
+    {
+        // Arrange
+        _apiClient.GetUnreadNotificationCountAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Network failure"));
+
+        // Act
+        var result = await _service.GetUnreadCountAsync();
+
+        // Assert
+        await Assert.That(result).IsEqualTo(0);
+    }
+
+    #endregion
+
+    // ========== MarkAsReadAsync ==========
+
+    #region MarkAsReadAsync Tests
+
+    [Test]
+    public async Task MarkAsReadAsync_ReturnsTrue_WhenApiSucceeds()
+    {
+        // Arrange
+        var notificationId = Guid.NewGuid();
+        var response = new BaseCommandResponseOfGuid { Success = true, Id = notificationId };
+        _apiClient.MarkNotificationAsReadAsync(notificationId, Arg.Any<CancellationToken>())
+            .Returns(response);
+
+        // Act
+        var result = await _service.MarkAsReadAsync(notificationId);
+
+        // Assert
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task MarkAsReadAsync_ReturnsFalse_WhenApiReturnsFailure()
+    {
+        // Arrange
+        var notificationId = Guid.NewGuid();
+        var response = new BaseCommandResponseOfGuid { Success = false };
+        _apiClient.MarkNotificationAsReadAsync(notificationId, Arg.Any<CancellationToken>())
+            .Returns(response);
+
+        // Act
+        var result = await _service.MarkAsReadAsync(notificationId);
+
+        // Assert
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task MarkAsReadAsync_ReturnsFalse_WhenNullSuccess()
+    {
+        // Arrange
+        var notificationId = Guid.NewGuid();
+        var response = new BaseCommandResponseOfGuid { Success = null };
+        _apiClient.MarkNotificationAsReadAsync(notificationId, Arg.Any<CancellationToken>())
+            .Returns(response);
+
+        // Act
+        var result = await _service.MarkAsReadAsync(notificationId);
+
+        // Assert
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task MarkAsReadAsync_ReturnsFalse_WhenApiThrows()
+    {
+        // Arrange
+        var notificationId = Guid.NewGuid();
+        _apiClient.MarkNotificationAsReadAsync(notificationId, Arg.Any<CancellationToken>())
+            .ThrowsAsync(CreateApiException("Server Error", 500));
+
+        // Act
+        var result = await _service.MarkAsReadAsync(notificationId);
+
+        // Assert
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task MarkAsReadAsync_ReturnsFalse_WhenGeneralExceptionThrown()
+    {
+        // Arrange
+        var notificationId = Guid.NewGuid();
+        _apiClient.MarkNotificationAsReadAsync(notificationId, Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Network failure"));
+
+        // Act
+        var result = await _service.MarkAsReadAsync(notificationId);
+
+        // Assert
+        await Assert.That(result).IsFalse();
+    }
+
+    #endregion
+
+    // ========== MarkAllAsReadAsync ==========
+
+    #region MarkAllAsReadAsync Tests
+
+    [Test]
+    public async Task MarkAllAsReadAsync_ReturnsTrue_WhenApiSucceeds()
+    {
+        // Arrange
+        var response = new BaseCommandResponseOfGuid { Success = true };
+        _apiClient.MarkAllNotificationsAsReadAsync(Arg.Any<CancellationToken>())
+            .Returns(response);
+
+        // Act
+        var result = await _service.MarkAllAsReadAsync();
+
+        // Assert
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task MarkAllAsReadAsync_ReturnsFalse_WhenApiReturnsFailure()
+    {
+        // Arrange
+        var response = new BaseCommandResponseOfGuid { Success = false };
+        _apiClient.MarkAllNotificationsAsReadAsync(Arg.Any<CancellationToken>())
+            .Returns(response);
+
+        // Act
+        var result = await _service.MarkAllAsReadAsync();
+
+        // Assert
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task MarkAllAsReadAsync_ReturnsFalse_WhenApiThrows()
+    {
+        // Arrange
+        _apiClient.MarkAllNotificationsAsReadAsync(Arg.Any<CancellationToken>())
+            .ThrowsAsync(CreateApiException("Server Error", 500));
+
+        // Act
+        var result = await _service.MarkAllAsReadAsync();
+
+        // Assert
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task MarkAllAsReadAsync_ReturnsFalse_WhenGeneralExceptionThrown()
+    {
+        // Arrange
+        _apiClient.MarkAllNotificationsAsReadAsync(Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Network failure"));
+
+        // Act
+        var result = await _service.MarkAllAsReadAsync();
+
+        // Assert
+        await Assert.That(result).IsFalse();
+    }
+
+    #endregion
+
+    // ========== DeleteAsync ==========
+
+    #region DeleteAsync Tests
+
+    [Test]
+    public async Task DeleteAsync_ReturnsTrue_WhenApiSucceeds()
+    {
+        // Arrange
+        var notificationId = Guid.NewGuid();
+        _apiClient.DeleteNotificationAsync(notificationId, Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _service.DeleteAsync(notificationId);
+
+        // Assert
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task DeleteAsync_ReturnsFalse_WhenApiThrows()
+    {
+        // Arrange
+        var notificationId = Guid.NewGuid();
+        _apiClient.DeleteNotificationAsync(notificationId, Arg.Any<CancellationToken>())
+            .ThrowsAsync(CreateApiException("Server Error", 500));
+
+        // Act
+        var result = await _service.DeleteAsync(notificationId);
+
+        // Assert
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task DeleteAsync_ReturnsFalse_WhenGeneralExceptionThrown()
+    {
+        // Arrange
+        var notificationId = Guid.NewGuid();
+        _apiClient.DeleteNotificationAsync(notificationId, Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Network failure"));
+
+        // Act
+        var result = await _service.DeleteAsync(notificationId);
+
+        // Assert
+        await Assert.That(result).IsFalse();
+    }
+
+    #endregion
+
+    private static ApiException CreateApiException(string message, int statusCode, string response = "")
+    {
+        return new ApiException(
+            message,
+            statusCode,
+            response,
+            new Dictionary<string, IEnumerable<string>>(),
+            new InvalidOperationException(message));
+    }
+}

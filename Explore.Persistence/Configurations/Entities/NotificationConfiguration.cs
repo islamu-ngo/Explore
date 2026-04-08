@@ -56,6 +56,11 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
             .HasForeignKey(e => e.RecipientContextActorId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        builder.HasOne(e => e.NotificationReason)
+            .WithMany()
+            .HasForeignKey(e => e.NotificationReasonId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         // Unread notifications per user (most common query)
         builder.HasIndex(e => new { e.TenantId, e.UserId, e.IsRead, e.CreatedAt })
             .HasDatabaseName("ix_notifications_tenant_user_unread")
@@ -74,5 +79,10 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
         // Scope-based filtering (e.g., "show only org notifications")
         builder.HasIndex(e => new { e.UserId, e.NotificationScopeId, e.IsRead })
             .HasDatabaseName("ix_notifications_user_scope");
+
+        // Archived notifications for inbox filtering
+        builder.HasIndex(e => new { e.UserId, e.IsArchived, e.CreatedAt })
+            .HasDatabaseName("ix_notifications_user_archived")
+            .IsDescending(false, false, true);
     }
 }

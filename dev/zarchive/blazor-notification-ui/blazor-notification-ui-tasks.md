@@ -1,47 +1,124 @@
 # Blazor Notification UI — Task Checklist
 
-> Last Updated: 2026-03-04
+> Last Updated: 2026-04-08
 
-## Phase 0: Prerequisites
+## Phase 0: Prerequisites ✅
 
-- [ ] **0.1** Run API to export swagger.json with notification endpoints
-- [ ] **0.2** Rebuild Blazor client to regenerate NSwag client
-- [ ] **0.3** Verify notification methods exist in EventApiClient.g.cs
+- [x] **0.1** Run API to export swagger.json with notification endpoints
+- [x] **0.2** Rebuild Blazor client to regenerate NSwag client
+- [x] **0.3** Verify notification methods exist in EventApiClient.g.cs
 
-## Phase 1: Service Layer
+## Phase 1: Service Layer ✅
 
-- [ ] **1.1** Create `INotificationService` interface in `Contracts/Services/`
-- [ ] **1.2** Create `NotificationService` implementation wrapping IEventApiClient
-- [ ] **1.3** Register `INotificationService` in `ServiceCollectionExtensions.cs`
-- [ ] **1.4** Add HAL resource extensions for notification types (if HAL-wrapped)
-- [ ] **1.5** Build + verify no errors
+- [x] **1.1** Create `INotificationService` interface in `Contracts/Services/Notifications/`
+- [x] **1.2** Create `NotificationService` implementation wrapping IEventApiClient
+- [x] **1.3** Register `INotificationService` in `ServiceCollectionExtensions.cs`
+- [x] **1.4** HAL extensions — not needed (NSwag handles HAL directly)
 
-## Phase 2: Notification Components
+## Phase 2: Notification Components ✅
 
-- [ ] **2.1** Create `NotificationBell.razor` + `.razor.cs` + `.razor.css`
-- [ ] **2.2** Create `NotificationPanel.razor` + `.razor.cs` + `.razor.css`
-- [ ] **2.3** Create `NotificationItem.razor` + `.razor.cs` + `.razor.css`
-- [ ] **2.4** Build + verify no errors
+- [x] **2.1** Create `NotificationBell.razor` + `.razor.cs` + `.razor.css`
+- [x] **2.2** Create `NotificationPanel.razor` + `.razor.cs` + `.razor.css`
+- [x] **2.3** Create `NotificationItem.razor` + `.razor.cs` + `.razor.css`
+- [x] **2.4** Build verified — 0 errors
 
-## Phase 3: NavMenu Integration
+## Phase 3: NavMenu Integration ✅
 
-- [ ] **3.1** Inject `INotificationService` in NavMenu.razor.cs
-- [ ] **3.2** Add `NotificationBell` component in NavMenu.razor `navbar__actions` div
-- [ ] **3.3** Add CSS for notification bell positioning in NavMenu.razor.css
-- [ ] **3.4** Wire up unread count loading in NavMenu OnInitializedAsync
-- [ ] **3.5** Add 60s polling timer for unread count refresh
-- [ ] **3.6** Build + verify no errors
+- [x] **3.1** Place `<NotificationBell />` in NavMenu `<Authorized>` section
+- [x] **3.2** Bell handles own state (polling, unread count, panel toggle)
+- [x] **3.3** NavMenu has no notification-specific code
 
-## Phase 4: Deep Linking + Polish
+## Phase 4: Deep Linking + Polish ✅
 
-- [ ] **4.1** Implement notification click → navigate to entity URL
-- [ ] **4.2** Add scope filtering tabs in NotificationPanel
-- [ ] **4.3** Add "Mark all as read" button behavior (on panel open)
-- [ ] **4.4** Handle loading states, error states, empty states
-- [ ] **4.5** Build + verify no errors
+- [x] **4.1** Deep linking via `GetEntityUrl()` for event/org/group/eventsession
+- [x] **4.3** Mark-all-read-on-open (YouTube style)
+- [x] **4.4** Loading states + empty states
 
-## Phase 5: Testing
+## Phase 5: Scope Filtering Tabs ✅
 
-- [ ] **5.1** Create Blazor client tests for NotificationService
-- [ ] **5.2** Visual QA with Playwriter (if requested)
-- [ ] **5.3** Update dev-docs
+- [x] **5.1** Add MudToggleGroup to NotificationPanel header (All / Personal / Organization / Group)
+- [x] **5.2** Add `SelectedScope` + `EventCallback<int?> OnScopeChanged` parameters to NotificationPanel
+- [x] **5.3** Add scope state to NotificationBell, pass `_selectedScope` to service calls
+- [x] **5.4** Add `HandleScopeChanged` method — clears list, resets page, reloads with new scope
+- [x] **5.5** Add BEM styles for toolbar section in NotificationPanel.razor.css
+- [x] **5.6** Build verified — 0 errors
+
+## Phase 6+7: Notification Inbox Page + View All ✅
+
+- [x] **6.1** Create `Pages/Notifications/Notifications.razor` + `.razor.cs` + `.razor.css`
+  - Route: `/notifications`, render mode: InteractiveServer, `[Authorize]`
+  - MudContainer MaxWidth.Medium, single-column layout
+  - Header with overline + h4 + "Mark all read" button
+  - Scope tabs toolbar (same MudToggleGroup as popover)
+  - Unread filter toggle (FilterList icon button)
+  - Loading/empty/list states using NotificationItem
+  - Load more footer
+- [x] **6.2** Add "View all notifications" footer to NotificationPanel
+- [x] **6.3** Add `OnViewAll` EventCallback parameter to NotificationPanel
+- [x] **6.4** Wire `HandleViewAll` in NotificationBell (close panel + navigate to /notifications)
+- [x] **6.5** Add footer BEM styles in NotificationPanel.razor.css
+- [x] **6.6** Build verified — 0 errors
+
+## Phase 8: Notification Setting Definitions ✅
+
+- [x] **8.1** Create `NotificationSettingDefinitions.cs` in `Explore.Domain/Settings/Definitions/`
+  - `DisplayDensity`: String, default "comfortable", User scope, allowed ["comfortable", "compact"]
+  - `DefaultScope`: String, default "all", User scope, allowed ["all", "personal", "organization", "group"]
+  - `PollIntervalSeconds`: Integer, default "60", Tenant scope
+  - `MaxBadgeCount`: Integer, default "99", Tenant scope
+- [x] **8.2** Register in `SettingRegistry.cs` — `all.AddRange(NotificationSettingDefinitions.All)`
+- [x] **8.3** Build + tests verified — 0 errors, 606 Blazor tests pass
+
+## Phase 9: Backend Entity Extensions ✅
+
+- [x] **9.1** Add to Notification entity: `IsArchived`, `ArchivedAt`, `SnoozedUntil`, `NotificationReasonId` + `NotificationReason` nav prop
+- [x] **9.2** Create `NotificationReason` lookup entity (Direct=1, Mention=2, Assignment=3, Subscription=4, Membership=5, System=6)
+- [x] **9.3** Create `NotificationReasonEnum.cs` with 6 values
+- [x] **9.4** EF configuration: `NotificationReasonConfiguration.cs`, updated `NotificationConfiguration.cs` (FK + archive index)
+- [x] **9.5** Updated `ExploreDbContext.cs` — added `DbSet<NotificationReason>`
+- [x] **9.6** Updated `LookupTableSeeder.cs` — `SeedNotificationReasonsAsync` with 6 values
+- [x] **9.7** Updated DTOs: `NotificationListDto` + `NotificationDto` — added `NotificationReasonId/Name`, `IsArchived`, `ArchivedAt`, `SnoozedUntil`
+- [x] **9.8** Updated `INotificationRepository` — new filter params + `ArchiveNotification()` + `SnoozeNotification()`
+- [x] **9.9** Updated `NotificationRepository` — new methods, NotificationReason include, archive/snooze/reason filters
+- [x] **9.10** Updated `GetUserNotificationsRequest` + handler — `NotificationReasonId?`, `IsArchived?`, `IsSnoozed?`
+- [x] **9.11** Created `ArchiveNotificationCommand` + `ArchiveNotificationCommandHandler`
+- [x] **9.12** Created `SnoozeNotificationCommand` + `SnoozeNotificationCommandHandler`
+- [x] **9.13** Updated `MappingProfile` — added `NotificationReasonName` mapping
+- [x] **9.14** Updated `NotificationController.GetAll()` — 3 new query params (notificationReasonId, isArchived, isSnoozed)
+- [x] **9.15** Added `PATCH /api/notification/{id}/archive` endpoint
+- [x] **9.16** Added `PATCH /api/notification/{id}/snooze` endpoint
+- [x] **9.17** Updated `RouteNames` — added `ArchiveNotification`, `SnoozeNotification`
+- [x] **9.18** Build: 0 errors. Tests: 1,147 passed (501 App + 40 Arch + 606 Blazor)
+- [ ] **9.19** Migration (user responsibility) — `dotnet ef migrations add AddNotificationReasonAndArchiveSnooze`
+- [ ] **9.20** Regenerate swagger + NSwag client after migration
+
+## Phase 10: Wire All Filters (After Migration + NSwag Regen)
+
+- [ ] **10.1** Run migration + regenerate swagger.json + NSwag client
+- [ ] **10.2** Update `INotificationService` + `NotificationService` — add `notificationReasonId`, `isArchived`, `isSnoozed` params
+- [ ] **10.3** "Mentions" filter → `notificationReasonId=2` (Mention)
+- [ ] **10.4** Filter dropdown items → corresponding reason IDs
+- [ ] **10.5** "Show archived" toggle → `isArchived=true`
+- [ ] **10.6** "Show snoozed" toggle → `isSnoozed=true`
+- [ ] **10.7** Archive/snooze action buttons on NotificationItem
+- [ ] **10.8** Remove "Coming soon" disabled state from all filter items
+- [ ] **10.9** Update `NotificationServiceTests` for new params
+
+## Phase 11: Testing (Partial) ✅
+
+- [x] **11.1** Create `NotificationServiceTests.cs` — 25 tests covering all 6 methods, success + error paths
+- [x] **11.2** All 606 Blazor client tests pass (including 25 new notification tests)
+
+### Remaining Test Work (Future)
+
+- [ ] **11.3** Component render tests for NotificationPanel (scope tab switching)
+- [ ] **11.4** Component render tests for Notifications page (filter toggling)
+- [ ] **11.5** Integration tests if split-pane layout is added later
+
+## Final Verification ✅ (Post Phase 9)
+
+- [x] Build: 0 errors, 2849 warnings (all pre-existing)
+- [x] Application unit tests: 501 passed
+- [x] Architecture tests: 40 passed
+- [x] Blazor client tests: 606 passed
+- [x] Integration tests: pre-existing failures only (Docker/env-specific)

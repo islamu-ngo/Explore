@@ -17,13 +17,15 @@ public class NotificationRepository : GenericRepository<Notification, Guid>, INo
     }
 
     public async Task<(List<Notification> Items, int TotalCount)> GetUserNotificationsPaged(
-        Guid userId, int pageNumber, int pageSize, bool? isRead = null, int? notificationTypeId = null, int? notificationScopeId = null)
+        Guid userId, int pageNumber, int pageSize, bool? isRead = null, int? notificationTypeId = null,
+        int? notificationScopeId = null, int? notificationReasonId = null, bool? isArchived = null, bool? isSnoozed = null)
     {
         var query = _dbContext.Notifications
             .AsNoTracking()
             .Include(n => n.NotificationType)
             .Include(n => n.NotificationEntityType)
             .Include(n => n.NotificationScope)
+            .Include(n => n.NotificationReason)
             .Include(n => n.SourceActor).ThenInclude(a => a!.Pii)
             .Include(n => n.RecipientContextActor).ThenInclude(a => a!.Pii)
             .Where(n => n.UserId == userId);
@@ -36,6 +38,20 @@ public class NotificationRepository : GenericRepository<Notification, Guid>, INo
 
         if (notificationScopeId.HasValue)
             query = query.Where(n => n.NotificationScopeId == notificationScopeId.Value);
+
+        if (notificationReasonId.HasValue)
+            query = query.Where(n => n.NotificationReasonId == notificationReasonId.Value);
+
+        if (isArchived.HasValue)
+            query = query.Where(n => n.IsArchived == isArchived.Value);
+
+        if (isSnoozed.HasValue)
+        {
+            var now = DateTime.UtcNow;
+            query = isSnoozed.Value
+                ? query.Where(n => n.SnoozedUntil != null && n.SnoozedUntil > now)
+                : query.Where(n => n.SnoozedUntil == null || n.SnoozedUntil <= now);
+        }
 
         query = query.OrderByDescending(n => n.CreatedAt);
 
@@ -96,8 +112,36 @@ public class NotificationRepository : GenericRepository<Notification, Guid>, INo
             .Include(n => n.NotificationType)
             .Include(n => n.NotificationEntityType)
             .Include(n => n.NotificationScope)
+            .Include(n => n.NotificationReason)
             .Include(n => n.SourceActor).ThenInclude(a => a!.Pii)
             .Include(n => n.RecipientContextActor).ThenInclude(a => a!.Pii)
             .FirstOrDefaultAsync(n => n.Id == notificationId && n.UserId == userId);
+    }
+
+    public async Task<bool> ArchiveNotification(Guid notificationId, Guid userId, bool archive)
+    {
+        var notification = await _dbContext.Notifications
+            .FirstOrDefaultAsync(n => n.Id == notificationId && n.UserId == userId);
+
+        if (notification == null)
+            return false;
+
+        notification.IsArchived = archive;
+        notification.ArchivedAt = archive ? DateTime.UtcNow : null;
+        await _dbContext.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> SnoozeNotification(Guid notificationId, Guid userId, DateTime? snoozedUntil)
+    {
+        var notification = await _dbContext.Notifications
+            .FirstOrDefaultAsync(n => n.Id == notificationId && n.UserId == userId);
+
+        if (notification == null)
+            return false;
+
+        notification.SnoozedUntil = snoozedUntil;
+        await _dbContext.SaveChangesAsync();
+        return true;
     }
 }

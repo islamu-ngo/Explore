@@ -39,6 +39,7 @@ public static class SettingRegistry
         all.AddRange(TenantDelegationSettingDefinitions.All);
         all.AddRange(FooterSettingDefinitions.All);
         all.AddRange(EventListSettingDefinitions.All);
+        all.AddRange(NotificationSettingDefinitions.All);
 
         DefinitionsByKey = all.ToFrozenDictionary(d => d.Key);
         ByCategory = all

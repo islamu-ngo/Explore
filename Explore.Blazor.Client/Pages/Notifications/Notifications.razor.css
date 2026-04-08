@@ -1,0 +1,58 @@
+/* ABOUTME: Scoped CSS for Notifications inbox page — full-page notification layout. */
+/* ABOUTME: BEM block: notification-inbox. Surface card with border, rounded corners. */
+
+.notification-inbox {
+    background: var(--mud-palette-surface);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.notification-inbox__toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+    flex-wrap: wrap;
+}
+
+.notification-inbox__body {
+    min-height: 200px;
+}
+
+.notification-inbox__list {
+    display: flex;
+    flex-direction: column;
+}
+
+.notification-inbox__loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 64px 16px;
+}
+
+.notification-inbox__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 64px 16px;
+    gap: 8px;
+}
+
+.notification-inbox__load-more {
+    display: flex;
+    justify-content: center;
+    padding: 12px 16px;
+    border-top: 1px solid var(--mud-palette-lines-default);
+}
+
+@media (max-width: 600px) {
+    .notification-inbox__toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}

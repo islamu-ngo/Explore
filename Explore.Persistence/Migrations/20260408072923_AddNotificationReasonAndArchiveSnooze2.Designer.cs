@@ -3,6 +3,7 @@ using System;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Explore.Persistence.Migrations
 {
     [DbContext(typeof(ExploreDbContext))]
-    partial class ExploreDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260408072923_AddNotificationReasonAndArchiveSnooze2")]
+    partial class AddNotificationReasonAndArchiveSnooze2
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -42,10 +45,6 @@ namespace Explore.Persistence.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("background_effect");
-
-                    b.Property<Guid?>("BackgroundImageId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("background_image_id");
 
                     b.Property<string>("BannerColor")
                         .HasMaxLength(50)
@@ -132,9 +131,6 @@ namespace Explore.Persistence.Migrations
 
                     b.HasIndex("ActorTypeId")
                         .HasDatabaseName("ix_actors_actor_type_id");
-
-                    b.HasIndex("BackgroundImageId")
-                        .HasDatabaseName("ix_actors_background_image_id");
 
                     b.HasIndex("BannerPictureId")
                         .HasDatabaseName("ix_actors_banner_picture_id");
@@ -2712,560 +2708,6 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("event_session_agenda_items", (string)null);
                 });
 
-            modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyDefinition", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("AllowedUrlSchemes")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("allowed_url_schemes");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by");
-
-                    b.Property<bool?>("DefaultBooleanValue")
-                        .HasColumnType("boolean")
-                        .HasColumnName("default_boolean_value");
-
-                    b.Property<DateTimeOffset?>("DefaultDateTimeValue")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("default_date_time_value");
-
-                    b.Property<decimal?>("DefaultNumberValue")
-                        .HasPrecision(19, 4)
-                        .HasColumnType("numeric(19,4)")
-                        .HasColumnName("default_number_value");
-
-                    b.Property<Guid?>("DefaultOptionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("default_option_id");
-
-                    b.Property<string>("DefaultTextValue")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("default_text_value");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deleted_at");
-
-                    b.Property<Guid?>("DeletedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("deleted_by");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("description");
-
-                    b.Property<string>("DisplayName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("display_name");
-
-                    b.Property<Guid>("EventSessionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("event_session_id");
-
-                    b.Property<string>("ExposureLevel")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("exposure_level");
-
-                    b.Property<DateTimeOffset>("InstantiatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("instantiated_at");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_active");
-
-                    b.Property<bool>("IsAnalyticsRelevant")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_analytics_relevant");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<bool>("IsExportable")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_exportable");
-
-                    b.Property<bool>("IsFilterable")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_filterable");
-
-                    b.Property<bool>("IsModerationRelevant")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_moderation_relevant");
-
-                    b.Property<bool>("IsMulti")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_multi");
-
-                    b.Property<bool>("IsRequired")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_required");
-
-                    b.Property<bool>("IsSearchable")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_searchable");
-
-                    b.Property<bool>("IsSystemOwned")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_system_owned");
-
-                    b.Property<string>("Key")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("key");
-
-                    b.Property<DateTimeOffset?>("LastSyncedFromTemplateAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_synced_from_template_at");
-
-                    b.Property<DateTimeOffset?>("MaxDateTime")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("max_date_time");
-
-                    b.Property<int?>("MaxLength")
-                        .HasColumnType("integer")
-                        .HasColumnName("max_length");
-
-                    b.Property<decimal?>("MaxNumber")
-                        .HasPrecision(19, 4)
-                        .HasColumnType("numeric(19,4)")
-                        .HasColumnName("max_number");
-
-                    b.Property<DateTimeOffset?>("MinDateTime")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("min_date_time");
-
-                    b.Property<int?>("MinLength")
-                        .HasColumnType("integer")
-                        .HasColumnName("min_length");
-
-                    b.Property<decimal?>("MinNumber")
-                        .HasPrecision(19, 4)
-                        .HasColumnType("numeric(19,4)")
-                        .HasColumnName("min_number");
-
-                    b.Property<string>("Namespace")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("namespace");
-
-                    b.Property<string>("PropertyType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("property_type");
-
-                    b.Property<string>("RegexPattern")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("regex_pattern");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("integer")
-                        .HasColumnName("sort_order");
-
-                    b.Property<Guid?>("SourceTemplateDefinitionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("source_template_definition_id");
-
-                    b.Property<Guid?>("SourceTemplateId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("source_template_id");
-
-                    b.Property<string>("SourceTemplateKey")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("source_template_key");
-
-                    b.Property<int?>("SourceTemplateVersion")
-                        .HasColumnType("integer")
-                        .HasColumnName("source_template_version");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tenant_id");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("updated_by");
-
-                    b.HasKey("Id")
-                        .HasName("pk_event_session_custom_property_definitions");
-
-                    b.HasIndex("DefaultOptionId")
-                        .HasDatabaseName("ix_event_session_custom_property_definitions_default_option_id");
-
-                    b.HasIndex("SourceTemplateId")
-                        .HasDatabaseName("ix_event_session_custom_property_definitions_source_template_id");
-
-                    b.HasIndex("EventSessionId", "Namespace", "Key")
-                        .IsUnique()
-                        .HasDatabaseName("ix_escpd_session_namespace_key");
-
-                    b.HasIndex("TenantId", "EventSessionId", "IsSearchable", "IsFilterable")
-                        .HasDatabaseName("ix_escpd_tenant_session_search_filter");
-
-                    b.ToTable("event_session_custom_property_definitions", (string)null);
-                });
-
-            modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyOption", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deleted_at");
-
-                    b.Property<Guid?>("DeletedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("deleted_by");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("description");
-
-                    b.Property<string>("DisplayName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("display_name");
-
-                    b.Property<Guid>("EventSessionCustomPropertyDefinitionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("event_session_custom_property_definition_id");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_active");
-
-                    b.Property<bool>("IsDefault")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_default");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<string>("Key")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("key");
-
-                    b.Property<string>("Namespace")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("namespace");
-
-                    b.Property<Guid?>("ParentOptionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("parent_option_id");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("integer")
-                        .HasColumnName("sort_order");
-
-                    b.Property<Guid?>("SourceTemplateOptionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("source_template_option_id");
-
-                    b.Property<int?>("SourceTemplateVersion")
-                        .HasColumnType("integer")
-                        .HasColumnName("source_template_version");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("updated_by");
-
-                    b.Property<string>("Value")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("value");
-
-                    b.HasKey("Id")
-                        .HasName("pk_event_session_custom_property_options");
-
-                    b.HasIndex("ParentOptionId")
-                        .HasDatabaseName("ix_event_session_custom_property_options_parent_option_id");
-
-                    b.HasIndex("EventSessionCustomPropertyDefinitionId", "SortOrder")
-                        .HasDatabaseName("ix_escpo_definition_sort");
-
-                    b.HasIndex("EventSessionCustomPropertyDefinitionId", "Namespace", "Key")
-                        .IsUnique()
-                        .HasDatabaseName("ix_escpo_definition_namespace_key");
-
-                    b.ToTable("event_session_custom_property_options", (string)null);
-                });
-
-            modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyProjection", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<bool?>("BooleanValue")
-                        .HasColumnType("boolean")
-                        .HasColumnName("boolean_value");
-
-                    b.Property<DateTimeOffset?>("DateTimeValue")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("date_time_value");
-
-                    b.Property<Guid>("EventSessionCustomPropertyDefinitionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("event_session_custom_property_definition_id");
-
-                    b.Property<Guid>("EventSessionCustomPropertyValueId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("event_session_custom_property_value_id");
-
-                    b.Property<Guid>("EventSessionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("event_session_id");
-
-                    b.Property<string>("ExposureLevel")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("exposure_level");
-
-                    b.Property<bool>("IsAnalyticsRelevant")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_analytics_relevant");
-
-                    b.Property<bool>("IsExportable")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_exportable");
-
-                    b.Property<bool>("IsFilterable")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_filterable");
-
-                    b.Property<bool>("IsModerationRelevant")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_moderation_relevant");
-
-                    b.Property<bool>("IsSearchable")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_searchable");
-
-                    b.Property<string>("Key")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("key");
-
-                    b.Property<string>("Namespace")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("namespace");
-
-                    b.Property<string>("NormalizedValue")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)")
-                        .HasColumnName("normalized_value");
-
-                    b.Property<decimal?>("NumberValue")
-                        .HasPrecision(19, 4)
-                        .HasColumnType("numeric(19,4)")
-                        .HasColumnName("number_value");
-
-                    b.Property<Guid?>("OptionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("option_id");
-
-                    b.Property<int>("Ordinal")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0)
-                        .HasColumnName("ordinal");
-
-                    b.Property<string>("PropertyType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("property_type");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tenant_id");
-
-                    b.Property<string>("TextValue")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)")
-                        .HasColumnName("text_value");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("Id")
-                        .HasName("pk_event_session_custom_property_projections");
-
-                    b.HasIndex("EventSessionCustomPropertyDefinitionId")
-                        .HasDatabaseName("ix_event_session_custom_property_projections_event_session_cus");
-
-                    b.HasIndex("EventSessionCustomPropertyValueId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_escpp_value");
-
-                    b.HasIndex("EventSessionId")
-                        .HasDatabaseName("ix_event_session_custom_property_projections_event_session_id");
-
-                    b.HasIndex("OptionId")
-                        .HasDatabaseName("ix_event_session_custom_property_projections_option_id");
-
-                    b.HasIndex("TenantId", "ExposureLevel")
-                        .HasDatabaseName("ix_escpp_tenant_exposure");
-
-                    b.HasIndex("TenantId", "Namespace", "Key", "NormalizedValue")
-                        .HasDatabaseName("ix_escpp_tenant_namespace_key_normalized");
-
-                    b.HasIndex("TenantId", "EventSessionId", "Namespace", "Key", "Ordinal")
-                        .HasDatabaseName("ix_escpp_tenant_session_namespace_key_ordinal");
-
-                    b.ToTable("event_session_custom_property_projections", (string)null);
-                });
-
-            modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyValue", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<bool?>("BooleanValue")
-                        .HasColumnType("boolean")
-                        .HasColumnName("boolean_value");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by");
-
-                    b.Property<DateTimeOffset?>("DateTimeValue")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("date_time_value");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deleted_at");
-
-                    b.Property<Guid?>("DeletedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("deleted_by");
-
-                    b.Property<Guid>("EventSessionCustomPropertyDefinitionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("event_session_custom_property_definition_id");
-
-                    b.Property<Guid>("EventSessionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("event_session_id");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<decimal?>("NumberValue")
-                        .HasPrecision(19, 4)
-                        .HasColumnType("numeric(19,4)")
-                        .HasColumnName("number_value");
-
-                    b.Property<Guid?>("OptionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("option_id");
-
-                    b.Property<int>("Ordinal")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0)
-                        .HasColumnName("ordinal");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tenant_id");
-
-                    b.Property<string>("TextValue")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)")
-                        .HasColumnName("text_value");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("updated_by");
-
-                    b.HasKey("Id")
-                        .HasName("pk_event_session_custom_property_values");
-
-                    b.HasIndex("EventSessionId")
-                        .HasDatabaseName("ix_event_session_custom_property_values_event_session_id");
-
-                    b.HasIndex("OptionId")
-                        .HasDatabaseName("ix_event_session_custom_property_values_option_id");
-
-                    b.HasIndex("TenantId", "EventSessionId")
-                        .HasDatabaseName("ix_escpv_tenant_session");
-
-                    b.HasIndex("EventSessionCustomPropertyDefinitionId", "EventSessionId", "Ordinal")
-                        .IsUnique()
-                        .HasDatabaseName("ix_escpv_definition_session_ordinal");
-
-                    b.ToTable("event_session_custom_property_values", (string)null);
-                });
-
             modelBuilder.Entity("Explore.Domain.EventSessionIslamicAspect", b =>
                 {
                     b.Property<Guid>("EventSessionId")
@@ -3374,387 +2816,6 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_event_session_speakers_tenant_id");
 
                     b.ToTable("event_session_speakers", (string)null);
-                });
-
-            modelBuilder.Entity("Explore.Domain.EventSessionTemplate", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deleted_at");
-
-                    b.Property<Guid?>("DeletedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("deleted_by");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("description");
-
-                    b.Property<string>("DisplayName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("display_name");
-
-                    b.Property<Guid>("EventTemplateId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("event_template_id");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_active");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<bool>("IsPublished")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_published");
-
-                    b.Property<string>("SessionTemplateKey")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("session_template_key");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("integer")
-                        .HasColumnName("sort_order");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tenant_id");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("updated_by");
-
-                    b.Property<int>("Version")
-                        .HasColumnType("integer")
-                        .HasColumnName("version");
-
-                    b.HasKey("Id")
-                        .HasName("pk_event_session_templates");
-
-                    b.HasIndex("EventTemplateId", "SessionTemplateKey", "Version")
-                        .IsUnique()
-                        .HasDatabaseName("ix_est_template_key_version");
-
-                    b.HasIndex("TenantId", "IsPublished", "IsActive")
-                        .HasDatabaseName("ix_est_tenant_published_active");
-
-                    b.ToTable("event_session_templates", (string)null);
-                });
-
-            modelBuilder.Entity("Explore.Domain.EventSessionTemplateCustomPropertyDefinition", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("AllowedUrlSchemes")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("allowed_url_schemes");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by");
-
-                    b.Property<bool?>("DefaultBooleanValue")
-                        .HasColumnType("boolean")
-                        .HasColumnName("default_boolean_value");
-
-                    b.Property<DateTimeOffset?>("DefaultDateTimeValue")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("default_date_time_value");
-
-                    b.Property<decimal?>("DefaultNumberValue")
-                        .HasPrecision(19, 4)
-                        .HasColumnType("numeric(19,4)")
-                        .HasColumnName("default_number_value");
-
-                    b.Property<Guid?>("DefaultOptionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("default_option_id");
-
-                    b.Property<string>("DefaultTextValue")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("default_text_value");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deleted_at");
-
-                    b.Property<Guid?>("DeletedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("deleted_by");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("description");
-
-                    b.Property<string>("DisplayName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("display_name");
-
-                    b.Property<Guid>("EventSessionTemplateId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("event_session_template_id");
-
-                    b.Property<string>("ExposureLevel")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("exposure_level");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_active");
-
-                    b.Property<bool>("IsAnalyticsRelevant")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_analytics_relevant");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<bool>("IsExportable")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_exportable");
-
-                    b.Property<bool>("IsFilterable")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_filterable");
-
-                    b.Property<bool>("IsModerationRelevant")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_moderation_relevant");
-
-                    b.Property<bool>("IsMulti")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_multi");
-
-                    b.Property<bool>("IsRequired")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_required");
-
-                    b.Property<bool>("IsSearchable")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_searchable");
-
-                    b.Property<bool>("IsSystemOwned")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_system_owned");
-
-                    b.Property<string>("Key")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("key");
-
-                    b.Property<DateTimeOffset?>("MaxDateTime")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("max_date_time");
-
-                    b.Property<int?>("MaxLength")
-                        .HasColumnType("integer")
-                        .HasColumnName("max_length");
-
-                    b.Property<decimal?>("MaxNumber")
-                        .HasPrecision(19, 4)
-                        .HasColumnType("numeric(19,4)")
-                        .HasColumnName("max_number");
-
-                    b.Property<DateTimeOffset?>("MinDateTime")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("min_date_time");
-
-                    b.Property<int?>("MinLength")
-                        .HasColumnType("integer")
-                        .HasColumnName("min_length");
-
-                    b.Property<decimal?>("MinNumber")
-                        .HasPrecision(19, 4)
-                        .HasColumnType("numeric(19,4)")
-                        .HasColumnName("min_number");
-
-                    b.Property<string>("Namespace")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("namespace");
-
-                    b.Property<string>("PropertyType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("property_type");
-
-                    b.Property<string>("RegexPattern")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("regex_pattern");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("integer")
-                        .HasColumnName("sort_order");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tenant_id");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("updated_by");
-
-                    b.HasKey("Id")
-                        .HasName("pk_event_session_template_custom_property_definitions");
-
-                    b.HasIndex("DefaultOptionId")
-                        .HasDatabaseName("ix_event_session_template_custom_property_definitions_default_");
-
-                    b.HasIndex("EventSessionTemplateId", "Namespace", "Key")
-                        .IsUnique()
-                        .HasDatabaseName("ix_estcpd_template_namespace_key");
-
-                    b.HasIndex("TenantId", "IsSearchable", "IsFilterable")
-                        .HasDatabaseName("ix_estcpd_tenant_search_filter");
-
-                    b.ToTable("event_session_template_custom_property_definitions", (string)null);
-                });
-
-            modelBuilder.Entity("Explore.Domain.EventSessionTemplateCustomPropertyOption", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deleted_at");
-
-                    b.Property<Guid?>("DeletedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("deleted_by");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("description");
-
-                    b.Property<string>("DisplayName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("display_name");
-
-                    b.Property<Guid>("EventSessionTemplateCustomPropertyDefinitionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("event_session_template_custom_property_definition_id");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_active");
-
-                    b.Property<bool>("IsDefault")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_default");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
-
-                    b.Property<string>("Key")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("key");
-
-                    b.Property<string>("Namespace")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("namespace");
-
-                    b.Property<Guid?>("ParentOptionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("parent_option_id");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("integer")
-                        .HasColumnName("sort_order");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("updated_by");
-
-                    b.Property<string>("Value")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("value");
-
-                    b.HasKey("Id")
-                        .HasName("pk_event_session_template_custom_property_options");
-
-                    b.HasIndex("ParentOptionId")
-                        .HasDatabaseName("ix_event_session_template_custom_property_options_parent_optio");
-
-                    b.HasIndex("EventSessionTemplateCustomPropertyDefinitionId", "SortOrder")
-                        .HasDatabaseName("ix_estcpo_definition_sort");
-
-                    b.HasIndex("EventSessionTemplateCustomPropertyDefinitionId", "Namespace", "Key")
-                        .IsUnique()
-                        .HasDatabaseName("ix_estcpo_definition_namespace_key");
-
-                    b.ToTable("event_session_template_custom_property_options", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventStatus", b =>
@@ -4340,30 +3401,9 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
-                    b.Property<int?>("CreditLimit")
-                        .HasColumnType("integer")
-                        .HasColumnName("credit_limit");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("description");
-
                     b.Property<DateTime?>("ExpiresAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
-
-                    b.Property<int>("ExternalApiKeyCreditPeriodId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(1)
-                        .HasColumnName("external_api_key_credit_period_id");
-
-                    b.Property<int>("ExternalApiKeyStatusId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(1)
-                        .HasColumnName("external_api_key_status_id");
 
                     b.Property<string>("KeyId")
                         .IsRequired()
@@ -4379,10 +3419,6 @@ namespace Explore.Persistence.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
                         .HasColumnName("last_used_ip");
-
-                    b.Property<int?>("MaxRolloverCredits")
-                        .HasColumnType("integer")
-                        .HasColumnName("max_rollover_credits");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -4410,7 +3446,13 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("secret_hash");
 
-                    b.Property<Guid?>("TenantId")
+                    b.Property<int>("Status")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
 
@@ -4425,146 +3467,17 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_external_api_keys");
 
-                    b.HasIndex("ExternalApiKeyCreditPeriodId")
-                        .HasDatabaseName("ix_external_api_keys_external_api_key_credit_period_id");
-
-                    b.HasIndex("ExternalApiKeyStatusId")
-                        .HasDatabaseName("ix_external_api_keys_external_api_key_status_id");
-
                     b.HasIndex("KeyId")
                         .IsUnique()
                         .HasDatabaseName("ix_external_api_keys_key_id");
 
-                    b.HasIndex("TenantId", "ExternalApiKeyStatusId")
-                        .HasDatabaseName("ix_external_api_keys_tenant_id_external_api_key_status_id");
+                    b.HasIndex("TenantId", "Status")
+                        .HasDatabaseName("ix_external_api_keys_tenant_id_status");
 
                     b.HasIndex("TenantId", "OwnerType", "OwnerId")
                         .HasDatabaseName("ix_external_api_keys_tenant_id_owner_type_owner_id");
 
                     b.ToTable("external_api_keys", (string)null);
-                });
-
-            modelBuilder.Entity("Explore.Domain.ExternalApiKeyCreditPeriod", b =>
-                {
-                    b.Property<int>("Id")
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("description");
-
-                    b.Property<string>("FullName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("full_name");
-
-                    b.Property<string>("MasterCode")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("master_code");
-
-                    b.HasKey("Id")
-                        .HasName("pk_external_api_key_credit_periods");
-
-                    b.ToTable("external_api_key_credit_periods", (string)null);
-                });
-
-            modelBuilder.Entity("Explore.Domain.ExternalApiKeyQuota", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by");
-
-                    b.Property<int>("CreditLimit")
-                        .HasColumnType("integer")
-                        .HasColumnName("credit_limit");
-
-                    b.Property<int>("CreditsUsed")
-                        .HasColumnType("integer")
-                        .HasColumnName("credits_used");
-
-                    b.Property<Guid>("ExternalApiKeyId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("external_api_key_id");
-
-                    b.Property<DateOnly>("PeriodEnd")
-                        .HasColumnType("date")
-                        .HasColumnName("period_end");
-
-                    b.Property<DateOnly>("PeriodStart")
-                        .HasColumnType("date")
-                        .HasColumnName("period_start");
-
-                    b.Property<long>("RequestCount")
-                        .HasColumnType("bigint")
-                        .HasColumnName("request_count");
-
-                    b.Property<int>("RolloverCredits")
-                        .HasColumnType("integer")
-                        .HasColumnName("rollover_credits");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("updated_by");
-
-                    b.HasKey("Id")
-                        .HasName("pk_external_api_key_quotas");
-
-                    b.HasIndex("ExternalApiKeyId", "PeriodStart")
-                        .IsUnique()
-                        .HasDatabaseName("ix_external_api_key_quotas_external_api_key_id_period_start");
-
-                    b.ToTable("external_api_key_quotas", (string)null);
-                });
-
-            modelBuilder.Entity("Explore.Domain.ExternalApiKeyStatus", b =>
-                {
-                    b.Property<int>("Id")
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("description");
-
-                    b.Property<string>("FullName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("full_name");
-
-                    b.Property<bool>("IsUsable")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_usable");
-
-                    b.Property<string>("MasterCode")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("master_code");
-
-                    b.HasKey("Id")
-                        .HasName("pk_external_api_key_statuses");
-
-                    b.ToTable("external_api_key_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.Federation.PdsSyncOutbox", b =>
@@ -4953,63 +3866,6 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_group_setting_overrides_group_id_setting_key");
 
                     b.ToTable("group_setting_overrides", (string)null);
-                });
-
-            modelBuilder.Entity("Explore.Domain.IdempotencyRecord", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
-
-                    b.Property<string>("ContentType")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
-                        .HasColumnName("content_type");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("expires_at");
-
-                    b.Property<string>("Key")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
-                        .HasColumnName("key");
-
-                    b.Property<string>("ResponseBody")
-                        .HasColumnType("text")
-                        .HasColumnName("response_body");
-
-                    b.Property<int>("StatusCode")
-                        .HasColumnType("integer")
-                        .HasColumnName("status_code");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tenant_id");
-
-                    b.Property<string>("UserId")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_idempotency_records");
-
-                    b.HasIndex("ExpiresAt")
-                        .HasDatabaseName("IX_IdempotencyRecords_ExpiresAt");
-
-                    b.HasIndex("Key", "TenantId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_IdempotencyRecords_Key_TenantId");
-
-                    b.ToTable("idempotency_records", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.IndexedDid", b =>
@@ -5983,84 +4839,6 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("organization_setting_overrides", (string)null);
                 });
 
-            modelBuilder.Entity("Explore.Domain.OutboxMessage", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
-
-                    b.Property<Guid>("AggregateId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("aggregate_id");
-
-                    b.Property<string>("AggregateType")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("aggregate_type");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<DateTime?>("DeadLetteredAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("dead_lettered_at");
-
-                    b.Property<string>("EventType")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("event_type");
-
-                    b.Property<string>("LastError")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)")
-                        .HasColumnName("last_error");
-
-                    b.Property<int>("MaxRetries")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(10)
-                        .HasColumnName("max_retries");
-
-                    b.Property<DateTime?>("NextRetryAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("next_retry_at");
-
-                    b.Property<string>("Payload")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("payload");
-
-                    b.Property<DateTime?>("ProcessedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("processed_at");
-
-                    b.Property<int>("RetryCount")
-                        .HasColumnType("integer")
-                        .HasColumnName("retry_count");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer")
-                        .HasColumnName("status");
-
-                    b.HasKey("Id")
-                        .HasName("pk_outbox_messages");
-
-                    b.HasIndex("AggregateType", "AggregateId")
-                        .HasDatabaseName("IX_OutboxMessages_Aggregate");
-
-                    b.HasIndex("Status", "NextRetryAt", "CreatedAt")
-                        .HasDatabaseName("IX_OutboxMessages_WorkerPoll");
-
-                    b.HasIndex("AggregateType", "AggregateId", "EventType", "CreatedAt")
-                        .HasDatabaseName("IX_OutboxMessages_Dedup");
-
-                    b.ToTable("outbox_messages", (string)null);
-                });
-
             modelBuilder.Entity("Explore.Domain.OwnerType", b =>
                 {
                     b.Property<int>("Id")
@@ -6866,129 +5644,6 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("tenants", (string)null);
                 });
 
-            modelBuilder.Entity("Explore.Domain.TenantFooterLink", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by");
-
-                    b.Property<Guid>("FooterLinkGroupId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("footer_link_group_id");
-
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true)
-                        .HasColumnName("is_active");
-
-                    b.Property<string>("Label")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("label");
-
-                    b.Property<bool>("OpenInNewTab")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("open_in_new_tab");
-
-                    b.Property<int>("Order")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0)
-                        .HasColumnName("order");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("updated_by");
-
-                    b.Property<string>("Url")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("url");
-
-                    b.HasKey("Id")
-                        .HasName("pk_tenant_footer_links");
-
-                    b.HasIndex("FooterLinkGroupId", "Order")
-                        .HasDatabaseName("ix_tenant_footer_links_footer_link_group_id_order");
-
-                    b.ToTable("tenant_footer_links", (string)null);
-                });
-
-            modelBuilder.Entity("Explore.Domain.TenantFooterLinkGroup", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by");
-
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true)
-                        .HasColumnName("is_active");
-
-                    b.Property<int>("Order")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0)
-                        .HasColumnName("order");
-
-                    b.Property<Guid?>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tenant_id");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("title");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("updated_by");
-
-                    b.HasKey("Id")
-                        .HasName("pk_tenant_footer_link_groups");
-
-                    b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_tenant_footer_link_groups_tenant_id");
-
-                    b.HasIndex("TenantId", "Order")
-                        .HasDatabaseName("ix_tenant_footer_link_groups_tenant_id_order");
-
-                    b.ToTable("tenant_footer_link_groups", (string)null);
-                });
-
             modelBuilder.Entity("Explore.Domain.TenantInvitation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -7213,22 +5868,6 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deleted_at");
-
-                    b.Property<Guid?>("DeletedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("deleted_by");
-
                     b.Property<string>("Icon")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
@@ -7239,10 +5878,6 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(true)
                         .HasColumnName("is_active");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_deleted");
 
                     b.Property<string>("Label")
                         .IsRequired()
@@ -7265,14 +5900,6 @@ namespace Explore.Persistence.Migrations
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("updated_by");
 
                     b.Property<string>("Url")
                         .IsRequired()
@@ -7365,12 +5992,6 @@ namespace Explore.Persistence.Migrations
                     b.Property<Guid?>("CreatedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
-
-                    b.Property<bool>("IsLocked")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("is_locked");
 
                     b.Property<string>("SettingKey")
                         .IsRequired()
@@ -7495,103 +6116,6 @@ namespace Explore.Persistence.Migrations
                         .HasName("pk_tenant_statuses");
 
                     b.ToTable("tenant_statuses", (string)null);
-                });
-
-            modelBuilder.Entity("Explore.Domain.UiTheme", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("uuidv7()");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("description");
-
-                    b.Property<string>("DisplayName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("display_name");
-
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true)
-                        .HasColumnName("is_active");
-
-                    b.Property<bool>("IsDefault")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("is_default");
-
-                    b.Property<uint>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("xid")
-                        .HasColumnName("xmin");
-
-                    b.Property<int>("SortOrder")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0)
-                        .HasColumnName("sort_order");
-
-                    b.Property<Guid?>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tenant_id");
-
-                    b.Property<string>("ThemeKey")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
-                        .HasColumnName("theme_key");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("updated_by");
-
-                    b.HasKey("Id")
-                        .HasName("pk_ui_themes");
-
-                    b.HasIndex("IsDefault")
-                        .IsUnique()
-                        .HasDatabaseName("ix_ui_themes_is_default")
-                        .HasFilter("tenant_id IS NULL AND is_default = true");
-
-                    b.HasIndex("ThemeKey")
-                        .IsUnique()
-                        .HasDatabaseName("ix_ui_themes_theme_key")
-                        .HasFilter("tenant_id IS NULL");
-
-                    b.HasIndex("TenantId", "IsDefault")
-                        .IsUnique()
-                        .HasDatabaseName("ix_ui_themes_tenant_id_is_default")
-                        .HasFilter("tenant_id IS NOT NULL AND is_default = true");
-
-                    b.HasIndex("TenantId", "ThemeKey")
-                        .IsUnique()
-                        .HasDatabaseName("ix_ui_themes_tenant_id_theme_key")
-                        .HasFilter("tenant_id IS NOT NULL");
-
-                    b.ToTable("ui_themes", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.User", b =>
@@ -7922,12 +6446,6 @@ namespace Explore.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_actors_actor_types_actor_type_id");
 
-                    b.HasOne("Explore.Domain.StorageObject", "BackgroundImage")
-                        .WithMany()
-                        .HasForeignKey("BackgroundImageId")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_actors_storage_objects_background_image_id");
-
                     b.HasOne("Explore.Domain.StorageObject", "BannerPicture")
                         .WithMany()
                         .HasForeignKey("BannerPictureId")
@@ -7972,8 +6490,6 @@ namespace Explore.Persistence.Migrations
                         .HasConstraintName("fk_actors_users_user_id");
 
                     b.Navigation("ActorType");
-
-                    b.Navigation("BackgroundImage");
 
                     b.Navigation("BannerPicture");
 
@@ -8716,148 +7232,6 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Tenant");
                 });
 
-            modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyDefinition", b =>
-                {
-                    b.HasOne("Explore.Domain.EventSessionCustomPropertyOption", "DefaultOption")
-                        .WithMany()
-                        .HasForeignKey("DefaultOptionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_event_session_custom_property_definitions_event_session_cus");
-
-                    b.HasOne("Explore.Domain.EventSession", "EventSession")
-                        .WithMany()
-                        .HasForeignKey("EventSessionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_event_session_custom_property_definitions_event_sessions_ev");
-
-                    b.HasOne("Explore.Domain.EventSessionTemplate", "SourceTemplate")
-                        .WithMany()
-                        .HasForeignKey("SourceTemplateId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_event_session_custom_property_definitions_event_session_tem");
-
-                    b.HasOne("Explore.Domain.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_event_session_custom_property_definitions_tenants_tenant_id");
-
-                    b.Navigation("DefaultOption");
-
-                    b.Navigation("EventSession");
-
-                    b.Navigation("SourceTemplate");
-
-                    b.Navigation("Tenant");
-                });
-
-            modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyOption", b =>
-                {
-                    b.HasOne("Explore.Domain.EventSessionCustomPropertyDefinition", "Definition")
-                        .WithMany("Options")
-                        .HasForeignKey("EventSessionCustomPropertyDefinitionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_escpo_definition");
-
-                    b.HasOne("Explore.Domain.EventSessionCustomPropertyOption", "ParentOption")
-                        .WithMany("ChildOptions")
-                        .HasForeignKey("ParentOptionId")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_escpo_parent_option");
-
-                    b.Navigation("Definition");
-
-                    b.Navigation("ParentOption");
-                });
-
-            modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyProjection", b =>
-                {
-                    b.HasOne("Explore.Domain.EventSessionCustomPropertyDefinition", "Definition")
-                        .WithMany()
-                        .HasForeignKey("EventSessionCustomPropertyDefinitionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_event_session_custom_property_projections_event_session_cus");
-
-                    b.HasOne("Explore.Domain.EventSessionCustomPropertyValue", "Value")
-                        .WithMany()
-                        .HasForeignKey("EventSessionCustomPropertyValueId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_event_session_custom_property_projections_event_session_cus1");
-
-                    b.HasOne("Explore.Domain.EventSession", "EventSession")
-                        .WithMany()
-                        .HasForeignKey("EventSessionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_event_session_custom_property_projections_event_sessions_ev");
-
-                    b.HasOne("Explore.Domain.EventSessionCustomPropertyOption", "Option")
-                        .WithMany()
-                        .HasForeignKey("OptionId")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_event_session_custom_property_projections_event_session_cus2");
-
-                    b.HasOne("Explore.Domain.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_event_session_custom_property_projections_tenants_tenant_id");
-
-                    b.Navigation("Definition");
-
-                    b.Navigation("EventSession");
-
-                    b.Navigation("Option");
-
-                    b.Navigation("Tenant");
-
-                    b.Navigation("Value");
-                });
-
-            modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyValue", b =>
-                {
-                    b.HasOne("Explore.Domain.EventSessionCustomPropertyDefinition", "Definition")
-                        .WithMany("Values")
-                        .HasForeignKey("EventSessionCustomPropertyDefinitionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_event_session_custom_property_values_event_session_custom_p");
-
-                    b.HasOne("Explore.Domain.EventSession", "EventSession")
-                        .WithMany()
-                        .HasForeignKey("EventSessionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_event_session_custom_property_values_event_sessions_event_s");
-
-                    b.HasOne("Explore.Domain.EventSessionCustomPropertyOption", "Option")
-                        .WithMany()
-                        .HasForeignKey("OptionId")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_event_session_custom_property_values_event_session_custom_p1");
-
-                    b.HasOne("Explore.Domain.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_event_session_custom_property_values_tenants_tenant_id");
-
-                    b.Navigation("Definition");
-
-                    b.Navigation("EventSession");
-
-                    b.Navigation("Option");
-
-                    b.Navigation("Tenant");
-                });
-
             modelBuilder.Entity("Explore.Domain.EventSessionIslamicAspect", b =>
                 {
                     b.HasOne("Explore.Domain.EventSession", "EventSession")
@@ -8928,76 +7302,6 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("EventSession");
 
                     b.Navigation("Tenant");
-                });
-
-            modelBuilder.Entity("Explore.Domain.EventSessionTemplate", b =>
-                {
-                    b.HasOne("Explore.Domain.EventTemplate", "EventTemplate")
-                        .WithMany()
-                        .HasForeignKey("EventTemplateId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_event_session_templates_event_templates_event_template_id");
-
-                    b.HasOne("Explore.Domain.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_event_session_templates_tenants_tenant_id");
-
-                    b.Navigation("EventTemplate");
-
-                    b.Navigation("Tenant");
-                });
-
-            modelBuilder.Entity("Explore.Domain.EventSessionTemplateCustomPropertyDefinition", b =>
-                {
-                    b.HasOne("Explore.Domain.EventSessionTemplateCustomPropertyOption", "DefaultOption")
-                        .WithMany()
-                        .HasForeignKey("DefaultOptionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_event_session_template_custom_property_definitions_event_se");
-
-                    b.HasOne("Explore.Domain.EventSessionTemplate", "EventSessionTemplate")
-                        .WithMany("Definitions")
-                        .HasForeignKey("EventSessionTemplateId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_event_session_template_custom_property_definitions_event_se1");
-
-                    b.HasOne("Explore.Domain.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_event_session_template_custom_property_definitions_tenants_");
-
-                    b.Navigation("DefaultOption");
-
-                    b.Navigation("EventSessionTemplate");
-
-                    b.Navigation("Tenant");
-                });
-
-            modelBuilder.Entity("Explore.Domain.EventSessionTemplateCustomPropertyOption", b =>
-                {
-                    b.HasOne("Explore.Domain.EventSessionTemplateCustomPropertyDefinition", "Definition")
-                        .WithMany("Options")
-                        .HasForeignKey("EventSessionTemplateCustomPropertyDefinitionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_estcpo_definition");
-
-                    b.HasOne("Explore.Domain.EventSessionTemplateCustomPropertyOption", "ParentOption")
-                        .WithMany("ChildOptions")
-                        .HasForeignKey("ParentOptionId")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_estcpo_parent_option");
-
-                    b.Navigation("Definition");
-
-                    b.Navigation("ParentOption");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventTags", b =>
@@ -9124,43 +7428,14 @@ namespace Explore.Persistence.Migrations
 
             modelBuilder.Entity("Explore.Domain.ExternalApiKey", b =>
                 {
-                    b.HasOne("Explore.Domain.ExternalApiKeyCreditPeriod", "ExternalApiKeyCreditPeriod")
-                        .WithMany()
-                        .HasForeignKey("ExternalApiKeyCreditPeriodId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_external_api_keys_external_api_key_credit_periods_external_");
-
-                    b.HasOne("Explore.Domain.ExternalApiKeyStatus", "ExternalApiKeyStatus")
-                        .WithMany()
-                        .HasForeignKey("ExternalApiKeyStatusId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_external_api_keys_external_api_key_statuses_external_api_ke");
-
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
                         .HasConstraintName("fk_external_api_keys_tenants_tenant_id");
 
-                    b.Navigation("ExternalApiKeyCreditPeriod");
-
-                    b.Navigation("ExternalApiKeyStatus");
-
                     b.Navigation("Tenant");
-                });
-
-            modelBuilder.Entity("Explore.Domain.ExternalApiKeyQuota", b =>
-                {
-                    b.HasOne("Explore.Domain.ExternalApiKey", "ExternalApiKey")
-                        .WithMany()
-                        .HasForeignKey("ExternalApiKeyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_external_api_key_quotas_external_api_keys_external_api_key_");
-
-                    b.Navigation("ExternalApiKey");
                 });
 
             modelBuilder.Entity("Explore.Domain.Group", b =>
@@ -9557,13 +7832,15 @@ namespace Explore.Persistence.Migrations
                 {
                     b.OwnsOne("Explore.Domain.Policies.DomainPolicy", "Domains", b1 =>
                         {
-                            b1.Property<Guid>("InstancePolicySetId")
-                                .HasColumnType("uuid")
-                                .HasColumnName("id");
+                            b1.Property<Guid>("InstancePolicySetId");
 
                             b1.HasKey("InstancePolicySetId");
 
                             b1.ToTable("instance_policy_sets");
+
+                            b1
+                                .ToJson("domains_policy")
+                                .HasColumnType("jsonb");
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
@@ -9571,21 +7848,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowTenantCustomDomains", b2 =>
                                 {
-                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("domains_allow_tenant_custom_domains_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("domains_allow_tenant_custom_domains_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("DomainPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("domains_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("DomainPolicyInstancePolicySetId")
@@ -9594,21 +7869,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "InstanceBaseDomain", b2 =>
                                 {
-                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId");
 
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("text")
-                                        .HasColumnName("domains_instance_base_domain_local_value");
+                                    b2.Property<string>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("domains_instance_base_domain_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("DomainPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("domains_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("DomainPolicyInstancePolicySetId")
@@ -9617,21 +7890,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantCustomDomain", b2 =>
                                 {
-                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("domains_lock_tenant_custom_domain_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("domains_lock_tenant_custom_domain_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("DomainPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("domains_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("DomainPolicyInstancePolicySetId")
@@ -9640,21 +7911,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantSubdomain", b2 =>
                                 {
-                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("DomainPolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("domains_lock_tenant_subdomain_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("domains_lock_tenant_subdomain_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("DomainPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("domains_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("DomainPolicyInstancePolicySetId")
@@ -9676,108 +7945,107 @@ namespace Explore.Persistence.Migrations
 
                     b.OwnsOne("Explore.Domain.Policies.BrandingPolicy", "Branding", b1 =>
                         {
-                            b1.Property<Guid>("InstancePolicySetId")
-                                .HasColumnType("uuid")
-                                .HasColumnName("id");
+                            b1.Property<Guid>("InstancePolicySetId");
 
-                            b1.HasKey("InstancePolicySetId");
+                            b1.HasKey("InstancePolicySetId")
+                                .HasName("pk_instance_policy_sets");
 
                             b1.ToTable("instance_policy_sets");
 
+                            b1
+                                .ToJson("branding_policy")
+                                .HasColumnType("jsonb");
+
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
-                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_instance_policy_set");
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "CustomCssUrl", b2 =>
                                 {
-                                    b2.Property<Guid>("BrandingPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("BrandingPolicyInstancePolicySetId");
 
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("text")
-                                        .HasColumnName("branding_custom_css_url_local_value");
+                                    b2.Property<string>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("branding_custom_css_url_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
-                                    b2.HasKey("BrandingPolicyInstancePolicySetId");
+                                    b2.HasKey("BrandingPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("branding_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_branding_policy_ins");
                                 });
 
                             b1.OwnsOne("PolicySlot", "DisplayName", b2 =>
                                 {
-                                    b2.Property<Guid>("BrandingPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("BrandingPolicyInstancePolicySetId");
 
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("text")
-                                        .HasColumnName("branding_display_name_local_value");
+                                    b2.Property<string>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("branding_display_name_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
-                                    b2.HasKey("BrandingPolicyInstancePolicySetId");
+                                    b2.HasKey("BrandingPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("branding_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_branding_policy_ins");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "FaviconUrl", b2 =>
                                 {
-                                    b2.Property<Guid>("BrandingPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("BrandingPolicyInstancePolicySetId");
 
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("text")
-                                        .HasColumnName("branding_favicon_url_local_value");
+                                    b2.Property<string>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("branding_favicon_url_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
-                                    b2.HasKey("BrandingPolicyInstancePolicySetId");
+                                    b2.HasKey("BrandingPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("branding_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_branding_policy_ins");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "LogoUrl", b2 =>
                                 {
-                                    b2.Property<Guid>("BrandingPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("BrandingPolicyInstancePolicySetId");
 
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("text")
-                                        .HasColumnName("branding_logo_url_local_value");
+                                    b2.Property<string>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("branding_logo_url_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
-                                    b2.HasKey("BrandingPolicyInstancePolicySetId");
+                                    b2.HasKey("BrandingPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("branding_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_branding_policy_ins");
                                 });
 
                             b1.Navigation("CustomCssUrl")
@@ -9795,108 +8063,107 @@ namespace Explore.Persistence.Migrations
 
                     b.OwnsOne("Explore.Domain.Policies.EventPolicy", "Events", b1 =>
                         {
-                            b1.Property<Guid>("InstancePolicySetId")
-                                .HasColumnType("uuid")
-                                .HasColumnName("id");
+                            b1.Property<Guid>("InstancePolicySetId");
 
-                            b1.HasKey("InstancePolicySetId");
+                            b1.HasKey("InstancePolicySetId")
+                                .HasName("pk_instance_policy_sets");
 
                             b1.ToTable("instance_policy_sets");
 
+                            b1
+                                .ToJson("events_policy")
+                                .HasColumnType("jsonb");
+
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
-                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_instance_policy_set");
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowGroupSubmittedEvents", b2 =>
                                 {
-                                    b2.Property<Guid>("EventPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("EventPolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("events_allow_group_submitted_events_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("events_allow_group_submitted_events_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
-                                    b2.HasKey("EventPolicyInstancePolicySetId");
+                                    b2.HasKey("EventPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("events_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_event_policy_instan");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowOrganizationSubmittedEvents", b2 =>
                                 {
-                                    b2.Property<Guid>("EventPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("EventPolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("events_allow_organization_submitted_events_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("events_allow_organization_submitted_events_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
-                                    b2.HasKey("EventPolicyInstancePolicySetId");
+                                    b2.HasKey("EventPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("events_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_event_policy_instan");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowUserSubmittedEvents", b2 =>
                                 {
-                                    b2.Property<Guid>("EventPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("EventPolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("events_allow_user_submitted_events_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("events_allow_user_submitted_events_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
-                                    b2.HasKey("EventPolicyInstancePolicySetId");
+                                    b2.HasKey("EventPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("events_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_event_policy_instan");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "EventCardClickOpensDetailPage", b2 =>
                                 {
-                                    b2.Property<Guid>("EventPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("EventPolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("events_event_card_click_opens_detail_page_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("events_event_card_click_opens_detail_page_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
-                                    b2.HasKey("EventPolicyInstancePolicySetId");
+                                    b2.HasKey("EventPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("events_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_event_policy_instan");
                                 });
 
                             b1.Navigation("AllowGroupSubmittedEvents")
@@ -9914,108 +8181,107 @@ namespace Explore.Persistence.Migrations
 
                     b.OwnsOne("Explore.Domain.Policies.OrganizationPolicy", "Organizations", b1 =>
                         {
-                            b1.Property<Guid>("InstancePolicySetId")
-                                .HasColumnType("uuid")
-                                .HasColumnName("id");
+                            b1.Property<Guid>("InstancePolicySetId");
 
-                            b1.HasKey("InstancePolicySetId");
+                            b1.HasKey("InstancePolicySetId")
+                                .HasName("pk_instance_policy_sets");
 
                             b1.ToTable("instance_policy_sets");
 
+                            b1
+                                .ToJson("organizations_policy")
+                                .HasColumnType("jsonb");
+
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
-                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_instance_policy_set");
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowGroupSelfRegistration", b2 =>
                                 {
-                                    b2.Property<Guid>("OrganizationPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("OrganizationPolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("organizations_allow_group_self_registration_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("organizations_allow_group_self_registration_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
-                                    b2.HasKey("OrganizationPolicyInstancePolicySetId");
+                                    b2.HasKey("OrganizationPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("organizations_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_organization_polic");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowSelfRegistration", b2 =>
                                 {
-                                    b2.Property<Guid>("OrganizationPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("OrganizationPolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("organizations_allow_self_registration_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("organizations_allow_self_registration_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
-                                    b2.HasKey("OrganizationPolicyInstancePolicySetId");
+                                    b2.HasKey("OrganizationPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("organizations_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_organization_polic");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowTenantToOmitVerification", b2 =>
                                 {
-                                    b2.Property<Guid>("OrganizationPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("OrganizationPolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("organizations_allow_tenant_to_omit_verification_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("organizations_allow_tenant_to_omit_verification_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
-                                    b2.HasKey("OrganizationPolicyInstancePolicySetId");
+                                    b2.HasKey("OrganizationPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("organizations_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_organization_polic");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "RequireVerification", b2 =>
                                 {
-                                    b2.Property<Guid>("OrganizationPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("OrganizationPolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("organizations_require_verification_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("organizations_require_verification_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
-                                    b2.HasKey("OrganizationPolicyInstancePolicySetId");
+                                    b2.HasKey("OrganizationPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("organizations_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_organization_polic");
                                 });
 
                             b1.Navigation("AllowGroupSelfRegistration")
@@ -10033,430 +8299,414 @@ namespace Explore.Persistence.Migrations
 
                     b.OwnsOne("Explore.Domain.Policies.RenderPolicy", "RenderPolicy", b1 =>
                         {
-                            b1.Property<Guid>("InstancePolicySetId")
-                                .HasColumnType("uuid")
-                                .HasColumnName("id");
+                            b1.Property<Guid>("InstancePolicySetId");
 
-                            b1.HasKey("InstancePolicySetId");
+                            b1.HasKey("InstancePolicySetId")
+                                .HasName("pk_instance_policy_sets");
 
                             b1.ToTable("instance_policy_sets");
 
+                            b1
+                                .ToJson("render_policy")
+                                .HasColumnType("jsonb");
+
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
-                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_instance_policy_set");
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AdminPrerenderEnabled", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("render_policy_admin_prerender_enabled_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_admin_prerender_enabled_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
-                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "AdminRenderMode", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
 
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("text")
-                                        .HasColumnName("render_policy_admin_render_mode_local_value");
+                                    b2.Property<string>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_admin_render_mode_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
-                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowTenantOverride", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("render_policy_allow_tenant_override_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_allow_tenant_override_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
-                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "DisallowInteractiveServerOnOnboarding", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("render_policy_disallow_interactive_server_on_onboarding_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_disallow_interactive_server_on_onboarding_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
-                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "EnableAdvancedOverrides", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("render_policy_enable_advanced_overrides_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_enable_advanced_overrides_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
-                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "GlobalPrerenderEnabled", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("render_policy_global_prerender_enabled_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_global_prerender_enabled_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
-                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "GlobalRenderMode", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
 
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("text")
-                                        .HasColumnName("render_policy_global_render_mode_local_value");
+                                    b2.Property<string>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_global_render_mode_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
-                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantAdmin", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("render_policy_lock_tenant_admin_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_lock_tenant_admin_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
-                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantOperational", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("render_policy_lock_tenant_operational_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_lock_tenant_operational_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
-                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantPublicSeo", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("render_policy_lock_tenant_public_seo_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_lock_tenant_public_seo_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
-                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "OnboardingPrerenderEnabled", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("render_policy_onboarding_prerender_enabled_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_onboarding_prerender_enabled_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
-                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "OnboardingRenderMode", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
 
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("text")
-                                        .HasColumnName("render_policy_onboarding_render_mode_local_value");
+                                    b2.Property<string>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_onboarding_render_mode_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
-                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "OperationalPrerenderEnabled", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("render_policy_operational_prerender_enabled_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_operational_prerender_enabled_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
-                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "OperationalRenderMode", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
 
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("text")
-                                        .HasColumnName("render_policy_operational_render_mode_local_value");
+                                    b2.Property<string>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_operational_render_mode_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
-                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "Preset", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
 
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("text")
-                                        .HasColumnName("render_policy_preset_local_value");
+                                    b2.Property<string>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_preset_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
-                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "PublicSeoPrerenderEnabled", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("render_policy_public_seo_prerender_enabled_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_public_seo_prerender_enabled_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
-                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
                                 });
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "PublicSeoRenderMode", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
 
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("text")
-                                        .HasColumnName("render_policy_public_seo_render_mode_local_value");
+                                    b2.Property<string>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_public_seo_render_mode_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
-                                    b2.HasKey("RenderPolicyInstancePolicySetId");
+                                    b2.HasKey("RenderPolicyInstancePolicySetId")
+                                        .HasName("pk_instance_policy_sets");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
                                 });
 
                             b1.OwnsOne("PolicySlot", "Version", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyInstancePolicySetId");
 
-                                    b2.Property<int>("LocalValue")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_version_local_value");
+                                    b2.Property<int>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_version_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("RenderPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
 
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
+
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyInstancePolicySetId")
-                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_id");
+                                        .HasConstraintName("fk_instance_policy_sets_instance_policy_sets_render_policy_insta");
                                 });
 
                             b1.Navigation("AdminPrerenderEnabled")
@@ -10516,13 +8766,15 @@ namespace Explore.Persistence.Migrations
 
                     b.OwnsOne("Explore.Domain.Policies.ModulePolicy", "Modules", b1 =>
                         {
-                            b1.Property<Guid>("InstancePolicySetId")
-                                .HasColumnType("uuid")
-                                .HasColumnName("id");
+                            b1.Property<Guid>("InstancePolicySetId");
 
                             b1.HasKey("InstancePolicySetId");
 
                             b1.ToTable("instance_policy_sets");
+
+                            b1
+                                .ToJson("modules_policy")
+                                .HasColumnType("jsonb");
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
@@ -10530,21 +8782,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("PolicySlot", "EnableIslamicModule", b2 =>
                                 {
-                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("modules_enable_islamic_module_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("modules_enable_islamic_module_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("ModulePolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("modules_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("ModulePolicyInstancePolicySetId")
@@ -10553,21 +8803,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "EnableTechModule", b2 =>
                                 {
-                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("ModulePolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("modules_enable_tech_module_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("modules_enable_tech_module_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("ModulePolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("modules_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("ModulePolicyInstancePolicySetId")
@@ -10583,13 +8831,15 @@ namespace Explore.Persistence.Migrations
 
                     b.OwnsOne("Explore.Domain.Policies.TenantDelegationPolicy", "TenantDelegation", b1 =>
                         {
-                            b1.Property<Guid>("InstancePolicySetId")
-                                .HasColumnType("uuid")
-                                .HasColumnName("id");
+                            b1.Property<Guid>("InstancePolicySetId");
 
                             b1.HasKey("InstancePolicySetId");
 
                             b1.ToTable("instance_policy_sets");
+
+                            b1
+                                .ToJson("tenant_delegation_policy")
+                                .HasColumnType("jsonb");
 
                             b1.WithOwner()
                                 .HasForeignKey("InstancePolicySetId")
@@ -10597,21 +8847,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowSelfServiceRegistration", b2 =>
                                 {
-                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("tenant_delegation_allow_self_service_registration_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("tenant_delegation_allow_self_service_registration_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("tenant_delegation_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -10620,21 +8868,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowWhiteLabeling", b2 =>
                                 {
-                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("tenant_delegation_allow_white_labeling_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("tenant_delegation_allow_white_labeling_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("tenant_delegation_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -10643,21 +8889,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "AuthorizationProvider", b2 =>
                                 {
-                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("text")
-                                        .HasColumnName("tenant_delegation_authorization_provider_local_value");
+                                    b2.Property<string>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("tenant_delegation_authorization_provider_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("tenant_delegation_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -10666,21 +8910,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "DecentralizationEnabled", b2 =>
                                 {
-                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("tenant_delegation_decentralization_enabled_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("tenant_delegation_decentralization_enabled_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("tenant_delegation_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -10689,21 +8931,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "DefaultPublicHomePage", b2 =>
                                 {
-                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("text")
-                                        .HasColumnName("tenant_delegation_default_public_home_page_local_value");
+                                    b2.Property<string>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("tenant_delegation_default_public_home_page_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("tenant_delegation_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -10712,21 +8952,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantAnalytics", b2 =>
                                 {
-                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("tenant_delegation_lock_tenant_analytics_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("tenant_delegation_lock_tenant_analytics_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("tenant_delegation_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -10735,21 +8973,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantSmtp", b2 =>
                                 {
-                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("tenant_delegation_lock_tenant_smtp_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("tenant_delegation_lock_tenant_smtp_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("tenant_delegation_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -10758,21 +8994,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantStorage", b2 =>
                                 {
-                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("TenantDelegationPolicyInstancePolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("tenant_delegation_lock_tenant_storage_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("tenant_delegation_lock_tenant_storage_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("TenantDelegationPolicyInstancePolicySetId");
 
                                     b2.ToTable("instance_policy_sets");
+
+                                    b2
+                                        .ToJson("tenant_delegation_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("TenantDelegationPolicyInstancePolicySetId")
@@ -10830,13 +9064,15 @@ namespace Explore.Persistence.Migrations
                 {
                     b.OwnsOne("Explore.Domain.Policies.EventPolicy", "Events", b1 =>
                         {
-                            b1.Property<Guid>("OrganizationPolicySetId")
-                                .HasColumnType("uuid")
-                                .HasColumnName("id");
+                            b1.Property<Guid>("OrganizationPolicySetId");
 
                             b1.HasKey("OrganizationPolicySetId");
 
                             b1.ToTable("organization_policy_sets");
+
+                            b1
+                                .ToJson("events_policy")
+                                .HasColumnType("jsonb");
 
                             b1.WithOwner()
                                 .HasForeignKey("OrganizationPolicySetId")
@@ -10844,21 +9080,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowGroupSubmittedEvents", b2 =>
                                 {
-                                    b2.Property<Guid>("EventPolicyOrganizationPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("EventPolicyOrganizationPolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("events_allow_group_submitted_events_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("events_allow_group_submitted_events_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("EventPolicyOrganizationPolicySetId");
 
                                     b2.ToTable("organization_policy_sets");
+
+                                    b2
+                                        .ToJson("events_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyOrganizationPolicySetId")
@@ -10867,21 +9101,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowOrganizationSubmittedEvents", b2 =>
                                 {
-                                    b2.Property<Guid>("EventPolicyOrganizationPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("EventPolicyOrganizationPolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("events_allow_organization_submitted_events_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("events_allow_organization_submitted_events_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("EventPolicyOrganizationPolicySetId");
 
                                     b2.ToTable("organization_policy_sets");
+
+                                    b2
+                                        .ToJson("events_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyOrganizationPolicySetId")
@@ -10890,21 +9122,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowUserSubmittedEvents", b2 =>
                                 {
-                                    b2.Property<Guid>("EventPolicyOrganizationPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("EventPolicyOrganizationPolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("events_allow_user_submitted_events_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("events_allow_user_submitted_events_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("EventPolicyOrganizationPolicySetId");
 
                                     b2.ToTable("organization_policy_sets");
+
+                                    b2
+                                        .ToJson("events_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyOrganizationPolicySetId")
@@ -10913,21 +9143,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "EventCardClickOpensDetailPage", b2 =>
                                 {
-                                    b2.Property<Guid>("EventPolicyOrganizationPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("EventPolicyOrganizationPolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("events_event_card_click_opens_detail_page_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("events_event_card_click_opens_detail_page_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("EventPolicyOrganizationPolicySetId");
 
                                     b2.ToTable("organization_policy_sets");
+
+                                    b2
+                                        .ToJson("events_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyOrganizationPolicySetId")
@@ -10955,13 +9183,15 @@ namespace Explore.Persistence.Migrations
                 {
                     b.OwnsOne("Explore.Domain.Policies.BrandingPolicy", "Branding", b1 =>
                         {
-                            b1.Property<Guid>("TenantPolicySetId")
-                                .HasColumnType("uuid")
-                                .HasColumnName("id");
+                            b1.Property<Guid>("TenantPolicySetId");
 
                             b1.HasKey("TenantPolicySetId");
 
                             b1.ToTable("tenant_policy_sets");
+
+                            b1
+                                .ToJson("branding_policy")
+                                .HasColumnType("jsonb");
 
                             b1.WithOwner()
                                 .HasForeignKey("TenantPolicySetId")
@@ -10969,21 +9199,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "CustomCssUrl", b2 =>
                                 {
-                                    b2.Property<Guid>("BrandingPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("BrandingPolicyTenantPolicySetId");
 
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("text")
-                                        .HasColumnName("branding_custom_css_url_local_value");
+                                    b2.Property<string>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("branding_custom_css_url_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("BrandingPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("branding_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyTenantPolicySetId")
@@ -10992,21 +9220,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "DisplayName", b2 =>
                                 {
-                                    b2.Property<Guid>("BrandingPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("BrandingPolicyTenantPolicySetId");
 
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("text")
-                                        .HasColumnName("branding_display_name_local_value");
+                                    b2.Property<string>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("branding_display_name_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("BrandingPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("branding_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyTenantPolicySetId")
@@ -11015,21 +9241,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "FaviconUrl", b2 =>
                                 {
-                                    b2.Property<Guid>("BrandingPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("BrandingPolicyTenantPolicySetId");
 
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("text")
-                                        .HasColumnName("branding_favicon_url_local_value");
+                                    b2.Property<string>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("branding_favicon_url_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("BrandingPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("branding_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyTenantPolicySetId")
@@ -11038,21 +9262,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "LogoUrl", b2 =>
                                 {
-                                    b2.Property<Guid>("BrandingPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("BrandingPolicyTenantPolicySetId");
 
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("text")
-                                        .HasColumnName("branding_logo_url_local_value");
+                                    b2.Property<string>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("branding_logo_url_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("BrandingPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("branding_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("BrandingPolicyTenantPolicySetId")
@@ -11074,13 +9296,15 @@ namespace Explore.Persistence.Migrations
 
                     b.OwnsOne("Explore.Domain.Policies.EventPolicy", "Events", b1 =>
                         {
-                            b1.Property<Guid>("TenantPolicySetId")
-                                .HasColumnType("uuid")
-                                .HasColumnName("id");
+                            b1.Property<Guid>("TenantPolicySetId");
 
                             b1.HasKey("TenantPolicySetId");
 
                             b1.ToTable("tenant_policy_sets");
+
+                            b1
+                                .ToJson("events_policy")
+                                .HasColumnType("jsonb");
 
                             b1.WithOwner()
                                 .HasForeignKey("TenantPolicySetId")
@@ -11088,21 +9312,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowGroupSubmittedEvents", b2 =>
                                 {
-                                    b2.Property<Guid>("EventPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("EventPolicyTenantPolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("events_allow_group_submitted_events_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("events_allow_group_submitted_events_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("EventPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("events_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyTenantPolicySetId")
@@ -11111,21 +9333,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowOrganizationSubmittedEvents", b2 =>
                                 {
-                                    b2.Property<Guid>("EventPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("EventPolicyTenantPolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("events_allow_organization_submitted_events_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("events_allow_organization_submitted_events_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("EventPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("events_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyTenantPolicySetId")
@@ -11134,21 +9354,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowUserSubmittedEvents", b2 =>
                                 {
-                                    b2.Property<Guid>("EventPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("EventPolicyTenantPolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("events_allow_user_submitted_events_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("events_allow_user_submitted_events_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("EventPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("events_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyTenantPolicySetId")
@@ -11157,21 +9375,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "EventCardClickOpensDetailPage", b2 =>
                                 {
-                                    b2.Property<Guid>("EventPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("EventPolicyTenantPolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("events_event_card_click_opens_detail_page_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("events_event_card_click_opens_detail_page_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("EventPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("events_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("EventPolicyTenantPolicySetId")
@@ -11193,13 +9409,15 @@ namespace Explore.Persistence.Migrations
 
                     b.OwnsOne("Explore.Domain.Policies.OrganizationPolicy", "Organizations", b1 =>
                         {
-                            b1.Property<Guid>("TenantPolicySetId")
-                                .HasColumnType("uuid")
-                                .HasColumnName("id");
+                            b1.Property<Guid>("TenantPolicySetId");
 
                             b1.HasKey("TenantPolicySetId");
 
                             b1.ToTable("tenant_policy_sets");
+
+                            b1
+                                .ToJson("organizations_policy")
+                                .HasColumnType("jsonb");
 
                             b1.WithOwner()
                                 .HasForeignKey("TenantPolicySetId")
@@ -11207,21 +9425,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowGroupSelfRegistration", b2 =>
                                 {
-                                    b2.Property<Guid>("OrganizationPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("OrganizationPolicyTenantPolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("organizations_allow_group_self_registration_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("organizations_allow_group_self_registration_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("OrganizationPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("organizations_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyTenantPolicySetId")
@@ -11230,21 +9446,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowSelfRegistration", b2 =>
                                 {
-                                    b2.Property<Guid>("OrganizationPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("OrganizationPolicyTenantPolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("organizations_allow_self_registration_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("organizations_allow_self_registration_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("OrganizationPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("organizations_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyTenantPolicySetId")
@@ -11253,21 +9467,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowTenantToOmitVerification", b2 =>
                                 {
-                                    b2.Property<Guid>("OrganizationPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("OrganizationPolicyTenantPolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("organizations_allow_tenant_to_omit_verification_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("organizations_allow_tenant_to_omit_verification_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("OrganizationPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("organizations_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyTenantPolicySetId")
@@ -11276,21 +9488,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "RequireVerification", b2 =>
                                 {
-                                    b2.Property<Guid>("OrganizationPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("OrganizationPolicyTenantPolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("organizations_require_verification_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("organizations_require_verification_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("OrganizationPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("organizations_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("OrganizationPolicyTenantPolicySetId")
@@ -11312,13 +9522,15 @@ namespace Explore.Persistence.Migrations
 
                     b.OwnsOne("Explore.Domain.Policies.RenderPolicy", "RenderPolicy", b1 =>
                         {
-                            b1.Property<Guid>("TenantPolicySetId")
-                                .HasColumnType("uuid")
-                                .HasColumnName("id");
+                            b1.Property<Guid>("TenantPolicySetId");
 
                             b1.HasKey("TenantPolicySetId");
 
                             b1.ToTable("tenant_policy_sets");
+
+                            b1
+                                .ToJson("render_policy")
+                                .HasColumnType("jsonb");
 
                             b1.WithOwner()
                                 .HasForeignKey("TenantPolicySetId")
@@ -11326,21 +9538,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AdminPrerenderEnabled", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("render_policy_admin_prerender_enabled_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_admin_prerender_enabled_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -11349,21 +9559,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "AdminRenderMode", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
 
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("text")
-                                        .HasColumnName("render_policy_admin_render_mode_local_value");
+                                    b2.Property<string>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_admin_render_mode_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -11372,21 +9580,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "AllowTenantOverride", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("render_policy_allow_tenant_override_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_allow_tenant_override_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -11395,21 +9601,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "DisallowInteractiveServerOnOnboarding", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("render_policy_disallow_interactive_server_on_onboarding_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_disallow_interactive_server_on_onboarding_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -11418,21 +9622,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "EnableAdvancedOverrides", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("render_policy_enable_advanced_overrides_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_enable_advanced_overrides_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -11441,21 +9643,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "GlobalPrerenderEnabled", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("render_policy_global_prerender_enabled_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_global_prerender_enabled_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -11464,21 +9664,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "GlobalRenderMode", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
 
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("text")
-                                        .HasColumnName("render_policy_global_render_mode_local_value");
+                                    b2.Property<string>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_global_render_mode_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -11487,21 +9685,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantAdmin", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("render_policy_lock_tenant_admin_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_lock_tenant_admin_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -11510,21 +9706,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantOperational", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("render_policy_lock_tenant_operational_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_lock_tenant_operational_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -11533,21 +9727,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "LockTenantPublicSeo", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("render_policy_lock_tenant_public_seo_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_lock_tenant_public_seo_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -11556,21 +9748,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "OnboardingPrerenderEnabled", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("render_policy_onboarding_prerender_enabled_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_onboarding_prerender_enabled_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -11579,21 +9769,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "OnboardingRenderMode", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
 
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("text")
-                                        .HasColumnName("render_policy_onboarding_render_mode_local_value");
+                                    b2.Property<string>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_onboarding_render_mode_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -11602,21 +9790,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "OperationalPrerenderEnabled", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("render_policy_operational_prerender_enabled_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_operational_prerender_enabled_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -11625,21 +9811,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "OperationalRenderMode", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
 
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("text")
-                                        .HasColumnName("render_policy_operational_render_mode_local_value");
+                                    b2.Property<string>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_operational_render_mode_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -11648,21 +9832,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "Preset", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
 
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("text")
-                                        .HasColumnName("render_policy_preset_local_value");
+                                    b2.Property<string>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_preset_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -11671,21 +9853,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<bool>", "PublicSeoPrerenderEnabled", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
 
-                                    b2.Property<bool>("LocalValue")
-                                        .HasColumnType("boolean")
-                                        .HasColumnName("render_policy_public_seo_prerender_enabled_local_value");
+                                    b2.Property<bool>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_public_seo_prerender_enabled_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -11694,21 +9874,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<string>", "PublicSeoRenderMode", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
 
-                                    b2.Property<string>("LocalValue")
-                                        .HasColumnType("text")
-                                        .HasColumnName("render_policy_public_seo_render_mode_local_value");
+                                    b2.Property<string>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_public_seo_render_mode_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -11717,21 +9895,19 @@ namespace Explore.Persistence.Migrations
 
                             b1.OwnsOne("Explore.Domain.Policies.PolicySlot<int>", "Version", b2 =>
                                 {
-                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId")
-                                        .HasColumnType("uuid")
-                                        .HasColumnName("id");
+                                    b2.Property<Guid>("RenderPolicyTenantPolicySetId");
 
-                                    b2.Property<int>("LocalValue")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_version_local_value");
+                                    b2.Property<int>("LocalValue");
 
-                                    b2.Property<int>("OverrideMode")
-                                        .HasColumnType("integer")
-                                        .HasColumnName("render_policy_version_override_mode");
+                                    b2.Property<int>("OverrideMode");
 
                                     b2.HasKey("RenderPolicyTenantPolicySetId");
 
                                     b2.ToTable("tenant_policy_sets");
+
+                                    b2
+                                        .ToJson("render_policy")
+                                        .HasColumnType("jsonb");
 
                                     b2.WithOwner()
                                         .HasForeignKey("RenderPolicyTenantPolicySetId")
@@ -11910,29 +10086,6 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("TenantStatus");
                 });
 
-            modelBuilder.Entity("Explore.Domain.TenantFooterLink", b =>
-                {
-                    b.HasOne("Explore.Domain.TenantFooterLinkGroup", "Group")
-                        .WithMany("Links")
-                        .HasForeignKey("FooterLinkGroupId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_tenant_footer_links_tenant_footer_link_groups_footer_link_g");
-
-                    b.Navigation("Group");
-                });
-
-            modelBuilder.Entity("Explore.Domain.TenantFooterLinkGroup", b =>
-                {
-                    b.HasOne("Explore.Domain.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .HasConstraintName("fk_tenant_footer_link_groups_tenants_tenant_id");
-
-                    b.Navigation("Tenant");
-                });
-
             modelBuilder.Entity("Explore.Domain.TenantInvitation", b =>
                 {
                     b.HasOne("Explore.Domain.Role", "Role")
@@ -12075,259 +10228,6 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Tenant");
                 });
 
-            modelBuilder.Entity("Explore.Domain.UiTheme", b =>
-                {
-                    b.HasOne("Explore.Domain.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .HasConstraintName("fk_ui_themes_tenants_tenant_id");
-
-                    b.OwnsOne("Explore.Domain.ValueObjects.UiThemePalette", "DarkPalette", b1 =>
-                        {
-                            b1.Property<Guid>("UiThemeId")
-                                .ValueGeneratedOnAdd()
-                                .HasColumnType("uuid")
-                                .HasColumnName("id");
-
-                            b1.Property<string>("AppbarBackground")
-                                .IsRequired()
-                                .HasMaxLength(32)
-                                .HasColumnType("character varying(32)")
-                                .HasColumnName("dark_appbar_background");
-
-                            b1.Property<string>("AppbarText")
-                                .IsRequired()
-                                .HasMaxLength(7)
-                                .HasColumnType("character varying(7)")
-                                .HasColumnName("dark_appbar_text");
-
-                            b1.Property<string>("Background")
-                                .IsRequired()
-                                .HasMaxLength(7)
-                                .HasColumnType("character varying(7)")
-                                .HasColumnName("dark_background");
-
-                            b1.Property<string>("Divider")
-                                .IsRequired()
-                                .HasMaxLength(32)
-                                .HasColumnType("character varying(32)")
-                                .HasColumnName("dark_divider");
-
-                            b1.Property<string>("DrawerBackground")
-                                .IsRequired()
-                                .HasMaxLength(32)
-                                .HasColumnType("character varying(32)")
-                                .HasColumnName("dark_drawer_background");
-
-                            b1.Property<string>("DrawerIcon")
-                                .IsRequired()
-                                .HasMaxLength(7)
-                                .HasColumnType("character varying(7)")
-                                .HasColumnName("dark_drawer_icon");
-
-                            b1.Property<string>("DrawerText")
-                                .IsRequired()
-                                .HasMaxLength(7)
-                                .HasColumnType("character varying(7)")
-                                .HasColumnName("dark_drawer_text");
-
-                            b1.Property<string>("Error")
-                                .IsRequired()
-                                .HasMaxLength(7)
-                                .HasColumnType("character varying(7)")
-                                .HasColumnName("dark_error");
-
-                            b1.Property<string>("Info")
-                                .IsRequired()
-                                .HasMaxLength(7)
-                                .HasColumnType("character varying(7)")
-                                .HasColumnName("dark_info");
-
-                            b1.Property<string>("LinesDefault")
-                                .IsRequired()
-                                .HasMaxLength(7)
-                                .HasColumnType("character varying(7)")
-                                .HasColumnName("dark_lines_default");
-
-                            b1.Property<string>("Primary")
-                                .IsRequired()
-                                .HasMaxLength(7)
-                                .HasColumnType("character varying(7)")
-                                .HasColumnName("dark_primary");
-
-                            b1.Property<string>("Secondary")
-                                .IsRequired()
-                                .HasMaxLength(7)
-                                .HasColumnType("character varying(7)")
-                                .HasColumnName("dark_secondary");
-
-                            b1.Property<string>("Success")
-                                .IsRequired()
-                                .HasMaxLength(7)
-                                .HasColumnType("character varying(7)")
-                                .HasColumnName("dark_success");
-
-                            b1.Property<string>("Surface")
-                                .IsRequired()
-                                .HasMaxLength(7)
-                                .HasColumnType("character varying(7)")
-                                .HasColumnName("dark_surface");
-
-                            b1.Property<string>("TextPrimary")
-                                .IsRequired()
-                                .HasMaxLength(7)
-                                .HasColumnType("character varying(7)")
-                                .HasColumnName("dark_text_primary");
-
-                            b1.Property<string>("TextSecondary")
-                                .IsRequired()
-                                .HasMaxLength(7)
-                                .HasColumnType("character varying(7)")
-                                .HasColumnName("dark_text_secondary");
-
-                            b1.Property<string>("Warning")
-                                .IsRequired()
-                                .HasMaxLength(7)
-                                .HasColumnType("character varying(7)")
-                                .HasColumnName("dark_warning");
-
-                            b1.HasKey("UiThemeId");
-
-                            b1.ToTable("ui_themes");
-
-                            b1.WithOwner()
-                                .HasForeignKey("UiThemeId")
-                                .HasConstraintName("fk_ui_themes_ui_themes_id");
-                        });
-
-                    b.OwnsOne("Explore.Domain.ValueObjects.UiThemePalette", "LightPalette", b1 =>
-                        {
-                            b1.Property<Guid>("UiThemeId")
-                                .ValueGeneratedOnAdd()
-                                .HasColumnType("uuid")
-                                .HasColumnName("id");
-
-                            b1.Property<string>("AppbarBackground")
-                                .IsRequired()
-                                .HasMaxLength(32)
-                                .HasColumnType("character varying(32)")
-                                .HasColumnName("light_appbar_background");
-
-                            b1.Property<string>("AppbarText")
-                                .IsRequired()
-                                .HasMaxLength(7)
-                                .HasColumnType("character varying(7)")
-                                .HasColumnName("light_appbar_text");
-
-                            b1.Property<string>("Background")
-                                .IsRequired()
-                                .HasMaxLength(7)
-                                .HasColumnType("character varying(7)")
-                                .HasColumnName("light_background");
-
-                            b1.Property<string>("Divider")
-                                .IsRequired()
-                                .HasMaxLength(32)
-                                .HasColumnType("character varying(32)")
-                                .HasColumnName("light_divider");
-
-                            b1.Property<string>("DrawerBackground")
-                                .IsRequired()
-                                .HasMaxLength(32)
-                                .HasColumnType("character varying(32)")
-                                .HasColumnName("light_drawer_background");
-
-                            b1.Property<string>("DrawerIcon")
-                                .IsRequired()
-                                .HasMaxLength(7)
-                                .HasColumnType("character varying(7)")
-                                .HasColumnName("light_drawer_icon");
-
-                            b1.Property<string>("DrawerText")
-                                .IsRequired()
-                                .HasMaxLength(7)
-                                .HasColumnType("character varying(7)")
-                                .HasColumnName("light_drawer_text");
-
-                            b1.Property<string>("Error")
-                                .IsRequired()
-                                .HasMaxLength(7)
-                                .HasColumnType("character varying(7)")
-                                .HasColumnName("light_error");
-
-                            b1.Property<string>("Info")
-                                .IsRequired()
-                                .HasMaxLength(7)
-                                .HasColumnType("character varying(7)")
-                                .HasColumnName("light_info");
-
-                            b1.Property<string>("LinesDefault")
-                                .IsRequired()
-                                .HasMaxLength(7)
-                                .HasColumnType("character varying(7)")
-                                .HasColumnName("light_lines_default");
-
-                            b1.Property<string>("Primary")
-                                .IsRequired()
-                                .HasMaxLength(7)
-                                .HasColumnType("character varying(7)")
-                                .HasColumnName("light_primary");
-
-                            b1.Property<string>("Secondary")
-                                .IsRequired()
-                                .HasMaxLength(7)
-                                .HasColumnType("character varying(7)")
-                                .HasColumnName("light_secondary");
-
-                            b1.Property<string>("Success")
-                                .IsRequired()
-                                .HasMaxLength(7)
-                                .HasColumnType("character varying(7)")
-                                .HasColumnName("light_success");
-
-                            b1.Property<string>("Surface")
-                                .IsRequired()
-                                .HasMaxLength(7)
-                                .HasColumnType("character varying(7)")
-                                .HasColumnName("light_surface");
-
-                            b1.Property<string>("TextPrimary")
-                                .IsRequired()
-                                .HasMaxLength(7)
-                                .HasColumnType("character varying(7)")
-                                .HasColumnName("light_text_primary");
-
-                            b1.Property<string>("TextSecondary")
-                                .IsRequired()
-                                .HasMaxLength(7)
-                                .HasColumnType("character varying(7)")
-                                .HasColumnName("light_text_secondary");
-
-                            b1.Property<string>("Warning")
-                                .IsRequired()
-                                .HasMaxLength(7)
-                                .HasColumnType("character varying(7)")
-                                .HasColumnName("light_warning");
-
-                            b1.HasKey("UiThemeId");
-
-                            b1.ToTable("ui_themes");
-
-                            b1.WithOwner()
-                                .HasForeignKey("UiThemeId")
-                                .HasConstraintName("fk_ui_themes_ui_themes_id");
-                        });
-
-                    b.Navigation("DarkPalette")
-                        .IsRequired();
-
-                    b.Navigation("LightPalette")
-                        .IsRequired();
-
-                    b.Navigation("Tenant");
-                });
-
             modelBuilder.Entity("Explore.Domain.User", b =>
                 {
                     b.HasOne("Explore.Domain.Actor", "Actor")
@@ -12457,33 +10357,6 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("IslamicAspect");
                 });
 
-            modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyDefinition", b =>
-                {
-                    b.Navigation("Options");
-
-                    b.Navigation("Values");
-                });
-
-            modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyOption", b =>
-                {
-                    b.Navigation("ChildOptions");
-                });
-
-            modelBuilder.Entity("Explore.Domain.EventSessionTemplate", b =>
-                {
-                    b.Navigation("Definitions");
-                });
-
-            modelBuilder.Entity("Explore.Domain.EventSessionTemplateCustomPropertyDefinition", b =>
-                {
-                    b.Navigation("Options");
-                });
-
-            modelBuilder.Entity("Explore.Domain.EventSessionTemplateCustomPropertyOption", b =>
-                {
-                    b.Navigation("ChildOptions");
-                });
-
             modelBuilder.Entity("Explore.Domain.EventTemplate", b =>
                 {
                     b.Navigation("Definitions");
@@ -12521,11 +10394,6 @@ namespace Explore.Persistence.Migrations
             modelBuilder.Entity("Explore.Domain.Tenant", b =>
                 {
                     b.Navigation("NavigationLinks");
-                });
-
-            modelBuilder.Entity("Explore.Domain.TenantFooterLinkGroup", b =>
-                {
-                    b.Navigation("Links");
                 });
 
             modelBuilder.Entity("Explore.Domain.User", b =>

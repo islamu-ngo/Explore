@@ -472,6 +472,7 @@ public class ExploreDbContext : DbContext
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<NotificationType> NotificationTypes { get; set; }
     public DbSet<NotificationEntityType> NotificationEntityTypes { get; set; }
+    public DbSet<NotificationReason> NotificationReasons { get; set; }
 
     // ===== Module Governance =====
     public DbSet<ModuleDefinition> ModuleDefinitions { get; set; }

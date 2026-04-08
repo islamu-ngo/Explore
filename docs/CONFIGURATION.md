@@ -118,7 +118,7 @@ Cookie consent and privacy governance keys:
 | `analytics.cookie_banner_enabled` | bool | `false` | Whether the cookie consent banner is shown to end users |
 | `analytics.decline_behavior` | enum | `"disable"` | What happens when a user declines consent: `disable` (no analytics) or `cookieless` (privacy-preserving analytics) |
 | `analytics.consent_cookie_lifetime_days` | int | `180` | How long the consent preference cookie persists (ICO recommends 6 months) |
-| `analytics.posthog_cookieless_mode` | enum | `"off"` | PostHog cookieless mode: `off`, `always` (never stores on device), `on_reject` (cookieless after decline) |
+| `analytics.posthog_cookieless_mode` | enum | `"on_reject"` | PostHog cookieless mode: `off`, `always` (never stores on device), `on_reject` (cookieless after decline) |
 | `analytics.posthog_person_profiles` | enum | `"identified_only"` | PostHog person profile creation: `always`, `identified_only`, `never` |
 | `analytics.posthog_session_replay` | bool | `false` | PostHog session recording (non-essential, requires consent) |
 | `analytics.posthog_autocapture` | bool | `false` | PostHog autocapture of clicks/inputs (non-essential) |

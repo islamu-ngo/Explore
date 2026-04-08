@@ -24,8 +24,11 @@
         <NotificationPanel Notifications="_notifications"
                            IsLoading="_isLoading"
                            HasMore="_hasMore"
+                           SelectedScope="_selectedScope"
+                           OnScopeChanged="HandleScopeChanged"
                            OnLoadMore="LoadMoreAsync"
                            OnNotificationClick="HandleNotificationClick"
-                           OnDeleteNotification="HandleDeleteNotification" />
+                           OnDeleteNotification="HandleDeleteNotification"
+                           OnViewAll="HandleViewAll" />
     }
 </div>

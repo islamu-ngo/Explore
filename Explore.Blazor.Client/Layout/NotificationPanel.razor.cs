@@ -25,4 +25,13 @@ public partial class NotificationPanel
 
     [Parameter]
     public EventCallback<NotificationListDto> OnDeleteNotification { get; set; }
+
+    [Parameter]
+    public int? SelectedScope { get; set; }
+
+    [Parameter]
+    public EventCallback<int?> OnScopeChanged { get; set; }
+
+    [Parameter]
+    public EventCallback OnViewAll { get; set; }
 }

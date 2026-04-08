@@ -1,0 +1,109 @@
+@* ABOUTME: Full-page notification inbox with scope tabs, unread filter, and mark-all-read action.
+    ABOUTME: Accessible at /notifications for authenticated users; reuses NotificationItem component. *@
+
+@page "/notifications"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Notifications</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-4 py-sm-8 py-md-12">
+    <div class="d-flex flex-wrap align-end justify-space-between gap-4 mb-6">
+        <div>
+            <MudText Typo="Typo.overline" Class="mud-text-secondary" Style="letter-spacing: 0.18em;">INBOX</MudText>
+            <MudText Typo="Typo.h4" HtmlTag="h1">Notifications</MudText>
+        </div>
+        @if (_notifications.Any())
+        {
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.DoneAll"
+                       OnClick="HandleMarkAllRead"
+                       Disabled="_isMarkingAllRead">
+                Mark all read
+            </MudButton>
+        }
+    </div>
+
+    <div class="notification-inbox">
+        <div class="notification-inbox__toolbar">
+            <MudToggleGroup T="int?"
+                            Value="_selectedScope"
+                            ValueChanged="HandleScopeChanged"
+                            Color="Color.Primary"
+                            SelectionMode="SelectionMode.SingleSelection"
+                            FixedContent="true"
+                            Size="Size.Small">
+                <MudToggleItem T="int?" Value="@((int?)null)" Text="All" />
+                <MudToggleItem T="int?" Value="@((int?)1)" Text="Personal" />
+                <MudToggleItem T="int?" Value="@((int?)2)" Text="Organization" />
+                <MudToggleItem T="int?" Value="@((int?)4)" Text="Group" />
+            </MudToggleGroup>
+            <div class="flex-grow-1"></div>
+            <MudIconButton Icon="@(_showUnreadOnly ? Icons.Material.Filled.FilterList : Icons.Material.Outlined.FilterList)"
+                           Size="Size.Small"
+                           Color="@(_showUnreadOnly ? Color.Primary : Color.Default)"
+                           OnClick="HandleToggleUnread"
+                           Title="@(_showUnreadOnly ? "Showing unread only" : "Show all")" />
+        </div>
+
+        <div class="notification-inbox__body">
+            @if (_isLoading && !_notifications.Any())
+            {
+                <div class="notification-inbox__loading">
+                    <MudProgressCircular Size="Size.Large" Indeterminate="true" Color="Color.Primary" />
+                    <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-4">
+                        Loading notifications...
+                    </MudText>
+                </div>
+            }
+            else if (!_notifications.Any())
+            {
+                <div class="notification-inbox__empty">
+                    <MudIcon Icon="@Icons.Material.Outlined.NotificationsNone"
+                             Size="Size.Large"
+                             Color="Color.Default" />
+                    <MudText Typo="Typo.h6" Color="Color.Secondary">
+                        No notifications
+                    </MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        @(_showUnreadOnly ? "No unread notifications" : "You're all caught up")
+                    </MudText>
+                </div>
+            }
+            else
+            {
+                <div class="notification-inbox__list">
+                    @foreach (var notification in _notifications)
+                    {
+                        <NotificationItem Notification="notification"
+                                          OnClick="HandleNotificationClick"
+                                          OnDelete="HandleDeleteNotification" />
+                    }
+                </div>
+
+                @if (_hasMore)
+                {
+                    <div class="notification-inbox__load-more">
+                        @if (_isLoading)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Primary" />
+                        }
+                        else
+                        {
+                            <MudButton Variant="Variant.Text"
+                                       Color="Color.Primary"
+                                       Size="Size.Small"
+                                       FullWidth="true"
+                                       OnClick="LoadMoreAsync">
+                                Load more
+                            </MudButton>
+                        }
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</MudContainer>

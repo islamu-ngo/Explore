@@ -26,4 +26,16 @@ public class GetUserNotificationsRequest : IRequest<PaginatedResult<Notification
     /// Optional filter by notification scope (ActorType FK: User=1/Personal, Organization=2, Group=4, System=5).
     /// </summary>
     public int? NotificationScopeId { get; set; }
+
+    public int? NotificationReasonId { get; set; }
+
+    /// <summary>
+    /// Optional filter: null = all, true = archived only, false = non-archived only.
+    /// </summary>
+    public bool? IsArchived { get; set; }
+
+    /// <summary>
+    /// Optional filter: null = all, true = currently snoozed, false = not snoozed.
+    /// </summary>
+    public bool? IsSnoozed { get; set; }
 }

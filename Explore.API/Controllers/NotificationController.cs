@@ -28,7 +28,7 @@ public class NotificationController : ControllerBase
     // GET: api/notification
     [HttpGet(Name = Hateoas.RouteNames.GetNotifications)]
     [EndpointSummary("Get User Notifications")]
-    [EndpointDescription("Retrieve a paginated list of notifications for the authenticated user. Supports filtering by read status and notification type.")]
+    [EndpointDescription("Retrieve a paginated list of notifications for the authenticated user. Supports filtering by read status, notification type, scope, reason, archive state, and snooze state.")]
     [ProducesResponseType(typeof(PaginatedResult<NotificationListDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<PaginatedResult<NotificationListDto>>> GetAll(
@@ -37,6 +37,9 @@ public class NotificationController : ControllerBase
         [FromQuery] bool? isRead = null,
         [FromQuery] int? notificationTypeId = null,
         [FromQuery] int? notificationScopeId = null,
+        [FromQuery] int? notificationReasonId = null,
+        [FromQuery] bool? isArchived = null,
+        [FromQuery] bool? isSnoozed = null,
         CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(new GetUserNotificationsRequest
@@ -45,7 +48,10 @@ public class NotificationController : ControllerBase
             PageSize = pageSize,
             IsRead = isRead,
             NotificationTypeId = notificationTypeId,
-            NotificationScopeId = notificationScopeId
+            NotificationScopeId = notificationScopeId,
+            NotificationReasonId = notificationReasonId,
+            IsArchived = isArchived,
+            IsSnoozed = isSnoozed
         }, cancellationToken);
 
         return Ok(result);
@@ -102,6 +108,40 @@ public class NotificationController : ControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> MarkAllAsRead(CancellationToken cancellationToken = default)
     {
         var response = await _mediator.Send(new MarkAllNotificationsAsReadCommand(), cancellationToken);
+        return Ok(response);
+    }
+
+    // PATCH: api/notification/{id}/archive
+    [HttpPatch("{id}/archive", Name = Hateoas.RouteNames.ArchiveNotification)]
+    [EndpointSummary("Archive Notification")]
+    [EndpointDescription("Archives or unarchives a notification. Pass archive=true (default) to archive, archive=false to unarchive. Idempotent.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Archive(
+        Guid id, [FromQuery] bool archive = true, CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(new ArchiveNotificationCommand { Id = id, Archive = archive }, cancellationToken);
+        if (!response.Success)
+            return NotFound(new { error = response.Message });
+
+        return Ok(response);
+    }
+
+    // PATCH: api/notification/{id}/snooze
+    [HttpPatch("{id}/snooze", Name = Hateoas.RouteNames.SnoozeNotification)]
+    [EndpointSummary("Snooze Notification")]
+    [EndpointDescription("Snoozes a notification until the specified time. Pass snoozedUntil as ISO 8601 datetime. Omit to unsnooze.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> Snooze(
+        Guid id, [FromQuery] DateTime? snoozedUntil = null, CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(new SnoozeNotificationCommand { Id = id, SnoozedUntil = snoozedUntil }, cancellationToken);
+        if (!response.Success)
+            return NotFound(new { error = response.Message });
+
         return Ok(response);
     }
 

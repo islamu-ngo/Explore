@@ -21,5 +21,10 @@ public class NotificationListDto
     public string? SourceActorName { get; set; }
     public Guid? RecipientContextActorId { get; set; }
     public string? RecipientContextActorName { get; set; }
+    public int? NotificationReasonId { get; set; }
+    public string? NotificationReasonName { get; set; }
+    public bool IsArchived { get; set; }
+    public DateTime? ArchivedAt { get; set; }
+    public DateTime? SnoozedUntil { get; set; }
     public DateTime CreatedAt { get; set; }
 }

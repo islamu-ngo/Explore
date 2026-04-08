@@ -56,6 +56,7 @@ public static class LookupTableSeeder
         await SeedDefaultFooterLinkGroupsAsync(context, cancellationToken);
         await SeedExternalApiKeyStatusesAsync(context, cancellationToken);
         await SeedExternalApiKeyCreditPeriodsAsync(context, cancellationToken);
+        await SeedNotificationReasonsAsync(context, cancellationToken);
     }
 
     private static async Task SeedActorTypesAsync(ExploreDbContext context, CancellationToken ct)
@@ -675,6 +676,20 @@ public static class LookupTableSeeder
             new ExternalApiKeyCreditPeriod { Id = (int)ExternalApiKeyCreditPeriodEnum.Weekly, MasterCode = "WEEKLY", FullName = "Weekly", Description = "Credit quota resets every week" },
             new ExternalApiKeyCreditPeriod { Id = (int)ExternalApiKeyCreditPeriodEnum.Monthly, MasterCode = "MONTHLY", FullName = "Monthly", Description = "Credit quota resets every month" },
             new ExternalApiKeyCreditPeriod { Id = (int)ExternalApiKeyCreditPeriodEnum.Yearly, MasterCode = "YEARLY", FullName = "Yearly", Description = "Credit quota resets every year" });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedNotificationReasonsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<NotificationReason>().AnyAsync(ct)) return;
+
+        context.Set<NotificationReason>().AddRange(
+            new NotificationReason { Id = (int)NotificationReasonEnum.Direct, MasterCode = "DIRECT", FullName = "Direct", Description = "Notification sent directly to the user" },
+            new NotificationReason { Id = (int)NotificationReasonEnum.Mention, MasterCode = "MENTION", FullName = "Mention", Description = "User was mentioned" },
+            new NotificationReason { Id = (int)NotificationReasonEnum.Assignment, MasterCode = "ASSIGNMENT", FullName = "Assignment", Description = "User was assigned a task or role" },
+            new NotificationReason { Id = (int)NotificationReasonEnum.Subscription, MasterCode = "SUBSCRIPTION", FullName = "Subscription", Description = "User is subscribed to the source" },
+            new NotificationReason { Id = (int)NotificationReasonEnum.Membership, MasterCode = "MEMBERSHIP", FullName = "Membership", Description = "User is a member of the related entity" },
+            new NotificationReason { Id = (int)NotificationReasonEnum.System, MasterCode = "SYSTEM", FullName = "System", Description = "System-generated notification" });
         await context.SaveChangesAsync(ct);
     }
 }

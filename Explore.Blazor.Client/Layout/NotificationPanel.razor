@@ -6,6 +6,22 @@
         <span class="notification-panel__title">Notifications</span>
     </div>
 
+    <div class="notification-panel__toolbar">
+        <MudToggleGroup T="int?"
+                        Value="SelectedScope"
+                        ValueChanged="OnScopeChanged"
+                        Color="Color.Primary"
+                        SelectionMode="SelectionMode.SingleSelection"
+                        FixedContent="true"
+                        Size="Size.Small"
+                        Class="notification-panel__scope-tabs">
+            <MudToggleItem T="int?" Value="@((int?)null)" Text="All" />
+            <MudToggleItem T="int?" Value="@((int?)1)" Text="Personal" />
+            <MudToggleItem T="int?" Value="@((int?)2)" Text="Org" />
+            <MudToggleItem T="int?" Value="@((int?)4)" Text="Group" />
+        </MudToggleGroup>
+    </div>
+
     <div class="notification-panel__body">
         @if (IsLoading && !Notifications.Any())
         {
@@ -55,5 +71,15 @@
                 }
             </div>
         }
+    </div>
+
+    <div class="notification-panel__footer">
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Primary"
+                   Size="Size.Small"
+                   FullWidth="true"
+                   OnClick="OnViewAll">
+            View all notifications
+        </MudButton>
     </div>
 </div>

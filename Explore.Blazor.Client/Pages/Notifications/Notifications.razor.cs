@@ -1,16 +1,15 @@
-// ABOUTME: Code-behind for NotificationBell — manages unread count polling, panel toggle, mark-all-read-on-open.
-// ABOUTME: Polls unread count every 60s for authenticated users; disposes timer on teardown.
+// ABOUTME: Code-behind for Notifications inbox page — manages notification list, scope filter, and unread toggle.
+// ABOUTME: Loads notifications on init with pagination; supports scope tabs and unread-only filtering.
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.Notifications;
 using Microsoft.AspNetCore.Components;
 
-namespace Explore.Blazor.Client.Layout;
+namespace Explore.Blazor.Client.Pages.Notifications;
 
-public partial class NotificationBell : IDisposable
+public partial class Notifications
 {
     private const int PageSize = 20;
-    private const int PollIntervalMs = 60_000;
 
     [Inject]
     private INotificationService NotificationService { get; set; } = null!;
@@ -18,71 +17,17 @@ public partial class NotificationBell : IDisposable
     [Inject]
     private NavigationManager Nav { get; set; } = null!;
 
-    private int _unreadCount;
-    private bool _panelOpen;
     private bool _isLoading;
+    private bool _isMarkingAllRead;
     private bool _hasMore;
+    private bool _showUnreadOnly;
     private int _currentPage = 1;
     private int? _selectedScope;
     private readonly List<NotificationListDto> _notifications = [];
-    private Timer? _pollTimer;
-
-    private string BadgeContent => _unreadCount > 99 ? "99+" : _unreadCount.ToString();
 
     protected override async Task OnInitializedAsync()
     {
-        await RefreshUnreadCountAsync();
-        _pollTimer = new Timer(async _ => await PollUnreadCountAsync(), null, PollIntervalMs, PollIntervalMs);
-    }
-
-    private async Task PollUnreadCountAsync()
-    {
-        try
-        {
-            var count = await NotificationService.GetUnreadCountAsync();
-            if (count != _unreadCount)
-            {
-                _unreadCount = count;
-                await InvokeAsync(StateHasChanged);
-            }
-        }
-        catch
-        {
-            // Silently fail — polling is best-effort
-        }
-    }
-
-    private async Task RefreshUnreadCountAsync()
-    {
-        _unreadCount = await NotificationService.GetUnreadCountAsync();
-    }
-
-    private async Task TogglePanel()
-    {
-        if (_panelOpen)
-        {
-            ClosePanel();
-            return;
-        }
-
-        _panelOpen = true;
-        _isLoading = true;
-        _currentPage = 1;
-        _notifications.Clear();
-
-        // YouTube-style: mark all as read when opening panel
-        if (_unreadCount > 0)
-        {
-            _unreadCount = 0;
-            _ = NotificationService.MarkAllAsReadAsync();
-        }
-
         await LoadNotificationsAsync();
-    }
-
-    private void ClosePanel()
-    {
-        _panelOpen = false;
     }
 
     private async Task LoadNotificationsAsync()
@@ -91,7 +36,8 @@ public partial class NotificationBell : IDisposable
 
         try
         {
-            var result = await NotificationService.GetNotificationsAsync(_currentPage, PageSize, null, _selectedScope);
+            bool? isRead = _showUnreadOnly ? false : null;
+            var result = await NotificationService.GetNotificationsAsync(_currentPage, PageSize, isRead, _selectedScope);
             _notifications.AddRange(result.Items);
             _hasMore = result.HasNextPage;
         }
@@ -115,16 +61,33 @@ public partial class NotificationBell : IDisposable
         await LoadNotificationsAsync();
     }
 
-    private void HandleViewAll()
+    private async Task HandleToggleUnread()
     {
-        ClosePanel();
-        Nav.NavigateTo("/notifications");
+        _showUnreadOnly = !_showUnreadOnly;
+        _currentPage = 1;
+        _notifications.Clear();
+        await LoadNotificationsAsync();
+    }
+
+    private async Task HandleMarkAllRead()
+    {
+        _isMarkingAllRead = true;
+
+        try
+        {
+            await NotificationService.MarkAllAsReadAsync();
+            _currentPage = 1;
+            _notifications.Clear();
+            await LoadNotificationsAsync();
+        }
+        finally
+        {
+            _isMarkingAllRead = false;
+        }
     }
 
     private void HandleNotificationClick(NotificationListDto notification)
     {
-        ClosePanel();
-
         var url = GetEntityUrl(notification);
         if (!string.IsNullOrEmpty(url))
         {
@@ -156,11 +119,5 @@ public partial class NotificationBell : IDisposable
             "eventsession" => $"/events/{notification.EntityId}",
             _ => null
         };
-    }
-
-    public void Dispose()
-    {
-        _pollTimer?.Dispose();
-        GC.SuppressFinalize(this);
     }
 }
