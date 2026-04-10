@@ -62,10 +62,10 @@
           "TUnit.Engine": "1.11.28"
         }
       },
-      "Aspire.Dashboard.Sdk.win-x64": {
+      "Aspire.Dashboard.Sdk.linux-x64": {
         "type": "Transitive",
         "resolved": "9.5.1",
-        "contentHash": "Zs68NyitFQBZ7QttAxvFS5nrCy/KL1uuCi4aBr96vGr3KhXMue05rU8wMIwhwPLj49nxSE8mk1yJ12KC/Vk8mw=="
+        "contentHash": "0rDfhsleqfvHkWWj6WhFzvC3UWebGqIpjFQFBqN2TW05giMsuxPDOjFZgOr2C5mCdRfShD4t4+vWpxXm3dHEdA=="
       },
       "Aspire.Hosting": {
         "type": "Transitive",
@@ -98,10 +98,10 @@
           "System.IO.Hashing": "9.0.10"
         }
       },
-      "Aspire.Hosting.Orchestration.win-x64": {
+      "Aspire.Hosting.Orchestration.linux-x64": {
         "type": "Transitive",
         "resolved": "9.5.1",
-        "contentHash": "PeA/eXDehbwoIGDG8cPXsje4pViGCO2ltHXCZqRaSmyF51pjUsHjs3fN0kFXF0sN10PznjaUyoiRFNtQX3/kLQ=="
+        "contentHash": "cEbQFmKUDI4tA+XNTKM1JTDvBGagbYpIJYfA94UYCkQp0NRjMVVGXaEX5+T+zs5/LPX66L+nKgNpBnuaW7Sp4A=="
       },
       "AspNetCore.HealthChecks.NpgSql": {
         "type": "Transitive",
@@ -773,10 +773,10 @@
       "explore.apphost": {
         "type": "Project",
         "dependencies": {
-          "Aspire.Dashboard.Sdk.win-x64": "[9.5.1, )",
+          "Aspire.Dashboard.Sdk.linux-x64": "[9.5.1, )",
           "Aspire.Hosting.AppHost": "[9.5.1, )",
           "Aspire.Hosting.DevTunnels": "[9.5.1-preview.1.25502.11, )",
-          "Aspire.Hosting.Orchestration.win-x64": "[9.5.1, )",
+          "Aspire.Hosting.Orchestration.linux-x64": "[9.5.1, )",
           "Aspire.Hosting.PostgreSQL": "[9.5.1, )",
           "Aspire.Hosting.RabbitMQ": "[9.5.1, )",
           "Aspire.Hosting.Redis": "[9.5.1, )"

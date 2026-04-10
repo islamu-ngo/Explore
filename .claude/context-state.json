@@ -1,13 +1,13 @@
 {
   "Project": "ISLAMU Event",
   "Stack": ".NET 10 + Blazor + Aspire",
-  "RootPath": "C:\\ISLAMU\\GitHub\\Event",
+  "RootPath": "/home/amir/ISLAMU/Github/Event",
   "ActiveLayers": {
     "Frontend": "Active (MudBlazor)",
     "Backend": "Active (ASP.NET)",
     "Domain": "Active (DDD)",
     "Infra": "Active (EF Core)"
   },
-  "RecentFocus": "Unknown (blazor-testing-enterprise-grade-context.md)",
-  "LastUpdate": "2026-04-02 01:31:11"
+  "RecentFocus": "Frontend (Notifications.razor)",
+  "LastUpdate": "2026-04-10 16:46:58"
 }
