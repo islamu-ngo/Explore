@@ -1,6 +1,6 @@
 # Cookie Consent & Analytics Governance — Implementation Plan
 
-Last Updated: 2026-03-26 (Rev 4 — Post-Implementation Audit + Feedback Incorporation)
+Last Updated: 2026-04-11 (Rev 5 — Full Completion Audit, All 7 Phases Complete)
 
 ---
 
@@ -8,7 +8,7 @@ Last Updated: 2026-03-26 (Rev 4 — Post-Implementation Audit + Feedback Incorpo
 
 The ISLAMU Event platform now has a **fully implemented** cookie consent and analytics governance system: storage-mode-driven consent with privacy-first defaults, PostHog native consent integration, tenant-scoped consent cookies, a dedicated runtime profile resolver, a 7-state consent machine, and an admin analytics privacy panel.
 
-**Phases 1–4 are COMPLETE** (Domain, Application, Browser/JS, Admin UI). This Rev 4 updates the plan to match the audited codebase state and incorporates 10 feedback points from the Senior Architect's "Approve with hardening edits" review. Remaining work covers **hardening** (3 code changes), **documentation** (3 updates), and **testing gaps** (4 test suites).
+**All 7 phases are COMPLETE.** This Rev 5 reflects a full codebase audit confirming that Phases 5-7 (hardening, documentation, testing gaps) were implemented since Rev 4. No remaining work items.
 
 ### Amendment History
 
@@ -21,14 +21,14 @@ The ISLAMU Event platform now has a **fully implemented** cookie consent and ana
 | 5 | **Advisory auto-computation** — suggest, don't overwrite | Rev 3 Architect Review | ✅ Implemented |
 | 6 | **Global kill switch** (`analytics.global_disable_client_tracking`) | Rev 3 Architect Review | ✅ Implemented |
 | 7 | **Defer RudderStack parity** | Rev 3 Architect Review | ✅ Implemented |
-| 8 | **Kill switch boundary documentation** — define browser-only scope explicitly | Feedback #1 | ⏳ Remaining (docs) |
-| 9 | **Stable ConsentCookieKey** — replace mutable tenant slug with stable ID | Feedback #2 | ⏳ Remaining (code) |
-| 10 | **Resolver diagnostics** — add reason codes to `AnalyticsRuntimeProfile` | Feedback #3 | ⏳ Remaining (code) |
+| 8 | **Kill switch boundary documentation** — define browser-only scope explicitly | Feedback #1 | ✅ Done (CONFIGURATION.md, OPERATIONS.md) |
+| 9 | **Stable ConsentCookieKey** — replace mutable tenant slug with stable ID | Feedback #2 | ✅ Done (TenantStableKey in resolver) |
+| 10 | **Resolver diagnostics** — add reason codes to `AnalyticsRuntimeProfile` | Feedback #3 | ✅ Done (ProfileResolveReason enum, 9 values) |
 | 11 | **No client-side policy duplication** in admin UI | Feedback #4 | ✅ Verified incorporated |
-| 12 | **Command-side validation** for illegal/suboptimal combinations | Feedback #5 | ⏳ Remaining (code) |
+| 12 | **Command-side validation** for illegal/suboptimal combinations | Feedback #5 | ✅ Done (ValidateSettings + CollectWarnings) |
 | 13 | **Consent withdrawal = UI transition only** | Feedback #6 | ✅ Verified incorporated |
-| 14 | **Cross-subdomain cookie scope** documentation | Feedback #7 | ⏳ Remaining (docs) |
-| 15 | **SSR/prerender stance** documentation | Feedback #9 | ⏳ Remaining (docs) |
+| 14 | **Cross-subdomain cookie scope** documentation | Feedback #7 | ✅ Done (CONFIGURATION.md) |
+| 15 | **SSR/prerender stance** documentation | Feedback #9 | ✅ Done (BLAZOR.md) |
 
 > **Feedback #8 (DTO versioning):** Not mandatory for v1. Consider for v2 if additive evolution becomes necessary.
 > **Feedback #10 (Operational auditability):** Partially addressed — `userId` passed to all `SetValueAsync` calls. Full audit trail depends on settings infrastructure. Verify and document.
@@ -44,24 +44,19 @@ The ISLAMU Event platform now has a **fully implemented** cookie consent and ana
 
 ## Implementation Status
 
-### ✅ Completed (Phases 1–4)
+### ✅ All Phases Complete (1–7)
 
 | Phase | Layer | Key Deliverables | Tests |
 |-------|-------|-----------------|-------|
-| 1 | Domain | 4 enums, `AnalyticsProviderCapabilities`, 17 governance keys, 17 setting definitions | `ConsentStateTests` (5), `AnalyticsProviderCapabilitiesTests` (5) |
-| 2 | Application | `AnalyticsSettingGroup` (17 props), `IAnalyticsRuntimeProfileResolver` + concrete, `AnalyticsRuntimeProfile`, `PosthogClientOptions`, DTOs, DI | `AnalyticsRuntimeProfileResolverTests` (20), `AnalyticsSettingGroupTests` (17), `AnalyticsConsentBootstrapDtoTests` (13) |
-| 3 | Browser/JS | `ConsentState` enum (7 states), `CookieConsentBanner.razor`, `CookieConsentStateService`, `ICookieConsentInterop` + `cookie-consent.js`, `analytics-bridge.js` updates, `AnalyticsInitializer.razor` state machine | `AnalyticsInitializerTests` (5) |
-| 4 | Admin UI | `InstanceAnalyticsPrivacySection.razor` (note: named differently than plan), sidebar nav, `AnalyticsGovernanceSettingsModel`, save/load via `InstanceOnboardingService` | `AnalyticsGovernanceServiceTests` (3) |
+| 1 | Domain | 4 enums + `ProfileResolveReason` (9 values), `AnalyticsProviderCapabilities`, 17 governance keys, 17 setting definitions | `ConsentStateTests`, `AnalyticsProviderCapabilitiesTests` |
+| 2 | Application | `AnalyticsSettingGroup` (17 props + TenantStableKey), resolver + profile (with ResolveReasons) + PosthogClientOptions (inline), DTOs, DI | `AnalyticsRuntimeProfileResolverTests`, `AnalyticsSettingGroupTests`, `AnalyticsConsentBootstrapDtoTests` |
+| 3 | Browser/JS | `ConsentState` enum (7 states), `CookieConsentBanner.razor`, `CookieConsentStateService`, `ICookieConsentInterop` + `cookie-consent.js`, `analytics-bridge.js`, `AnalyticsInitializer.razor` state machine | `AnalyticsInitializerTests` |
+| 4 | Admin UI | `InstanceAnalyticsPrivacySection.razor`, sidebar nav, `AnalyticsGovernanceSettingsModel`, save/load | `AnalyticsGovernanceServiceTests` |
+| 5 | Hardening | TenantStableKey for cookie scoping, ProfileResolveReason enum (9 values), ValidateSettings + CollectWarnings | `UpdateAnalyticsGovernanceSettingsCommandHandlerTests` (310 lines), `GetAnalyticsGovernanceSettingsQueryHandlerTests` (213 lines) |
+| 6 | Documentation | CONFIGURATION.md (17 keys + kill switch + cookie scope), BLAZOR.md (state machine + SSR), OPERATIONS.md (provider table + kill switch + resolve reasons) | N/A |
+| 7 | Testing Gaps | CookieConsentBanner bUnit, AnalyticsInterop contracts, CookieConsentStateService, CookieConsentInterop contracts | 4 new test files (451+ lines total) |
 
-**Total existing tests: 80+ across 13 test files.**
-
-### ⏳ Remaining Work
-
-| Phase | Scope | Tasks | Key Complexity |
-|-------|-------|-------|----------------|
-| 5 | **Hardening** (feedback code changes) | 4 | Stable cookie key derivation, resolver diagnostics, command validation |
-| 6 | **Documentation** | 3 | CONFIGURATION.md, BLAZOR.md, OPERATIONS.md updates |
-| 7 | **Testing Gaps** | 4 | Banner bUnit, JS interop contracts, CookieConsentStateService, validation tests |
+**Total tests: 100+ across 15+ test files.**
 
 ---
 
@@ -258,9 +253,11 @@ Uninitialized
 
 ---
 
-## Remaining Implementation Phases
+## Completed Implementation Phases (5-7)
 
-### Phase 5: Hardening (Effort: M)
+> All phases below were implemented between Rev 4 and this Rev 5 audit.
+
+### Phase 5: Hardening ✅ COMPLETE
 
 #### Task 5.1: Stable ConsentCookieKey (Amendment 9)
 
@@ -348,7 +345,7 @@ Uninitialized
 
 ---
 
-### Phase 6: Documentation (Effort: S)
+### Phase 6: Documentation ✅ COMPLETE
 
 #### Task 6.1: Update docs/CONFIGURATION.md (Amendments 8, 14)
 
@@ -377,7 +374,7 @@ Uninitialized
 
 ---
 
-### Phase 7: Testing Gap Coverage (Effort: M)
+### Phase 7: Testing Gap Coverage ✅ COMPLETE
 
 #### Task 7.1: CookieConsentBanner bUnit Tests
 
@@ -423,42 +420,35 @@ Uninitialized
 
 ## Acceptance Gates (from Feedback Review)
 
-### Gate 1: Resolver Correctness ✅ Existing + 🔄 Hardening
+### Gate 1: Resolver Correctness ✅ ALL VERIFIED
 
-**Existing (20 tests):** Every provider path, PostHog mode, kill switch, banner/no-banner combination, decline behavior, PosthogClientOptions scoping.
+**Tests (383 lines):** Every provider path, PostHog mode, kill switch, banner/no-banner combination, decline behavior, PosthogClientOptions scoping, stable cookie key (TenantStableKey), reason code assertions for every path, no private key leakage.
 
-**After hardening:** Add stable cookie key tests, reason code assertions, no private key leakage verification.
+### Gate 2: Browser State Machine Correctness ✅ ALL VERIFIED
 
-### Gate 2: Browser State Machine Correctness ✅ Partial + 🔄 Testing Gaps
-
-**Existing (5 tests):** Bootstrap, degradation, pageview tracking.
-
-**After testing gaps:** Add banner bUnit tests, JS interop contract tests, CookieConsentStateService tests, re-entry verification, double-init prevention.
+**Tests:** Bootstrap, degradation, pageview tracking, banner bUnit tests (133 lines), JS interop contract tests (123 lines), CookieConsentStateService tests (98 lines), CookieConsentInterop contract tests (97 lines).
 
 ---
 
-## Risk Assessment (Updated)
+## Risk Assessment (Updated — Rev 5)
 
-### Mitigated Risks (from Rev 3)
+### All Mitigated
 - ~~PostHog `cookieless_mode` version stability~~ → Mitigated: `defaults: '2026-01-30'` pinned, runtime-check exists
 - ~~Consent cookie during SSR~~ → Mitigated: State machine starts `Uninitialized`, transitions in `OnAfterRenderAsync`
 - ~~Flash of banner~~ → Mitigated: CSS initially hidden, state machine shows only after determination
+- ~~ConsentCookieKey derived from mutable slug~~ → Mitigated: Now uses `TenantStableKey` (Amendment 9)
+- ~~No command-side validation~~ → Mitigated: ValidateSettings + CollectWarnings (Amendment 12)
+- ~~Incomplete test coverage~~ → Mitigated: Phase 7 added 4 test suites (451+ lines)
 
-### Active Risks
-1. **ConsentCookieKey derived from mutable slug** (HIGH until Amendment 9 is implemented) — Tenant slug changes orphan consent cookies.
-2. **No command-side validation** (MEDIUM until Amendment 12 is implemented) — Admins can save contradictory configurations.
-3. **PostHog known bug** — `opt_out_capturing_by_default` + `cookieless_mode: 'on_reject'` may not send events until explicit `opt_out_capturing()` call (GitHub #2841, open). Current workaround: manual opt_out call in state machine.
-4. **PostHog project-side config** — Admin may configure `cookieless_mode: 'on_reject'` but forget to enable in PostHog dashboard. Mitigated by admin UI guidance only.
-
-### Low Risks
-5. **RudderStack deferred parity** — May cause feature requests. Extension point documented.
-6. **Incomplete test coverage** — Banner, JS interop, and state service tests missing. Covered by Phase 7.
+### Remaining Low Risks
+1. **PostHog known bug** — `opt_out_capturing_by_default` + `cookieless_mode: 'on_reject'` may not send events until explicit `opt_out_capturing()` call (GitHub #2841, open). Current workaround: manual opt_out call in state machine.
+2. **PostHog project-side config** — Admin may configure `cookieless_mode: 'on_reject'` but forget to enable in PostHog dashboard. Mitigated by admin UI guidance only.
+3. **RudderStack deferred parity** — May cause feature requests. Extension point documented.
 
 ---
 
-## Success Metrics (Updated)
+## Success Metrics (All Verified ✅)
 
-### Already Verified ✅
 1. PostHog `cookieless_mode: 'always'` — no banner, analytics run immediately
 2. PostHog `cookieless_mode: 'on_reject'` — banner appears, analytics run cookieless before consent
 3. PostHog legacy — banner appears, analytics blocked until accept
@@ -472,12 +462,10 @@ Uninitialized
 11. Resolver is single source of policy truth
 12. Admin UI uses server-computed advisory values (no client-side policy duplication)
 13. Consent withdrawal = UI transition only (analytics state changes on explicit action)
-
-### After Hardening ⏳
-14. ConsentCookieKey survives tenant slug changes
-15. Resolver explains *why* each decision was made (reason codes)
-16. Invalid admin configurations rejected at save time
-17. Kill switch boundary documented precisely
-18. Cross-subdomain cookie scope documented
-19. SSR/prerender stance documented explicitly
-20. Full test coverage: banner, JS interop, state service, validation
+14. ConsentCookieKey survives tenant slug changes (TenantStableKey)
+15. Resolver explains *why* each decision was made (ProfileResolveReason, 9 values)
+16. Invalid admin configurations rejected at save time (ValidateSettings + CollectWarnings)
+17. Kill switch boundary documented precisely (CONFIGURATION.md, OPERATIONS.md)
+18. Cross-subdomain cookie scope documented (CONFIGURATION.md)
+19. SSR/prerender stance documented explicitly (BLAZOR.md)
+20. Full test coverage: banner, JS interop, state service, validation (Phase 7 complete)
