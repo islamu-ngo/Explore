@@ -3,8 +3,11 @@
 
 namespace Explore.Blazor.Extensions;
 
+using System.Globalization;
 using System.Net.Http.Json;
 using Explore.Application.DTOs.Appearance;
+using Explore.Domain.Common.Localization;
+using Microsoft.AspNetCore.Localization;
 
 public static class BffPreferenceEndpoints
 {
@@ -102,13 +105,79 @@ public static class BffPreferenceEndpoints
         });
     }
 
-    private static IResult HandleLanguagePreference(HttpContext ctx)
+    private static async Task<IResult> HandleLanguagePreference(HttpContext ctx, CancellationToken cancellationToken)
     {
-        var lang = ctx.Request.Query["lang"].ToString().Trim().ToLowerInvariant();
-        if (!string.IsNullOrEmpty(lang) && lang.Length is >= 2 and <= 5)
+        var rawLang = ctx.Request.Query["lang"].ToString();
+
+        if (!CultureRegistry.TryGetEntry(rawLang, out var entry))
         {
-            var isDev = ctx.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment();
-            ctx.Response.Cookies.Append("lang", lang, new CookieOptions
+            return Results.Problem(
+                detail: "Language must be a supported culture code registered in CultureRegistry.",
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Invalid language preference");
+        }
+
+        var normalizedLang = entry.Code;
+        var currentTheme = ctx.Request.Cookies["theme"] ?? "system";
+        var currentDirection = ctx.Request.Cookies["direction"] ?? "auto";
+
+        if (ctx.User.Identity?.IsAuthenticated == true)
+        {
+            var request = new UpdateUserAppearancePreferencesDto
+            {
+                ThemeMode = currentTheme is "dark" or "light" ? currentTheme : "system",
+                Direction = currentDirection is "ltr" or "rtl" ? currentDirection : "auto",
+                Language = normalizedLang
+            };
+
+            var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
+            using var response = await clientFactory.CreateClient("BffClient")
+                .PutAsJsonAsync("api/user/appearance", request, cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return Results.Problem(
+                    detail: "Authenticated language preference could not be persisted.",
+                    statusCode: (int)response.StatusCode,
+                    title: "Language preference update failed");
+            }
+        }
+
+        PersistLanguageCookie(ctx, normalizedLang);
+        PersistAspNetCoreCultureCookie(ctx, normalizedLang);
+
+        return Results.Ok(new UserAppearancePreferencesDto
+        {
+            ThemeMode = currentTheme is "dark" or "light" ? currentTheme : "system",
+            Direction = currentDirection is "ltr" or "rtl" ? currentDirection : "auto",
+            Language = normalizedLang
+        });
+    }
+
+    private static void PersistLanguageCookie(HttpContext ctx, string languageCode)
+    {
+        var isDev = ctx.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment();
+
+        ctx.Response.Cookies.Append("lang", languageCode, new CookieOptions
+        {
+            MaxAge = TimeSpan.FromDays(365),
+            Path = "/",
+            SameSite = SameSiteMode.Lax,
+            HttpOnly = false,
+            Secure = !isDev
+        });
+    }
+
+    private static void PersistAspNetCoreCultureCookie(HttpContext ctx, string languageCode)
+    {
+        var isDev = ctx.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment();
+        var cookieValue = CookieRequestCultureProvider.MakeCookieValue(
+            new RequestCulture(new CultureInfo(languageCode)));
+
+        ctx.Response.Cookies.Append(
+            CookieRequestCultureProvider.DefaultCookieName,
+            cookieValue,
+            new CookieOptions
             {
                 MaxAge = TimeSpan.FromDays(365),
                 Path = "/",
@@ -116,13 +185,6 @@ public static class BffPreferenceEndpoints
                 HttpOnly = false,
                 Secure = !isDev
             });
-            return Results.Ok();
-        }
-
-        return Results.Problem(
-            detail: "Language must be a normalized code between 2 and 5 characters.",
-            statusCode: StatusCodes.Status400BadRequest,
-            title: "Invalid language preference");
     }
 
     private static IResult HandleGetCurrentUser(HttpContext ctx)

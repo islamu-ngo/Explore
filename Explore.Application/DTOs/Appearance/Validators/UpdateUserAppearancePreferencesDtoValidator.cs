@@ -1,8 +1,9 @@
 // ABOUTME: Validates authenticated user appearance preference updates.
-// ABOUTME: Restricts theme mode to the supported appearance values already defined by the settings model.
+// ABOUTME: Restricts theme mode, direction, and language to codebase-supported values.
 
 namespace Explore.Application.DTOs.Appearance.Validators;
 
+using Explore.Domain.Common.Localization;
 using FluentValidation;
 
 public class UpdateUserAppearancePreferencesDtoValidator : AbstractValidator<UpdateUserAppearancePreferencesDto>
@@ -18,5 +19,10 @@ public class UpdateUserAppearancePreferencesDtoValidator : AbstractValidator<Upd
             .NotEmpty().WithMessage("Direction is required.")
             .Must(dir => dir is "auto" or "ltr" or "rtl")
             .WithMessage("Direction must be one of: auto, ltr, rtl.");
+
+        RuleFor(preferences => preferences.Language)
+            .NotEmpty().WithMessage("Language is required.")
+            .Must(code => CultureRegistry.Contains(code))
+            .WithMessage("Language must be a supported culture code registered in CultureRegistry.");
     }
 }

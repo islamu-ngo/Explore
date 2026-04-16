@@ -44,6 +44,7 @@ public class GetCurrentUserAppearancePreferencesQueryHandler : IRequestHandler<G
         {
             ThemeMode = appearance.ThemeMode,
             Direction = appearance.Direction,
+            Language = appearance.Language,
             DefaultThemeId = appearance.DefaultThemeId
         };
     }

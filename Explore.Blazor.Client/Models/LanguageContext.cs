@@ -1,11 +1,18 @@
 // ABOUTME: Immutable model representing the current language state for the Blazor application.
-// ABOUTME: Provided as a CascadingValue by LanguageProvider for all child components.
+// ABOUTME: Provided as a CascadingValue by LanguageProvider; all display metadata comes from CultureRegistry.
+
+using Explore.Domain.Common.Localization;
 
 namespace Explore.Blazor.Client.Models;
 
 /// <summary>
 /// Represents the current language context for the application.
 /// Provided as a CascadingValue by LanguageProvider.
+/// <para>
+/// All display metadata (flag, display name, RTL flag) is sourced from
+/// <see cref="CultureRegistry"/> — this type is a thin view-model over the shared registry
+/// plus the user's direction override.
+/// </para>
 /// </summary>
 public class LanguageContext
 {
@@ -38,54 +45,30 @@ public class LanguageContext
     /// <summary>Emoji flag representing the language.</summary>
     public string Flag { get; set; } = "🇺🇸";
 
-    /// <summary>RTL language codes.</summary>
-    private static readonly HashSet<string> RtlLanguages = new(StringComparer.OrdinalIgnoreCase)
+    /// <summary>
+    /// Creates a <see cref="LanguageContext"/> from a culture code by looking it up in <see cref="CultureRegistry"/>.
+    /// Unknown codes fall back to the first registry entry (canonical default).
+    /// </summary>
+    public static LanguageContext ForLanguage(string? languageCode)
     {
-        "ar", "he", "fa", "ur"
-    };
+        if (CultureRegistry.TryGetEntry(languageCode, out var entry))
+        {
+            return new LanguageContext
+            {
+                LanguageCode = entry.Code,
+                IsRtl = entry.IsRtl,
+                LanguageName = entry.NativeName,
+                Flag = entry.Flag
+            };
+        }
 
-    /// <summary>Well-known language flags.</summary>
-    private static readonly Dictionary<string, string> LanguageFlags = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["en"] = "🇺🇸",
-        ["fr"] = "🇫🇷",
-        ["ar"] = "🇸🇦",
-        ["he"] = "🇮🇱",
-        ["fa"] = "🇮🇷",
-        ["ur"] = "🇵🇰",
-        ["tr"] = "🇹🇷",
-        ["id"] = "🇮🇩",
-        ["ms"] = "🇲🇾",
-        ["de"] = "🇩🇪",
-        ["es"] = "🇪🇸"
-    };
-
-    /// <summary>Well-known language display names.</summary>
-    private static readonly Dictionary<string, string> LanguageNames = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["en"] = "English",
-        ["fr"] = "Français",
-        ["ar"] = "العربية",
-        ["he"] = "עברית",
-        ["fa"] = "فارسی",
-        ["ur"] = "اردو",
-        ["tr"] = "Türkçe",
-        ["id"] = "Bahasa Indonesia",
-        ["ms"] = "Bahasa Melayu",
-        ["de"] = "Deutsch",
-        ["es"] = "Español"
-    };
-
-    /// <summary>Creates a LanguageContext for the given language code.</summary>
-    public static LanguageContext ForLanguage(string languageCode)
-    {
-        var code = string.IsNullOrWhiteSpace(languageCode) ? "en" : languageCode.Trim().ToLowerInvariant();
+        var fallback = CultureRegistry.GetAll()[0];
         return new LanguageContext
         {
-            LanguageCode = code,
-            IsRtl = RtlLanguages.Contains(code),
-            LanguageName = LanguageNames.GetValueOrDefault(code, code.ToUpperInvariant()),
-            Flag = LanguageFlags.GetValueOrDefault(code, "🌐")
+            LanguageCode = fallback.Code,
+            IsRtl = fallback.IsRtl,
+            LanguageName = fallback.NativeName,
+            Flag = fallback.Flag
         };
     }
 }

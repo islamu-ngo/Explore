@@ -7,9 +7,10 @@ using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
 
-public class CustomPropertyDefinition : ITenantEntity, IAuditableEntity, ISoftDeletable
+public class CustomPropertyDefinition : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurrencyAware
 {
     public Guid Id { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
 
     public EntityTypeName EntityTypeName { get; set; }
 

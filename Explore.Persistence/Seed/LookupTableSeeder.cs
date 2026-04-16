@@ -57,6 +57,50 @@ public static class LookupTableSeeder
         await SeedExternalApiKeyStatusesAsync(context, cancellationToken);
         await SeedExternalApiKeyCreditPeriodsAsync(context, cancellationToken);
         await SeedNotificationReasonsAsync(context, cancellationToken);
+        await SeedScheduleItemKindsAsync(context, cancellationToken);
+        await SeedEventRegistrationPoliciesAsync(context, cancellationToken);
+        await SeedRegistrationScopesAsync(context, cancellationToken);
+    }
+
+    private static async Task SeedRegistrationScopesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<RegistrationScope>().AnyAsync(ct)) return;
+
+        context.Set<RegistrationScope>().AddRange(
+            new RegistrationScope { Id = (int)RegistrationScopeEnum.Event, MasterCode = "EVENT", FullName = "Whole event", Description = "User registered for the entire event" },
+            new RegistrationScope { Id = (int)RegistrationScopeEnum.Day, MasterCode = "DAY", FullName = "Event day", Description = "User registered for a single event day" },
+            new RegistrationScope { Id = (int)RegistrationScopeEnum.SessionSelection, MasterCode = "SESSION_SELECTION", FullName = "Session selection", Description = "User registered for a chosen set of sessions" });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedEventRegistrationPoliciesAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<EventRegistrationPolicy>().AnyAsync(ct)) return;
+
+        context.Set<EventRegistrationPolicy>().AddRange(
+            new EventRegistrationPolicy { Id = (int)EventRegistrationPolicyEnum.WholeEventOnly, MasterCode = "WHOLE_EVENT_ONLY", FullName = "Whole event only", Description = "Only whole-event registration is accepted" },
+            new EventRegistrationPolicy { Id = (int)EventRegistrationPolicyEnum.WholeDayOnly, MasterCode = "WHOLE_DAY_ONLY", FullName = "Whole day only", Description = "Only whole-day registration is accepted" },
+            new EventRegistrationPolicy { Id = (int)EventRegistrationPolicyEnum.SessionSelectionOnly, MasterCode = "SESSION_SELECTION_ONLY", FullName = "Session selection only", Description = "Only per-session selection is accepted" },
+            new EventRegistrationPolicy { Id = (int)EventRegistrationPolicyEnum.WholeEventOrDay, MasterCode = "WHOLE_EVENT_OR_DAY", FullName = "Whole event or day", Description = "Whole-event and whole-day registrations are accepted" },
+            new EventRegistrationPolicy { Id = (int)EventRegistrationPolicyEnum.WholeEventOrSession, MasterCode = "WHOLE_EVENT_OR_SESSION", FullName = "Whole event or session", Description = "Whole-event and per-session registrations are accepted" },
+            new EventRegistrationPolicy { Id = (int)EventRegistrationPolicyEnum.Flexible, MasterCode = "FLEXIBLE", FullName = "Flexible", Description = "All registration scopes are accepted" });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedScheduleItemKindsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        if (await context.Set<ScheduleItemKind>().AnyAsync(ct)) return;
+
+        context.Set<ScheduleItemKind>().AddRange(
+            new ScheduleItemKind { Id = (int)ScheduleItemKindEnum.Intro, MasterCode = "INTRO", FullName = "Intro", Description = "Opening remarks or welcome block" },
+            new ScheduleItemKind { Id = (int)ScheduleItemKindEnum.Talk, MasterCode = "TALK", FullName = "Talk", Description = "Main speaker content block" },
+            new ScheduleItemKind { Id = (int)ScheduleItemKindEnum.QAndA, MasterCode = "Q_AND_A", FullName = "Q&A", Description = "Audience questions and answers block" },
+            new ScheduleItemKind { Id = (int)ScheduleItemKindEnum.Break, MasterCode = "BREAK", FullName = "Break", Description = "Refreshment or rest block" },
+            new ScheduleItemKind { Id = (int)ScheduleItemKindEnum.Prayer, MasterCode = "PRAYER", FullName = "Prayer", Description = "Scheduled prayer block" },
+            new ScheduleItemKind { Id = (int)ScheduleItemKindEnum.Outro, MasterCode = "OUTRO", FullName = "Outro", Description = "Closing remarks or farewell block" },
+            new ScheduleItemKind { Id = (int)ScheduleItemKindEnum.Logistics, MasterCode = "LOGISTICS", FullName = "Logistics", Description = "Registration, seating, or housekeeping block" },
+            new ScheduleItemKind { Id = (int)ScheduleItemKindEnum.Custom, MasterCode = "CUSTOM", FullName = "Custom", Description = "Tenant-defined block not covered by standard kinds" });
+        await context.SaveChangesAsync(ct);
     }
 
     private static async Task SeedActorTypesAsync(ExploreDbContext context, CancellationToken ct)
@@ -352,7 +396,11 @@ public static class LookupTableSeeder
             new SystemSetting { Id = SeedIds.SystemSettingLocalizationTmsProviderId, SettingKey = GovernanceSettingKeys.Localization.TmsProvider, Value = "\"none\"", ValueType = SettingValueType.String, IsLocked = false, AllowedValues = "[\"none\",\"tolgee\",\"weblate\"]", Description = "Translation Management System provider (none uses offline bundles)", Category = "Localization", DisplayOrder = 2, CreatedAt = seedTimestamp },
             new SystemSetting { Id = SeedIds.SystemSettingLocalizationTmsApiUrlId, SettingKey = GovernanceSettingKeys.Localization.TmsApiUrl, Value = "\"\"", ValueType = SettingValueType.String, IsLocked = false, Description = "TMS API base URL (e.g., https://app.tolgee.io or self-hosted URL)", Category = "Localization", DisplayOrder = 3, CreatedAt = seedTimestamp },
             new SystemSetting { Id = SeedIds.SystemSettingLocalizationTmsProjectIdId, SettingKey = GovernanceSettingKeys.Localization.TmsProjectId, Value = "\"\"", ValueType = SettingValueType.String, IsLocked = false, Description = "TMS project identifier", Category = "Localization", DisplayOrder = 4, CreatedAt = seedTimestamp },
-            new SystemSetting { Id = SeedIds.SystemSettingLocalizationTmsComponentId, SettingKey = GovernanceSettingKeys.Localization.TmsComponent, Value = "\"\"", ValueType = SettingValueType.String, IsLocked = false, Description = "Weblate component slug (Weblate-specific, leave empty for Tolgee)", Category = "Localization", DisplayOrder = 5, CreatedAt = seedTimestamp }
+            new SystemSetting { Id = SeedIds.SystemSettingLocalizationTmsComponentId, SettingKey = GovernanceSettingKeys.Localization.TmsComponent, Value = "\"\"", ValueType = SettingValueType.String, IsLocked = false, Description = "Weblate component slug (Weblate-specific, leave empty for Tolgee)", Category = "Localization", DisplayOrder = 5, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingLocalizationEnabledLanguagesId, SettingKey = GovernanceSettingKeys.Localization.EnabledLanguages, Value = "\"en,fr,ar\"", ValueType = SettingValueType.String, IsLocked = false, Description = "Comma-separated culture codes the instance has enabled (must be a subset of the compile-time CultureRegistry).", Category = "Localization", DisplayOrder = 6, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingLocalizationFallbackLanguageId, SettingKey = GovernanceSettingKeys.Localization.FallbackLanguage, Value = "\"en\"", ValueType = SettingValueType.String, IsLocked = false, Description = "Fallback language used when a requested translation key is missing; must be in EnabledLanguages.", Category = "Localization", DisplayOrder = 7, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingLocalizationClientPickerEnabledId, SettingKey = GovernanceSettingKeys.Localization.ClientPickerEnabled, Value = "true", ValueType = SettingValueType.Boolean, IsLocked = false, Description = "Kill-switch: hides the in-app language picker when false, without a redeploy.", Category = "Localization", DisplayOrder = 8, CreatedAt = seedTimestamp },
+            new SystemSetting { Id = SeedIds.SystemSettingLocalizationForceOfflineModeId, SettingKey = GovernanceSettingKeys.Localization.ForceOfflineMode, Value = "false", ValueType = SettingValueType.Boolean, IsLocked = false, Description = "Emergency toggle: routes RuntimeTranslationProvider through OfflineTranslationProvider regardless of tms_provider.", Category = "Localization", DisplayOrder = 9, CreatedAt = seedTimestamp }
         };
 
         var existingIds = await context.Set<SystemSetting>()

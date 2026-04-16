@@ -2,6 +2,7 @@
 // ABOUTME: Verifies None→Offline, Tolgee/Weblate routing, and graceful degradation on TMS errors.
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Telemetry;
 using Explore.Domain.Enums;
 using Explore.Infrastructure.Localization;
 using Microsoft.Extensions.Logging;
@@ -130,7 +131,16 @@ public class RuntimeTranslationProviderTests
             offline,
             nullProvider,
             resolver,
+            CreateTestMetrics(),
             Substitute.For<ILogger<RuntimeTranslationProvider>>());
+    }
+
+    private static TranslationMetrics CreateTestMetrics()
+    {
+        var meter = new System.Diagnostics.Metrics.Meter("test.translation");
+        var factory = Substitute.For<System.Diagnostics.Metrics.IMeterFactory>();
+        factory.Create(Arg.Any<System.Diagnostics.Metrics.MeterOptions>()).Returns(meter);
+        return new TranslationMetrics(factory);
     }
 
     private sealed class MutableTranslationConfigResolver : ITranslationConfigResolver

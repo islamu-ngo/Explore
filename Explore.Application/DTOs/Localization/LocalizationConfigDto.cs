@@ -1,5 +1,5 @@
 // ABOUTME: DTO representing the current localization configuration for admin display.
-// ABOUTME: Combines governance settings into a single view of TMS provider state.
+// ABOUTME: Combines governance settings (provider, languages, kill-switches) into a single view.
 
 namespace Explore.Application.DTOs.Localization;
 
@@ -12,4 +12,9 @@ public class LocalizationConfigDto
     public string? TmsComponent { get; set; }
     public bool IsConnected { get; set; }
     public List<string> AvailableLanguages { get; set; } = [];
+    public List<string> EnabledLanguages { get; set; } = [];
+    public string FallbackLanguage { get; set; } = "en";
+    public bool ClientPickerEnabled { get; set; } = true;
+    public bool ForceOfflineMode { get; set; }
+    public bool TmsApiKeyConfigured { get; set; }
 }

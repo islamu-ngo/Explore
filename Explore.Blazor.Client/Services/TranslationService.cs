@@ -1,8 +1,9 @@
 // ABOUTME: Client-side translation service with in-memory caching (30-min TTL).
-// ABOUTME: Fetches translations from API via NSwag client, provides T(key) accessor with key-as-fallback.
+// ABOUTME: Fetches via NSwag client; validates language codes against CultureRegistry at fetch boundaries only.
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services;
+using Explore.Domain.Common.Localization;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
@@ -35,6 +36,8 @@ public class TranslationService : ITranslationService, IDisposable
         _logger = logger;
     }
 
+    // Hot path — MUST NOT touch I/O, emit metrics, open logger scopes, or start OTEL spans.
+    // See blazor-localization-plan.md Enterprise Concerns → Performance.
     public string T(string key, string? fallback = null)
     {
         if (string.IsNullOrEmpty(key))
@@ -49,10 +52,26 @@ public class TranslationService : ITranslationService, IDisposable
 
     public async Task<IDictionary<string, string>> GetTranslationsAsync(string languageCode, CancellationToken ct = default)
     {
-        var cache = _translationsCache;
-        if (cache is { IsValid: true } && string.Equals(_currentLanguage, languageCode, StringComparison.OrdinalIgnoreCase))
+        if (!CultureRegistry.TryGetEntry(languageCode, out var entry))
         {
-            _logger.LogDebug("[TRANSLATION] Cache hit for {Language}", languageCode);
+            _logger.LogWarning(
+                "[TRANSLATION] GetTranslationsAsync rejected unknown language '{Language}'; returning empty dictionary (cache not poisoned)",
+                languageCode);
+            return new Dictionary<string, string>();
+        }
+
+        var normalised = entry.Code;
+
+        using var scope = _logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["Language"] = normalised,
+            ["Operation"] = nameof(GetTranslationsAsync)
+        });
+
+        var cache = _translationsCache;
+        if (cache is { IsValid: true } && string.Equals(_currentLanguage, normalised, StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogDebug("[TRANSLATION] Cache hit");
             return cache.Data;
         }
 
@@ -60,20 +79,20 @@ public class TranslationService : ITranslationService, IDisposable
         try
         {
             cache = _translationsCache;
-            if (cache is { IsValid: true } && string.Equals(_currentLanguage, languageCode, StringComparison.OrdinalIgnoreCase))
+            if (cache is { IsValid: true } && string.Equals(_currentLanguage, normalised, StringComparison.OrdinalIgnoreCase))
             {
-                _logger.LogDebug("[TRANSLATION] Cache hit for {Language} (after lock)", languageCode);
+                _logger.LogDebug("[TRANSLATION] Cache hit (after lock)");
                 return cache.Data;
             }
 
-            _logger.LogDebug("[TRANSLATION] Cache miss for {Language}, fetching from API", languageCode);
-            var translations = await _apiClient.TranslationAsync(languageCode, ct);
+            _logger.LogInformation("[TRANSLATION] Cache miss, fetching from API");
+            var translations = await _apiClient.TranslationAsync(normalised, ct);
             _translationsCache = new CacheEntry<IDictionary<string, string>>(translations, DateTime.UtcNow.Add(CacheDuration));
             return translations;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to fetch translations for {Language}", languageCode);
+            _logger.LogError(ex, "[TRANSLATION] Failed to fetch translations");
             return _translationsCache?.Data ?? new Dictionary<string, string>();
         }
         finally
@@ -105,7 +124,7 @@ public class TranslationService : ITranslationService, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to fetch available languages");
+            _logger.LogError(ex, "[TRANSLATION] Failed to fetch available languages");
             return _languagesCache?.Data ?? new List<string> { "en" };
         }
         finally
@@ -116,22 +135,39 @@ public class TranslationService : ITranslationService, IDisposable
 
     public async Task ChangeLanguageAsync(string languageCode, CancellationToken ct = default)
     {
-        if (string.Equals(_currentLanguage, languageCode, StringComparison.OrdinalIgnoreCase))
+        if (!CultureRegistry.TryGetEntry(languageCode, out var entry))
+        {
+            _logger.LogWarning(
+                "[TRANSLATION] ChangeLanguageAsync rejected unknown language '{Language}'; no-op",
+                languageCode);
+            return;
+        }
+
+        var normalised = entry.Code;
+        if (string.Equals(_currentLanguage, normalised, StringComparison.OrdinalIgnoreCase))
             return;
 
-        _logger.LogInformation("[TRANSLATION] Changing language from {Old} to {New}", _currentLanguage, languageCode);
+        _logger.LogInformation("[TRANSLATION] Changing language from {Old} to {New}", _currentLanguage, normalised);
 
         _translationsCache = null;
-        _currentLanguage = languageCode;
+        _currentLanguage = normalised;
 
-        await GetTranslationsAsync(languageCode, ct);
-        OnLanguageChanged?.Invoke(languageCode);
+        await GetTranslationsAsync(normalised, ct);
+        OnLanguageChanged?.Invoke(normalised);
     }
 
     public async Task PreloadAsync(string languageCode, CancellationToken ct = default)
     {
-        _currentLanguage = languageCode;
-        await GetTranslationsAsync(languageCode, ct);
+        if (!CultureRegistry.TryGetEntry(languageCode, out var entry))
+        {
+            _logger.LogWarning(
+                "[TRANSLATION] PreloadAsync rejected unknown language '{Language}'; preloading 'en' instead",
+                languageCode);
+            entry = CultureRegistry.GetAll()[0];
+        }
+
+        _currentLanguage = entry.Code;
+        await GetTranslationsAsync(entry.Code, ct);
     }
 
     public void Dispose()

@@ -1,0 +1,36 @@
+/* ABOUTME: Scoped styles for LanguagePicker using BEM + CSS logical properties. */
+/* ABOUTME: Logical properties only (margin-inline-*, padding-inline-*, inset-inline-*) for RTL safety. */
+
+.language-picker {
+    display: inline-flex;
+    align-items: center;
+}
+
+.language-picker__button {
+    min-inline-size: 0;
+    padding-block: var(--isl-space-1, 4px);
+    padding-inline: var(--isl-space-2, 8px);
+    text-transform: none;
+    border-radius: var(--isl-radius-sm, 6px);
+}
+
+.language-picker__button:focus-visible {
+    outline: var(--isl-focus-ring-width, 2px) solid var(--isl-focus-ring-color, currentColor);
+    outline-offset: var(--isl-focus-ring-offset, 2px);
+}
+
+.language-picker__menu {
+    min-inline-size: 12rem;
+}
+
+.language-picker__item {
+    padding-block: var(--isl-space-2, 8px);
+    padding-inline: var(--isl-space-3, 12px);
+    min-block-size: 2.25rem; /* WCAG 2.2 AA — 24×24 CSS px minimum target size */
+    text-align: start;
+}
+
+.language-picker__item--active {
+    font-weight: var(--isl-font-weight-semibold, 600);
+    background-color: var(--isl-surface-selected, rgba(0, 0, 0, 0.04));
+}

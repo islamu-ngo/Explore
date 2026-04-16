@@ -1,0 +1,564 @@
+@* ABOUTME: Instance admin section for localization — TMS config, kill-switches, enabled languages, export, secrets. *@
+@* ABOUTME: Delegates persistence to ILocalizationAdminService; emergency kill-switch path bypasses full form save. *@
+
+@using Explore.Blazor.Client.Contracts.Services
+@using Explore.Blazor.Client.Models.Admin
+@using Explore.Domain.Common.Localization
+@using MudBlazor
+
+@inject ILocalizationAdminService LocalizationAdminService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ILogger<InstanceLocalizationSection> Logger
+
+<div class="settings-section instance-localization">
+    <div class="settings-section-header">
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Localization</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+            Configure the Translation Management System, enabled languages, and operational kill-switches.
+            Changes are persisted to governance settings and the tenant translation cache is invalidated.
+        </MudText>
+    </div>
+
+    @if (_state.IsLoading)
+    {
+        <MudStack AlignItems="AlignItems.Center" Class="py-8">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" role="status" />
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">Loading localization settings…</MudText>
+        </MudStack>
+        return;
+    }
+
+    <MudStack Spacing="4" Class="instance-localization__body">
+
+        @* ── TMS Provider ────────────────────────────── *@
+        <div class="instance-localization__form">
+            <MudText Typo="Typo.subtitle1" Style="font-weight: 600;" Class="mb-2">TMS Provider</MudText>
+            <MudGrid>
+                <MudItem xs="12" md="4">
+                    <MudSelect T="string"
+                               Label="Provider"
+                               Value="_state.TmsProvider"
+                               ValueChanged="OnProviderChanged"
+                               Variant="Variant.Outlined"
+                               Dense="true"
+                               aria-label="Translation Management System provider">
+                        <MudSelectItem Value="@("none")">None (Offline bundles)</MudSelectItem>
+                        <MudSelectItem Value="@("tolgee")">Tolgee</MudSelectItem>
+                        <MudSelectItem Value="@("weblate")">Weblate</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+
+            @if (_state.IsOffline)
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-3">
+                    No live TMS is configured. Offline bundles shipped with the app will be used for all translation lookups.
+                </MudAlert>
+            }
+            else
+            {
+                <MudGrid Class="mt-2">
+                    <MudItem xs="12" md="6">
+                        <AppTextField T="string" Label="API URL"
+                                      @bind-Value="_state.TmsApiUrl"
+                                      Placeholder="https://app.tolgee.io"
+                                      HelperText="Absolute https:// URL of the TMS API base" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <AppTextField T="string" Label="Project ID"
+                                      @bind-Value="_state.TmsProjectId"
+                                      HelperText="Tolgee project ID or Weblate project slug" />
+                    </MudItem>
+                    @if (_state.IsWeblate)
+                    {
+                        <MudItem xs="12" md="6">
+                            <AppTextField T="string" Label="Component Slug"
+                                          @bind-Value="_state.TmsComponent"
+                                          HelperText="Weblate: component slug within the project (required)" />
+                        </MudItem>
+                    }
+                </MudGrid>
+
+                @* ── Secret Lifecycle ─────────────────────── *@
+                <div class="instance-localization__secret mt-3">
+                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                        <MudChip T="string"
+                                 Color="@(_state.TmsApiKeyConfigured ? Color.Success : Color.Default)"
+                                 Variant="@(_state.TmsApiKeyConfigured ? Variant.Filled : Variant.Outlined)"
+                                 Size="Size.Small">
+                            @(_state.TmsApiKeyConfigured ? "API Key Configured" : "API Key Not Configured")
+                        </MudChip>
+                        <AppButton Variant="Variant.Text"
+                                   Size="Size.Small"
+                                   StartIcon="@Icons.Material.Filled.Refresh"
+                                   OnClick="RotateApiKeyAsync"
+                                   Disabled="_state.IsSaving"
+                                   aria-label="Rotate TMS API key">
+                            Rotate
+                        </AppButton>
+                        @if (_state.TmsApiKeyConfigured)
+                        {
+                            <AppButton Variant="Variant.Text"
+                                       Size="Size.Small"
+                                       Color="Color.Error"
+                                       StartIcon="@Icons.Material.Filled.DeleteForever"
+                                       OnClick="ClearApiKeyAsync"
+                                       Disabled="_state.IsSaving"
+                                       aria-label="Clear TMS API key">
+                                Clear
+                            </AppButton>
+                        }
+                    </MudStack>
+                    <MudTextField T="string"
+                                  @bind-Value="_state.TmsApiKey"
+                                  Label="API Key"
+                                  InputType="InputType.Password"
+                                  Variant="Variant.Outlined"
+                                  HelperText="Write-only: enter a new key to set. Current value is never sent back."
+                                  Placeholder="Paste new API key…"
+                                  Adornment="Adornment.End"
+                                  AdornmentIcon="@(_showApiKey ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                  OnAdornmentClick="() => _showApiKey = !_showApiKey"
+                                  Class="mt-2"
+                                  aria-label="TMS API key (write-only)" />
+                </div>
+            }
+        </div>
+
+        <MudDivider />
+
+        @* ── Enabled Languages ─────────────────────── *@
+        <div class="instance-localization__enabled-languages">
+            <MudText Typo="Typo.subtitle1" Style="font-weight: 600;" Class="mb-2">Enabled Languages</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                Drives the language picker and request-localization middleware. The default and fallback languages must be in the enabled set.
+            </MudText>
+            <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap" role="group" aria-label="Language toggles">
+                @foreach (var culture in CultureRegistry.GetAll())
+                {
+                    var cultureCode = culture.Code;
+                    var isEnabled = _state.EnabledLanguages.Contains(cultureCode, StringComparer.OrdinalIgnoreCase);
+                    <MudChip T="string"
+                             Color="@(isEnabled ? Color.Primary : Color.Default)"
+                             Variant="@(isEnabled ? Variant.Filled : Variant.Outlined)"
+                             OnClick="@(() => ToggleLanguage(cultureCode))"
+                             aria-pressed="@isEnabled"
+                             aria-label="@($"{culture.NativeName} ({cultureCode.ToUpperInvariant()})")">
+                        @culture.Flag @culture.NativeName (@(cultureCode.ToUpperInvariant()))
+                    </MudChip>
+                }
+            </MudStack>
+
+            <MudGrid Class="mt-3">
+                <MudItem xs="12" md="6">
+                    <MudSelect T="string" Label="Default language"
+                               @bind-Value="_state.DefaultLanguage"
+                               Variant="Variant.Outlined"
+                               Dense="true"
+                               aria-label="Default language for new users">
+                        @foreach (var langCode in _state.EnabledLanguages)
+                        {
+                            <MudSelectItem Value="@langCode">@(langCode.ToUpperInvariant())</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudSelect T="string" Label="Fallback language"
+                               @bind-Value="_state.FallbackLanguage"
+                               Variant="Variant.Outlined"
+                               Dense="true"
+                               aria-label="Fallback language when translation is missing">
+                        @foreach (var langCode in _state.EnabledLanguages)
+                        {
+                            <MudSelectItem Value="@langCode">@(langCode.ToUpperInvariant())</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+        </div>
+
+        <MudDivider />
+
+        @* ── Kill-switches ──────────────────────────── *@
+        <div class="instance-localization__killswitch">
+            <MudText Typo="Typo.subtitle1" Style="font-weight: 600;" Class="mb-2">Kill-switches</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">
+                Emergency toggles for operational incidents. Changes are staged until saved.
+            </MudText>
+            <MudStack Spacing="2">
+                <div>
+                    <MudSwitch T="bool" @bind-Value="_state.ClientPickerEnabled"
+                               Color="Color.Primary"
+                               Label="Show the in-app language picker"
+                               aria-label="Toggle in-app language picker visibility" />
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ms-10">
+                        When disabled, the language picker is hidden from all users without a redeploy.
+                    </MudText>
+                </div>
+                <div>
+                    <MudSwitch T="bool" @bind-Value="_state.ForceOfflineMode"
+                               Color="Color.Error"
+                               Label="Force offline mode (bypass live TMS)"
+                               aria-label="Toggle force offline mode" />
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ms-10">
+                        Routes all translation lookups through offline bundles, regardless of TMS provider setting.
+                    </MudText>
+                </div>
+                @if (_state.ForceOfflineMode)
+                {
+                    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true">
+                        <strong>Force-offline is an emergency toggle.</strong>
+                        Users will only see translations from offline bundles until this is disabled.
+                        Remember to disable when the incident is resolved.
+                    </MudAlert>
+                }
+            </MudStack>
+
+            <MudStack Row="true" Spacing="2" Class="mt-3">
+                <AppButton StartIcon="@Icons.Material.Filled.FlashOn"
+                           Variant="Variant.Filled"
+                           Color="Color.Warning"
+                           Disabled="_state.IsSavingKillSwitches"
+                           OnClick="SaveKillSwitchesNowAsync"
+                           aria-label="Save and apply kill-switches immediately">
+                    @(_state.IsSavingKillSwitches ? "Applying…" : "Save & Apply Kill-switches Now")
+                </AppButton>
+            </MudStack>
+        </div>
+
+        <MudDivider />
+
+        @* ── Actions ────────────────────────────────── *@
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+            <AppButton StartIcon="@Icons.Material.Filled.NetworkCheck"
+                       Variant="Variant.Outlined"
+                       Disabled="@(_state.IsTesting || _state.IsOffline)"
+                       OnClick="TestConnectionAsync"
+                       aria-label="Test TMS connection">
+                @if (_state.IsTesting)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" role="status" />
+                    @:Testing…
+                }
+                else
+                {
+                    @:Test Connection
+                }
+            </AppButton>
+            <AppButton StartIcon="@Icons.Material.Filled.Save"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Disabled="_state.IsSaving"
+                       OnClick="SaveAsync"
+                       aria-label="Save all localization settings">
+                @(_state.IsSaving ? "Saving…" : "Save")
+            </AppButton>
+        </MudStack>
+
+        @if (!string.IsNullOrWhiteSpace(_state.LastTestResult))
+        {
+            <MudAlert Severity="@(_state.LastTestSucceeded ? Severity.Success : Severity.Error)"
+                      Variant="Variant.Outlined"
+                      Dense="true">
+                @_state.LastTestResult
+            </MudAlert>
+        }
+
+        @* ── Export Bundles ──────────────────────────── *@
+        <MudDivider />
+        <div class="instance-localization__bundle-card">
+            <MudText Typo="Typo.subtitle1" Style="font-weight: 600;" Class="mb-2">Offline Bundle Export</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                Pulls translations from the configured TMS for each language and writes them to
+                <code>App_Data/Localization/Bundles/{lang}.json</code>. Offline provider picks these up automatically.
+            </MudText>
+
+            @* ── Health Banner ────────────────────────── *@
+            @if (_state.BundleHealthLoaded && !_state.BundlePathWritable)
+            {
+                <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true" Class="mb-3">
+                    <strong>Bundle path is not writable.</strong>
+                    @if (!string.IsNullOrWhiteSpace(_state.BundlePathReason))
+                    {
+                        @_state.BundlePathReason
+                    }
+                    @if (!string.IsNullOrWhiteSpace(_state.BundlePathTarget))
+                    {
+                        <br />
+                        <MudText Typo="Typo.caption">Target: @TruncatePath(_state.BundlePathTarget, 80)</MudText>
+                    }
+                    <br />
+                    <MudText Typo="Typo.caption">
+                        HA deployments require a shared volume or a distributed bundle writer.
+                    </MudText>
+                </MudAlert>
+            }
+            @if (_state.BundleHealthLoaded && _state.BundlePathWritable && IsNonPersistentPath(_state.BundlePathTarget))
+            {
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="mb-3">
+                    Bundle target path looks non-persistent (@TruncatePath(_state.BundlePathTarget, 60)).
+                    Exports may be lost on application restart.
+                </MudAlert>
+            }
+
+            <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
+                @foreach (var exportLang in _state.EnabledLanguages)
+                {
+                    var language = exportLang;
+                    var isExporting = _state.ExportingLanguages.TryGetValue(language, out var exporting) && exporting;
+                    var exportDisabled = _state.IsOffline || _state.IsSaving || isExporting
+                                         || (_state.BundleHealthLoaded && !_state.BundlePathWritable);
+                    <MudTooltip Text="@(!_state.BundlePathWritable && _state.BundleHealthLoaded ? "Bundle path is not writable — see health banner above" : "")">
+                        <AppButton Variant="Variant.Outlined"
+                                   StartIcon="@Icons.Material.Filled.CloudDownload"
+                                   OnClick="@(() => ExportBundleAsync(language))"
+                                   Disabled="@exportDisabled"
+                                   aria-label="@($"Export {language.ToUpperInvariant()} translations to offline bundle")">
+                            @if (isExporting)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-1" role="status" />
+                            }
+                            Export @(language.ToUpperInvariant())
+                        </AppButton>
+                    </MudTooltip>
+                }
+            </MudStack>
+        </div>
+
+        @* ── Danger Zone ─────────────────────────────── *@
+        <MudDivider />
+        <MudExpansionPanels>
+            <MudExpansionPanel Text="Danger Zone" IsInitiallyExpanded="false">
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Reset to offline-only mode. This clears TMS configuration and forces all translations to come from bundled files.
+                    </MudText>
+                    <AppButton Variant="Variant.Outlined"
+                               Color="Color.Error"
+                               StartIcon="@Icons.Material.Filled.RestartAlt"
+                               OnClick="ResetToOfflineAsync"
+                               Disabled="_state.IsSaving"
+                               aria-label="Reset to offline-only mode">
+                        Reset to Offline-Only
+                    </AppButton>
+                </MudStack>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+
+    </MudStack>
+</div>
+
+@code {
+    private readonly LocalizationAdminState _state = new();
+    private bool _showApiKey;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _state.IsLoading = true;
+        try
+        {
+            var configTask = LocalizationAdminService.GetConfigurationAsync();
+            var healthTask = LocalizationAdminService.GetBundlePathHealthAsync();
+            await Task.WhenAll(configTask, healthTask);
+
+            var config = configTask.Result;
+            if (config is not null)
+            {
+                _state.LoadFrom(config);
+            }
+
+            var health = healthTask.Result;
+            if (health is not null)
+            {
+                _state.BundlePathWritable = health.Writable;
+                _state.BundlePathReason = health.Reason;
+                _state.BundlePathTarget = health.TargetPath;
+                _state.BundleHealthLoaded = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "[LOCALIZATION ADMIN] Failed to load configuration");
+            Snackbar.Add("Failed to load localization settings.", Severity.Error);
+        }
+        finally
+        {
+            _state.IsLoading = false;
+        }
+    }
+
+    private void OnProviderChanged(string newProvider)
+    {
+        var oldProvider = _state.TmsProvider;
+        _state.TmsProvider = newProvider;
+
+        // Clear secret on provider change (Tolgee→Weblate or vice versa)
+        if (!string.Equals(oldProvider, newProvider, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(newProvider, "none", StringComparison.OrdinalIgnoreCase))
+        {
+            _state.TmsApiKey = null;
+            _state.TmsApiKeyConfigured = false;
+        }
+    }
+
+    private void ToggleLanguage(string code)
+    {
+        if (_state.EnabledLanguages.Contains(code, StringComparer.OrdinalIgnoreCase))
+        {
+            if (_state.EnabledLanguages.Count == 1)
+            {
+                Snackbar.Add("At least one language must remain enabled.", Severity.Warning);
+                return;
+            }
+            _state.EnabledLanguages.RemoveAll(c => string.Equals(c, code, StringComparison.OrdinalIgnoreCase));
+            if (string.Equals(_state.DefaultLanguage, code, StringComparison.OrdinalIgnoreCase))
+            {
+                _state.DefaultLanguage = _state.EnabledLanguages[0];
+            }
+            if (string.Equals(_state.FallbackLanguage, code, StringComparison.OrdinalIgnoreCase))
+            {
+                _state.FallbackLanguage = _state.EnabledLanguages[0];
+            }
+        }
+        else
+        {
+            _state.EnabledLanguages.Add(code.ToLowerInvariant());
+        }
+    }
+
+    private async Task TestConnectionAsync()
+    {
+        _state.IsTesting = true;
+        _state.LastTestResult = null;
+        StateHasChanged();
+        try
+        {
+            var result = await LocalizationAdminService.TestConnectionAsync();
+            _state.LastTestSucceeded = result.Success;
+            _state.LastTestResult = result.Message;
+            Snackbar.Add(result.Message, result.Success ? Severity.Success : Severity.Error);
+        }
+        finally
+        {
+            _state.IsTesting = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        var validationError = _state.ValidateSynchronously();
+        if (validationError is not null)
+        {
+            Snackbar.Add(validationError, Severity.Warning);
+            return;
+        }
+
+        _state.IsSaving = true;
+        try
+        {
+            var result = await LocalizationAdminService.UpdateGovernanceAsync(_state.ToPayload());
+            Snackbar.Add(result.Message, result.Success ? Severity.Success : Severity.Error);
+        }
+        finally
+        {
+            _state.IsSaving = false;
+        }
+    }
+
+    private async Task SaveKillSwitchesNowAsync()
+    {
+        _state.IsSavingKillSwitches = true;
+        try
+        {
+            // Build a minimal payload that only changes kill-switch fields while preserving all others
+            var payload = _state.ToPayload();
+            var result = await LocalizationAdminService.UpdateGovernanceAsync(payload);
+            Snackbar.Add(
+                result.Success ? "Kill-switches applied." : result.Message,
+                result.Success ? Severity.Success : Severity.Error);
+        }
+        finally
+        {
+            _state.IsSavingKillSwitches = false;
+        }
+    }
+
+    private async Task ExportBundleAsync(string languageCode)
+    {
+        _state.ExportingLanguages[languageCode] = true;
+        StateHasChanged();
+        try
+        {
+            var result = await LocalizationAdminService.ExportFromTmsAsync(languageCode);
+            Snackbar.Add(result.Message, result.Success ? Severity.Success : Severity.Error);
+        }
+        finally
+        {
+            _state.ExportingLanguages[languageCode] = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RotateApiKeyAsync()
+    {
+        var result = await DialogService.ShowMessageBoxAsync(
+            "Rotate API Key",
+            "Enter the new API key in the field below, then click Save to persist the change. Only the key will be updated.",
+            yesText: "OK",
+            cancelText: "Cancel");
+        // Focus goes to the API key field; the admin types the new key, then hits Save.
+    }
+
+    private async Task ClearApiKeyAsync()
+    {
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Clear API Key",
+            "This will remove the configured API key. The TMS provider will fall back to offline mode until a new key is set. Continue?",
+            yesText: "Clear Key",
+            cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            _state.TmsApiKey = null;
+            _state.TmsApiKeyConfigured = false;
+            Snackbar.Add("API key cleared. Save to persist.", Severity.Info);
+        }
+    }
+
+    private async Task ResetToOfflineAsync()
+    {
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Reset to Offline-Only",
+            "This will clear TMS provider settings, force all translations to offline bundles, and hide the language picker. Continue?",
+            yesText: "Reset",
+            cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            _state.TmsProvider = "none";
+            _state.TmsApiUrl = null;
+            _state.TmsProjectId = null;
+            _state.TmsComponent = null;
+            _state.TmsApiKey = null;
+            _state.TmsApiKeyConfigured = false;
+            _state.ForceOfflineMode = true;
+            _state.ClientPickerEnabled = false;
+            await SaveAsync();
+        }
+    }
+
+    private static string TruncatePath(string? path, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(path) || path.Length <= maxLength)
+            return path ?? "";
+        return "…" + path[^(maxLength - 1)..];
+    }
+
+    private static bool IsNonPersistentPath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        return path.StartsWith("/tmp", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith("/var/tmp", StringComparison.OrdinalIgnoreCase);
+    }
+}

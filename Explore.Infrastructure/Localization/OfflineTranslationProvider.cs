@@ -1,22 +1,27 @@
-// ABOUTME: Offline translation provider that reads pre-exported TMS JSON bundles as embedded resources.
-// ABOUTME: Default provider when no TMS is configured — self-hosters always get translations from last build.
+// ABOUTME: Offline translation provider — reads from {ContentRoot}/App_Data/Localization/Bundles first, falls back to embedded resources.
+// ABOUTME: Default provider when no TMS is configured; also the fallback when a live TMS throws or force_offline_mode is on.
 
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text.Json;
 using Explore.Application.Contracts.Infrastructure;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Explore.Infrastructure.Localization;
 
 /// <summary>
-/// Reads flat key-value JSON bundles shipped as embedded resources.
-/// Bundle format: { "lookup.tag.FIQH.full_name": "Jurisprudence islamique", ... }
-/// One file per language (en.json, fr.json, ar.json).
+/// Reads flat key-value JSON bundles. Resolution order:
+/// 1. <c>{ContentRoot}/App_Data/Localization/Bundles/{lang}.json</c> (admin-exported, writable — preferred)
+/// 2. Embedded resource shipped with the assembly (read-only fallback)
+/// <para>
+/// Bundle format: <c>{ "ui.home.title": "Welcome", ... }</c>. One file per language.
+/// </para>
 /// </summary>
 public class OfflineTranslationProvider : ITranslationManagementProvider
 {
     private readonly ILogger<OfflineTranslationProvider> _logger;
+    private readonly IWebHostEnvironment? _environment;
     private readonly ConcurrentDictionary<string, IReadOnlyDictionary<string, string>> _bundles = new();
     private readonly Assembly _bundleAssembly;
     private readonly string _bundlePrefix;
@@ -25,8 +30,16 @@ public class OfflineTranslationProvider : ITranslationManagementProvider
     private readonly object _scanLock = new();
 
     public OfflineTranslationProvider(ILogger<OfflineTranslationProvider> logger)
+        : this(logger, environment: null)
+    {
+    }
+
+    public OfflineTranslationProvider(
+        ILogger<OfflineTranslationProvider> logger,
+        IWebHostEnvironment? environment)
     {
         _logger = logger;
+        _environment = environment;
         _bundleAssembly = typeof(OfflineTranslationProvider).Assembly;
         _bundlePrefix = $"{_bundleAssembly.GetName().Name}.Localization.Bundles.";
     }
@@ -56,6 +69,19 @@ public class OfflineTranslationProvider : ITranslationManagementProvider
         return Task.FromResult<IEnumerable<string>>(_availableLanguages);
     }
 
+    /// <summary>
+    /// Clears the in-memory cache entry for a single language. Used by the admin "export" flow so a
+    /// freshly-persisted bundle is picked up on the next read without a process restart.
+    /// </summary>
+    public void InvalidateLanguage(string languageCode)
+    {
+        var normalised = languageCode.Trim().ToLowerInvariant();
+        if (_bundles.TryRemove(normalised, out _))
+        {
+            _logger.LogDebug("[LOCALIZATION] Offline bundle cache invalidated for {Language}", normalised);
+        }
+    }
+
     private IReadOnlyDictionary<string, string> GetOrLoadBundle(string languageCode)
     {
         var normalizedCode = languageCode.ToLowerInvariant();
@@ -64,6 +90,37 @@ public class OfflineTranslationProvider : ITranslationManagementProvider
 
     private IReadOnlyDictionary<string, string> LoadBundle(string languageCode)
     {
+        // Preferred: writable-dir bundle (admin-exported), then fall back to embedded resource.
+        if (_environment is not null)
+        {
+            var writablePath = Path.Combine(
+                _environment.ContentRootPath,
+                "App_Data",
+                "Localization",
+                "Bundles",
+                $"{languageCode}.json");
+
+            if (File.Exists(writablePath))
+            {
+                try
+                {
+                    using var fileStream = File.OpenRead(writablePath);
+                    var dict = JsonSerializer.Deserialize<Dictionary<string, string>>(fileStream)
+                               ?? new Dictionary<string, string>();
+                    _logger.LogInformation(
+                        "[LOCALIZATION] Loaded writable bundle for {Language}: {Count} keys ({Path})",
+                        languageCode, dict.Count, writablePath);
+                    return dict;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "[LOCALIZATION] Failed to read writable bundle at {Path}; falling back to embedded resource",
+                        writablePath);
+                }
+            }
+        }
+
         var resourceName = $"{_bundlePrefix}{languageCode}.json";
         using var stream = _bundleAssembly.GetManifestResourceStream(resourceName);
 
@@ -77,12 +134,12 @@ public class OfflineTranslationProvider : ITranslationManagementProvider
         {
             var dict = JsonSerializer.Deserialize<Dictionary<string, string>>(stream)
                        ?? new Dictionary<string, string>();
-            _logger.LogInformation("Loaded offline translation bundle for {Language}: {Count} keys", languageCode, dict.Count);
+            _logger.LogInformation("Loaded embedded translation bundle for {Language}: {Count} keys", languageCode, dict.Count);
             return dict;
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "Failed to parse offline translation bundle for {Language}", languageCode);
+            _logger.LogError(ex, "Failed to parse embedded translation bundle for {Language}", languageCode);
             return new Dictionary<string, string>();
         }
     }
@@ -100,7 +157,7 @@ public class OfflineTranslationProvider : ITranslationManagementProvider
             {
                 if (name.StartsWith(_bundlePrefix, StringComparison.OrdinalIgnoreCase) && name.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
                 {
-                    var langCode = name[_bundlePrefix.Length..^5]; // strip prefix and .json
+                    var langCode = name[_bundlePrefix.Length..^5];
                     _availableLanguages.Add(langCode);
                 }
             }

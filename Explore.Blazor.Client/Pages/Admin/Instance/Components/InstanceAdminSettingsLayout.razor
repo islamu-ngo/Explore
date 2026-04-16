@@ -162,6 +162,10 @@
                         {
                             <InstanceFooterGovernanceSection Model="_footerGovernance" IsSingleTenant="IsSingleTenantMode" />
                         }
+                        else if (_currentSection == "localization")
+                        {
+                            <InstanceLocalizationSection />
+                        }
                         else if (_currentSection == "members" && IsSingleTenantMode)
                         {
                             <TenantMembersSection />
@@ -269,7 +273,9 @@
                                        || string.IsNullOrWhiteSpace(_deploymentMode);
 
     private static bool IsSettingsSection(string section) =>
-        section is "governance" or "domain" or "branding" or "auth-providers" or "modules" or "storage" or "smtp" or "policies" or "render-policies" or "multi-tenancy" or "appearance" or "analytics-privacy" or "footer-governance";
+        section is "governance" or "domain" or "branding" or "auth-providers" or "modules" or "storage" or "smtp" or "policies" or "render-policies" or "multi-tenancy" or "appearance" or "analytics-privacy" or "footer-governance"
+            // Localization manages its own Save button via ILocalizationAdminService; not listed here.
+            ;
 
     protected override async Task OnInitializedAsync()
     {
@@ -487,6 +493,7 @@
                 new("smtp",             Icons.Material.Filled.AlternateEmail,  "SMTP"),
                 new("analytics-privacy",Icons.Material.Filled.Analytics,       "Analytics & Privacy"),
                 new("footer-governance",Icons.Material.Filled.ViewAgenda,      "Footer"),
+                new("localization",     Icons.Material.Filled.Translate,       "Localization"),
                 new("render-policies",  Icons.Material.Filled.DisplaySettings, "Render Policies",  Group: "Advanced"),
                 new("multi-tenancy",    Icons.Material.Filled.SwapHoriz,       "Multi-Tenancy",    IconColor: Color.Warning, Group: "Advanced"),
                 new("access-tokens",    Icons.Material.Filled.Key,             "Access Tokens",    Group: "Developer"),
@@ -505,6 +512,7 @@
             new("smtp",             Icons.Material.Filled.AlternateEmail,  "SMTP"),
             new("analytics-privacy",Icons.Material.Filled.Analytics,       "Analytics & Privacy"),
             new("footer-governance",Icons.Material.Filled.ViewAgenda,      "Footer"),
+            new("localization",     Icons.Material.Filled.Translate,       "Localization"),
             new("render-policies",  Icons.Material.Filled.DisplaySettings, "Render Policies", Group: "Advanced"),
             new("access-tokens",    Icons.Material.Filled.Key,             "Access Tokens",    Group: "Developer"),
         ];

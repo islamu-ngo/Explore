@@ -37,4 +37,11 @@ public interface ITranslationResolver
     /// <param name="languageCode">ISO 639-1 language code.</param>
     /// <param name="ct">Cancellation token.</param>
     Task<IDictionary<string, string>> ResolveBatchAsync(IEnumerable<string> keys, string languageCode, CancellationToken ct = default);
+
+    /// <summary>
+    /// Invalidates all cached entries for the given language under the current tenant, across both
+    /// <c>"live"</c> and <c>"offline"</c> provider-mode cache slots. Called by the admin "export to
+    /// bundle" flow so a freshly-persisted bundle is picked up on the next read.
+    /// </summary>
+    Task InvalidateLanguageAsync(string languageCode, CancellationToken ct = default);
 }

@@ -97,7 +97,36 @@ All localization config is stored as governance settings (system-level defaults,
 
 Seed IDs: 560–564 in `LookupTableSeeder`.
 
+Extended governance keys (seed IDs 565–568):
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `localization.enabled_languages` | string | `"en,fr,ar"` | Comma-separated culture codes admins have enabled |
+| `localization.fallback_language` | string | `"en"` | Used when user's preferred language has no translations |
+| `localization.client_picker_enabled` | string | `"true"` | Kill-switch: hide language picker if false |
+| `localization.force_offline_mode` | string | `"false"` | Emergency toggle: route through OfflineTranslationProvider |
+
 **API key/token** for TMS authentication is stored via `SecretProvider`, not in governance settings.
+
+## Language Governance Model
+
+The system separates three distinct concerns:
+
+1. **Culture Registry** (`Explore.Domain/Common/Localization/CultureRegistry.cs`) — compile-time allowlist of all cultures the codebase knows how to handle. Never touches the DB or TMS.
+2. **Enabled Languages** — ops-controlled subset from governance settings (`localization.enabled_languages`). Drives the language picker, request-localization middleware, and user preference validation.
+3. **Available Translations** — runtime-discovered from the TMS (or offline bundles). A language can be enabled without translations existing yet.
+
+**Resolution order**: `CultureRegistry.Contains(code)` → `EnabledLanguages.Contains(code)` → serve translations.
+
+**Kill-switches**:
+- `client_picker_enabled = false` → language picker renders nothing; feature is genuinely hidden.
+- `force_offline_mode = true` → `RuntimeTranslationProvider` short-circuits to `OfflineTranslationProvider` regardless of `tms_provider`.
+
+## Cache Variation
+
+Cache key format: `Translation:{tenantId}:{languageCode}:{mode}` where `mode ∈ {"live","offline"}`.
+
+`InvalidateLanguageAsync(languageCode)` clears **both** mode variants for the given language and tenant. This is called after bundle export and after governance changes.
 
 ## Offline Translation Bundles
 
@@ -116,6 +145,26 @@ Format: flat key-value JSON:
 
 Starter bundles shipped: `en.json`, `fr.json`, `ar.json`.
 
+### Bundle Persistence & HA Constraint
+
+The admin UI "Export from TMS" feature writes bundles to a **writable directory** on the local filesystem:
+
+```
+{ContentRoot}/App_Data/Localization/Bundles/{code}.json
+```
+
+**`OfflineTranslationProvider`** checks this directory first, then falls back to embedded resources.
+
+**HA constraint**: `App_Data/Localization/Bundles/` is a **local filesystem path**. It is correct for:
+1. **Single-instance deployments** — the export writes locally and the same instance reads it.
+2. **Multi-instance deployments with a shared persistent volume** — all replicas mount the same directory.
+
+It is **not** HA-safe behind a load balancer without shared storage. `IBundleFileWriter` (`Explore.Application/Contracts/Infrastructure/IBundleFileWriter.cs`) is the seam where a `DistributedBundleFileWriter` (S3/blob/shared-cache) can ship post-v1 without touching call sites.
+
+The admin UI surfaces a health banner when the writable path is not available, and gates the export buttons on `WritablePathHealth.Writable`.
+
+**Backlog ticket**: `dev/backlog/distributed-bundle-file-writer.md`
+
 ## API Endpoints
 
 ### Public (AllowAnonymous)
@@ -124,8 +173,10 @@ Starter bundles shipped: `en.json`, `fr.json`, `ar.json`.
 
 ### Admin (Authorize)
 - `POST /api/admin/localization/test-connection` — Test TMS connectivity
-- `GET /api/admin/localization/configuration` — Get current localization config
-- `POST /api/admin/localization/export-from-tms?languageCode={code}` — Pull translations from TMS
+- `GET /api/admin/localization/configuration` — Get current localization config (includes governance fields)
+- `PUT /api/admin/localization/governance` — Update localization governance settings (9 keys)
+- `POST /api/admin/localization/export-from-tms?languageCode={code}` — Pull translations from TMS and persist bundle
+- `GET /api/admin/localization/bundle-health` — Probe writable bundle path health
 
 ## TMS Provider API Details
 

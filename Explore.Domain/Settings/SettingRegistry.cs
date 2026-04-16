@@ -40,6 +40,8 @@ public static class SettingRegistry
         all.AddRange(FooterSettingDefinitions.All);
         all.AddRange(EventListSettingDefinitions.All);
         all.AddRange(NotificationSettingDefinitions.All);
+        all.AddRange(CustomPropertyQuotaSettingDefinitions.All);
+        all.AddRange(LocalizationSettingDefinitions.All);
 
         DefinitionsByKey = all.ToFrozenDictionary(d => d.Key);
         ByCategory = all

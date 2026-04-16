@@ -1,0 +1,34 @@
+/* ABOUTME: Scoped styles for InstanceLocalizationSection — BEM + logical properties, inherits settings-section. */
+/* ABOUTME: Covers provider form, kill-switch card, enabled-languages chips, bundle card, and secret lifecycle. */
+
+.instance-localization {
+    inline-size: 100%;
+}
+
+.instance-localization__body {
+    padding-block-start: var(--isl-space-2, 8px);
+}
+
+.instance-localization__form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--isl-space-2, 8px);
+}
+
+.instance-localization__secret {
+    border: 1px solid var(--mud-palette-lines-default, #e0e0e0);
+    border-radius: var(--mud-default-borderradius, 4px);
+    padding: var(--isl-space-3, 12px);
+}
+
+.instance-localization__killswitch {
+    padding-block: var(--isl-space-1, 4px);
+}
+
+.instance-localization__enabled-languages {
+    padding-block: var(--isl-space-1, 4px);
+}
+
+.instance-localization__bundle-card {
+    padding-block: var(--isl-space-1, 4px);
+}

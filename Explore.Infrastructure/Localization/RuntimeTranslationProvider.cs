@@ -2,6 +2,7 @@
 // ABOUTME: None → OfflineTranslationProvider, Tolgee → TolgeeTranslationProvider, Weblate → WeblateTranslationProvider.
 
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Telemetry;
 using Explore.Domain.Enums;
 using Microsoft.Extensions.Logging;
 
@@ -18,6 +19,7 @@ public sealed class RuntimeTranslationProvider : ITranslationManagementProvider
     private readonly OfflineTranslationProvider _offlineProvider;
     private readonly NullTranslationProvider _nullProvider;
     private readonly ITranslationConfigResolver _configResolver;
+    private readonly TranslationMetrics _metrics;
     private readonly ILogger<RuntimeTranslationProvider> _logger;
 
     public RuntimeTranslationProvider(
@@ -26,6 +28,7 @@ public sealed class RuntimeTranslationProvider : ITranslationManagementProvider
         OfflineTranslationProvider offlineProvider,
         NullTranslationProvider nullProvider,
         ITranslationConfigResolver configResolver,
+        TranslationMetrics metrics,
         ILogger<RuntimeTranslationProvider> logger)
     {
         _tolgeeProvider = tolgeeProvider;
@@ -33,6 +36,7 @@ public sealed class RuntimeTranslationProvider : ITranslationManagementProvider
         _offlineProvider = offlineProvider;
         _nullProvider = nullProvider;
         _configResolver = configResolver;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -45,7 +49,8 @@ public sealed class RuntimeTranslationProvider : ITranslationManagementProvider
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "TMS TestConnection failed on {Provider}; falling back to OfflineProvider", provider.GetType().Name);
+            _metrics.RecordFallbackActivated(provider.GetType().Name, ClassifyException(ex));
+            _logger.LogError(ex, "[LOCALIZATION] TMS TestConnection failed on {Provider}; falling back to OfflineProvider", provider.GetType().Name);
             return await _offlineProvider.TestConnectionAsync(ct);
         }
     }
@@ -83,7 +88,8 @@ public sealed class RuntimeTranslationProvider : ITranslationManagementProvider
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "TMS ExportTranslations failed on {Provider} for {Language}; falling back to OfflineProvider",
+            _metrics.RecordFallbackActivated(provider.GetType().Name, ClassifyException(ex));
+            _logger.LogError(ex, "[LOCALIZATION] TMS ExportTranslations failed on {Provider} for {Language}; falling back to OfflineProvider",
                 provider.GetType().Name, languageCode);
             return await _offlineProvider.ExportTranslationsAsync(languageCode, ct);
         }
@@ -98,7 +104,8 @@ public sealed class RuntimeTranslationProvider : ITranslationManagementProvider
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "TMS GetAvailableLanguages failed on {Provider}; falling back to OfflineProvider", provider.GetType().Name);
+            _metrics.RecordFallbackActivated(provider.GetType().Name, ClassifyException(ex));
+            _logger.LogError(ex, "[LOCALIZATION] TMS GetAvailableLanguages failed on {Provider}; falling back to OfflineProvider", provider.GetType().Name);
             return await _offlineProvider.GetAvailableLanguagesAsync(ct);
         }
     }
@@ -108,6 +115,14 @@ public sealed class RuntimeTranslationProvider : ITranslationManagementProvider
         try
         {
             var config = await _configResolver.ResolveAsync(ct);
+
+            if (config.ForceOfflineMode)
+            {
+                _logger.LogWarning(
+                    "[LOCALIZATION] force_offline_mode active; bypassing configured provider {Provider} and serving offline bundles",
+                    config.Provider);
+                return _offlineProvider;
+            }
 
             return config.Provider switch
             {
@@ -123,4 +138,15 @@ public sealed class RuntimeTranslationProvider : ITranslationManagementProvider
             return _offlineProvider;
         }
     }
+
+    private static string ClassifyException(Exception ex) => ex switch
+    {
+        TaskCanceledException or OperationCanceledException => "timeout",
+        HttpRequestException hre when hre.StatusCode == System.Net.HttpStatusCode.Unauthorized
+            || hre.StatusCode == System.Net.HttpStatusCode.Forbidden => "auth_error",
+        HttpRequestException hre when hre.StatusCode == System.Net.HttpStatusCode.NotFound => "not_found",
+        HttpRequestException hre when hre.StatusCode == System.Net.HttpStatusCode.TooManyRequests => "rate_limited",
+        HttpRequestException => "network_error",
+        _ => "other"
+    };
 }

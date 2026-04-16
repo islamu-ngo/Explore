@@ -1,0 +1,116 @@
+// ABOUTME: Handler for UpdateLocalizationGovernanceCommand — validates, upserts 9 governance keys, invalidates resolver cache.
+// ABOUTME: Validator is manually instantiated per repo convention (no DI for validators).
+
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.Localization;
+using Explore.Application.DTOs.Localization.Validators;
+using Explore.Application.Features.Localization.Requests.Commands;
+using Explore.Application.Responses;
+using Explore.Application.Settings;
+using Explore.Domain.Constants;
+using MediatR;
+using Microsoft.Extensions.Logging;
+
+namespace Explore.Application.Features.Localization.Handlers.Commands;
+
+public class UpdateLocalizationGovernanceCommandHandler
+    : IRequestHandler<UpdateLocalizationGovernanceCommand, BaseCommandResponse<Guid>>
+{
+    private readonly SettingUpsertService _upsertService;
+    private readonly ITranslationConfigResolver _configResolver;
+    private readonly ICurrentUserService _currentUserService;
+    private readonly ITenantContext _tenantContext;
+    private readonly ILogger<UpdateLocalizationGovernanceCommandHandler> _logger;
+
+    public UpdateLocalizationGovernanceCommandHandler(
+        SettingUpsertService upsertService,
+        ITranslationConfigResolver configResolver,
+        ICurrentUserService currentUserService,
+        ITenantContext tenantContext,
+        ILogger<UpdateLocalizationGovernanceCommandHandler> logger)
+    {
+        _upsertService = upsertService;
+        _configResolver = configResolver;
+        _currentUserService = currentUserService;
+        _tenantContext = tenantContext;
+        _logger = logger;
+    }
+
+    public async Task<BaseCommandResponse<Guid>> Handle(
+        UpdateLocalizationGovernanceCommand request,
+        CancellationToken cancellationToken)
+    {
+        var response = new BaseCommandResponse<Guid>();
+
+        var validator = new UpdateLocalizationGovernanceDtoValidator();
+        var validation = await validator.ValidateAsync(request.Dto, cancellationToken);
+        if (!validation.IsValid)
+        {
+            response.Success = false;
+            response.Message = "Localization governance update failed.";
+            response.Errors = validation.Errors.Select(e => e.ErrorMessage).ToList();
+            return response;
+        }
+
+        var actor = _currentUserService.UserId;
+        var dto = request.Dto;
+        var enabledLanguagesCsv = string.Join(",", dto.EnabledLanguages.Select(c => c.Trim().ToLowerInvariant()));
+
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.Localization.DefaultLanguage,
+            SettingValueSerializer.Serialize(dto.DefaultLanguage.Trim().ToLowerInvariant()),
+            actor);
+
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.Localization.TmsProvider,
+            SettingValueSerializer.Serialize(dto.TmsProvider.Trim().ToLowerInvariant()),
+            actor);
+
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.Localization.TmsApiUrl,
+            SettingValueSerializer.Serialize(dto.TmsApiUrl ?? string.Empty),
+            actor);
+
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.Localization.TmsProjectId,
+            SettingValueSerializer.Serialize(dto.TmsProjectId ?? string.Empty),
+            actor);
+
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.Localization.TmsComponent,
+            SettingValueSerializer.Serialize(dto.TmsComponent ?? string.Empty),
+            actor);
+
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.Localization.EnabledLanguages,
+            SettingValueSerializer.Serialize(enabledLanguagesCsv),
+            actor);
+
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.Localization.FallbackLanguage,
+            SettingValueSerializer.Serialize(dto.FallbackLanguage.Trim().ToLowerInvariant()),
+            actor);
+
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.Localization.ClientPickerEnabled,
+            dto.ClientPickerEnabled ? "true" : "false",
+            actor);
+
+        await _upsertService.UpsertValueAsync(
+            GovernanceSettingKeys.Localization.ForceOfflineMode,
+            dto.ForceOfflineMode ? "true" : "false",
+            actor);
+
+        _configResolver.InvalidateCache(_tenantContext.TenantId);
+
+        _logger.LogInformation(
+            "[LOCALIZATION] Governance updated by {Actor}: provider={Provider}, enabled=[{Enabled}], fallback={Fallback}, pickerEnabled={Picker}, forceOffline={ForceOffline}",
+            actor, dto.TmsProvider, enabledLanguagesCsv, dto.FallbackLanguage, dto.ClientPickerEnabled, dto.ForceOfflineMode);
+
+        response.Success = true;
+        response.Id = actor ?? Guid.Empty;
+        response.Message = "Localization governance updated successfully.";
+        return response;
+    }
+}

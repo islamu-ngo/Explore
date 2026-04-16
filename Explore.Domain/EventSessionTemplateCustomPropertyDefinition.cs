@@ -7,9 +7,10 @@ using Explore.Domain.Interfaces;
 
 namespace Explore.Domain;
 
-public class EventSessionTemplateCustomPropertyDefinition : ITenantEntity, IAuditableEntity, ISoftDeletable
+public class EventSessionTemplateCustomPropertyDefinition : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurrencyAware
 {
     public Guid Id { get; set; }
+    public Guid ConcurrencyStamp { get; set; }
 
     [ForeignKey(nameof(EventSessionTemplate))]
     public Guid EventSessionTemplateId { get; set; }

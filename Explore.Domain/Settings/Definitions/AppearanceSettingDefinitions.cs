@@ -31,6 +31,17 @@ public static class AppearanceSettingDefinitions
         MaxScope: SettingScope.User,
         AllowedValues: ["auto", "ltr", "rtl"]);
 
+    // Note: language is semantically not "appearance"; stored here for v1 delivery speed (plan D3).
+    // The tech-debt ticket to split into UserPreferences is tracked in the Phase 10 backlog.
+    public static readonly SettingDefinition Language = new(
+        Key: "appearance.language",
+        ValueType: SettingValueType.String,
+        DefaultValue: "\"en\"",
+        Category: "Appearance",
+        Description: "User language preference (ISO 639-1). Must be in the compile-time CultureRegistry.",
+        MaxScope: SettingScope.User,
+        AllowedValues: ["en", "fr", "ar"]);
+
     public static IReadOnlyList<SettingDefinition> All =>
-        [DefaultThemeId, ThemeMode, Direction];
+        [DefaultThemeId, ThemeMode, Direction, Language];
 }

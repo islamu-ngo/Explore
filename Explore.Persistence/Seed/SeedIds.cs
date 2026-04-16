@@ -139,6 +139,10 @@ public static class SeedIds
     public static readonly Guid SystemSettingLocalizationTmsApiUrlId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000562");
     public static readonly Guid SystemSettingLocalizationTmsProjectIdId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000563");
     public static readonly Guid SystemSettingLocalizationTmsComponentId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000564");
+    public static readonly Guid SystemSettingLocalizationEnabledLanguagesId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000565");
+    public static readonly Guid SystemSettingLocalizationFallbackLanguageId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000566");
+    public static readonly Guid SystemSettingLocalizationClientPickerEnabledId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000567");
+    public static readonly Guid SystemSettingLocalizationForceOfflineModeId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000568");
 
     // ===== Module Definitions =====
     public static readonly Guid ModuleCoreId = Guid.Parse("018e4e5c-7f00-7000-8000-000000000600");

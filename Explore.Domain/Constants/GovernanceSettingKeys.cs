@@ -120,6 +120,10 @@ public static class GovernanceSettingKeys
         public const string DefaultThemeId = "appearance.default_theme_id";
         public const string ThemeMode = "appearance.theme_mode";
         public const string Direction = "appearance.direction";
+
+        // Note: semantically not "appearance" but persisted here for v1 speed.
+        // Tracked as tech debt in dev/backlog — see plan D3.
+        public const string Language = "appearance.language";
     }
 
     public static class Domains
@@ -233,6 +237,10 @@ public static class GovernanceSettingKeys
         public const string TmsApiUrl = "localization.tms_api_url";
         public const string TmsProjectId = "localization.tms_project_id";
         public const string TmsComponent = "localization.tms_component";
+        public const string EnabledLanguages = "localization.enabled_languages";
+        public const string FallbackLanguage = "localization.fallback_language";
+        public const string ClientPickerEnabled = "localization.client_picker_enabled";
+        public const string ForceOfflineMode = "localization.force_offline_mode";
     }
 
     public static class EventList

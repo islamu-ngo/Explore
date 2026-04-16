@@ -95,6 +95,41 @@ public class UpdateCurrentUserAppearancePreferencesCommandHandler : IRequestHand
             }
         }
 
+        var normalizedLanguage = request.Preferences.Language.Trim().ToLowerInvariant();
+        if (string.Equals(parentAppearance.Language, normalizedLanguage, StringComparison.Ordinal))
+        {
+            await _userPreferenceRepository.RemoveOverride(tenantId, userId.Value, GovernanceSettingKeys.Appearance.Language);
+        }
+        else
+        {
+            var serializedLanguage = SettingValueSerializer.Serialize(normalizedLanguage);
+            var existingLanguage = await _userPreferenceRepository.GetByUserAndKey(
+                tenantId,
+                userId.Value,
+                GovernanceSettingKeys.Appearance.Language);
+
+            if (existingLanguage is not null)
+            {
+                existingLanguage.Value = serializedLanguage;
+                existingLanguage.UpdatedAt = DateTime.UtcNow;
+                existingLanguage.UpdatedBy = userId.Value;
+                await _userPreferenceRepository.Update(existingLanguage);
+            }
+            else
+            {
+                await _userPreferenceRepository.Create(new UserPreference
+                {
+                    TenantId = tenantId,
+                    Tenant = null!,
+                    UserId = userId.Value,
+                    SettingKey = GovernanceSettingKeys.Appearance.Language,
+                    Value = serializedLanguage,
+                    CreatedAt = DateTime.UtcNow,
+                    CreatedBy = userId.Value
+                });
+            }
+        }
+
         var normalizedDirection = request.Preferences.Direction.Trim().ToLowerInvariant();
         if (string.Equals(parentAppearance.Direction, normalizedDirection, StringComparison.Ordinal))
         {

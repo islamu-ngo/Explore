@@ -1,10 +1,11 @@
 // ABOUTME: Admin API controller for managing TMS (Translation Management System) configuration.
-// ABOUTME: Provides endpoints to test TMS connection, view config, and trigger translation exports.
+// ABOUTME: Provides endpoints to test TMS connection, view config, export bundles, and health probes.
 
 using Asp.Versioning;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.Localization;
 using Explore.Application.Features.Localization.Requests.Commands;
+using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -20,11 +21,16 @@ public class LocalizationAdminController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ITranslationConfigResolver _configResolver;
+    private readonly IBundleFileWriter _bundleFileWriter;
 
-    public LocalizationAdminController(IMediator mediator, ITranslationConfigResolver configResolver)
+    public LocalizationAdminController(
+        IMediator mediator,
+        ITranslationConfigResolver configResolver,
+        IBundleFileWriter bundleFileWriter)
     {
         _mediator = mediator;
         _configResolver = configResolver;
+        _bundleFileWriter = bundleFileWriter;
     }
 
     /// <summary>
@@ -65,9 +71,50 @@ public class LocalizationAdminController : ControllerBase
             TmsApiUrl = config.ApiUrl,
             TmsProjectId = config.ProjectId,
             TmsComponent = config.Component,
+            EnabledLanguages = config.EnabledLanguages.ToList(),
+            FallbackLanguage = config.FallbackLanguage,
+            ClientPickerEnabled = config.ClientPickerEnabled,
+            ForceOfflineMode = config.ForceOfflineMode,
         };
 
         return Ok(dto);
+    }
+
+    /// <summary>
+    /// Probes the writable bundle path for health — directory existence and write permission.
+    /// </summary>
+    [HttpGet("bundle-health")]
+    [EndpointSummary("Check Bundle Path Health")]
+    [EndpointDescription("Reports whether the offline bundle target directory is writable. Admin UI surfaces this as a health banner.")]
+    [ProducesResponseType(typeof(WritablePathHealth), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<WritablePathHealth>> GetBundlePathHealth(CancellationToken cancellationToken = default)
+    {
+        var health = await _bundleFileWriter.CheckHealthAsync(cancellationToken);
+        return Ok(health);
+    }
+
+    /// <summary>
+    /// Update localization governance settings (TMS provider, enabled languages, kill-switches, fallback language).
+    /// </summary>
+    [HttpPut("governance")]
+    [EndpointSummary("Update Localization Governance")]
+    [EndpointDescription("Persists TMS provider configuration, enabled languages, fallback language, and kill-switches.")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateGovernance(
+        [FromBody] UpdateLocalizationGovernanceDto dto,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _mediator.Send(
+            new UpdateLocalizationGovernanceCommand { Dto = dto },
+            cancellationToken);
+
+        if (result.Success)
+            return Ok(result);
+
+        return BadRequest(result);
     }
 
     /// <summary>
