@@ -8,8 +8,12 @@ using Explore.Application.DTOs.Actor;
 using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.DTOs.Category;
 using Explore.Application.DTOs.CustomPropertyDefinition;
+using Explore.Application.DTOs.CustomPropertyGovernance;
+using Explore.Application.DTOs.CustomPropertyProjection;
 using Explore.Application.DTOs.Event;
+using Explore.Application.DTOs.EventAgendaItem;
 using Explore.Application.DTOs.EventCustomProperty;
+using Explore.Application.DTOs.EventDay;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionAgendaItem;
@@ -20,6 +24,7 @@ using Explore.Application.DTOs.Group;
 using Explore.Application.DTOs.GroupMember;
 using Explore.Application.DTOs.IndexedDid;
 using Explore.Application.DTOs.Location;
+using Explore.Application.DTOs.LocationRoom;
 using Explore.Application.DTOs.Notification;
 using Explore.Application.DTOs.Organization;
 using Explore.Application.DTOs.OrganizationMember;
@@ -171,6 +176,30 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<NotificationDto>, NotificationDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<NotificationListDto>, NotificationCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<NotificationDto, NotificationListDto>, NotificationResourceAssembler>();
+
+        // Custom Property Projection Admin (D2 Operability)
+        services.AddScoped<ILinkPolicy<ProjectionStatusDto>, ProjectionStatusDetailLinkPolicy>();
+        services.AddScoped<ILinkPolicy<RebuildProjectionResponseDto>, RebuildProjectionResponseLinkPolicy>();
+        services.AddScoped<ILinkPolicy<DrainDirtyScopesResponseDto>, DrainDirtyScopesResponseLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<ProjectionDirtyScopeDto>, ProjectionDirtyScopeCollectionLinkPolicy>();
+
+        // Custom Property Governance (D2 Operability)
+        services.AddScoped<ICollectionLinkPolicy<CustomPropertyGovernanceRowDto>, CustomPropertyGovernanceCollectionLinkPolicy>();
+
+        // EventDay (event scheduling)
+        services.AddScoped<ILinkPolicy<EventDayDto>, EventDayDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<EventDayListDto>, EventDayCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<EventDayDto, EventDayListDto>, EventDayResourceAssembler>();
+
+        // EventAgendaItem (event scheduling)
+        services.AddScoped<ILinkPolicy<EventAgendaItemDto>, EventAgendaItemDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<EventAgendaItemListDto>, EventAgendaItemCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<EventAgendaItemDto, EventAgendaItemListDto>, EventAgendaItemResourceAssembler>();
+
+        // LocationRoom (event scheduling)
+        services.AddScoped<ILinkPolicy<LocationRoomDto>, LocationRoomDetailLinkPolicy>();
+        services.AddScoped<ICollectionLinkPolicy<LocationRoomListDto>, LocationRoomCollectionLinkPolicy>();
+        services.AddScoped<IResourceAssembler<LocationRoomDto, LocationRoomListDto>, LocationRoomResourceAssembler>();
 
         return services;
     }

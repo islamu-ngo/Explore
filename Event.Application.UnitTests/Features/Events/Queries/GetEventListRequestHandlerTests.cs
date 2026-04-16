@@ -1,6 +1,7 @@
 using AutoMapper;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Events.Handlers.Queries;
 using Explore.Application.Features.Events.Requests.Queries;
@@ -22,6 +23,7 @@ public class GetEventListRequestHandlerTests
     private readonly HybridCache _cache;
     private readonly IModuleService _moduleService;
     private readonly ITenantContext _tenantContext;
+    private readonly ICustomPropertyQuotaResolver _quotaResolver;
     private readonly GetEventListRequestHandler _handler;
 
     public GetEventListRequestHandlerTests()
@@ -33,8 +35,9 @@ public class GetEventListRequestHandlerTests
         _cache = new TestHybridCache();
         _moduleService = Substitute.For<IModuleService>();
         _tenantContext = Substitute.For<ITenantContext>();
+        _quotaResolver = Substitute.For<ICustomPropertyQuotaResolver>();
         _handler = new GetEventListRequestHandler(
-            _eventRepository, _mapper, _objectStorageService, _logger, _cache, _moduleService, _tenantContext);
+            _eventRepository, _mapper, _objectStorageService, _logger, _cache, _moduleService, _tenantContext, _quotaResolver);
 
         // Default mock for mapper to avoid nulls in PaginatedResult
         _mapper.Map<List<EventListDto>>(Arg.Any<List<Explore.Domain.Event>>()).Returns(new List<EventListDto>());

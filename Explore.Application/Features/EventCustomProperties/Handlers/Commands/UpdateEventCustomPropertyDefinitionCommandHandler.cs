@@ -19,6 +19,7 @@ namespace Explore.Application.Features.EventCustomProperties.Handlers.Commands;
 public class UpdateEventCustomPropertyDefinitionCommandHandler : IRequestHandler<UpdateEventCustomPropertyDefinitionCommand, BaseCommandResponse<Guid>>
 {
     private readonly IEventCustomPropertyRepository _eventCustomPropertyRepository;
+    private readonly IEventCustomPropertyProjectionUpdater _projectionUpdater;
     private readonly ICustomPropertyGovernancePolicy _customPropertyGovernancePolicy;
     private readonly ICurrentUserService _currentUserService;
     private readonly IMapper _mapper;
@@ -27,6 +28,7 @@ public class UpdateEventCustomPropertyDefinitionCommandHandler : IRequestHandler
 
     public UpdateEventCustomPropertyDefinitionCommandHandler(
         IEventCustomPropertyRepository eventCustomPropertyRepository,
+        IEventCustomPropertyProjectionUpdater projectionUpdater,
         ICustomPropertyGovernancePolicy customPropertyGovernancePolicy,
         ICurrentUserService currentUserService,
         IMapper mapper,
@@ -34,6 +36,7 @@ public class UpdateEventCustomPropertyDefinitionCommandHandler : IRequestHandler
         IUnitOfWork unitOfWork)
     {
         _eventCustomPropertyRepository = eventCustomPropertyRepository;
+        _projectionUpdater = projectionUpdater;
         _customPropertyGovernancePolicy = customPropertyGovernancePolicy;
         _currentUserService = currentUserService;
         _mapper = mapper;
@@ -94,7 +97,11 @@ public class UpdateEventCustomPropertyDefinitionCommandHandler : IRequestHandler
         var defaultOption = options.SingleOrDefault(x => x.IsDefault);
 
         await _unitOfWork.ExecuteInTransactionAsync(
-            ct => _eventCustomPropertyRepository.UpdateWithOptions(definition, options, defaultOption?.Id, ct),
+            async ct =>
+            {
+                await _eventCustomPropertyRepository.UpdateWithOptions(definition, options, defaultOption?.Id, ct);
+                await _projectionUpdater.UpdateForDefinitionAsync(definition.Id, ct);
+            },
             cancellationToken);
 
         response.Success = true;

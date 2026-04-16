@@ -52,12 +52,13 @@ API runtime protections include:
 
 | Policy | Mechanism | Partition Key | Defaults |
 |---|---|---|---|
-| `global` | Token bucket | IP (X-Forwarded-For aware) | 200 tokens, replenish 40/10s. Localhost exempt |
-| `authenticated` | Sliding window | User ID | 200 requests/60s, 4 segments |
-| `write` | Fixed window | User ID | 30 requests/60s |
+| `global` | Token bucket | API key ID when present, otherwise remote IP | 200 tokens, replenish 40/10s. Localhost exempt |
+| `authenticated` | Sliding window | API key ID when present, otherwise `User.Identity.Name` | 200 requests/60s, 4 segments |
+| `write` | Fixed window | API key ID when present, otherwise `User.Identity.Name` | 30 requests/60s |
 | `setup_secret` | Fixed window | IP | 5 requests/60s |
+| `AnalyticsRelay` | Fixed window | IP | 120 requests/60s |
 
-**Rejection**: `429 Too Many Requests` with RFC 6585 ProblemDetails, `Retry-After` header, and `X-RateLimit-*` headers (limit, remaining, reset).
+**Rejection**: `429 Too Many Requests` with RFC 6585 ProblemDetails, `Retry-After` when available, plus `X-RateLimit-Limit` and `X-RateLimit-Remaining` headers.
 
 **Testing override**: All rate limiters replaced with `NoLimiter` in `Testing` environment.
 
@@ -326,6 +327,43 @@ Admin settings management:
 
 - returns `403` with a clear error payload when feature requires multi-tenant mode.
 
+## Localization Operational Runbooks
+
+### Runbook: TMS Provider Is Down
+1. Check Grafana `islamu_tms_fallback_activated_total` — if > 0 in 5m, confirm TMS outage.
+2. Check container logs for `[LOCALIZATION] TMS ExportTranslations failed` entries.
+3. **Immediate mitigation**: Flip `localization.force_offline_mode` to `true` via Admin UI → Localization → Kill-switches → "Save & Apply Kill-switches Now".
+4. Investigate TMS provider status (Tolgee dashboard, Weblate status page).
+5. When TMS is restored: disable force-offline, verify live translations resume.
+
+### Runbook: Bundle File Lost / Corrupted
+1. Navigate to Admin UI → Localization → Offline Bundle Export.
+2. Click "Export {LANG}" for each affected language.
+3. Verify file appears in `App_Data/Localization/Bundles/{lang}.json`.
+4. If export fails, check the health banner — writable path may not be available.
+
+### Runbook: Writable Path Health Banner Red
+1. Check deployment topology: single-instance vs multi-replica.
+2. Verify `App_Data/Localization/Bundles/` directory exists and has write permissions.
+3. For multi-replica without shared storage: this is expected — see `dev/backlog/distributed-bundle-file-writer.md`.
+4. For single-instance: check filesystem permissions, disk space.
+5. Escalate to SRE if distributed bundle writer is needed.
+
+### Runbook: API Key Rotation
+1. Navigate to Admin UI → Localization → TMS Provider section.
+2. Click "Rotate" next to the API key status chip.
+3. Paste the new API key in the write-only field.
+4. Click "Save" to persist.
+5. Click "Test Connection" to verify the new key works.
+
+### Localization Metrics & Alerts
+
+| Metric | Alert Threshold | Description |
+|--------|----------------|-------------|
+| `islamu_tms_fallback_activated_total` | > 0 in 5m | TMS provider failed; page on-call |
+| `islamu_translation_fetch_duration_seconds` | p99 > 5s | TMS latency degradation |
+| `islamu_translation_fetch_total{result="error"}` | > 10 in 5m | Repeated fetch failures |
+
 ## Incident Triage Quick Checks
 
 1. Check `/health` and `/alive`.
@@ -333,6 +371,7 @@ Admin settings management:
 3. Check rate-limit/timeouts if clients receive `429` or `504`.
 4. Check tenant resolution and deployment mode (`deployment.mode`) if tenant-scoped behavior is wrong.
 5. Check setup-secret mode if onboarding is blocked.
+6. Check `islamu_tms_fallback_activated_total` if localization is degraded — flip force-offline if needed.
 
 ## Related
 
@@ -368,3 +407,109 @@ Admin settings management:
 - Foreign keys referencing partitioned tables have limitations in PostgreSQL — plan migration carefully.
 
 **Estimated trigger point:** When any single table exceeds 50M rows or query latency degrades despite proper indexing.
+
+---
+
+## Custom Property Projections (Milestone D)
+
+### What is it?
+
+Custom property projections are denormalized, read-optimized rows derived from Layer 3 EAV runtime values. They keep discovery/search/filter query paths out of the raw normalized EAV joins.
+
+**Source of truth:** `event_custom_property_definitions` + `event_custom_property_values` (and session equivalents).
+
+**Projection tables:** `event_custom_property_projections`, `event_session_custom_property_projections`.
+
+**Coordination tables:** `custom_property_projection_status` (rebuild tracking), `custom_property_projection_dirty_scope` (skip-on-contention backlog).
+
+### What can go wrong?
+
+| Symptom | Likely Cause | Recovery |
+|---|---|---|
+| Search/filter results are stale | Projection rows not updated after value write | Rebuild projection for the tenant |
+| Projection rows missing for an event | Event created while rebuild was in progress; inline write skipped | Drain dirty scopes, or rebuild single event |
+| Rebuild hangs | Advisory lock contention or long-running transaction | Check `custom_property_projection_status` for `Rebuilding` state; if stuck >10min, investigate PostgreSQL advisory lock waits |
+| Dirty-scope backlog growing | Frequent rebuilds causing inline writers to skip | Drain dirty scopes; consider reducing rebuild frequency |
+| Governance report shows stale data | Counts based on runtime definitions, not projection | No action needed; governance report reads from definitions, not projections |
+
+### How to inspect
+
+**Projection status:**
+```
+GET /api/admin/custom-property-projections/status?tenantId={tenantId}
+```
+Returns: `State` (Idle/Rebuilding/Failed), `LastRebuildStartedAt`, `LastRebuildCompletedAt`, `RowsProcessed`, `RowsFailed`, `LastErrorMessage`.
+
+**Dirty-scope backlog:**
+```
+GET /api/admin/custom-property-projections/dirty-scopes?tenantId={tenantId}&projectionName=event_custom_property_projection
+```
+Returns: pending (un-drained) dirty-scope rows with creation timestamps and reasons.
+
+**Projection rows for a specific event:**
+```
+GET /api/admin/custom-property-projections/events/{eventId}?exposureCeiling=Public
+```
+
+**Governance report (Rule 12):**
+```
+GET /api/admin/custom-property-definitions/governance-report?tenantId={tenantId}&scope=Event
+```
+Returns: all active Layer 3 definitions with flags, instance counts, and `PromotionRecommendation`.
+
+### How to recover
+
+**Full tenant rebuild (event projections):**
+```
+POST /api/admin/custom-property-projections/rebuild
+Body: { "tenantId": "{tenantId}" }
+```
+Acquires advisory lock, rebuilds all projection rows, drains pending dirty scopes on completion. If lock is not acquired (another rebuild running), returns immediately with `lockAcquired: false`.
+
+**Single event rebuild:**
+```
+POST /api/admin/custom-property-projections/rebuild-single-event
+Body: { "eventId": "{eventId}" }
+```
+Refreshes all projection rows for one event inside a transaction.
+
+**Drain dirty scopes without rebuild:**
+```
+POST /api/admin/custom-property-projections/drain-dirty-scopes
+Body: { "tenantId": "{tenantId}", "projectionName": "event_custom_property_projection" }
+```
+Processes pending dirty-scope rows without triggering a full rebuild. Idempotent — returns `drainedCount: 0` if no pending rows.
+
+**Session equivalents:** Replace `/rebuild` with `/sessions/rebuild`, `/rebuild-single-event` with `/sessions/rebuild-single`, etc.
+
+### Concurrency model
+
+- **Advisory locks:** Rebuild acquires a PostgreSQL advisory lock keyed on `fnv1a(projectionName), fnv1a(tenantId)`. Only one rebuild runs per projection per tenant.
+- **Skip-on-contention:** Inline writers (triggered by value/definition changes) attempt the same lock. If contended (rebuild in progress), they upsert a `custom_property_projection_dirty_scope` row instead of blocking.
+- **Drain-on-completion:** The rebuild worker drains all pending dirty scopes after completing its scan, so the skip window is bounded.
+- **ConcurrencyStamp:** All mutable EAV entities carry an EF Core `ConcurrencyStamp` (`Guid`). `DbUpdateConcurrencyException` is translated to HTTP 409 with `code: concurrent_update`.
+
+### Hard limits
+
+| Setting Key | Default | Platform Max |
+|---|---|---|
+| `custom_properties.max_definitions_per_tenant_per_entity_scope` | 500 | 5000 |
+| `custom_properties.max_definitions_per_event` | 100 | 1000 |
+| `custom_properties.max_definitions_per_event_session` | 50 | 500 |
+| `custom_properties.max_options_per_definition` | 200 | 2000 |
+| `custom_properties.max_multi_value_rows_per_value` | 20 | 200 |
+| `custom_properties.projection_rebuild_batch_size` | 500 | 5000 |
+| `custom_properties.max_dirty_scope_pending_per_tenant` | 10000 | 100000 |
+
+### Governance report (Rule 12)
+
+The governance report surfaces Layer 3 custom property definitions that may be candidates for promotion to Layer 2 (typed schema) or Layer 1 (universal core), using the Atlassian 4-question framework:
+
+| Recommendation | Trigger |
+|---|---|
+| `None` | No search/filter/moderation/analytics flags set |
+| `ConsiderProjectionFirst` | `IsSearchable` or `IsFilterable` is true |
+| `ConsiderLayer2Promotion` | `IsModerationRelevant` or `IsAnalyticsRelevant` is true |
+| `ConsiderLayer1Promotion` | `IsModerationRelevant` AND (`IsSearchable` or `IsFilterable`) AND used by ≥30% of tenant's events |
+
+Review quarterly. Promotion is an operational decision, not an automated action.

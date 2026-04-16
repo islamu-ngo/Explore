@@ -1,0 +1,38 @@
+# ABOUTME: Cerbos resource policy for custom_property_value resources.
+# ABOUTME: Runtime custom property values on events/sessions; org admins can manage for their resources.
+
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: "custom_property_value"
+  version: "default"
+  importDerivedRoles:
+    - explore_admin_roles
+  schemas:
+    principalSchema:
+      ref: cerbos:///principal.json
+    resourceSchema:
+      ref: cerbos:///custom_property_value.json
+  rules:
+    # Instance admins can do everything
+    - actions: ["*"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - instance_admin
+
+    # Tenant admins can manage all custom property values within their tenant
+    - actions: ["view", "create", "update", "delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - tenant_admin
+
+    # Organization admins can manage values for events they own
+    - actions: ["view", "create", "update", "delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - org_admin
+
+    # All authenticated users can view public custom property values
+    - actions: ["view"]
+      effect: EFFECT_ALLOW
+      roles:
+        - authenticated_user

@@ -17,6 +17,9 @@ public class CustomPropertyDefinitionConfiguration : IEntityTypeConfiguration<Cu
         builder.Property(e => e.Id)
             .HasValueGenerator<GuidVersion7ValueGenerator>();
 
+        builder.Property(e => e.ConcurrencyStamp)
+            .IsConcurrencyToken();
+
         builder.Property(e => e.Namespace)
             .HasMaxLength(100)
             .IsRequired();

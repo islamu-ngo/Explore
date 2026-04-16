@@ -28,6 +28,7 @@ public sealed class EventQuerySpecification : IQuerySpecification<Event>
 {
     private readonly List<IFilterSpecification<Event>> _filters;
     private readonly List<EventSubqueryFilter> _subqueryFilters;
+    private readonly List<EventCustomPropertyProjectionFilter> _projectionFilters;
     private readonly ISortSpecification<Event>? _sort;
     private readonly bool _sortDescending;
 
@@ -38,6 +39,7 @@ public sealed class EventQuerySpecification : IQuerySpecification<Event>
     {
         _filters = [];
         _subqueryFilters = [];
+        _projectionFilters = [];
         _sort = null;
         _sortDescending = false;
     }
@@ -45,11 +47,13 @@ public sealed class EventQuerySpecification : IQuerySpecification<Event>
     private EventQuerySpecification(
         List<IFilterSpecification<Event>> filters,
         List<EventSubqueryFilter> subqueryFilters,
+        List<EventCustomPropertyProjectionFilter> projectionFilters,
         ISortSpecification<Event>? sort,
         bool sortDescending)
     {
         _filters = filters;
         _subqueryFilters = subqueryFilters;
+        _projectionFilters = projectionFilters;
         _sort = sort;
         _sortDescending = sortDescending;
     }
@@ -62,6 +66,12 @@ public sealed class EventQuerySpecification : IQuerySpecification<Event>
     /// </summary>
     public IReadOnlyList<EventSubqueryFilter> SubqueryFilters => _subqueryFilters.AsReadOnly();
 
+    /// <summary>
+    /// Gets the projection filters for custom property discovery (Layer 3).
+    /// Applied at the repository level via correlated subqueries against projection tables.
+    /// </summary>
+    public IReadOnlyList<EventCustomPropertyProjectionFilter> ProjectionFilters => _projectionFilters.AsReadOnly();
+
     /// <inheritdoc />
     public ISortSpecification<Event>? Sort => _sort;
 
@@ -69,7 +79,7 @@ public sealed class EventQuerySpecification : IQuerySpecification<Event>
     public bool SortDescending => _sortDescending;
 
     /// <inheritdoc />
-    public bool HasFilters => _filters.Count > 0 || _subqueryFilters.Count > 0;
+    public bool HasFilters => _filters.Count > 0 || _subqueryFilters.Count > 0 || _projectionFilters.Count > 0;
 
     /// <inheritdoc />
     public bool HasSort => _sort is not null;
@@ -79,28 +89,28 @@ public sealed class EventQuerySpecification : IQuerySpecification<Event>
     /// Returns a new specification instance (immutable builder).
     /// </summary>
     public EventQuerySpecification And(EventFilter filter) =>
-        new([.. _filters, filter], [.. _subqueryFilters], _sort, _sortDescending);
+        new([.. _filters, filter], [.. _subqueryFilters], [.. _projectionFilters], _sort, _sortDescending);
 
     /// <summary>
     /// Adds an Islamic aspect filter (AND composition).
     /// Only compose when the Islamic module is enabled for the current tenant.
     /// </summary>
     public EventQuerySpecification And(IslamicAspectFilter filter) =>
-        new([.. _filters, filter], [.. _subqueryFilters], _sort, _sortDescending);
+        new([.. _filters, filter], [.. _subqueryFilters], [.. _projectionFilters], _sort, _sortDescending);
 
     /// <summary>
     /// Adds a Tech aspect filter (AND composition).
     /// Only compose when the Tech module is enabled for the current tenant.
     /// </summary>
     public EventQuerySpecification And(TechAspectFilter filter) =>
-        new([.. _filters, filter], [.. _subqueryFilters], _sort, _sortDescending);
+        new([.. _filters, filter], [.. _subqueryFilters], [.. _projectionFilters], _sort, _sortDescending);
 
     /// <summary>
     /// Adds an aspect presence filter (AND composition).
     /// Filters events by whether they have specific aspects configured.
     /// </summary>
     public EventQuerySpecification And(AspectPresenceFilter filter) =>
-        new([.. _filters, filter], [.. _subqueryFilters], _sort, _sortDescending);
+        new([.. _filters, filter], [.. _subqueryFilters], [.. _projectionFilters], _sort, _sortDescending);
 
     /// <summary>
     /// Adds a subquery filter that requires DbContext access (AND composition).
@@ -108,27 +118,34 @@ public sealed class EventQuerySpecification : IQuerySpecification<Event>
     /// Returns a new specification instance (immutable builder).
     /// </summary>
     public EventQuerySpecification And(EventSubqueryFilter filter) =>
-        new([.. _filters], [.. _subqueryFilters, filter], _sort, _sortDescending);
+        new([.. _filters], [.. _subqueryFilters, filter], [.. _projectionFilters], _sort, _sortDescending);
+
+    /// <summary>
+    /// Adds a projection filter for custom property discovery (AND composition).
+    /// Only compose when <c>custom_properties.projection_discovery_enabled</c> is true for the tenant.
+    /// </summary>
+    public EventQuerySpecification And(EventCustomPropertyProjectionFilter filter) =>
+        new([.. _filters], [.. _subqueryFilters], [.. _projectionFilters, filter], _sort, _sortDescending);
 
     /// <inheritdoc />
     IQuerySpecification<Event> IQuerySpecification<Event>.And(IFilterSpecification<Event> filter) =>
-        new EventQuerySpecification([.. _filters, filter], [.. _subqueryFilters], _sort, _sortDescending);
+        new EventQuerySpecification([.. _filters, filter], [.. _subqueryFilters], [.. _projectionFilters], _sort, _sortDescending);
 
     /// <inheritdoc />
     public EventQuerySpecification SortBy(EventSort sort) =>
-        new([.. _filters], [.. _subqueryFilters], sort, false);
+        new([.. _filters], [.. _subqueryFilters], [.. _projectionFilters], sort, false);
 
     /// <inheritdoc />
     public EventQuerySpecification SortByDescending(EventSort sort) =>
-        new([.. _filters], [.. _subqueryFilters], sort, true);
+        new([.. _filters], [.. _subqueryFilters], [.. _projectionFilters], sort, true);
 
     /// <inheritdoc />
     IQuerySpecification<Event> IQuerySpecification<Event>.SortBy(ISortSpecification<Event> sort) =>
-        new EventQuerySpecification([.. _filters], [.. _subqueryFilters], sort, false);
+        new EventQuerySpecification([.. _filters], [.. _subqueryFilters], [.. _projectionFilters], sort, false);
 
     /// <inheritdoc />
     IQuerySpecification<Event> IQuerySpecification<Event>.SortByDescending(ISortSpecification<Event> sort) =>
-        new EventQuerySpecification([.. _filters], [.. _subqueryFilters], sort, true);
+        new EventQuerySpecification([.. _filters], [.. _subqueryFilters], [.. _projectionFilters], sort, true);
 
     /// <summary>
     /// Applies all direct filter predicates and sorting to the given queryable.
@@ -190,6 +207,11 @@ public sealed class EventQuerySpecification : IQuerySpecification<Event>
         foreach (var subFilter in _subqueryFilters)
         {
             parts.Add($"sq:{subFilter.FilterType}:{subFilter.Value}");
+        }
+
+        foreach (var projFilter in _projectionFilters)
+        {
+            parts.Add($"pf:{projFilter.FilterType}:{projFilter.Value}");
         }
 
         if (_sort is not null)

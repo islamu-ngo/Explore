@@ -1,0 +1,39 @@
+// ABOUTME: Structured filter criterion for custom property projection-backed discovery queries.
+// ABOUTME: Maps API request parameters to EventCustomPropertyProjectionFilter specification objects.
+
+namespace Explore.Application.DTOs.CustomPropertyProjection;
+
+public sealed class CustomPropertyFilterCriterion
+{
+    public required string Namespace { get; init; }
+
+    public required string Key { get; init; }
+
+    public CustomPropertyFilterOperator Operator { get; init; } = CustomPropertyFilterOperator.Equals;
+
+    public string? Value { get; init; }
+
+    public Guid? OptionId { get; init; }
+
+    public List<Guid>? OptionIds { get; init; }
+
+    public decimal? MinNumber { get; init; }
+
+    public decimal? MaxNumber { get; init; }
+
+    public DateTimeOffset? DateFrom { get; init; }
+
+    public DateTimeOffset? DateTo { get; init; }
+}
+
+public enum CustomPropertyFilterOperator
+{
+    Equals,
+    Contains,
+    Exists,
+    BooleanTrue,
+    OptionEquals,
+    OptionIn,
+    NumberRange,
+    DateRange
+}

@@ -62,6 +62,7 @@ public static class Extensions
                     .AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation()
                     .AddMeter("Explore.Business")
+                    .AddMeter("Explore.Projections")
                     .AddPrometheusExporter();
             })
             .WithTracing(tracing =>

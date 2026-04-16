@@ -1,5 +1,6 @@
 // ABOUTME: MediatR query request for fetching a filtered, paginated event list.
 // ABOUTME: Returns PaginatedResult<EventListDto>.
+using Explore.Application.DTOs.CustomPropertyProjection;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Responses;
 using Explore.Application.Specifications.Events;
@@ -220,6 +221,12 @@ public class GetEventListRequest : IRequest<PaginatedResult<EventListDto>>
     /// Only applied when the Tech module ("Mod_Tech") is enabled.
     /// </summary>
     public bool? HasTechAspect { get; set; }
+
+    // ===== Custom Property Projection Filters (Layer 3 — tenant-gated) =====
+
+    public List<CustomPropertyFilterCriterion>? CustomPropertyFilters { get; set; }
+
+    public string? CustomPropertySearchTerm { get; set; }
 
     // ===== Sort Parameters =====
 

@@ -17,6 +17,9 @@ public class EventSessionTemplateConfiguration : IEntityTypeConfiguration<EventS
         builder.Property(e => e.Id)
             .HasValueGenerator<GuidVersion7ValueGenerator>();
 
+        builder.Property(e => e.ConcurrencyStamp)
+            .IsConcurrencyToken();
+
         builder.Property(e => e.SessionTemplateKey)
             .HasMaxLength(100)
             .IsRequired();

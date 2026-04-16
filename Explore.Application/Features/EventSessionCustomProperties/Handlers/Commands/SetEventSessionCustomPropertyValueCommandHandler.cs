@@ -4,6 +4,7 @@
 using AutoMapper;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventSessionCustomProperty.Validators;
 using Explore.Application.Features.EventSessionCustomProperties.Requests.Commands;
 using Explore.Application.Responses;
@@ -15,17 +16,23 @@ namespace Explore.Application.Features.EventSessionCustomProperties.Handlers.Com
 public class SetEventSessionCustomPropertyValueCommandHandler : IRequestHandler<SetEventSessionCustomPropertyValueCommand, BaseCommandResponse<Guid>>
 {
     private readonly IEventSessionCustomPropertyRepository _sessionCustomPropertyRepository;
+    private readonly IEventSessionCustomPropertyProjectionUpdater _projectionUpdater;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ITenantContext _tenantContext;
     private readonly ICurrentUserService _currentUserService;
     private readonly IMapper _mapper;
 
     public SetEventSessionCustomPropertyValueCommandHandler(
         IEventSessionCustomPropertyRepository sessionCustomPropertyRepository,
+        IEventSessionCustomPropertyProjectionUpdater projectionUpdater,
+        IUnitOfWork unitOfWork,
         ITenantContext tenantContext,
         ICurrentUserService currentUserService,
         IMapper mapper)
     {
         _sessionCustomPropertyRepository = sessionCustomPropertyRepository;
+        _projectionUpdater = projectionUpdater;
+        _unitOfWork = unitOfWork;
         _tenantContext = tenantContext;
         _currentUserService = currentUserService;
         _mapper = mapper;
@@ -50,10 +57,17 @@ public class SetEventSessionCustomPropertyValueCommandHandler : IRequestHandler<
         value.CreatedBy = _currentUserService.UserId;
         value.UpdatedBy = _currentUserService.UserId;
 
-        value = await _sessionCustomPropertyRepository.SetValue(value, cancellationToken);
+        var persisted = await _unitOfWork.ExecuteInTransactionAsync(
+            async ct =>
+            {
+                var saved = await _sessionCustomPropertyRepository.SetValue(value, ct);
+                await _projectionUpdater.UpdateForValueAsync(saved.Id, ct);
+                return saved;
+            },
+            cancellationToken);
 
         response.Success = true;
-        response.Id = value.Id;
+        response.Id = persisted.Id;
         response.Message = "Event session custom property value set successfully.";
 
         return response;

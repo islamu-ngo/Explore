@@ -4,6 +4,7 @@
 using AutoMapper;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventCustomProperty.Validators;
 using Explore.Application.Features.EventCustomProperties.Requests.Commands;
 using Explore.Application.Responses;
@@ -15,6 +16,7 @@ namespace Explore.Application.Features.EventCustomProperties.Handlers.Commands;
 public class SetEventCustomPropertyMultiValuesCommandHandler : IRequestHandler<SetEventCustomPropertyMultiValuesCommand, BaseCommandResponse<Guid>>
 {
     private readonly IEventCustomPropertyRepository _eventCustomPropertyRepository;
+    private readonly IEventCustomPropertyProjectionUpdater _projectionUpdater;
     private readonly ITenantContext _tenantContext;
     private readonly ICurrentUserService _currentUserService;
     private readonly IMapper _mapper;
@@ -22,12 +24,14 @@ public class SetEventCustomPropertyMultiValuesCommandHandler : IRequestHandler<S
 
     public SetEventCustomPropertyMultiValuesCommandHandler(
         IEventCustomPropertyRepository eventCustomPropertyRepository,
+        IEventCustomPropertyProjectionUpdater projectionUpdater,
         ITenantContext tenantContext,
         ICurrentUserService currentUserService,
         IMapper mapper,
         IUnitOfWork unitOfWork)
     {
         _eventCustomPropertyRepository = eventCustomPropertyRepository;
+        _projectionUpdater = projectionUpdater;
         _tenantContext = tenantContext;
         _currentUserService = currentUserService;
         _mapper = mapper;
@@ -75,6 +79,7 @@ public class SetEventCustomPropertyMultiValuesCommandHandler : IRequestHandler<S
             async ct =>
             {
                 await _eventCustomPropertyRepository.SetMultiValues(request.DefinitionId, request.EventId, values, ct);
+                await _projectionUpdater.UpdateForDefinitionAsync(request.DefinitionId, ct);
             },
             cancellationToken);
 

@@ -16,6 +16,8 @@ public static class ResourceKinds
     public const string Event = "event";
     public const string EventSession = "event_session";
     public const string EventSessionAgendaItem = "event_session_agenda_item";
+    public const string EventDay = "event_day";
+    public const string EventAgendaItem = "event_agenda_item";
     public const string EventRegistration = "event_registration";
     public const string EventContactShareConsent = "event_contact_share_consent";
     public const string Organization = "organization";
@@ -27,12 +29,18 @@ public static class ResourceKinds
     public const string Category = "category";
     public const string Tag = "tag";
     public const string Location = "location";
+    public const string LocationRoom = "location_room";
     public const string StorageObject = "storage_object";
     public const string User = "user";
     public const string AtprotoRecord = "atproto_record";
     public const string IndexedDid = "indexed_did";
     public const string InstanceSetting = "instance_setting";
     public const string CustomPropertyDefinition = "custom_property_definition";
+    public const string CustomPropertyTemplate = "custom_property_template";
+    public const string CustomPropertyValue = "custom_property_value";
+    public const string CustomPropertyProjection = "custom_property_projection";
+    public const string CustomPropertyGovernance = "custom_property_governance";
+    public const string PlatformNamespace = "platform_namespace";
     public const string Notification = "notification";
     public const string Actor = "actor";
     public const string Group = "group";

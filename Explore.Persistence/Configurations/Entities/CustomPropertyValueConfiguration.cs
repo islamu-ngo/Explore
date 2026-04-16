@@ -17,6 +17,9 @@ public class CustomPropertyValueConfiguration : IEntityTypeConfiguration<CustomP
         builder.Property(e => e.Id)
             .HasValueGenerator<GuidVersion7ValueGenerator>();
 
+        builder.Property(e => e.ConcurrencyStamp)
+            .IsConcurrencyToken();
+
         builder.Property(e => e.TextValue)
             .HasMaxLength(4000);
 

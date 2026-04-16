@@ -82,6 +82,24 @@ public static class AuthorizationActions
         public const string Delete = AuthorizationActions.Delete;
     }
 
+    /// <summary>Valid actions for the <c>event_day</c> resource kind.</summary>
+    public static class EventDays
+    {
+        public const string View = AuthorizationActions.View;
+        public const string Create = AuthorizationActions.Create;
+        public const string Update = AuthorizationActions.Update;
+        public const string Delete = AuthorizationActions.Delete;
+    }
+
+    /// <summary>Valid actions for the <c>event_agenda_item</c> resource kind.</summary>
+    public static class EventAgendaItems
+    {
+        public const string View = AuthorizationActions.View;
+        public const string Create = AuthorizationActions.Create;
+        public const string Update = AuthorizationActions.Update;
+        public const string Delete = AuthorizationActions.Delete;
+    }
+
     /// <summary>Valid actions for the <c>event_registration</c> resource kind.</summary>
     public static class EventRegistrations
     {
@@ -193,6 +211,15 @@ public static class AuthorizationActions
         public const string Delete = AuthorizationActions.Delete;
     }
 
+    /// <summary>Valid actions for the <c>location_room</c> resource kind.</summary>
+    public static class LocationRooms
+    {
+        public const string View = AuthorizationActions.View;
+        public const string Create = AuthorizationActions.Create;
+        public const string Update = AuthorizationActions.Update;
+        public const string Delete = AuthorizationActions.Delete;
+    }
+
     /// <summary>Valid actions for the <c>storage_object</c> resource kind.</summary>
     public static class StorageObjects
     {
@@ -242,5 +269,72 @@ public static class AuthorizationActions
         public const string Delete = AuthorizationActions.Delete;
         public const string Lock = AuthorizationActions.Lock;
         public const string Unlock = AuthorizationActions.Unlock;
+    }
+
+    /// <summary>Diff a template against current definitions before applying.</summary>
+    public const string SyncDiff = "sync_diff";
+
+    /// <summary>Apply a template sync to update/create definitions.</summary>
+    public const string SyncApply = "sync_apply";
+
+    // ── EAV Custom Property resource-scoped catalogs ────────────────────
+
+    /// <summary>
+    /// Valid actions for the <c>custom_property_template</c> resource kind.
+    /// Extends standard CRUD with template sync diff/apply operations.
+    /// </summary>
+    public static class CustomPropertyTemplates
+    {
+        public const string View = AuthorizationActions.View;
+        public const string Create = AuthorizationActions.Create;
+        public const string Update = AuthorizationActions.Update;
+        public const string Delete = AuthorizationActions.Delete;
+        public const string SyncDiff = AuthorizationActions.SyncDiff;
+        public const string SyncApply = AuthorizationActions.SyncApply;
+    }
+
+    /// <summary>
+    /// Valid actions for the <c>custom_property_value</c> resource kind.
+    /// Standard CRUD for runtime custom property values on events/sessions.
+    /// </summary>
+    public static class CustomPropertyValues
+    {
+        public const string View = AuthorizationActions.View;
+        public const string Create = AuthorizationActions.Create;
+        public const string Update = AuthorizationActions.Update;
+        public const string Delete = AuthorizationActions.Delete;
+    }
+
+    /// <summary>
+    /// Valid actions for the <c>custom_property_projection</c> resource kind.
+    /// Covers projection rebuild, dirty-scope drain, and status inspection.
+    /// Part of the <c>property_governance_admin</c> policy (D2 Operability).
+    /// </summary>
+    public static class CustomPropertyProjections
+    {
+        public const string View = AuthorizationActions.View;
+        public const string Update = AuthorizationActions.Update;
+    }
+
+    /// <summary>
+    /// Valid actions for the <c>custom_property_governance</c> resource kind.
+    /// Covers Rule 12 governance reporting and promotion recommendations.
+    /// Part of the <c>property_governance_admin</c> policy (D2 Operability).
+    /// </summary>
+    public static class CustomPropertyGovernance
+    {
+        public const string View = AuthorizationActions.View;
+    }
+
+    /// <summary>
+    /// Valid actions for the <c>platform_namespace</c> resource kind.
+    /// Default deny — only instance admins (platform operators) can write.
+    /// </summary>
+    public static class PlatformNamespaces
+    {
+        public const string View = AuthorizationActions.View;
+        public const string Create = AuthorizationActions.Create;
+        public const string Update = AuthorizationActions.Update;
+        public const string Delete = AuthorizationActions.Delete;
     }
 }

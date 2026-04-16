@@ -1,0 +1,34 @@
+# ABOUTME: Cerbos resource policy for platform_namespace resources.
+# ABOUTME: Default deny — only instance admins (platform operators) can write to the 'platform' namespace.
+
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: "platform_namespace"
+  version: "default"
+  importDerivedRoles:
+    - explore_admin_roles
+  schemas:
+    principalSchema:
+      ref: cerbos:///principal.json
+    resourceSchema:
+      ref: cerbos:///platform_namespace.json
+  rules:
+    # Instance admins are the only role that can write to the platform namespace
+    - actions: ["*"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - instance_admin
+
+    # All authenticated users can view platform namespace definitions
+    - actions: ["view"]
+      effect: EFFECT_ALLOW
+      roles:
+        - authenticated_user
+
+    # Explicit deny for tenant/org admins attempting to write to platform namespace.
+    # This rule is defensive — Cerbos is default-deny — but makes the intent explicit.
+    - actions: ["create", "update", "delete"]
+      effect: EFFECT_DENY
+      derivedRoles:
+        - tenant_admin
+        - org_admin

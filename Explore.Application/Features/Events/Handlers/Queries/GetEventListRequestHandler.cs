@@ -3,6 +3,8 @@
 using AutoMapper;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.CustomPropertyProjection;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Events.Requests.Queries;
 using Explore.Application.Responses;
@@ -23,6 +25,7 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
     private readonly HybridCache _cache;
     private readonly IModuleService _moduleService;
     private readonly ITenantContext _tenantContext;
+    private readonly ICustomPropertyQuotaResolver _quotaResolver;
 
     public GetEventListRequestHandler(
         IEventRepository eventRepository,
@@ -31,7 +34,8 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
         ILogger<GetEventListRequestHandler> logger,
         HybridCache cache,
         IModuleService moduleService,
-        ITenantContext tenantContext)
+        ITenantContext tenantContext,
+        ICustomPropertyQuotaResolver quotaResolver)
     {
         _eventRepository = eventRepository;
         _mapper = mapper;
@@ -40,6 +44,7 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
         _cache = cache;
         _moduleService = moduleService;
         _tenantContext = tenantContext;
+        _quotaResolver = quotaResolver;
     }
 
     public async Task<PaginatedResult<EventListDto>> Handle(GetEventListRequest request, CancellationToken cancellationToken)
@@ -221,6 +226,31 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
                 spec = spec.And(TechAspectFilter.TechStack(request.TechStackTag.Trim()));
         }
 
+        // ===== Custom property projection filters (Layer 3 — tenant-gated) =====
+
+        var hasProjectionFilters = request.CustomPropertyFilters is { Count: > 0 }
+            || !string.IsNullOrWhiteSpace(request.CustomPropertySearchTerm);
+
+        if (hasProjectionFilters &&
+            await _quotaResolver.GetBoolAsync("custom_properties.projection_discovery_enabled", tenantId, cancellationToken))
+        {
+            if (!string.IsNullOrWhiteSpace(request.CustomPropertySearchTerm))
+            {
+                spec = spec.And(EventCustomPropertyProjectionFilter.GlobalTextSearch(
+                    request.CustomPropertySearchTerm.Trim()));
+            }
+
+            if (request.CustomPropertyFilters is { Count: > 0 })
+            {
+                foreach (var criterion in request.CustomPropertyFilters)
+                {
+                    var filter = MapCriterionToFilter(criterion);
+                    if (filter is not null)
+                        spec = spec.And(filter);
+                }
+            }
+        }
+
         // ===== Sorting =====
 
         var sort = ResolveSortField(request.SortBy);
@@ -247,6 +277,36 @@ public class GetEventListRequestHandler : IRequestHandler<GetEventListRequest, P
             "title" => EventSort.Title,
             "views" => EventSort.Views,
             "createdat" => EventSort.CreatedAt,
+            _ => null
+        };
+
+    private static EventCustomPropertyProjectionFilter? MapCriterionToFilter(CustomPropertyFilterCriterion criterion) =>
+        criterion.Operator switch
+        {
+            CustomPropertyFilterOperator.Equals when criterion.Value is not null =>
+                EventCustomPropertyProjectionFilter.ExactMatch(criterion.Namespace, criterion.Key, criterion.Value),
+
+            CustomPropertyFilterOperator.Contains when criterion.Value is not null =>
+                EventCustomPropertyProjectionFilter.TextSearch(criterion.Namespace, criterion.Key, criterion.Value),
+
+            CustomPropertyFilterOperator.Exists =>
+                EventCustomPropertyProjectionFilter.Exists(criterion.Namespace, criterion.Key),
+
+            CustomPropertyFilterOperator.BooleanTrue =>
+                EventCustomPropertyProjectionFilter.BooleanTrue(criterion.Namespace, criterion.Key),
+
+            CustomPropertyFilterOperator.OptionEquals when criterion.OptionId.HasValue =>
+                EventCustomPropertyProjectionFilter.OptionMatch(criterion.Namespace, criterion.Key, criterion.OptionId.Value),
+
+            CustomPropertyFilterOperator.OptionIn when criterion.OptionIds is { Count: > 0 } =>
+                EventCustomPropertyProjectionFilter.OptionsMatchAny(criterion.Namespace, criterion.Key, criterion.OptionIds),
+
+            CustomPropertyFilterOperator.NumberRange when criterion.MinNumber.HasValue || criterion.MaxNumber.HasValue =>
+                EventCustomPropertyProjectionFilter.NumberRange(criterion.Namespace, criterion.Key, criterion.MinNumber, criterion.MaxNumber),
+
+            CustomPropertyFilterOperator.DateRange when criterion.DateFrom.HasValue || criterion.DateTo.HasValue =>
+                EventCustomPropertyProjectionFilter.DateRange(criterion.Namespace, criterion.Key, criterion.DateFrom, criterion.DateTo),
+
             _ => null
         };
 

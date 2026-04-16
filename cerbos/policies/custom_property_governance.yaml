@@ -1,0 +1,26 @@
+# ABOUTME: Cerbos resource policy for custom_property_governance resources.
+# ABOUTME: Governance reporting (Rule 12 promotion recommendations) is read-only for tenant admins.
+
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: "custom_property_governance"
+  version: "default"
+  importDerivedRoles:
+    - explore_admin_roles
+  schemas:
+    principalSchema:
+      ref: cerbos:///principal.json
+    resourceSchema:
+      ref: cerbos:///custom_property_governance.json
+  rules:
+    # Instance admins can do everything
+    - actions: ["*"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - instance_admin
+
+    # Tenant admins can view governance reports within their tenant
+    - actions: ["view"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - tenant_admin

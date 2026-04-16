@@ -5,7 +5,9 @@ using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.DTOs.Category;
 using Explore.Application.DTOs.CustomPropertyDefinition;
 using Explore.Application.DTOs.Event;
+using Explore.Application.DTOs.EventAgendaItem;
 using Explore.Application.DTOs.EventCustomProperty;
+using Explore.Application.DTOs.EventDay;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.DTOs.EventSessionAgendaItem;
@@ -16,6 +18,7 @@ using Explore.Application.DTOs.Group;
 using Explore.Application.DTOs.GroupMember;
 using Explore.Application.DTOs.IndexedDid;
 using Explore.Application.DTOs.Location;
+using Explore.Application.DTOs.LocationRoom;
 using Explore.Application.DTOs.Organization;
 using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.DTOs.OrganizationReview;
@@ -111,6 +114,36 @@ public static class ResourceDescriptors
         dto => new Dictionary<string, object>
         {
             ["eventId"] = dto.EventId.ToString(),
+            ["tenantId"] = dto.TenantId.ToString()
+        },
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
+    public static readonly ResourceDescriptor<EventDayDto> EventDay = new(
+        ResourceKinds.EventDay,
+        dto => dto.Id.ToString(),
+        dto => new Dictionary<string, object>
+        {
+            ["eventId"] = dto.EventId.ToString(),
+            ["tenantId"] = dto.TenantId.ToString()
+        },
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
+    public static readonly ResourceDescriptor<EventAgendaItemDto> EventAgendaItem = new(
+        ResourceKinds.EventAgendaItem,
+        dto => dto.Id.ToString(),
+        dto => new Dictionary<string, object>
+        {
+            ["eventId"] = dto.EventId.ToString(),
+            ["tenantId"] = dto.TenantId.ToString()
+        },
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
+    public static readonly ResourceDescriptor<LocationRoomDto> LocationRoom = new(
+        ResourceKinds.LocationRoom,
+        dto => dto.Id.ToString(),
+        dto => new Dictionary<string, object>
+        {
+            ["locationId"] = dto.LocationId.ToString(),
             ["tenantId"] = dto.TenantId.ToString()
         },
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));

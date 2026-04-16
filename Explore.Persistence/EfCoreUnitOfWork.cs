@@ -2,6 +2,7 @@
 // ABOUTME: Wraps the transaction and all operations inside the retrying strategy's ExecuteAsync scope.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Exceptions;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence;
@@ -30,7 +31,16 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
 
         // InMemory provider does not support transactions or execution strategies — run directly
         if (_dbContext.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory")
-            return await operation(ct);
+        {
+            try
+            {
+                return await operation(ct);
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                throw TranslateConcurrencyException(ex);
+            }
+        }
 
         var strategy = _dbContext.Database.CreateExecutionStrategy();
         return await strategy.ExecuteAsync(async () =>
@@ -42,11 +52,35 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
                 await transaction.CommitAsync(ct);
                 return result;
             }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                await transaction.RollbackAsync(ct);
+                throw TranslateConcurrencyException(ex);
+            }
             catch
             {
                 await transaction.RollbackAsync(ct);
                 throw;
             }
         });
+    }
+
+    private static ConcurrencyConflictException TranslateConcurrencyException(DbUpdateConcurrencyException ex)
+    {
+        var entry = ex.Entries.Count > 0 ? ex.Entries[0] : null;
+        var entityType = entry?.Entity.GetType().Name;
+        string? entityId = null;
+        if (entry?.Metadata.FindPrimaryKey() is { } pk)
+        {
+            entityId = string.Join(":", pk.Properties.Select(p =>
+                entry.Property(p.Name).CurrentValue?.ToString() ?? string.Empty));
+        }
+
+        return new ConcurrencyConflictException(
+            ConcurrencyConflictException.ConcurrentUpdate,
+            $"The {entityType ?? "entity"} was modified by another request. Reload and retry.",
+            entityType,
+            entityId,
+            ex);
     }
 }

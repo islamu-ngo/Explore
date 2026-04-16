@@ -4,6 +4,7 @@
 using AutoMapper;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventSessionCustomProperty.Validators;
 using Explore.Application.Features.EventSessionCustomProperties.Requests.Commands;
 using Explore.Application.Responses;
@@ -15,6 +16,7 @@ namespace Explore.Application.Features.EventSessionCustomProperties.Handlers.Com
 public class SetEventSessionCustomPropertyMultiValuesCommandHandler : IRequestHandler<SetEventSessionCustomPropertyMultiValuesCommand, BaseCommandResponse<Guid>>
 {
     private readonly IEventSessionCustomPropertyRepository _sessionCustomPropertyRepository;
+    private readonly IEventSessionCustomPropertyProjectionUpdater _projectionUpdater;
     private readonly ITenantContext _tenantContext;
     private readonly ICurrentUserService _currentUserService;
     private readonly IMapper _mapper;
@@ -22,12 +24,14 @@ public class SetEventSessionCustomPropertyMultiValuesCommandHandler : IRequestHa
 
     public SetEventSessionCustomPropertyMultiValuesCommandHandler(
         IEventSessionCustomPropertyRepository sessionCustomPropertyRepository,
+        IEventSessionCustomPropertyProjectionUpdater projectionUpdater,
         ITenantContext tenantContext,
         ICurrentUserService currentUserService,
         IMapper mapper,
         IUnitOfWork unitOfWork)
     {
         _sessionCustomPropertyRepository = sessionCustomPropertyRepository;
+        _projectionUpdater = projectionUpdater;
         _tenantContext = tenantContext;
         _currentUserService = currentUserService;
         _mapper = mapper;
@@ -75,6 +79,7 @@ public class SetEventSessionCustomPropertyMultiValuesCommandHandler : IRequestHa
             async ct =>
             {
                 await _sessionCustomPropertyRepository.SetMultiValues(request.DefinitionId, request.EventSessionId, values, ct);
+                await _projectionUpdater.UpdateForDefinitionAsync(request.DefinitionId, ct);
             },
             cancellationToken);
 

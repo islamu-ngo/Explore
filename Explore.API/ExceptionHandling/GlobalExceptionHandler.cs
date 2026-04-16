@@ -46,6 +46,10 @@ internal sealed class GlobalExceptionHandler(
                 StatusCodes.Status403Forbidden,
                 "Forbidden",
                 "You do not have permission to perform this action."),
+            ConcurrencyConflictException concurrencyConflictException => (
+                StatusCodes.Status409Conflict,
+                "Concurrency conflict",
+                concurrencyConflictException.Message),
             _ => (
                 StatusCodes.Status500InternalServerError,
                 "Internal server error",
@@ -67,18 +71,33 @@ internal sealed class GlobalExceptionHandler(
             ? uri
             : $"https://tools.ietf.org/html/rfc9110#status.{statusCode}";
 
+        var problemDetails = new ProblemDetails
+        {
+            Status = statusCode,
+            Title = title,
+            Detail = detail,
+            Type = typeUri,
+            Instance = httpContext.Request.Path
+        };
+
+        if (exception is ConcurrencyConflictException concurrencyConflict)
+        {
+            problemDetails.Extensions["code"] = concurrencyConflict.Code;
+            if (concurrencyConflict.EntityType is not null)
+            {
+                problemDetails.Extensions["entityType"] = concurrencyConflict.EntityType;
+            }
+            if (concurrencyConflict.EntityId is not null)
+            {
+                problemDetails.Extensions["entityId"] = concurrencyConflict.EntityId;
+            }
+        }
+
         return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
         {
             HttpContext = httpContext,
             Exception = exception,
-            ProblemDetails = new ProblemDetails
-            {
-                Status = statusCode,
-                Title = title,
-                Detail = detail,
-                Type = typeUri,
-                Instance = httpContext.Request.Path
-            }
+            ProblemDetails = problemDetails
         });
     }
 }

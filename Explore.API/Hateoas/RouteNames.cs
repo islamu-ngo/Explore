@@ -361,4 +361,51 @@ public static class RouteNames
 
     #endregion
 
+    #region Event Day Routes
+
+    public const string GetEventDaysByEvent = "GetEventDaysByEvent";
+    public const string GetEventDayById = "GetEventDayById";
+    public const string CreateEventDay = "CreateEventDay";
+    public const string UpdateEventDay = "UpdateEventDay";
+    public const string DeleteEventDay = "DeleteEventDay";
+
+    #endregion
+
+    #region Event Agenda Item Routes
+
+    public const string GetEventAgendaItemsByEvent = "GetEventAgendaItemsByEvent";
+    public const string GetEventAgendaItemById = "GetEventAgendaItemById";
+    public const string CreateEventAgendaItem = "CreateEventAgendaItem";
+    public const string UpdateEventAgendaItem = "UpdateEventAgendaItem";
+    public const string DeleteEventAgendaItem = "DeleteEventAgendaItem";
+    public const string GetEventAgendaProjection = "GetEventAgendaProjection";
+
+    #endregion
+
+    #region Location Room Routes
+
+    public const string GetLocationRoomsByLocation = "GetLocationRoomsByLocation";
+    public const string GetLocationRoomById = "GetLocationRoomById";
+    public const string CreateLocationRoom = "CreateLocationRoom";
+    public const string UpdateLocationRoom = "UpdateLocationRoom";
+    public const string DeleteLocationRoom = "DeleteLocationRoom";
+
+    #endregion
+
+    #region Custom Property Projection Admin Routes
+
+    public const string GetCustomPropertyProjectionStatus = "GetCustomPropertyProjectionStatus";
+    public const string RebuildCustomPropertyProjection = "RebuildCustomPropertyProjection";
+    public const string RebuildSingleEventCustomPropertyProjection = "RebuildSingleEventCustomPropertyProjection";
+    public const string DrainCustomPropertyProjectionDirtyScopes = "DrainCustomPropertyProjectionDirtyScopes";
+    public const string GetCustomPropertyProjectionDirtyScopes = "GetCustomPropertyProjectionDirtyScopes";
+    public const string GetCustomPropertyProjectionsForEvent = "GetCustomPropertyProjectionsForEvent";
+    public const string GetSessionCustomPropertyProjectionStatus = "GetSessionCustomPropertyProjectionStatus";
+    public const string RebuildSessionCustomPropertyProjection = "RebuildSessionCustomPropertyProjection";
+    public const string RebuildSingleSessionCustomPropertyProjection = "RebuildSingleSessionCustomPropertyProjection";
+    public const string GetCustomPropertyProjectionsForSession = "GetCustomPropertyProjectionsForSession";
+    public const string GetCustomPropertyGovernanceReport = "GetCustomPropertyGovernanceReport";
+
+    #endregion
+
 }

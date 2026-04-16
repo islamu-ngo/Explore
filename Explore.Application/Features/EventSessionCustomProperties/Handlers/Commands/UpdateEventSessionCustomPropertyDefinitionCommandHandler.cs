@@ -19,6 +19,7 @@ namespace Explore.Application.Features.EventSessionCustomProperties.Handlers.Com
 public class UpdateEventSessionCustomPropertyDefinitionCommandHandler : IRequestHandler<UpdateEventSessionCustomPropertyDefinitionCommand, BaseCommandResponse<Guid>>
 {
     private readonly IEventSessionCustomPropertyRepository _sessionCustomPropertyRepository;
+    private readonly IEventSessionCustomPropertyProjectionUpdater _projectionUpdater;
     private readonly ICustomPropertyGovernancePolicy _customPropertyGovernancePolicy;
     private readonly ICurrentUserService _currentUserService;
     private readonly IMapper _mapper;
@@ -27,6 +28,7 @@ public class UpdateEventSessionCustomPropertyDefinitionCommandHandler : IRequest
 
     public UpdateEventSessionCustomPropertyDefinitionCommandHandler(
         IEventSessionCustomPropertyRepository sessionCustomPropertyRepository,
+        IEventSessionCustomPropertyProjectionUpdater projectionUpdater,
         ICustomPropertyGovernancePolicy customPropertyGovernancePolicy,
         ICurrentUserService currentUserService,
         IMapper mapper,
@@ -34,6 +36,7 @@ public class UpdateEventSessionCustomPropertyDefinitionCommandHandler : IRequest
         IUnitOfWork unitOfWork)
     {
         _sessionCustomPropertyRepository = sessionCustomPropertyRepository;
+        _projectionUpdater = projectionUpdater;
         _customPropertyGovernancePolicy = customPropertyGovernancePolicy;
         _currentUserService = currentUserService;
         _mapper = mapper;
@@ -94,7 +97,11 @@ public class UpdateEventSessionCustomPropertyDefinitionCommandHandler : IRequest
         var defaultOption = options.SingleOrDefault(x => x.IsDefault);
 
         await _unitOfWork.ExecuteInTransactionAsync(
-            ct => _sessionCustomPropertyRepository.UpdateWithOptions(definition, options, defaultOption?.Id, ct),
+            async ct =>
+            {
+                await _sessionCustomPropertyRepository.UpdateWithOptions(definition, options, defaultOption?.Id, ct);
+                await _projectionUpdater.UpdateForDefinitionAsync(definition.Id, ct);
+            },
             cancellationToken);
 
         response.Success = true;

@@ -31,7 +31,7 @@ The platform uses a BFF model:
 
 In YARP transforms:
 
-- `X-Tenant-Id` is forwarded from incoming request when present.
+- `X-Tenant-Slug` is forwarded when route or request context provides an explicit tenant hint.
 - Incoming `X-Setup-Secret` is stripped first, then replaced only with trusted value resolved from:
   1. request header,
   2. cookie,
@@ -55,6 +55,8 @@ Server-side enforcement is layered:
    - Checks `[AuthorizeResource]` attribute — declarative resource-level authorization.
    - Optionally enhanced by `ISecureRequest` — provides dynamic resource context for fine-grained permission evaluation.
 3. Runtime provider (`RuntimeAuthorizationProvider`) deciding Cerbos vs fallback.
+
+See [AUTHORIZATION.md](AUTHORIZATION.md) for the full provider model, request patterns, and role boundary details.
 
 Hard deny behavior:
 
@@ -83,12 +85,12 @@ Authorization policies are organized in three tiers:
 
 ### Static Policies (Disk)
 
-26 resource policy files + 1 derived roles file in `cerbos/policies/`:
+31 resource policy files + 1 derived roles file in `cerbos/policies/`:
 
 - **`derived_roles.yaml`**: Resolves instance admin, tenant admin, and org admin roles from principal attributes and resource context.
 - **Resource policies** (`{kind}.yaml`): Each defines rules per derived role and `authenticated_user`. Instance admin gets wildcard `"*"`, tenant/org admin get CRUD, authenticated user gets `"view"`.
 - **Standard actions**: `view`, `create`, `update`, `delete`.
-- **Extended actions**: `manage_members`, `lock`, `unlock`, `viewsharedcontacts`, `exportsharedcontacts`.
+- **Extended actions**: `manage_members`, `lock`, `unlock`, `viewsharedcontacts`, `exportsharedcontacts`, `sync_diff`, `sync_apply`.
 
 ### Dynamic Policies (PostgreSQL Store)
 
@@ -114,6 +116,45 @@ Tenants may point to their own Cerbos PDP endpoint via tenant settings:
 | `AuthorizationActions` | `Application/Authorization/AuthorizationActions.cs` | Action string constants matching Cerbos policy action names |
 | `ResourceKinds` | `Application/Authorization/ResourceKinds.cs` | Resource kind string constants matching Cerbos policy file names |
 | `ResourceDescriptors` | `Application/Authorization/ResourceDescriptors.cs` | DTO → authorization metadata extractors (kind, id, attributes, scope) |
+
+### Custom Property Authorization Policies
+
+Five resource policies govern custom property operations:
+
+| Policy File | Resource Kind | Actions | Notes |
+|---|---|---|---|
+| `custom_property_template.yaml` | `custom_property_template` | view, create, update, delete, sync_diff, sync_apply | Template CRUD + sync operations. Tenant admin can manage templates within their tenant. |
+| `custom_property_value.yaml` | `custom_property_value` | view, create, update, delete | Runtime value CRUD. Org admin can manage values for their organization's entities. |
+| `custom_property_projection.yaml` | `custom_property_projection` | view, update | Projection admin (rebuild, drain). Tenant admin can trigger rebuilds and drain dirty scopes. |
+| `custom_property_governance.yaml` | `custom_property_governance` | view | Governance reporting. Tenant admin can view governance recommendations. |
+| `platform_namespace.yaml` | `platform_namespace` | view, create, update, delete | Platform-reserved namespace protection. **Explicit deny** for tenant admin and org admin on write operations. Only instance admin can write. |
+
+#### Endpoint-to-Policy Mapping
+
+| Endpoint | Controller | Action | Resource Kind | Policy Rule |
+|---|---|---|---|---|
+| `GET /api/event/{id}/custom-property-definitions` | `EventCustomPropertyDefinitionController` | view | `custom_property_template` | AllowAnonymous |
+| `POST /api/event/{id}/custom-property-definitions` | `EventCustomPropertyDefinitionController` | create | `custom_property_template` | Authorize |
+| `PUT /api/event/{id}/custom-property-definitions/{defId}` | `EventCustomPropertyDefinitionController` | update | `custom_property_template` | Authorize |
+| `DELETE /api/event/{id}/custom-property-definitions/{defId}` | `EventCustomPropertyDefinitionController` | delete | `custom_property_template` | Authorize |
+| `GET /api/event/{id}/custom-property-values` | `EventCustomPropertyValueController` | view | `custom_property_value` | AllowAnonymous |
+| `POST /api/event/{id}/custom-property-values` | `EventCustomPropertyValueController` | create | `custom_property_value` | Authorize |
+| `PUT /api/event/{id}/custom-property-values/{valId}` | `EventCustomPropertyValueController` | update | `custom_property_value` | Authorize |
+| `DELETE /api/event/{id}/custom-property-values/{valId}` | `EventCustomPropertyValueController` | delete | `custom_property_value` | Authorize |
+| `POST /api/custom-property-projection/rebuild` | `CustomPropertyProjectionAdminController` | update | `custom_property_projection` | Authorize |
+| `POST /api/custom-property-projection/drain` | `CustomPropertyProjectionAdminController` | update | `custom_property_projection` | Authorize |
+| `GET /api/custom-property-projection/status` | `CustomPropertyProjectionAdminController` | view | `custom_property_projection` | Authorize |
+| `GET /api/custom-property-governance/recommendations` | `CustomPropertyGovernanceController` | view | `custom_property_governance` | Authorize |
+
+#### Platform Namespace Protection
+
+The `platform_namespace` policy enforces a hard boundary around the `platform` namespace:
+
+- **Instance admin**: Full CRUD (wildcard `"*"`).
+- **Tenant admin / Org admin**: **Explicit deny** on `create`, `update`, `delete`. Can only `view`.
+- **Authenticated user**: `view` only.
+
+This ensures platform-defined property definitions (e.g., standardized fields shared across all tenants) cannot be modified by tenant-level administrators. The deny rule takes precedence over any derived role grants.
 
 ## Scoped Policy Resolution
 
@@ -144,13 +185,14 @@ JSON schemas in `cerbos/policies/_schemas/` enforce structural contracts across 
 
 ## Claim Fallback Rules in Code
 
-Common user ID extraction order used in API/BFF paths:
+Preferred user ID extraction order across API and BFF paths:
 
-- `internal_user_id` -> `sub` -> `ClaimTypes.NameIdentifier` -> `sid` (for provider subjects that are not GUIDs).
+- `sub` -> `ClaimTypes.NameIdentifier` -> `sid`
 
-Some BFF helpers currently use:
+Notes:
 
-- `sub` -> `ClaimTypes.NameIdentifier` (without `sid` fallback).
+- `internal_user_id` is a separate local-user claim added by BFF enrichment for UI/admin helpers. It is not the general fallback chain.
+- A few BFF-only helpers currently stop at `sub` -> `ClaimTypes.NameIdentifier` where the server-authenticated session is already authoritative.
 
 ## Client-Side Authorization Scope
 
