@@ -34,8 +34,8 @@ public class EventSeries : ITenantEntity, IAuditableEntity, ISoftDeletable, ICon
     public DateTimeOffset? StartDateUtc { get; set; }
     public DateTimeOffset? EndDateUtc { get; set; }
 
-    // Navigation
-    public ICollection<Event> Events { get; set; } = new List<Event>();
+    private readonly List<Event> _events = [];
+    public IReadOnlyList<Event> Events => _events.AsReadOnly();
 
     // ITenantEntity
     public Guid TenantId { get; set; }

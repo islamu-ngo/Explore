@@ -1,5 +1,5 @@
 // ABOUTME: Handler for creating a new event with full validation.
-// ABOUTME: Validates input, maps DTO, sets TenantId and defaults, persists via repository.
+// ABOUTME: Validates input, resolves actor, maps DTO, persists event + default session via UoW.
 using System;
 using System.Linq;
 using System.Threading;
@@ -12,11 +12,9 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
-using Explore.Application.Settings;
+using Explore.Application.Services;
 using Explore.Application.Telemetry;
 using Explore.Domain;
-using Explore.Domain.Constants;
-using Explore.Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 
@@ -26,19 +24,19 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
 {
     private readonly IEventRepository _eventRepository;
     private readonly IEventSessionRepository _eventSessionRepository;
-    private readonly IActorRepository _actorRepository;
-    private readonly IOrganizationRepository _organizationRepository;
-    private readonly IOrganizationMemberRepository _organizationMemberRepository;
-    private readonly IGroupRepository _groupRepository;
-    private readonly IGroupMemberRepository _groupMemberRepository;
-    private readonly IHierarchicalSettingsResolver _settingsResolver;
+    private readonly IEventActorResolver _actorResolver;
     private readonly IAudienceAgeRepository _audienceAgeRepository;
     private readonly IAudienceGenderRepository _audienceGenderRepository;
     private readonly IEventTypeRepository _eventTypeRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IEventTemplateRepository _eventTemplateRepository;
+    private readonly IEventSeriesRepository _eventSeriesRepository;
+    private readonly IEventRegistrationPolicyRepository _eventRegistrationPolicyRepository;
     private readonly IEventCustomPropertyRepository _eventCustomPropertyRepository;
+    private readonly IEventCustomPropertyProjectionUpdater _projectionUpdater;
     private readonly IEventTemplateInstantiationService _instantiationService;
+    private readonly IOrganizationRepository _organizationRepository;
+    private readonly IGroupRepository _groupRepository;
     private readonly IUserContext _userContext;
     private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
@@ -49,19 +47,19 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     public CreateEventCommandHandler(
         IEventRepository eventRepository,
         IEventSessionRepository eventSessionRepository,
-        IActorRepository actorRepository,
-        IOrganizationRepository organizationRepository,
-        IOrganizationMemberRepository organizationMemberRepository,
-        IGroupRepository groupRepository,
-        IGroupMemberRepository groupMemberRepository,
-        IHierarchicalSettingsResolver settingsResolver,
+        IEventActorResolver actorResolver,
         IAudienceAgeRepository audienceAgeRepository,
         IAudienceGenderRepository audienceGenderRepository,
         IEventTypeRepository eventTypeRepository,
         IStorageObjectRepository storageObjectRepository,
         IEventTemplateRepository eventTemplateRepository,
+        IEventSeriesRepository eventSeriesRepository,
+        IEventRegistrationPolicyRepository eventRegistrationPolicyRepository,
         IEventCustomPropertyRepository eventCustomPropertyRepository,
+        IEventCustomPropertyProjectionUpdater projectionUpdater,
         IEventTemplateInstantiationService instantiationService,
+        IOrganizationRepository organizationRepository,
+        IGroupRepository groupRepository,
         IUserContext userContext,
         ITenantContext tenantContext,
         IMapper mapper,
@@ -71,19 +69,19 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     {
         _eventRepository = eventRepository;
         _eventSessionRepository = eventSessionRepository;
-        _actorRepository = actorRepository;
-        _organizationRepository = organizationRepository;
-        _organizationMemberRepository = organizationMemberRepository;
-        _groupRepository = groupRepository;
-        _groupMemberRepository = groupMemberRepository;
-        _settingsResolver = settingsResolver;
+        _actorResolver = actorResolver;
         _audienceAgeRepository = audienceAgeRepository;
         _audienceGenderRepository = audienceGenderRepository;
         _eventTypeRepository = eventTypeRepository;
         _storageObjectRepository = storageObjectRepository;
         _eventTemplateRepository = eventTemplateRepository;
+        _eventSeriesRepository = eventSeriesRepository;
+        _eventRegistrationPolicyRepository = eventRegistrationPolicyRepository;
         _eventCustomPropertyRepository = eventCustomPropertyRepository;
+        _projectionUpdater = projectionUpdater;
         _instantiationService = instantiationService;
+        _organizationRepository = organizationRepository;
+        _groupRepository = groupRepository;
         _userContext = userContext;
         _tenantContext = tenantContext;
         _mapper = mapper;
@@ -96,10 +94,8 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     {
         var response = new BaseCommandResponse<Guid>();
 
-        // Get the authenticated user's Keycloak ID
         var currentUserId = _userContext.GetRequiredUserId();
 
-        // Validate the DTO
         var validator = new CreateEventDtoValidator(
             _audienceAgeRepository,
             _audienceGenderRepository,
@@ -107,7 +103,9 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             _organizationRepository,
             _groupRepository,
             _storageObjectRepository,
-            _eventTemplateRepository);
+            _eventTemplateRepository,
+            _eventSeriesRepository,
+            _eventRegistrationPolicyRepository);
 
         var validationResult = await validator.ValidateAsync(request.EventDto, cancellationToken);
         if (!validationResult.IsValid)
@@ -118,133 +116,37 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
             return response;
         }
 
-        // Resolve the ActorId based on context
-        Guid actorId;
+        var actorResult = await _actorResolver.ResolveAsync(
+            currentUserId, request.EventDto.OrganizationId, request.EventDto.GroupId, cancellationToken);
 
-        var userSubmissionEnabled = await _settingsResolver.ResolveAsync<bool>(
-            "events.user_submission_enabled", new SettingContext(TenantId: _tenantContext.TenantId), cancellationToken);
-        var publishingPolicy = userSubmissionEnabled
-            ? EventPublishingPolicyEnum.OrganizationGroupAndUserReported
-            : EventPublishingPolicyEnum.OrganizationAndGroupOnly;
-
-        if (request.EventDto.OrganizationId.HasValue)
+        if (!actorResult.Succeeded)
         {
-            // ===== ORGANIZATION CONTEXT =====
-            // User wants to create event for an organization
-            var organizationId = request.EventDto.OrganizationId.Value;
-
-            // SECURITY: Verify user has event:create permission for this organization
-            var hasPermission = await _organizationMemberRepository.HasPermissionInOrganization(organizationId, currentUserId, PermissionCodes.EventCreate);
-            if (!hasPermission)
-            {
-                response.Success = false;
-                response.Message = "You do not have permission to create events for this organization.";
-                response.Errors = new List<string>
-                {
-                    "Your role in the organization does not include event creation permission."
-                };
-                return response;
-            }
-
-            // Find Actor where OrganizationId == request.OrganizationId
-            var organizationActor = await _actorRepository.GetActorByOrganizationId(organizationId);
-            if (organizationActor == null)
-            {
-                response.Success = false;
-                response.Message = "Organization does not have an associated actor.";
-                response.Errors = new List<string>
-                {
-                    "The organization is not properly configured. Please contact support."
-                };
-                return response;
-            }
-
-            actorId = organizationActor.Id;
-        }
-        else if (request.EventDto.GroupId.HasValue)
-        {
-            // ===== GROUP CONTEXT =====
-            var groupId = request.EventDto.GroupId.Value;
-
-            var hasPermission = await _groupMemberRepository.HasPermissionInGroup(groupId, currentUserId, PermissionCodes.EventCreate);
-            if (!hasPermission)
-            {
-                response.Success = false;
-                response.Message = "You do not have permission to create events for this group.";
-                response.Errors = new List<string>
-                {
-                    "Your role in the group does not include event creation permission."
-                };
-                return response;
-            }
-
-            var groupActor = await _actorRepository.GetActorByGroupId(groupId);
-            if (groupActor == null)
-            {
-                response.Success = false;
-                response.Message = "Group does not have an associated actor.";
-                response.Errors = new List<string>
-                {
-                    "The group is not properly configured. Please contact support."
-                };
-                return response;
-            }
-
-            actorId = groupActor.Id;
-        }
-        else
-        {
-            // ===== IDENTITY CONTEXT (Personal) =====
-            if (publishingPolicy == EventPublishingPolicyEnum.OrganizationAndGroupOnly)
-            {
-                response.Success = false;
-                response.Message = "Personal event publishing is disabled for this tenant.";
-                response.Errors = new List<string>
-                {
-                    "Select an organization or group to publish this event."
-                };
-                return response;
-            }
-
-            var userActor = await _actorRepository.GetActorByUserId(currentUserId);
-            if (userActor == null)
-            {
-                response.Success = false;
-                response.Message = "Your personal actor was not found.";
-                response.Errors = new List<string>
-                {
-                    "Your account is not properly set up. Please sync your profile first."
-                };
-                return response;
-            }
-
-            actorId = userActor.Id;
+            response.Success = false;
+            response.Message = actorResult.ErrorMessage!;
+            response.Errors = new List<string> { actorResult.ErrorDetail! };
+            return response;
         }
 
-        // Map DTO to entity — BEFORE lambda for retry safety (no random values inside lambda)
         var @event = _mapper.Map<Event>(request.EventDto);
-        @event.ActorId = actorId;
+        @event.ActorId = actorResult.ActorId;
         @event.TotalViews = 0;
         @event.TenantId = _tenantContext.TenantId;
-        @event.IsUserReported = !request.EventDto.OrganizationId.HasValue && !request.EventDto.GroupId.HasValue;
-        if (@event.EventStatusId == 0) @event.EventStatusId = 1; // Draft
-        if (@event.VisibilityTypeId == 0) @event.VisibilityTypeId = 1; // Public
-        if (@event.EventFormatId == 0) @event.EventFormatId = 1; // In-Person
+        @event.IsUserReported = actorResult.IsUserReported;
+        if (@event.EventStatusId == 0) @event.EventStatusId = 1;
+        if (@event.VisibilityTypeId == 0) @event.VisibilityTypeId = 1;
+        if (@event.EventFormatId == 0) @event.EventFormatId = 1;
 
-        // Atomic writes: event + optional storage object update + default session
         var eventId = await _unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
             @event = await _eventRepository.Create(@event);
-            Console.WriteLine($"[CREATE EVENT] Event created with ID: {@event.Id}");
 
             if (request.EventDto.FeaturedImageId.HasValue)
             {
                 var storageObject = await _storageObjectRepository.GetById(request.EventDto.FeaturedImageId.Value);
                 if (storageObject != null)
                 {
-                    storageObject.ActorId = actorId;
+                    storageObject.ActorId = actorResult.ActorId;
                     await _storageObjectRepository.Update(storageObject);
-                    Console.WriteLine($"[CREATE EVENT] StorageObject {storageObject.Id} ActorId updated to {actorId}");
                 }
             }
 
@@ -262,13 +164,11 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
                 MaxAudienceAttendees = null,
                 CurrentAudienceAttendees = 0,
                 RegistrationModeId = request.EventDto.IsRegistrationRequired ? 1 : null,
-                Slug = GenerateSlug(@event.Title)
+                Slug = SlugGenerator.FromTitle(@event.Title, "session")
             };
 
             await _eventSessionRepository.Create(eventSession);
-            Console.WriteLine($"[CREATE EVENT] Default EventSession created with ID: {eventSession.Id}");
 
-            // Template instantiation: copy template definitions/options/defaults to event-local runtime
             if (request.EventDto.TemplateId.HasValue)
             {
                 var template = await _eventTemplateRepository.GetTemplateWithDetails(request.EventDto.TemplateId.Value);
@@ -279,7 +179,6 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
 
                     foreach (var defWithOptions in instantiationResult.Definitions)
                     {
-                        // Clear DefaultOptionId before initial save; repo re-sets it after options exist
                         defWithOptions.Definition.DefaultOptionId = null;
 
                         await _eventCustomPropertyRepository.CreateWithOptions(
@@ -294,7 +193,7 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
                         }
                     }
 
-                    Console.WriteLine($"[CREATE EVENT] Template '{template.TemplateKey}' v{template.Version} instantiated with {instantiationResult.Definitions.Count} definitions");
+                    await _projectionUpdater.RefreshForEventAsync(@event.Id, ct);
                 }
             }
 
@@ -305,36 +204,10 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         response.Id = eventId;
         response.Message = "Event and session created successfully.";
 
-        // Post-commit side effects — DB has committed before these run
         _metrics.RecordEventCreated(_tenantContext.TenantId.ToString());
         await _cache.RemoveAsync($"event:detail:{eventId}", cancellationToken);
         await _cache.RemoveAsync("events:list:1:20", cancellationToken);
 
         return response;
-    }
-
-    /// <summary>
-    /// Generate a URL-friendly slug from the title
-    /// </summary>
-    private string GenerateSlug(string title)
-    {
-        if (string.IsNullOrWhiteSpace(title))
-            return $"session-{Guid.NewGuid().ToString("N").Substring(0, 8)}";
-
-        var slug = title.ToLowerInvariant()
-            .Replace(" ", "-")
-            .Replace("'", "")
-            .Replace("\"", "")
-            .Replace(".", "")
-            .Replace(",", "");
-
-        // Remove any non-alphanumeric characters except hyphens
-        slug = System.Text.RegularExpressions.Regex.Replace(slug, @"[^a-z0-9\-]", "");
-
-        // Limit length
-        if (slug.Length > 50)
-            slug = slug.Substring(0, 50);
-
-        return slug;
     }
 }

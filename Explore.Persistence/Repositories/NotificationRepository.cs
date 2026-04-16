@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Persistence.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
@@ -22,12 +23,7 @@ public class NotificationRepository : GenericRepository<Notification, Guid>, INo
     {
         var query = _dbContext.Notifications
             .AsNoTracking()
-            .Include(n => n.NotificationType)
-            .Include(n => n.NotificationEntityType)
-            .Include(n => n.NotificationScope)
-            .Include(n => n.NotificationReason)
-            .Include(n => n.SourceActor).ThenInclude(a => a!.Pii)
-            .Include(n => n.RecipientContextActor).ThenInclude(a => a!.Pii)
+            .IncludeStandardDetails()
             .Where(n => n.UserId == userId);
 
         if (isRead.HasValue)
@@ -109,12 +105,7 @@ public class NotificationRepository : GenericRepository<Notification, Guid>, INo
     {
         return await _dbContext.Notifications
             .AsNoTracking()
-            .Include(n => n.NotificationType)
-            .Include(n => n.NotificationEntityType)
-            .Include(n => n.NotificationScope)
-            .Include(n => n.NotificationReason)
-            .Include(n => n.SourceActor).ThenInclude(a => a!.Pii)
-            .Include(n => n.RecipientContextActor).ThenInclude(a => a!.Pii)
+            .IncludeStandardDetails()
             .FirstOrDefaultAsync(n => n.Id == notificationId && n.UserId == userId);
     }
 

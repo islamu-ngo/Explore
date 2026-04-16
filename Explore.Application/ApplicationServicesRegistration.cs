@@ -7,6 +7,7 @@ using Explore.Application.Behaviors;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Services;
 using Explore.Application.Settings;
+using Explore.Domain.Services.Scheduling;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -37,10 +38,14 @@ public static class ApplicationServicesRegistration
         // Authorization: dynamic permission infrastructure
         services.AddScoped<ICapabilityCeilingService, CapabilityCeilingService>();
         services.AddScoped<ICustomPropertyGovernancePolicy, CustomPropertyGovernancePolicy>();
+        services.AddScoped<IEventActorResolver, EventActorResolver>();
         services.AddScoped<IEventTemplateInstantiationService, EventTemplateInstantiationService>();
         services.AddScoped<IEventSessionTemplateInstantiationService, EventSessionTemplateInstantiationService>();
         services.AddScoped<IPermissionRegistryService, PermissionRegistryService>();
         services.AddScoped<IContactShareConsentService, ContactShareConsentService>();
+
+        // Scheduling domain services (stateless, safe as singleton).
+        services.AddSingleton<IEventScheduleProjectionCalculator, EventScheduleProjectionCalculator>();
 
         return services;
     }

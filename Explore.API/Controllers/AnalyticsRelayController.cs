@@ -1,7 +1,6 @@
 // ABOUTME: Anonymous-safe API controller for first-party browser analytics relay transport.
 // ABOUTME: Relays browser events through MediatR so tenant-aware governance still applies server-side.
 
-using System.Security.Claims;
 using Asp.Versioning;
 using Explore.Application.DTOs.Analytics;
 using Explore.Application.Features.PublicExperience.Requests.Commands;
@@ -15,7 +14,7 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/a/t")]
 [ApiController]
-public class AnalyticsRelayController : ControllerBase
+public class AnalyticsRelayController : ExploreControllerBase
 {
     private readonly IMediator _mediator;
 
@@ -35,19 +34,10 @@ public class AnalyticsRelayController : ControllerBase
     {
         var accepted = await _mediator.Send(new RelayAnalyticsEventCommand
         {
-            AuthenticatedUserId = GetCurrentUserId(),
+            AuthenticatedUserId = CurrentUserId,
             Payload = payload
         }, cancellationToken);
 
         return accepted ? Accepted() : BadRequest();
-    }
-
-    private Guid? GetCurrentUserId()
-    {
-        var claim = User.FindFirst("sub")?.Value
-            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? User.FindFirst("sid")?.Value;
-
-        return Guid.TryParse(claim, out var userId) ? userId : null;
     }
 }

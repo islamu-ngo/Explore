@@ -5,7 +5,7 @@ ABOUTME: Captures what you cannot guess from reading ARCHITECTURE.md alone — i
 
 > Non-intuitive patterns, hidden knowledge, and things requiring deep analysis.
 > This document captures what you cannot guess from reading ARCHITECTURE.md alone.
-> Last Updated: February 2026
+> Last Updated: April 2026
 
 ---
 
@@ -13,7 +13,7 @@ ABOUTME: Captures what you cannot guess from reading ARCHITECTURE.md alone — i
 
 ### How Tenant Isolation Actually Works
 
-Multi-tenancy is **not middleware-based** — it uses EF Core global query filters injected via the DbContext. The flow:
+Multi-tenancy is a **middleware-plus-query-filter pipeline**. `ApiTenantResolutionMiddleware` determines request tenant context before data access, and EF Core global query filters enforce that tenant scope in persistence. The flow:
 
 1. **ApiTenantResolutionMiddleware** resolves tenant identity from trusted slug/host request context before tenant-scoped data access
 2. **ExploreDbContext** receives TenantContext via **property injection** (not constructor injection) because the DbContext uses pooling
@@ -48,7 +48,7 @@ The DbSet names reflect this: `TenantSettingOverrides` for `TenantSetting`, `Ten
 
 ---
 
-## 2. DbContext Pooling and Property Injection
+## 2. DbContext Pooling, Property Injection, and Partial Class Decomposition
 
 The `ExploreDbContext` uses **pooled DbContext factory** for performance. This has a critical implication:
 
@@ -60,6 +60,16 @@ This means:
 - `TenantContext` and `CurrentUserService` can be `null` (during migrations, seeding, or background services)
 - All query filters and audit logic must handle null gracefully
 - If you add a new scoped dependency to DbContext, it must follow this property injection pattern
+
+### Partial Class Structure
+
+The DbContext is split into 4 partial class files for maintainability:
+- `ExploreDbContext.cs` — Constructor, property injection, `OnModelCreating` (calls `ApplyGlobalQueryFilters`)
+- `ExploreDbContext.DbSets.cs` — All 170 DbSet declarations organized by domain area
+- `ExploreDbContext.QueryFilters.cs` — `ApplyGlobalQueryFilters()` with 48 named filter registrations
+- `ExploreDbContext.SaveChanges.cs` — `SaveChangesAsync` override (audit, soft delete, concurrency)
+
+Each partial needs only its own usings. `internal` visibility works across partials in the same assembly.
 
 ---
 
@@ -271,7 +281,24 @@ Setting keys are string constants in `GovernanceSettingKeys.cs`. They use dot-se
 
 ## 12. AutoMapper Profile Organization
 
-All mappings live in a **single file**: `Explore.Application/Profiles/MappingProfile.cs`. This file maps every entity to every DTO. When adding a new entity/DTO pair, the mapping goes here — not in a separate profile file.
+Mappings are split into **10 domain-specific profiles** in `Explore.Application/Profiles/`:
+
+| Profile | Covers |
+|---|---|
+| `TenantMappingProfile` | Tenant, TenantMember, TenantSettings, Footer |
+| `EventMappingProfile` | Event, EventSeries, EventDay, EventAgendaItem, Tags, Categories, Aspects |
+| `EventSessionMappingProfile` | EventSession, SessionAgendaItem, SessionSpeaker, SessionLanguage |
+| `CustomPropertyMappingProfile` | All custom property definitions, templates, options, values |
+| `OrganizationMappingProfile` | Organization, Group, Members, ApprovalStatus, Reviews |
+| `UserMappingProfile` | User, UserAuthenticationToken, UserExternalLogin |
+| `RegistrationMappingProfile` | EventRegistration, RegistrationIntent, Scope, Policy |
+| `ActorFederationMappingProfile` | Actor, ActorKeyStore, StorageObject, IndexedDid, SyncState |
+| `LookupMappingProfile` | All lookup tables (Location, Tag, Language, etc.) |
+| `NotificationMappingProfile` | Notification, ProjectionStatus |
+
+`AddAutoMapper(Assembly.GetExecutingAssembly())` auto-discovers all `Profile` subclasses — **no DI changes needed** when adding new profiles.
+
+When adding a new entity/DTO pair, add the mapping to the appropriate domain profile. Watch for namespace clashes: use aliases like `using EventSeriesNS = Explore.Application.DTOs.EventSeries;` and fully-qualified `Domain.EventStatus`, `Domain.Actor` etc. where DTO names collide.
 
 ---
 
@@ -314,7 +341,43 @@ Commands don't throw for validation failures. They return `BaseCommandResponse<T
 
 ---
 
-## 15. BlockInSingleTenant Filter
+## 15. ExploreControllerBase and Identity Resolution
+
+All controllers that access user identity inherit from `ExploreControllerBase` (not `ControllerBase` directly). The base class provides:
+- `protected IUserContext UserContext` — Lazy-resolved via `HttpContext.RequestServices.GetRequiredService<IUserContext>()`
+- `protected Guid? CurrentUserId` — Nullable user ID from claims (fallback order: `internal_user_id` → `sub` → `nameidentifier` → `sid`)
+- `protected Guid RequiredUserId` — Throws `UnauthorizedAccessException` if no authenticated user
+
+**Why lazy resolution?** Avoids the "service not available during construction" problem with pooled DbContext scenarios. No constructor injection needed — controllers just change their base class.
+
+Controllers that don't need identity (most GET-only lookup controllers) still inherit `ControllerBase` directly. The architecture test `ControllersAccessingIdentity_ShouldInherit_ExploreControllerBase` enforces this.
+
+---
+
+## 15.1. Include Chain Extensions (Persistence)
+
+Repeated EF Core Include chains are extracted into `IQueryable<T>` extension methods in `Explore.Persistence/Extensions/`:
+- `EventQueryExtensions.IncludeStandardDetails()` — 15 includes (EventType, Actor chain, FeaturedImage, etc.)
+- `EventSessionQueryExtensions.IncludeStandardDetails()` — 5 includes (Event, Location, Room, etc.)
+- `NotificationQueryExtensions.IncludeStandardDetails()` — 6 includes (Type, EntityType, Scope, Actor chains)
+
+**Key design rule:** Extensions contain ONLY the `.Include()` chain — NOT `AsNoTracking()` or `AsSplitQuery()`. Callers control query strategy. This preserves flexibility for tracked vs untracked scenarios.
+
+---
+
+## 15.2. EventActorResolver (Application Service)
+
+Event creation requires resolving which Actor (org/group/personal) the event is published under. This cross-cutting logic was extracted from command handlers into `IEventActorResolver`:
+- Checks organization membership + `EventCreate` permission
+- Checks group membership + `EventCreate` permission
+- Falls back to personal actor with publishing policy check (`events.user_submission_enabled`)
+- Returns `EventActorResult` (success with ActorId, or failure with error details)
+
+Registered as scoped in `ApplicationServicesRegistration.cs`.
+
+---
+
+## 15.3. BlockInSingleTenant Filter
 
 The `BlockInSingleTenantAttribute` action filter prevents certain endpoints from being called in single-tenant mode. This is used for multi-tenant management endpoints that don't make sense in single-tenant deployments.
 
@@ -326,16 +389,18 @@ Services are registered in multiple places — knowing where to add yours is cri
 
 | What | Where | Method |
 |---|---|---|
-| Repositories | `Explore.Persistence/PersistenceServicesRegistration.cs` | `CongfigurePersistenceServices()` |
+| Repositories | `Explore.Persistence/PersistenceServicesRegistration.cs` | `ConfigurePersistenceServices()` |
+| Application services | `Explore.Application/ApplicationServicesRegistration.cs` | `ConfigureApplicationServices()` |
 | Infrastructure services | `Explore.Infrastructure/InfrastructureServicesRegistration.cs` | `ConfigureInfrastructureServices()` |
-| API-layer services | `Explore.API/Program.cs` | Direct registration |
-| MediatR handlers | Auto-registered via `AddMediatR()` in `Program.cs` | Assembly scanning |
-| AutoMapper profiles | Auto-registered via `AddAutoMapper()` | Assembly scanning |
+| API authentication | `Explore.API/Extensions/AuthenticationExtensions.cs` | `AddApiAuthentication()` |
+| API caching | `Explore.API/Extensions/CachingExtensions.cs` | `AddApiCaching()` |
+| API CORS | `Explore.API/Extensions/CorsExtensions.cs` | `AddApiCors()` |
+| API rate limiting | `Explore.API/Extensions/RateLimitingExtensions.cs` | `AddApiRateLimiting()` |
+| MediatR handlers | Auto-registered via `AddMediatR()` | Assembly scanning |
+| AutoMapper profiles | Auto-registered via `AddAutoMapper()` | Assembly scanning (10 profile files) |
 | Blazor WASM services | `Explore.Blazor.Client/Program.cs` | Direct registration |
 | Blazor Server services | `Explore.Blazor/Program.cs` | Direct registration |
 | Secrets | `Explore.Secrets/Extensions/ServiceCollectionExtensions.cs` | `AddSecrets()` |
-
-**Note:** There is a typo in `CongfigurePersistenceServices` (missing `i` in "Configure"). This is existing and intentional — do not rename it without updating all call sites.
 
 ---
 
@@ -502,21 +567,27 @@ This ensures the validator uses the same repository instances (and DbContext) as
 The middleware order in `Program.cs` is **critical** — changing it will break behavior. The exact order:
 
 1. `UseApiExceptionHandling()` — Must be first to catch all downstream errors.
-2. `UseSecurityHeaders()` — Adds defensive headers before any response.
-3. `UseCorrelationId()` — Generates/reads correlation ID for log context.
-4. `UseRequestLogging()` — Structured logging with correlation ID, user ID, tenant ID.
-5. `UseResponseCompression()` — Brotli + Gzip before response leaves.
-6. `UseHttpsRedirection()` — Redirects HTTP to HTTPS.
-7. `UseHateoas()` — RFC 7240 Prefer header processing.
-8. `UseRouting()` — Endpoint routing.
-9. `UseRequestTimeouts()` — 3-tier timeout enforcement (Default 30s, Lookup 10s, Complex 60s).
-10. `UseAuthentication()` — JWT Bearer auth.
-11. `UseRateLimiter()` — 4-tier rate limiting (after auth so user ID is available).
-12. `UseAuthorization()` — ASP.NET authorization.
-13. `UseOutputCache()` — HTTP response caching.
-14. `UseETag()` — SHA256 weak ETags, 304 Not Modified support.
+2. `UseForwardedHeaders()` — applies trusted `X-Forwarded-*` values before host-based tenant resolution.
+3. `UseSecurityHeaders()` — Adds defensive headers before any response.
+4. `UseCorrelationId()` — Generates/reads correlation ID for log context.
+5. `UseRequestLogging()` — Structured logging with correlation ID, user ID, tenant ID.
+6. `UseResponseCompression()` — Brotli + Gzip before response leaves.
+7. `UseHttpsRedirection()` — Redirects HTTP to HTTPS.
+8. `UseHateoas()` — RFC 7240 Prefer header processing.
+9. `UseRouting()` — Endpoint routing.
+10. `UseMiddleware<ApiTenantResolutionMiddleware>()` — resolves tenant hint from `X-Tenant-Slug` or normalized host before auth.
+11. `UseRequestTimeouts()` — 3-tier timeout enforcement (Default 30s, Lookup 10s, Complex 60s).
+12. `UseMiddleware<ApiAuthenticationConflictMiddleware>()` — rejects conflicting auth inputs.
+13. `UseAuthentication()` — JWT Bearer auth.
+14. `UseMiddleware<ApiTenantPostAuthenticationMiddleware>()` — finalizes API-key tenant binding and mismatch handling.
+15. `UseRequestLocalization()` — request culture selection.
+16. `UseMiddleware<IdempotencyMiddleware>()` — idempotent replay for write requests.
+17. `UseRateLimiter()` — 5-tier rate limiting.
+18. `UseAuthorization()` — ASP.NET authorization.
+19. `UseOutputCache()` — HTTP response caching.
+20. `UseETag()` — SHA256 weak ETags, 304 Not Modified support.
 
-**Why order matters:** Rate limiting comes after authentication so it can use user ID for per-user limits. Output cache comes after authorization so cached responses respect auth boundaries. ETag is last because it needs the final response body.
+**Why order matters:** forwarded headers must run before host-based tenant resolution; API-key tenant selection is intentionally split across pre-auth and post-auth middleware; rate limiting runs after authentication so it can use API key IDs or `User.Identity.Name`; output cache comes after authorization so cached responses respect auth boundaries; ETag is last because it needs the final response body.
 
 ---
 
@@ -629,4 +700,3 @@ Do not assume every provider supports the same semantics. The abstraction is des
 - `analytics.personal_api_key`
 
 `analytics.endpoint_url` is canonical. `analytics.endpoint` and `analytics.site_id` are legacy drift, not valid runtime contract keys.
-

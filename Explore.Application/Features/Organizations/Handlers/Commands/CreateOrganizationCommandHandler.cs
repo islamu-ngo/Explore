@@ -79,8 +79,6 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
         // Create the Organization first (without ActorId)
         organization = await _organizationRepository.Create(organization);
 
-        Console.WriteLine($"[CREATE ORG] Organization created - ID: {organization.Id}, Name: {organization.FullName}");
-
         // ===== CREATE ACTOR FOR ORGANIZATION =====
         // Just like User has an Actor, Organization also needs an Actor
         // This enables the organization to be the "poster" of events
@@ -102,12 +100,10 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
         };
 
         organizationActor = await _actorRepository.Create(organizationActor);
-        Console.WriteLine($"[CREATE ORG] Actor created for organization - ActorId: {organizationActor.Id}");
 
         // Update Organization to set ActorId
         organization.ActorId = organizationActor.Id;
         await _organizationRepository.Update(organization);
-        Console.WriteLine($"[CREATE ORG] Organization updated with ActorId: {organizationActor.Id}");
 
         // ===== UPDATE STORAGE OBJECT OWNERSHIP =====
         // If a profile picture was uploaded, update its ActorId to link it to this organization's actor
@@ -118,7 +114,6 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
             {
                 storageObject.ActorId = organizationActor.Id;
                 await _storageObjectRepository.Update(storageObject);
-                Console.WriteLine($"[CREATE ORG] StorageObject {storageObject.Id} ActorId updated to {organizationActor.Id}");
             }
         }
 
@@ -137,7 +132,6 @@ public class CreateOrganizationCommandHandler : IRequestHandler<CreateOrganizati
         };
 
         await _organizationMemberRepository.Create(organizationMember);
-        Console.WriteLine($"[CREATE ORG] User {currentUserId} added as Creator of organization {organization.Id}");
 
         response.Success = true;
         response.Message = "Organization created successfully. You are now the creator and admin of this organization.";

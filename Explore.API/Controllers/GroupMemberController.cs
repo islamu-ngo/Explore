@@ -18,7 +18,7 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Authorize]
-public class GroupMemberController : ControllerBase
+public class GroupMemberController : ExploreControllerBase
 {
     private readonly IMediator _mediator;
 
@@ -54,7 +54,7 @@ public class GroupMemberController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Post([FromBody] AddGroupMemberDto dto, CancellationToken cancellationToken = default)
     {
-        var userId = GetCurrentUserId();
+        var userId = CurrentUserId?.ToString();
         if (string.IsNullOrEmpty(userId))
         {
             return Unauthorized("User ID not found in token");
@@ -80,7 +80,7 @@ public class GroupMemberController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateRole([FromBody] UpdateGroupMemberRoleDto dto, CancellationToken cancellationToken = default)
     {
-        var userId = GetCurrentUserId();
+        var userId = CurrentUserId?.ToString();
         if (string.IsNullOrEmpty(userId))
         {
             return Unauthorized("User ID not found in token");
@@ -106,7 +106,7 @@ public class GroupMemberController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        var userId = GetCurrentUserId();
+        var userId = CurrentUserId?.ToString();
         if (string.IsNullOrEmpty(userId))
         {
             return Unauthorized("User ID not found in token");
@@ -127,10 +127,4 @@ public class GroupMemberController : ControllerBase
         return Ok(response);
     }
 
-    private string? GetCurrentUserId()
-    {
-        return HttpContext.User?.FindFirst("sub")?.Value
-            ?? HttpContext.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-            ?? HttpContext.User?.FindFirst("sid")?.Value;
-    }
 }

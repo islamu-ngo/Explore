@@ -1,7 +1,6 @@
 // ABOUTME: API controller for tenant onboarding status and tenant policy onboarding actions.
 // ABOUTME: Exposes tenant onboarding questionnaire state and completion/update endpoints.
 
-using System.Security.Claims;
 using Asp.Versioning;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.TenantPolicy;
@@ -17,7 +16,7 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/[controller]")]
 [ApiController]
-public class TenantOnboardingController : ControllerBase
+public class TenantOnboardingController : ExploreControllerBase
 {
     private readonly IMediator _mediator;
 
@@ -57,7 +56,7 @@ public class TenantOnboardingController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Complete([FromBody] UpdateTenantPolicyRequest settings, CancellationToken cancellationToken = default)
     {
-        var currentUserId = GetCurrentUserId();
+        var currentUserId = CurrentUserId;
         if (!currentUserId.HasValue)
         {
             return BadRequest(new BaseCommandResponse<Guid>
@@ -95,7 +94,7 @@ public class TenantOnboardingController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateSettings([FromBody] UpdateTenantPolicyRequest settings, CancellationToken cancellationToken = default)
     {
-        var currentUserId = GetCurrentUserId();
+        var currentUserId = CurrentUserId;
         if (!currentUserId.HasValue)
         {
             return BadRequest(new BaseCommandResponse<Guid>
@@ -132,7 +131,7 @@ public class TenantOnboardingController : ControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> SaveStep([FromBody] SaveTenantOnboardingStepDto dto, CancellationToken cancellationToken = default)
     {
-        var currentUserId = GetCurrentUserId();
+        var currentUserId = CurrentUserId;
         if (!currentUserId.HasValue)
         {
             return BadRequest(new BaseCommandResponse<Guid>
@@ -161,12 +160,4 @@ public class TenantOnboardingController : ControllerBase
 
     public sealed record SaveTenantOnboardingStepDto(int CurrentStep, int TotalSteps, string[] CompletedSteps);
 
-    private Guid? GetCurrentUserId()
-    {
-        var claim = User.FindFirst("sub")?.Value
-            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? User.FindFirst("sid")?.Value;
-
-        return Guid.TryParse(claim, out var parsedUserId) ? parsedUserId : null;
-    }
 }

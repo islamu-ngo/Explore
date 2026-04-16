@@ -1,0 +1,21 @@
+// ABOUTME: Centralized Include chain for EventSession queries to eliminate duplication across EventSessionRepository methods.
+// ABOUTME: Only includes navigation properties — callers control tracking strategy (AsNoTracking, AsSplitQuery).
+
+using Explore.Domain;
+using Microsoft.EntityFrameworkCore;
+
+namespace Explore.Persistence.Extensions;
+
+internal static class EventSessionQueryExtensions
+{
+    internal static IQueryable<EventSession> IncludeStandardDetails(this IQueryable<EventSession> query)
+    {
+        return query
+            .Include(s => s.Event)
+            .Include(s => s.Location)
+                .ThenInclude(l => l!.Pii)
+            .Include(s => s.RegistrationMode)
+            .Include(s => s.Room)
+            .Include(s => s.IslamicAspect);
+    }
+}

@@ -1,6 +1,87 @@
 # Major Decisions
 
-Last Updated: 2026-03-30 Europe/Brussels
+Last Updated: 2026-04-16 Europe/Brussels
+
+## 2026-04-16 Europe/Brussels - Blazor Clean Code Refactor: CTO Review Binding Decisions
+
+### ServiceResult<T> as Structured Error Contract (Not String-Only)
+- Decision: All Blazor service methods return `ServiceResult<T>` with `FailureCategory` enum, `ErrorCode`, `UserMessage`, `DeveloperMessage`, `ValidationErrors`, `IsRetryable`, `HttpStatusCode`.
+- Why: String-only failures (`return null` or `return "error"`) cannot drive differentiated UI responses. The UI needs machine-readable error categories to select the correct presentation tier (inline validation vs banner vs snackbar vs re-auth flow vs error state).
+- Impact: Every service method in `Explore.Blazor.Client/Services/` migrates from try/catch→null to try/catch→ServiceResult. Static factories (`FromApiException`, `TransientFailure`, `SessionExpired`, etc.) standardize construction. `FailureCategory` enum values: Validation, NotFound, Forbidden, SessionExpired, ProviderUnavailable, ProviderMisconfigured, TransientFailure, Unknown.
+
+### Wave-Based Delivery Over Flat Phase Sequencing
+- Decision: 21 phases reorganized into 5 delivery waves: A (Safety+Baseline), B (BFF Hardening), C (Service Contract Reform), D (UI Decomposition), E (Conformance+Polish).
+- Why: Flat phase lists create false linearity. Semantic phases (e.g., ServiceResult migration) must ship as a complete wave — a half-finished contract reform is worse than none. Waves group related changes that should be reviewed and merged together.
+- Impact: Implementation follows wave boundaries. Each wave has acceptance gates. PRs should not cross wave boundaries without justification.
+
+### DynamicAuthSchemeManager Stop-the-Line Protocol
+- Decision: Split into Phase 6A (stabilize + test + document current behavior) and Phase 6B (refactor). No refactoring until full behavioral understanding is documented.
+- Why: 539-line state machine with dual locking (SemaphoreSlim + object lock), 8 public methods, runtime scheme mutation. Refactoring without understanding risks breaking auth for all users. Architectural decision required: should scheme mutation happen at runtime or only at startup?
+- Impact: Phase 6A in Wave B produces test suite + state diagram. Phase 6B deferred until architectural direction is decided.
+
+### State Classification Before Component Decomposition
+- Decision: Complex page components (EventList 2651 lines, EventDetail 1747 lines) must classify all internal state as URL/service/local/computed BEFORE any extraction begins.
+- Why: Extracting sub-components without understanding state ownership creates prop-drilling, circular dependencies, or broken reactivity. The page coordinator pattern requires knowing which state is the source of truth.
+- Impact: Phase 17A (state classification) placed in Wave A, before Phase 15 (component decomposition) in Wave D.
+
+### Operability as First-Class Engineering Concern
+- Decision: New Phase X (Operability Diagnostics) added to Wave B. Includes startup config validation, diagnostics endpoints, feature-unavailable vs misconfigured distinction, self-hoster support.
+- Why: The Blazor BFF is the entry point for all users. Config errors at startup (wrong auth provider URL, missing secrets, unreachable YARP target) should fail loud with actionable diagnostics, not silently degrade. Self-hosters need clear feedback when misconfigured.
+- Impact: Startup validation checklist (auth, YARP, cookies, HTTPS, secrets). Error state distinction matrix maps ServiceResult categories to UI presentations.
+
+### Change Type Classification on Every Task
+- Decision: Every task carries a label: STRUCTURAL, BEHAVIORAL, SECURITY, CONTRACT, or OPERATOR. PRs must not mix SECURITY with STRUCTURAL without explicit justification.
+- Why: Code reviewers need to know the change risk profile at a glance. A structural split (rename/move) has different review criteria than a behavioral change (logic alteration) or security fix.
+- Impact: Task files and PR descriptions carry change type headers. Review checklists differ by type.
+
+## 2026-04-12 Europe/Brussels - EAV Milestone D1: Projection System Architecture Decisions
+
+### Concurrency Exception Translation in UnitOfWork (not MediatR pipeline)
+- Decision: `DbUpdateConcurrencyException` → `ConcurrencyConflictException` translation lives in `EfCoreUnitOfWork`, not a MediatR `IPipelineBehavior`.
+- Why: Application layer cannot reference `Microsoft.EntityFrameworkCore` under Clean Architecture dependency rules. The UoW already owns EF-specific semantics. All write paths go through `ExecuteInTransactionAsync`, so translation is centralized.
+- Impact: `ConcurrencyConflictException` with `Code=concurrent_update` + entity metadata. `GlobalExceptionHandler` maps to 409 + RFC 7807 extensions.
+
+### Advisory Lock Coordination via Raw ADO (not EF SqlQueryRaw)
+- Decision: Projection updaters acquire `pg_try_advisory_xact_lock` and `pg_try_advisory_xact_lock_shared` via raw `DbConnection.CreateCommand()`, not EF's `Database.SqlQueryRaw<bool>`.
+- Why: EF Core's `SqlQueryRaw<T>` doesn't reliably handle scalar boolean returns from PostgreSQL functions. Raw ADO is a single-statement call with no column-name ambiguity.
+- Impact: Lock key pair = `fnv1a(ProjectionName)` + `fnv1a(tenantId)`. Command enlists on `Database.CurrentTransaction.GetDbTransaction()`.
+
+### Single-Transaction Rebuild for D1 Baseline
+- Decision: `RebuildForTenantAsync` uses a single xact-scoped advisory lock and commits once at the end. Per-batch commit + session-scoped lock deferred to D2 Operability.
+- Why: Session-scoped advisory locks require holding the same connection across multiple commits, which is complex with EF Core's pooled DbContext pattern. D1 prioritizes correctness over scalability.
+- Impact: Status row only becomes visible after full commit (no "live" Rebuilding status during execution). Acceptable for D1.
+
+### Separate ProjectionTestContainerFixture Using EnsureCreatedAsync
+- Decision: Projection integration tests use a dedicated `ProjectionTestContainerFixture` with `EnsureCreatedAsync()` instead of the shared `PostgreSqlContainerFixture` with `MigrateAsync()`.
+- Why: Concurrent multi-agent development creates model-vs-migration drift (entities in model without migration files). `EnsureCreatedAsync` creates the schema from the current model, bypassing migration-file issues.
+- Impact: Projection tests have their own minimal lookup seeding (5 rows). Existing fixture unchanged for other tests.
+
+## 2026-04-12 Europe/Brussels - Event Scheduling Refactor: Architecture Decisions
+
+### EventDay as First-Class Entity (not derived grouping)
+- Decision: `EventDay` is a persistent aggregate member, not a `GROUP BY LocalStartDate` projection.
+- Why: Five requirements need stable identity + authored state that a derived projection cannot carry: custom day labels, day-specific descriptions/banners, day-specific publishing state, day-level admin UX (reorder/lock/hide/attach media), day-level registration/business rules needing a FK target.
+- Impact: `EventDay` entity with all tenant/audit/soft-delete/concurrency interfaces. Sessions link via nullable `EventDayId` FK.
+
+### Two-Layer Same-Room Overlap Enforcement
+- Decision: Layer A (async FluentValidation) is explicitly necessary-but-not-sufficient. Layer B (serializable transaction re-check at save time) is mandatory from day one.
+- Why: Application-level validation alone cannot protect against concurrent writes, racing requests, or out-of-band mutations. The plan explicitly rejects the check-then-act pattern.
+- Impact: `EventSessionRepository.CreateWithRoomOverlapGuardAsync` and `UpdateWithRoomOverlapGuardAsync` wrap the re-check + save in `IsolationLevel.Serializable`.
+
+### IEventScheduleProjectionCalculator as Single Recompute Authority
+- Decision: Stateless domain service in `Explore.Domain/Services/Scheduling/` is the sole authority for UTC→local projection writes. Entities expose `Reschedule()` / `ReprojectLocalTimes()` aggregate methods that accept the calculator.
+- Why: Prevents scattered UTC→local conversion across handlers, validators, mappers, and seeders. DST-aware logic is shared identically between `EventSession`, `EventAgendaItem`, and `EventDay` backfill.
+- Impact: Handlers call aggregate methods only. Architecture tests should enforce that no handler writes `LocalStart*`/`LocalEnd*` directly.
+
+### EventRegistrationIntent Parent Layer
+- Decision: Named `EventRegistrationIntent` (not `EventRegistrationGroup`). Parent carries scope + policy snapshot. `EventRegistration` remains the child concrete session entitlement/access row.
+- Why: "Intent" precisely describes what the parent preserves — why the user registered. "Group" is too generic and could be confused with org/user groups.
+- Impact: `CreateEventRegistrationDto` repurposed to intent-first shape. Handler creates parent + derived children atomically in serializable tx. NSwag client is stale until Phase 6 regen.
+
+### RegistrationPolicyRules — Null Policy = Flexible
+- Decision: When `Event.RegistrationPolicyId` is null, `RegistrationPolicyRules.IsScopeAllowed` treats it as `Flexible`, accepting all scopes.
+- Why: Events created before the registration-policy field landed must still accept registrations during rollout. The null-means-Flexible convention avoids a migration that force-assigns policies to existing events.
+- Impact: Pure domain function, single file (`Explore.Domain/Services/Registration/RegistrationPolicyRules.cs`).
 
 ## 2026-03-30 Europe/Brussels - API Testing Enterprise Grade: Technology Stack Decisions
 

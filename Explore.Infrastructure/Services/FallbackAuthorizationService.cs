@@ -1,5 +1,5 @@
 // ABOUTME: Database-driven authorization service used when Cerbos PDP is unavailable.
-// Evaluates access control using IAdminContext and IHierarchicalSettingsResolver for lock semantics.
+// ABOUTME: Main dispatch class — delegates to evaluators (partial) and batch optimization (partial).
 
 using System.Diagnostics;
 using Explore.Application.Contracts.Identity;
@@ -14,7 +14,7 @@ namespace Explore.Infrastructure.Services;
 /// and settings lock semantics. Used when Cerbos PDP is not configured (e.g., development, ATProto/PDS-only).
 /// Implements the same IAuthorizationProvider contract for seamless DI swapping.
 /// </summary>
-public class FallbackAuthorizationService : IAuthorizationProvider
+public partial class FallbackAuthorizationService : IAuthorizationProvider
 {
     private readonly IAdminContext _adminContext;
     private readonly IHierarchicalSettingsResolver _resolver;
@@ -98,7 +98,13 @@ public class FallbackAuthorizationService : IAuthorizationProvider
             "category" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "tag" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "location" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "location_room" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "custom_property_definition" => await EvaluateViewableTenantResourceAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "custom_property_template" => await EvaluateViewableTenantResourceAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "custom_property_value" => await EvaluateViewableOrgResourceAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "custom_property_projection" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "custom_property_governance" => await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "platform_namespace" => action is "view",
 
             // Org-scoped: tenant admin or org admin
             "organization" => await EvaluateOrganizationAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
@@ -113,6 +119,8 @@ public class FallbackAuthorizationService : IAuthorizationProvider
             "event" => await EvaluateOrgScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "event_session" => await EvaluateOrgScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "event_session_agenda_item" => await EvaluateOrgScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "event_day" => await EvaluateOrgScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "event_agenda_item" => await EvaluateOrgScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
 
             // Event registration: all authenticated can create, org/tenant admin can manage
             "event_registration" => await EvaluateEventRegistrationAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
@@ -141,167 +149,6 @@ public class FallbackAuthorizationService : IAuthorizationProvider
 
         LogDecision(decision ? "allow" : "deny", "fallback_policy", resourceKind, resourceId, action);
         return decision;
-    }
-
-    public async Task<IReadOnlyList<bool>> IsAllowedBatchAsync(
-        IReadOnlyList<AuthorizationCheck> checks,
-        CancellationToken cancellationToken = default)
-    {
-        if (checks.Count == 0)
-            return [];
-
-        // For small batches, the overhead of pre-resolution is not worth it.
-        // Delegate directly to the single-check path.
-        if (checks.Count <= 2)
-        {
-            var smallResults = new bool[checks.Count];
-            for (var i = 0; i < checks.Count; i++)
-            {
-                var check = checks[i];
-                smallResults[i] = await IsAllowedAsync(
-                    check.ResourceKind,
-                    check.ResourceId,
-                    check.Action,
-                    check.ResourceAttributes is null ? null : new Dictionary<string, object>(check.ResourceAttributes),
-                    cancellationToken);
-            }
-
-            return smallResults;
-        }
-
-        // Pre-resolve admin authority once for the entire batch.
-        // IAdminContext caches internally, but this eliminates repeated async overhead per check.
-        var profile = await ResolveAuthorityProfileAsync(cancellationToken);
-
-        var results = new bool[checks.Count];
-        for (var i = 0; i < checks.Count; i++)
-        {
-            var check = checks[i];
-            var attributes = check.ResourceAttributes is null
-                ? null
-                : new Dictionary<string, object>(check.ResourceAttributes);
-            results[i] = EvaluateWithProfile(profile, check.ResourceKind, check.ResourceId, check.Action, attributes);
-        }
-
-        return results;
-    }
-
-    /// <summary>
-    /// Pre-resolved authority profile for batch evaluation.
-    /// Eliminates repeated async calls to IAdminContext per check.
-    /// </summary>
-    private sealed record AuthorityProfile(
-        bool IsInstanceAdmin,
-        bool IsTenantAdmin,
-        Guid TenantId,
-        IReadOnlySet<Guid> AdminOrgIds,
-        Guid? UserId);
-
-    private async Task<AuthorityProfile> ResolveAuthorityProfileAsync(CancellationToken cancellationToken)
-    {
-        var isInstanceAdmin = await _adminContext.IsInstanceAdminAsync(cancellationToken);
-        var tenantId = _tenantContext.TenantId;
-        var isTenantAdmin = !isInstanceAdmin && await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken);
-        var adminOrgIds = isInstanceAdmin || isTenantAdmin
-            ? (IReadOnlySet<Guid>)new HashSet<Guid>()
-            : (await _adminContext.GetAdminOrganizationIdsAsync(cancellationToken)).ToHashSet();
-
-        return new AuthorityProfile(isInstanceAdmin, isTenantAdmin, tenantId, adminOrgIds, _adminContext.UserId);
-    }
-
-    /// <summary>
-    /// Synchronous evaluation using a pre-resolved authority profile.
-    /// Mirrors the logic of IsAllowedAsync but without any async DB calls.
-    /// </summary>
-    private bool EvaluateWithProfile(
-        AuthorityProfile profile,
-        string resourceKind,
-        string resourceId,
-        string action,
-        IDictionary<string, object>? resourceAttributes)
-    {
-        if (profile.IsInstanceAdmin)
-        {
-            LogDecision("allow", "instance_admin", resourceKind, resourceId, action);
-            return true;
-        }
-
-        if (SafeMode)
-        {
-            LogDecision("deny", "safe_mode_active", resourceKind, resourceId, action);
-            return false;
-        }
-
-        var decision = resourceKind switch
-        {
-            "instance_setting" => false,
-            "tenant_setting" => EvaluateTenantSettingWithProfile(profile, resourceId, action, resourceAttributes),
-            "tenant" => false,
-            "tenant_member" or "category" or "tag" or "location"
-                => profile.IsTenantAdmin,
-            "custom_property_definition" or "actor"
-                => action is "view" || profile.IsTenantAdmin,
-            "organization" => profile.IsTenantAdmin || IsOrgAdminFromProfile(profile, resourceAttributes, resourceId),
-            "organization_member" => IsAdminForOrgScope(profile, resourceAttributes, resourceId),
-            "organization_review" => action is "create" or "view" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
-            "group" => action is "view" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
-            "group_member" => action is "view" or "create" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
-            "event" or "event_session" or "event_session_agenda_item"
-                => IsAdminForOrgScope(profile, resourceAttributes, resourceId),
-            "event_registration" => action is "create" or "view" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
-            "event_contact_share_consent" => action is "viewsharedcontacts" or "exportsharedcontacts"
-                && IsAdminForOrgScope(profile, resourceAttributes, resourceId),
-            "storage_object" => action is "create" or "view" || profile.IsTenantAdmin,
-            "user" => EvaluateUserWithProfile(profile, resourceId, action),
-            "notification" => true,
-            "atproto_record" or "indexed_did" => false,
-            _ => false
-        };
-
-        LogDecision(decision ? "allow" : "deny", "fallback_batch_policy", resourceKind, resourceId, action);
-        return decision;
-    }
-
-    private bool EvaluateTenantSettingWithProfile(
-        AuthorityProfile profile,
-        string resourceId,
-        string action,
-        IDictionary<string, object>? resourceAttributes)
-    {
-        if (resourceAttributes?.TryGetValue("isLockedByInstance", out var lockedObj) == true && lockedObj is true)
-            return false;
-
-        return profile.IsTenantAdmin;
-    }
-
-    private bool EvaluateUserWithProfile(AuthorityProfile profile, string resourceId, string action)
-    {
-        if (action is "view" or "update" && profile.UserId.HasValue
-            && Guid.TryParse(resourceId, out var targetUserId)
-            && targetUserId == profile.UserId.Value)
-            return true;
-
-        return profile.IsTenantAdmin;
-    }
-
-    private static bool IsOrgAdminFromProfile(
-        AuthorityProfile profile,
-        IDictionary<string, object>? resourceAttributes,
-        string resourceId)
-    {
-        var orgId = ResolveOrganizationId(resourceAttributes, resourceId);
-        return orgId.HasValue && profile.AdminOrgIds.Contains(orgId.Value);
-    }
-
-    private static bool IsAdminForOrgScope(
-        AuthorityProfile profile,
-        IDictionary<string, object>? resourceAttributes,
-        string resourceId)
-    {
-        if (profile.IsTenantAdmin)
-            return true;
-
-        return IsOrgAdminFromProfile(profile, resourceAttributes, resourceId);
     }
 
     public async Task<bool> CheckSettingAccessAsync(
@@ -345,109 +192,6 @@ public class FallbackAuthorizationService : IAuthorizationProvider
         return await IsAllowedAsync(resourceKind, settingKey, action, attributes, cancellationToken);
     }
 
-    private async Task<bool> EvaluateTenantSettingAccessAsync(
-        string resourceId,
-        string action,
-        IDictionary<string, object>? resourceAttributes,
-        CancellationToken cancellationToken)
-    {
-        // Check if setting is locked by instance admin
-        if (resourceAttributes?.TryGetValue("isLockedByInstance", out var lockedObj) == true
-            && lockedObj is true)
-        {
-            LogDecision("deny", "locked_by_instance", "tenant_setting", resourceId, action);
-            return false;
-        }
-
-        // Get tenantId from attributes or current context
-        Guid tenantId;
-        if (resourceAttributes?.TryGetValue("tenantId", out var tenantIdObj) == true)
-        {
-            if (tenantIdObj is Guid tid)
-            {
-                tenantId = tid;
-            }
-            else if (tenantIdObj is string tenantIdString && Guid.TryParse(tenantIdString, out var parsedTenantId))
-            {
-                tenantId = parsedTenantId;
-            }
-            else
-            {
-                tenantId = _tenantContext.TenantId;
-            }
-        }
-        else
-        {
-            tenantId = _tenantContext.TenantId;
-        }
-
-        // Check if user is a tenant admin for this specific tenant
-        var isTenantAdmin = await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken);
-        LogDecision(
-            isTenantAdmin ? "allow" : "deny",
-            $"tenant_admin={isTenantAdmin}",
-            "tenant_setting",
-            resourceId,
-            action);
-        return isTenantAdmin;
-    }
-
-    private async Task<bool> EvaluateOrganizationAccessAsync(
-        string resourceId,
-        string action,
-        IDictionary<string, object>? resourceAttributes,
-        CancellationToken cancellationToken)
-    {
-        Guid orgId;
-
-        // Get organizationId from attributes
-        if (resourceAttributes?.TryGetValue("organizationId", out var orgIdObj) != true)
-        {
-            // Try parsing resourceId as orgId
-            if (!Guid.TryParse(resourceId, out var orgIdFromResource))
-            {
-                LogDecision("deny", "missing_organization_id", "organization", resourceId, action);
-                return false;
-            }
-
-            orgId = orgIdFromResource;
-        }
-        else
-        {
-            if (orgIdObj is Guid parsedOrgId)
-            {
-                orgId = parsedOrgId;
-            }
-            else if (orgIdObj is string orgIdString && Guid.TryParse(orgIdString, out var parsedOrgIdFromString))
-            {
-                orgId = parsedOrgIdFromString;
-            }
-            else if (!Guid.TryParse(resourceId, out orgId))
-            {
-                LogDecision("deny", "invalid_organization_id", "organization", resourceId, action);
-                return false;
-            }
-        }
-
-        // Check tenant admin (tenant admins can manage orgs within their tenant)
-        var tenantId = _tenantContext.TenantId;
-        if (await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken))
-        {
-            LogDecision("allow", "tenant_admin=true", "organization", resourceId, action);
-            return true;
-        }
-
-        // Check organization admin
-        var isOrgAdmin = await _adminContext.IsOrganizationAdminAsync(orgId, cancellationToken);
-        LogDecision(
-            isOrgAdmin ? "allow" : "deny",
-            $"organization_admin={isOrgAdmin}",
-            "organization",
-            resourceId,
-            action);
-        return isOrgAdmin;
-    }
-
     private Task<bool> EvaluateDefaultAccessAsync(
         string resourceKind,
         string action,
@@ -457,221 +201,6 @@ public class FallbackAuthorizationService : IAuthorizationProvider
         // For unknown resource kinds, deny by default (secure by default)
         LogDecision("deny", "unknown_resource_kind", resourceKind, resourceKind, action);
         return Task.FromResult(false);
-    }
-
-    /// <summary>
-    /// Evaluates access for tenant-scoped resources (category, tag, location, tenant_member).
-    /// Tenant admins can perform all CRUD operations within their tenant.
-    /// </summary>
-    private async Task<bool> EvaluateTenantScopedAccessAsync(
-        string resourceKind,
-        string resourceId,
-        string action,
-        IDictionary<string, object>? resourceAttributes,
-        CancellationToken cancellationToken)
-    {
-        var tenantId = ResolveTenantId(resourceAttributes);
-        var isTenantAdmin = await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken);
-        LogDecision(isTenantAdmin ? "allow" : "deny", $"tenant_admin={isTenantAdmin}", resourceKind, resourceId, action);
-        return isTenantAdmin;
-    }
-
-    /// <summary>
-    /// Evaluates access for org-scoped resources (event, event_session, event_session_agenda_item, organization_member).
-    /// Tenant admins can manage all resources within their tenant; org admins can manage resources in their org.
-    /// </summary>
-    private async Task<bool> EvaluateOrgScopedAccessAsync(
-        string resourceKind,
-        string resourceId,
-        string action,
-        IDictionary<string, object>? resourceAttributes,
-        CancellationToken cancellationToken)
-    {
-        // Tenant admin can manage all org-scoped resources within their tenant
-        var tenantId = ResolveTenantId(resourceAttributes);
-        if (await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken))
-        {
-            LogDecision("allow", "tenant_admin=true", resourceKind, resourceId, action);
-            return true;
-        }
-
-        // Org admin can manage resources within their organization
-        var orgId = ResolveOrganizationId(resourceAttributes, resourceId);
-        if (orgId.HasValue && await _adminContext.IsOrganizationAdminAsync(orgId.Value, cancellationToken))
-        {
-            LogDecision("allow", "organization_admin=true", resourceKind, resourceId, action);
-            return true;
-        }
-
-        LogDecision("deny", "no_admin_authority", resourceKind, resourceId, action);
-        return false;
-    }
-
-    /// <summary>
-    /// Evaluates access for organization reviews.
-    /// All authenticated users can create reviews; tenant/org admins can manage them.
-    /// </summary>
-    private async Task<bool> EvaluateOrgReviewAccessAsync(
-        string resourceId,
-        string action,
-        IDictionary<string, object>? resourceAttributes,
-        CancellationToken cancellationToken)
-    {
-        // All authenticated users can create and view reviews
-        if (action is "create" or "view")
-            return true;
-
-        // Update/delete requires tenant or org admin
-        return await EvaluateOrgScopedAccessAsync("organization_review", resourceId, action, resourceAttributes, cancellationToken);
-    }
-
-    /// <summary>
-    /// Evaluates access for event registrations.
-    /// All authenticated users can create registrations; org/tenant admin can manage them.
-    /// </summary>
-    private async Task<bool> EvaluateEventRegistrationAccessAsync(
-        string resourceId,
-        string action,
-        IDictionary<string, object>? resourceAttributes,
-        CancellationToken cancellationToken)
-    {
-        // All authenticated users can create and view registrations
-        if (action is "create" or "view")
-            return true;
-
-        // Update/delete requires tenant or org admin
-        return await EvaluateOrgScopedAccessAsync("event_registration", resourceId, action, resourceAttributes, cancellationToken);
-    }
-
-    /// <summary>
-    /// Evaluates access for storage objects.
-    /// All authenticated users can create and view; tenant admin for full management.
-    /// </summary>
-    private async Task<bool> EvaluateStorageObjectAccessAsync(
-        string resourceId,
-        string action,
-        IDictionary<string, object>? resourceAttributes,
-        CancellationToken cancellationToken)
-    {
-        // All authenticated users can create and view storage objects
-        if (action is "create" or "view")
-            return true;
-
-        // Update/delete requires tenant admin
-        return await EvaluateTenantScopedAccessAsync("storage_object", resourceId, action, resourceAttributes, cancellationToken);
-    }
-
-    /// <summary>
-    /// Evaluates access for user management.
-    /// Instance admins are bypassed above. Tenant admins can manage users within their tenant.
-    /// Users can update their own profile (self-service).
-    /// </summary>
-    private async Task<bool> EvaluateUserAccessAsync(
-        string resourceId,
-        string action,
-        IDictionary<string, object>? resourceAttributes,
-        CancellationToken cancellationToken)
-    {
-        // Self-service: users can view/update their own profile
-        if (action is "view" or "update" && _adminContext.UserId.HasValue
-            && Guid.TryParse(resourceId, out var targetUserId)
-            && targetUserId == _adminContext.UserId.Value)
-        {
-            LogDecision("allow", "self_service", "user", resourceId, action);
-            return true;
-        }
-
-        // Tenant admin can manage users within their tenant
-        var tenantId = ResolveTenantId(resourceAttributes);
-        var isTenantAdmin = await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken);
-        LogDecision(isTenantAdmin ? "allow" : "deny", $"tenant_admin={isTenantAdmin}", "user", resourceId, action);
-        return isTenantAdmin;
-    }
-
-    /// <summary>
-    /// Evaluates access for tenant-scoped resources that are viewable by all authenticated users.
-    /// All authenticated can view; tenant admin required for mutations.
-    /// Used for: custom_property_definition.
-    /// </summary>
-    private async Task<bool> EvaluateViewableTenantResourceAccessAsync(
-        string resourceKind,
-        string resourceId,
-        string action,
-        IDictionary<string, object>? resourceAttributes,
-        CancellationToken cancellationToken)
-    {
-        if (action is "view")
-            return true;
-
-        return await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken);
-    }
-
-    /// <summary>
-    /// Evaluates access for org-scoped resources that are viewable by all authenticated users.
-    /// All authenticated can view; tenant admin or org admin required for mutations.
-    /// Used for: group.
-    /// </summary>
-    private async Task<bool> EvaluateViewableOrgResourceAccessAsync(
-        string resourceKind,
-        string resourceId,
-        string action,
-        IDictionary<string, object>? resourceAttributes,
-        CancellationToken cancellationToken)
-    {
-        if (action is "view")
-            return true;
-
-        return await EvaluateOrgScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken);
-    }
-
-    /// <summary>
-    /// Evaluates access for group members.
-    /// All authenticated users can view and create (join); tenant/org admin can manage.
-    /// </summary>
-    private async Task<bool> EvaluateGroupMemberAccessAsync(
-        string resourceId,
-        string action,
-        IDictionary<string, object>? resourceAttributes,
-        CancellationToken cancellationToken)
-    {
-        if (action is "view" or "create")
-            return true;
-
-        return await EvaluateOrgScopedAccessAsync("group_member", resourceId, action, resourceAttributes, cancellationToken);
-    }
-
-    /// <summary>
-    /// Evaluates access for contact share consent operations.
-    /// Tenant admin or org admin can view and export shared contacts.
-    /// Matches Cerbos policy: event_contact_share_consent.yaml.
-    /// </summary>
-    private async Task<bool> EvaluateContactShareConsentAccessAsync(
-        string resourceId,
-        string action,
-        IDictionary<string, object>? resourceAttributes,
-        CancellationToken cancellationToken)
-    {
-        if (action is not ("viewsharedcontacts" or "exportsharedcontacts"))
-            return false;
-
-        return await EvaluateOrgScopedAccessAsync("event_contact_share_consent", resourceId, action, resourceAttributes, cancellationToken);
-    }
-
-    /// <summary>
-    /// Evaluates access for actor resources.
-    /// All authenticated can view; tenant admin required for mutations (actors are system-managed).
-    /// </summary>
-    private async Task<bool> EvaluateActorAccessAsync(
-        string resourceKind,
-        string resourceId,
-        string action,
-        IDictionary<string, object>? resourceAttributes,
-        CancellationToken cancellationToken)
-    {
-        if (action is "view")
-            return true;
-
-        return await EvaluateTenantScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken);
     }
 
     /// <summary>

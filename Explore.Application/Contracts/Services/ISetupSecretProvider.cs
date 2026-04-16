@@ -10,7 +10,15 @@ namespace Explore.Application.Contracts.Services;
 public interface ISetupSecretProvider
 {
     /// <summary>
+    /// Asynchronously loads bootstrap state from the database so that
+    /// <see cref="IsSetupModeActive"/> can return a cached value without blocking.
+    /// Must be called once at startup before any request processing.
+    /// </summary>
+    Task InitializeAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// True when the instance has not completed onboarding and is not locked.
+    /// Returns false if <see cref="InitializeAsync"/> has not been called yet.
     /// </summary>
     bool IsSetupModeActive { get; }
 

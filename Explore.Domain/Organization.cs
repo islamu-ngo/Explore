@@ -89,7 +89,7 @@ public class Organization : ITenantEntity, IAuditableEntity, ISoftDeletable, ICo
     // Concurrency control
     public Guid ConcurrencyStamp { get; set; }
 
-    // Navigation property for members
-    public ICollection<OrganizationMember>? Members { get; set; }
+    private readonly List<OrganizationMember> _members = [];
+    public IReadOnlyList<OrganizationMember> Members => _members.AsReadOnly();
 
 }

@@ -19,7 +19,7 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/[controller]")]
 [ApiController]
-public class InstanceOnboardingController : ControllerBase
+public class InstanceOnboardingController : ExploreControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ISetupSecretProvider _setupSecretProvider;
@@ -55,7 +55,7 @@ public class InstanceOnboardingController : ControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Complete([FromBody] CompleteInstanceOnboardingRequest settings, CancellationToken cancellationToken = default)
     {
-        var currentUserId = GetCurrentUserId();
+        var currentUserId = CurrentUserId;
         if (!currentUserId.HasValue)
         {
             return BadRequest(new BaseCommandResponse<Guid>
@@ -152,15 +152,6 @@ public class InstanceOnboardingController : ControllerBase
         return Ok(response);
     }
 
-    private Guid? GetCurrentUserId()
-    {
-        var claim = User.FindFirst("internal_user_id")?.Value
-            ?? User.FindFirst("sub")?.Value
-            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? User.FindFirst("sid")?.Value;
-
-        return Guid.TryParse(claim, out var parsedUserId) ? parsedUserId : null;
-    }
 }
 
 public class ValidateSetupSecretRequest

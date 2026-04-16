@@ -8,10 +8,8 @@ using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Events.Handlers.Commands;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
-using Explore.Application.Settings;
 using Explore.Application.Telemetry;
 using Explore.Domain;
-using Explore.Domain.Constants;
 using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
 using TUnit.Assertions;
@@ -23,19 +21,19 @@ public class CreateEventCommandHandlerTests
 {
     private readonly IEventRepository _eventRepository;
     private readonly IEventSessionRepository _eventSessionRepository;
-    private readonly IActorRepository _actorRepository;
+    private readonly IEventActorResolver _actorResolver;
     private readonly IOrganizationRepository _organizationRepository;
-    private readonly IOrganizationMemberRepository _organizationMemberRepository;
     private readonly IGroupRepository _groupRepository;
-    private readonly IGroupMemberRepository _groupMemberRepository;
-    private readonly IHierarchicalSettingsResolver _settingsResolver;
     private readonly IAudienceAgeRepository _audienceAgeRepository;
     private readonly IAudienceGenderRepository _audienceGenderRepository;
     private readonly IEventTypeRepository _eventTypeRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IEventTemplateRepository _eventTemplateRepository;
+    private readonly IEventSeriesRepository _eventSeriesRepository;
+    private readonly IEventRegistrationPolicyRepository _eventRegistrationPolicyRepository;
     private readonly IEventCustomPropertyRepository _eventCustomPropertyRepository;
     private readonly IEventTemplateInstantiationService _instantiationService;
+    private readonly IEventCustomPropertyProjectionUpdater _projectionUpdater;
     private readonly IUserContext _userContext;
     private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
@@ -47,27 +45,25 @@ public class CreateEventCommandHandlerTests
     {
         _eventRepository = Substitute.For<IEventRepository>();
         _eventSessionRepository = Substitute.For<IEventSessionRepository>();
-        _actorRepository = Substitute.For<IActorRepository>();
+        _actorResolver = Substitute.For<IEventActorResolver>();
         _organizationRepository = Substitute.For<IOrganizationRepository>();
-        _organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
         _groupRepository = Substitute.For<IGroupRepository>();
-        _groupMemberRepository = Substitute.For<IGroupMemberRepository>();
-        _settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
-        _settingsResolver.ResolveAsync<bool>("events.user_submission_enabled", Arg.Any<SettingContext>(), Arg.Any<CancellationToken>()).Returns(true);
         _audienceAgeRepository = Substitute.For<IAudienceAgeRepository>();
         _audienceGenderRepository = Substitute.For<IAudienceGenderRepository>();
         _eventTypeRepository = Substitute.For<IEventTypeRepository>();
         _storageObjectRepository = Substitute.For<IStorageObjectRepository>();
         _eventTemplateRepository = Substitute.For<IEventTemplateRepository>();
+        _eventSeriesRepository = Substitute.For<IEventSeriesRepository>();
+        _eventRegistrationPolicyRepository = Substitute.For<IEventRegistrationPolicyRepository>();
         _eventCustomPropertyRepository = Substitute.For<IEventCustomPropertyRepository>();
         _instantiationService = Substitute.For<IEventTemplateInstantiationService>();
+        _projectionUpdater = Substitute.For<IEventCustomPropertyProjectionUpdater>();
         _userContext = Substitute.For<IUserContext>();
         _tenantContext = Substitute.For<ITenantContext>();
         _mapper = Substitute.For<IMapper>();
         _cache = Substitute.For<HybridCache>();
         _unitOfWork = Substitute.For<IUnitOfWork>();
 
-        // Execute the lambda so inner repo logic runs in tests
         _unitOfWork
             .ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<Guid>>>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>
@@ -82,19 +78,19 @@ public class CreateEventCommandHandlerTests
         _handler = new CreateEventCommandHandler(
             _eventRepository,
             _eventSessionRepository,
-            _actorRepository,
-            _organizationRepository,
-            _organizationMemberRepository,
-            _groupRepository,
-            _groupMemberRepository,
-            _settingsResolver,
+            _actorResolver,
             _audienceAgeRepository,
             _audienceGenderRepository,
             _eventTypeRepository,
             _storageObjectRepository,
             _eventTemplateRepository,
+            _eventSeriesRepository,
+            _eventRegistrationPolicyRepository,
             _eventCustomPropertyRepository,
+            _projectionUpdater,
             _instantiationService,
+            _organizationRepository,
+            _groupRepository,
             _userContext,
             _tenantContext,
             _mapper,
@@ -107,7 +103,6 @@ public class CreateEventCommandHandlerTests
     [Test]
     public async Task Handle_WithValidRequest_ReturnsSuccessResponse()
     {
-        // Arrange
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
@@ -120,24 +115,20 @@ public class CreateEventCommandHandlerTests
                 Description = "Description",
                 FirstSessionDate = DateTimeOffset.UtcNow.AddDays(1),
                 LastSessionDate = DateTimeOffset.UtcNow.AddDays(1).AddHours(2),
-                EventTypeId = 1, // Set valid IDs
+                EventTypeId = 1,
                 AudienceGenderId = 1,
                 AudienceAgeId = 1
             }
         };
 
         _userContext.GetRequiredUserId().Returns(userId);
+        _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
+            .Returns(EventActorResult.Success(actorId, isUserReported: true));
 
-        // Mock Actor Resolution
-        var actor = new Actor { Id = actorId, UserId = userId, Pii = new ActorPii { DisplayName = "Test Actor" }, ActorType = null!, Tenant = null! };
-        _actorRepository.GetActorByUserId(userId).Returns(actor);
-
-        // Mock Validation Dependencies
         _audienceAgeRepository.Exists(Arg.Any<int>()).Returns(true);
         _audienceGenderRepository.Exists(Arg.Any<int>()).Returns(true);
         _eventTypeRepository.Exists(Arg.Any<int>()).Returns(true);
 
-        // Mock Mapping and Creation
         var eventEntity = new Explore.Domain.Event
         {
             Id = eventId,
@@ -151,10 +142,8 @@ public class CreateEventCommandHandlerTests
         _mapper.Map<Explore.Domain.Event>(command.EventDto).Returns(eventEntity);
         _eventRepository.Create(Arg.Any<Explore.Domain.Event>()).Returns(eventEntity);
 
-        // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // Assert
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Id).IsEqualTo(eventId);
         await _eventRepository.Received(1).Create(Arg.Any<Explore.Domain.Event>());
@@ -164,7 +153,6 @@ public class CreateEventCommandHandlerTests
     [Test]
     public async Task Handle_WithOptionalFieldsNull_ReturnsSuccessResponse()
     {
-        // Arrange
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
         var eventId = Guid.NewGuid();
@@ -177,22 +165,16 @@ public class CreateEventCommandHandlerTests
                 Description = "Description",
                 FirstSessionDate = DateTimeOffset.UtcNow.AddDays(1),
                 LastSessionDate = DateTimeOffset.UtcNow.AddDays(1).AddHours(2),
-                EventTypeId = null, // Generic import
+                EventTypeId = null,
                 AudienceGenderId = null,
                 AudienceAgeId = null
             }
         };
 
         _userContext.GetRequiredUserId().Returns(userId);
+        _actorResolver.ResolveAsync(userId, null, null, Arg.Any<CancellationToken>())
+            .Returns(EventActorResult.Success(actorId, isUserReported: true));
 
-        // Mock Actor Resolution
-        var actor = new Actor { Id = actorId, UserId = userId, Pii = new ActorPii { DisplayName = "Test Actor" }, ActorType = null!, Tenant = null! };
-        _actorRepository.GetActorByUserId(userId).Returns(actor);
-
-        // Mock Validation Dependencies (Ensure Exists is NOT called for nulls, or if called, we don't care because validator skips check)
-        // Note: The validator code only calls Exists if id.HasValue.
-
-        // Mock Mapping and Creation
         var eventEntity = new Explore.Domain.Event
         {
             Id = eventId,
@@ -206,10 +188,8 @@ public class CreateEventCommandHandlerTests
         _mapper.Map<Explore.Domain.Event>(command.EventDto).Returns(eventEntity);
         _eventRepository.Create(Arg.Any<Explore.Domain.Event>()).Returns(eventEntity);
 
-        // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // Assert
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Id).IsEqualTo(eventId);
         await _eventRepository.Received(1).Create(Arg.Any<Explore.Domain.Event>());
@@ -218,7 +198,6 @@ public class CreateEventCommandHandlerTests
     [Test]
     public async Task Handle_WhenOrganizationAdminCheckFails_ReturnsFailedResponse()
     {
-        // Arrange
         var userId = Guid.NewGuid();
         var organizationId = Guid.NewGuid();
         var command = new CreateEventCommand
@@ -227,27 +206,25 @@ public class CreateEventCommandHandlerTests
             {
                 OrganizationId = organizationId,
                 Title = "Test Event",
-                EventTypeId = 1, // Set valid IDs to pass validation
+                EventTypeId = 1,
                 AudienceGenderId = 1,
                 AudienceAgeId = 1
             }
         };
 
         _userContext.GetRequiredUserId().Returns(userId);
+        _actorResolver.ResolveAsync(userId, organizationId, null, Arg.Any<CancellationToken>())
+            .Returns(EventActorResult.Failure(
+                "You do not have permission to create events for this organization.",
+                "Your role in the organization does not include event creation permission."));
 
-        // Mock Admin Check Failure
-        _organizationMemberRepository.HasPermissionInOrganization(organizationId, userId, PermissionCodes.EventCreate).Returns(false);
-
-        // Mock Validation Dependencies
         _organizationRepository.Exists(organizationId).Returns(true);
         _audienceAgeRepository.Exists(Arg.Any<int>()).Returns(true);
         _audienceGenderRepository.Exists(Arg.Any<int>()).Returns(true);
         _eventTypeRepository.Exists(Arg.Any<int>()).Returns(true);
 
-        // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // Assert
         await Assert.That(result.Success).IsFalse();
         await Assert.That(result.Message).Contains("permission");
         await _eventRepository.DidNotReceive().Create(Arg.Any<Explore.Domain.Event>());

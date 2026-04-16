@@ -70,23 +70,10 @@ public class StorageObjectController : ControllerBase
     public async Task<IActionResult> GetFile(string fileKey, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(fileKey))
-        {
             return BadRequest("File key cannot be empty.");
-        }
 
-        try
-        {
-            var result = await _mediator.Send(new GetStorageObjectFileRequest { FileKey = fileKey }, cancellationToken);
-            return File(result.FileStream, result.ContentType, enableRangeProcessing: true);
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound("File not found.");
-        }
-        catch (Exception)
-        {
-            return StatusCode(500, "An internal error occurred.");
-        }
+        var result = await _mediator.Send(new GetStorageObjectFileRequest { FileKey = fileKey }, cancellationToken);
+        return File(result.FileStream, result.ContentType, enableRangeProcessing: true);
     }
 
     // GET: api/storageobject/{id}/public

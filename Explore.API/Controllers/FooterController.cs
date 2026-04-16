@@ -17,7 +17,7 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-public class FooterController : ControllerBase
+public class FooterController : ExploreControllerBase
 {
     private readonly IMediator _mediator;
 
@@ -65,7 +65,7 @@ public class FooterController : ControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> CreateLinkGroup(
         [FromBody] CreateFooterLinkGroupRequest request, CancellationToken cancellationToken)
     {
-        var userId = GetCurrentUserId();
+        var userId = CurrentUserId ?? Guid.Empty;
         var result = await _mediator.Send(new CreateFooterLinkGroupCommand
         {
             UserId = userId,
@@ -86,7 +86,7 @@ public class FooterController : ControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateLinkGroup(
         Guid id, [FromBody] UpdateFooterLinkGroupRequest request, CancellationToken cancellationToken)
     {
-        var userId = GetCurrentUserId();
+        var userId = CurrentUserId ?? Guid.Empty;
         var result = await _mediator.Send(new UpdateFooterLinkGroupCommand
         {
             UserId = userId,
@@ -107,7 +107,7 @@ public class FooterController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<bool>> DeleteLinkGroup(Guid id, CancellationToken cancellationToken)
     {
-        var userId = GetCurrentUserId();
+        var userId = CurrentUserId ?? Guid.Empty;
         var result = await _mediator.Send(new DeleteFooterLinkGroupCommand { UserId = userId, GroupId = id }, cancellationToken);
         return Ok(result);
     }
@@ -119,7 +119,7 @@ public class FooterController : ControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> ReorderLinkGroups(
         [FromBody] List<Guid> orderedGroupIds, CancellationToken cancellationToken)
     {
-        var userId = GetCurrentUserId();
+        var userId = CurrentUserId ?? Guid.Empty;
         var result = await _mediator.Send(new ReorderFooterLinkGroupsCommand
         {
             UserId = userId,
@@ -141,7 +141,7 @@ public class FooterController : ControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> CreateLink(
         Guid groupId, [FromBody] CreateFooterLinkRequest request, CancellationToken cancellationToken)
     {
-        var userId = GetCurrentUserId();
+        var userId = CurrentUserId ?? Guid.Empty;
         var result = await _mediator.Send(new CreateFooterLinkCommand
         {
             UserId = userId,
@@ -165,7 +165,7 @@ public class FooterController : ControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateLink(
         Guid id, [FromBody] UpdateFooterLinkRequest request, CancellationToken cancellationToken)
     {
-        var userId = GetCurrentUserId();
+        var userId = CurrentUserId ?? Guid.Empty;
         var result = await _mediator.Send(new UpdateFooterLinkCommand
         {
             UserId = userId,
@@ -188,7 +188,7 @@ public class FooterController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<bool>> DeleteLink(Guid id, CancellationToken cancellationToken)
     {
-        var userId = GetCurrentUserId();
+        var userId = CurrentUserId ?? Guid.Empty;
         var result = await _mediator.Send(new DeleteFooterLinkCommand { UserId = userId, LinkId = id }, cancellationToken);
         return Ok(result);
     }
@@ -202,7 +202,7 @@ public class FooterController : ControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateSettings(
         [FromBody] UpdateTenantFooterSettingsRequest request, CancellationToken cancellationToken)
     {
-        var userId = GetCurrentUserId();
+        var userId = CurrentUserId ?? Guid.Empty;
         var result = await _mediator.Send(new UpdateTenantFooterSettingsCommand
         {
             UserId = userId,
@@ -220,18 +220,6 @@ public class FooterController : ControllerBase
             return BadRequest(result);
 
         return Ok(result);
-    }
-
-    // ── Helpers ──────────────────────────────────────────────────────────────
-
-    private Guid GetCurrentUserId()
-    {
-        var raw = HttpContext.User?.FindFirst("sub")?.Value
-            ?? HttpContext.User?.FindFirst(
-                "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-            ?? HttpContext.User?.FindFirst("sid")?.Value;
-
-        return Guid.TryParse(raw, out var id) ? id : Guid.Empty;
     }
 
     // ── Request body types ───────────────────────────────────────────────────

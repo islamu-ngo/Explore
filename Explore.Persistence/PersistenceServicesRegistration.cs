@@ -22,7 +22,7 @@ public static class PersistenceServicesRegistration
     //    // Use Aspire's integration
     //    builder.AddNpgsqlDbContext<ExploreDbContext>("ExploreDB");
 
-    public static IServiceCollection CongfigurePersistenceServices(this IServiceCollection services,
+    public static IServiceCollection ConfigurePersistenceServices(this IServiceCollection services,
         IConfiguration configuration, bool skipDbContextRegistration = false)
     {
         // Skip DbContext registration when running integration tests (they register their own)
@@ -91,6 +91,9 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IEventFormatRepository, EventFormatRepository>();
         services.AddScoped<IVisibilityTypeRepository, VisibilityTypeRepository>();
         services.AddScoped<IRegistrationModeRepository, RegistrationModeRepository>();
+        services.AddScoped<IEventRegistrationPolicyRepository, EventRegistrationPolicyRepository>();
+        services.AddScoped<IRegistrationScopeRepository, RegistrationScopeRepository>();
+        services.AddScoped<IScheduleItemKindRepository, ScheduleItemKindRepository>();
         services.AddScoped<IMadhabRepository, MadhabRepository>();
         services.AddScoped<ILanguageRepository, LanguageRepository>();
         services.AddScoped<IOrganizationPositionRepository, OrganizationPositionRepository>();
@@ -141,6 +144,9 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IEventSessionRepository, EventSessionRepository>();
         services.AddScoped<IEventSessionIslamicAspectRepository, EventSessionIslamicAspectRepository>();
         services.AddScoped<IEventRegistrationRepository, EventRegistrationRepository>();
+        services.AddScoped<IEventRegistrationIntentRepository, EventRegistrationIntentRepository>();
+        services.AddScoped<IEventDayRepository, EventDayRepository>();
+        services.AddScoped<IEventAgendaItemRepository, EventAgendaItemRepository>();
         services.AddScoped<IEventSessionAgendaItemRepository, EventSessionAgendaItemRepository>();
         services.AddScoped<IEventSessionLanguageRepository, EventSessionLanguageRepository>();
         services.AddScoped<IEventSessionSpeakerRepository, EventSessionSpeakerRepository>();
@@ -153,6 +159,18 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IEventSessionTemplateRepository, EventSessionTemplateRepository>();
         services.AddScoped<IEventSessionCustomPropertyRepository, EventSessionCustomPropertyRepository>();
 
+        // Custom Property Projection Coordination
+        services.AddScoped<ICustomPropertyProjectionStatusRepository, CustomPropertyProjectionStatusRepository>();
+        services.AddScoped<ICustomPropertyProjectionDirtyScopeRepository, CustomPropertyProjectionDirtyScopeRepository>();
+        services.AddScoped<ICustomPropertyQuotaResolver, Services.CustomPropertyQuotaResolver>();
+        services.AddScoped<IEventCustomPropertyProjectionUpdater, Projections.EventCustomPropertyProjectionUpdater>();
+        services.AddScoped<IEventSessionCustomPropertyProjectionUpdater, Projections.EventSessionCustomPropertyProjectionUpdater>();
+
+        // Custom Property Projection Query Repositories
+        services.AddScoped<IEventCustomPropertyProjectionRepository, EventCustomPropertyProjectionRepository>();
+        services.AddScoped<IEventSessionCustomPropertyProjectionRepository, EventSessionCustomPropertyProjectionRepository>();
+        services.AddScoped<ICustomPropertyGovernanceRepository, CustomPropertyGovernanceRepository>();
+
         // Event Aspect Repositories
         services.AddScoped<IEventIslamicAspectRepository, EventIslamicAspectRepository>();
         services.AddScoped<IEventTechAspectRepository, EventTechAspectRepository>();
@@ -162,6 +180,7 @@ public static class PersistenceServicesRegistration
 
         // Location Repository
         services.AddScoped<ILocationRepository, LocationRepository>();
+        services.AddScoped<ILocationRoomRepository, LocationRoomRepository>();
 
         // Storage Repository
         services.AddScoped<IStorageObjectRepository, StorageObjectRepository>();

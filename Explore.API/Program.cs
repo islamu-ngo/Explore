@@ -1,17 +1,11 @@
 using System.IO.Compression;
 using System.Net;
-using System.Net.Http.Headers;
-using System.Security.Claims;
-using System.Text.RegularExpressions;
-using System.Threading.RateLimiting;
-using Explore.API.Authentication;
 using Explore.API.BackgroundServices;
 using Explore.API.Configuration;
 using Explore.API.Extensions;
 using Explore.API.Middleware;
 using Explore.API.Services;
 using Explore.Application;
-using Explore.Application.Constants;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Telemetry;
@@ -19,14 +13,10 @@ using Explore.Infrastructure;
 using Explore.Persistence;
 using Explore.Persistence.Seed;
 using Explore.Secrets.Extensions;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.IO;
 using Microsoft.OpenApi;
 using OpenFeature;
@@ -63,10 +53,6 @@ builder.Configuration.AddInfisicalCompatibility();
 // This adds observability and background refresh for secrets loaded via AddInfisicalCompatibility
 builder.Services.AddSecretManagement(builder.Configuration);
 
-var authority = builder.Configuration["Keycloak:Authority"];
-var realm = builder.Configuration["Keycloak:Realm"];
-var audience = builder.Configuration["Keycloak:Audience"]; // Should be "explore-api"
-
 builder.Services.AddHttpContextAccessor();
 
 var forwardedHeadersTrust = builder.Configuration
@@ -98,50 +84,7 @@ builder.Services.AddResponseCompression(options =>
 builder.Services.Configure<BrotliCompressionProviderOptions>(options => options.Level = CompressionLevel.Fastest);
 builder.Services.Configure<GzipCompressionProviderOptions>(options => options.Level = CompressionLevel.Fastest);
 
-// Performance: Output caching for read endpoints
-builder.Services.AddOutputCache(options =>
-{
-    options.AddBasePolicy(builder => builder.NoCache());
-    // PublicData: truly public lookup endpoints (categories, tags, languages) — no auth variance needed
-    options.AddPolicy("PublicData", builder => builder
-        .Expire(TimeSpan.FromHours(1))
-        .SetVaryByHeader(TenantHeaderNames.TenantSlug, "Host")
-        .Tag("lookup-data"));
-    // LookupData: kept for backward compatibility, same as PublicData
-    options.AddPolicy("LookupData", builder => builder
-        .Expire(TimeSpan.FromHours(1))
-        .SetVaryByHeader(TenantHeaderNames.TenantSlug, "Host")
-        .Tag("lookup-data"));
-    // ListData: varies by Authorization for auth-aware HATEOAS links
-    options.AddPolicy("ListData", builder => builder
-        .Expire(TimeSpan.FromSeconds(30))
-        .SetVaryByHeader(TenantHeaderNames.TenantSlug, "Host", "Authorization")
-        .SetVaryByQuery("pageNumber", "pageSize")
-        .Tag("list-data"));
-    // DetailData: varies by Authorization for auth-aware HATEOAS links
-    options.AddPolicy("DetailData", builder => builder
-        .Expire(TimeSpan.FromSeconds(60))
-        .SetVaryByHeader(TenantHeaderNames.TenantSlug, "Host", "Authorization")
-        .SetVaryByRouteValue("id")
-        .Tag("detail-data"));
-    // TenantNav: tenant navigation links — short expiry, evicted on write by "tenant-nav" tag
-    options.AddPolicy("TenantNav", builder => builder
-        .Expire(TimeSpan.FromMinutes(5))
-        .SetVaryByHeader(TenantHeaderNames.TenantSlug, "Host")
-        .Tag("tenant-nav"));
-});
-
-// Performance: HybridCache (L1 in-memory + optional L2 distributed)
-builder.Services.AddHybridCache(options =>
-{
-    options.MaximumPayloadBytes = 1024 * 1024 * 10; // 10MB
-    options.MaximumKeyLength = 512;
-    options.DefaultEntryOptions = new HybridCacheEntryOptions
-    {
-        Expiration = TimeSpan.FromMinutes(30),
-        LocalCacheExpiration = TimeSpan.FromMinutes(5)
-    };
-});
+builder.Services.AddApiCaching();
 
 builder.Services.AddRouting(options =>
 {
@@ -155,7 +98,7 @@ builder.Services.ConfigureInfrastructureServices(builder.Configuration);
 
 // Skip DbContext registration if running in Testing environment (Integration tests register their own)
 var skipDbContext = builder.Environment.IsEnvironment("Testing");
-builder.Services.CongfigurePersistenceServices(builder.Configuration, skipDbContextRegistration: skipDbContext);
+builder.Services.ConfigurePersistenceServices(builder.Configuration, skipDbContextRegistration: skipDbContext);
 
 // Register shared tenant context; API middleware is authoritative for normal tenant resolution.
 builder.Services.AddScoped<ITenantResolverService, Explore.Infrastructure.Services.TenantResolverService>();
@@ -170,6 +113,8 @@ builder.Services.AddApiMediaTypeVersioning();
 
 // Business metrics (OpenTelemetry)
 builder.Services.AddSingleton<BusinessMetrics>();
+builder.Services.AddSingleton<TranslationMetrics>();
+builder.Services.AddSingleton<ProjectionMetrics>();
 
 // Pooled memory streams for ETag middleware — eliminates per-request MemoryStream allocations
 builder.Services.AddSingleton<RecyclableMemoryStreamManager>();
@@ -185,6 +130,25 @@ builder.Services.AddControllers()
     });
 
 builder.Services.AddApiExceptionHandling();
+
+// ──────────────────────────────────────────────
+// Localization — CultureRegistry is the compile-time allowlist.
+// Runtime governance (enabled_languages / kill-switches) is enforced higher up.
+// ──────────────────────────────────────────────
+builder.Services.AddLocalization();
+builder.Services.Configure<Microsoft.AspNetCore.Builder.RequestLocalizationOptions>(options =>
+{
+    var cultures = Explore.Domain.Common.Localization.CultureRegistry.GetAll()
+        .Select(entry => new System.Globalization.CultureInfo(entry.Code))
+        .ToArray();
+
+    options.SupportedCultures = cultures;
+    options.SupportedUICultures = cultures;
+    options.DefaultRequestCulture = new Microsoft.AspNetCore.Localization.RequestCulture("en");
+    options.RequestCultureProviders.Clear();
+    options.RequestCultureProviders.Insert(0, new Microsoft.AspNetCore.Localization.CookieRequestCultureProvider());
+    options.RequestCultureProviders.Insert(1, new Microsoft.AspNetCore.Localization.AcceptLanguageHeaderRequestCultureProvider());
+});
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGenWithAuth(builder.Configuration);
@@ -216,40 +180,7 @@ builder.Services.AddHostedService<PdsSyncWorker>();
 // Register generic outbox processor for reliable side-effect delivery
 builder.Services.AddHostedService<OutboxProcessor>();
 
-// CORS: hardened policies with configurable allowed origins
-// Dev policy remains permissive; production policies use explicit origin allowlists
-var corsAllowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins")
-    .Get<string[]>() ?? ["https://iloveibadah.app"];
-
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("InternalAppPolicy",
-        policy => policy.WithOrigins(corsAllowedOrigins)
-            .AllowAnyMethod()
-            .AllowAnyHeader()
-            .AllowCredentials());
-
-    options.AddPolicy("ExternalAppPolicy",
-        policy => policy.WithOrigins(corsAllowedOrigins)
-            .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-            .AllowAnyHeader());
-
-    options.AddPolicy("InternalWebsitePolicy",
-        policy => policy.WithOrigins(corsAllowedOrigins)
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials());
-
-    options.AddPolicy("ExternalWebsitePolicy",
-        policy => policy.WithOrigins(corsAllowedOrigins)
-            .WithMethods("GET", "OPTIONS")
-            .WithHeaders("Accept", "Content-Type", "Authorization", "X-Tenant-Slug"));
-
-    options.AddPolicy("DevPolicy",
-        policy => policy.AllowAnyOrigin()
-            .AllowAnyHeader()
-            .AllowAnyMethod());
-});
+builder.Services.AddApiCors(builder.Configuration);
 
 builder.Host.UseSerilog((ctx, services, lc) =>
     lc.ReadFrom.Configuration(ctx.Configuration)
@@ -257,142 +188,7 @@ builder.Host.UseSerilog((ctx, services, lc) =>
       .Enrich.FromLogContext(),
     writeToProviders: true);
 
-// Multi-auth API authentication for direct callers.
-// Bearer remains JWT-only. Machine callers use X-API-Key and are dispatched explicitly.
-builder.Services.AddAuthentication(options =>
-    {
-        options.DefaultScheme = ApiAuthenticationSchemeNames.MultiAuth;
-        options.DefaultAuthenticateScheme = ApiAuthenticationSchemeNames.MultiAuth;
-        options.DefaultChallengeScheme = ApiAuthenticationSchemeNames.MultiAuth;
-    })
-    .AddPolicyScheme(ApiAuthenticationSchemeNames.MultiAuth, ApiAuthenticationSchemeNames.MultiAuth, options =>
-    {
-        options.ForwardDefaultSelector = context =>
-        {
-            if (context.Request.Headers.ContainsKey(ApiAuthenticationHeaderNames.ApiKey))
-            {
-                return ApiAuthenticationSchemeNames.ApiKey;
-            }
-
-            return JwtBearerDefaults.AuthenticationScheme;
-        };
-    })
-    .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
-    {
-        // Sets options.RequireHttpsMetadata based on configuration
-        options.RequireHttpsMetadata = string.Equals(
-            builder.Configuration["Keycloak:RequireHttpsMetadata"],
-            "true",
-            StringComparison.OrdinalIgnoreCase
-        );
-
-        options.Authority = authority;
-        options.MetadataAddress = builder.Configuration["Keycloak:MetadataAddress"];
-
-        // Valid audiences for multi-client support (BFF pattern)
-        // Keycloak uses 'azp' (authorized party) in addition to 'aud' for client identification
-        var validAudiences = new[]
-        {
-            "explore-api",           // Direct API access (Swagger, external clients)
-            "explore-blazor-server", // Blazor Server BFF pattern (forwards OIDC tokens)
-            "account"                // Keycloak account service (common in Keycloak tokens)
-        };
-
-        // Token validation parameters for multi-client support (BFF pattern)
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            // Custom audience validation that checks both 'aud' and 'azp' claims
-            // Keycloak often puts the client ID in 'azp' rather than 'aud'
-            ValidateAudience = true,
-            AudienceValidator = (audiences, securityToken, validationParameters) =>
-            {
-                var audienceList = audiences?.ToList() ?? new List<string>();
-
-                // Check standard 'aud' claim
-                if (audienceList.Any(aud => validAudiences.Contains(aud)))
-                {
-                    return true;
-                }
-
-                // Check 'azp' (authorized party) claim - Keycloak uses this for the client ID
-                if (securityToken is System.IdentityModel.Tokens.Jwt.JwtSecurityToken jwtToken)
-                {
-                    var azp = jwtToken.Claims.FirstOrDefault(c => c.Type == "azp")?.Value;
-                    if (!string.IsNullOrEmpty(azp) && validAudiences.Contains(azp))
-                    {
-                        return true;
-                    }
-
-                }
-
-                return false;
-            },
-
-            // Issuer validation
-            ValidateIssuer = true,
-            ValidIssuer = authority,
-
-            // Lifetime validation
-            ValidateLifetime = true,
-            ClockSkew = TimeSpan.FromMinutes(5), // Allow 5 minutes clock skew
-
-            // Signature validation (automatic via OIDC discovery)
-            ValidateIssuerSigningKey = true,
-
-            // Claim type mappings for Keycloak
-            NameClaimType = "preferred_username"
-        };
-
-        // Development: Accept self-signed certificates for Keycloak
-        if (builder.Environment.IsDevelopment())
-        {
-            options.BackchannelHttpHandler = new HttpClientHandler
-            {
-                ServerCertificateCustomValidationCallback =
-                    HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
-            };
-        }
-
-        // JWT Bearer events — minimal production logging
-        // PII-safe: only exception messages logged, never token claims or raw values
-        options.Events = new JwtBearerEvents
-        {
-            OnAuthenticationFailed = context =>
-            {
-                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-                logger.LogWarning(
-                    "[JWT] Authentication failed for {Method} {Path}: {Error}",
-                    context.Request.Method,
-                    context.Request.Path,
-                    context.Exception?.Message);
-                return Task.CompletedTask;
-            },
-
-            OnChallenge = context =>
-            {
-                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-                logger.LogDebug(
-                    "[JWT] Challenge issued for {Path}. Error: {Error}, Description: {Desc}",
-                    context.Request.Path,
-                    context.Error,
-                    context.ErrorDescription);
-                return Task.CompletedTask;
-            }
-        };
-    })
-    .AddScheme<ApiKeyAuthenticationOptions, ApiKeyAuthenticationHandler>(
-        ApiAuthenticationSchemeNames.ApiKey,
-        options =>
-        {
-            builder.Configuration.GetSection(ApiKeyAuthenticationOptions.SectionName).Bind(options);
-
-            if (string.IsNullOrWhiteSpace(options.HeaderName))
-            {
-                options.HeaderName = ApiAuthenticationHeaderNames.ApiKey;
-            }
-        });
-
-builder.Services.AddAuthorizationBuilder();
+builder.Services.AddApiAuthentication(builder.Configuration, builder.Environment);
 
 builder.Services.AddHsts(options =>
 {
@@ -492,6 +288,7 @@ if (!builder.Environment.IsEnvironment("Testing"))
 // Console.WriteLine guarantees visibility in all environments (bypasses Serilog log-level filters).
 // Matches established Infisical bootstrap pattern (InfisicalConfigurationProvider.cs).
 var setupSecretProvider = app.Services.GetRequiredService<Explore.Application.Contracts.Services.ISetupSecretProvider>();
+await setupSecretProvider.InitializeAsync();
 string? setupSecretForStartupReminder = null;
 if (setupSecretProvider.IsSetupModeActive)
 {
@@ -584,6 +381,7 @@ app.UseRequestTimeouts();
 app.UseMiddleware<ApiAuthenticationConflictMiddleware>();
 app.UseAuthentication();
 app.UseMiddleware<ApiTenantPostAuthenticationMiddleware>();
+app.UseRequestLocalization();
 app.UseMiddleware<IdempotencyMiddleware>();
 app.UseRateLimiter();
 app.UseAuthorization();

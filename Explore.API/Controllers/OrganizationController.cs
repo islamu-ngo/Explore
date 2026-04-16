@@ -24,7 +24,7 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-public class OrganizationController : ControllerBase
+public class OrganizationController : ExploreControllerBase
 {
     private readonly IMediator _mediator;
     private readonly IResourceAssembler<OrganizationDto, OrganizationListDto> _resourceAssembler;
@@ -81,7 +81,7 @@ public class OrganizationController : ControllerBase
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
     {
-        var userId = GetCurrentUserId();
+        var userId = CurrentUserId?.ToString();
         if (string.IsNullOrEmpty(userId))
         {
             return Unauthorized("User ID not found in token");
@@ -137,7 +137,7 @@ public class OrganizationController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateOrganizationDto organization, CancellationToken cancellationToken = default)
     {
-        var userId = GetCurrentUserId();
+        var userId = CurrentUserId?.ToString();
 
         var command = new CreateOrganizationCommand
         {
@@ -175,7 +175,7 @@ public class OrganizationController : ControllerBase
         Guid id,
         [FromBody] UpdateOrganizationDto updateDto, CancellationToken cancellationToken = default)
     {
-        var userId = GetCurrentUserId();
+        var userId = CurrentUserId?.ToString();
         if (string.IsNullOrEmpty(userId))
         {
             return Unauthorized("User ID not found in token");
@@ -243,14 +243,4 @@ public class OrganizationController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>
-    /// Extracts the current user ID from claims using the standard fallback pattern.
-    /// </summary>
-    private string? GetCurrentUserId()
-    {
-        return HttpContext.User?.FindFirst("sub")?.Value
-            ?? HttpContext.User?.FindFirst(
-                "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-            ?? HttpContext.User?.FindFirst("sid")?.Value;
-    }
 }

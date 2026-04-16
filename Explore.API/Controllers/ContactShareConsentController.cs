@@ -17,7 +17,7 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/[controller]")]
 [ApiController]
-public class ContactShareConsentController : ControllerBase
+public class ContactShareConsentController : ExploreControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ITenantContext _tenantContext;
@@ -44,7 +44,7 @@ public class ContactShareConsentController : ControllerBase
     [ProducesResponseType(typeof(List<UserContactShareConsentDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<UserContactShareConsentDto>>> GetMyConsents(CancellationToken cancellationToken = default)
     {
-        var userId = GetCurrentUserId();
+        var userId = CurrentUserId;
         if (userId == null)
             return Unauthorized();
 
@@ -65,7 +65,7 @@ public class ContactShareConsentController : ControllerBase
     [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
     public async Task<ActionResult<bool>> CheckConsentForOrganizer(Guid recipientActorId)
     {
-        var userId = GetCurrentUserId();
+        var userId = CurrentUserId;
         if (userId == null)
             return Unauthorized();
 
@@ -84,7 +84,7 @@ public class ContactShareConsentController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> WithdrawConsent(Guid id, CancellationToken cancellationToken = default)
     {
-        var userId = GetCurrentUserId();
+        var userId = CurrentUserId;
         if (userId == null)
             return Unauthorized();
 
@@ -138,7 +138,7 @@ public class ContactShareConsentController : ControllerBase
         [FromQuery] Guid? eventId = null,
         CancellationToken cancellationToken = default)
     {
-        var userId = GetCurrentUserId();
+        var userId = CurrentUserId;
         if (userId == null)
             return Unauthorized();
 
@@ -157,12 +157,4 @@ public class ContactShareConsentController : ControllerBase
         return File(result.Id.FileContent, result.Id.ContentType, result.Id.FileName);
     }
 
-    private Guid? GetCurrentUserId()
-    {
-        var sub = User.FindFirst("sub")?.Value
-                  ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-                  ?? User.FindFirst("sid")?.Value;
-
-        return Guid.TryParse(sub, out var userId) ? userId : null;
-    }
 }

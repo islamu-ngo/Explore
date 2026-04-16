@@ -33,7 +33,8 @@ public class SetupSecretProvider : ISetupSecretProvider, IDisposable
             if (_isBootstrapComplete.HasValue)
                 return !_isBootstrapComplete.Value;
 
-            return !IsBootstrapCompleteBlocking();
+            // Not yet initialized — fail closed (setup mode inactive)
+            return false;
         }
     }
 
@@ -81,41 +82,38 @@ public class SetupSecretProvider : ISetupSecretProvider, IDisposable
     /// <inheritdoc />
     public string? GetSecretForLogging() => IsFromEnvironmentVariable ? null : _secret;
 
-    public void Dispose()
-    {
-        _bootstrapCheckSemaphore.Dispose();
-    }
-
-    private bool IsBootstrapCompleteBlocking()
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         if (_isBootstrapComplete.HasValue)
-            return _isBootstrapComplete.Value;
+            return;
 
-        _bootstrapCheckSemaphore.Wait();
+        await _bootstrapCheckSemaphore.WaitAsync(cancellationToken);
         try
         {
             if (_isBootstrapComplete.HasValue)
-                return _isBootstrapComplete.Value;
+                return;
 
             try
             {
                 using var scope = _scopeFactory.CreateScope();
                 var repository = scope.ServiceProvider.GetRequiredService<IInstanceBootstrapStateRepository>();
-                var bootstrapState = repository.GetCurrent().GetAwaiter().GetResult();
+                var bootstrapState = await repository.GetCurrent();
                 _isBootstrapComplete = bootstrapState?.IsCompleted == true;
             }
             catch
             {
-                // If the database is not available yet (e.g., during startup), assume setup mode is active
                 _isBootstrapComplete = false;
             }
-
-            return _isBootstrapComplete.Value;
         }
         finally
         {
             _bootstrapCheckSemaphore.Release();
         }
+    }
+
+    public void Dispose()
+    {
+        _bootstrapCheckSemaphore.Dispose();
     }
 
     private static string GenerateCryptoRandomSecret()

@@ -85,6 +85,7 @@ public class SetupSecretProviderTests
     public async Task IsSetupModeActive_WhenBootstrapComplete_ReturnsFalse()
     {
         var provider = CreateProvider(new InstanceBootstrapState { IsCompleted = true });
+        await provider.InitializeAsync();
 
         await Assert.That(provider.IsSetupModeActive).IsEqualTo(false);
     }
@@ -93,8 +94,17 @@ public class SetupSecretProviderTests
     public async Task IsSetupModeActive_WhenBootstrapNotCompleteAndNotLocked_ReturnsTrue()
     {
         var provider = CreateProvider(new InstanceBootstrapState { IsCompleted = false });
+        await provider.InitializeAsync();
 
         await Assert.That(provider.IsSetupModeActive).IsEqualTo(true);
+    }
+
+    [Test]
+    public async Task IsSetupModeActive_BeforeInitialize_ReturnsFalse()
+    {
+        var provider = CreateProvider(new InstanceBootstrapState { IsCompleted = false });
+
+        await Assert.That(provider.IsSetupModeActive).IsEqualTo(false);
     }
 
     [Test]
@@ -108,8 +118,11 @@ public class SetupSecretProviderTests
     [Test]
     public async Task Lock_AppliesSetupAndValidationTransitions()
     {
-        var provider = CreateProvider();
+        var provider = CreateProvider(new InstanceBootstrapState { IsCompleted = false });
+        await provider.InitializeAsync();
         var secret = provider.GetSecretForLogging();
+
+        await Assert.That(provider.IsSetupModeActive).IsEqualTo(true);
 
         provider.Lock();
 

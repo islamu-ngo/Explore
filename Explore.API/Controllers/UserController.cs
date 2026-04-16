@@ -222,12 +222,8 @@ public class UserController : ControllerBase
             return Forbid("You can only view your own organizations");
         }
 
-        Console.WriteLine($"[USER API] Getting organizations for user: {userId}");
-
         var query = new GetUserOrganizationsRequest { UserId = userId };
         var organizations = await _mediator.Send(query, cancellationToken);
-
-        Console.WriteLine($"[USER API] Found {organizations.Count} organizations for user {userId}");
 
         return Ok(organizations);
     }

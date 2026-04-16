@@ -59,7 +59,7 @@ Dependency direction is inward: presentation -> application -> domain.
 ## Specification Pattern (Query Composition)
 Complex filtering uses a custom Specification Pattern:
 1. `IQuerySpecification<T>` composes `IFilterSpecification<T>` + `ISortSpecification<T>` via immutable builder.
-2. `EventQuerySpecification` chains filters using AND composition: direct filters (`EventFilter`), subquery filters for junction tables (`EventSubqueryFilter`), module-conditional aspect filters (`IslamicAspectFilter`, `TechAspectFilter`), and presence filters (`AspectPresenceFilter`).
+2. `EventQuerySpecification` chains filters using AND composition: direct filters (`EventFilter`), subquery filters for junction tables (`EventSubqueryFilter`), module-conditional aspect filters (`IslamicAspectFilter`, `TechAspectFilter`), presence filters (`AspectPresenceFilter`), and projection-backed custom-property filters (`EventCustomPropertyProjectionFilter`).
 3. Filters are applied to `IQueryable<T>` in the repository — module-specific filters are silently ignored when modules are disabled.
 4. `ToCacheKeySuffix()` generates deterministic cache keys from active filter/sort state.
 

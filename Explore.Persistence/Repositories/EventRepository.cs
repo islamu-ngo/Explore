@@ -2,6 +2,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.Events.Requests.Queries;
 using Explore.Application.Specifications.Events;
 using Explore.Domain;
+using Explore.Persistence.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
@@ -31,25 +32,7 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
         return await _dbContext.Events
             .AsNoTrackingWithIdentityResolution()
             .AsSplitQuery()
-            .Include(e => e.EventType)
-            .Include(e => e.AudienceGender)
-            .Include(e => e.AudienceAge)
-            .Include(e => e.Actor)
-                .ThenInclude(a => a.ActorType)
-            .Include(e => e.Actor)
-                .ThenInclude(a => a!.Pii)
-            .Include(e => e.Actor)
-                .ThenInclude(a => a!.ProfilePicture)
-            .Include(e => e.FeaturedImage)
-            .Include(e => e.EventStatus)
-            .Include(e => e.VisibilityType)
-            .Include(e => e.EventFormat)
-            .Include(e => e.Madhab)
-            .Include(e => e.IslamicAspect)
-                .ThenInclude(a => a!.Madhab)
-            .Include(e => e.IslamicAspect)
-                .ThenInclude(a => a!.PrimaryLanguage)
-            .Include(e => e.TechAspect)
+            .IncludeStandardDetails()
             .ToListAsync();
     }
 
@@ -58,26 +41,8 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
         return await _dbContext.Events
             .AsNoTrackingWithIdentityResolution()
             .AsSplitQuery()
-            .Include(e => e.EventType)
-            .Include(e => e.AudienceGender)
-            .Include(e => e.AudienceAge)
-            .Include(e => e.Actor)
-                .ThenInclude(a => a.ActorType)
-            .Include(e => e.Actor)
-                .ThenInclude(a => a!.Pii)
-            .Include(e => e.Actor)
-                .ThenInclude(a => a.ProfilePicture)
-            .Include(e => e.FeaturedImage)
-            .Include(e => e.EventStatus)
-            .Include(e => e.VisibilityType)
-            .Include(e => e.EventFormat)
-            .Include(e => e.Madhab)
+            .IncludeStandardDetails()
             .Include(e => e.AtprotoRecord)
-            .Include(e => e.IslamicAspect)
-                .ThenInclude(a => a!.Madhab)
-            .Include(e => e.IslamicAspect)
-                .ThenInclude(a => a!.PrimaryLanguage)
-            .Include(e => e.TechAspect)
             .FirstOrDefaultAsync(e => e.Id == id);
     }
 
@@ -89,25 +54,7 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
         var query = _dbContext.Events
             .AsNoTrackingWithIdentityResolution()
             .AsSplitQuery()
-            .Include(e => e.EventType)
-            .Include(e => e.AudienceGender)
-            .Include(e => e.AudienceAge)
-            .Include(e => e.Actor)
-                .ThenInclude(a => a.ActorType)
-            .Include(e => e.Actor)
-                .ThenInclude(a => a!.Pii)
-            .Include(e => e.Actor)
-                .ThenInclude(a => a!.ProfilePicture)
-            .Include(e => e.FeaturedImage)
-            .Include(e => e.EventStatus)
-            .Include(e => e.VisibilityType)
-            .Include(e => e.EventFormat)
-            .Include(e => e.Madhab)
-            .Include(e => e.IslamicAspect)
-                .ThenInclude(a => a!.Madhab)
-            .Include(e => e.IslamicAspect)
-                .ThenInclude(a => a!.PrimaryLanguage)
-            .Include(e => e.TechAspect)
+            .IncludeStandardDetails()
             .AsQueryable();
 
         if (isGuid)
@@ -135,25 +82,7 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
         var query = _dbContext.Events
             .AsNoTrackingWithIdentityResolution()
             .AsSplitQuery()
-            .Include(e => e.EventType)
-            .Include(e => e.AudienceGender)
-            .Include(e => e.AudienceAge)
-            .Include(e => e.Actor)
-                .ThenInclude(a => a.ActorType)
-            .Include(e => e.Actor)
-                .ThenInclude(a => a!.Pii)
-            .Include(e => e.Actor)
-                .ThenInclude(a => a!.ProfilePicture)
-            .Include(e => e.FeaturedImage)
-            .Include(e => e.EventStatus)
-            .Include(e => e.VisibilityType)
-            .Include(e => e.EventFormat)
-            .Include(e => e.Madhab)
-            .Include(e => e.IslamicAspect)
-                .ThenInclude(a => a!.Madhab)
-            .Include(e => e.IslamicAspect)
-                .ThenInclude(a => a!.PrimaryLanguage)
-            .Include(e => e.TechAspect)
+            .IncludeStandardDetails()
             .OrderByDescending(e => e.FirstSessionDate);
 
         var totalCount = await query.CountAsync();
@@ -172,29 +101,11 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
         var query = _dbContext.Events
             .AsNoTrackingWithIdentityResolution()
             .AsSplitQuery()
-            .Include(e => e.EventType)
-            .Include(e => e.AudienceGender)
-            .Include(e => e.AudienceAge)
-            .Include(e => e.Actor)
-                .ThenInclude(a => a.ActorType)
-            .Include(e => e.Actor)
-                .ThenInclude(a => a!.Pii)
-            .Include(e => e.Actor)
-                .ThenInclude(a => a!.ProfilePicture)
-            .Include(e => e.FeaturedImage)
-            .Include(e => e.EventStatus)
-            .Include(e => e.VisibilityType)
-            .Include(e => e.EventFormat)
-            .Include(e => e.Madhab)
-            .Include(e => e.IslamicAspect)
-                .ThenInclude(a => a!.Madhab)
-            .Include(e => e.IslamicAspect)
-                .ThenInclude(a => a!.PrimaryLanguage)
-            .Include(e => e.TechAspect)
+            .IncludeStandardDetails()
             .AsQueryable();
 
-        // Apply subquery filters (require DbContext access for junction tables)
         query = ApplySubqueryFilters(query, specification);
+        query = ApplyProjectionFilters(query, specification);
 
         // Apply direct filters and sorting via specification
         var now = DateTimeOffset.UtcNow;
@@ -343,6 +254,133 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
         return query;
     }
 
+    private IQueryable<Event> ApplyProjectionFilters(
+        IQueryable<Event> query, EventQuerySpecification specification)
+    {
+        foreach (var projFilter in specification.ProjectionFilters)
+        {
+            query = projFilter.FilterType switch
+            {
+                EventCustomPropertyProjectionFilterType.ExactMatch => ApplyExactMatchFilter(query, projFilter),
+                EventCustomPropertyProjectionFilterType.OptionMatch => ApplyOptionMatchFilter(query, projFilter),
+                EventCustomPropertyProjectionFilterType.OptionsMatchAny => ApplyOptionsMatchAnyFilter(query, projFilter),
+                EventCustomPropertyProjectionFilterType.TextSearch => ApplyTextSearchFilter(query, projFilter),
+                EventCustomPropertyProjectionFilterType.GlobalTextSearch => ApplyGlobalTextSearchFilter(query, projFilter),
+                EventCustomPropertyProjectionFilterType.Exists => ApplyExistsFilter(query, projFilter),
+                EventCustomPropertyProjectionFilterType.BooleanTrue => ApplyBooleanTrueFilter(query, projFilter),
+                EventCustomPropertyProjectionFilterType.NumberRange => ApplyNumberRangeFilter(query, projFilter),
+                EventCustomPropertyProjectionFilterType.DateRange => ApplyDateRangeFilter(query, projFilter),
+                _ => query
+            };
+        }
+
+        return query;
+    }
+
+    private IQueryable<Event> ApplyExactMatchFilter(IQueryable<Event> query, EventCustomPropertyProjectionFilter filter)
+    {
+        var (ns, key, normalizedValue) = ((string, string, string))filter.Value;
+        return query.Where(e => _dbContext.EventCustomPropertyProjections.Any(p =>
+            p.EventId == e.Id &&
+            p.Namespace == ns &&
+            p.Key == key &&
+            p.IsFilterable &&
+            p.NormalizedValue == normalizedValue));
+    }
+
+    private IQueryable<Event> ApplyOptionMatchFilter(IQueryable<Event> query, EventCustomPropertyProjectionFilter filter)
+    {
+        var (ns, key, optionId) = ((string, string, Guid))filter.Value;
+        return query.Where(e => _dbContext.EventCustomPropertyProjections.Any(p =>
+            p.EventId == e.Id &&
+            p.Namespace == ns &&
+            p.Key == key &&
+            p.IsFilterable &&
+            p.OptionId == optionId));
+    }
+
+    private IQueryable<Event> ApplyOptionsMatchAnyFilter(IQueryable<Event> query, EventCustomPropertyProjectionFilter filter)
+    {
+        var (ns, key, optionIds) = ((string, string, List<Guid>))filter.Value;
+        return query.Where(e => _dbContext.EventCustomPropertyProjections.Any(p =>
+            p.EventId == e.Id &&
+            p.Namespace == ns &&
+            p.Key == key &&
+            p.IsFilterable &&
+            p.OptionId != null &&
+            optionIds.Contains(p.OptionId.Value)));
+    }
+
+    private IQueryable<Event> ApplyTextSearchFilter(IQueryable<Event> query, EventCustomPropertyProjectionFilter filter)
+    {
+        var (ns, key, searchTerm) = ((string, string, string))filter.Value;
+        var pattern = $"%{searchTerm}%";
+        return query.Where(e => _dbContext.EventCustomPropertyProjections.Any(p =>
+            p.EventId == e.Id &&
+            p.Namespace == ns &&
+            p.Key == key &&
+            p.IsSearchable &&
+            p.NormalizedValue != null &&
+            EF.Functions.ILike(p.NormalizedValue, pattern)));
+    }
+
+    private IQueryable<Event> ApplyGlobalTextSearchFilter(IQueryable<Event> query, EventCustomPropertyProjectionFilter filter)
+    {
+        var searchTerm = (string)filter.Value;
+        var pattern = $"%{searchTerm}%";
+        return query.Where(e => _dbContext.EventCustomPropertyProjections.Any(p =>
+            p.EventId == e.Id &&
+            p.IsSearchable &&
+            p.NormalizedValue != null &&
+            EF.Functions.ILike(p.NormalizedValue, pattern)));
+    }
+
+    private IQueryable<Event> ApplyExistsFilter(IQueryable<Event> query, EventCustomPropertyProjectionFilter filter)
+    {
+        var (ns, key) = ((string, string))filter.Value;
+        return query.Where(e => _dbContext.EventCustomPropertyProjections.Any(p =>
+            p.EventId == e.Id &&
+            p.Namespace == ns &&
+            p.Key == key));
+    }
+
+    private IQueryable<Event> ApplyBooleanTrueFilter(IQueryable<Event> query, EventCustomPropertyProjectionFilter filter)
+    {
+        var (ns, key) = ((string, string))filter.Value;
+        return query.Where(e => _dbContext.EventCustomPropertyProjections.Any(p =>
+            p.EventId == e.Id &&
+            p.Namespace == ns &&
+            p.Key == key &&
+            p.IsFilterable &&
+            p.BooleanValue == true));
+    }
+
+    private IQueryable<Event> ApplyNumberRangeFilter(IQueryable<Event> query, EventCustomPropertyProjectionFilter filter)
+    {
+        var (ns, key, min, max) = ((string, string, decimal?, decimal?))filter.Value;
+        return query.Where(e => _dbContext.EventCustomPropertyProjections.Any(p =>
+            p.EventId == e.Id &&
+            p.Namespace == ns &&
+            p.Key == key &&
+            p.IsFilterable &&
+            p.NumberValue != null &&
+            (!min.HasValue || p.NumberValue >= min.Value) &&
+            (!max.HasValue || p.NumberValue <= max.Value)));
+    }
+
+    private IQueryable<Event> ApplyDateRangeFilter(IQueryable<Event> query, EventCustomPropertyProjectionFilter filter)
+    {
+        var (ns, key, from, to) = ((string, string, DateTimeOffset?, DateTimeOffset?))filter.Value;
+        return query.Where(e => _dbContext.EventCustomPropertyProjections.Any(p =>
+            p.EventId == e.Id &&
+            p.Namespace == ns &&
+            p.Key == key &&
+            p.IsFilterable &&
+            p.DateTimeValue != null &&
+            (!from.HasValue || p.DateTimeValue >= from.Value) &&
+            (!to.HasValue || p.DateTimeValue <= to.Value)));
+    }
+
     private static IQueryable<Event> ApplyTemporalFilter(IQueryable<Event> query, EventSubqueryFilter filter)
     {
         var (view, now) = ((TemporalView, DateTimeOffset))filter.Value;
@@ -366,25 +404,7 @@ public class EventRepository : GenericRepository<Event, Guid>, IEventRepository
         var query = _dbContext.Events
             .AsNoTrackingWithIdentityResolution()
             .AsSplitQuery()
-            .Include(e => e.EventType)
-            .Include(e => e.AudienceGender)
-            .Include(e => e.AudienceAge)
-            .Include(e => e.Actor)
-                .ThenInclude(a => a.ActorType)
-            .Include(e => e.Actor)
-                .ThenInclude(a => a!.Pii)
-            .Include(e => e.Actor)
-                .ThenInclude(a => a!.ProfilePicture)
-            .Include(e => e.FeaturedImage)
-            .Include(e => e.EventStatus)
-            .Include(e => e.VisibilityType)
-            .Include(e => e.EventFormat)
-            .Include(e => e.Madhab)
-            .Include(e => e.IslamicAspect)
-                .ThenInclude(a => a!.Madhab)
-            .Include(e => e.IslamicAspect)
-                .ThenInclude(a => a!.PrimaryLanguage)
-            .Include(e => e.TechAspect)
+            .IncludeStandardDetails()
             .AsQueryable();
 
         if (isGuid)

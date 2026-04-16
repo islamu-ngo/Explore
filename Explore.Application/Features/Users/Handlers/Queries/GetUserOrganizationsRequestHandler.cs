@@ -28,14 +28,8 @@ public class GetUserOrganizationsRequestHandler : IRequestHandler<GetUserOrganiz
 
     public async Task<List<OrganizationListDto>> Handle(GetUserOrganizationsRequest request, CancellationToken cancellationToken)
     {
-        Console.WriteLine($"[GET USER ORGS] Getting organizations for user: {request.UserId}");
-
-        // Get all organization memberships for this user
         var memberships = await _organizationMemberRepository.GetMembershipsByUser(request.UserId);
 
-        Console.WriteLine($"[GET USER ORGS] Found {memberships.Count} memberships");
-
-        // Map to DTOs and include the user's role in each organization
         var dtos = new List<OrganizationListDto>();
 
         foreach (var membership in memberships)
@@ -45,8 +39,6 @@ public class GetUserOrganizationsRequestHandler : IRequestHandler<GetUserOrganiz
             var dto = _mapper.Map<OrganizationListDto>(membership.Organization);
             dto.CurrentUserRole = (RoleEnum)membership.RoleId;
             dtos.Add(dto);
-
-            Console.WriteLine($"[GET USER ORGS] Org: {dto.FullName}, Role: {dto.CurrentUserRole}");
         }
 
         return dtos;

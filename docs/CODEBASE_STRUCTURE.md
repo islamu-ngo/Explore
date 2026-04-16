@@ -5,7 +5,7 @@ ABOUTME: Helps AI agents and developers locate code quickly without full-repo sc
 
 > Complete directory map for AI agents and developers.
 > Lists all folders with max 2 key files per folder for quick lookup.
-> Last Updated: February 2026
+> Last Updated: April 2026
 
 ---
 
@@ -125,6 +125,8 @@ Explore.Application/
 │   │   └── ISettingsResolver.cs  — Governance settings resolution
 │   ├── Identity/                 — User identity interfaces
 │   │   └── IUserContext.cs       — User context abstraction
+│   ├── Services/                 — Application service interfaces
+│   │   └── IEventActorResolver.cs — Actor resolution contract (org/group/personal with permissions)
 │   ├── Strategies/               — Strategy pattern interfaces
 │   │   ├── IEventStrategy.cs     — Module-specific event behavior
 │   │   └── IStrategyResolver.cs  — Strategy factory interface
@@ -136,8 +138,14 @@ Explore.Application/
 │   ├── NotFoundException.cs      — 404 mapping
 │   ├── BadRequestException.cs    — 400 mapping
 │   └── ValidationException.cs    — Validation failure mapping
-├── Profiles/                     — AutoMapper profiles
-│   └── MappingProfile.cs         — Single file with ALL entity↔DTO mappings
+├── Services/                     — Application-layer services
+│   ├── EventActorResolver.cs    — Resolves event actor (org/group/personal) with permission checks
+│   └── SlugGenerator.cs         — Static URL slug generation utility
+├── Profiles/                     — AutoMapper profiles (10 domain-specific files)
+│   ├── EventMappingProfile.cs   — Event, EventSeries, EventDay, EventAgendaItem, EventTags, EventCategories, Aspects
+│   ├── OrganizationMappingProfile.cs — Organization, Group, Members, ApprovalStatus, Reviews
+│   ├── CustomPropertyMappingProfile.cs — All custom property definitions, templates, options, values
+│   └── [7 more profiles]        — Tenant, EventSession, User, Registration, ActorFederation, Lookup, Notification
 ├── Hateoas/                      — HAL resource models
 │   ├── HalResource.cs            — Base HAL envelope
 │   ├── HalLink.cs                — Link representation
@@ -179,7 +187,10 @@ Data access layer. Implements repository interfaces from Application.
 
 ```
 Explore.Persistence/
-├── ExploreDbContext.cs            — Main DbContext with DbSets, query filters, SaveChanges override
+├── ExploreDbContext.cs            — Main DbContext (partial class — constructor, OnModelCreating)
+├── ExploreDbContext.DbSets.cs    — 170 DbSet property declarations (partial)
+├── ExploreDbContext.QueryFilters.cs — 48 named query filter registrations (partial)
+├── ExploreDbContext.SaveChanges.cs — SaveChangesAsync override (audit, soft delete, concurrency) (partial)
 ├── PersistenceServicesRegistration.cs — DI registration for all repositories
 ├── Repositories/                  — Repository implementations
 │   ├── GenericRepository.cs       — Base CRUD with soft delete awareness
@@ -203,6 +214,12 @@ Explore.Persistence/
 │   ├── SeedData.cs                — Runtime seed data (tenants, users, organizations, events)
 │   ├── SeedIds.cs                 — Deterministic UUIDv7 GUIDs for seed data
 │   └── LookupTableSeeder.cs       — Ensures lookup table values match enum definitions
+├── Extensions/                    — IQueryable extension methods for Include chains
+│   ├── EventQueryExtensions.cs   — IncludeStandardDetails() for Event queries (15 includes)
+│   ├── EventSessionQueryExtensions.cs — IncludeStandardDetails() for EventSession queries
+│   └── NotificationQueryExtensions.cs — IncludeStandardDetails() for Notification queries
+├── Projections/                   — Shared projection infrastructure
+│   └── ProjectionInfrastructure.cs — Advisory locks, FNV-1a hash, batch chunking (used by both projection updaters)
 └── ValueGenerators/               — Custom EF Core value generators
 ```
 
@@ -214,15 +231,18 @@ API layer. Wires everything together via DI. Contains controllers, middleware, H
 
 ```
 Explore.API/
-├── Program.cs                     — Application entry point, all DI registration, middleware pipeline
+├── Program.cs                     — Application entry point, DI registration, middleware pipeline (slimmed via extensions)
 ├── appsettings.json               — Configuration (connection strings, auth, storage, rate limiting, timeouts)
 ├── Controllers/                   — API controllers (one per entity/aggregate)
-│   ├── EventController.cs         — Event CRUD with full specification pattern filtering
+│   ├── ExploreControllerBase.cs   — Abstract base with IUserContext (CurrentUserId, RequiredUserId)
+│   ├── EventController.cs         — Event CRUD with specification pattern filtering via [FromQuery] EventFilterRequest
 │   ├── OrganizationController.cs  — Organization endpoints
 │   ├── InstanceOnboardingController.cs — Instance admin bootstrap
 │   ├── TenantOnboardingController.cs   — Tenant setup wizard
 │   ├── FooterController.cs         — Footer link groups, links, settings, governance (11 endpoints)
-│   └── [40+ more controllers]     — One per entity; GET=AllowAnonymous, POST/PUT/DELETE=Authorize
+│   └── [40+ more controllers]     — Inherit ExploreControllerBase; GET=AllowAnonymous, POST/PUT/DELETE=Authorize
+├── Models/                        — API transport models (not DTOs)
+│   └── EventFilterRequest.cs      — 42-property filter model for [FromQuery] binding
 ├── Services/                      — API-layer services
 │   └── TenantContext.cs           — Multi-tenant resolution (header → custom domain → subdomain → default)
 ├── Middleware/                     — HTTP pipeline middleware
@@ -231,7 +251,10 @@ Explore.API/
 │   ├── ETagMiddleware.cs              — SHA256-based weak ETags, 304 Not Modified
 │   ├── RequestLoggingMiddleware.cs    — Structured logging: method, path, status, duration, userId
 │   └── PreferHeaderMiddleware.cs      — RFC 7240 Prefer header (return=minimal strips _links)
-├── Extensions/                    — DI and configuration extensions
+├── Extensions/                    — DI and configuration extensions (extracted from Program.cs)
+│   ├── AuthenticationExtensions.cs    — Multi-auth (JWT Bearer + API Key) with PolicyScheme dispatch
+│   ├── CachingExtensions.cs           — OutputCache (5 policies) + HybridCache (L1+L2) configuration
+│   ├── CorsExtensions.cs             — 5 CORS policies (InternalApp, ExternalApp, InternalWeb, ExternalWeb, Dev)
 │   ├── RateLimitingExtensions.cs      — 4-tier rate limiting (global, authenticated, write, setup_secret)
 │   ├── RequestTimeoutExtensions.cs    — 3-tier timeouts (default, lookup, complex)
 │   ├── ApiVersioningExtensions.cs     — Media-type versioning (Accept header v parameter)
@@ -392,7 +415,16 @@ Explore.Infrastructure/
 │   ├── CurrentUserService.cs     — Current user ID extraction with claim fallback
 │   ├── ObjectStorageService.cs   — S3-compatible object storage (per-tenant via IS3ConfigResolver)
 │   ├── ModuleService.cs          — Module governance checks
-│   └── SettingsResolver.cs       — SystemSetting/TenantSetting resolution
+│   ├── SettingsResolver.cs       — SystemSetting/TenantSetting resolution
+│   ├── FallbackAuthorizationService.cs — Main dispatch + safe-mode latch (partial class)
+│   ├── FallbackAuthorizationService.Batch.cs — Batch auth evaluation with authority profile (partial)
+│   ├── FallbackAuthorizationService.Evaluators.cs — 14 async resource-family evaluators (partial)
+│   ├── TenantPolicySettingService.cs — Constants, helpers (partial class)
+│   ├── TenantPolicySettingService.Read.cs — Read effective tenant settings (partial)
+│   └── TenantPolicySettingService.Apply.cs — Apply tenant settings with notifications (partial)
+├── Localization/
+│   └── Resilience/
+│       └── TmsResiliencePipelineConfigurator.cs — Shared Polly v8 pipeline for TMS providers
 └── Strategies/
     ├── StrategyResolver.cs       — Resolves event strategy by module type
     ├── IslamicEventStrategy.cs   — Islamic module-specific event behavior

@@ -13,6 +13,7 @@ using Explore.Infrastructure.Outbox;
 using Explore.Infrastructure.Services;
 using Explore.Infrastructure.Services.Federation;
 using Explore.Infrastructure.Storage;
+using Explore.Infrastructure.Localization.Resilience;
 using Explore.Infrastructure.Strategies;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Configuration;
@@ -154,12 +155,32 @@ public static class InfrastructureServicesRegistration
         // None → OfflineTranslationProvider (bundled .json files), Tolgee → TolgeeTranslationProvider, Weblate → WeblateTranslationProvider
         services.AddHttpClient<TolgeeTranslationProvider>(client =>
         {
-            client.Timeout = TimeSpan.FromSeconds(10);
-        });
+            client.Timeout = TimeSpan.FromSeconds(30);
+        })
+        .AddResilienceHandler("tolgee-pipeline", builder => TmsResiliencePipelineConfigurator.Configure(builder,
+            async args =>
+            {
+                if (args.Outcome.Result is { } response)
+                {
+                    var delay = await TolgeeRetryAfterReader.ReadDelayAsync(response, args.Context.CancellationToken);
+                    if (delay is not null) return delay.Value;
+                }
+                return null;
+            }));
         services.AddHttpClient<WeblateTranslationProvider>(client =>
         {
-            client.Timeout = TimeSpan.FromSeconds(10);
-        });
+            client.Timeout = TimeSpan.FromSeconds(30);
+        })
+        .AddResilienceHandler("weblate-pipeline", builder => TmsResiliencePipelineConfigurator.Configure(builder,
+            args =>
+            {
+                if (args.Outcome.Result is { } response)
+                {
+                    var delay = WeblateRateLimitReader.ReadDelay(response);
+                    if (delay is not null) return ValueTask.FromResult<TimeSpan?>(delay.Value);
+                }
+                return ValueTask.FromResult<TimeSpan?>(null);
+            }));
         services.AddSingleton<OfflineTranslationProvider>();
         services.AddScoped<NullTranslationProvider>();
         services.AddScoped<ITranslationConfigResolver, TranslationConfigResolver>();
@@ -167,6 +188,7 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<ITranslationManagementProvider>(sp => sp.GetRequiredService<RuntimeTranslationProvider>());
         services.AddScoped<TranslationResolver>();
         services.AddScoped<ITranslationResolver>(sp => sp.GetRequiredService<TranslationResolver>());
+        services.AddScoped<IBundleFileWriter, BundleFileWriter>();
 
         // Generic Outbox Processor settings and dispatcher
         services.Configure<OutboxProcessorSettings>(configuration.GetSection(OutboxProcessorSettings.SectionName));

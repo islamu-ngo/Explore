@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Hateoas;
+using Explore.API.Models;
 using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.EventAspects;
 using Explore.Application.Features.EventAspects.Requests.Commands;
@@ -28,7 +29,7 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-public class EventController : ControllerBase
+public class EventController : ExploreControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ILogger<EventController> _logger;
@@ -62,90 +63,47 @@ public class EventController : ControllerBase
     [ProducesResponseType(typeof(HalCollectionResource<EventListDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<EventListDto>>> GetAll(
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 20,
-        // Core event filters
-        [FromQuery] string? searchTerm = null,
-        [FromQuery] Guid? categoryId = null,
-        [FromQuery] List<Guid>? includedCategoryIds = null,
-        [FromQuery] List<Guid>? excludedCategoryIds = null,
-        [FromQuery] string? categoryInclusionMode = null,
-        [FromQuery] string? categoryExclusionMode = null,
-        [FromQuery] List<Guid>? includedTagIds = null,
-        [FromQuery] List<Guid>? excludedTagIds = null,
-        [FromQuery] string? inclusionMode = null,
-        [FromQuery] string? exclusionMode = null,
-        [FromQuery] List<int>? formatIds = null,
-        [FromQuery] List<int>? madhabIds = null,
-        [FromQuery] List<Guid>? locationIds = null,
-        [FromQuery] List<int>? registrationModeIds = null,
-        [FromQuery] List<int>? languageIds = null,
-        [FromQuery] DateOnly? dateFrom = null,
-        [FromQuery] DateOnly? dateTo = null,
-        [FromQuery] List<int>? eventTypeIds = null,
-        [FromQuery] List<int>? audienceGenderIds = null,
-        [FromQuery] List<int>? audienceAgeIds = null,
-        [FromQuery] List<int>? eventStatusIds = null,
-        // Islamic aspect filters (module-conditional — silently ignored when module is disabled)
-        [FromQuery] List<int>? genderModeIds = null,
-        [FromQuery] bool? includesQuranRecitation = null,
-        [FromQuery] List<int>? referencePrayerIds = null,
-        [FromQuery] List<int>? islamicPrimaryLanguageIds = null,
-        [FromQuery] bool? hasIslamicAspect = null,
-        // Tech aspect filters (module-conditional — silently ignored when module is disabled)
-        [FromQuery] int? skillLevelId = null,
-        [FromQuery] bool? isCodingCompetition = null,
-        [FromQuery] bool? isHackathon = null,
-        [FromQuery] bool? requiresLaptop = null,
-        [FromQuery] string? techStackTag = null,
-        [FromQuery] bool? hasTechAspect = null,
-        // Sorting
-        [FromQuery] string? sortBy = null,
-        [FromQuery] bool sortDescending = true,
+        [FromQuery] EventFilterRequest filter,
         CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(new GetEventListRequest
         {
-            PageNumber = pageNumber,
-            PageSize = pageSize,
-            // Core event filters
-            SearchTerm = searchTerm,
-            CategoryId = categoryId,
-            IncludedCategoryIds = includedCategoryIds,
-            ExcludedCategoryIds = excludedCategoryIds,
-            CategoryInclusionMode = ParseTagFilterMode(categoryInclusionMode, TagFilterMode.And),
-            CategoryExclusionMode = ParseTagFilterMode(categoryExclusionMode, TagFilterMode.Or),
-            IncludedTagIds = includedTagIds,
-            ExcludedTagIds = excludedTagIds,
-            InclusionMode = ParseTagFilterMode(inclusionMode, TagFilterMode.And),
-            ExclusionMode = ParseTagFilterMode(exclusionMode, TagFilterMode.Or),
-            FormatIds = formatIds,
-            MadhabIds = madhabIds,
-            LocationIds = locationIds,
-            RegistrationModeIds = registrationModeIds,
-            LanguageIds = languageIds,
-            DateFrom = dateFrom,
-            DateTo = dateTo,
-            EventTypeIds = eventTypeIds,
-            AudienceGenderIds = audienceGenderIds,
-            AudienceAgeIds = audienceAgeIds,
-            EventStatusIds = eventStatusIds,
-            // Islamic aspect filters
-            GenderModeIds = genderModeIds,
-            IncludesQuranRecitation = includesQuranRecitation,
-            ReferencePrayerIds = referencePrayerIds,
-            IslamicPrimaryLanguageIds = islamicPrimaryLanguageIds,
-            HasIslamicAspect = hasIslamicAspect,
-            // Tech aspect filters
-            SkillLevelId = skillLevelId,
-            IsCodingCompetition = isCodingCompetition,
-            IsHackathon = isHackathon,
-            RequiresLaptop = requiresLaptop,
-            TechStackTag = techStackTag,
-            HasTechAspect = hasTechAspect,
-            // Sorting
-            SortBy = sortBy,
-            SortDescending = sortDescending
+            PageNumber = filter.PageNumber,
+            PageSize = filter.PageSize,
+            SearchTerm = filter.SearchTerm,
+            CategoryId = filter.CategoryId,
+            IncludedCategoryIds = filter.IncludedCategoryIds,
+            ExcludedCategoryIds = filter.ExcludedCategoryIds,
+            CategoryInclusionMode = ParseTagFilterMode(filter.CategoryInclusionMode, TagFilterMode.And),
+            CategoryExclusionMode = ParseTagFilterMode(filter.CategoryExclusionMode, TagFilterMode.Or),
+            IncludedTagIds = filter.IncludedTagIds,
+            ExcludedTagIds = filter.ExcludedTagIds,
+            InclusionMode = ParseTagFilterMode(filter.InclusionMode, TagFilterMode.And),
+            ExclusionMode = ParseTagFilterMode(filter.ExclusionMode, TagFilterMode.Or),
+            FormatIds = filter.FormatIds,
+            MadhabIds = filter.MadhabIds,
+            LocationIds = filter.LocationIds,
+            RegistrationModeIds = filter.RegistrationModeIds,
+            LanguageIds = filter.LanguageIds,
+            DateFrom = filter.DateFrom,
+            DateTo = filter.DateTo,
+            EventTypeIds = filter.EventTypeIds,
+            AudienceGenderIds = filter.AudienceGenderIds,
+            AudienceAgeIds = filter.AudienceAgeIds,
+            EventStatusIds = filter.EventStatusIds,
+            GenderModeIds = filter.GenderModeIds,
+            IncludesQuranRecitation = filter.IncludesQuranRecitation,
+            ReferencePrayerIds = filter.ReferencePrayerIds,
+            IslamicPrimaryLanguageIds = filter.IslamicPrimaryLanguageIds,
+            HasIslamicAspect = filter.HasIslamicAspect,
+            SkillLevelId = filter.SkillLevelId,
+            IsCodingCompetition = filter.IsCodingCompetition,
+            IsHackathon = filter.IsHackathon,
+            RequiresLaptop = filter.RequiresLaptop,
+            TechStackTag = filter.TechStackTag,
+            HasTechAspect = filter.HasTechAspect,
+            SortBy = filter.SortBy,
+            SortDescending = filter.SortDescending
         }, cancellationToken);
 
         var halResource = await _resourceAssembler.ToCollectionResource(
@@ -171,44 +129,25 @@ public class EventController : ControllerBase
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
     {
-        try
+        var userId = CurrentUserId?.ToString();
+
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var result = await _mediator.Send(new GetMyEventsRequest
         {
-            _logger.LogInformation("=== GetMyEvents API Request ===");
-            _logger.LogInformation("User authenticated: {IsAuthenticated}", User?.Identity?.IsAuthenticated);
-            _logger.LogInformation("User name: {Name}", User?.Identity?.Name);
+            UserId = userId,
+            PageNumber = pageNumber,
+            PageSize = pageSize
+        }, cancellationToken);
 
-            var userId = GetCurrentUserId();
-            _logger.LogInformation("Extracted userId: {UserId}", userId);
+        var halResource = await _resourceAssembler.ToCollectionResource(
+            result!,
+            RouteNames.GetMyEvents,
+            additionalRouteValues: null,
+            HttpContext);
 
-            if (string.IsNullOrEmpty(userId))
-            {
-                _logger.LogWarning("User ID not found in token");
-                return Unauthorized(new { error = "User ID not found in token" });
-            }
-
-            _logger.LogInformation("Sending GetMyEventsRequest for userId: {UserId}", userId);
-            var result = await _mediator.Send(new GetMyEventsRequest
-            {
-                UserId = userId,
-                PageNumber = pageNumber,
-                PageSize = pageSize
-            }, cancellationToken);
-
-            _logger.LogInformation("Retrieved {Count} events", result?.Items?.Count ?? 0);
-
-            var halResource = await _resourceAssembler.ToCollectionResource(
-                result!,
-                RouteNames.GetMyEvents,
-                additionalRouteValues: null,
-                HttpContext);
-
-            return Ok(halResource);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error in GetMyEvents");
-            return StatusCode(500, new { error = ex.Message, stackTrace = ex.StackTrace });
-        }
+        return Ok(halResource);
     }
 
     /// <summary>
@@ -334,7 +273,7 @@ public class EventController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        var userId = GetCurrentUserId();
+        var userId = CurrentUserId?.ToString();
 
         if (string.IsNullOrEmpty(userId))
         {
@@ -345,17 +284,6 @@ public class EventController : ControllerBase
         await _mediator.Send(command, cancellationToken);
 
         return NoContent();
-    }
-
-    /// <summary>
-    /// Extracts the current user ID from claims using the standard fallback pattern.
-    /// </summary>
-    private string? GetCurrentUserId()
-    {
-        return HttpContext.User?.FindFirst("sub")?.Value
-            ?? HttpContext.User?.FindFirst(
-                "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-            ?? HttpContext.User?.FindFirst("sid")?.Value;
     }
 
     #region Event Aspects

@@ -36,7 +36,8 @@ public class OrganizationTests
     {
         var entity = CreateOrganization();
 
-        await Assert.That(entity.Members).IsNull();
+        await Assert.That(entity.Members).IsNotNull();
+        await Assert.That(entity.Members).IsEmpty();
     }
 
     [Test]

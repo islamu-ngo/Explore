@@ -44,6 +44,6 @@ public class Group : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
     // Concurrency control
     public Guid ConcurrencyStamp { get; set; }
 
-    // Navigation property for members
-    public ICollection<GroupMember>? Members { get; set; }
+    private readonly List<GroupMember> _members = [];
+    public IReadOnlyList<GroupMember> Members => _members.AsReadOnly();
 }

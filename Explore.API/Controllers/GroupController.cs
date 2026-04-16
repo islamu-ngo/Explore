@@ -24,7 +24,7 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
-public class GroupController : ControllerBase
+public class GroupController : ExploreControllerBase
 {
     private readonly IMediator _mediator;
     private readonly IResourceAssembler<GroupDto, GroupListDto> _resourceAssembler;
@@ -74,7 +74,7 @@ public class GroupController : ControllerBase
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
-        var userId = GetCurrentUserId();
+        var userId = CurrentUserId?.ToString();
         if (string.IsNullOrEmpty(userId))
         {
             return Unauthorized("User ID not found in token");
@@ -147,7 +147,7 @@ public class GroupController : ControllerBase
         [FromBody] UpdateGroupDto updateDto,
         CancellationToken cancellationToken = default)
     {
-        var userId = GetCurrentUserId();
+        var userId = CurrentUserId?.ToString();
         if (string.IsNullOrEmpty(userId))
         {
             return Unauthorized("User ID not found in token");
@@ -178,7 +178,7 @@ public class GroupController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Delete(Guid id, CancellationToken cancellationToken = default)
     {
-        var userId = GetCurrentUserId();
+        var userId = CurrentUserId?.ToString();
         if (string.IsNullOrEmpty(userId))
         {
             return Unauthorized("User ID not found in token");
@@ -198,10 +198,4 @@ public class GroupController : ControllerBase
         return Ok(response);
     }
 
-    private string? GetCurrentUserId()
-    {
-        return HttpContext.User?.FindFirst("sub")?.Value
-            ?? HttpContext.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-            ?? HttpContext.User?.FindFirst("sid")?.Value;
-    }
 }
