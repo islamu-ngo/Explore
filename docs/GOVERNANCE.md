@@ -1,3 +1,6 @@
+ABOUTME: Project governance rules that normalize architecture, naming, and contribution standards for this repository.
+ABOUTME: Replaces generic template guidance with repo-specific constraints and links to the authoritative docs.
+
 # Code Conventions & Governance
 
 > **Standards and Conventions for .NET Clean Architecture Projects**
@@ -30,12 +33,12 @@ These rules are **non-negotiable**. Violations break architectural integrity.
 | 1 | Repositories return **entities**, never DTOs | Single responsibility; mapping belongs in handlers |
 | 2 | Validators use **manual instantiation**, not DI | Fine-grained control; consistent pattern |
 | 3 | Navigation properties are **readonly for writes** | Tenant isolation; explicit repository operations |
-| 4 | Use `int` for IDs (except where `Guid`/`long` needed) | Consistency; sufficient for most scenarios |
+| 4 | Use `Guid` for core aggregates, `int` for most lookups, `long` only for large size/cursor fields | Matches current domain and persistence conventions |
 | 5 | No default values in entity properties | Explicit initialization; clear value origins |
-| 6 | Keep all using statements | Build system dependencies; prevents issues |
-| 7 | Commands return `BaseCommandResponse<T>` | Consistent error handling; structured responses |
+| 6 | Do not delete seemingly unused `using` statements blindly | Verify with build/tests before cleanup |
+| 7 | Create/update commands typically return `BaseCommandResponse<Guid>` | Matches current CQRS response contracts |
 | 8 | GET = AllowAnonymous, Write = Authorize | Public discovery; protected writes |
-| 9 | UserId extraction uses fallback pattern | Provider compatibility; claim name variations |
+| 9 | UserId extraction fallback is `sub` -> `nameidentifier` -> `sid` | Provider compatibility; claim name variations |
 | 10 | Use file-scoped namespaces | C# 10+ convention; cleaner code |
 
 **For detailed examples**: See `QUICK_REFERENCE.md` and relevant skills.
@@ -97,71 +100,73 @@ These rules are **non-negotiable**. Violations break architectural integrity.
 ### Solution Structure
 
 ```
-{Project}.sln
-├── src/
-│   ├── {Project}.Domain/           # Entities, Enums, Interfaces
-│   ├── {Project}.Application/      # CQRS, DTOs, Validators
-│   ├── {Project}.Persistence/      # DbContext, Repositories
-│   ├── {Project}.Infrastructure/   # External services
-│   ├── {Project}.API/              # REST endpoints
-│   ├── {Project}.Blazor/           # BFF (Blazor Server)
-│   └── {Project}.Blazor.Client/    # UI (Blazor WASM)
-├── tests/
-│   ├── {Project}.Domain.UnitTests/
-│   ├── {Project}.Application.UnitTests/
-│   ├── {Project}.API.IntegrationTests/
-│   └── {Project}.Persistence.IntegrationTests/
-└── docs/
+Event.sln
+├── Event.Domain/
+├── Event.Application/
+├── Explore.Persistence/
+├── Explore.Infrastructure/
+├── Explore.API/
+├── Explore.Blazor/
+├── Explore.Blazor.Client/
+├── Explore.AppHost/
+├── Event.Domain.UnitTests/
+├── Event.Application.UnitTests/
+├── Event.Architecture.Tests/
+├── Explore.Secrets.UnitTests/
+├── Event.Persistence.IntegrationTests/
+├── Event.API.IntegrationTests/
+├── Explore.Blazor.IntegrationTests/
+├── Explore.Blazor.Client.Tests/
+├── Explore.Blazor.Client.E2ETests/
+├── docs/
+└── dev/
 ```
+
+See [CODEBASE_STRUCTURE.md](CODEBASE_STRUCTURE.md) for the full directory map and notable subfolders.
 
 ### Application Layer Organization
 
 ```
-{Project}.Application/
-├── Features/{Entity}/
+Event.Application/
+├── Features/{Feature}/
 │   ├── Requests/
 │   │   ├── Commands/           # Create, Update, Delete
 │   │   └── Queries/            # Get, List, Search
 │   └── Handlers/
 │       ├── Commands/           # Command handlers
 │       └── Queries/            # Query handlers
-├── DTOs/{Entity}/
-│   ├── {Entity}Dto.cs
-│   ├── {Entity}ListDto.cs
-│   ├── Create{Entity}Dto.cs
-│   ├── Update{Entity}Dto.cs
-│   └── Validators/
+├── Behaviors/
+├── Authorization/
 ├── Contracts/
-│   ├── Persistence/            # Repository interfaces
-│   ├── Infrastructure/         # Service interfaces
-│   └── Identity/               # User context interfaces
-├── Responses/                  # BaseCommandResponse, etc.
-├── Exceptions/                 # Custom exceptions
-└── Profiles/                   # AutoMapper profiles
+├── DTOs/
+├── Responses/
+├── Telemetry/
+└── Profiles/
 ```
 
 ### Domain Layer Organization
 
 ```
-{Project}.Domain/
+Event.Domain/
 ├── Entities/                   # Core business entities
 ├── Enums/                      # Enum definitions
 ├── Interfaces/                 # Domain interfaces
 │   ├── ITenantEntity.cs
 │   ├── IAuditableEntity.cs
 │   └── ISoftDeletable.cs
-└── ValueObjects/               # Value objects (if any)
+├── Specifications/
+└── ValueObjects/
 ```
 
 ### Persistence Layer Organization
 
 ```
-{Project}.Persistence/
+Explore.Persistence/
 ├── Configurations/
-│   └── Entities/               # EF Core configurations
-├── Repositories/               # Repository implementations
-├── Migrations/                 # Database migrations
-└── {DbContext}.cs              # Main DbContext
+├── QueryFilters/
+├── Repositories/
+├── Services/
+└── ExploreDbContext.cs
 ```
 
 ---
@@ -172,15 +177,15 @@ These rules are **non-negotiable**. Violations break architectural integrity.
 
 | Concern | Layer | Location |
 |---------|-------|----------|
-| Entity definition | Domain | `{Project}.Domain/` |
+| Entity definition | Domain | `Event.Domain/` |
 | Business rules | Domain | Entity methods, value objects |
 | Repository interface | Application | `Contracts/Persistence/` |
-| Command/Query | Application | `Features/{Entity}/Requests/` |
-| Handler logic | Application | `Features/{Entity}/Handlers/` |
-| DTO definition | Application | `DTOs/{Entity}/` |
-| Validation rules | Application | `DTOs/{Entity}/Validators/` |
+| Command/Query | Application | `Features/{Feature}/Requests/` |
+| Handler logic | Application | `Features/{Feature}/Handlers/` |
+| DTO definition | Application | `DTOs/` and feature folders |
+| Validation rules | Application | Feature validators or DTO validator folders |
 | Repository implementation | Persistence | `Repositories/` |
-| EF configuration | Persistence | `Configurations/Entities/` |
+| EF configuration | Persistence | `Configurations/` |
 | External service impl | Infrastructure | Service classes |
 | API endpoint | Presentation | `Controllers/` |
 | UI component | Presentation | `Components/` |

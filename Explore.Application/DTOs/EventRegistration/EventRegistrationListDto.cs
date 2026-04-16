@@ -10,6 +10,9 @@ public class EventRegistrationListDto
     public Guid UserId { get; set; }
     public string? UserFullName { get; set; }
 
+    // Registration Intent (parent aggregate)
+    public Guid? EventRegistrationIntentId { get; set; }
+
     // Event Session
     public Guid EventSessionId { get; set; }
     public string? EventSessionTitle { get; set; }

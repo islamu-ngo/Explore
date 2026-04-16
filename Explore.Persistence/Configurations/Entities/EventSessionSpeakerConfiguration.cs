@@ -22,5 +22,9 @@ public class EventSessionSpeakerConfiguration : IEntityTypeConfiguration<EventSe
             .WithMany()
             .HasForeignKey(e => e.TenantId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(e => new { e.TenantId, e.EventSessionId, e.ActorId })
+            .HasDatabaseName("ix_event_session_speakers_tenant_session_actor")
+            .IsUnique();
     }
 }

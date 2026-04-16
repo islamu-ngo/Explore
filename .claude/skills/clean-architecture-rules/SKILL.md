@@ -37,5 +37,9 @@ ABOUTME: Read referenced resources before applying.
 - [violation-examples.md](resources/violation-examples.md)
 - [fix-patterns.md](resources/fix-patterns.md)
 
+## Related Documentation
+- [`docs/ARCHITECTURE.md`](../../../docs/ARCHITECTURE.md) — layer boundaries, request flow, specification placement
+- [`docs/CODEBASE_STRUCTURE.md`](../../../docs/CODEBASE_STRUCTURE.md) — concrete project layout and ownership
+
 **Enforcement Level**: BLOCK
 **Override**: Add `@skip-architecture-check` comment in file (use sparingly)

@@ -1,7 +1,17 @@
 {
   "scripts": {
     "setup": null,
-    "teardown": "Get-Process dotnet -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue }",
-    "run": "dotnet run --project Explore.AppHost --launch-profile \"https\""
-  }
+    "teardown": null,
+    "run": "dotnet run --project Explore.AppHost/Explore.AppHost.csproj --launch-profile https"
+  },
+  "ports": [
+    {
+      "port": 7177,
+      "label": "Blazor"
+    },
+    {
+      "port": 17071,
+      "label": "Aspire"
+    }
+  ]
 }

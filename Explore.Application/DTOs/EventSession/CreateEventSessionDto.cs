@@ -13,6 +13,12 @@ public class CreateEventSessionDto
     // Location
     public Guid? LocationId { get; set; }
 
+    // Room (optional child of LocationId used by same-room overlap guard)
+    public Guid? RoomId { get; set; }
+
+    // Ordering
+    public int SortOrder { get; set; }
+
     // Session Details
     public string? Title { get; set; }
     public string? Description { get; set; }

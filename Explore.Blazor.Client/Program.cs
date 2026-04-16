@@ -1,3 +1,4 @@
+using System.Globalization;
 using Blazouter.Extensions;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Configuration;
@@ -9,8 +10,10 @@ using Explore.Blazor.Client.Extensions;
 using Explore.Blazor.Client.Routing.Guards;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Http;
+using Explore.Domain.Common.Localization;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.JSInterop;
 using MudBlazor.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -100,4 +103,24 @@ builder.Services.AddAuthenticationStateDeserialization();
 // Add logging for debugging in WASM
 builder.Logging.SetMinimumLevel(LogLevel.Information);
 
-await builder.Build().RunAsync();
+var host = builder.Build();
+
+// Set CultureInfo from the .AspNetCore.Culture cookie so .NET date/number formatting
+// respects user language in WASM. Runs before first render for correct initial formatting.
+try
+{
+    var jsRuntime = host.Services.GetRequiredService<IJSRuntime>();
+    var langCookie = await jsRuntime.InvokeAsync<string?>("localization.getLanguageCookie");
+    if (!string.IsNullOrWhiteSpace(langCookie) && CultureRegistry.Contains(langCookie))
+    {
+        var culture = new CultureInfo(langCookie);
+        CultureInfo.DefaultThreadCurrentCulture = culture;
+        CultureInfo.DefaultThreadCurrentUICulture = culture;
+    }
+}
+catch
+{
+    // Startup must not fail due to culture detection — fall through to defaults.
+}
+
+await host.RunAsync();

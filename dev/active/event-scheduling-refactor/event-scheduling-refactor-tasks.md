@@ -1,99 +1,108 @@
-Last Updated: 2026-03-16 Europe/Brussels
+Last Updated: 2026-04-13 Europe/Brussels
 
 # Tasks: Event Scheduling Refactor
 
-## Session Checkpoint (2026-03-16 Europe/Brussels)
+## Session Checkpoint (2026-04-12 Europe/Brussels)
 
-- ✅ Registration wording revised: parent rows = intent/group semantics, child rows = concrete session entitlements/access.
-- ✅ Same-room overlap enforcement strategy documented: async FluentValidation in create/update session DTO validators first.
-- ✅ Plan sequencing tightened: additive schema first, isolated registration phase, NSwag boundary before broad Blazor work.
-- 🟡 Current in-progress work is still planning-only: next step is PR-slice decomposition, not implementation.
-- ⚠️ Keep the UI/UX section already present in the plan intact unless the user explicitly asks to revise it again.
+- ✅ Plan updated with EventDay justification, two-layer overlap enforcement, projection calculator ownership.
+- ✅ 12 implementation slices delivered, all passing (65 Architecture + 100 Domain + 712 Application + 190 Secrets tests).
+- ✅ Registration intent-first flow is live: handler creates parent + children atomically.
+- ✅ Phase 2.7 EventDayId auto-linking: both session handlers now auto-link EventDayId after Reschedule().
+- ✅ Phase 3.3+3.4: Full CRUD for EventDay and EventAgendaItem with DTOs, validators, handlers, auth, Cerbos policies.
+- 🟡 NSwag client stale — Blazor.Client generated DTO still has old shape. Phase 4/6 fix.
+- ⚠️ Blazor.Client has pre-existing compile errors from blazor-localization branch (not from this refactor).
+- ⚠️ Architecture test: 1 pre-existing failure (GovernanceReportFilter naming) — not from this refactor.
 
 ## Phase 0 - Audit, ADR, and baseline
 
+- [x] Stabilize build/test verification baseline enough for iterative refactor PRs.
+- [x] Lock phase boundaries: additive schema first, registration isolated, NSwag boundary before broad Blazor work.
+- [x] Define atomic commit plan before implementation starts.
+- [x] Lock the registration wording so parent rows = intent/group and child rows = concrete session entitlements/access.
 - [ ] Finalize ADR for `EventSeries`, `EventDay`, `EventAgendaItem`, registration scopes, and timezone rules.
 - [ ] Reconcile this refactor with `dev/active/session-series-ux/` and record shared ownership boundaries.
-- [ ] Stabilize build/test verification baseline enough for iterative refactor PRs.
-- [ ] Capture migration/backfill assumptions for registrations and event days.
-- [ ] Remove or minimize current `DtoPartials` scheduling workarounds by fixing schema/client drift in the proper contracts.
-- [ ] Lock phase boundaries: additive schema first, registration isolated, NSwag boundary before broad Blazor work.
-- [ ] Define atomic commit plan before implementation starts.
-- [ ] Lock the registration wording so parent rows = intent/group and child rows = concrete session entitlements/access.
 
 ## Phase 1 - Domain and schema foundation
 
-- [ ] Add `EventDay` domain entity.
-- [ ] Add `EventAgendaItem` domain entity.
-- [ ] Add `LocationRoom` domain entity.
-- [ ] Add parent registration intent/group entity.
-- [ ] Keep or adapt `EventRegistration` as the child concrete session entitlement/access entity.
-- [ ] Add registration policy to `Event`.
-- [ ] Refactor `EventSession` semantics and fields.
-- [ ] Add schedule item type/kind support.
-- [ ] Add session taxonomy junction entities.
+- [x] Add `EventDay` domain entity.
+- [x] Add `EventAgendaItem` domain entity.
+- [x] Add `LocationRoom` domain entity.
+- [x] Add parent registration intent/group entity (`EventRegistrationIntent`).
+- [x] Wire `EventRegistration` as the child concrete session entitlement/access entity (nullable `EventRegistrationIntentId`).
+- [x] Add registration policy to `Event` (`RegistrationPolicyId` FK).
+- [x] Refactor `EventSession` semantics and fields (local projections, RoomId, EventDayId, SortOrder, aggregate methods).
+- [x] Add schedule item type/kind support (`ScheduleItemKind` + enum).
+- [x] Add session taxonomy junction entities (`EventSessionCategory`, `EventSessionTag`).
+- [x] Add `IEventScheduleProjectionCalculator` domain service + implementation.
+- [x] Add `RegistrationPolicyRules` domain service.
+- [x] Add `RegistrationScope` lookup + enum.
 
 ## Phase 2 - Persistence and migrations
 
-- [ ] Add DbSets for all new entities.
-- [ ] Add EF configurations and named query filters.
-- [ ] Add missing unique constraints on current junctions.
-- [ ] Add cached local projection columns and indexes.
-- [ ] Add room conflict protection.
-- [ ] Implement same-room overlap checks in create/update session DTO validators with async repository-backed validation.
-- [ ] Keep newly introduced rollout FKs nullable first.
-- [ ] Create migration(s) for new schema.
-- [ ] Backfill existing registrations into parent-child model.
-- [ ] Backfill `EventDay` rows from existing data.
-- [ ] Update `schemas/islamu-event.md`.
+- [x] Add DbSets for all new entities.
+- [x] Add EF configurations and named query filters.
+- [x] Add missing unique constraints on current junctions.
+- [x] Add cached local projection columns and indexes.
+- [x] Add room conflict protection (two-layer: async validator + serializable tx guard).
+- [x] Implement same-room overlap checks in session validators with async repo-backed validation.
+- [x] Keep newly introduced rollout FKs nullable first.
+- [x] Create migration(s) for new schema. (User ran migrations after each slice.)
+- [x] Phase 2.2: Add partial unique indexes for EventRegistrationIntent parent uniqueness.
+- [ ] Phase 2.5: Backfill `EventDay` rows from existing sessions using event timezone.
+- [x] Phase 2.7: Auto-link `EventSession.EventDayId` during Reschedule (match EventDay by EventId + LocalStartDate).
+- [ ] Backfill existing `EventRegistration` rows into parent-child model (set `EventRegistrationIntentId` NOT NULL after).
+- [x] Update `schemas/islamu-event.md`. ✅ All new entities, relationships, enums added.
 
 ## Phase 3 - Application layer
 
-- [ ] Refactor event create/update commands and validators.
-- [ ] Refactor session create/update commands and validators.
-- [ ] Add event agenda item commands/queries.
-- [ ] Add event day commands/queries.
-- [ ] Add registration-by-scope commands/queries.
-- [ ] Add room management commands/queries.
-- [ ] Add agenda projection queries grouped by local day and room.
-- [ ] Update AutoMapper profile.
+- [x] Refactor session create/update commands and validators (overlap guard + projection calculator).
+- [x] Refactor registration commands/validators (intent-first flow with policy enforcement).
+- [x] Update AutoMapper profile (removed stale CreateMap).
+- [x] Register `IEventScheduleProjectionCalculator` singleton in DI.
+- [x] Add `IEventDayRepository` + `IEventRegistrationIntentRepository` + DI wiring.
+- [x] Phase 3.1: Refactor event create/update commands for RegistrationPolicyId + series wiring.
+- [x] Phase 3.3: Add event agenda item CRUD commands/queries.
+- [x] Phase 3.4: Add event day CRUD commands/queries.
+- [x] Phase 3.6: Add agenda projection queries grouped by local day and room.
+- [x] Add room management commands/queries.
 
 ## Phase 4 - API and contracts
 
-- [ ] Update event/session/registration DTOs.
-- [ ] Add DTOs for event day, event agenda item, room, registration child rows, and policy/scope projections.
-- [ ] Add/update API controllers/endpoints.
-- [ ] Preserve ProblemDetails, HATEOAS, and auth conventions.
-- [ ] Regenerate OpenAPI/NSwag contracts.
+- [x] Update event/session/registration DTOs for read models.
+- [x] Add DTOs for event day, event agenda item, room, registration intent, and policy/scope projections.
+- [x] Add/update API controllers/endpoints.
+- [x] Preserve ProblemDetails, HATEOAS, and auth conventions.
+- [ ] Regenerate OpenAPI/NSwag contracts. 🟡 USER ACTION — run swagger + NSwag regen to pick up 6 new controllers.
 
 ## Phase 5 - Blazor UI
 
-- [ ] Overhaul `CreateEvent.razor` and `EditEvent.razor` to support event-level location, days, rooms, and registration policies.
-- [ ] Implement `UIConfigurationService` for tenant UI preferences.
-- [ ] Build "Miller Column" stack using `MudDrawer` (Primary: Detail, Secondary: Agenda, Tertiary: Session).
-- [ ] Set custom `ZIndex` and `backdrop-filter: blur(0.75rem)` for stacked drawers.
-- [ ] Build CSS Grid-based agenda component inside a `MudPaper` container.
-- [ ] Implement full-width bands for shared items (`grid-column: 2 / -1`).
-- [ ] Implement in-place management UI (Add Day/Room/Agenda) within `EventDetail.razor` and `EventList` sidebars, guarded by HATEOAS/authorization logic.
-- [ ] Add inline "Edit" and "Delete" icons for sessions/items in the agenda grid for authorized users.
-- [ ] Implement mobile room-focused agenda using `MudSwipeArea` or `MudTabs`.
-- [ ] Add sticky positioning for agenda time axis and room headers.
-- [ ] Create `.razor.css` files for all new components using BEM and `::deep`.
+- [ ] Overhaul `CreateEvent.razor` and `EditEvent.razor` to support days, rooms, registration policies.
+- [ ] Build CSS Grid-based agenda component.
+- [ ] Build "Miller Column" stack using `MudDrawer`.
+- [ ] Implement in-place management UI (Add Day/Room/Agenda).
 - [ ] Refactor registration UX using `MudRadioGroup` for policy-aware selection.
+- [ ] Update Blazor services and pages for new `CreateEventRegistrationDto` shape.
 - [ ] Reuse existing `EventSeriesSection`, `SessionSummaryCard`, and session workflow abstractions.
 
 ## Phase 6 - Tests and docs
 
-- [ ] Add/expand domain unit tests.
-- [ ] Add/expand persistence integration tests.
-- [ ] Add/expand application tests.
+- [x] Add/expand domain unit tests (timezone projection, policy rules, aggregate methods). ✅ 192 tests passing
+- [ ] Add/expand persistence integration tests (overlap guard serializable tx, backfill).
+- [x] Add/expand application tests (handler tests for EventDay, EventAgendaItem, LocationRoom CRUD + AgendaProjection + RegistrationScope). ✅ 822 tests passing
 - [ ] Add/expand Blazor component tests.
-- [ ] Update docs/ADR/schema/developer notes.
+- [x] Update docs/ADR/schema/developer notes (schemas/islamu-event.md updated). ✅
 
 ## Immediate Next Steps
 
-- [ ] Break the epic into implementation PR slices. 🟡 CURRENT NEXT STEP
-- [ ] Identify the first safe foundation PR.
-- [ ] Decide the first PR: ADR/tests guardrails vs additive schema entities.
-- [ ] Define the exact shape/naming of the parent registration table before code changes (`EventRegistrationIntent` vs `EventRegistrationGroup`).
-- [ ] Identify repository/service contract additions needed for same-room overlap validator checks.
+- [x] Phase 2.7: Auto-link `EventSession.EventDayId` in `Reschedule()`. ✅ DONE
+- [x] Phase 3.3 + 3.4: Event agenda item + event day CRUD commands. ✅ DONE
+- [x] Phase 3.1: Event command refactor for RegistrationPolicyId. ✅ DONE
+- [x] Phase 2.2: Partial unique indexes for EventRegistrationIntent parent uniqueness. ✅ DONE
+- [x] Phase 3.6: Agenda projection queries grouped by local day and room. ✅ DONE
+- [x] Add room management commands/queries. ✅ DONE
+- [ ] Phase 2.5: EventDay backfill migration from existing sessions. 🟡 Skipped (dev mode)
+- [x] Phase 4: API controllers + NSwag boundary. ✅ DONE (controllers + DTOs + HATEOAS + AutoMapper + repos)
+- [ ] NSwag regeneration: User must regenerate swagger.json + EventApiClient.g.cs. 🟡 BLOCKER for Phase 5
+- [ ] Phase 5: Blazor UI. 🟡 BLOCKED on NSwag regen
+- [x] Phase 6: Domain tests (192 passing) + Application tests (822 passing) + Schema docs. ✅ DONE
+- [ ] Phase 6 remaining: Persistence integration tests, Blazor component tests.

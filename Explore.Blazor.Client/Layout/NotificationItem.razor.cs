@@ -1,5 +1,5 @@
 // ABOUTME: Code-behind for NotificationItem — handles display logic for type icons, scope colors, relative time.
-// ABOUTME: Maps NotificationTypeName → Material icon and NotificationScopeName → MudBlazor Color.
+// ABOUTME: Maps NotificationTypeName → Material icon and NotificationScopeName → MudBlazor Color. Supports archive/snooze actions.
 
 using Explore.Blazor.Client.Clients;
 using Microsoft.AspNetCore.Components;
@@ -18,7 +18,18 @@ public partial class NotificationItem
     [Parameter]
     public EventCallback<NotificationListDto> OnDelete { get; set; }
 
+    [Parameter]
+    public EventCallback<NotificationListDto> OnArchive { get; set; }
+
+    [Parameter]
+    public EventCallback<NotificationListDto> OnSnooze { get; set; }
+
     private bool IsUnread => Notification.IsRead != true;
+
+    private bool IsArchived => Notification.IsArchived == true;
+
+    private bool IsSnoozed => Notification.SnoozedUntil is not null
+                              && Notification.SnoozedUntil > DateTimeOffset.UtcNow;
 
     private string GetTypeIcon()
     {
@@ -70,8 +81,39 @@ public partial class NotificationItem
         };
     }
 
+    private static string FormatSnoozeTime(DateTimeOffset? snoozedUntil)
+    {
+        if (snoozedUntil is null) return "";
+
+        var target = snoozedUntil.Value;
+        var now = DateTimeOffset.UtcNow;
+
+        if (target.Date == now.Date)
+            return target.ToString("h:mm tt");
+
+        if (target.Date == now.Date.AddDays(1))
+            return $"tomorrow {target.ToString("h:mm tt")}";
+
+        return target.ToString("MMM d, h:mm tt");
+    }
+
     private async Task HandleDelete()
     {
         await OnDelete.InvokeAsync(Notification);
+    }
+
+    private async Task HandleArchive()
+    {
+        await OnArchive.InvokeAsync(Notification);
+    }
+
+    private async Task HandleUnarchive()
+    {
+        await OnArchive.InvokeAsync(Notification);
+    }
+
+    private async Task HandleSnooze()
+    {
+        await OnSnooze.InvokeAsync(Notification);
     }
 }

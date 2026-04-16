@@ -1,5 +1,5 @@
-/* ABOUTME: Scoped CSS for NotificationItem — individual notification row with hover, unread highlight. */
-/* ABOUTME: BEM block: notification-item. Three-column layout: icon | content | delete button. */
+/* ABOUTME: Scoped CSS for NotificationItem — individual notification row with hover actions. */
+/* ABOUTME: BEM block: notification-item. Three-column layout: icon | content | action buttons. */
 
 .notification-item {
     display: flex;
@@ -25,6 +25,14 @@
 
 .notification-item--unread:hover {
     background-color: color-mix(in srgb, var(--mud-palette-primary) 10%, transparent);
+}
+
+.notification-item--archived {
+    opacity: 0.65;
+}
+
+.notification-item--snoozed {
+    opacity: 0.75;
 }
 
 .notification-item__icon {
@@ -63,6 +71,12 @@
     font-size: 0.7rem !important;
 }
 
+::deep .notification-item__reason {
+    height: 18px !important;
+    font-size: 0.65rem !important;
+    opacity: 0.7;
+}
+
 .notification-item__body {
     margin: 0;
     font-size: 0.8125rem;
@@ -89,23 +103,50 @@
     font-size: 0.5rem;
 }
 
-.notification-item__delete {
+::deep .notification-item__snooze-icon,
+::deep .notification-item__archive-icon {
+    font-size: 0.875rem !important;
+    width: 14px;
+    height: 14px;
+    color: var(--mud-palette-text-disabled);
+}
+
+.notification-item__snooze-until,
+.notification-item__archive-label {
+    font-size: 0.7rem;
+    color: var(--mud-palette-text-disabled);
+    font-style: italic;
+}
+
+.notification-item__actions {
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.notification-item:hover .notification-item__actions {
+    opacity: 1;
+}
+
+.notification-item__action-btn {
     background: none;
     border: none;
     cursor: pointer;
     padding: 4px;
     border-radius: 50%;
     color: var(--mud-palette-text-disabled);
-    opacity: 0;
-    transition: opacity 0.15s ease, color 0.15s ease;
+    transition: color 0.15s ease, background-color 0.15s ease;
 }
 
-.notification-item:hover .notification-item__delete {
-    opacity: 1;
+.notification-item__action-btn:hover {
+    color: var(--mud-palette-text-primary);
+    background-color: var(--mud-palette-action-default-hover);
 }
 
-.notification-item__delete:hover {
+.notification-item__action-btn--delete:hover {
     color: var(--mud-palette-error);
     background-color: var(--mud-palette-error-hover);
 }

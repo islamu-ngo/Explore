@@ -143,6 +143,30 @@ public partial class NotificationBell : IDisposable
         }
     }
 
+    private async Task HandleArchiveNotification(NotificationListDto notification)
+    {
+        if (notification.Id is null) return;
+
+        var archive = notification.IsArchived != true;
+        var success = await NotificationService.ArchiveAsync(notification.Id.Value, archive);
+        if (success)
+        {
+            _notifications.Remove(notification);
+        }
+    }
+
+    private async Task HandleSnoozeNotification(NotificationListDto notification)
+    {
+        if (notification.Id is null) return;
+
+        var snoozedUntil = DateTimeOffset.UtcNow.AddHours(3);
+        var success = await NotificationService.SnoozeAsync(notification.Id.Value, snoozedUntil);
+        if (success)
+        {
+            _notifications.Remove(notification);
+        }
+    }
+
     private static string? GetEntityUrl(NotificationListDto notification)
     {
         if (string.IsNullOrEmpty(notification.EntityId) || notification.NotificationEntityTypeName is null)

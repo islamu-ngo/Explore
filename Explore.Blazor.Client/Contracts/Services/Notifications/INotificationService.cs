@@ -11,7 +11,10 @@ public interface INotificationService
         int pageNumber,
         int pageSize,
         bool? isRead = null,
-        int? notificationScopeId = null);
+        int? notificationScopeId = null,
+        int? notificationReasonId = null,
+        bool? isArchived = null,
+        bool? isSnoozed = null);
 
     Task<Clients.NotificationDto?> GetNotificationByIdAsync(Guid id);
 
@@ -22,4 +25,8 @@ public interface INotificationService
     Task<bool> MarkAllAsReadAsync();
 
     Task<bool> DeleteAsync(Guid notificationId);
+
+    Task<bool> ArchiveAsync(Guid notificationId, bool archive = true);
+
+    Task<bool> SnoozeAsync(Guid notificationId, DateTimeOffset snoozedUntil);
 }

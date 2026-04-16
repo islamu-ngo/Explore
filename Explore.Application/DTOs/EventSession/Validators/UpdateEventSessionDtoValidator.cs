@@ -9,15 +9,18 @@ public class UpdateEventSessionDtoValidator : AbstractValidator<UpdateEventSessi
     private readonly IEventRepository _eventRepository;
     private readonly ILocationRepository _locationRepository;
     private readonly IRegistrationModeRepository _registrationModeRepository;
+    private readonly IEventSessionRepository _eventSessionRepository;
 
     public UpdateEventSessionDtoValidator(
         IEventRepository eventRepository,
         ILocationRepository locationRepository,
-        IRegistrationModeRepository registrationModeRepository)
+        IRegistrationModeRepository registrationModeRepository,
+        IEventSessionRepository eventSessionRepository)
     {
         _eventRepository = eventRepository;
         _locationRepository = locationRepository;
         _registrationModeRepository = registrationModeRepository;
+        _eventSessionRepository = eventSessionRepository;
 
         RuleFor(p => p.Id)
             .NotEmpty().WithMessage("{PropertyName} is required.");
@@ -95,5 +98,22 @@ public class UpdateEventSessionDtoValidator : AbstractValidator<UpdateEventSessi
                     && p.LocationId.HasValue;
             })
             .WithMessage("Islamic session scheduling requires LocationId, ReferencePrayer, and OffsetMinutes when StartTimeType is RelativeToPrayer.");
+
+        // Layer A (necessary but not sufficient) same-room overlap check.
+        // Layer B serializable re-check runs inside EventSessionRepository.UpdateWithRoomOverlapGuardAsync.
+        RuleFor(p => p)
+            .MustAsync(async (dto, cancellation) =>
+            {
+                if (!dto.RoomId.HasValue) return true;
+                var conflicts = await _eventSessionRepository.GetOverlappingSessionsInRoomAsync(
+                    dto.RoomId.Value,
+                    dto.StartTime,
+                    dto.EndTime,
+                    excludeSessionId: dto.Id,
+                    cancellation);
+                return conflicts.Count == 0;
+            })
+            .When(p => p.RoomId.HasValue && p.EndTime > p.StartTime)
+            .WithMessage("The selected room is already booked for an overlapping time range.");
     }
 }

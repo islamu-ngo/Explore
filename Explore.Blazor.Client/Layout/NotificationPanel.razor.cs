@@ -27,6 +27,12 @@ public partial class NotificationPanel
     public EventCallback<NotificationListDto> OnDeleteNotification { get; set; }
 
     [Parameter]
+    public EventCallback<NotificationListDto> OnArchiveNotification { get; set; }
+
+    [Parameter]
+    public EventCallback<NotificationListDto> OnSnoozeNotification { get; set; }
+
+    [Parameter]
     public int? SelectedScope { get; set; }
 
     [Parameter]

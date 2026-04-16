@@ -1,0 +1,101 @@
+// ABOUTME: Event-level agenda band (break, prayer, opening, logistics, closing) distinct from session-owned EventSessionAgendaItem.
+// ABOUTME: Cached local projection fields are written exclusively via aggregate methods that consume IEventScheduleProjectionCalculator.
+
+using System;
+using System.ComponentModel.DataAnnotations.Schema;
+using Explore.Domain.Interfaces;
+using Explore.Domain.Services.Scheduling;
+
+namespace Explore.Domain;
+
+public class EventAgendaItem : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurrencyAware
+{
+    public Guid Id { get; set; }
+
+    [ForeignKey("Event")]
+    public Guid EventId { get; set; }
+    public required Event Event { get; set; }
+
+    [ForeignKey("EventDay")]
+    public Guid? EventDayId { get; set; }
+    public EventDay? EventDay { get; set; }
+
+    public required string Title { get; set; }
+    public string? Description { get; set; }
+
+    public DateTimeOffset StartTime { get; set; }
+    public DateTimeOffset EndTime { get; set; }
+
+    // Cached local projections — written exclusively via ReprojectLocalTimes/Reschedule.
+    public DateOnly LocalStartDate { get; private set; }
+    public DateOnly LocalEndDate { get; private set; }
+    public TimeOnly LocalStartTime { get; private set; }
+    public TimeOnly LocalEndTime { get; private set; }
+    public int LocalStartMinuteOfDay { get; private set; }
+    public int LocalEndMinuteOfDay { get; private set; }
+
+    [ForeignKey("Location")]
+    public Guid? LocationId { get; set; }
+    public Location? Location { get; set; }
+
+    [ForeignKey("Room")]
+    public Guid? RoomId { get; set; }
+    public LocationRoom? Room { get; set; }
+
+    [ForeignKey("Kind")]
+    public int? KindId { get; set; }
+    public ScheduleItemKind? Kind { get; set; }
+
+    public int SortOrder { get; set; }
+
+    [ForeignKey("Tenant")]
+    public Guid TenantId { get; set; }
+    public required Tenant Tenant { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+    public Guid? CreatedBy { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public Guid? UpdatedBy { get; set; }
+
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public Guid? DeletedBy { get; set; }
+
+    public Guid ConcurrencyStamp { get; set; }
+
+    /// <summary>
+    /// Re-projects cached local fields from the current UTC times and the supplied IANA timezone id.
+    /// This is the single authorized write path for LocalStart*/LocalEnd* properties.
+    /// </summary>
+    public void ReprojectLocalTimes(string timezoneId, IEventScheduleProjectionCalculator calculator)
+    {
+        ArgumentNullException.ThrowIfNull(calculator);
+        var projection = calculator.Project(StartTime, EndTime, timezoneId);
+        LocalStartDate = projection.LocalStartDate;
+        LocalEndDate = projection.LocalEndDate;
+        LocalStartTime = projection.LocalStartTime;
+        LocalEndTime = projection.LocalEndTime;
+        LocalStartMinuteOfDay = projection.LocalStartMinuteOfDay;
+        LocalEndMinuteOfDay = projection.LocalEndMinuteOfDay;
+    }
+
+    /// <summary>
+    /// Reschedules UTC start/end and recomputes cached local fields in the event timezone.
+    /// Handlers call this instead of writing StartTime/EndTime directly so local projection stays in sync.
+    /// </summary>
+    public void Reschedule(
+        DateTimeOffset startUtc,
+        DateTimeOffset endUtc,
+        string timezoneId,
+        IEventScheduleProjectionCalculator calculator)
+    {
+        if (endUtc <= startUtc)
+        {
+            throw new ArgumentException("EndTime must be strictly greater than StartTime.", nameof(endUtc));
+        }
+
+        StartTime = startUtc;
+        EndTime = endUtc;
+        ReprojectLocalTimes(timezoneId, calculator);
+    }
+}

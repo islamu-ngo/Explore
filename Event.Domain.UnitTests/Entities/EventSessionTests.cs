@@ -71,6 +71,12 @@ public class EventSessionTests
     }
 
     [Test]
+    public async Task EventSession_ImplementsConcurrencyAwareInterface_ExpectedBehavior()
+    {
+        await Assert.That(typeof(EventSession).GetInterfaces().Contains(typeof(IConcurrencyAware))).IsTrue();
+    }
+
+    [Test]
     public async Task OptionalNavigationAndSlugProperties_DefaultValue_IsExpected()
     {
         var entity = CreateEventSession();
@@ -82,6 +88,20 @@ public class EventSessionTests
         await Assert.That(entity.RegistrationModeId).IsNull();
         await Assert.That(entity.RegistrationMode).IsNull();
         await Assert.That(entity.Description).IsNull();
+        await Assert.That(entity.EventDayId).IsNull();
+        await Assert.That(entity.EventDay).IsNull();
+        await Assert.That(entity.RoomId).IsNull();
+        await Assert.That(entity.Room).IsNull();
+    }
+
+    [Test]
+    public async Task SchedulingDefaults_WhenCreated_AreZero()
+    {
+        var entity = CreateEventSession();
+
+        await Assert.That(entity.SortOrder).IsEqualTo(0);
+        await Assert.That(entity.LocalStartMinuteOfDay).IsEqualTo(0);
+        await Assert.That(entity.LocalEndMinuteOfDay).IsEqualTo(0);
     }
 
     private static bool IsRequiredProperty<T>(string propertyName)

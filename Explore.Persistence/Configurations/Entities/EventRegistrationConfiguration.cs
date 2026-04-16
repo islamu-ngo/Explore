@@ -13,9 +13,14 @@ public class EventRegistrationConfiguration : IEntityTypeConfiguration<EventRegi
     {
         builder.Property(e => e.Id).HasDefaultValueSql("uuidv7()");
 
+        builder.HasOne(e => e.EventRegistrationIntent)
+            .WithMany()
+            .HasForeignKey(e => e.EventRegistrationIntentId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         // ===== Performance Indexes =====
 
-        // Unique constraint: one registration per user per event session
+        // Unique constraint: one access row per user per event session (child-level invariant).
         builder.HasIndex(e => new { e.EventSessionId, e.UserId })
             .IsUnique()
             .HasDatabaseName("ix_eventregistrations_session_user");
@@ -23,5 +28,9 @@ public class EventRegistrationConfiguration : IEntityTypeConfiguration<EventRegi
         // Registrations by user (my registrations)
         builder.HasIndex(e => e.UserId)
             .HasDatabaseName("ix_eventregistrations_user");
+
+        // Children by parent intent (to walk a user's registration intent down to concrete access rows).
+        builder.HasIndex(e => e.EventRegistrationIntentId)
+            .HasDatabaseName("ix_eventregistrations_intent");
     }
 }

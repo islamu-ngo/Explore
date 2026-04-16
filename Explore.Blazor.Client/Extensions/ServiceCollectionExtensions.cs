@@ -76,6 +76,8 @@ public static class ServiceCollectionExtensions
 
         // Localization
         services.AddScoped<ITranslationService, TranslationService>();
+        services.AddScoped<ILanguagePreferenceService, LanguagePreferenceService>();
+        services.AddTransient<MudBlazor.MudLocalizer, MudBlazorLocalizer>();
 
         // UI state
         services.AddScoped<SidebarState>();

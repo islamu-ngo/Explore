@@ -15,8 +15,10 @@ The BFF extracts the access token from the server-side session and attaches it a
 
 1. **Extract access token** from server-side session/cookie store — never from client-side storage.
 2. **Attach `Authorization: Bearer`** on all proxied API requests via `AccessTokenForwardingHandler`.
-3. **Forward tenant headers** (`X-Tenant-Slug`) when present in the original request.
+3. **Forward tenant headers** (`X-Tenant-Slug`) when the BFF has an authoritative tenant hint from route, host, or session context.
 4. **Forward setup headers** (`X-Setup-Secret`) during initial bootstrap flow.
+5. **Use the repo handler chain** for API-facing clients: `AccessTokenForwardingHandler` → `TenantHeaderForwardingHandler` → `SetupSecretForwardingHandler`.
+6. **Disable cookie forwarding on outbound API clients** with `HttpClientHandler.UseCookies = false` so the BFF remains the trust boundary.
 
 ## YARP Proxy Configuration
 
@@ -24,6 +26,8 @@ The BFF registers YARP reverse proxy transforms that:
 - Copy the access token from the authenticated session
 - Add the `Authorization` header to outbound requests
 - Propagate `X-Tenant-Slug` and `X-Correlation-Id` headers
+
+Tenant identity is still resolved authoritatively by the API: trusted `X-Tenant-Slug` first, then normalized `Request.Host.Host` after forwarded-header processing. API-key requests can defer final tenant binding until post-auth middleware runs.
 
 ## InteractiveServer Fallback
 

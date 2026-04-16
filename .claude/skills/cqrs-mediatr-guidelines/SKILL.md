@@ -29,8 +29,9 @@ Keep commands/queries separate and handlers clean, with manual validation and en
 - **Manual validator instantiation** (no DI).
 - Always pass `CancellationToken`.
 - **Pipeline behaviors**: `PerformanceBehavior` logs requests >500ms. `AuthorizationBehavior` checks `IAuthorizedRequest` / `[AuthorizeResource]` / `ISecureRequest` and throws `AuthorizationException` on deny.
-- **Specification Pattern**: Complex queries use `IQuerySpecification<T>` (immutable fluent builder). `EventQuerySpecification` composes `EventFilter`, `EventSubqueryFilter`, `AspectPresenceFilter`, `IslamicAspectFilter`, `TechAspectFilter` via AND logic. Module‑conditional filters are silently ignored when module disabled.
+- **Specification Pattern**: Complex queries use `IQuerySpecification<T>` (immutable fluent builder). `EventQuerySpecification` composes `EventFilter`, `EventSubqueryFilter`, `AspectPresenceFilter`, `IslamicAspectFilter`, `TechAspectFilter`, and `EventCustomPropertyProjectionFilter` via `And(...)` composition. Module‑conditional filters are silently ignored when module disabled.
 - **HybridCache in handlers**: Query handlers use `GetOrCreateAsync()` for read‑through caching. Command handlers call `RemoveAsync()` for cache invalidation. `ToCacheKeySuffix()` generates deterministic keys from specification state.
+- **Idempotency**: Write endpoints support `Idempotency-Key` for safe retries. Middleware stores/replays mutation responses by `(Key, TenantId)` within a 24-hour window.
 - **Response types**: Create/update → `BaseCommandResponse<Guid>`. Delete → `bool`. Queries → DTO or `PaginatedResult<TDto>`.
 
 ## Resources (Read Before Applying)

@@ -1,70 +1,101 @@
+// ABOUTME: Validator for the intent-first CreateEventRegistrationDto - enforces organizer EventRegistrationPolicy fail-fast.
+// ABOUTME: Validates event + user existence, selected day membership, selected session membership, and scope-policy compatibility via RegistrationPolicyRules.
+
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Explore.Application.Contracts.Persistence;
+using Explore.Domain;
+using Explore.Domain.Enums;
+using Explore.Domain.Services.Registration;
 using FluentValidation;
 
 namespace Explore.Application.DTOs.EventRegistration.Validators;
 
 public class CreateEventRegistrationDtoValidator : AbstractValidator<CreateEventRegistrationDto>
 {
+    private readonly IEventRepository _eventRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IEventDayRepository _eventDayRepository;
     private readonly IEventSessionRepository _eventSessionRepository;
     private readonly IApprovalStatusRepository _approvalStatusRepository;
-    private readonly IEventRegistrationRepository _eventRegistrationRepository;
 
     public CreateEventRegistrationDtoValidator(
+        IEventRepository eventRepository,
         IUserRepository userRepository,
+        IEventDayRepository eventDayRepository,
         IEventSessionRepository eventSessionRepository,
-        IApprovalStatusRepository approvalStatusRepository,
-        IEventRegistrationRepository eventRegistrationRepository)
+        IApprovalStatusRepository approvalStatusRepository)
     {
+        _eventRepository = eventRepository;
         _userRepository = userRepository;
+        _eventDayRepository = eventDayRepository;
         _eventSessionRepository = eventSessionRepository;
         _approvalStatusRepository = approvalStatusRepository;
-        _eventRegistrationRepository = eventRegistrationRepository;
 
-        RuleFor(x => x.UserId)
-            .NotEmpty().WithMessage("{PropertyName} is required")
-            .MustAsync(UserExists)
-            .WithMessage("{PropertyName} not found");
+        RuleFor(p => p.EventId)
+            .NotEmpty().WithMessage("{PropertyName} is required.")
+            .MustAsync(async (id, ct) => await _eventRepository.Exists(id))
+            .WithMessage("{PropertyName} does not exist.");
 
-        RuleFor(x => x.EventSessionId)
-            .NotEmpty().WithMessage("{PropertyName} is required")
-            .MustAsync(EventSessionExists)
-            .WithMessage("{PropertyName} not found");
+        RuleFor(p => p.UserId)
+            .NotEmpty().WithMessage("{PropertyName} is required.")
+            .MustAsync(async (id, ct) => await _userRepository.Exists(id))
+            .WithMessage("{PropertyName} does not exist.");
 
-        RuleFor(x => x.ApprovalStatusId)
-            .MustAsync(ApprovalStatusExists)
-            .When(x => x.ApprovalStatusId.HasValue)
-            .WithMessage("{PropertyName} not found");
+        RuleFor(p => p.RegistrationScopeId)
+            .Must(scopeId => Enum.IsDefined(typeof(RegistrationScopeEnum), scopeId))
+            .WithMessage("{PropertyName} must be a known registration scope.");
 
-        // TenantId is set by the handler from context, not by the client
-        // No validation needed here
+        RuleFor(p => p.ApprovalStatusId)
+            .MustAsync(async (id, ct) =>
+            {
+                if (!id.HasValue) return true;
+                return await _approvalStatusRepository.Exists(id.Value);
+            })
+            .When(p => p.ApprovalStatusId.HasValue)
+            .WithMessage("{PropertyName} does not exist.");
 
-        RuleFor(x => x)
-            .MustAsync(UserNotAlreadyRegistered)
-            .WithMessage("User is already registered for this Event Session");
+        // Day scope: a non-empty SelectedEventDayId that belongs to the event
+        RuleFor(p => p)
+            .MustAsync(async (dto, ct) =>
+            {
+                if (dto.RegistrationScopeId != (int)RegistrationScopeEnum.Day) return true;
+                if (!dto.SelectedEventDayId.HasValue) return false;
+                return await _eventDayRepository.BelongsToEventAsync(dto.SelectedEventDayId.Value, dto.EventId, ct);
+            })
+            .When(p => p.RegistrationScopeId == (int)RegistrationScopeEnum.Day)
+            .WithMessage("SelectedEventDayId must reference a day belonging to the event when scope is Day.");
+
+        // Session-selection scope: non-empty list and every session belongs to the event
+        RuleFor(p => p.SelectedSessionIds)
+            .NotEmpty()
+            .WithMessage("SelectedSessionIds must contain at least one session when scope is SessionSelection.")
+            .When(p => p.RegistrationScopeId == (int)RegistrationScopeEnum.SessionSelection);
+
+        RuleFor(p => p)
+            .MustAsync(AllSelectedSessionsBelongToEvent)
+            .When(p => p.RegistrationScopeId == (int)RegistrationScopeEnum.SessionSelection && p.SelectedSessionIds.Count > 0)
+            .WithMessage("All SelectedSessionIds must belong to the supplied EventId.");
+
+        // Organizer policy enforcement (fail-fast).
+        RuleFor(p => p)
+            .MustAsync(ScopeAllowedByPolicy)
+            .WithMessage("The requested registration scope is not permitted by this event's registration policy.");
     }
 
-    private async Task<bool> UserExists(Guid userId, CancellationToken cancellationToken)
+    private async Task<bool> AllSelectedSessionsBelongToEvent(CreateEventRegistrationDto dto, CancellationToken ct)
     {
-        return await _userRepository.Exists(userId);
+        var sessions = await _eventSessionRepository.GetSessionsByEvent(dto.EventId);
+        var validSessionIds = sessions.Select(s => s.Id).ToHashSet();
+        return dto.SelectedSessionIds.All(validSessionIds.Contains);
     }
 
-    private async Task<bool> EventSessionExists(Guid eventSessionId, CancellationToken cancellationToken)
+    private async Task<bool> ScopeAllowedByPolicy(CreateEventRegistrationDto dto, CancellationToken ct)
     {
-        return await _eventSessionRepository.Exists(eventSessionId);
-    }
-
-    private async Task<bool> ApprovalStatusExists(int? approvalStatusId, CancellationToken cancellationToken)
-    {
-        if (!approvalStatusId.HasValue) return true;
-        return await _approvalStatusRepository.Exists(approvalStatusId.Value);
-    }
-
-    private async Task<bool> UserNotAlreadyRegistered(CreateEventRegistrationDto dto, CancellationToken cancellationToken)
-    {
-        return !await _eventRegistrationRepository.IsUserRegisteredForSession(dto.UserId, dto.EventSessionId);
+        var @event = await _eventRepository.GetById(dto.EventId);
+        if (@event is null) return true; // EventId existence rule will fail separately
+        return RegistrationPolicyRules.IsScopeAllowed(@event.RegistrationPolicyId, dto.RegistrationScopeId);
     }
 }

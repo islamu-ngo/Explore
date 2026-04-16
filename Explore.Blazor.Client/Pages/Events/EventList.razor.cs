@@ -1059,7 +1059,12 @@ public partial class EventList : ComponentBase, IAsyncDisposable
             return;
         }
         var primarySession = sessions.First();
-        var parameters = new DialogParameters { ["EventSessionId"] = primarySession.Id, ["Title"] = $"Register for {evt.Title}" };
+        var parameters = new DialogParameters
+        {
+            ["EventId"] = evt.Id!.Value,
+            ["EventSessionId"] = primarySession.Id,
+            ["Title"] = $"Register for {evt.Title}"
+        };
         var options = DialogOptionsFactory.Medium();
         await AccessibilityFocusService.SaveFocusAsync();
         var dialog = await DialogService.ShowAsync<EventRegistration>("Register", parameters, options);
@@ -1367,27 +1372,26 @@ public partial class EventList : ComponentBase, IAsyncDisposable
                 ? $"Share my email address with {_regOrganizerName} so they can contact me about future events and related updates."
                 : null;
 
-            bool allSucceeded = true;
-            foreach (var sessionId in _regSelectedSessionIds)
+            var dto = new CreateEventRegistrationDto
             {
-                var dto = new CreateEventRegistrationDto
-                {
-                    EventSessionId = sessionId,
-                    UserId = _regCurrentUser.Id,
-                };
-                if (_regShareEmail && consentText != null)
-                {
-                    dto.AdditionalProperties["shareEmailWithOrganizer"] = true;
-                    dto.AdditionalProperties["consentTextAcknowledged"] = consentText;
-                    dto.AdditionalProperties["consentUiVersion"] = "v1";
-                }
+                EventId = _selectedEvent!.Id!.Value,
+                UserId = _regCurrentUser.Id,
+                RegistrationScopeId = 3, // SessionSelection
+                SelectedSessionIds = _regSelectedSessionIds.ToList(),
+            };
+            if (_regShareEmail && consentText != null)
+            {
+                dto.AdditionalProperties["shareEmailWithOrganizer"] = true;
+                dto.AdditionalProperties["consentTextAcknowledged"] = consentText;
+                dto.AdditionalProperties["consentUiVersion"] = "v1";
+            }
 
-                var response = await EventService.RegisterForEventSessionAsync(dto);
-                if (response?.Success != true)
-                {
-                    allSucceeded = false;
-                    Snackbar.Add(response?.Message ?? "Registration failed for a session.", Severity.Warning);
-                }
+            bool allSucceeded = true;
+            var response = await EventService.RegisterForEventSessionAsync(dto);
+            if (response?.Success != true)
+            {
+                allSucceeded = false;
+                Snackbar.Add(response?.Message ?? "Registration failed.", Severity.Warning);
             }
 
             if (allSucceeded)

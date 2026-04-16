@@ -58,4 +58,11 @@ public class UpdateEventDto
     public string? BackgroundColor { get; set; }
     public string? BackgroundEffect { get; set; }
     public Guid? BackgroundImageId { get; set; }
+
+    // Series membership
+    public Guid? EventSeriesId { get; set; }
+    public int? SeriesOrder { get; set; }
+
+    // Registration policy (lookup FK)
+    public int? RegistrationPolicyId { get; set; }
 }

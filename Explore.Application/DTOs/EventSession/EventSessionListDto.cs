@@ -9,14 +9,29 @@ public class EventSessionListDto
     public Guid EventId { get; set; }
     public required string EventTitle { get; set; }
 
-    // Timing
+    // Day assignment
+    public Guid? EventDayId { get; set; }
+
+    // Timing (UTC)
     public DateTimeOffset StartTime { get; set; }
     public DateTimeOffset EndTime { get; set; }
+
+    // Cached local projections (event timezone)
+    public DateOnly LocalStartDate { get; set; }
+    public TimeOnly LocalStartTime { get; set; }
+    public TimeOnly LocalEndTime { get; set; }
+
+    // Ordering
+    public int SortOrder { get; set; }
 
     // Location
     public Guid? LocationId { get; set; }
     public string? LocationFullName { get; set; }
     public string? LocationCity { get; set; }
+
+    // Room
+    public Guid? RoomId { get; set; }
+    public string? RoomName { get; set; }
 
     // Session Details
     public string? Title { get; set; }

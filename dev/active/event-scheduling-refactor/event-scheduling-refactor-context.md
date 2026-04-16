@@ -1,187 +1,325 @@
-Last Updated: 2026-03-16 Europe/Brussels
+Last Updated: 2026-04-13 Europe/Brussels
 
 # Context: Event Scheduling Refactor
 
-## SESSION PROGRESS (2026-03-16 Europe/Brussels)
+## SESSION PROGRESS (2026-04-12 Europe/Brussels)
 
-### ✅ COMPLETED
-- Audited core docs and relevant skill files.
-- Verified current event domain entities, EF configurations, repositories, controllers, DTOs, and Blazor pages/components.
-- Confirmed `EventSeries` already exists in domain, persistence, application, and API layers.
-- Confirmed `EventRegistration` is still session-scoped and is the core semantic mismatch to fix.
-- Confirmed no existing `EventDay`, `EventAgendaItem`, `LocationRoom`, `RegistrationScope`, or registration-child tables/classes.
-- Wrote the first iterative planning set for this refactor under `dev/active/event-scheduling-refactor/`.
-- Confirmed the Blazor client currently uses `Explore.Blazor.Client/Clients/DtoPartials.cs` to patch missing generated DTO fields like `EventSeriesId`, `SeriesOrder`, and session image fields.
-- Confirmed the UI already has a “Register for ALL Sessions” flow in `Explore.Blazor.Client/Pages/Events/Dialogs/SessionSelectionDialog.razor`, but it still submits a session ID list rather than a whole-event registration intent.
-- Confirmed several session/series UI components already exist from active work (`EventSeriesSection`, `SessionSummaryCard`, `SessionEditorPanel`) and should be reused.
-- Confirmed `Explore.Blazor.Client/Services/EventService.cs` is the main event orchestration surface in the UI and already exposes `GetSessionsByEventAsync`, `RegisterForEventSessionAsync`, and `GetRegistrationsByUserAsync`, which are consumed across event and user pages.
-- Confirmed registration data is reused outside event detail, including user-facing pages such as `Explore.Blazor.Client/Pages/User/MyRegistrations.razor.cs` and `Explore.Blazor.Client/Pages/User/UserProfile.razor.cs`.
-- Collected the final planning-review output and locked the main sequencing guidance: additive schema first, nullable FKs first, isolated registration phase, OpenAPI/NSwag boundary before broad Blazor work, and atomic commit slices.
-- Incorporated follow-up feedback that the registration refactor should add a parent intent/group layer while keeping child rows as the concrete session entitlements/access records.
-- Captured the validator strategy that same room + overlapping time should be rejected first in DTO validators via async FluentValidation checks.
-- Finalized the plan wording so registration is modeled as parent intent/group semantics plus child concrete session entitlements/access rows.
-- Preserved the existing UI/UX planning in the plan file and restricted this session's changes to non-UI architecture, sequencing, migration wording, validator strategy, and handoff quality.
-- Collected Tavily research for intent-vs-entitlement registration modeling and Context7 FluentValidation guidance for async repository-backed overlap validation.
-- Updated the active-task docs specifically for context-reset continuity.
+### ✅ COMPLETED (12 implementation slices delivered)
 
-### 🟡 IN PROGRESS
-- Convert the finalized plan into implementation-ready PR/issue slices.
-- Decide whether the first coding slice should start with ADR/tests or additive schema entities.
-- No code implementation has started for this track yet; the repo state for this task is planning-only.
+**Plan update (pre-implementation):**
+- Updated plan with 3 targeted changes: (1) justified EventDay as first-class entity, (2) reframed same-room FluentValidation as necessary-but-not-sufficient + concurrency enforcement, (3) locked local-projection recompute to a single domain service `IEventScheduleProjectionCalculator`.
 
-### ⚠️ BLOCKERS / RISKS
-- `dotnet build --configuration Release --verbosity quiet` currently fails with a pre-existing file lock on `Event.Architecture.Tests.dll`, so solution-wide verification is not yet a clean baseline.
-- Relevant event UI work is already in progress under `dev/active/session-series-ux/`; this refactor must build on it rather than fork it.
-- Current API/UI assume event registration equals one or more session rows, so registration refactor will be cross-cutting.
-- The generated API client is currently incomplete enough to require partial DTO patching, so schema/client drift is already a live issue before this refactor begins.
-- The biggest sequencing risk is attempting schema changes, contract changes, NSwag regeneration, and Blazor UI rewrites in the same PR.
-- The biggest modeling risk is naming the target badly: if implementers think child session rows are no longer the concrete access unit, they can muddle capacity, attendance, refunds, and approvals.
-- `event-scheduling-refactor-plan.md` still contains extensive UI/UX planning detail that was user-directed; future work should not casually replace it during non-UI phases.
+**Slice 1 — Phase 1 additive schema foundation:**
+- Created `LocationRoom`, `EventDay`, `EventAgendaItem`, `ScheduleItemKind` + enum domain entities.
+- Created `IEventScheduleProjectionCalculator` + `EventScheduleProjectionCalculator` + `LocalScheduleProjection` in `Explore.Domain/Services/Scheduling/`.
+- Extended `EventSession` with: `EventDayId` (nullable), `RoomId` (nullable), `SortOrder`, 6 cached local projection fields, `Reschedule()` and `ReprojectLocalTimes()` aggregate methods.
+- Created EF configs, DbSets, named query filters, lookup seeder for all new entities.
+- User ran migration after this slice.
 
-### KEY DECISIONS THIS SESSION
-- Keep the registration architecture phrased as: parent rows preserve registration intent/policy semantics, child rows remain the concrete session entitlements/access records.
-- Do not describe the target as “EventRegistration becomes the abstract parent” because that muddies existing session-level semantics and makes migration harder.
-- Same room plus overlapping time should fail fast in DTO validators first, using async FluentValidation rules with repository-backed checks. Stronger persistence hardening can follow later if required.
-- Keep UI/UX planning as-is for now; this session only tightened the non-UI plan and documentation continuity.
+**Slice 2 — Phase 1.6 + 1.8 + 2.3:**
+- Created `EventRegistrationPolicy` lookup + enum (6 policy values).
+- Added `Event.RegistrationPolicyId` (nullable FK).
+- Created `EventSessionCategory` and `EventSessionTag` junction entities.
+- Added unique constraints to existing junctions: `(TenantId, EventId, CategoryId)`, `(TenantId, EventId, TagId)`, `(TenantId, EventSessionId, ActorId)`.
+- User ran migration after this slice.
 
-### FILES MODIFIED THIS SESSION
-- `dev/active/event-scheduling-refactor/event-scheduling-refactor-plan.md` — revised registration semantics, validator strategy, sequencing notes, and risk wording.
-- `dev/active/event-scheduling-refactor/event-scheduling-refactor-context.md` — added final planning decisions, blockers, and restart notes.
-- `dev/active/event-scheduling-refactor/event-scheduling-refactor-tasks.md` — updated checklist wording to reflect parent-intent/group plus child-entitlement direction.
-- `dev/_journal/journal.md` — recorded hard-to-rediscover planning insights and handoff risks.
-- `dev/_journal/MAJOR_DECISIONS.md` — recorded the registration architecture decision.
+**Slice 3 — Phase 2.6 + 3.2 (same-room overlap, two mandatory layers):**
+- Created `RoomScheduleConflictException` in `Explore.Application/Exceptions/`.
+- Extended `IEventSessionRepository` with `GetOverlappingSessionsInRoomAsync`, `CreateWithRoomOverlapGuardAsync`, `UpdateWithRoomOverlapGuardAsync`.
+- Implemented Layer B: serializable transaction wrapping overlap re-check + save.
+- Added `RoomId` to `CreateEventSessionDto` and `UpdateEventSessionDto`.
+- Extended both session DTO validators with Layer A async overlap rule.
+- Rewrote both session handlers: inject `IEventScheduleProjectionCalculator`, call `session.Reschedule()` for local projection writes, call guard methods, catch `RoomScheduleConflictException`.
+- Registered `IEventScheduleProjectionCalculator` as singleton in `ApplicationServicesRegistration`.
+- Updated `CreateEventSessionCommandHandlerTests` for new constructor + new repository calls.
+- User ran migration after this slice (no schema change but confirms compilation).
 
-### EXACT HANDOFF STATE
-- Primary current file is `dev/active/event-scheduling-refactor/event-scheduling-refactor-plan.md` around the registration section and locked-planning-decisions section; this was the last area revised this session.
-- Current goal on resume: break the approved plan into implementation PR slices without changing the underlying architecture decisions again unless new repo evidence demands it.
-- There is no partially completed feature implementation for this track yet; the work product is the finalized planning documentation.
-- Commands to run after restart if implementation begins:
-  - `dotnet build --configuration Release --verbosity quiet`
-  - Then the per-project test matrix from `CLAUDE.md`, starting with architecture/domain/application slices before UI.
-- Existing known baseline issue before implementation: release build can fail due to a pre-existing lock on `Event.Architecture.Tests.dll`.
+**Slice 4 — Phase 1.5 (registration intent/group domain + persistence):**
+- Created `RegistrationScope` lookup + enum (Event=1, Day=2, SessionSelection=3).
+- Created `EventRegistrationIntent` entity (parent aggregate with EventId, UserId, RegistrationScopeId, optional SelectedEventDayId, optional RegistrationPolicySnapshotId, ApprovalStatusId, audit/soft-delete/concurrency).
+- Added nullable `EventRegistrationIntentId` FK to `EventRegistration` (child role).
+- Created EF configs, DbSets, query filters, lookup seeder.
+- User ran migration after this slice.
 
-## Key Verified Files
+**Slice 5 — Phase 3.5 (intent-first registration handler + validator):**
+- Created `IEventDayRepository` + `EventDayRepository` (BelongsToEventAsync, GetByEventAsync).
+- Created `IEventRegistrationIntentRepository` + `EventRegistrationIntentRepository` (FindExistingAsync, CreateWithChildrenAsync inside serializable tx).
+- Created `RegistrationPolicyRules` in `Explore.Domain/Services/Registration/` — pure domain rules mapping policy to allowed scopes.
+- **Repurposed `CreateEventRegistrationDto`** to intent-first shape: `EventId`, `UserId`, `RegistrationScopeId`, optional `SelectedEventDayId`, optional `SelectedSessionIds`, `ApprovalStatusId`. Removed `EventSessionId`, `TenantId`, `AtprotoRecordId`.
+- Rewrote `CreateEventRegistrationDtoValidator` with policy enforcement, day ownership validation, session ownership validation.
+- Rewrote `CreateEventRegistrationCommandHandler`: creates parent intent + derived child session rows atomically via `CreateWithChildrenAsync`. Includes idempotency check. Removed AutoMapper dependency.
+- Updated `MappingProfile`: removed stale `CreateMap<CreateEventRegistrationDto, EventRegistration>`.
+- Wired DI for both new repositories in `PersistenceServicesRegistration`.
 
-### Domain
+**Slice 6 — Phase 2.7 (EventDayId auto-linking):**
+- Added `FindByEventAndLocalDateAsync(Guid eventId, DateOnly localDate, CancellationToken)` to `IEventDayRepository` + `EventDayRepository`.
+- Wired `IEventDayRepository` into `CreateEventSessionCommandHandler` and `UpdateEventSessionCommandHandler`.
+- Both handlers now auto-link `EventSession.EventDayId` after `Reschedule()` computes `LocalStartDate`, by looking up the matching `EventDay` via `(EventId, LocalStartDate)`. Sets null when no matching day exists.
+- Added 2 new tests to `CreateEventSessionCommandHandlerTests` (match found, no match).
+- Created `UpdateEventSessionCommandHandlerTests` with 3 tests (match found, no match, re-link on reschedule to different day).
+- Test count: 712 Application (was 707), 100 Domain, 190 Secrets — all green.
 
-| File | Verified relevance |
-|---|---|
-| `Explore.Domain/Event.cs` | Existing `EventSeriesId`, `SeriesOrder`, timezone fields, session summary fields |
-| `Explore.Domain/EventSeries.cs` | Existing umbrella grouping entity |
-| `Explore.Domain/EventSession.cs` | Current schedulable session model |
-| `Explore.Domain/EventSessionAgendaItem.cs` | Current session-internal agenda item model |
-| `Explore.Domain/EventRegistration.cs` | Current session-scoped registration model |
+**Slice 7 — Phase 3.4 (EventDay CRUD):**
+- Created DTOs: `CreateEventDayDto`, `UpdateEventDayDto`, `EventDayDto`, `EventDayListDto` + validators with date uniqueness per event.
+- Created commands: `CreateEventDayCommand`, `UpdateEventDayCommand`, `DeleteEventDayCommand`.
+- Created queries: `GetEventDaysByEventRequest`, `GetEventDayDetailRequest`.
+- Created handlers for all CRUD + query operations.
+- Added `ResourceKinds.EventDay` + `AuthorizationActions.EventDays` + Cerbos policy + FallbackAuthorizationService case.
+- Added AutoMapper mappings for EventDay.
 
-### Persistence
+**Slice 8 — Phase 3.3 (EventAgendaItem CRUD):**
+- Created `IEventAgendaItemRepository` + `EventAgendaItemRepository` with `GetByEventAsync`.
+- Created DTOs: `CreateEventAgendaItemDto`, `UpdateEventAgendaItemDto`, `EventAgendaItemDto`, `EventAgendaItemListDto` + validators.
+- Created commands: `CreateEventAgendaItemCommand`, `UpdateEventAgendaItemCommand`, `DeleteEventAgendaItemCommand`.
+- Created queries: `GetEventAgendaItemsByEventRequest`, `GetEventAgendaItemDetailRequest`.
+- Created handlers with Reschedule() for local projections + EventDayId auto-linking (same pattern as EventSession).
+- Added `ResourceKinds.EventAgendaItem` + `AuthorizationActions.EventAgendaItems` + Cerbos policy + FallbackAuthorizationService case.
+- Added AutoMapper mappings for EventAgendaItem.
+- Wired DI for `IEventAgendaItemRepository` in `PersistenceServicesRegistration`.
 
-| File | Verified relevance |
-|---|---|
-| `Explore.Persistence/ExploreDbContext.cs` | DbSets for current event/session/registration/series only |
-| `Explore.Persistence/Configurations/Entities/EventConfiguration.cs` | Event indexes and constraints |
-| `Explore.Persistence/Configurations/Entities/EventSessionConfiguration.cs` | Current session mapping |
-| `Explore.Persistence/Configurations/Entities/EventSessionAgendaItemConfiguration.cs` | Current session agenda mapping |
-| `Explore.Persistence/Configurations/Entities/EventRegistrationConfiguration.cs` | Unique `(EventSessionId, UserId)` constraint |
-| `Explore.Persistence/Configurations/Entities/EventSeriesConfiguration.cs` | Existing event-series table mapping |
-| `Explore.Persistence/Configurations/Entities/EventSessionSpeakerConfiguration.cs` | No uniqueness yet on `(EventSessionId, ActorId)` |
-| `Explore.Persistence/Configurations/Entities/EventCategoriesConfiguration.cs` | No uniqueness yet on `(EventId, CategoryId)` |
-| `Explore.Persistence/Configurations/Entities/EventTagsConfiguration.cs` | No uniqueness yet on `(EventId, TagId)` |
-| `schemas/islamu-event.md` | Current DBML/schema reference; confirms missing target tables |
+**Slice 9 — Phase 3.1 (Event command refactor for RegistrationPolicyId + series wiring):**
+- Added `RegistrationPolicyId`, `EventSeriesId`, `SeriesOrder` to `CreateEventDto` and `UpdateEventDto`.
+- Created `IEventRegistrationPolicyRepository` + `EventRegistrationPolicyRepository` + DI registration.
+- Extended both `CreateEventDtoValidator` and `UpdateEventDtoValidator` with async existence checks for `EventSeriesId` and `RegistrationPolicyId`, plus `SeriesOrder >= 0` rule.
+- Wired new repositories into `CreateEventCommandHandler` and `UpdateEventCommandHandler` constructors + validator instantiation.
+- Updated `CreateEventDtoValidatorTests` and `CreateEventCommandHandlerTests` for new constructor signatures.
+- AutoMapper already maps these fields automatically (no explicit ignore rules on them).
 
-### Application
+**Slice 10 — Phase 2.2 (Partial unique indexes for EventRegistrationIntent):**
+- Added 3 filtered unique indexes to `EventRegistrationIntentConfiguration`:
+  - Event-scope: `(TenantId, EventId, UserId)` WHERE `registration_scope_id = 1 AND is_deleted = false`
+  - Day-scope: `(TenantId, EventId, UserId, SelectedEventDayId)` WHERE `registration_scope_id = 2 AND is_deleted = false`
+  - SessionSelection-scope: `(TenantId, EventId, UserId)` WHERE `registration_scope_id = 3 AND is_deleted = false`
+- Prevents duplicate active intents per scope. Soft-deleted rows are excluded so re-registration after cancellation works.
 
-| File | Verified relevance |
-|---|---|
-| `Explore.Application/DTOs/Event/CreateEventDto.cs` | Missing `EventSeriesId` despite domain support |
-| `Explore.Blazor.Client/Clients/DtoPartials.cs` | Client-side patch for missing generated scheduling/series fields |
-| `Explore.Application/DTOs/Event/EventDto.cs` | Event read DTO still lacks new scheduling concepts |
-| `Explore.Application/DTOs/EventSession/CreateEventSessionDto.cs` | Current session contract |
-| `Explore.Application/DTOs/EventRegistration/CreateEventRegistrationDto.cs` | Current session registration create payload |
-| `Explore.Application/DTOs/EventSession/Validators/CreateEventSessionDtoValidator.cs` | Current timing/location validation |
-| `Explore.Application/DTOs/EventRegistration/Validators/CreateEventRegistrationDtoValidator.cs` | Current duplicate session registration validation |
-| `Explore.Application/Profiles/MappingProfile.cs` | Single mapping profile; already maps current event/session/registration and some series list data |
-| `Explore.Application/Features/Events/Handlers/Commands/CreateEventWithSessionsCommandHandler.cs` | Creates events + sessions; computes date summaries from UTC session times |
-| `Explore.Application/Features/EventSessions/Handlers/Commands/CreateEventSessionCommandHandler.cs` | Creates sessions; inherits tenant from parent event |
-| `Explore.Application/Features/EventRegistrations/Handlers/Commands/CreateEventRegistrationCommandHandler.cs` | Creates session-scoped registration rows |
-| `Explore.Application/Features/EventSessions/Handlers/Queries/GetSessionsByEventRequestHandler.cs` | Current session-by-event query surface |
-| `Explore.Application/Features/EventRegistrations/Handlers/Queries/GetRegistrationsByUserRequestHandler.cs` | Current user registration query surface |
+**Slice 11 — Phase 3.6 (Agenda projection query):**
+- Created `EventAgendaProjectionDto`, `AgendaDayGroupDto`, `AgendaScheduleEntryDto` in `DTOs/Agenda/`.
+- Created `GetEventAgendaProjectionRequest` + `GetEventAgendaProjectionRequestHandler` in `Features/Agenda/`.
+- Handler merges `EventSession` + `EventAgendaItem` into unified `AgendaScheduleEntryDto` entries discriminated by `EntryType`.
+- Groups by `LocalStartDate`, enriches with `EventDay` metadata (label, description, publishing state).
+- Days without an `EventDay` row still appear (derived from session/agenda dates).
+- Sorted by EventDay.SortOrder then chronological date; entries within a day sorted by start minute then sort order.
 
-### API
+**Slice 12 — Room management (LocationRoom CRUD):**
+- Created `ILocationRoomRepository` + `LocationRoomRepository` with `GetByLocationAsync`.
+- Created DTOs: `CreateLocationRoomDto`, `UpdateLocationRoomDto`, `LocationRoomDto`, `LocationRoomListDto` + validators.
+- Created full CRUD commands/queries + handlers following existing patterns.
+- Added `ResourceKinds.LocationRoom` + `AuthorizationActions.LocationRooms` + Cerbos policy + FallbackAuthorizationService case.
+- Added AutoMapper mappings + DI registration.
 
-| File | Verified relevance |
-|---|---|
-| `Explore.API/Controllers/EventController.cs` | Event CRUD + create-with-sessions |
-| `Explore.API/Controllers/EventSessionController.cs` | Session CRUD + sessions by event |
-| `Explore.API/Controllers/EventRegistrationController.cs` | Session-level registration CRUD |
-| `Explore.API/Controllers/EventSeriesController.cs` | Existing EventSeries CRUD |
+### 🟡 REMAINING WORK (by priority)
 
-### Blazor UI
+1. **Phase 2.5**: EventDay backfill migration from existing sessions.
+2. **Phase 4**: API controllers + NSwag boundary.
+3. **Phase 5**: Blazor UI (CSS grid agenda, Miller columns, policy-aware registration UX).
+4. **Phase 6**: Tests + docs.
 
-| File | Verified relevance |
-|---|---|
-| `Explore.Blazor.Client/Pages/Events/EventDetail.razor.cs` | Event detail logic; loads sessions and only primary-session agenda items |
-| `Explore.Blazor.Client/Pages/Events/CreateEvent.razor.cs` | Existing create flow; currently imports nested `SessionEditorModel` from `EventSessionEditor` |
-| `Explore.Blazor.Client/Pages/Events/EventEdit.razor.cs` | Existing edit flow with session preloading |
-| `Explore.Blazor.Client/Services/EventService.cs` | Primary Blazor event orchestration service; registration/session APIs are currently session-centric |
-| `Explore.Blazor.Client/Pages/Events/Components/EventRegistration.razor` | Session-only registration dialog |
-| `Explore.Blazor.Client/Pages/Events/Components/EventSessionManager.razor` | Session list with expandable session agenda items |
-| `Explore.Blazor.Client/Pages/Events/Dialogs/SessionSelectionDialog.razor` | Existing “register all sessions” or multi-select dialog |
-| `Explore.Blazor.Client/Pages/Events/Components/EventSeriesSection.razor` | Existing active-work component for series UI |
-| `Explore.Blazor.Client/Pages/Events/Components/SessionSummaryCard.razor` | Existing active-work component for compact session cards |
-| `Explore.Blazor.Client/Pages/Events/Components/SessionEditorPanel.razor` | Existing active-work component for session editing surfaces |
-| `Explore.Blazor.Client.Tests/Services/EventRegistrationServiceTests.cs` | Existing client-service coverage centered on session registrations |
-| `Explore.Blazor.Client.Tests/Pages/Event/CreateEventTests.cs` | Existing event-editor tests that will be impacted by event-day/room/policy additions |
-| `Explore.Blazor.Client/Components/Collection/EventTimeline.razor` | Simple grouped event list timeline, not real agenda rendering |
-| `dev/active/session-series-ux/session-series-ux-plan.md` | Existing active plan touching EventSeries and session UX |
-| `dev/active/session-series-ux/session-series-ux-context.md` | Current in-progress UI extraction state |
+### ⚠️ KNOWN ISSUES / DRIFT
 
-## Confirmed Gaps
+- **NSwag client stale.** `Explore.Blazor.Client/Clients/EventApiClient.g.cs` generated client still has the old `CreateEventRegistrationDto { EventSessionId, UserId, ... }` shape. Compile-safe (different namespace), runtime-broken until NSwag regeneration. Phase 4/6 fix.
+- **`Explore.Blazor.Client` has pre-existing compile errors** from in-progress `blazor-localization` branch (`IAccessibilityAnnouncerService` missing). Not introduced by scheduling refactor.
+- **`EventSession.EventDayId` auto-links on create/update** via `FindByEventAndLocalDateAsync`. Existing rows still have null until Phase 2.5 backfill migration runs.
+- **`EventRegistration.EventRegistrationIntentId` is nullable.** New handler creates linked rows, but legacy rows have null. Backfill migration needed.
 
-- No `EventDay` entity/table/query/UI.
-- No `EventAgendaItem` entity/table/query/UI.
-- No `LocationRoom` entity/table/query/UI.
-- No parent-child registration intent model.
-- No registration scope or event registration policy model.
-- No cached local-day/local-time projection fields on sessions or agenda items.
-- No session taxonomy junction tables.
-- No unique constraints yet for event tags/categories and session speakers.
-- No room-aware agenda UI; only simple timeline/session cards exist.
-- No clean official API schema for some already-used scheduling fields in the Blazor client; partial DTO shims exist.
-- No room/day-aware client service abstractions yet; the current `EventService` surface is event/session/registration oriented.
+### KEY CONVENTIONS DISCOVERED THIS SESSION
 
-## Important Existing Behaviors to Preserve or Deliberately Replace
+- **No base entity class.** Entities implement subsets of `{ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurrencyAware}`.
+- **Concurrency:** `Guid ConcurrencyStamp` + `.IsConcurrencyToken()` in EF config. Auto-updated by `SaveChangesAsync`.
+- **Lookup shape:** `int Id` (manual), `required string MasterCode`, `required string FullName`, `string? Description`. Seeded in `LookupTableSeeder`.
+- **Validators manually instantiated** in handlers — no DI. Repositories passed as constructor args.
+- **GuidVersion7ValueGenerator** used for Guid PKs in EF configs (or `HasDefaultValueSql("uuidv7()")` for some entities).
+- **Domain services** can go in `Explore.Domain/Services/` — no precedent existed but architecture tests allow it (no forbidden deps).
+- **Query filters** use named filters (`QueryFilterNames.Tenant`, `QueryFilterNames.SoftDelete`) applied in `ExploreDbContext.OnModelCreating`.
 
-- Repositories return entities; mapping happens in handlers.
-- Validators are manually instantiated.
-- Tenant isolation is enforced by named query filters in `ExploreDbContext`.
-- GET endpoints are generally anonymous; writes are authorized.
-- Event creation currently supports `POST /api/event/with-sessions`; this may remain as a compatibility path while internals change.
-- Blazor currently uses `InteractiveAuto`; timezone/browser-local display logic must remain prerender-safe.
-- The current multi-session registration UX must be treated as a UI precursor to the new scope model, not as proof the domain already supports whole-event registration.
-- Refactoring registration contracts will ripple into event pages and user profile/registration pages, not just event detail.
+### FILES CREATED THIS SESSION (new, did not exist before)
 
-## External Guidance Already Captured
+```
+Explore.Domain/LocationRoom.cs
+Explore.Domain/EventDay.cs
+Explore.Domain/EventAgendaItem.cs
+Explore.Domain/ScheduleItemKind.cs
+Explore.Domain/EventRegistrationPolicy.cs
+Explore.Domain/EventRegistrationIntent.cs
+Explore.Domain/RegistrationScope.cs
+Explore.Domain/EventSessionCategory.cs
+Explore.Domain/EventSessionTag.cs
+Explore.Domain/Enums/ScheduleItemKindEnum.cs
+Explore.Domain/Enums/EventRegistrationPolicyEnum.cs
+Explore.Domain/Enums/RegistrationScopeEnum.cs
+Explore.Domain/Services/Scheduling/IEventScheduleProjectionCalculator.cs
+Explore.Domain/Services/Scheduling/EventScheduleProjectionCalculator.cs
+Explore.Domain/Services/Scheduling/LocalScheduleProjection.cs
+Explore.Domain/Services/Registration/RegistrationPolicyRules.cs
+Explore.Persistence/Configurations/Entities/LocationRoomConfiguration.cs
+Explore.Persistence/Configurations/Entities/EventDayConfiguration.cs
+Explore.Persistence/Configurations/Entities/EventAgendaItemConfiguration.cs
+Explore.Persistence/Configurations/Entities/ScheduleItemKindConfiguration.cs
+Explore.Persistence/Configurations/Entities/EventRegistrationPolicyConfiguration.cs
+Explore.Persistence/Configurations/Entities/EventRegistrationIntentConfiguration.cs
+Explore.Persistence/Configurations/Entities/RegistrationScopeConfiguration.cs
+Explore.Persistence/Configurations/Entities/EventSessionCategoryConfiguration.cs
+Explore.Persistence/Configurations/Entities/EventSessionTagConfiguration.cs
+Explore.Persistence/Repositories/EventDayRepository.cs
+Explore.Persistence/Repositories/EventRegistrationIntentRepository.cs
+Explore.Application/Contracts/Persistence/IEventDayRepository.cs
+Explore.Application/Contracts/Persistence/IEventRegistrationIntentRepository.cs
+Explore.Application/Contracts/Persistence/IEventAgendaItemRepository.cs
+Explore.Application/Contracts/Persistence/ILocationRoomRepository.cs
+Explore.Application/Contracts/Persistence/IEventRegistrationPolicyRepository.cs
+Explore.Application/Exceptions/RoomScheduleConflictException.cs
+Explore.Application/DTOs/EventDay/ (CreateEventDayDto, UpdateEventDayDto, EventDayDto, EventDayListDto + Validators/)
+Explore.Application/DTOs/EventAgendaItem/ (CreateEventAgendaItemDto, UpdateEventAgendaItemDto, EventAgendaItemDto, EventAgendaItemListDto + Validators/)
+Explore.Application/DTOs/LocationRoom/ (CreateLocationRoomDto, UpdateLocationRoomDto, LocationRoomDto, LocationRoomListDto + Validators/)
+Explore.Application/DTOs/Agenda/ (EventAgendaProjectionDto, AgendaDayGroupDto, AgendaScheduleEntryDto)
+Explore.Application/Features/EventDays/ (Requests/Commands + Requests/Queries + Handlers/Commands + Handlers/Queries — full CRUD)
+Explore.Application/Features/EventAgendaItems/ (Requests/Commands + Requests/Queries + Handlers/Commands + Handlers/Queries — full CRUD)
+Explore.Application/Features/LocationRooms/ (Requests/Commands + Requests/Queries + Handlers/Commands + Handlers/Queries — full CRUD)
+Explore.Application/Features/Agenda/Requests/Queries/GetEventAgendaProjectionRequest.cs
+Explore.Application/Features/Agenda/Handlers/Queries/GetEventAgendaProjectionRequestHandler.cs
+Explore.Persistence/Repositories/EventAgendaItemRepository.cs
+Explore.Persistence/Repositories/LocationRoomRepository.cs
+Explore.Persistence/Repositories/EventRegistrationPolicyRepository.cs
+Event.Application.UnitTests/Features/EventSessions/Commands/UpdateEventSessionCommandHandlerTests.cs
+cerbos/policies/event_day.yaml + cerbos/policies/_schemas/event_day.json
+cerbos/policies/event_agenda_item.yaml + cerbos/policies/_schemas/event_agenda_item.json
+cerbos/policies/location_room.yaml + cerbos/policies/_schemas/location_room.json
+```
 
-- Official .NET guidance confirms:
-  - use `TimeZoneInfo.ConvertTime(DateTimeOffset, TimeZoneInfo)` for timezone-aware conversion,
-  - guard ambiguous/invalid local times around DST,
-  - use named query filters in EF Core 10,
-  - use composite/filtered indexes to match schedule query patterns,
-  - defer JS timezone detection to `OnAfterRenderAsync` in Blazor.
-- Planning review guidance confirms:
-  - keep new FKs nullable in the first rollout,
-  - isolate the registration semantic change into its own phase,
-  - avoid renaming `EventSessionAgendaItem` in the first rollout,
-  - regenerate OpenAPI/NSwag only at a phase boundary after API contracts stabilize,
-  - use atomic commit slices and TDD-oriented sequencing.
-- Additional docs/research captured:
-  - FluentValidation officially supports `MustAsync`/`CustomAsync` and custom `AddFailure` flows for cross-property and repository-backed validation.
-  - Registration modeling feedback now explicitly treats parent rows as intent/policy semantics and child rows as concrete session entitlements.
+### FILES MODIFIED THIS SESSION (existed before, edited)
 
-## Quick Resume
+```
+Explore.Domain/Event.cs — added RegistrationPolicyId FK
+Explore.Domain/EventSession.cs — added EventDayId, RoomId, SortOrder, 6 local projection fields, aggregate methods
+Explore.Domain/EventRegistration.cs — added EventRegistrationIntentId (nullable)
+Explore.Persistence/ExploreDbContext.cs — added DbSets, query filters for all new entities
+Explore.Persistence/Configurations/Entities/EventConfiguration.cs — wired RegistrationPolicy FK
+Explore.Persistence/Configurations/Entities/EventSessionConfiguration.cs — wired Room/EventDay FKs, new indexes, EndAfterStart check
+Explore.Persistence/Configurations/Entities/EventRegistrationConfiguration.cs — wired parent intent FK, intent index
+Explore.Persistence/Configurations/Entities/EventCategoriesConfiguration.cs — added unique index
+Explore.Persistence/Configurations/Entities/EventTagsConfiguration.cs — added unique index
+Explore.Persistence/Configurations/Entities/EventSessionSpeakerConfiguration.cs — added unique index
+Explore.Persistence/Seed/LookupTableSeeder.cs — added seeders for ScheduleItemKind, EventRegistrationPolicy, RegistrationScope
+Explore.Persistence/PersistenceServicesRegistration.cs — added DI for new repositories
+Explore.Persistence/Repositories/EventSessionRepository.cs — added overlap guard methods
+Explore.Application/DTOs/EventSession/CreateEventSessionDto.cs — added RoomId
+Explore.Application/DTOs/EventSession/UpdateEventSessionDto.cs — added RoomId
+Explore.Application/DTOs/EventSession/Validators/CreateEventSessionDtoValidator.cs — added IEventSessionRepository + overlap rule
+Explore.Application/DTOs/EventSession/Validators/UpdateEventSessionDtoValidator.cs — added IEventSessionRepository + overlap rule
+Explore.Application/DTOs/EventRegistration/CreateEventRegistrationDto.cs — REWRITTEN to intent-first shape
+Explore.Application/DTOs/EventRegistration/Validators/CreateEventRegistrationDtoValidator.cs — REWRITTEN with policy enforcement
+Explore.Application/Features/EventSessions/Handlers/Commands/CreateEventSessionCommandHandler.cs — added calculator, guard methods, EventDayId auto-linking
+Explore.Application/Features/EventSessions/Handlers/Commands/UpdateEventSessionCommandHandler.cs — added calculator, guard methods, EventDayId auto-linking
+Explore.Application/Features/EventRegistrations/Handlers/Commands/CreateEventRegistrationCommandHandler.cs — REWRITTEN for intent-first flow
+Explore.Application/Features/EventRegistrations/Requests/Commands/CreateEventRegistrationCommand.cs — ResourceId now keyed on EventId
+Explore.Application/Profiles/MappingProfile.cs — removed stale CreateMap
+Explore.Application/ApplicationServicesRegistration.cs — registered IEventScheduleProjectionCalculator singleton
+Event.Application.UnitTests/Features/EventSessions/Commands/CreateEventSessionCommandHandlerTests.cs — updated for new constructor + guard method + EventDayId tests
+Explore.Application/Contracts/Persistence/IEventDayRepository.cs — added FindByEventAndLocalDateAsync
+Explore.Persistence/Repositories/EventDayRepository.cs — implemented FindByEventAndLocalDateAsync
+Explore.Application/DTOs/Event/CreateEventDto.cs — added RegistrationPolicyId, EventSeriesId, SeriesOrder
+Explore.Application/DTOs/Event/UpdateEventDto.cs — added RegistrationPolicyId, EventSeriesId, SeriesOrder
+Explore.Application/DTOs/Event/Validators/CreateEventDtoValidator.cs — added series + policy existence checks
+Explore.Application/DTOs/Event/Validators/UpdateEventDtoValidator.cs — added series + policy existence checks
+Explore.Application/Features/Events/Handlers/Commands/CreateEventCommandHandler.cs — wired series + policy repositories
+Explore.Application/Features/Events/Handlers/Commands/UpdateEventCommandHandler.cs — wired series + policy repositories
+Event.Application.UnitTests/Features/Events/Commands/CreateEventCommandHandlerTests.cs — updated for new constructor
+Event.Application.UnitTests/Features/Events/Validators/CreateEventDtoValidatorTests.cs — updated for new constructor
+Explore.Application/Authorization/ResourceKinds.cs — added EventDay, EventAgendaItem, LocationRoom
+Explore.Application/Authorization/AuthorizationActions.cs — added EventDays, EventAgendaItems, LocationRooms classes
+Explore.Infrastructure/Services/FallbackAuthorizationService.cs — added cases for event_day, event_agenda_item, location_room
+Explore.Application/Profiles/MappingProfile.cs — added EventDay, EventAgendaItem, LocationRoom mappings
+Explore.Persistence/PersistenceServicesRegistration.cs — added DI for EventAgendaItem, LocationRoom, EventRegistrationPolicy repos
+Explore.Persistence/Configurations/Entities/EventRegistrationIntentConfiguration.cs — added 3 partial unique indexes
+dev/active/event-scheduling-refactor/event-scheduling-refactor-plan.md — updated with EventDay justification, two-layer overlap, projection calculator ownership
+```
 
-1. Read `event-scheduling-refactor-plan.md`.
-2. Start from the registration section and locked-planning-decisions section; they were the main revisions in this session.
-3. Break the finalized plan into implementation-ready issue/PR chunks.
-4. Start with ADR + architecture test guardrails or additive schema entities only.
-5. Keep registration semantics isolated from the first schema slice.
-6. Keep same-room overlap enforcement in the first rollout at validator level, not as a surprise late hardening task.
+## Session 2 Progress (2026-04-13 Europe/Brussels)
+
+### ✅ Build Fixes (NSwag DTO regeneration)
+- Fixed 3 build errors in Blazor.Client from `CreateEventRegistrationDto.EventSessionId` removal (intent-first rewrite).
+- Fixed 3 build errors in Blazor.Client.Tests for same DTO shape change.
+- All pages now use intent-first DTO: EventId, UserId, RegistrationScopeId=3 (SessionSelection), SelectedSessionIds.
+
+### ✅ Phase 4 — API Layer (COMPLETE)
+- **ResourceDescriptors**: EventDay, EventAgendaItem, LocationRoom added to `ResourceDescriptors.cs`.
+- **RouteNames**: 3 new regions (EventDay, EventAgendaItem, LocationRoom) + agenda projection.
+- **Controllers**: 3 new (EventDayController, EventAgendaItemController, LocationRoomController) + 3 lookup controllers (RegistrationScope, EventRegistrationPolicy, ScheduleItemKind).
+- **HATEOAS**: 3 link policy files (detail+collection), 3 resource assemblers, 9 DI registrations.
+- **DTOs updated**: EventSessionDto (EventDayId, RoomId, local projection, SortOrder, RoomName), EventDto (RegistrationPolicyId/FullName/MasterCode), EventRegistrationDto (EventId, EventTitle, EventRegistrationIntentId).
+- **New DTOs**: EventRegistrationIntentDto/ListDto, RegistrationScopeDto/ListDto, EventRegistrationPolicyDto/ListDto, ScheduleItemKindDto/ListDto.
+- **AutoMapper**: Full mapping sections for all new/changed DTOs including nav property ForMember mappings.
+- **Repository eager-loading**: .Include(Room) in EventSession repo (4 methods), .Include(RegistrationPolicy) in Event repo (6 methods).
+- **Lookup infrastructure**: Repository contracts, implementations, MediatR queries, handlers, DI for RegistrationScope + ScheduleItemKind.
+
+### ✅ Phase 6 — Tests + Docs (MOSTLY COMPLETE)
+- **Domain unit tests**: 192 passing — EventScheduleProjectionCalculator (14 tests, DST, timezone fallback), RegistrationPolicyRules (21 parameterized cases), EventSession Reschedule/Reproject (9 tests), EventAgendaItem (13 tests), EventDay/LocationRoom/EventRegistrationIntent (8 tests each).
+- **Application unit tests**: 822 passing — 17 handler test files covering all 15 CRUD handlers + AgendaProjection + RegistrationScope. DataBuilder extended with 6 new entity Fakers.
+- **Schema docs**: `schemas/islamu-event.md` updated with all new entities, relationships, enums.
+- **Architecture tests**: 72 passing (reflection-based, auto-covers new entities).
+
+### Key Files Created/Modified in Session 2
+```
+# Phase 4 — API Layer
+Explore.Application/Authorization/ResourceDescriptors.cs — 3 new entries
+Explore.API/Hateoas/RouteNames.cs — 3 new regions
+Explore.API/Controllers/EventDayController.cs — NEW
+Explore.API/Controllers/EventAgendaItemController.cs — NEW
+Explore.API/Controllers/LocationRoomController.cs — NEW
+Explore.API/Controllers/RegistrationScopeController.cs — NEW
+Explore.API/Controllers/EventRegistrationPolicyController.cs — NEW
+Explore.API/Controllers/ScheduleItemKindController.cs — NEW
+Explore.API/Hateoas/Policies/EventDayLinkPolicy.cs — NEW
+Explore.API/Hateoas/Policies/EventAgendaItemLinkPolicy.cs — NEW
+Explore.API/Hateoas/Policies/LocationRoomLinkPolicy.cs — NEW
+Explore.API/Hateoas/Assemblers/EventDayResourceAssembler.cs — NEW
+Explore.API/Hateoas/Assemblers/EventAgendaItemResourceAssembler.cs — NEW
+Explore.API/Hateoas/Assemblers/LocationRoomResourceAssembler.cs — NEW
+Explore.API/Extensions/HateoasAssemblerRegistration.cs — 9 DI registrations
+Explore.Application/DTOs/EventSession/EventSessionDto.cs — 9 new fields
+Explore.Application/DTOs/EventSession/EventSessionListDto.cs — 7 new fields
+Explore.Application/DTOs/Event/EventDto.cs — 3 RegistrationPolicy fields
+Explore.Application/DTOs/Event/EventListDto.cs — 2 RegistrationPolicy fields
+Explore.Application/DTOs/EventRegistration/EventRegistrationDto.cs — EventId, EventTitle, IntentId
+Explore.Application/DTOs/EventRegistration/EventRegistrationListDto.cs — IntentId
+Explore.Application/DTOs/EventRegistrationIntent/ — NEW (2 files)
+Explore.Application/DTOs/RegistrationScope/ — NEW (2 files)
+Explore.Application/DTOs/EventRegistrationPolicy/ — NEW (2 files)
+Explore.Application/DTOs/ScheduleItemKind/ — NEW (2 files)
+Explore.Application/Contracts/Persistence/IRegistrationScopeRepository.cs — NEW
+Explore.Application/Contracts/Persistence/IScheduleItemKindRepository.cs — NEW
+Explore.Persistence/Repositories/RegistrationScopeRepository.cs — NEW
+Explore.Persistence/Repositories/ScheduleItemKindRepository.cs — NEW
+Explore.Application/Features/RegistrationScopes/ — NEW (query + handler)
+Explore.Application/Features/EventRegistrationPolicies/ — NEW (query + handler)
+Explore.Application/Features/ScheduleItemKinds/ — NEW (query + handler)
+Explore.Application/Profiles/MappingProfile.cs — all new mappings
+Explore.Persistence/Repositories/EventSessionRepository.cs — .Include(Room) x4
+Explore.Persistence/Repositories/EventRepository.cs — .Include(RegistrationPolicy) x6
+Explore.Persistence/PersistenceServicesRegistration.cs — 2 new repo registrations
+
+# Phase 6 — Tests + Docs
+Event.Application.UnitTests/Common/DataBuilder.cs — 6 new Fakers
+Event.Domain.UnitTests/Services/Scheduling/EventScheduleProjectionCalculatorTests.cs — NEW
+Event.Domain.UnitTests/Services/Registration/RegistrationPolicyRulesTests.cs — NEW
+Event.Domain.UnitTests/Entities/EventSessionRescheduleTests.cs — NEW
+Event.Domain.UnitTests/Entities/EventAgendaItemTests.cs — NEW
+Event.Domain.UnitTests/Entities/EventDayTests.cs — NEW
+Event.Domain.UnitTests/Entities/LocationRoomTests.cs — NEW
+Event.Domain.UnitTests/Entities/EventRegistrationIntentTests.cs — NEW
+Event.Application.UnitTests/Features/EventDays/ — 5 test files (CRUD)
+Event.Application.UnitTests/Features/EventAgendaItems/ — 5 test files (CRUD)
+Event.Application.UnitTests/Features/LocationRooms/ — 5 test files (CRUD)
+Event.Application.UnitTests/Features/Agenda/Queries/ — 1 test file
+Event.Application.UnitTests/Features/RegistrationScopes/Queries/ — 1 test file
+schemas/islamu-event.md — all new entities, relationships, enums
+```
+
+## Quick Resume for Next Session
+
+1. Read this context file + `event-scheduling-refactor-tasks.md`.
+2. Run `dotnet build --configuration Release --verbosity quiet` and the per-project test matrix from CLAUDE.md.
+3. **🟡 BLOCKER: User must regenerate swagger.json + EventApiClient.g.cs** to pick up 6 new controllers (EventDay, EventAgendaItem, LocationRoom, RegistrationScope, EventRegistrationPolicy, ScheduleItemKind). Phase 5 Blazor UI is blocked on this.
+4. **Recommended first action:** NSwag regeneration, then Phase 5 Blazor UI.
+5. Build: 0 errors. Tests: 72 Architecture / 192 Domain / 822 Application / 190 Secrets (all green).
+6. **Phase 4 (API layer) is now complete.** All controllers, HATEOAS, DTOs, AutoMapper, and repository eager-loading for the scheduling refactor are in place.
+7. **Phase 6 tests mostly complete.** Domain + application unit tests all passing. Remaining: persistence integration tests, Blazor component tests.

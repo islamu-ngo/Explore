@@ -2,6 +2,7 @@
 // ABOUTME: Eliminates repeated ConfigurePrimaryHttpMessageHandler blocks for dev cert bypass.
 
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Footer;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Services;
@@ -56,6 +57,8 @@ public static class HttpClientExtensions
         services.AddTypedApiClient<IGroupService, GroupService>(apiBaseUrl, environment)
             .AddInteractiveResilience();
         services.AddTypedApiClient<IFooterAdminService, FooterAdminService>(apiBaseUrl, environment)
+            .AddInteractiveResilience();
+        services.AddTypedApiClient<ILocalizationAdminService, LocalizationAdminService>(apiBaseUrl, environment)
             .AddInteractiveResilience();
 
         // Admin claims transformation client (shorter timeout, no token forwarding handler)

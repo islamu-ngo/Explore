@@ -24,7 +24,10 @@ public class NotificationService : INotificationService
         int pageNumber,
         int pageSize,
         bool? isRead = null,
-        int? notificationScopeId = null)
+        int? notificationScopeId = null,
+        int? notificationReasonId = null,
+        bool? isArchived = null,
+        bool? isSnoozed = null)
     {
         try
         {
@@ -32,7 +35,11 @@ public class NotificationService : INotificationService
                 pageNumber: pageNumber,
                 pageSize: pageSize,
                 isRead: isRead,
-                notificationScopeId: notificationScopeId);
+                notificationTypeId: null,
+                notificationScopeId: notificationScopeId,
+                notificationReasonId: notificationReasonId,
+                isArchived: isArchived,
+                isSnoozed: isSnoozed);
 
             return new PaginatedResult<NotificationListDto>
             {
@@ -149,6 +156,44 @@ public class NotificationService : INotificationService
         catch (Exception ex)
         {
             _logger.LogError(ex, "[NOTIFICATION SERVICE] Error deleting notification");
+            return false;
+        }
+    }
+
+    public async Task<bool> ArchiveAsync(Guid notificationId, bool archive = true)
+    {
+        try
+        {
+            var response = await _apiClient.ArchiveNotificationAsync(notificationId, archive);
+            return response.Success ?? false;
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] API error archiving notification: {StatusCode}", ex.StatusCode);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] Error archiving notification");
+            return false;
+        }
+    }
+
+    public async Task<bool> SnoozeAsync(Guid notificationId, DateTimeOffset snoozedUntil)
+    {
+        try
+        {
+            var response = await _apiClient.SnoozeNotificationAsync(notificationId, snoozedUntil);
+            return response.Success ?? false;
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] API error snoozing notification: {StatusCode}", ex.StatusCode);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[NOTIFICATION SERVICE] Error snoozing notification");
             return false;
         }
     }

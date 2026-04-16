@@ -20,5 +20,6 @@ var userId = user.FindFirst("sub")?.Value
 ## Notes
 - If missing, treat as unauthenticated (return 401 or equivalent).
 - Keep parsing centralized; don’t duplicate logic in multiple controllers.
+- `internal_user_id` is a separate local-user claim used by some BFF/UI helpers after identity resolution. It is not part of the standard fallback chain.
 
 **Related**: `auth-patterns` skill.

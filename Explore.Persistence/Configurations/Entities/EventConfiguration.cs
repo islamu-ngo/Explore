@@ -80,6 +80,11 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
             .HasForeignKey(e => e.EventFormatId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasOne(e => e.RegistrationPolicy)
+            .WithMany()
+            .HasForeignKey(e => e.RegistrationPolicyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasOne(e => e.AtprotoRecord)
             .WithMany()
             .HasForeignKey(e => e.AtprotoRecordId)

@@ -1,0 +1,38 @@
+// ABOUTME: API controller for registration scope lookup table (read-only enumeration).
+// ABOUTME: Provides registration scope options (Event, Day, SessionSelection) for registration flows.
+
+using Asp.Versioning;
+using Explore.Application.DTOs.RegistrationScope;
+using Explore.Application.Features.RegistrationScopes.Requests.Queries;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
+
+namespace Explore.API.Controllers;
+
+[ApiVersion("0.1")]
+[Route("api/[controller]")]
+[ApiController]
+public class RegistrationScopeController : ControllerBase
+{
+    private readonly IMediator _mediator;
+
+    public RegistrationScopeController(IMediator mediator)
+    {
+        _mediator = mediator;
+    }
+
+    // GET: api/registrationscope
+    [HttpGet]
+    [EndpointSummary("Get all Registration Scopes")]
+    [EndpointDescription("Retrieve a list of all registration scopes (Event, Day, SessionSelection)")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(List<RegistrationScopeListDto>), StatusCodes.Status200OK)]
+    [OutputCache(PolicyName = "LookupData")]
+    public async Task<ActionResult<List<RegistrationScopeListDto>>> GetAll(CancellationToken cancellationToken = default)
+    {
+        var scopes = await _mediator.Send(new GetRegistrationScopeListRequest(), cancellationToken);
+        return Ok(scopes);
+    }
+}

@@ -23,7 +23,7 @@ Lean rules for Blazor + MudBlazor + render modes + routing.
 - File patterns: `**/*.razor`, `**/*.razor.cs`, `**/*.Client/**/*.cs`
 
 ## MudBlazor Version
-- **Current: MudBlazor v9** (.NET 8/9/10). See `dev/active/mudblazor-migration-v9/` for migration context.
+- **Current: MudBlazor v9** (.NET 8/9/10 compatible). See `resources/v9-migration.md` for the breaking-change reference.
 
 ## Aesthetic Direction
 - **Neo-minimal**: clean surfaces, generous whitespace, soft rounded corners (`12px`), subtle shadows (`Elevation 0-1`), purposeful color.

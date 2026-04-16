@@ -1,15 +1,18 @@
 // ABOUTME: Handler for updating an existing event session with validation.
 // ABOUTME: Validates input, fetches entity, applies field updates.
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.EventSession.Validators;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.EventSessions.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
+using Explore.Domain.Services.Scheduling;
 using MediatR;
 
 namespace Explore.Application.Features.EventSessions.Handlers.Commands;
@@ -21,6 +24,8 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
     private readonly ILocationRepository _locationRepository;
     private readonly IRegistrationModeRepository _registrationModeRepository;
     private readonly IEventSessionIslamicAspectRepository _eventSessionIslamicAspectRepository;
+    private readonly IEventScheduleProjectionCalculator _scheduleProjectionCalculator;
+    private readonly IEventDayRepository _eventDayRepository;
     private readonly IMapper _mapper;
 
     public UpdateEventSessionCommandHandler(
@@ -29,6 +34,8 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
         ILocationRepository locationRepository,
         IRegistrationModeRepository registrationModeRepository,
         IEventSessionIslamicAspectRepository eventSessionIslamicAspectRepository,
+        IEventScheduleProjectionCalculator scheduleProjectionCalculator,
+        IEventDayRepository eventDayRepository,
         IMapper mapper)
     {
         _eventSessionRepository = eventSessionRepository;
@@ -36,6 +43,8 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
         _locationRepository = locationRepository;
         _registrationModeRepository = registrationModeRepository;
         _eventSessionIslamicAspectRepository = eventSessionIslamicAspectRepository;
+        _scheduleProjectionCalculator = scheduleProjectionCalculator;
+        _eventDayRepository = eventDayRepository;
         _mapper = mapper;
     }
 
@@ -43,7 +52,11 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
     {
         var response = new BaseCommandResponse<Guid>();
 
-        var validator = new UpdateEventSessionDtoValidator(_eventRepository, _locationRepository, _registrationModeRepository);
+        var validator = new UpdateEventSessionDtoValidator(
+            _eventRepository,
+            _locationRepository,
+            _registrationModeRepository,
+            _eventSessionRepository);
         var validationResult = await validator.ValidateAsync(request.EventSessionDto, cancellationToken);
 
         if (!validationResult.IsValid)
@@ -74,7 +87,34 @@ public class UpdateEventSessionCommandHandler : IRequestHandler<UpdateEventSessi
 
         _mapper.Map(request.EventSessionDto, eventSession);
 
-        await _eventSessionRepository.Update(eventSession);
+        // Populate cached local projection fields via the aggregate method that consumes the calculator.
+        // Handlers never touch LocalStart*/LocalEnd* directly.
+        eventSession.Reschedule(
+            request.EventSessionDto.StartTime,
+            request.EventSessionDto.EndTime,
+            parentEvent.EventTimeZoneId ?? parentEvent.Timezone ?? string.Empty,
+            _scheduleProjectionCalculator);
+
+        // Auto-link to the matching EventDay by (EventId, LocalStartDate).
+        // When rescheduled to a different date, the link moves to the new day (or null if no day exists).
+        var matchingDay = await _eventDayRepository.FindByEventAndLocalDateAsync(
+            parentEvent.Id, eventSession.LocalStartDate, cancellationToken);
+        eventSession.EventDayId = matchingDay?.Id;
+
+        try
+        {
+            // Layer B: serializable re-check of same-room overlap runs inside the repository guard method.
+            // The entity's ConcurrencyStamp (IsConcurrencyToken) handles the same-row stale-write case.
+            await _eventSessionRepository.UpdateWithRoomOverlapGuardAsync(eventSession, cancellationToken);
+        }
+        catch (RoomScheduleConflictException ex)
+        {
+            response.Success = false;
+            response.Message = "Event session update failed.";
+            response.Errors = new List<string> { ex.Message };
+            response.FailureCode = "room_schedule_conflict";
+            return response;
+        }
 
         var existingIslamicAspect = await _eventSessionIslamicAspectRepository.GetById(eventSession.Id);
         if (request.EventSessionDto.IslamicAspect == null)

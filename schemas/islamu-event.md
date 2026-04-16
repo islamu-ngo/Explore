@@ -154,6 +154,33 @@ Table "visibility_types" {
   "description" varchar(500)
 }
 
+Table "schedule_item_kinds" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  Note: 'Lookup: classifies agenda items (e.g. Break, Prayer, Keynote, Workshop). Seeded.'
+}
+
+Table "event_registration_policies" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  Note: 'Lookup: defines which registration scopes are allowed for an event. Values: WholeEventOnly(1), WholeDayOnly(2), SessionSelectionOnly(3), WholeEventOrDay(4), WholeEventOrSession(5), Flexible(6). Seeded.'
+}
+
+Table "registration_scopes" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  Note: 'Lookup: granularity of a registration intent. Values: Event(1), Day(2), SessionSelection(3). Seeded.'
+}
+
 // ============================================================
 // System / Configuration Tables
 // ============================================================
@@ -1146,6 +1173,32 @@ Table "locations" {
   "timezone" varchar(500)
 }
 
+Table "location_rooms" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "location_id" uuid [not null]
+  "tenant_id" uuid [not null]
+  "name" varchar(200) [not null]
+  "slug" varchar(200)
+  "description" varchar(2000)
+  "capacity" int
+  "sort_order" int [not null, default: 0]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+  "concurrency_stamp" uuid [not null, note: 'optimistic concurrency token, app-managed']
+
+  indexes {
+    (location_id) [name: 'ix_location_rooms_location_id']
+    (tenant_id) [name: 'ix_location_rooms_tenant_id']
+  }
+
+  Note: 'Sub-venue within a location (e.g. Conference Room A, Main Hall). Used for room-based agenda grid layout. Soft-deletable, tenant-scoped.'
+}
+
 Table "location_pii" {
   "location_id" uuid [pk, not null, note: 'shared PK with locations']
   "address" varchar(500) [not null]
@@ -1575,6 +1628,7 @@ Table "events" {
   "event_time_zone_id" text
   "event_series_id" uuid
   "series_order" int
+  "registration_policy_id" int [note: 'FK to event_registration_policies. Null = Flexible (all scopes allowed).']
   "event_format_id" int [not null]
   "atproto_record_id" uuid
   "created_at" timestamptz [not null]
@@ -1623,12 +1677,80 @@ Table "event_tech_aspects" {
   "prize_currency_code" varchar(3)
 }
 
+Table "event_days" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "event_id" uuid [not null]
+  "tenant_id" uuid [not null]
+  "local_date" date [not null, note: 'calendar date in event timezone']
+  "label" varchar(200) [note: 'e.g. "Day 1 — Opening Ceremony"']
+  "description" varchar(2000)
+  "banner_text" varchar(500)
+  "banner_image_id" uuid
+  "is_published" boolean [not null, default: false]
+  "sort_order" int [not null, default: 0]
+  "allows_day_scope_registration" boolean [not null, default: false, note: 'whether day-level registration intent is allowed']
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+  "concurrency_stamp" uuid [not null, note: 'optimistic concurrency token, app-managed']
+
+  indexes {
+    (event_id, local_date) [unique, name: 'ix_event_days_event_date', note: 'partial: WHERE is_deleted = false']
+    (tenant_id) [name: 'ix_event_days_tenant_id']
+  }
+
+  Note: 'Calendar-day grouping for multi-day events. One row per local date. Sessions and agenda items link here via event_day_id. Soft-deletable, tenant-scoped.'
+}
+
+Table "event_agenda_items" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "event_id" uuid [not null]
+  "event_day_id" uuid [note: 'FK to event_days. Auto-linked by handler from LocalStartDate.']
+  "tenant_id" uuid [not null]
+  "title" varchar(500) [not null]
+  "description" varchar(2000)
+  "start_time" timestamptz [not null]
+  "end_time" timestamptz [not null]
+  "local_start_date" date [not null, note: 'cached projection']
+  "local_end_date" date [not null, note: 'cached projection']
+  "local_start_time" time [not null, note: 'cached projection']
+  "local_end_time" time [not null, note: 'cached projection']
+  "local_start_minute_of_day" int [not null, note: 'cached: hours*60+minutes']
+  "local_end_minute_of_day" int [not null, note: 'cached: hours*60+minutes']
+  "location_id" uuid
+  "room_id" uuid [note: 'FK to location_rooms']
+  "kind_id" int [note: 'FK to schedule_item_kinds']
+  "sort_order" int [not null, default: 0]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+  "concurrency_stamp" uuid [not null, note: 'optimistic concurrency token, app-managed']
+
+  indexes {
+    (event_id) [name: 'ix_event_agenda_items_event_id']
+    (event_day_id) [name: 'ix_event_agenda_items_event_day_id']
+    (tenant_id) [name: 'ix_event_agenda_items_tenant_id']
+  }
+
+  Note: 'Event-level schedule entries (breaks, prayers, keynotes) that are not sessions. Appear in the unified agenda alongside sessions. Local projection fields cached via IEventScheduleProjectionCalculator.'
+}
+
 Table "event_sessions" {
   "id" uuid [pk, not null, note: 'uuidv7()']
   "event_id" uuid [not null]
+  "event_day_id" uuid [note: 'FK to event_days. Auto-linked by handler from LocalStartDate.']
   "start_time" timestamptz [not null]
   "end_time" timestamptz [not null]
   "location_id" uuid
+  "room_id" uuid [note: 'FK to location_rooms. Finer-grained venue assignment.']
   "title" varchar(500)
   "tenant_id" uuid [not null]
   "slug" varchar(200)
@@ -1638,6 +1760,13 @@ Table "event_sessions" {
   "price" decimal(19,4)
   "currency_code" varchar(3)
   "description" varchar(500)
+  "sort_order" int [not null, default: 0]
+  "local_start_date" date [not null, note: 'cached projection from start_time + event timezone']
+  "local_end_date" date [not null, note: 'cached projection from end_time + event timezone']
+  "local_start_time" time [not null, note: 'cached projection']
+  "local_end_time" time [not null, note: 'cached projection']
+  "local_start_minute_of_day" int [not null, note: 'cached: hours*60+minutes for sorting']
+  "local_end_minute_of_day" int [not null, note: 'cached: hours*60+minutes for sorting']
   "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
@@ -1650,9 +1779,11 @@ Table "event_sessions" {
   indexes {
     (event_id) [name: 'ix_event_sessions_event_id']
     (tenant_id) [name: 'ix_event_sessions_tenant_id']
+    (event_day_id) [name: 'ix_event_sessions_event_day_id']
+    (room_id) [name: 'ix_event_sessions_room_id']
   }
 
-  Note: 'Individual sessions within an event. Check: CK_EventSession_NonNegativePrice. Cascade deletes with parent event.'
+  Note: 'Individual sessions within an event. Check: CK_EventSession_NonNegativePrice. Cascade deletes with parent event. Local projection fields are cached from UTC times + event timezone via IEventScheduleProjectionCalculator.'
 }
 
 Table "event_session_islamic_aspects" {
@@ -1721,6 +1852,7 @@ Table "event_registrations" {
   "id" uuid [pk, not null, note: 'uuidv7()']
   "user_id" uuid [not null]
   "event_session_id" uuid [not null]
+  "event_registration_intent_id" uuid [note: 'FK to event_registration_intents. Links child registration to parent intent.']
   "approval_status_id" int
   "tenant_id" uuid [not null]
   "atproto_record_id" uuid
@@ -1732,7 +1864,60 @@ Table "event_registrations" {
   "deleted_at" timestamptz
   "deleted_by" uuid
 
-  Note: 'Session-level RSVP. Soft-deletable, unique per (user, session).'
+  Note: 'Session-level RSVP. Soft-deletable, unique per (user, session). Now linked to a parent EventRegistrationIntent for intent-first registration model.'
+}
+
+Table "event_registration_intents" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "event_id" uuid [not null]
+  "user_id" uuid [not null]
+  "registration_scope_id" int [not null, note: 'FK to registration_scopes (Event=1, Day=2, SessionSelection=3)']
+  "selected_event_day_id" uuid [note: 'FK to event_days. Required when scope=Day.']
+  "registration_policy_snapshot_id" int [note: 'FK to event_registration_policies. Snapshot of event policy at registration time.']
+  "approval_status_id" int [note: 'FK to approval_statuses']
+  "tenant_id" uuid [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+  "concurrency_stamp" uuid [not null, note: 'optimistic concurrency token, app-managed']
+
+  indexes {
+    (event_id, user_id) [name: 'ix_event_registration_intents_event_user', note: 'partial unique: scope=Event, WHERE is_deleted=false']
+    (event_id, user_id, selected_event_day_id) [name: 'ix_event_registration_intents_event_user_day', note: 'partial unique: scope=Day, WHERE is_deleted=false']
+    (tenant_id) [name: 'ix_event_registration_intents_tenant_id']
+  }
+
+  Note: 'Parent registration intent. One per (user, event, scope). Child event_registrations link back via event_registration_intent_id. Scope determines granularity: Event (whole-event), Day (specific day), SessionSelection (pick sessions).'
+}
+
+Table "event_session_categories" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "event_session_id" uuid [not null]
+  "category_id" uuid [not null]
+  "tenant_id" uuid [not null]
+
+  indexes {
+    (event_session_id, category_id) [unique, name: 'ix_event_session_categories_session_category']
+  }
+
+  Note: 'Junction: session ↔ category. Managed as sub-resource of EventSession.'
+}
+
+Table "event_session_tags" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "event_session_id" uuid [not null]
+  "tag_id" uuid [not null]
+  "tenant_id" uuid [not null]
+
+  indexes {
+    (event_session_id, tag_id) [unique, name: 'ix_event_session_tags_session_tag']
+  }
+
+  Note: 'Junction: session ↔ tag. Managed as sub-resource of EventSession.'
 }
 
 Table "event_contact_share_consents" {
@@ -1934,6 +2119,21 @@ Enum "registration_mode_enum" {
   "Closed" [note: '4']
 }
 
+Enum "event_registration_policy_enum" {
+  "WholeEventOnly" [note: '1 — only whole-event registration allowed']
+  "WholeDayOnly" [note: '2 — only day-level registration allowed']
+  "SessionSelectionOnly" [note: '3 — only session-selection registration allowed']
+  "WholeEventOrDay" [note: '4 — event or day scope allowed']
+  "WholeEventOrSession" [note: '5 — event or session-selection allowed']
+  "Flexible" [note: '6 — all scopes allowed (default when null)']
+}
+
+Enum "registration_scope_enum" {
+  "Event" [note: '1 — whole-event registration']
+  "Day" [note: '2 — day-level registration']
+  "SessionSelection" [note: '3 — user picks individual sessions']
+}
+
 Enum "config_scope_enum" {
   "Instance" [note: '0']
   "Tenant" [note: '1']
@@ -2069,6 +2269,8 @@ Ref: "custom_property_values"."tenant_id" > "tenants"."id" [delete: restrict]
 // Location relationships
 Ref: "locations"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "location_pii"."location_id" - "locations"."id" [delete: cascade]
+Ref: "location_rooms"."location_id" > "locations"."id" [delete: cascade]
+Ref: "location_rooms"."tenant_id" > "tenants"."id" [delete: restrict]
 
 // Actor relationships
 Ref: "actors"."actor_type_id" > "actor_types"."id" [delete: restrict]
@@ -2150,6 +2352,7 @@ Ref: "events"."event_status_id" > "event_statuses"."id" [delete: restrict]
 Ref: "events"."event_format_id" > "event_formats"."id" [delete: restrict]
 Ref: "events"."atproto_record_id" > "atproto_records"."id" [delete: set null]
 Ref: "events"."event_series_id" > "event_series"."id"
+Ref: "events"."registration_policy_id" > "event_registration_policies"."id" [delete: set null]
 Ref: "event_types"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "event_islamic_aspects"."id" - "events"."id" [delete: cascade]
 Ref: "event_islamic_aspects"."madhab_id" > "madhabs"."id" [delete: set null]
@@ -2159,6 +2362,17 @@ Ref: "event_sessions"."event_id" > "events"."id" [delete: cascade]
 Ref: "event_sessions"."location_id" > "locations"."id" [delete: set null]
 Ref: "event_sessions"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "event_sessions"."registration_mode_id" > "registration_modes"."id" [delete: restrict]
+Ref: "event_sessions"."event_day_id" > "event_days"."id" [delete: set null]
+Ref: "event_sessions"."room_id" > "location_rooms"."id" [delete: set null]
+Ref: "event_days"."event_id" > "events"."id" [delete: cascade]
+Ref: "event_days"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "event_days"."banner_image_id" > "storage_objects"."id" [delete: set null]
+Ref: "event_agenda_items"."event_id" > "events"."id" [delete: cascade]
+Ref: "event_agenda_items"."event_day_id" > "event_days"."id" [delete: set null]
+Ref: "event_agenda_items"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "event_agenda_items"."location_id" > "locations"."id" [delete: set null]
+Ref: "event_agenda_items"."room_id" > "location_rooms"."id" [delete: set null]
+Ref: "event_agenda_items"."kind_id" > "schedule_item_kinds"."id" [delete: set null]
 Ref: "event_session_islamic_aspects"."event_session_id" - "event_sessions"."id" [delete: cascade]
 Ref: "event_session_agenda_items"."event_session_id" > "event_sessions"."id" [delete: cascade]
 Ref: "event_session_agenda_items"."location_id" > "locations"."id" [delete: set null]
@@ -2180,6 +2394,20 @@ Ref: "event_registrations"."event_session_id" > "event_sessions"."id" [delete: c
 Ref: "event_registrations"."approval_status_id" > "approval_statuses"."id"
 Ref: "event_registrations"."tenant_id" > "tenants"."id" [delete: cascade]
 Ref: "event_registrations"."atproto_record_id" > "atproto_records"."id"
+Ref: "event_registrations"."event_registration_intent_id" > "event_registration_intents"."id" [delete: set null]
+Ref: "event_registration_intents"."event_id" > "events"."id" [delete: cascade]
+Ref: "event_registration_intents"."user_id" > "users"."id" [delete: cascade]
+Ref: "event_registration_intents"."registration_scope_id" > "registration_scopes"."id" [delete: restrict]
+Ref: "event_registration_intents"."selected_event_day_id" > "event_days"."id" [delete: set null]
+Ref: "event_registration_intents"."registration_policy_snapshot_id" > "event_registration_policies"."id" [delete: set null]
+Ref: "event_registration_intents"."approval_status_id" > "approval_statuses"."id" [delete: set null]
+Ref: "event_registration_intents"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "event_session_categories"."event_session_id" > "event_sessions"."id" [delete: cascade]
+Ref: "event_session_categories"."category_id" > "categories"."id" [delete: cascade]
+Ref: "event_session_categories"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "event_session_tags"."event_session_id" > "event_sessions"."id" [delete: cascade]
+Ref: "event_session_tags"."tag_id" > "tags"."id" [delete: cascade]
+Ref: "event_session_tags"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "event_contact_share_consents"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "event_contact_share_consents"."source_event_id" > "events"."id" [delete: restrict]
 Ref: "event_contact_share_consents"."user_id" > "users"."id" [delete: restrict]

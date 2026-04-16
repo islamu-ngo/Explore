@@ -51,7 +51,7 @@ dotnet build --configuration Release --verbosity quiet
 
 ### Step 2: Run All Test Projects
 
-Run each project individually — never use solution-level `dotnet test`:
+Run each standard project individually — never use solution-level `dotnet test`:
 
 ```bash
 dotnet test --project Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet
@@ -60,8 +60,11 @@ dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj -
 dotnet test --project Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --verbosity quiet
 dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet
 dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet
+dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet
 dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet
 ```
+
+`Explore.Blazor.Client.E2ETests` is a ninth test project, but it is not part of the standard PR validation pass because it requires the full Aspire AppHost/browser stack.
 
 ### Step 3: Verify Architecture Tests
 
@@ -156,7 +159,7 @@ Before submitting:
 
 - [ ] Scope is focused and independently testable (target ≤ 4 hours of work)
 - [ ] Build succeeds: `dotnet build --configuration Release --verbosity quiet`
-- [ ] All 7 test projects pass individually
+- [ ] All 8 standard test projects pass individually
 - [ ] Architecture tests pass (layer deps, naming, accessibility, auth parity)
 - [ ] New C# files have `ABOUTME:` headers
 - [ ] New CSS follows layer architecture and uses design tokens

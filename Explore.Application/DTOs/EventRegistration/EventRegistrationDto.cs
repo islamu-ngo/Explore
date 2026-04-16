@@ -11,6 +11,13 @@ public class EventRegistrationDto
     public string? UserFullName { get; set; }
     public string? UserEmail { get; set; }
 
+    // Event
+    public Guid EventId { get; set; }
+    public string? EventTitle { get; set; }
+
+    // Registration Intent (parent aggregate)
+    public Guid? EventRegistrationIntentId { get; set; }
+
     // Event Session
     public Guid EventSessionId { get; set; }
     public string? EventSessionTitle { get; set; }

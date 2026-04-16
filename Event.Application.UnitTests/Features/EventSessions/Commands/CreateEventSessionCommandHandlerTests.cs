@@ -6,6 +6,7 @@ using Explore.Application.DTOs.EventSession;
 using Explore.Application.Features.EventSessions.Handlers.Commands;
 using Explore.Application.Features.EventSessions.Requests.Commands;
 using Explore.Domain;
+using Explore.Domain.Services.Scheduling;
 using NSubstitute;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -21,7 +22,10 @@ public class CreateEventSessionCommandHandlerTests
     private readonly IEventSessionIslamicAspectRepository _eventSessionIslamicAspectRepository;
     private readonly IEventSessionTemplateRepository _eventSessionTemplateRepository;
     private readonly IEventSessionCustomPropertyRepository _eventSessionCustomPropertyRepository;
+    private readonly IEventSessionCustomPropertyProjectionUpdater _projectionUpdater;
     private readonly IEventSessionTemplateInstantiationService _instantiationService;
+    private readonly IEventScheduleProjectionCalculator _scheduleProjectionCalculator;
+    private readonly IEventDayRepository _eventDayRepository;
     private readonly IMapper _mapper;
     private readonly CreateEventSessionCommandHandler _handler;
 
@@ -34,7 +38,10 @@ public class CreateEventSessionCommandHandlerTests
         _eventSessionIslamicAspectRepository = Substitute.For<IEventSessionIslamicAspectRepository>();
         _eventSessionTemplateRepository = Substitute.For<IEventSessionTemplateRepository>();
         _eventSessionCustomPropertyRepository = Substitute.For<IEventSessionCustomPropertyRepository>();
+        _projectionUpdater = Substitute.For<IEventSessionCustomPropertyProjectionUpdater>();
         _instantiationService = Substitute.For<IEventSessionTemplateInstantiationService>();
+        _scheduleProjectionCalculator = new EventScheduleProjectionCalculator();
+        _eventDayRepository = Substitute.For<IEventDayRepository>();
         _mapper = Substitute.For<IMapper>();
 
         _handler = new CreateEventSessionCommandHandler(
@@ -45,7 +52,10 @@ public class CreateEventSessionCommandHandlerTests
             _eventSessionIslamicAspectRepository,
             _eventSessionTemplateRepository,
             _eventSessionCustomPropertyRepository,
+            _projectionUpdater,
             _instantiationService,
+            _scheduleProjectionCalculator,
+            _eventDayRepository,
             _mapper
         );
     }
@@ -78,7 +88,9 @@ public class CreateEventSessionCommandHandlerTests
         // Mock session creation
         var eventSession = new EventSession { Id = sessionId, Event = null!, Tenant = null! };
         _mapper.Map<EventSession>(command.EventSessionDto).Returns(eventSession);
-        _eventSessionRepository.Create(Arg.Any<EventSession>()).Returns(eventSession);
+        _eventSessionRepository
+            .CreateWithRoomOverlapGuardAsync(Arg.Any<EventSession>(), Arg.Any<CancellationToken>())
+            .Returns(eventSession);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -86,7 +98,8 @@ public class CreateEventSessionCommandHandlerTests
         // Assert
         await Assert.That(result.Success).IsTrue();
         await Assert.That(result.Id).IsEqualTo(sessionId);
-        await _eventSessionRepository.Received(1).Create(Arg.Any<EventSession>());
+        await _eventSessionRepository.Received(1)
+            .CreateWithRoomOverlapGuardAsync(Arg.Any<EventSession>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -180,13 +193,122 @@ public class CreateEventSessionCommandHandlerTests
         // Mock session creation
         var eventSession = new EventSession { Id = sessionId, LocationId = locationId, Event = null!, Tenant = null! };
         _mapper.Map<EventSession>(command.EventSessionDto).Returns(eventSession);
-        _eventSessionRepository.Create(Arg.Any<EventSession>()).Returns(eventSession);
+        _eventSessionRepository
+            .CreateWithRoomOverlapGuardAsync(Arg.Any<EventSession>(), Arg.Any<CancellationToken>())
+            .Returns(eventSession);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
         await Assert.That(result.Success).IsTrue();
-        await _eventSessionRepository.Received(1).Create(Arg.Is<EventSession>(s => s.LocationId == locationId));
+        await _eventSessionRepository.Received(1)
+            .CreateWithRoomOverlapGuardAsync(
+                Arg.Is<EventSession>(s => s.LocationId == locationId),
+                Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task Handle_WhenMatchingEventDayExists_LinksSessionToEventDay()
+    {
+        // Arrange
+        var eventId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var eventDayId = Guid.NewGuid();
+        var timezone = "Europe/Brussels";
+        var startUtc = new DateTimeOffset(2026, 6, 15, 8, 0, 0, TimeSpan.Zero);
+        var endUtc = new DateTimeOffset(2026, 6, 15, 10, 0, 0, TimeSpan.Zero);
+        var expectedLocalDate = new DateOnly(2026, 6, 15);
+
+        var command = new CreateEventSessionCommand
+        {
+            EventSessionDto = new CreateEventSessionDto
+            {
+                EventId = eventId,
+                StartTime = startUtc,
+                EndTime = endUtc,
+                Title = "Day-linked Session"
+            }
+        };
+
+        var existingEvent = DataBuilder.Event.Generate();
+        existingEvent.Id = eventId;
+        existingEvent.Timezone = timezone;
+        existingEvent.EventTimeZoneId = timezone;
+        _eventRepository.GetById(eventId).Returns(existingEvent);
+        _eventRepository.Exists(eventId).Returns(true);
+
+        var matchingDay = new EventDay
+        {
+            Id = eventDayId,
+            EventId = eventId,
+            LocalDate = expectedLocalDate,
+            Event = null!,
+            Tenant = null!
+        };
+        _eventDayRepository.FindByEventAndLocalDateAsync(eventId, expectedLocalDate, Arg.Any<CancellationToken>())
+            .Returns(matchingDay);
+
+        EventSession? capturedSession = null;
+        var eventSession = new EventSession { Id = sessionId, Event = null!, Tenant = null! };
+        _mapper.Map<EventSession>(command.EventSessionDto).Returns(eventSession);
+        _eventSessionRepository
+            .CreateWithRoomOverlapGuardAsync(Arg.Do<EventSession>(s => capturedSession = s), Arg.Any<CancellationToken>())
+            .Returns(callInfo => callInfo.Arg<EventSession>());
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(capturedSession).IsNotNull();
+        await Assert.That(capturedSession!.EventDayId).IsEqualTo(eventDayId);
+    }
+
+    [Test]
+    public async Task Handle_WhenNoMatchingEventDayExists_SetsEventDayIdToNull()
+    {
+        // Arrange
+        var eventId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var timezone = "Europe/Brussels";
+        var startUtc = new DateTimeOffset(2026, 6, 15, 8, 0, 0, TimeSpan.Zero);
+        var endUtc = new DateTimeOffset(2026, 6, 15, 10, 0, 0, TimeSpan.Zero);
+
+        var command = new CreateEventSessionCommand
+        {
+            EventSessionDto = new CreateEventSessionDto
+            {
+                EventId = eventId,
+                StartTime = startUtc,
+                EndTime = endUtc,
+                Title = "Orphan Session"
+            }
+        };
+
+        var existingEvent = DataBuilder.Event.Generate();
+        existingEvent.Id = eventId;
+        existingEvent.Timezone = timezone;
+        existingEvent.EventTimeZoneId = timezone;
+        _eventRepository.GetById(eventId).Returns(existingEvent);
+        _eventRepository.Exists(eventId).Returns(true);
+
+        _eventDayRepository.FindByEventAndLocalDateAsync(Arg.Any<Guid>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+            .Returns((EventDay?)null);
+
+        EventSession? capturedSession = null;
+        var eventSession = new EventSession { Id = sessionId, Event = null!, Tenant = null! };
+        _mapper.Map<EventSession>(command.EventSessionDto).Returns(eventSession);
+        _eventSessionRepository
+            .CreateWithRoomOverlapGuardAsync(Arg.Do<EventSession>(s => capturedSession = s), Arg.Any<CancellationToken>())
+            .Returns(callInfo => callInfo.Arg<EventSession>());
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(capturedSession).IsNotNull();
+        await Assert.That(capturedSession!.EventDayId).IsNull();
     }
 }

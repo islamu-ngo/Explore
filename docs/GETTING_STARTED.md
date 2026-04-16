@@ -75,10 +75,11 @@ dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj -
 dotnet test --project Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --verbosity quiet
 dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet
 dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet
+dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet
 dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet
 ```
 
-All tests must pass before submitting changes. See [TESTING.md](TESTING.md) for project roles and detailed conventions.
+These are the 8 standard validation projects. `Explore.Blazor.Client.E2ETests` is separate and requires the full Aspire/browser stack. See [TESTING.md](TESTING.md) for project roles and detailed conventions.
 
 ## First Change Walkthrough
 
@@ -88,8 +89,8 @@ All tests must pass before submitting changes. See [TESTING.md](TESTING.md) for 
 4. **Read relevant docs** — open the [docs index](index.md) for files related to your change area
 5. **Write tests first** — TDD is the default; write failing test, then implement
 6. **Implement** — follow [ARCHITECTURE.md](ARCHITECTURE.md) layer rules and [QUICK_REFERENCE.md](QUICK_REFERENCE.md) constraints
-7. **Validate** — build + all 7 test projects must pass
-8. **Submit PR** — follow [CONTRIBUTING.md](../CONTRIBUTING.md) checklist
+7. **Validate** — build + all 8 standard test projects must pass
+8. **Submit PR** — follow [CONTRIBUTING.md](CONTRIBUTING.md) checklist
 
 ## Key Conventions
 

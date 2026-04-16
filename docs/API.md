@@ -23,20 +23,25 @@ This document describes the full API behavior in `Explore.API`: the middleware p
 The middleware pipeline in `Program.cs` is ordered precisely. Changing order will break behavior:
 
 1. **API Exception Handling** — `UseApiExceptionHandling()`. ProblemDetails-based chained `IExceptionHandler` (Validation → Global).
-2. **Security Headers** — `UseSecurityHeaders()`. Adds defensive headers to every response.
-3. **Correlation ID** — `UseCorrelationId()`. Reads `X-Correlation-ID` or `X-Request-ID`, generates UUID if absent, pushes to Serilog `LogContext`.
-4. **Request Logging** — `UseRequestLogging()`. Structured Serilog logging: method, path, status, duration, userId, tenantId, correlationId.
-5. **Response Compression** — `UseResponseCompression()`. Brotli + Gzip at `CompressionLevel.Fastest`. Enabled for HTTPS. Additional MIME types: `application/json`, `application/hal+json`.
-6. **HTTPS Redirection** — `UseHttpsRedirection()`.
-7. **HATEOAS Prefer Header** — `UseHateoas()`. RFC 7240 `Prefer` header processing (`return=minimal` strips `_links`).
-8. **Routing** — `UseRouting()`.
-9. **Request Timeouts** — `UseRequestTimeouts()`. Three configurable tiers (see below).
-10. **Authentication** — `UseAuthentication()`. JWT Bearer via Keycloak.
-11. **Rate Limiter** — `UseRateLimiter()`. Four tiered policies (see below).
-12. **Authorization** — `UseAuthorization()`.
-13. **Output Cache** — `UseOutputCache()`. Three cache policies (see below).
-14. **ETag** — `UseETag()`. SHA256-based weak ETags, 304 Not Modified support.
-15. **Idempotency** — `UseMiddleware<IdempotencyMiddleware>()`. Implements `Idempotency-Key` header for write operations (POST/PUT/PATCH/DELETE). Caches responses by (Key, TenantId) and replays on duplicate requests within 24-hour window.
+2. **Forwarded Headers** — `UseForwardedHeaders()`. Applies trusted `X-Forwarded-*` values before host-derived tenant resolution.
+3. **Security Headers** — `UseSecurityHeaders()`. Adds defensive headers to every response.
+4. **Correlation ID** — `UseCorrelationId()`. Reads `X-Correlation-ID` or `X-Request-ID`, generates UUID if absent, pushes to Serilog `LogContext`.
+5. **Request Logging** — `UseRequestLogging()`. Structured Serilog logging: method, path, status, duration, userId, tenantId, correlationId.
+6. **Response Compression** — `UseResponseCompression()`. Brotli + Gzip at `CompressionLevel.Fastest`. Enabled for HTTPS. Additional MIME types: `application/json`, `application/hal+json`.
+7. **HTTPS Redirection** — `UseHttpsRedirection()`.
+8. **HATEOAS Prefer Header** — `UseHateoas()`. RFC 7240 `Prefer` header processing (`return=minimal` strips `_links`).
+9. **Routing** — `UseRouting()`.
+10. **Tenant Resolution (pre-auth)** — `UseMiddleware<ApiTenantResolutionMiddleware>()`. Resolves `X-Tenant-Slug` and normalized host hints for `/api` requests; API-key requests may defer binding until after authentication.
+11. **Request Timeouts** — `UseRequestTimeouts()`. Three configurable tiers (see below).
+12. **Auth Conflict Guard** — `UseMiddleware<ApiAuthenticationConflictMiddleware>()`. Rejects conflicting auth inputs before standard authentication runs.
+13. **Authentication** — `UseAuthentication()`. JWT Bearer via Keycloak.
+14. **Tenant Resolution (post-auth)** — `UseMiddleware<ApiTenantPostAuthenticationMiddleware>()`. Finalizes API-key tenant binding, mismatch handling, and fail-closed auth behavior.
+15. **Request Localization** — `UseRequestLocalization()`.
+16. **Idempotency** — `UseMiddleware<IdempotencyMiddleware>()`. Implements `Idempotency-Key` header for write operations (POST/PUT/PATCH/DELETE). Caches responses by (Key, TenantId) and replays on duplicate requests within 24-hour window.
+17. **Rate Limiter** — `UseRateLimiter()`. Five tiered policies (see below).
+18. **Authorization** — `UseAuthorization()`.
+19. **Output Cache** — `UseOutputCache()`. Five cache policies (see below).
+20. **ETag** — `UseETag()`. SHA256-based weak ETags, 304 Not Modified support.
 
 ---
 
@@ -58,25 +63,25 @@ Dual-strategy versioning — both strategies work simultaneously:
 
 ---
 
-## Rate Limiting (4 Tiers)
+## Rate Limiting (5 Tiers)
 
 Configured in `RateLimitingExtensions.cs`. All settings are configurable via `appsettings.json` under `RateLimiting` section.
 
 ### Global (IP Token Bucket)
 - **Policy**: `global` — applied to all endpoints by default.
-- **Mechanism**: Token bucket per IP address.
+- **Mechanism**: Token bucket per API key ID when present, otherwise per remote IP address.
 - **Defaults**: 200 tokens, replenish 40 tokens per 10 seconds.
-- **IP Resolution**: `X-Forwarded-For` header aware (picks first address). Falls back to `RemoteIpAddress`.
+- **IP Resolution**: uses `HttpContext.Connection.RemoteIpAddress`; trusted forwarded-header middleware updates the effective remote/host values earlier in the pipeline.
 - **Exemption**: Localhost (`127.0.0.1`, `::1`) is exempt.
 
 ### Authenticated (Sliding Window)
 - **Policy**: `authenticated` — for authenticated user endpoints.
-- **Mechanism**: Sliding window per user ID.
+- **Mechanism**: Sliding window per API key ID when present, otherwise per `User.Identity.Name`.
 - **Defaults**: 200 requests per 60-second window, 4 segments.
 
 ### Write (Fixed Window)
 - **Policy**: `write` — for mutation endpoints (`POST`, `PUT`, `DELETE`).
-- **Mechanism**: Fixed window per user ID.
+- **Mechanism**: Fixed window per API key ID when present, otherwise per `User.Identity.Name`.
 - **Defaults**: 30 requests per 60-second window.
 
 ### SetupSecret (Fixed Window)
@@ -91,7 +96,7 @@ Configured in `RateLimitingExtensions.cs`. All settings are configurable via `ap
 
 ### Rejection Behavior
 - Returns `429 Too Many Requests` with RFC 6585 `ProblemDetails`.
-- Includes `Retry-After` header and `X-RateLimit-*` headers (limit, remaining, reset).
+- Includes `Retry-After` when available plus `X-RateLimit-Limit` and `X-RateLimit-Remaining`.
 
 ### Testing Override
 In `Testing` environment, all rate limiters are replaced with `NoLimiter` (disabled).
@@ -119,10 +124,11 @@ Applied via `[OutputCache(PolicyName = "...")]` on controller endpoints.
 
 | Policy | Duration | Vary By | Use Case |
 |---|---|---|---|
-| `LookupData` | 1 hour | — | Lookup tables (event types, languages, etc.) |
-| `PublicData` | 1 hour | — | Anonymous lookup endpoints, no auth variance |
-| `ListData` | 30 seconds | page number, page size, all query params, `Authorization` header | Collection listings |
-| `DetailData` | 60 seconds | entity ID, `Authorization` header | Single-entity detail views |
+| `LookupData` | 1 hour | `X-Tenant-Slug`, `Host` | Lookup tables (event types, languages, etc.) |
+| `PublicData` | 1 hour | `X-Tenant-Slug`, `Host` | Anonymous lookup endpoints |
+| `ListData` | 30 seconds | `X-Tenant-Slug`, `Host`, `Authorization`, query: `pageNumber`, `pageSize` | Collection listings |
+| `DetailData` | 60 seconds | `X-Tenant-Slug`, `Host`, `Authorization`, route: `id` | Single-entity detail views |
+| `TenantNav` | 5 minutes | `X-Tenant-Slug`, `Host` | Tenant navigation/config endpoints |
 
 ### Layer 2: HybridCache (Application Level — L1 + L2)
 Injected into MediatR handlers, not controllers. Provides in-memory L1 + distributed L2 caching with stampede protection.
@@ -237,10 +243,11 @@ The application uses a custom **Specification Pattern** for complex filtering, e
 
 ```
 spec = spec
-    .WithFilter(new EventFilter(...))           // Direct expression filter
-    .WithSubqueryFilter(new EventSubqueryFilter(...))  // Junction table filter
-    .WithAspectFilter(new IslamicAspectFilter(...))    // Module-conditional filter
-    .WithSort(new EventSort(EventSortField.Date, SortDirection.Desc));
+    .And(new EventFilter(...))
+    .And(new EventSubqueryFilter(...))
+    .And(new IslamicAspectFilter(...))
+    .And(new EventCustomPropertyProjectionFilter(...))
+    .SortByDescending(EventSort.StartUtc);
 ```
 
 ### Filter Types
@@ -252,6 +259,7 @@ spec = spec
 | `IslamicAspectFilter` | Islamic module fields (madhab, gender mode) | Module-conditional — silently ignored when module disabled |
 | `TechAspectFilter` | Tech module fields (skill level, stack) | Module-conditional — silently ignored when module disabled |
 | `AspectPresenceFilter` | HasIslamicAspect / HasTechAspect flags | Navigation property null check |
+| `EventCustomPropertyProjectionFilter` | Projection-backed custom property discovery/filtering | Projection query composed alongside typed filters |
 
 ### Tag/Category Tri-State Filtering
 Tags and categories support tri-state AND/OR filtering:
@@ -307,11 +315,15 @@ Exception handling uses .NET 8+ `IExceptionHandler` chain (not middleware):
    - Unhandled → `500` (detail hidden in production)
 
 All responses use **RFC 7807 ProblemDetails** with extensions:
-- `traceId` — from `Activity.Current` or `HttpContext.TraceIdentifier`
+- `traceId` — from `HttpContext.TraceIdentifier`
 - `timestamp` — UTC ISO 8601
 - `correlationId` — from `X-Correlation-ID` / `X-Request-ID` header or generated UUID
 
 The `type` field uses IANA RFC 9110 standard URIs (e.g., `https://www.rfc-editor.org/rfc/rfc9110#section-15.5.5` for 404) instead of httpstatuses.com.
+
+Current implementation detail: `ExceptionHandlingExtensions` writes `traceId` from `HttpContext.TraceIdentifier`.
+
+.NET 10 note: handled exceptions can suppress diagnostics by default once an `IExceptionHandler` returns `true`. `UseApiExceptionHandling()` currently calls plain `app.UseExceptionHandler()` with no `SuppressDiagnosticsCallback` override, so treat handled-exception logging/metrics behavior as an explicit runtime decision.
 
 ---
 
@@ -422,8 +434,9 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
 
 1. Tenant context is resolved per request.
 2. Resolution behavior:
-   - `SingleTenant`: default tenant
-   - `MultiTenant`: trusted `X-Tenant-Slug` → custom domain → subdomain → `404` when unresolved
+   - `SingleTenant`: default tenant is bound immediately.
+   - `MultiTenant`: `ApiTenantResolutionMiddleware` resolves trusted `X-Tenant-Slug` first, then normalized `Request.Host.Host` after forwarded-header processing; unresolved non-API-key requests fail closed with `404`.
+   - API-key requests may carry a requested tenant hint through pre-auth middleware and are finalized by `ApiTenantPostAuthenticationMiddleware`, which can return `404 Tenant mismatch` or `401 API key authentication failed`.
 3. EF query filters enforce tenant scoping in persistence.
 
 ---

@@ -52,4 +52,4 @@ Expected local URLs:
 2. Auth redirect problems behind proxy:
    verify `X-Forwarded-Proto`/`X-Forwarded-Host` forwarding.
 3. Tenant mismatch:
-   confirm `deployment.mode` and `X-Tenant-Id` behavior.
+   confirm `deployment.mode`, trusted `X-Tenant-Slug` forwarding, and host-based tenant resolution behavior.

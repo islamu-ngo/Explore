@@ -80,6 +80,10 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
     public int EventFormatId { get; set; }
     public required EventFormat EventFormat { get; set; }
 
+    [ForeignKey("RegistrationPolicy")]
+    public int? RegistrationPolicyId { get; set; }
+    public EventRegistrationPolicy? RegistrationPolicy { get; set; }
+
     [ForeignKey("AtprotoRecord")]
     public Guid? AtprotoRecordId { get; set; }
     public AtprotoRecord? AtprotoRecord { get; set; }

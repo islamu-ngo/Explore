@@ -24,6 +24,8 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
     private readonly IEventTypeRepository _eventTypeRepository;
     private readonly IActorRepository _actorRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
+    private readonly IEventSeriesRepository _eventSeriesRepository;
+    private readonly IEventRegistrationPolicyRepository _eventRegistrationPolicyRepository;
     private readonly IMapper _mapper;
     private readonly HybridCache _cache;
 
@@ -35,6 +37,8 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
         IEventTypeRepository eventTypeRepository,
         IActorRepository actorRepository,
         IStorageObjectRepository storageObjectRepository,
+        IEventSeriesRepository eventSeriesRepository,
+        IEventRegistrationPolicyRepository eventRegistrationPolicyRepository,
         IMapper mapper,
         HybridCache cache)
     {
@@ -45,6 +49,8 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
         _eventTypeRepository = eventTypeRepository;
         _actorRepository = actorRepository;
         _storageObjectRepository = storageObjectRepository;
+        _eventSeriesRepository = eventSeriesRepository;
+        _eventRegistrationPolicyRepository = eventRegistrationPolicyRepository;
         _mapper = mapper;
         _cache = cache;
     }
@@ -65,7 +71,8 @@ public class UpdateEventCommandHandler : IRequestHandler<UpdateEventCommand, Bas
         {
             var validator = new UpdateEventDtoValidator(
                 _audienceAgeRepository, _audienceGenderRepository,
-                _eventTypeRepository, _actorRepository, _storageObjectRepository);
+                _eventTypeRepository, _actorRepository, _storageObjectRepository,
+                _eventSeriesRepository, _eventRegistrationPolicyRepository);
             var validationResult = await validator.ValidateAsync(request.EventDto, cancellationToken);
 
             if (!validationResult.IsValid)

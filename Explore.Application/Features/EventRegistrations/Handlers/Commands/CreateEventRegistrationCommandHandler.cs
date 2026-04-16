@@ -1,46 +1,52 @@
-// ABOUTME: Handler for creating a new event registration with validation.
-// ABOUTME: Validates input, enforces capacity, persists registration, invalidates cache.
+// ABOUTME: Handler for the intent-first registration flow - creates an EventRegistrationIntent parent and its EventRegistration child access rows atomically.
+// ABOUTME: Enforces organizer policy via RegistrationPolicyRules, derives child sessions from scope, writes inside a serializable transaction.
+
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using AutoMapper;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventRegistration.Validators;
 using Explore.Application.Features.EventRegistrations.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Application.Telemetry;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using MediatR;
 
 namespace Explore.Application.Features.EventRegistrations.Handlers.Commands;
 
 public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEventRegistrationCommand, BaseCommandResponse<Guid>>
 {
-    private readonly IEventRegistrationRepository _eventRegistrationRepository;
+    private readonly IEventRegistrationIntentRepository _intentRepository;
+    private readonly IEventRepository _eventRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IEventDayRepository _eventDayRepository;
     private readonly IEventSessionRepository _eventSessionRepository;
     private readonly IApprovalStatusRepository _approvalStatusRepository;
     private readonly ITenantContext _tenantContext;
-    private readonly IMapper _mapper;
     private readonly BusinessMetrics _metrics;
 
     public CreateEventRegistrationCommandHandler(
-        IEventRegistrationRepository eventRegistrationRepository,
+        IEventRegistrationIntentRepository intentRepository,
+        IEventRepository eventRepository,
         IUserRepository userRepository,
+        IEventDayRepository eventDayRepository,
         IEventSessionRepository eventSessionRepository,
         IApprovalStatusRepository approvalStatusRepository,
         ITenantContext tenantContext,
-        IMapper mapper,
         BusinessMetrics metrics)
     {
-        _eventRegistrationRepository = eventRegistrationRepository;
+        _intentRepository = intentRepository;
+        _eventRepository = eventRepository;
         _userRepository = userRepository;
+        _eventDayRepository = eventDayRepository;
         _eventSessionRepository = eventSessionRepository;
         _approvalStatusRepository = approvalStatusRepository;
         _tenantContext = tenantContext;
-        _mapper = mapper;
         _metrics = metrics;
     }
 
@@ -48,7 +54,12 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
     {
         var response = new BaseCommandResponse<Guid>();
 
-        var validator = new CreateEventRegistrationDtoValidator(_userRepository, _eventSessionRepository, _approvalStatusRepository, _eventRegistrationRepository);
+        var validator = new CreateEventRegistrationDtoValidator(
+            _eventRepository,
+            _userRepository,
+            _eventDayRepository,
+            _eventSessionRepository,
+            _approvalStatusRepository);
         var validationResult = await validator.ValidateAsync(request.EventRegistrationDto, cancellationToken);
 
         if (!validationResult.IsValid)
@@ -59,19 +70,107 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
             return response;
         }
 
-        var eventRegistration = _mapper.Map<EventRegistration>(request.EventRegistrationDto);
+        var dto = request.EventRegistrationDto;
+        var parentEvent = await _eventRepository.GetById(dto.EventId);
+        if (parentEvent is null)
+        {
+            response.Success = false;
+            response.Message = "Event not found in the current tenant.";
+            return response;
+        }
 
-        // Set TenantId from the request context
-        eventRegistration.TenantId = _tenantContext.TenantId;
+        // Short-circuit idempotency: if the user already has the same intent, return its id.
+        var existing = await _intentRepository.FindExistingAsync(
+            dto.EventId,
+            dto.UserId,
+            dto.RegistrationScopeId,
+            dto.SelectedEventDayId,
+            cancellationToken);
+        if (existing is not null)
+        {
+            response.Success = true;
+            response.Id = existing.Id;
+            response.Message = "Event Registration already exists.";
+            return response;
+        }
 
-        eventRegistration = await _eventRegistrationRepository.Create(eventRegistration);
+        // Derive child session access rows from the scope.
+        var childSessionIds = await ResolveChildSessionsAsync(dto, cancellationToken);
+        if (childSessionIds.Count == 0)
+        {
+            response.Success = false;
+            response.Message = "Event Registration failed.";
+            response.Errors = new List<string>
+            {
+                "Cannot create a registration with zero session access rows - the event has no sessions matching the requested scope."
+            };
+            return response;
+        }
+
+        var tenantId = parentEvent.TenantId;
+
+        var intent = new EventRegistrationIntent
+        {
+            EventId = dto.EventId,
+            Event = null!,
+            UserId = dto.UserId,
+            User = null!,
+            RegistrationScopeId = dto.RegistrationScopeId,
+            RegistrationScope = null!,
+            SelectedEventDayId = dto.SelectedEventDayId,
+            RegistrationPolicySnapshotId = parentEvent.RegistrationPolicyId,
+            ApprovalStatusId = dto.ApprovalStatusId,
+            TenantId = tenantId,
+            Tenant = null!
+        };
+
+        var childRows = childSessionIds
+            .Select(sessionId => new EventRegistration
+            {
+                UserId = dto.UserId,
+                User = null!,
+                EventSessionId = sessionId,
+                EventSession = null!,
+                ApprovalStatusId = dto.ApprovalStatusId,
+                TenantId = tenantId,
+                Tenant = null!
+            })
+            .ToList();
+
+        var created = await _intentRepository.CreateWithChildrenAsync(intent, childRows, cancellationToken);
 
         response.Success = true;
-        response.Id = eventRegistration.Id;
+        response.Id = created.Id;
         response.Message = "Event Registration created successfully.";
-
-        _metrics.RecordRegistrationCreated(_tenantContext.TenantId.ToString());
+        _metrics.RecordRegistrationCreated(tenantId.ToString());
 
         return response;
+    }
+
+    private async Task<List<Guid>> ResolveChildSessionsAsync(CreateEventRegistrationDto dto, CancellationToken cancellationToken)
+    {
+        var scope = (RegistrationScopeEnum)dto.RegistrationScopeId;
+
+        if (scope == RegistrationScopeEnum.SessionSelection)
+        {
+            return dto.SelectedSessionIds.Distinct().ToList();
+        }
+
+        var allSessions = await _eventSessionRepository.GetSessionsByEvent(dto.EventId);
+
+        if (scope == RegistrationScopeEnum.Event)
+        {
+            return allSessions.Select(s => s.Id).ToList();
+        }
+
+        if (scope == RegistrationScopeEnum.Day && dto.SelectedEventDayId.HasValue)
+        {
+            return allSessions
+                .Where(s => s.EventDayId == dto.SelectedEventDayId.Value)
+                .Select(s => s.Id)
+                .ToList();
+        }
+
+        return new List<Guid>();
     }
 }

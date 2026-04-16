@@ -27,7 +27,7 @@ EF Core conventions aligned with Clean Architecture + PostgreSQL.
 - Default values **not** in domain entities (use handlers or EF config).
 - Lookup IDs use `int`, main entities use `Guid`.
 - Link table nav props are **readonly**; writes via repository.
-- EF Core **named query filters** for soft delete (`SoftDelete`) and tenancy (`Tenant`). Use `IgnoreQueryFilter("SoftDelete")` to show deleted records while still respecting tenant isolation.
+- EF Core **named query filters** for soft delete (`SoftDelete`) and tenancy (`Tenant`). Prefer the project query-filter extensions or `IgnoreQueryFilters([QueryFilterNames.SoftDelete])` to include deleted rows while keeping tenant isolation intact.
 - **Pooled DbContext factory**: `ExploreDbContext` uses pooling. Scoped services (`TenantContext`, `CurrentUserService`) are set via **property injection** after creation — not constructor injection. Both can be `null` during migrations/seeding.
 - **Snake case naming**: PostgreSQL convention. Configured via Npgsql naming conventions.
 - **Specification Pattern**: Complex queries use `IQuerySpecification<T>`. Repository applies specification filters to `IQueryable<T>`.

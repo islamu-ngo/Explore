@@ -10,6 +10,15 @@ on:
     paths-ignore:
       - "**.md"
       - "docs/**"
+      - "schemas/**"
+      - "dev/**"
+      - ".claude/**"
+      - ".codex/**"
+      - ".opencode/**"
+      - ".gemini/**"
+      - "**/.gitignore"
+      - "**/LICENSE*"
+      - "**/NOTICE*"
       # 1. EXPLICITLY IGNORE APPHOST (Local Dev Only)
       - "Explore.AppHost/**"
 

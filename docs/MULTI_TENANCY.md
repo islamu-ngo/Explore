@@ -32,9 +32,11 @@ In single-tenant mode, tenant context always resolves to the configured default 
 
 Request host source:
 
-- uses `X-Forwarded-Host` first, then request host.
+- uses normalized `Request.Host.Host` after trusted forwarded-header processing.
 
-Resolved tenant is cached for the request in `HttpContext.Items["__resolved_tenant_id"]`.
+For standard authenticated-browser requests, the middleware binds the resolved tenant into the request-scoped tenant context accessor immediately.
+
+For API-key requests, `ApiTenantResolutionMiddleware` can store a requested tenant hint in `HttpContext.Items["__requested_tenant_id"]` and defer final tenant binding to `ApiTenantPostAuthenticationMiddleware` after authentication succeeds.
 
 ## Default Tenant Fallback
 

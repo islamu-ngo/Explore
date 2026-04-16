@@ -3,11 +3,19 @@ name: Build and Deploy to Coolify (Develop)
 on:
   workflow_dispatch:
   push:
-    branches:
-      - develop
+    branches: [develop]
     paths-ignore:
       - "**.md"
       - "docs/**"
+      - "schemas/**"
+      - "dev/**"
+      - ".claude/**"
+      - ".codex/**"
+      - ".opencode/**"
+      - ".gemini/**"
+      - "**/.gitignore"
+      - "**/LICENSE*"
+      - "**/NOTICE*"
       - "Explore.AppHost/**"
 
 env:

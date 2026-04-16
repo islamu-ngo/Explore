@@ -4,7 +4,8 @@
 
 <div class="app-text-field">
     <MudTextField T="T"
-                  @bind-Value="Value"
+                  Value="@Value"
+                  ValueChanged="@OnValueChangedAsync"
                   Variant="@Variant"
                   Margin="@Margin"
                   InputType="@InputType"
@@ -49,6 +50,12 @@
 
     [Parameter(CaptureUnmatchedValues = true)]
     public IDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private async Task OnValueChangedAsync(T? value)
+    {
+        Value = value;
+        await ValueChanged.InvokeAsync(value);
+    }
 
     private IDictionary<string, object>? FilteredAttributes
     {

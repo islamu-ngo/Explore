@@ -51,6 +51,9 @@ public class EventDto
     // Registration
     public bool IsRegistrationRequired { get; set; }
     public string? ExternalRegistrationUrl { get; set; }
+    public int? RegistrationPolicyId { get; set; }
+    public string? RegistrationPolicyFullName { get; set; }
+    public string? RegistrationPolicyMasterCode { get; set; }
 
     // Status & Visibility
     public int EventStatusId { get; set; }

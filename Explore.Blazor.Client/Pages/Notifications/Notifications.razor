@@ -1,4 +1,4 @@
-@* ABOUTME: Full-page notification inbox with scope tabs, unread filter, and mark-all-read action.
+@* ABOUTME: Full-page notification inbox with scope tabs, reason filter, archive/snooze toggles, and actions.
     ABOUTME: Accessible at /notifications for authenticated users; reuses NotificationItem component. *@
 
 @page "/notifications"
@@ -42,11 +42,36 @@
                 <MudToggleItem T="int?" Value="@((int?)4)" Text="Group" />
             </MudToggleGroup>
             <div class="flex-grow-1"></div>
+            <MudSelect T="int?"
+                       Value="_selectedReasonId"
+                       ValueChanged="HandleReasonChanged"
+                       Variant="Variant.Outlined"
+                       Dense="true"
+                       Margin="Margin.Dense"
+                       Class="notification-inbox__reason-filter"
+                       AnchorOrigin="Origin.BottomCenter"
+                       TransformOrigin="Origin.TopCenter"
+                       Label="Reason">
+                @foreach (var option in ReasonOptions)
+                {
+                    <MudSelectItem T="int?" Value="option.Id">@option.Label</MudSelectItem>
+                }
+            </MudSelect>
             <MudIconButton Icon="@(_showUnreadOnly ? Icons.Material.Filled.FilterList : Icons.Material.Outlined.FilterList)"
                            Size="Size.Small"
                            Color="@(_showUnreadOnly ? Color.Primary : Color.Default)"
                            OnClick="HandleToggleUnread"
                            Title="@(_showUnreadOnly ? "Showing unread only" : "Show all")" />
+            <MudIconButton Icon="@Icons.Material.Outlined.Archive"
+                           Size="Size.Small"
+                           Color="@(_showArchived ? Color.Primary : Color.Default)"
+                           OnClick="HandleToggleArchived"
+                           Title="@(_showArchived ? "Showing archived" : "Show archived")" />
+            <MudIconButton Icon="@Icons.Material.Outlined.Snooze"
+                           Size="Size.Small"
+                           Color="@(_showSnoozed ? Color.Primary : Color.Default)"
+                           OnClick="HandleToggleSnoozed"
+                           Title="@(_showSnoozed ? "Showing snoozed" : "Show snoozed")" />
         </div>
 
         <div class="notification-inbox__body">
@@ -69,7 +94,7 @@
                         No notifications
                     </MudText>
                     <MudText Typo="Typo.body2" Color="Color.Secondary">
-                        @(_showUnreadOnly ? "No unread notifications" : "You're all caught up")
+                        @GetEmptyStateMessage()
                     </MudText>
                 </div>
             }
@@ -80,7 +105,9 @@
                     {
                         <NotificationItem Notification="notification"
                                           OnClick="HandleNotificationClick"
-                                          OnDelete="HandleDeleteNotification" />
+                                          OnDelete="HandleDeleteNotification"
+                                          OnArchive="HandleArchiveNotification"
+                                          OnSnooze="HandleSnoozeNotification" />
                     }
                 </div>
 
@@ -107,3 +134,14 @@
         </div>
     </div>
 </MudContainer>
+
+@code {
+    private string GetEmptyStateMessage()
+    {
+        if (_showArchived) return "No archived notifications";
+        if (_showSnoozed) return "No snoozed notifications";
+        if (_showUnreadOnly) return "No unread notifications";
+        if (_selectedReasonId is not null) return "No notifications for this reason filter";
+        return "You're all caught up";
+    }
+}

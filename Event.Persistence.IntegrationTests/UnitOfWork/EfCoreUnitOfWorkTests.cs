@@ -3,6 +3,7 @@
 
 using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Exceptions;
 using Explore.Domain;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -132,5 +133,50 @@ public class EfCoreUnitOfWorkTests
 
         await Assert.That(caught).IsNotNull();
         await Assert.That(caught!.Message).Contains("Nested transactions are not supported");
+    }
+
+    [Test]
+    public async Task ExecuteInTransactionAsync_WhenConcurrencyStampStale_ThrowsConcurrencyConflictException()
+    {
+        var key = $"uow-concurrency-{Guid.NewGuid():N}";
+
+        // Seed a row with a known ConcurrencyStamp
+        using (var seedContext = _fixture.CreateDbContext())
+        {
+            seedContext.Set<SystemSetting>().Add(new SystemSetting { SettingKey = key, Value = "v0" });
+            await seedContext.SaveChangesAsync();
+        }
+
+        // Load the row in session A
+        using var contextA = _fixture.CreateDbContext();
+        var entityA = await contextA.Set<SystemSetting>().FirstAsync(s => s.SettingKey == key);
+
+        // Mutate and commit the same row from session B so its stamp advances
+        using (var contextB = _fixture.CreateDbContext())
+        {
+            var entityB = await contextB.Set<SystemSetting>().FirstAsync(s => s.SettingKey == key);
+            entityB.Value = "v-from-b";
+            await contextB.SaveChangesAsync();
+        }
+
+        // Session A still holds the old stamp — the save must be translated
+        var uowA = new EfCoreUnitOfWork(contextA);
+        ConcurrencyConflictException? caught = null;
+        try
+        {
+            await uowA.ExecuteInTransactionAsync(async ct =>
+            {
+                entityA.Value = "v-from-a";
+                await contextA.SaveChangesAsync(ct);
+            });
+        }
+        catch (ConcurrencyConflictException ex)
+        {
+            caught = ex;
+        }
+
+        await Assert.That(caught).IsNotNull();
+        await Assert.That(caught!.Code).IsEqualTo(ConcurrencyConflictException.ConcurrentUpdate);
+        await Assert.That(caught.EntityType).IsEqualTo(nameof(SystemSetting));
     }
 }

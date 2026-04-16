@@ -1,3 +1,6 @@
+ABOUTME: Consolidated authorization architecture, provider routing, and CQRS request patterns.
+ABOUTME: Covers server-side enforcement, Cerbos/fallback behavior, and claim-related authorization notes.
+
 # Authorization
 
 This document consolidates all authorization-related knowledge for the platform.
@@ -36,6 +39,8 @@ The platform employs a multi-layered authorization strategy to ensure robust and
 -   **Authorization** is the process of determining whether an authenticated user has the permission to perform a specific action on a specific resource. This is the primary focus of this document.
 
 ## 3. Core Authorization Components
+
+For authentication, JWT validation, and security-header behavior, see [SECURITY.md](SECURITY.md).
 
 ### 3.1. Endpoint-Level Authorization
 
@@ -140,12 +145,14 @@ Authorization is triggered in the MediatR pipeline based on one of three pattern
 
 ### 6.2. Claim-Based Authorization
 
--   **User ID Extraction**: The system uses a fallback chain to reliably extract the user's unique identifier from the JWT claims, checking in order: `internal_user_id` -> `sub` -> `nameidentifier` -> `sid`.
+-   **User ID Extraction**: The standard fallback chain for user identity extraction is `sub` -> `nameidentifier` -> `sid`.
+-   **`internal_user_id`**: This is a separate BFF-enriched local-user claim used by some UI/admin helpers after external identity resolution. It is not part of the general fallback chain.
 -   **Admin Claims**: A `BffAdminClaimsTransformation` service enriches the user's principal with specific `admin` claims after authentication, which can be used for UI-level authorization checks.
 
 ## 7. Related Documentation
 
 -   [SECURITY.md](SECURITY.md): Covers the broader security model, including authentication and JWT configuration.
+-   [AUTHORIZATION_PATTERNS.md](AUTHORIZATION_PATTERNS.md): Quick reference for MediatR request-shape choices and provider fallback rules.
 -   [ADMIN_HIERARCHY.md](ADMIN_HIERARCHY.md): Details the roles and responsibilities of different administrative levels.
 -   [API.md](API.md): Describes the MediatR pipeline and how authorization fits into the request flow.
 -   [adr/ADR-001-authorization-provider-architecture.md](adr/ADR-001-authorization-provider-architecture.md): The original architectural decision record for this design.

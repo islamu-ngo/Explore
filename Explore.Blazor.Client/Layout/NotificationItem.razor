@@ -1,7 +1,7 @@
 @* ABOUTME: Individual notification row showing type icon, scope badge, title, body, relative time.
-    ABOUTME: Click navigates to entity; delete button removes notification. Unread items have highlight. *@
+    ABOUTME: Click navigates to entity; archive/snooze/delete actions on hover. Unread items have highlight. *@
 
-<div class="notification-item @(IsUnread ? "notification-item--unread" : "")"
+<div class="notification-item @(IsUnread ? "notification-item--unread" : "") @(IsArchived ? "notification-item--archived" : "") @(IsSnoozed ? "notification-item--snoozed" : "")"
      @onclick="() => OnClick.InvokeAsync(Notification)"
      role="button"
      tabindex="0"
@@ -24,6 +24,16 @@
                     @Notification.NotificationScopeName
                 </MudChip>
             }
+            @if (!string.IsNullOrEmpty(Notification.NotificationReasonName))
+            {
+                <MudChip T="string"
+                         Size="Size.Small"
+                         Variant="Variant.Text"
+                         Color="Color.Default"
+                         Class="notification-item__reason">
+                    @Notification.NotificationReasonName
+                </MudChip>
+            }
         </div>
 
         @if (!string.IsNullOrEmpty(Notification.Body))
@@ -38,14 +48,55 @@
                 <span class="notification-item__dot">·</span>
             }
             <span class="notification-item__time">@FormatRelativeTime(Notification.CreatedAt)</span>
+            @if (IsSnoozed)
+            {
+                <span class="notification-item__dot">·</span>
+                <MudIcon Icon="@Icons.Material.Outlined.Snooze" Size="Size.Small" Class="notification-item__snooze-icon" />
+                <span class="notification-item__snooze-until">until @FormatSnoozeTime(Notification.SnoozedUntil)</span>
+            }
+            @if (IsArchived)
+            {
+                <span class="notification-item__dot">·</span>
+                <MudIcon Icon="@Icons.Material.Outlined.Archive" Size="Size.Small" Class="notification-item__archive-icon" />
+                <span class="notification-item__archive-label">Archived</span>
+            }
         </div>
     </div>
 
-    <button class="notification-item__delete"
-            @onclick="HandleDelete"
-            @onclick:stopPropagation
-            aria-label="Delete notification"
-            title="Delete">
-        <MudIcon Icon="@Icons.Material.Outlined.Close" Size="Size.Small" />
-    </button>
+    <div class="notification-item__actions">
+        @if (IsArchived)
+        {
+            <button class="notification-item__action-btn"
+                    @onclick="HandleUnarchive"
+                    @onclick:stopPropagation
+                    aria-label="Unarchive notification"
+                    title="Unarchive">
+                <MudIcon Icon="@Icons.Material.Outlined.Unarchive" Size="Size.Small" />
+            </button>
+        }
+        else
+        {
+            <button class="notification-item__action-btn"
+                    @onclick="HandleArchive"
+                    @onclick:stopPropagation
+                    aria-label="Archive notification"
+                    title="Archive">
+                <MudIcon Icon="@Icons.Material.Outlined.Archive" Size="Size.Small" />
+            </button>
+            <button class="notification-item__action-btn"
+                    @onclick="HandleSnooze"
+                    @onclick:stopPropagation
+                    aria-label="Snooze notification"
+                    title="Snooze">
+                <MudIcon Icon="@Icons.Material.Outlined.Snooze" Size="Size.Small" />
+            </button>
+        }
+        <button class="notification-item__action-btn notification-item__action-btn--delete"
+                @onclick="HandleDelete"
+                @onclick:stopPropagation
+                aria-label="Delete notification"
+                title="Delete">
+            <MudIcon Icon="@Icons.Material.Outlined.Close" Size="Size.Small" />
+        </button>
+    </div>
 </div>

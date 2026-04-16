@@ -11,19 +11,25 @@ public class UpdateEventDtoValidator : AbstractValidator<UpdateEventDto>
     private readonly IEventTypeRepository _eventTypeRepository;
     private readonly IActorRepository _actorRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
+    private readonly IEventSeriesRepository _eventSeriesRepository;
+    private readonly IEventRegistrationPolicyRepository _eventRegistrationPolicyRepository;
 
     public UpdateEventDtoValidator(
         IAudienceAgeRepository audienceAgeRepository,
         IAudienceGenderRepository audienceGenderRepository,
         IEventTypeRepository eventTypeRepository,
         IActorRepository actorRepository,
-        IStorageObjectRepository storageObjectRepository)
+        IStorageObjectRepository storageObjectRepository,
+        IEventSeriesRepository eventSeriesRepository,
+        IEventRegistrationPolicyRepository eventRegistrationPolicyRepository)
     {
         _audienceAgeRepository = audienceAgeRepository;
         _audienceGenderRepository = audienceGenderRepository;
         _eventTypeRepository = eventTypeRepository;
         _actorRepository = actorRepository;
         _storageObjectRepository = storageObjectRepository;
+        _eventSeriesRepository = eventSeriesRepository;
+        _eventRegistrationPolicyRepository = eventRegistrationPolicyRepository;
 
         RuleFor(p => p.Id)
             .NotEmpty().WithMessage("{PropertyName} is required.")
@@ -120,5 +126,30 @@ public class UpdateEventDtoValidator : AbstractValidator<UpdateEventDto>
         RuleFor(p => p.EventUrl)
             .MaximumLength(500).When(p => !string.IsNullOrEmpty(p.EventUrl))
             .WithMessage("{PropertyName} must not exceed 500 characters.");
+
+        // EventSeriesId is optional - if provided, validate it exists
+        RuleFor(p => p.EventSeriesId)
+            .MustAsync(async (id, cancellation) =>
+            {
+                if (!id.HasValue) return true;
+                return await _eventSeriesRepository.Exists(id.Value);
+            })
+            .When(p => p.EventSeriesId.HasValue)
+            .WithMessage("Event series does not exist.");
+
+        // RegistrationPolicyId is optional - if provided, validate it exists
+        RuleFor(p => p.RegistrationPolicyId)
+            .MustAsync(async (id, cancellation) =>
+            {
+                if (!id.HasValue) return true;
+                return await _eventRegistrationPolicyRepository.Exists(id.Value);
+            })
+            .When(p => p.RegistrationPolicyId.HasValue)
+            .WithMessage("Registration policy does not exist.");
+
+        RuleFor(p => p.SeriesOrder)
+            .GreaterThanOrEqualTo(0)
+            .When(p => p.SeriesOrder.HasValue)
+            .WithMessage("{PropertyName} must be non-negative.");
     }
 }

@@ -13,5 +13,5 @@ public class CreateEventRegistrationCommand : IRequest<BaseCommandResponse<Guid>
 {
     public required CreateEventRegistrationDto EventRegistrationDto { get; set; }
 
-    string? ISecureRequest.ResourceId => EventRegistrationDto.EventSessionId.ToString();
+    string? ISecureRequest.ResourceId => EventRegistrationDto.EventId.ToString();
 }

@@ -1,4 +1,4 @@
-Last Updated: 2026-03-15
+Last Updated: 2026-04-11
 
 # Plan: Event Scheduling Refactor
 
@@ -154,6 +154,14 @@ It also adopts an ultrawork-friendly sequencing rule set:
    - New first-class modeled object per event-local day.
    - Fields: `Id`, `EventId`, `TenantId`, `LocalDate`, `Label`, `Description`, banner/note fields, `IsPublished`, `SortOrder`, registration visibility/settings, audit/soft delete/concurrency as appropriate.
    - Becomes the anchor for admin day landing sections and day-based registration.
+   - **Justification for first-class entity (not a derived grouping).** `EventDay` is modeled as a persistent aggregate member — not computed on the fly from session local dates — because each of the following concerns requires stable identity, authored state, and per-day persistence that a derived projection cannot carry:
+     - **Custom day labels** that matter in the product (e.g. "Opening Day", "Main Program", "Family Day", "Community Iftar"). These are authored strings, not inferable from session titles or dates.
+     - **Day-specific descriptions and banners** that organizers edit independently of sessions and that must render even on days with zero sessions or before sessions are scheduled.
+     - **Day-specific publishing state** (`IsPublished`, scheduled reveal) that lets organizers stage a multi-day program incrementally; a derived grouping cannot be unpublished because the underlying sessions still exist.
+     - **Day-level admin UX** (reorder, rename, hide, lock, attach media) that needs a stable primary key so admin actions target a row, not a volatile local-date bucket that can shift when sessions are rescheduled.
+     - **Day-level registration and business rules** (whole-day registration scope, per-day capacity snapshots, per-day policy overrides, per-day check-in windows) that require a persistent entity the registration-intent model can foreign-key to.
+     - **Day-level taxonomy and ordering** beyond chronological sort, including sponsor attribution, track coloring, and curated position that is independent of `LocalDate`.
+     None of the above can be represented as a derived `GROUP BY LocalDate` projection over sessions. Sessions can move, be deleted, or not yet exist; `EventDay` must outlive them and own authored state. This is the decisive reason the refactor elevates `EventDay` to a first-class entity rather than a read-model convenience.
 
 4. `EventSession`
    - Reframed as the schedulable content unit.
@@ -193,6 +201,12 @@ It also adopts an ultrawork-friendly sequencing rule set:
      - `LocalStartMinuteOfDay`
     - `LocalEndMinuteOfDay`
    - Recompute whenever UTC times or event timezone change.
+   - **Ownership of the recompute (decided, not scattered).** The recompute responsibility lives in exactly one place: a **stateless domain service** `IEventScheduleProjectionCalculator` in `Explore.Domain/Services/Scheduling/` with a concrete `EventScheduleProjectionCalculator` implementation. All local projection writes go through this service. It is the single authority for converting UTC instants plus `Event.Timezone` into the cached local columns.
+     - **Invocation contract.** `EventSession` and `EventAgendaItem` expose aggregate-style methods (e.g. `Reschedule(DateTime startUtc, DateTime endUtc, IEventScheduleProjectionCalculator calc)`, `ReprojectLocalTimes(string timezone, IEventScheduleProjectionCalculator calc)`) that accept the calculator and update their own cached fields. Setting raw UTC properties directly from handlers is disallowed by convention and enforced by architecture tests.
+     - **Event-level timezone change triggers fan-out.** When `Event.ChangeTimezone(...)` is called, the event aggregate is responsible for iterating its loaded `Sessions` and `AgendaItems` collections and invoking their `ReprojectLocalTimes` methods with the calculator. No handler re-derives local fields inline. No validator writes local fields. No mapping profile writes local fields. No EF value converter writes local fields.
+     - **Handler role is orchestration only.** Command handlers load the aggregate, call the aggregate method (which internally uses the calculator), and persist. Handlers never read the timezone, call `TimeZoneInfo`, or touch `LocalStart*`/`LocalEnd*` directly.
+     - **Why a domain service and not a pure method on the entity.** Timezone resolution needs a `TimeZoneInfo` lookup and DST-aware conversion logic that is shared identically between `EventSession`, `EventAgendaItem`, and `EventDay` materialization during backfill. A stateless domain service keeps the logic in one type, lets backfill migrations reuse it without duplicating entity code, and keeps entities persistence-ignorant while still centralizing the rule.
+     - **Out of scope for the calculator.** The calculator does not read from `DbContext`, does not know about `EventDay` membership, and does not enforce business rules; it only converts UTC + IANA timezone into the six local fields. Business rules (e.g. session must belong to an `EventDay` whose `LocalDate` matches the computed `LocalStartDate`) live in validators and aggregate invariants, which consume the calculator's output.
 
 ### Locked planning decisions
 
@@ -205,7 +219,17 @@ To avoid ambiguity and keep migration risk controlled, the implementation plan a
 5. Session taxonomy uses lookup/junction support, not ad hoc string fields.
 6. Cached local projections are persisted query helpers, never user-authored fields.
 7. Existing session-level registration APIs remain temporarily compatible while the new parent-intent plus child-entitlement model is introduced.
-8. Same room plus overlapping time is invalid and is enforced first in DTO validators via asynchronous FluentValidation rules, with deeper persistence hardening layered later if needed.
+8. Same room plus overlapping time is invalid and is enforced in **two layers that are both mandatory from day one** — neither is optional, and the FluentValidation layer is explicitly described as necessary but not sufficient:
+   - **Layer A — Async FluentValidation rule (user-facing, fail-fast).** A `CreateEventSessionCommandValidator` / `UpdateEventSessionCommandValidator` async rule queries the repository for persisted sessions in the same `RoomId` whose UTC `[StartTime, EndTime)` interval overlaps the candidate. On hit, returns a 400 ProblemDetails with a clear, localizable message. This is the good UX layer.
+   - **Why Layer A alone is insufficient.** Application-level validation cannot protect against:
+     - concurrent writes from two admins scheduling overlapping sessions in the same room within the same millisecond,
+     - racing requests where both validators read the pre-insert state and both pass,
+     - out-of-band mutations (admin tools, data imports, SQL fixups, background jobs) that bypass the command pipeline entirely,
+     - data-import paths and bulk seeders that do not execute FluentValidation.
+     Treating Layer A as sufficient is the classic check-then-act race that this refactor explicitly rejects.
+   - **Layer B — Optimistic concurrency enforcement via the existing concurrency-stamp pattern.** `EventSession` already carries a concurrency token consistent with the rest of the codebase; the same mechanism is reused here — do not invent a new one. When a session's `StartTime`, `EndTime`, or `RoomId` changes, the update is issued with `ExpectedConcurrencyStamp`, and EF Core throws `DbUpdateConcurrencyException` if the row moved under us. In addition, the **room-level concurrency guard**: loading the set of candidate-overlap sessions for Layer A also loads their concurrency stamps; the command handler re-checks those stamps as part of the save (or uses a short serializable transaction scoped to `(TenantId, RoomId, LocalStartDate)`) so that any racing insert/update of a neighboring session forces a retry rather than a silent overlap. This is the correctness layer.
+   - **No backwards-compatibility shims.** The project is in development mode. If existing sessions, configurations, or tests conflict with the two-layer enforcement, they are updated or deleted — not worked around. Do not add feature flags, do not keep a "legacy path without room checks," do not emit warnings instead of errors. Break and fix.
+   - Deeper persistence hardening (exclusion constraints, generated range columns) remains a future option but is not a prerequisite because Layer B already closes the race window using tools the codebase already ships.
 
 ### Target UX & MudBlazor v9 Implementation
 
@@ -374,6 +398,7 @@ Recommended commit decomposition:
   - [ ] Supports tenant, audit, soft delete, and concurrency consistently with surrounding aggregates.
   - [ ] Encodes that rows belong to one event only.
   - [ ] Initial relationship strategy keeps `EventSession.EventDayId` nullable during rollout.
+  - [ ] ADR section explicitly documents *why* `EventDay` is a persistent entity and not a derived grouping. Required reasons to enumerate: custom day labels, day-specific descriptions/banners, day-specific publishing state, day-level admin UX (reorder/lock/hide/attach media), and day-level registration/business rules that require a stable primary key the registration-intent model can foreign-key to. If any of these five justifications no longer holds, the decision must be revisited.
 
 #### 1.2 Add `EventAgendaItem`
 - Effort: L
@@ -474,14 +499,16 @@ Recommended commit decomposition:
   - [ ] Existing events with missing timezone are handled explicitly by migration strategy.
   - [ ] Backfill is deterministic and idempotent where possible.
 
-#### 2.6 Add room conflict protection
+#### 2.6 Add room conflict protection (two mandatory layers)
 - Effort: L
-- Related Skills: `dotnet-efcore-guidelines`
+- Related Skills: `dotnet-efcore-guidelines`, `cqrs-mediatr-guidelines`
 - Acceptance Criteria:
   - [ ] Same room cannot host overlapping sessions for the same tenant/location.
-  - [ ] Primary enforcement in the first rollout is an async FluentValidation rule in create/update session DTO validators.
-  - [ ] Validator checks same room + overlapping time against persisted sessions before handler execution.
-  - [ ] Constraint strategy for later persistence hardening is documented separately (query-based validation first, stronger DB guard later if needed).
+  - [ ] **Layer A (necessary, not sufficient):** async FluentValidation rule in create/update session command validators rejects same-room overlap with a clear ProblemDetails error. This is the UX layer.
+  - [ ] **Layer B (sufficiency):** the existing concurrency-stamp pattern on `EventSession` is reused to guarantee correctness under concurrent writes. Stamps of overlap-candidate rows read during Layer A are re-verified at save time, so any racing insert/update in the same room forces `DbUpdateConcurrencyException` and a retry. No new concurrency primitive is introduced.
+  - [ ] No backwards-compatibility path: if legacy tests, fixtures, or seed data rely on overlap being silently allowed, they are updated in the same change-set. The project is in development mode; break and fix.
+  - [ ] Out-of-band mutation paths (seeders, imports, background jobs) that touch `EventSession` schedule fields are routed through the same aggregate method / domain service used by command handlers, so Layer B applies there too.
+  - [ ] Constraint strategy for later persistence hardening (e.g. PostgreSQL exclusion constraints on a generated tstzrange) is documented as an optional future upgrade, not as a prerequisite.
 
 #### 2.7 Keep new foreign keys additive first
 - Effort: M
@@ -504,8 +531,10 @@ Recommended commit decomposition:
 - Related Skills: `cqrs-mediatr-guidelines`, `dotnet-efcore-guidelines`
 - Acceptance Criteria:
   - [ ] Session create/update enforces new semantics and room/day integrity.
-  - [ ] Local projection recomputation is centralized and testable.
-  - [ ] Same-room overlap rejection is represented as validator-driven fail-fast behavior with clear error messages.
+  - [ ] Local projection recomputation is centralized in the `IEventScheduleProjectionCalculator` domain service and invoked exclusively through aggregate methods on `EventSession` / `Event`. Handlers never touch `LocalStart*` / `LocalEnd*` directly; validators never write local fields; mapping profiles never compute them. Architecture tests enforce this.
+  - [ ] When `Event.Timezone` changes, the `Event` aggregate fans out the re-projection to all loaded `Sessions` and `AgendaItems` via the calculator in a single unit of work.
+  - [ ] Same-room overlap rejection is represented as validator-driven fail-fast behavior with clear error messages (Layer A) **and** re-verified via the existing concurrency-stamp pattern at save time (Layer B). Both layers are mandatory.
+  - [ ] Tests cover the race window: a handler test asserts that two parallel overlap attempts cannot both commit — exactly one wins and the other raises `DbUpdateConcurrencyException`.
 
 #### 3.3 Add event agenda item commands/queries
 - Effort: L
@@ -662,7 +691,8 @@ Recommended commit decomposition:
 | Existing UI assumes registration == any session row | High | Refactor read models and UI together; add compatibility adapters temporarily |
 | Current active `session-series-ux` work diverges from this refactor | Medium | Reuse/extend that track instead of creating parallel abstractions |
 | OpenAPI/NSwag churn creates wide diffs | Medium | Stage DTO/API changes tightly and regenerate once per contract milestone |
-| Room conflict prevention is hard to guarantee with only app-level checks | Medium | Start with async DTO validation for same-room overlap and document stronger persistence hardening as a later layer |
+| Room conflict prevention is hard to guarantee with only app-level checks | High | Mandatory two-layer enforcement: async FluentValidation for UX (Layer A, necessary but not sufficient) plus reuse of the existing concurrency-stamp pattern on `EventSession` to close the check-then-act race (Layer B). Both layers land in the same PR; no legacy bypass path is kept |
+| Local projection recompute logic becomes scattered across handlers, validators, mappers, and seeders | High | Single domain service `IEventScheduleProjectionCalculator` owns the UTC→local conversion; entities expose aggregate methods that accept the calculator; architecture tests ban direct writes to `LocalStart*`/`LocalEnd*` from anywhere else |
 | Build baseline is already noisy | Medium | Track pre-existing warnings separately and verify touched paths/project slices incrementally |
 | Deep cascade/delete and soft-delete interactions around `Event -> EventDay -> EventSession` can create subtle data behavior | Medium | Keep EventSession linked directly to Event, introduce EventDay as grouping FK first, and test delete behavior explicitly |
 

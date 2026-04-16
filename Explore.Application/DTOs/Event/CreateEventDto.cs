@@ -76,4 +76,11 @@ public class CreateEventDto
     /// If provided, the template must be published and active.
     /// </summary>
     public Guid? TemplateId { get; set; }
+
+    // Series membership
+    public Guid? EventSeriesId { get; set; }
+    public int? SeriesOrder { get; set; }
+
+    // Registration policy (lookup FK)
+    public int? RegistrationPolicyId { get; set; }
 }

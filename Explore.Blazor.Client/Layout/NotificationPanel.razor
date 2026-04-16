@@ -48,7 +48,9 @@
                 {
                     <NotificationItem Notification="notification"
                                       OnClick="OnNotificationClick"
-                                      OnDelete="OnDeleteNotification" />
+                                      OnDelete="OnDeleteNotification"
+                                      OnArchive="OnArchiveNotification"
+                                      OnSnooze="OnSnoozeNotification" />
                 }
 
                 @if (HasMore)

@@ -159,7 +159,7 @@ Rate limiting is automatically disabled in the `Testing` environment — all rat
 - [GETTING_STARTED.md](GETTING_STARTED.md) — setup and first run
 - [ARCHITECTURE.md](ARCHITECTURE.md) — layer rules enforced by architecture tests
 - [ACCESSIBILITY.md](ACCESSIBILITY.md) — WCAG requirements tested by convention tests
-- [CONTRIBUTING.md](../CONTRIBUTING.md) — PR validation checklist
+- [CONTRIBUTING.md](CONTRIBUTING.md) — PR validation checklist
 - [QUICK_REFERENCE.md](QUICK_REFERENCE.md) — constraints tested by architecture tests
 
 ## API Integration Test Host Profiles

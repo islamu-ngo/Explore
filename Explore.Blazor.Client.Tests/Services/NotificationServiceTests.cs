@@ -1,16 +1,18 @@
-// ABOUTME: Unit tests for NotificationService covering all six notification operations.
-// ABOUTME: Tests GetNotifications, GetById, GetUnreadCount, MarkAsRead, MarkAllAsRead, and Delete.
+// ABOUTME: Unit tests for NotificationService covering all eight notification operations.
+// ABOUTME: Tests GetNotifications, GetById, GetUnreadCount, MarkAsRead, MarkAllAsRead, Delete, Archive, and Snooze.
 
 namespace Explore.Blazor.Client.Tests.Services;
 
 /// <summary>
-/// Tests NotificationService across six areas:
-/// 1. GetNotificationsAsync (success, maps fields, empty on API error, empty on general error, null items)
+/// Tests NotificationService across eight areas:
+/// 1. GetNotificationsAsync (success, maps fields, empty on API error, empty on general error, null items, new filter params)
 /// 2. GetNotificationByIdAsync (success, null on 404, null on API error, null on general error)
 /// 3. GetUnreadCountAsync (success, with scope, zero on API error, zero on general error)
 /// 4. MarkAsReadAsync (success, false on API error, false on general error)
 /// 5. MarkAllAsReadAsync (success, false on API error, false on general error)
 /// 6. DeleteAsync (success, false on API error, false on general error)
+/// 7. ArchiveAsync (success, unarchive, false on API error, false on general error)
+/// 8. SnoozeAsync (success, false on API error, false on general error)
 /// </summary>
 public class NotificationServiceTests
 {
@@ -148,6 +150,115 @@ public class NotificationServiceTests
 
         // Assert
         await Assert.That(result.Items).IsEmpty();
+    }
+
+    [Test]
+    public async Task GetNotificationsAsync_PassesReasonFilter_WhenProvided()
+    {
+        // Arrange
+        var response = new PaginatedResultOfNotificationListDto
+        {
+            Items = new List<NotificationListDto>(),
+            PageNumber = 1,
+            PageSize = 20,
+            TotalCount = 0
+        };
+
+        _apiClient.GetNotificationsAsync(
+                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<bool?>(),
+                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<int?>(),
+                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<CancellationToken>())
+            .Returns(response);
+
+        // Act
+        await _service.GetNotificationsAsync(1, 20, notificationReasonId: 2);
+
+        // Assert
+        await _apiClient.Received(1).GetNotificationsAsync(
+            1, 20, Arg.Any<bool?>(), null, Arg.Any<int?>(), 2,
+            Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task GetNotificationsAsync_PassesArchivedFilter_WhenProvided()
+    {
+        // Arrange
+        var response = new PaginatedResultOfNotificationListDto
+        {
+            Items = new List<NotificationListDto>(),
+            PageNumber = 1,
+            PageSize = 20,
+            TotalCount = 0
+        };
+
+        _apiClient.GetNotificationsAsync(
+                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<bool?>(),
+                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<int?>(),
+                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<CancellationToken>())
+            .Returns(response);
+
+        // Act
+        await _service.GetNotificationsAsync(1, 20, isArchived: true);
+
+        // Assert
+        await _apiClient.Received(1).GetNotificationsAsync(
+            1, 20, Arg.Any<bool?>(), null, Arg.Any<int?>(), Arg.Any<int?>(),
+            true, Arg.Any<bool?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task GetNotificationsAsync_PassesSnoozedFilter_WhenProvided()
+    {
+        // Arrange
+        var response = new PaginatedResultOfNotificationListDto
+        {
+            Items = new List<NotificationListDto>(),
+            PageNumber = 1,
+            PageSize = 20,
+            TotalCount = 0
+        };
+
+        _apiClient.GetNotificationsAsync(
+                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<bool?>(),
+                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<int?>(),
+                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<CancellationToken>())
+            .Returns(response);
+
+        // Act
+        await _service.GetNotificationsAsync(1, 20, isSnoozed: true);
+
+        // Assert
+        await _apiClient.Received(1).GetNotificationsAsync(
+            1, 20, Arg.Any<bool?>(), null, Arg.Any<int?>(), Arg.Any<int?>(),
+            Arg.Any<bool?>(), true, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task GetNotificationsAsync_PassesAllFilters_WhenProvided()
+    {
+        // Arrange
+        var response = new PaginatedResultOfNotificationListDto
+        {
+            Items = new List<NotificationListDto>(),
+            PageNumber = 1,
+            PageSize = 20,
+            TotalCount = 0
+        };
+
+        _apiClient.GetNotificationsAsync(
+                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<bool?>(),
+                Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<int?>(),
+                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<CancellationToken>())
+            .Returns(response);
+
+        // Act
+        await _service.GetNotificationsAsync(1, 20,
+            isRead: false, notificationScopeId: 2, notificationReasonId: 3,
+            isArchived: true, isSnoozed: false);
+
+        // Assert
+        await _apiClient.Received(1).GetNotificationsAsync(
+            1, 20, false, null, 2, 3, true, false, Arg.Any<CancellationToken>());
     }
 
     #endregion
@@ -493,6 +604,180 @@ public class NotificationServiceTests
 
         // Act
         var result = await _service.DeleteAsync(notificationId);
+
+        // Assert
+        await Assert.That(result).IsFalse();
+    }
+
+    #endregion
+
+    // ========== ArchiveAsync ==========
+
+    #region ArchiveAsync Tests
+
+    [Test]
+    public async Task ArchiveAsync_ReturnsTrue_WhenApiSucceeds()
+    {
+        // Arrange
+        var notificationId = Guid.NewGuid();
+        var response = new BaseCommandResponseOfGuid { Success = true, Id = notificationId };
+        _apiClient.ArchiveNotificationAsync(notificationId, true, Arg.Any<CancellationToken>())
+            .Returns(response);
+
+        // Act
+        var result = await _service.ArchiveAsync(notificationId);
+
+        // Assert
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task ArchiveAsync_PassesArchiveFalse_WhenUnarchiving()
+    {
+        // Arrange
+        var notificationId = Guid.NewGuid();
+        var response = new BaseCommandResponseOfGuid { Success = true, Id = notificationId };
+        _apiClient.ArchiveNotificationAsync(notificationId, false, Arg.Any<CancellationToken>())
+            .Returns(response);
+
+        // Act
+        var result = await _service.ArchiveAsync(notificationId, archive: false);
+
+        // Assert
+        await Assert.That(result).IsTrue();
+        await _apiClient.Received(1).ArchiveNotificationAsync(notificationId, false, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ArchiveAsync_ReturnsFalse_WhenApiReturnsFailure()
+    {
+        // Arrange
+        var notificationId = Guid.NewGuid();
+        var response = new BaseCommandResponseOfGuid { Success = false };
+        _apiClient.ArchiveNotificationAsync(notificationId, true, Arg.Any<CancellationToken>())
+            .Returns(response);
+
+        // Act
+        var result = await _service.ArchiveAsync(notificationId);
+
+        // Assert
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task ArchiveAsync_ReturnsFalse_WhenApiThrows()
+    {
+        // Arrange
+        var notificationId = Guid.NewGuid();
+        _apiClient.ArchiveNotificationAsync(notificationId, Arg.Any<bool?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(CreateApiException("Server Error", 500));
+
+        // Act
+        var result = await _service.ArchiveAsync(notificationId);
+
+        // Assert
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task ArchiveAsync_ReturnsFalse_WhenGeneralExceptionThrown()
+    {
+        // Arrange
+        var notificationId = Guid.NewGuid();
+        _apiClient.ArchiveNotificationAsync(notificationId, Arg.Any<bool?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Network failure"));
+
+        // Act
+        var result = await _service.ArchiveAsync(notificationId);
+
+        // Assert
+        await Assert.That(result).IsFalse();
+    }
+
+    #endregion
+
+    // ========== SnoozeAsync ==========
+
+    #region SnoozeAsync Tests
+
+    [Test]
+    public async Task SnoozeAsync_ReturnsTrue_WhenApiSucceeds()
+    {
+        // Arrange
+        var notificationId = Guid.NewGuid();
+        var snoozedUntil = DateTimeOffset.UtcNow.AddHours(3);
+        var response = new BaseCommandResponseOfGuid { Success = true, Id = notificationId };
+        _apiClient.SnoozeNotificationAsync(notificationId, snoozedUntil, Arg.Any<CancellationToken>())
+            .Returns(response);
+
+        // Act
+        var result = await _service.SnoozeAsync(notificationId, snoozedUntil);
+
+        // Assert
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task SnoozeAsync_PassesSnoozedUntil_ToApi()
+    {
+        // Arrange
+        var notificationId = Guid.NewGuid();
+        var snoozedUntil = DateTimeOffset.UtcNow.AddDays(1);
+        var response = new BaseCommandResponseOfGuid { Success = true, Id = notificationId };
+        _apiClient.SnoozeNotificationAsync(notificationId, snoozedUntil, Arg.Any<CancellationToken>())
+            .Returns(response);
+
+        // Act
+        await _service.SnoozeAsync(notificationId, snoozedUntil);
+
+        // Assert
+        await _apiClient.Received(1).SnoozeNotificationAsync(notificationId, snoozedUntil, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task SnoozeAsync_ReturnsFalse_WhenApiReturnsFailure()
+    {
+        // Arrange
+        var notificationId = Guid.NewGuid();
+        var snoozedUntil = DateTimeOffset.UtcNow.AddHours(3);
+        var response = new BaseCommandResponseOfGuid { Success = false };
+        _apiClient.SnoozeNotificationAsync(notificationId, snoozedUntil, Arg.Any<CancellationToken>())
+            .Returns(response);
+
+        // Act
+        var result = await _service.SnoozeAsync(notificationId, snoozedUntil);
+
+        // Assert
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task SnoozeAsync_ReturnsFalse_WhenApiThrows()
+    {
+        // Arrange
+        var notificationId = Guid.NewGuid();
+        var snoozedUntil = DateTimeOffset.UtcNow.AddHours(3);
+        _apiClient.SnoozeNotificationAsync(notificationId, Arg.Any<DateTimeOffset?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(CreateApiException("Server Error", 500));
+
+        // Act
+        var result = await _service.SnoozeAsync(notificationId, snoozedUntil);
+
+        // Assert
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task SnoozeAsync_ReturnsFalse_WhenGeneralExceptionThrown()
+    {
+        // Arrange
+        var notificationId = Guid.NewGuid();
+        var snoozedUntil = DateTimeOffset.UtcNow.AddHours(3);
+        _apiClient.SnoozeNotificationAsync(notificationId, Arg.Any<DateTimeOffset?>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Network failure"));
+
+        // Act
+        var result = await _service.SnoozeAsync(notificationId, snoozedUntil);
 
         // Assert
         await Assert.That(result).IsFalse();

@@ -15,6 +15,8 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
     private readonly IGroupRepository _groupRepository;
     private readonly IStorageObjectRepository _storageObjectRepository;
     private readonly IEventTemplateRepository _eventTemplateRepository;
+    private readonly IEventSeriesRepository _eventSeriesRepository;
+    private readonly IEventRegistrationPolicyRepository _eventRegistrationPolicyRepository;
 
     public CreateEventDtoValidator(
         IAudienceAgeRepository audienceAgeRepository,
@@ -23,7 +25,9 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
         IOrganizationRepository organizationRepository,
         IGroupRepository groupRepository,
         IStorageObjectRepository storageObjectRepository,
-        IEventTemplateRepository eventTemplateRepository)
+        IEventTemplateRepository eventTemplateRepository,
+        IEventSeriesRepository eventSeriesRepository,
+        IEventRegistrationPolicyRepository eventRegistrationPolicyRepository)
     {
         _audienceAgeRepository = audienceAgeRepository;
         _audienceGenderRepository = audienceGenderRepository;
@@ -32,6 +36,8 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
         _groupRepository = groupRepository;
         _storageObjectRepository = storageObjectRepository;
         _eventTemplateRepository = eventTemplateRepository;
+        _eventSeriesRepository = eventSeriesRepository;
+        _eventRegistrationPolicyRepository = eventRegistrationPolicyRepository;
 
         RuleFor(p => p.Title)
             .NotEmpty().WithMessage("{PropertyName} is required.")
@@ -152,6 +158,31 @@ public class CreateEventDtoValidator : AbstractValidator<CreateEventDto>
             })
             .When(p => p.TemplateId.HasValue)
             .WithMessage("Event template does not exist.");
+
+        // EventSeriesId is optional - if provided, validate it exists
+        RuleFor(p => p.EventSeriesId)
+            .MustAsync(async (id, cancellation) =>
+            {
+                if (!id.HasValue) return true;
+                return await _eventSeriesRepository.Exists(id.Value);
+            })
+            .When(p => p.EventSeriesId.HasValue)
+            .WithMessage("Event series does not exist.");
+
+        // RegistrationPolicyId is optional - if provided, validate it exists
+        RuleFor(p => p.RegistrationPolicyId)
+            .MustAsync(async (id, cancellation) =>
+            {
+                if (!id.HasValue) return true;
+                return await _eventRegistrationPolicyRepository.Exists(id.Value);
+            })
+            .When(p => p.RegistrationPolicyId.HasValue)
+            .WithMessage("Registration policy does not exist.");
+
+        RuleFor(p => p.SeriesOrder)
+            .GreaterThanOrEqualTo(0)
+            .When(p => p.SeriesOrder.HasValue)
+            .WithMessage("{PropertyName} must be non-negative.");
 
         // TenantId is set by the handler from context, not by the client
         // No validation needed here

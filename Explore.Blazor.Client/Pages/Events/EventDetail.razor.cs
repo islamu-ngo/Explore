@@ -581,6 +581,7 @@ public partial class EventDetail : ComponentBase
     {
         var parameters = new DialogParameters
         {
+            { "EventId", _eventDetails!.Id },
             { "EventSessionId", session.Id },
             { "Title", $"Register for {_eventDetails!.Title} - {session.Title}" }
         };

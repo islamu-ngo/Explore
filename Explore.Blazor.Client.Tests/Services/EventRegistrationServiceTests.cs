@@ -214,7 +214,13 @@ public class EventRegistrationServiceTests
     {
         // Arrange
         var sessionId = Guid.NewGuid();
-        var dto = new CreateEventRegistrationDto { EventSessionId = sessionId, UserId = Guid.NewGuid() };
+        var dto = new CreateEventRegistrationDto
+        {
+            EventId = Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
+            RegistrationScopeId = 3, // SessionSelection
+            SelectedSessionIds = new List<Guid> { sessionId },
+        };
         var expectedResponse = ComponentDataBuilder.SuccessResponse();
 
         _apiClient.EventregistrationPOSTAsync(dto, Arg.Any<CancellationToken>())
@@ -232,7 +238,13 @@ public class EventRegistrationServiceTests
     public async Task RegisterForSessionAsync_ReturnsFailureResponse_WhenApiThrows()
     {
         // Arrange
-        var dto = new CreateEventRegistrationDto { EventSessionId = Guid.NewGuid(), UserId = Guid.NewGuid() };
+        var dto = new CreateEventRegistrationDto
+        {
+            EventId = Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
+            RegistrationScopeId = 3,
+            SelectedSessionIds = new List<Guid> { Guid.NewGuid() },
+        };
         _apiClient.EventregistrationPOSTAsync(dto, Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Bad Request", 400));
 
@@ -248,7 +260,13 @@ public class EventRegistrationServiceTests
     public async Task RegisterForSessionAsync_CallsApiWithCorrectDto()
     {
         // Arrange
-        var dto = new CreateEventRegistrationDto { EventSessionId = Guid.NewGuid(), UserId = Guid.NewGuid() };
+        var dto = new CreateEventRegistrationDto
+        {
+            EventId = Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
+            RegistrationScopeId = 3,
+            SelectedSessionIds = new List<Guid> { Guid.NewGuid() },
+        };
         _apiClient.EventregistrationPOSTAsync(Arg.Any<CreateEventRegistrationDto>(), Arg.Any<CancellationToken>())
             .Returns(ComponentDataBuilder.SuccessResponse());
 

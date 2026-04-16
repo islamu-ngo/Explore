@@ -311,7 +311,7 @@ Methods use descriptive names: `{Method}_{Scenario}_{ExpectedResult}`
 
 | Registration file | Pattern |
 |---|---|
-| `PersistenceServicesRegistration.cs` | `CongfigurePersistenceServices()` (note: typo is intentional/existing) |
+| `PersistenceServicesRegistration.cs` | `ConfigurePersistenceServices()` |
 | `InfrastructureServicesRegistration.cs` | `ConfigureInfrastructureServices()` |
 | `Explore.Blazor.Client/Program.cs` | Direct service registration |
 | `Explore.API/Program.cs` | Calls all registration methods |

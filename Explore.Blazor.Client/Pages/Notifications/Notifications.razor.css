@@ -1,5 +1,5 @@
-/* ABOUTME: Scoped CSS for Notifications inbox page — full-page notification layout. */
-/* ABOUTME: BEM block: notification-inbox. Surface card with border, rounded corners. */
+/* ABOUTME: Scoped CSS for Notifications inbox page — full-page notification layout with filter toolbar. */
+/* ABOUTME: BEM block: notification-inbox. Surface card with border, rounded corners, reason filter select. */
 
 .notification-inbox {
     background: var(--mud-palette-surface);
@@ -15,6 +15,11 @@
     padding: 12px 16px;
     border-bottom: 1px solid var(--mud-palette-lines-default);
     flex-wrap: wrap;
+}
+
+::deep .notification-inbox__reason-filter {
+    max-width: 160px;
+    min-width: 120px;
 }
 
 .notification-inbox__body {
@@ -54,5 +59,9 @@
     .notification-inbox__toolbar {
         flex-direction: column;
         align-items: stretch;
+    }
+
+    ::deep .notification-inbox__reason-filter {
+        max-width: none;
     }
 }

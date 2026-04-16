@@ -55,7 +55,7 @@
   },
   "enabledPlugins": {
     "github@claude-plugins-official": false,
-    "serena@claude-plugins-official": true,
+    "serena@claude-plugins-official": false,
     "commit-commands@claude-plugins-official": true,
     "security-guidance@claude-plugins-official": true,
     "csharp-lsp@claude-plugins-official": true,

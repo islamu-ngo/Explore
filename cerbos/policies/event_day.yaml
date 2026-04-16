@@ -1,0 +1,38 @@
+# ABOUTME: Cerbos resource policy for event_day resources.
+# Event days are org-scoped: org admins manage days for their events.
+
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: "event_day"
+  version: "default"
+  importDerivedRoles:
+    - explore_admin_roles
+  schemas:
+    principalSchema:
+      ref: cerbos:///principal.json
+    resourceSchema:
+      ref: cerbos:///event_day.json
+  rules:
+    # Instance admins can do everything
+    - actions: ["*"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - instance_admin
+
+    # Tenant admins can manage all event days within their tenant
+    - actions: ["view", "create", "update", "delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - tenant_admin
+
+    # Org admins can manage event days for their organization
+    - actions: ["view", "create", "update", "delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles:
+        - org_admin
+
+    # All authenticated users can view event days
+    - actions: ["view"]
+      effect: EFFECT_ALLOW
+      roles:
+        - authenticated_user

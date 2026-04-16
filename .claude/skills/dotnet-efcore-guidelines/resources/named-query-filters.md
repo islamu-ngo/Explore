@@ -18,7 +18,7 @@ var currentTenantId = tenantContext.TenantId;
 
 modelBuilder.Entity<Event>()
     .HasQueryFilter(name: "SoftDelete", predicate: e => !e.IsDeleted)
-    .HasQueryFilter(name: "TenantFilter", predicate: e => e.TenantId == currentTenantId);
+    .HasQueryFilter(name: "Tenant", predicate: e => e.TenantId == currentTenantId);
 ```
 
 ## Selective Disable Pattern
@@ -27,7 +27,15 @@ Use selective disable only in explicit administrative, migration, or audit flows
 
 ```csharp
 var includingDeleted = await db.Events
-    .IgnoreQueryFilters(["SoftDelete"])
+    .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
+    .ToListAsync(cancellationToken);
+```
+
+Project helper equivalent:
+
+```csharp
+var includingDeleted = await db.Events
+    .IgnoreSoftDeleteFilter()
     .ToListAsync(cancellationToken);
 ```
 
@@ -36,3 +44,4 @@ var includingDeleted = await db.Events
 - Default application flows should keep filters enabled.
 - Disabling tenant filter in runtime request paths is usually a security bug.
 - Keep filter names stable and centrally documented.
+- `IgnoreQueryFilters()` disables **all** filters and should be reserved for tightly-scoped admin or maintenance flows.

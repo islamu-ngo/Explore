@@ -812,6 +812,11 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("allowed_url_schemes");
 
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -1004,6 +1009,11 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -1097,6 +1107,135 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("custom_property_options", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.CustomPropertyProjectionDirtyScope", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("DefinitionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("definition_id");
+
+                    b.Property<DateTimeOffset?>("DrainedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("drained_at");
+
+                    b.Property<string>("ProjectionName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("projection_name");
+
+                    b.Property<int>("ProjectionVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("projection_version");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("reason");
+
+                    b.Property<Guid>("ScopeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("scope_id");
+
+                    b.Property<string>("ScopeType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("scope_type");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_custom_property_projection_dirty_scope");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_custom_property_projection_dirty_scope_tenant_id");
+
+                    b.HasIndex("ProjectionName", "ProjectionVersion", "TenantId")
+                        .HasDatabaseName("ix_dirty_scope_pending")
+                        .HasFilter("drained_at IS NULL");
+
+                    b.HasIndex("ProjectionName", "ProjectionVersion", "TenantId", "ScopeType", "ScopeId", "DefinitionId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_dirty_scope_unique");
+
+                    b.ToTable("custom_property_projection_dirty_scope", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.CustomPropertyProjectionStatus", b =>
+                {
+                    b.Property<string>("ProjectionName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("projection_name");
+
+                    b.Property<int>("ProjectionVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("projection_version");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<string>("LastCheckpoint")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("last_checkpoint");
+
+                    b.Property<string>("LastErrorMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("last_error_message");
+
+                    b.Property<DateTimeOffset?>("LastRebuildCompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_rebuild_completed_at");
+
+                    b.Property<DateTimeOffset?>("LastRebuildStartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_rebuild_started_at");
+
+                    b.Property<long>("RowsFailed")
+                        .HasColumnType("bigint")
+                        .HasColumnName("rows_failed");
+
+                    b.Property<long>("RowsProcessed")
+                        .HasColumnType("bigint")
+                        .HasColumnName("rows_processed");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("state");
+
+                    b.HasKey("ProjectionName", "ProjectionVersion", "TenantId")
+                        .HasName("pk_custom_property_projection_status");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_custom_property_projection_status_tenant_id");
+
+                    b.ToTable("custom_property_projection_status", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.CustomPropertyValue", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1107,6 +1246,11 @@ namespace Explore.Persistence.Migrations
                     b.Property<bool?>("BooleanValue")
                         .HasColumnType("boolean")
                         .HasColumnName("boolean_value");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -1361,6 +1505,10 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("numeric(19,4)")
                         .HasColumnName("price");
 
+                    b.Property<int?>("RegistrationPolicyId")
+                        .HasColumnType("integer")
+                        .HasColumnName("registration_policy_id");
+
                     b.Property<int?>("SeriesOrder")
                         .HasColumnType("integer")
                         .HasColumnName("series_order");
@@ -1448,6 +1596,9 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("MadhabId")
                         .HasDatabaseName("ix_events_madhab_id");
 
+                    b.HasIndex("RegistrationPolicyId")
+                        .HasDatabaseName("ix_events_registration_policy_id");
+
                     b.HasIndex("VisibilityTypeId")
                         .HasDatabaseName("ix_events_visibility_type_id");
 
@@ -1473,6 +1624,147 @@ namespace Explore.Persistence.Migrations
                         });
 
                     b.UseTptMappingStrategy();
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventAgendaItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
+
+                    b.Property<DateTimeOffset>("EndTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("end_time");
+
+                    b.Property<Guid?>("EventDayId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_day_id");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<int?>("KindId")
+                        .HasColumnType("integer")
+                        .HasColumnName("kind_id");
+
+                    b.Property<DateOnly>("LocalEndDate")
+                        .HasColumnType("date")
+                        .HasColumnName("local_end_date");
+
+                    b.Property<int>("LocalEndMinuteOfDay")
+                        .HasColumnType("integer")
+                        .HasColumnName("local_end_minute_of_day");
+
+                    b.Property<TimeOnly>("LocalEndTime")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("local_end_time");
+
+                    b.Property<DateOnly>("LocalStartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("local_start_date");
+
+                    b.Property<int>("LocalStartMinuteOfDay")
+                        .HasColumnType("integer")
+                        .HasColumnName("local_start_minute_of_day");
+
+                    b.Property<TimeOnly>("LocalStartTime")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("local_start_time");
+
+                    b.Property<Guid?>("LocationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("location_id");
+
+                    b.Property<Guid?>("RoomId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("room_id");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTimeOffset>("StartTime")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("start_time");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_agenda_items");
+
+                    b.HasIndex("EventDayId")
+                        .HasDatabaseName("ix_event_agenda_items_event_day_id");
+
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("ix_event_agenda_items_event_id");
+
+                    b.HasIndex("KindId")
+                        .HasDatabaseName("ix_event_agenda_items_kind_id");
+
+                    b.HasIndex("LocationId")
+                        .HasDatabaseName("ix_event_agenda_items_location_id");
+
+                    b.HasIndex("RoomId")
+                        .HasDatabaseName("ix_event_agenda_items_room_id");
+
+                    b.HasIndex("TenantId", "EventId", "SortOrder")
+                        .HasDatabaseName("ix_event_agenda_items_tenant_event_sort");
+
+                    b.HasIndex("TenantId", "EventId", "LocalStartDate", "LocalStartMinuteOfDay")
+                        .HasDatabaseName("ix_event_agenda_items_tenant_event_local_start");
+
+                    b.ToTable("event_agenda_items", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_EventAgendaItem_EndAfterStart", "end_time > start_time");
+                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.EventCategories", b =>
@@ -1519,8 +1811,9 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("EventId")
                         .HasDatabaseName("ix_event_categories_event_id");
 
-                    b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_event_categories_tenant_id");
+                    b.HasIndex("TenantId", "EventId", "CategoryId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_categories_tenant_event_category");
 
                     b.ToTable("event_categories", (string)null);
                 });
@@ -1730,6 +2023,11 @@ namespace Explore.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
                         .HasColumnName("allowed_url_schemes");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -1945,6 +2243,11 @@ namespace Explore.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -2190,6 +2493,11 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("boolean_value");
 
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -2271,6 +2579,111 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_ecpv_definition_event_ordinal");
 
                     b.ToTable("event_custom_property_values", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventDay", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("AllowsDayScopeRegistration")
+                        .HasColumnType("boolean")
+                        .HasColumnName("allows_day_scope_registration");
+
+                    b.Property<Guid?>("BannerImageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("banner_image_id");
+
+                    b.Property<string>("BannerText")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("banner_text");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(5000)
+                        .HasColumnType("character varying(5000)")
+                        .HasColumnName("description");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<bool>("IsPublished")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_published");
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("label");
+
+                    b.Property<DateOnly>("LocalDate")
+                        .HasColumnType("date")
+                        .HasColumnName("local_date");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_days");
+
+                    b.HasIndex("BannerImageId")
+                        .HasDatabaseName("ix_event_days_banner_image_id");
+
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("ix_event_days_event_id");
+
+                    b.HasIndex("TenantId", "EventId", "IsPublished")
+                        .HasDatabaseName("ix_event_days_tenant_event_published");
+
+                    b.HasIndex("TenantId", "EventId", "LocalDate")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_days_tenant_event_local_date");
+
+                    b.HasIndex("TenantId", "EventId", "SortOrder")
+                        .HasDatabaseName("ix_event_days_tenant_event_sort");
+
+                    b.ToTable("event_days", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventFormat", b =>
@@ -2380,6 +2793,10 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("deleted_by");
 
+                    b.Property<Guid?>("EventRegistrationIntentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_registration_intent_id");
+
                     b.Property<Guid>("EventSessionId")
                         .HasColumnType("uuid")
                         .HasColumnName("event_session_id");
@@ -2413,6 +2830,9 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("AtprotoRecordId")
                         .HasDatabaseName("ix_event_registrations_atproto_record_id");
 
+                    b.HasIndex("EventRegistrationIntentId")
+                        .HasDatabaseName("ix_eventregistrations_intent");
+
                     b.HasIndex("TenantId")
                         .HasDatabaseName("ix_event_registrations_tenant_id");
 
@@ -2424,6 +2844,150 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_eventregistrations_session_user");
 
                     b.ToTable("event_registrations", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventRegistrationIntent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int?>("ApprovalStatusId")
+                        .HasColumnType("integer")
+                        .HasColumnName("approval_status_id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<int?>("RegistrationPolicySnapshotId")
+                        .HasColumnType("integer")
+                        .HasColumnName("registration_policy_snapshot_id");
+
+                    b.Property<int>("RegistrationScopeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("registration_scope_id");
+
+                    b.Property<Guid?>("SelectedEventDayId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("selected_event_day_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_registration_intents");
+
+                    b.HasIndex("ApprovalStatusId")
+                        .HasDatabaseName("ix_event_registration_intents_approval_status_id");
+
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("ix_event_registration_intents_event_id");
+
+                    b.HasIndex("RegistrationPolicySnapshotId")
+                        .HasDatabaseName("ix_event_registration_intents_registration_policy_snapshot_id");
+
+                    b.HasIndex("RegistrationScopeId")
+                        .HasDatabaseName("ix_event_registration_intents_registration_scope_id");
+
+                    b.HasIndex("SelectedEventDayId")
+                        .HasDatabaseName("ix_event_registration_intents_selected_event_day_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_event_registration_intents_user_id");
+
+                    b.HasIndex("TenantId", "UserId")
+                        .HasDatabaseName("ix_event_registration_intents_tenant_user");
+
+                    b.HasIndex("TenantId", "EventId", "SelectedEventDayId")
+                        .HasDatabaseName("ix_event_registration_intents_tenant_event_day");
+
+                    b.HasIndex("TenantId", "EventId", "UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_registration_intents_unique_session_selection_scope")
+                        .HasFilter("registration_scope_id = 3 AND is_deleted = false");
+
+                    b.HasIndex("TenantId", "EventId", "UserId", "RegistrationScopeId")
+                        .HasDatabaseName("ix_event_registration_intents_tenant_event_user_scope");
+
+                    b.HasIndex("TenantId", "EventId", "UserId", "SelectedEventDayId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_registration_intents_unique_day_scope")
+                        .HasFilter("registration_scope_id = 2 AND is_deleted = false");
+
+                    b.ToTable("event_registration_intents", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventRegistrationPolicy", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_registration_policies");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_registration_policies_master_code");
+
+                    b.ToTable("event_registration_policies", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSeries", b =>
@@ -2586,6 +3150,10 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("end_time");
 
+                    b.Property<Guid?>("EventDayId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_day_id");
+
                     b.Property<Guid>("EventId")
                         .HasColumnType("uuid")
                         .HasColumnName("event_id");
@@ -2593,6 +3161,30 @@ namespace Explore.Persistence.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
+
+                    b.Property<DateOnly>("LocalEndDate")
+                        .HasColumnType("date")
+                        .HasColumnName("local_end_date");
+
+                    b.Property<int>("LocalEndMinuteOfDay")
+                        .HasColumnType("integer")
+                        .HasColumnName("local_end_minute_of_day");
+
+                    b.Property<TimeOnly>("LocalEndTime")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("local_end_time");
+
+                    b.Property<DateOnly>("LocalStartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("local_start_date");
+
+                    b.Property<int>("LocalStartMinuteOfDay")
+                        .HasColumnType("integer")
+                        .HasColumnName("local_start_minute_of_day");
+
+                    b.Property<TimeOnly>("LocalStartTime")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("local_start_time");
 
                     b.Property<Guid?>("LocationId")
                         .HasColumnType("uuid")
@@ -2611,10 +3203,18 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("registration_mode_id");
 
+                    b.Property<Guid?>("RoomId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("room_id");
+
                     b.Property<string>("Slug")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("slug");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
 
                     b.Property<DateTimeOffset>("StartTime")
                         .HasColumnType("timestamp with time zone")
@@ -2640,6 +3240,9 @@ namespace Explore.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_event_sessions");
 
+                    b.HasIndex("EventDayId")
+                        .HasDatabaseName("ix_event_sessions_event_day_id");
+
                     b.HasIndex("EventId")
                         .HasDatabaseName("ix_event_sessions_event_id");
 
@@ -2649,11 +3252,22 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("RegistrationModeId")
                         .HasDatabaseName("ix_event_sessions_registration_mode_id");
 
-                    b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_event_sessions_tenant_id");
+                    b.HasIndex("RoomId")
+                        .HasDatabaseName("ix_event_sessions_room_id");
+
+                    b.HasIndex("TenantId", "EventDayId", "SortOrder")
+                        .HasDatabaseName("ix_event_sessions_tenant_day_sort");
+
+                    b.HasIndex("TenantId", "EventId", "LocalStartDate", "LocalStartMinuteOfDay")
+                        .HasDatabaseName("ix_event_sessions_tenant_event_local_start");
+
+                    b.HasIndex("TenantId", "RoomId", "StartTime", "EndTime")
+                        .HasDatabaseName("ix_event_sessions_tenant_room_time");
 
                     b.ToTable("event_sessions", null, t =>
                         {
+                            t.HasCheckConstraint("CK_EventSession_EndAfterStart", "end_time > start_time");
+
                             t.HasCheckConstraint("CK_EventSession_NonNegativePrice", "price IS NULL OR price >= 0");
                         });
                 });
@@ -2712,6 +3326,57 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("event_session_agenda_items", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.EventSessionCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("category_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("EventSessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_session_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_session_categories");
+
+                    b.HasIndex("CategoryId")
+                        .HasDatabaseName("ix_event_session_categories_category_id");
+
+                    b.HasIndex("EventSessionId")
+                        .HasDatabaseName("ix_event_session_categories_event_session_id");
+
+                    b.HasIndex("TenantId", "EventSessionId", "CategoryId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_session_categories_tenant_session_category");
+
+                    b.ToTable("event_session_categories", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.EventSessionCustomPropertyDefinition", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2723,6 +3388,11 @@ namespace Explore.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
                         .HasColumnName("allowed_url_schemes");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -2938,6 +3608,11 @@ namespace Explore.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -3183,6 +3858,11 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("boolean_value");
 
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -3370,10 +4050,62 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("EventSessionId")
                         .HasDatabaseName("ix_event_session_speakers_event_session_id");
 
-                    b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_event_session_speakers_tenant_id");
+                    b.HasIndex("TenantId", "EventSessionId", "ActorId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_session_speakers_tenant_session_actor");
 
                     b.ToTable("event_session_speakers", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionTag", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("EventSessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_session_id");
+
+                    b.Property<Guid>("TagId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tag_id");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_session_tags");
+
+                    b.HasIndex("EventSessionId")
+                        .HasDatabaseName("ix_event_session_tags_event_session_id");
+
+                    b.HasIndex("TagId")
+                        .HasDatabaseName("ix_event_session_tags_tag_id");
+
+                    b.HasIndex("TenantId", "EventSessionId", "TagId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_session_tags_tenant_session_tag");
+
+                    b.ToTable("event_session_tags", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.EventSessionTemplate", b =>
@@ -3382,6 +4114,11 @@ namespace Explore.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -3476,6 +4213,11 @@ namespace Explore.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
                         .HasColumnName("allowed_url_schemes");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -3664,6 +4406,11 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -3830,8 +4577,9 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("TagId")
                         .HasDatabaseName("ix_event_tags_tag_id");
 
-                    b.HasIndex("TenantId")
-                        .HasDatabaseName("ix_event_tags_tenant_id");
+                    b.HasIndex("TenantId", "EventId", "TagId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_tags_tenant_event_tag");
 
                     b.ToTable("event_tags", (string)null);
                 });
@@ -3901,6 +4649,11 @@ namespace Explore.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -3998,6 +4751,11 @@ namespace Explore.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
                         .HasColumnName("allowed_url_schemes");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -4185,6 +4943,11 @@ namespace Explore.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -5200,6 +5963,97 @@ namespace Explore.Persistence.Migrations
                         .HasName("pk_location_pii");
 
                     b.ToTable("location_pii", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.LocationRoom", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int?>("Capacity")
+                        .HasColumnType("integer")
+                        .HasColumnName("capacity");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<Guid>("LocationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("location_id");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Slug")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("slug");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_location_rooms");
+
+                    b.HasIndex("LocationId")
+                        .HasDatabaseName("ix_location_rooms_location_id");
+
+                    b.HasIndex("TenantId", "LocationId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_location_rooms_tenant_location_name");
+
+                    b.HasIndex("TenantId", "LocationId", "SortOrder")
+                        .HasDatabaseName("ix_location_rooms_tenant_location_sort");
+
+                    b.ToTable("location_rooms", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_LocationRoom_NonNegativeCapacity", "capacity IS NULL OR capacity >= 0");
+                        });
                 });
 
             modelBuilder.Entity("Explore.Domain.Madhab", b =>
@@ -6448,6 +7302,39 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("registration_modes", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.RegistrationScope", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_registration_scopes");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_registration_scopes_master_code");
+
+                    b.ToTable("registration_scopes", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.Role", b =>
                 {
                     b.Property<int>("Id")
@@ -6524,6 +7411,39 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_rolepermissions_role");
 
                     b.ToTable("role_permissions", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.ScheduleItemKind", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("MasterCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("master_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_schedule_item_kinds");
+
+                    b.HasIndex("MasterCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_schedule_item_kinds_master_code");
+
+                    b.ToTable("schedule_item_kinds", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.StorageObject", b =>
@@ -8125,6 +9045,30 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("ParentOption");
                 });
 
+            modelBuilder.Entity("Explore.Domain.CustomPropertyProjectionDirtyScope", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_custom_property_projection_dirty_scope_tenants_tenant_id");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.CustomPropertyProjectionStatus", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_custom_property_projection_status_tenants_tenant_id");
+
+                    b.Navigation("Tenant");
+                });
+
             modelBuilder.Entity("Explore.Domain.CustomPropertyValue", b =>
                 {
                     b.HasOne("Explore.Domain.CustomPropertyDefinition", "Definition")
@@ -8224,6 +9168,12 @@ namespace Explore.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_events_madhabs_madhab_id");
 
+                    b.HasOne("Explore.Domain.EventRegistrationPolicy", "RegistrationPolicy")
+                        .WithMany()
+                        .HasForeignKey("RegistrationPolicyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_events_event_registration_policies_registration_policy_id");
+
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
@@ -8260,9 +9210,64 @@ namespace Explore.Persistence.Migrations
 
                     b.Navigation("Madhab");
 
+                    b.Navigation("RegistrationPolicy");
+
                     b.Navigation("Tenant");
 
                     b.Navigation("VisibilityType");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventAgendaItem", b =>
+                {
+                    b.HasOne("Explore.Domain.EventDay", "EventDay")
+                        .WithMany()
+                        .HasForeignKey("EventDayId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_event_agenda_items_event_days_event_day_id");
+
+                    b.HasOne("Explore.Domain.Event", "Event")
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_agenda_items_events_event_id");
+
+                    b.HasOne("Explore.Domain.ScheduleItemKind", "Kind")
+                        .WithMany()
+                        .HasForeignKey("KindId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_event_agenda_items_schedule_item_kinds_kind_id");
+
+                    b.HasOne("Explore.Domain.Location", "Location")
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_event_agenda_items_locations_location_id");
+
+                    b.HasOne("Explore.Domain.LocationRoom", "Room")
+                        .WithMany()
+                        .HasForeignKey("RoomId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_event_agenda_items_location_rooms_room_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_agenda_items_tenants_tenant_id");
+
+                    b.Navigation("Event");
+
+                    b.Navigation("EventDay");
+
+                    b.Navigation("Kind");
+
+                    b.Navigation("Location");
+
+                    b.Navigation("Room");
+
+                    b.Navigation("Tenant");
                 });
 
             modelBuilder.Entity("Explore.Domain.EventCategories", b =>
@@ -8542,6 +9547,35 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("Explore.Domain.EventDay", b =>
+                {
+                    b.HasOne("Explore.Domain.StorageObject", "BannerImage")
+                        .WithMany()
+                        .HasForeignKey("BannerImageId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_event_days_storage_objects_banner_image_id");
+
+                    b.HasOne("Explore.Domain.Event", "Event")
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_days_events_event_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_days_tenants_tenant_id");
+
+                    b.Navigation("BannerImage");
+
+                    b.Navigation("Event");
+
+                    b.Navigation("Tenant");
+                });
+
             modelBuilder.Entity("Explore.Domain.EventIslamicAspect", b =>
                 {
                     b.HasOne("Explore.Domain.Event", "Event")
@@ -8582,6 +9616,12 @@ namespace Explore.Persistence.Migrations
                         .HasForeignKey("AtprotoRecordId")
                         .HasConstraintName("fk_event_registrations_atproto_records_atproto_record_id");
 
+                    b.HasOne("Explore.Domain.EventRegistrationIntent", "EventRegistrationIntent")
+                        .WithMany()
+                        .HasForeignKey("EventRegistrationIntentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_event_registrations_event_registration_intents_event_regist");
+
                     b.HasOne("Explore.Domain.EventSession", "EventSession")
                         .WithMany()
                         .HasForeignKey("EventSessionId")
@@ -8607,7 +9647,72 @@ namespace Explore.Persistence.Migrations
 
                     b.Navigation("AtprotoRecord");
 
+                    b.Navigation("EventRegistrationIntent");
+
                     b.Navigation("EventSession");
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventRegistrationIntent", b =>
+                {
+                    b.HasOne("Explore.Domain.ApprovalStatus", "ApprovalStatus")
+                        .WithMany()
+                        .HasForeignKey("ApprovalStatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_event_registration_intents_approval_statuses_approval_statu");
+
+                    b.HasOne("Explore.Domain.Event", "Event")
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_registration_intents_events_event_id");
+
+                    b.HasOne("Explore.Domain.EventRegistrationPolicy", "RegistrationPolicySnapshot")
+                        .WithMany()
+                        .HasForeignKey("RegistrationPolicySnapshotId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_event_registration_intents_event_registration_policies_regi");
+
+                    b.HasOne("Explore.Domain.RegistrationScope", "RegistrationScope")
+                        .WithMany()
+                        .HasForeignKey("RegistrationScopeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_registration_intents_registration_scopes_registration");
+
+                    b.HasOne("Explore.Domain.EventDay", "SelectedEventDay")
+                        .WithMany()
+                        .HasForeignKey("SelectedEventDayId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_event_registration_intents_event_days_selected_event_day_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_registration_intents_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_registration_intents_users_user_id");
+
+                    b.Navigation("ApprovalStatus");
+
+                    b.Navigation("Event");
+
+                    b.Navigation("RegistrationPolicySnapshot");
+
+                    b.Navigation("RegistrationScope");
+
+                    b.Navigation("SelectedEventDay");
 
                     b.Navigation("Tenant");
 
@@ -8653,6 +9758,12 @@ namespace Explore.Persistence.Migrations
 
             modelBuilder.Entity("Explore.Domain.EventSession", b =>
                 {
+                    b.HasOne("Explore.Domain.EventDay", "EventDay")
+                        .WithMany()
+                        .HasForeignKey("EventDayId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_event_sessions_event_days_event_day_id");
+
                     b.HasOne("Explore.Domain.Event", "Event")
                         .WithMany()
                         .HasForeignKey("EventId")
@@ -8671,6 +9782,12 @@ namespace Explore.Persistence.Migrations
                         .HasForeignKey("RegistrationModeId")
                         .HasConstraintName("fk_event_sessions_registration_modes_registration_mode_id");
 
+                    b.HasOne("Explore.Domain.LocationRoom", "Room")
+                        .WithMany()
+                        .HasForeignKey("RoomId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_event_sessions_location_rooms_room_id");
+
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
@@ -8680,9 +9797,13 @@ namespace Explore.Persistence.Migrations
 
                     b.Navigation("Event");
 
+                    b.Navigation("EventDay");
+
                     b.Navigation("Location");
 
                     b.Navigation("RegistrationMode");
+
+                    b.Navigation("Room");
 
                     b.Navigation("Tenant");
                 });
@@ -8712,6 +9833,36 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("EventSession");
 
                     b.Navigation("Location");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionCategory", b =>
+                {
+                    b.HasOne("Explore.Domain.Category", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_categories_categories_category_id");
+
+                    b.HasOne("Explore.Domain.EventSession", "EventSession")
+                        .WithMany()
+                        .HasForeignKey("EventSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_categories_event_sessions_event_session_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_categories_tenants_tenant_id");
+
+                    b.Navigation("Category");
+
+                    b.Navigation("EventSession");
 
                     b.Navigation("Tenant");
                 });
@@ -8926,6 +10077,36 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Actor");
 
                     b.Navigation("EventSession");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventSessionTag", b =>
+                {
+                    b.HasOne("Explore.Domain.EventSession", "EventSession")
+                        .WithMany()
+                        .HasForeignKey("EventSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_tags_event_sessions_event_session_id");
+
+                    b.HasOne("Explore.Domain.Tag", "Tag")
+                        .WithMany()
+                        .HasForeignKey("TagId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_tags_tags_tag_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_session_tags_tenants_tenant_id");
+
+                    b.Navigation("EventSession");
+
+                    b.Navigation("Tag");
 
                     b.Navigation("Tenant");
                 });
@@ -9290,6 +10471,27 @@ namespace Explore.Persistence.Migrations
                         .HasConstraintName("fk_location_pii_locations_location_id");
 
                     b.Navigation("Location");
+                });
+
+            modelBuilder.Entity("Explore.Domain.LocationRoom", b =>
+                {
+                    b.HasOne("Explore.Domain.Location", "Location")
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_location_rooms_locations_location_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_location_rooms_tenants_tenant_id");
+
+                    b.Navigation("Location");
+
+                    b.Navigation("Tenant");
                 });
 
             modelBuilder.Entity("Explore.Domain.Modules.TenantCapability", b =>

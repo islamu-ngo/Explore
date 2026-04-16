@@ -137,7 +137,7 @@
 ### Persistence Layer
 - **`Explore.Persistence/ExploreDbContext.cs`** — DbContext with named query filters (pre-existing)
 - **`Explore.Persistence/PersistenceServicesRegistration.cs`** — DI: Npgsql optimized, LookupDataCache registered
-  - NOTE: Method name typo `CongfigurePersistenceServices` — DO NOT rename (would break callers)
+  - NOTE: Former typo `CongfigurePersistenceServices` has been fixed to `ConfigurePersistenceServices`
 - **`Explore.Persistence/Repositories/`** — All repository implementations: AsNoTracking, AsSplitQuery, compiled queries done
 - **`Explore.Persistence/Configurations/Entities/`** — 11 new composite indexes added
 

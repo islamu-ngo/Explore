@@ -544,6 +544,7 @@
           "Blazored.FluentValidation": "[2.2.0, )",
           "Blazouter": "[1.0.13, )",
           "Blazouter.WebAssembly": "[1.0.13, )",
+          "Explore.Domain": "[1.0.0, )",
           "FluentValidation": "[11.9.1, )",
           "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.1, )",
           "Microsoft.AspNetCore.Components.WebAssembly.Authentication": "[10.0.1, )",

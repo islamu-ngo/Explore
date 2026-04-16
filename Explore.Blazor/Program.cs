@@ -71,6 +71,25 @@ builder.Services.AddBffReverseProxy(builder.Configuration, builder.Environment);
 builder.Services.AddAuthorizationBuilder();
 builder.Services.AddCascadingAuthenticationState();
 
+// ──────────────────────────────────────────────
+// Localization — CultureRegistry is the compile-time allowlist.
+// Runtime governance (enabled_languages / kill-switches) is enforced higher up.
+// ──────────────────────────────────────────────
+builder.Services.AddLocalization();
+builder.Services.Configure<Microsoft.AspNetCore.Builder.RequestLocalizationOptions>(options =>
+{
+    var cultures = Explore.Domain.Common.Localization.CultureRegistry.GetAll()
+        .Select(entry => new System.Globalization.CultureInfo(entry.Code))
+        .ToArray();
+
+    options.SupportedCultures = cultures;
+    options.SupportedUICultures = cultures;
+    options.DefaultRequestCulture = new Microsoft.AspNetCore.Localization.RequestCulture("en");
+    options.RequestCultureProviders.Clear();
+    options.RequestCultureProviders.Insert(0, new Microsoft.AspNetCore.Localization.CookieRequestCultureProvider());
+    options.RequestCultureProviders.Insert(1, new Microsoft.AspNetCore.Localization.AcceptLanguageHeaderRequestCultureProvider());
+});
+
 builder.Services.AddControllersWithViews(options =>
     options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));
 
@@ -114,6 +133,7 @@ app.UseStartupRedirectMiddleware();
 app.UsePathTenantResolverMiddleware();
 app.UseRouting();
 app.UseAuthentication();
+app.UseRequestLocalization();
 app.UseAccessTokenCaptureMiddleware();
 app.UseBffDiagnosticsMiddleware();
 app.UseAuthorization();

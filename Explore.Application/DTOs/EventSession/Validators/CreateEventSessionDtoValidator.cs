@@ -10,17 +10,20 @@ public class CreateEventSessionDtoValidator : AbstractValidator<CreateEventSessi
     private readonly ILocationRepository _locationRepository;
     private readonly IRegistrationModeRepository _registrationModeRepository;
     private readonly IEventSessionTemplateRepository _eventSessionTemplateRepository;
+    private readonly IEventSessionRepository _eventSessionRepository;
 
     public CreateEventSessionDtoValidator(
         IEventRepository eventRepository,
         ILocationRepository locationRepository,
         IRegistrationModeRepository registrationModeRepository,
-        IEventSessionTemplateRepository eventSessionTemplateRepository)
+        IEventSessionTemplateRepository eventSessionTemplateRepository,
+        IEventSessionRepository eventSessionRepository)
     {
         _eventRepository = eventRepository;
         _locationRepository = locationRepository;
         _registrationModeRepository = registrationModeRepository;
         _eventSessionTemplateRepository = eventSessionTemplateRepository;
+        _eventSessionRepository = eventSessionRepository;
 
         RuleFor(p => p.EventId)
             .NotEmpty().WithMessage("{PropertyName} is required.")
@@ -104,6 +107,23 @@ public class CreateEventSessionDtoValidator : AbstractValidator<CreateEventSessi
             })
             .When(p => p.SessionTemplateId.HasValue)
             .WithMessage("Event session template does not exist.");
+
+        // Layer A (necessary but not sufficient) same-room overlap check.
+        // Layer B serializable re-check runs inside EventSessionRepository.CreateWithRoomOverlapGuardAsync.
+        RuleFor(p => p)
+            .MustAsync(async (dto, cancellation) =>
+            {
+                if (!dto.RoomId.HasValue) return true;
+                var conflicts = await _eventSessionRepository.GetOverlappingSessionsInRoomAsync(
+                    dto.RoomId.Value,
+                    dto.StartTime,
+                    dto.EndTime,
+                    excludeSessionId: null,
+                    cancellation);
+                return conflicts.Count == 0;
+            })
+            .When(p => p.RoomId.HasValue && p.EndTime > p.StartTime)
+            .WithMessage("The selected room is already booked for an overlapping time range.");
 
         // TenantId is set by the handler from ITenantContext, not by the client
         // No validation needed here

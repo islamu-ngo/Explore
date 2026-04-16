@@ -1,6 +1,7 @@
 // ABOUTME: Handler for creating a new event session with validation and optional template instantiation.
 // ABOUTME: Validates input, maps DTO, sets defaults, persists via repository, instantiates session custom properties from template.
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,9 +9,11 @@ using AutoMapper;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventSession.Validators;
+using Explore.Application.Exceptions;
 using Explore.Application.Features.EventSessions.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
+using Explore.Domain.Services.Scheduling;
 using MediatR;
 
 namespace Explore.Application.Features.EventSessions.Handlers.Commands;
@@ -24,7 +27,10 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
     private readonly IEventSessionIslamicAspectRepository _eventSessionIslamicAspectRepository;
     private readonly IEventSessionTemplateRepository _eventSessionTemplateRepository;
     private readonly IEventSessionCustomPropertyRepository _eventSessionCustomPropertyRepository;
+    private readonly IEventSessionCustomPropertyProjectionUpdater _projectionUpdater;
     private readonly IEventSessionTemplateInstantiationService _instantiationService;
+    private readonly IEventScheduleProjectionCalculator _scheduleProjectionCalculator;
+    private readonly IEventDayRepository _eventDayRepository;
     private readonly IMapper _mapper;
 
     public CreateEventSessionCommandHandler(
@@ -35,7 +41,10 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
         IEventSessionIslamicAspectRepository eventSessionIslamicAspectRepository,
         IEventSessionTemplateRepository eventSessionTemplateRepository,
         IEventSessionCustomPropertyRepository eventSessionCustomPropertyRepository,
+        IEventSessionCustomPropertyProjectionUpdater projectionUpdater,
         IEventSessionTemplateInstantiationService instantiationService,
+        IEventScheduleProjectionCalculator scheduleProjectionCalculator,
+        IEventDayRepository eventDayRepository,
         IMapper mapper)
     {
         _eventSessionRepository = eventSessionRepository;
@@ -45,7 +54,10 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
         _eventSessionIslamicAspectRepository = eventSessionIslamicAspectRepository;
         _eventSessionTemplateRepository = eventSessionTemplateRepository;
         _eventSessionCustomPropertyRepository = eventSessionCustomPropertyRepository;
+        _projectionUpdater = projectionUpdater;
         _instantiationService = instantiationService;
+        _scheduleProjectionCalculator = scheduleProjectionCalculator;
+        _eventDayRepository = eventDayRepository;
         _mapper = mapper;
     }
 
@@ -53,7 +65,12 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
     {
         var response = new BaseCommandResponse<Guid>();
 
-        var validator = new CreateEventSessionDtoValidator(_eventRepository, _locationRepository, _registrationModeRepository, _eventSessionTemplateRepository);
+        var validator = new CreateEventSessionDtoValidator(
+            _eventRepository,
+            _locationRepository,
+            _registrationModeRepository,
+            _eventSessionTemplateRepository,
+            _eventSessionRepository);
         var validationResult = await validator.ValidateAsync(request.EventSessionDto, cancellationToken);
 
         if (!validationResult.IsValid)
@@ -77,7 +94,33 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
         eventSession.CurrentAudienceAttendees = 0;
         eventSession.TenantId = parentEvent.TenantId;
 
-        eventSession = await _eventSessionRepository.Create(eventSession);
+        // Populate cached local projection fields via the single authorized write path on EventSession.
+        // Handlers never touch LocalStart*/LocalEnd* directly; the aggregate method consumes the calculator.
+        eventSession.Reschedule(
+            request.EventSessionDto.StartTime,
+            request.EventSessionDto.EndTime,
+            parentEvent.EventTimeZoneId ?? parentEvent.Timezone ?? string.Empty,
+            _scheduleProjectionCalculator);
+
+        // Auto-link to the matching EventDay by (EventId, LocalStartDate).
+        // Returns null when no EventDay exists for this date — EventDayId stays nullable during transition.
+        var matchingDay = await _eventDayRepository.FindByEventAndLocalDateAsync(
+            parentEvent.Id, eventSession.LocalStartDate, cancellationToken);
+        eventSession.EventDayId = matchingDay?.Id;
+
+        try
+        {
+            // Layer B: serializable re-check of same-room overlap runs inside the repository guard method.
+            eventSession = await _eventSessionRepository.CreateWithRoomOverlapGuardAsync(eventSession, cancellationToken);
+        }
+        catch (RoomScheduleConflictException ex)
+        {
+            response.Success = false;
+            response.Message = "Event session creation failed.";
+            response.Errors = new List<string> { ex.Message };
+            response.FailureCode = "room_schedule_conflict";
+            return response;
+        }
 
         if (request.EventSessionDto.IslamicAspect != null)
         {
@@ -119,6 +162,8 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
                             runtimeDef.DefaultValue, cancellationToken);
                     }
                 }
+
+                await _projectionUpdater.RefreshForEventSessionAsync(eventSession.Id, cancellationToken);
             }
         }
 

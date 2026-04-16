@@ -81,8 +81,9 @@ Resolution order in API:
 4. unresolved multi-tenant request returns `404`
 
 Checks:
-- host headers (`X-Forwarded-Host` / host).
+- trusted forwarded-header processing and normalized request host resolution.
 - `deployment.mode` value (`SingleTenant` vs `MultiTenant`).
+- for API-key callers, check whether the request hit `Tenant mismatch` (`404`) or `API key authentication failed` (`401`) in `ApiTenantPostAuthenticationMiddleware`.
 
 ## Missing HAL Links
 
@@ -93,8 +94,8 @@ If `_links` are missing:
 ## 429 / 504 Responses
 
 `429`:
-- triggered by API rate limiting policies (`Global`, `Authenticated`, `Write`, `SetupSecret`).
-- inspect `Retry-After` header and caller behavior.
+- triggered by API rate limiting policies (`Global`, `Authenticated`, `Write`, `SetupSecret`, `AnalyticsRelay`).
+- inspect `Retry-After`, `X-RateLimit-Limit`, and `X-RateLimit-Remaining` headers and caller behavior.
 
 `504`:
 - request timeout policy exceeded (`Default`, `Lookup`, `Complex`).

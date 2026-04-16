@@ -16,6 +16,15 @@ public class EventRegistration : ITenantEntity, IAuditableEntity, ISoftDeletable
     public Guid EventSessionId { get; set; }
     public required EventSession EventSession { get; set; }
 
+    /// <summary>
+    /// Parent registration-intent row. Nullable during rollout so existing session-level rows transition safely;
+    /// newly created EventRegistration rows must always link to an <see cref="EventRegistrationIntent"/> once
+    /// registration handlers land in a later slice.
+    /// </summary>
+    [ForeignKey("EventRegistrationIntent")]
+    public Guid? EventRegistrationIntentId { get; set; }
+    public EventRegistrationIntent? EventRegistrationIntent { get; set; }
+
     [ForeignKey("ApprovalStatus")]
     public int? ApprovalStatusId { get; set; }
     public ApprovalStatus? ApprovalStatus { get; set; }

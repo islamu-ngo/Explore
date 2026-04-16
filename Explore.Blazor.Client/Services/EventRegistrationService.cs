@@ -92,7 +92,7 @@ public class EventRegistrationService : IEventRegistrationService
     {
         try
         {
-            _logger.LogInformation("[REGISTRATION SERVICE] Registering user for session: {SessionId}", dto.EventSessionId);
+            _logger.LogInformation("[REGISTRATION SERVICE] Registering user for event: {EventId}", dto.EventId);
             return await _apiClient.EventregistrationPOSTAsync(dto);
         }
         catch (ApiException ex)

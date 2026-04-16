@@ -209,11 +209,28 @@ Static presets in `Explore.Blazor.Client/Services/`:
 - `Confirmation()` — Small + DialogPosition.Center
 - `Editor()` — Medium + CloseButton + BackdropClick
 
+## Localization
+
+The localization stack bridges server-side TMS providers with the Blazor client:
+
+- **`LanguageProvider.razor`** — cascading provider that reads language from `PersistentComponentState` (server→WASM hand-off) then cookie; cascades `LanguageContext`
+- **`ITranslationService`** / `TranslationService` — client-side fetch + cache + `T(key)` lookup
+- **`LanguagePicker.razor`** — language selector with kill-switch (`ClientPickerEnabled`), a11y (`aria-label`, keyboard nav)
+- **`MudBlazorLocalizer`** — bridges MudBlazor's `MudLocalizer` to `ITranslationService` with `mudblazor.{key}` prefix
+- **`CultureRegistry`** — compile-time allowlist in `Explore.Domain/Common/Localization/` (NOT Application — see decision D16)
+- **`MudRTLProvider`** — cascaded via `App.razor` using `RtlLanguages.IsRtl(code)`
+- **Admin UI** — `InstanceLocalizationSection.razor` for TMS config, kill-switches, enabled languages, bundle export, secret lifecycle
+
+CultureInfo is set on WASM startup via cookie → `CultureRegistry` validation → `CultureInfo.DefaultThreadCurrentCulture`.
+
+Full architecture: `docs/LOCALIZATION.md`
+
 ## Common Pitfalls
 1. Updating UI before regenerating NSwag client after API contract changes.
 2. Treating client-side route guards as security enforcement.
 3. Reintroducing direct token handling in WASM components.
 4. Forgetting setup-secret forwarding rules when debugging onboarding.
+5. Adding metrics to the `T(key)` hot path — it must stay allocation-free (see D8).
 
 ## Related Docs
 - `docs/API.md`
@@ -222,3 +239,4 @@ Static presets in `Explore.Blazor.Client/Services/`:
 - `docs/TROUBLESHOOTING.md`
 - `docs/DESIGN_SYSTEM.md` — CSS layers, tokens, wrapper components, typography
 - `docs/ACCESSIBILITY.md` — WCAG AA compliance, service contracts, testing
+- `docs/LOCALIZATION.md` — TMS providers, offline bundles, governance model, cache variation
