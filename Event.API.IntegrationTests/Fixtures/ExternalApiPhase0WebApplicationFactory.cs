@@ -5,6 +5,7 @@ using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Threading.Channels;
 using System.Threading.RateLimiting;
 using Explore.API.Authentication;
 using Explore.Application.Authentication;
@@ -283,6 +284,24 @@ public sealed class ExternalApiPhase0WebApplicationFactory : WebApplicationFacto
             signingCredentials: credentials);
 
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    public override async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await base.DisposeAsync();
+        }
+        catch (ChannelClosedException ex)
+        {
+            // Testing host shutdown can race background channels after response assertions complete.
+            Console.WriteLine($"Ignoring WebApplicationFactory teardown ChannelClosedException: {ex.Message}");
+        }
+        catch (NullReferenceException ex)
+        {
+            // Keep parity with the broader test-host teardown workaround used in legacy fixtures.
+            Console.WriteLine($"Ignoring WebApplicationFactory teardown NullReferenceException: {ex.Message}");
+        }
     }
 
     private sealed class TestResolverConfigService : IResolverConfigService

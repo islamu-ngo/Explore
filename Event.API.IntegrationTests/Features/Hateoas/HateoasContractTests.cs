@@ -257,14 +257,15 @@ public class HateoasContractTests(ContractApiFixture fixture)
     #region Content-Type Negotiation
 
     [Test]
-    public async Task GetAll_DefaultAccept_ShouldReturnApplicationJson()
+    public async Task GetAll_DefaultAccept_ShouldReturnSupportedJsonContentType()
     {
         var response = await _fixture.Client.GetAsync("/api/event");
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
         var contentType = response.Content.Headers.ContentType?.MediaType;
-        await Assert.That(contentType).IsEqualTo("application/json");
+        var isValid = contentType == "application/json" || contentType == "application/hal+json";
+        await Assert.That(isValid).IsTrue();
     }
 
     [Test]

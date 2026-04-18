@@ -5,6 +5,7 @@ using Event.Persistence.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Exceptions;
 using Explore.Domain;
+using Explore.Domain.Enums;
 using Explore.Persistence;
 using Microsoft.EntityFrameworkCore;
 using TUnit.Assertions;
@@ -138,35 +139,70 @@ public class EfCoreUnitOfWorkTests
     [Test]
     public async Task ExecuteInTransactionAsync_WhenConcurrencyStampStale_ThrowsConcurrencyConflictException()
     {
-        var key = $"uow-concurrency-{Guid.NewGuid():N}";
+        var tenantId = Guid.NewGuid();
+        var locationId = Guid.NewGuid();
+        var roomId = Guid.NewGuid();
 
-        // Seed a row with a known ConcurrencyStamp
+        // Seed a real concurrency-aware aggregate so stale writes trigger EF concurrency translation.
         using (var seedContext = _fixture.CreateDbContext())
         {
-            seedContext.Set<SystemSetting>().Add(new SystemSetting { SettingKey = key, Value = "v0" });
+            seedContext.Set<Tenant>().Add(new Tenant
+            {
+                Id = tenantId,
+                FullName = $"Tenant {tenantId:N}",
+                Slug = $"tenant-{tenantId:N}",
+                TenantStatusId = (int)TenantStatusEnum.Active,
+                TenantStatus = null!
+            });
+
+            seedContext.Set<Location>().Add(new Location
+            {
+                Id = locationId,
+                FullName = "Concurrency Test Location",
+                Country = "BE",
+                City = "Brussels",
+                Pii = new LocationPii
+                {
+                    Address = "123 Test Street",
+                    Postcode = "1000"
+                },
+                TenantId = tenantId,
+                Tenant = null!
+            });
+
+            seedContext.Set<LocationRoom>().Add(new LocationRoom
+            {
+                Id = roomId,
+                Name = "Room A",
+                LocationId = locationId,
+                Location = null!,
+                TenantId = tenantId,
+                Tenant = null!
+            });
+
             await seedContext.SaveChangesAsync();
         }
 
-        // Load the row in session A
+        // Load the row in session A.
         using var contextA = _fixture.CreateDbContext();
-        var entityA = await contextA.Set<SystemSetting>().FirstAsync(s => s.SettingKey == key);
+        var entityA = await contextA.Set<LocationRoom>().FirstAsync(room => room.Id == roomId);
 
-        // Mutate and commit the same row from session B so its stamp advances
+        // Mutate and commit the same row from session B so its stamp advances.
         using (var contextB = _fixture.CreateDbContext())
         {
-            var entityB = await contextB.Set<SystemSetting>().FirstAsync(s => s.SettingKey == key);
-            entityB.Value = "v-from-b";
+            var entityB = await contextB.Set<LocationRoom>().FirstAsync(room => room.Id == roomId);
+            entityB.Name = "Room B";
             await contextB.SaveChangesAsync();
         }
 
-        // Session A still holds the old stamp — the save must be translated
+        // Session A still holds the old stamp; the save must be translated.
         var uowA = new EfCoreUnitOfWork(contextA);
         ConcurrencyConflictException? caught = null;
         try
         {
             await uowA.ExecuteInTransactionAsync(async ct =>
             {
-                entityA.Value = "v-from-a";
+                entityA.Name = "Room C";
                 await contextA.SaveChangesAsync(ct);
             });
         }
@@ -177,6 +213,6 @@ public class EfCoreUnitOfWorkTests
 
         await Assert.That(caught).IsNotNull();
         await Assert.That(caught!.Code).IsEqualTo(ConcurrencyConflictException.ConcurrentUpdate);
-        await Assert.That(caught.EntityType).IsEqualTo(nameof(SystemSetting));
+        await Assert.That(caught.EntityType).IsEqualTo(nameof(LocationRoom));
     }
 }

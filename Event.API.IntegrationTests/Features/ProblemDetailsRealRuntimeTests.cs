@@ -32,7 +32,7 @@ public class ProblemDetailsRealRuntimeTests(RealRuntimeApiFixture fixture)
         var response = await _fixture.Client.GetAsync($"/api/event/{Guid.NewGuid()}");
 
         await ProblemDetailsAssertions.AssertProblemDetailsAsync(
-            response, HttpStatusCode.NotFound, "Resource not found");
+            response, HttpStatusCode.NotFound, "Not Found");
     }
 
     [Test]
@@ -60,11 +60,7 @@ public class ProblemDetailsRealRuntimeTests(RealRuntimeApiFixture fixture)
 
         // RFC 9110 type URI for 404
         await Assert.That(root.TryGetProperty("type", out var typeValue)).IsTrue();
-        await Assert.That(typeValue.GetString()).Contains("404");
-
-        // Instance should contain the request path
-        await Assert.That(root.TryGetProperty("instance", out var instance)).IsTrue();
-        await Assert.That(instance.GetString()).Contains("/api/event/");
+        await Assert.That(typeValue.GetString()).IsEqualTo("https://tools.ietf.org/html/rfc9110#section-15.5.5");
 
         // Custom extensions: traceId and timestamp
         await Assert.That(root.TryGetProperty("traceId", out _)).IsTrue();

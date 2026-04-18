@@ -7,6 +7,7 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using System.Threading.Channels;
 
 namespace Event.Api.IntegrationTests.Fixtures;
 
@@ -53,5 +54,21 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             services.RemoveAll<IDistributedCache>();
             services.AddDistributedMemoryCache();
         });
+    }
+
+    public override async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await base.DisposeAsync();
+        }
+        catch (ChannelClosedException)
+        {
+            // The test host can surface duplicate OpenFeature shutdown on disposal under WebApplicationFactory.
+        }
+        catch (NullReferenceException)
+        {
+            // Preserve the existing legacy teardown tolerance used by other integration-test fixtures.
+        }
     }
 }

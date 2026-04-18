@@ -3,6 +3,8 @@
 
 using Explore.Persistence;
 using Explore.Persistence.Seed;
+using Microsoft.AspNetCore.OutputCaching;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Testcontainers.PostgreSql;
@@ -40,15 +42,19 @@ public abstract class PostgreSqlApiFixtureBase : IAsyncInitializer, IAsyncDispos
     /// </summary>
     protected abstract Dictionary<string, string?> GetAdditionalConfiguration();
 
-    public async Task InitializeAsync()
+    private void RecreateHost()
     {
-        await _container.StartAsync();
-
         Factory = new PostgreSqlApiWebApplicationFactory(
             _container.GetConnectionString(),
             GetAdditionalConfiguration());
 
         Client = Factory.CreateClient();
+    }
+
+    public async Task InitializeAsync()
+    {
+        await _container.StartAsync();
+        RecreateHost();
 
         await using var scope = Factory.Services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
@@ -65,6 +71,23 @@ public abstract class PostgreSqlApiFixtureBase : IAsyncInitializer, IAsyncDispos
     public async Task ResetDatabaseAsync()
     {
         await DatabaseReset.ResetAsync();
+
+        Client?.Dispose();
+        if (Factory is not null)
+        {
+            await Factory.DisposeAsync();
+        }
+
+        RecreateHost();
+
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var cache = scope.ServiceProvider.GetRequiredService<HybridCache>();
+        var outputCacheStore = scope.ServiceProvider.GetRequiredService<IOutputCacheStore>();
+
+        // Defensive cleanup for caches that also exist inside the recreated host.
+        await cache.RemoveAsync("events:list:1:20:none");
+        await outputCacheStore.EvictByTagAsync("list-data", default);
+        await outputCacheStore.EvictByTagAsync("detail-data", default);
     }
 
     /// <summary>

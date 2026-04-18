@@ -1,5 +1,5 @@
 // ABOUTME: Fluent builder for Event domain entities in integration tests.
-// ABOUTME: Produces EF-compatible Event instances with FK defaults matching lookup table seed data.
+// ABOUTME: Produces EF-compatible Event instances while keeping optional lookup FKs opt-in.
 
 using Explore.Domain.Enums;
 
@@ -18,7 +18,7 @@ public sealed class EventBuilder
     private string? _description;
     private Guid _actorId;
     private Guid _tenantId;
-    private int _eventTypeId = (int)EventTypeEnum.Conference;
+    private int? _eventTypeId;
     private int _eventStatusId = (int)EventStatusEnum.Draft;
     private int _visibilityTypeId = (int)VisibilityTypeEnum.Public;
     private int _eventFormatId = (int)EventFormatEnum.Local;

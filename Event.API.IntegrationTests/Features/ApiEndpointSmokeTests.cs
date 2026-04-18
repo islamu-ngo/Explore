@@ -1,3 +1,6 @@
+// ABOUTME: Broad smoke tests over discovered API endpoints using ApiExplorer metadata.
+// ABOUTME: Verifies anonymous/protected endpoint behavior without duplicating deeper HATEOAS scenario coverage.
+
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -17,6 +20,16 @@ namespace Event.Api.IntegrationTests.Features;
 [ClassDataSource<ApiTestFixture>(Shared = SharedType.PerAssembly)]
 public class ApiEndpointSmokeTests
 {
+    private static readonly HashSet<string> ScopedOptionalQueryParameters =
+    [
+        "actorId",
+        "eventId",
+        "eventSessionId",
+        "eventTemplateId",
+        "locationId",
+        "tenantId"
+    ];
+
     private readonly ApiTestFixture _fixture;
 
     public ApiEndpointSmokeTests(ApiTestFixture fixture)
@@ -39,7 +52,10 @@ public class ApiEndpointSmokeTests
         {
             var path = BuildPath(description);
             Console.WriteLine($"Testing endpoint: {path}");
-            var response = await _fixture.Client.GetAsync(path);
+            using var request = new HttpRequestMessage(HttpMethod.Get, path);
+            request.Headers.TryAddWithoutValidation("Prefer", "return=minimal");
+
+            var response = await _fixture.Client.SendAsync(request);
 
             // NotFound is acceptable for GetById endpoints with sample/random IDs
             var hasPathParams = description.ParameterDescriptions.Any(p => p.Source == BindingSource.Path);
@@ -62,10 +78,12 @@ public class ApiEndpointSmokeTests
         var endpoints = GetApiDescriptions()
             .Where(description => IsProtected(description));
 
+        var failures = new List<string>();
+
         foreach (var description in endpoints)
         {
             var path = BuildPath(description);
-            var request = new HttpRequestMessage(new HttpMethod(description.HttpMethod ?? HttpMethod.Get.Method), path)
+            using var request = new HttpRequestMessage(new HttpMethod(description.HttpMethod ?? HttpMethod.Get.Method), path)
             {
                 Content = BuildBody(description)
             };
@@ -73,9 +91,14 @@ public class ApiEndpointSmokeTests
             var response = await _fixture.Client.SendAsync(request);
             var isUnauthorized = response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden;
 
-            await Assert.That(isUnauthorized)
-                .IsTrue();
+            if (!isUnauthorized)
+            {
+                failures.Add($"{description.HttpMethod} {path} => {(int)response.StatusCode} {response.StatusCode}");
+            }
         }
+
+        await Assert.That(failures).IsEmpty()
+            .Because($"Protected endpoints should challenge or forbid anonymous callers. Failures: {string.Join("; ", failures)}");
     }
 
     [Test]
@@ -151,7 +174,7 @@ public class ApiEndpointSmokeTests
 
         var queryParameters = description.ParameterDescriptions
             .Where(p => p.Source == BindingSource.Query)
-            .Where(p => p.IsRequired)
+            .Where(p => p.IsRequired || IsSafeOptionalScopeParameter(p))
             .Where(p => !string.IsNullOrWhiteSpace(p.Name))
             .ToList();
 
@@ -184,7 +207,7 @@ public class ApiEndpointSmokeTests
 
     private static string GetSampleValue(ApiParameterDescription parameter, ApiDescription description)
     {
-        var type = parameter.Type ?? typeof(string);
+        var type = Nullable.GetUnderlyingType(parameter.Type ?? typeof(string)) ?? parameter.Type ?? typeof(string);
 
         if (description.RelativePath != null &&
             (description.RelativePath.Contains($"*{{{parameter.Name}}}") || description.RelativePath.Contains($"**{{{parameter.Name}}}")))
@@ -192,9 +215,24 @@ public class ApiEndpointSmokeTests
             return "test/file.txt";
         }
 
+        if (TryGetEnumerableElementType(type, out var elementType))
+        {
+            type = elementType;
+        }
+
         if (type == typeof(Guid))
         {
             return Guid.NewGuid().ToString();
+        }
+
+        if (type == typeof(DateOnly))
+        {
+            return DateOnly.FromDateTime(DateTime.UtcNow).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        if (type == typeof(DateTime) || type == typeof(DateTimeOffset))
+        {
+            return DateTimeOffset.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
         }
 
         if (type == typeof(int) || type == typeof(long) || type == typeof(short))
@@ -218,6 +256,39 @@ public class ApiEndpointSmokeTests
         }
 
         return "test";
+    }
+
+    private static bool IsSafeOptionalScopeParameter(ApiParameterDescription parameter)
+    {
+        if (string.IsNullOrWhiteSpace(parameter.Name))
+        {
+            return false;
+        }
+
+        return ScopedOptionalQueryParameters.Contains(parameter.Name);
+    }
+
+    private static bool TryGetEnumerableElementType(Type type, out Type elementType)
+    {
+        if (type.IsArray)
+        {
+            elementType = type.GetElementType()!;
+            return true;
+        }
+
+        var enumerableInterface = type
+            .GetInterfaces()
+            .Append(type)
+            .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>));
+
+        if (enumerableInterface is not null)
+        {
+            elementType = enumerableInterface.GetGenericArguments()[0];
+            return true;
+        }
+
+        elementType = typeof(object);
+        return false;
     }
 
     private static HttpContent? BuildBody(ApiDescription description)

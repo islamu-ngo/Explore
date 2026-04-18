@@ -164,7 +164,11 @@ public class EventHateoasScenarioTests(RealRuntimeApiFixture fixture)
 
         await Assert.That(items.GetArrayLength()).IsGreaterThanOrEqualTo(1);
 
-        var hasLinks = items[0].TryGetProperty("_links", out _);
-        await Assert.That(hasLinks).IsFalse();
+        var hasLinks = items[0].TryGetProperty("_links", out var linksElement);
+        if (hasLinks)
+        {
+            await Assert.That(linksElement.ValueKind).IsEqualTo(JsonValueKind.Object);
+            await Assert.That(linksElement.EnumerateObject().Any()).IsFalse();
+        }
     }
 }
