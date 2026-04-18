@@ -12,8 +12,7 @@ public class Program
     {
         var builder = Host.CreateApplicationBuilder(args);
 
-        // Load secrets from Infisical and map to connection string
-        builder.Configuration.AddInfisicalMigrationCompatibility();
+        builder.Configuration.AddDiscretePostgresBootstrap();
 
         builder.AddServiceDefaults();
         builder.Services.AddHostedService<Worker>();

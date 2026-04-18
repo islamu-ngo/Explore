@@ -6,20 +6,30 @@ x-keycloak-env: &keycloak-env
   KEYCLOAK_INTERNAL_URL: http://keycloak:8080
   Keycloak__RequireHttpsMetadata: ${KEYCLOAK_REQUIRE_HTTPS_METADATA:-false}
 
-# Secret management configuration (optional - uses env vars if not set)
-# Set SECRET_PROVIDER=infisical to enable Infisical, or leave as "none" for env vars only
+# Secret management bootstrap configuration (optional).
+# When set, BootstrapSecretLoader resolves POSTGRESQL_* from the `/postgresql` Infisical folder
+# before falling back to the discrete env vars below. Leave blank for zero-secret deployments.
 x-secrets-env: &secrets-env
-  SECRET_PROVIDER: ${SECRET_PROVIDER:-none}
-  Infisical__Url: ${INFISICAL_URL:-https://app.infisical.com}
-  Infisical__ProjectId: ${INFISICAL_PROJECT_ID:-}
-  Infisical__ClientId: ${INFISICAL_CLIENT_ID:-}
-  Infisical__ClientSecret: ${INFISICAL_CLIENT_SECRET:-}
-  Infisical__Environment: ${INFISICAL_ENV:-dev}
+  SecretProvider__Provider: ${SECRET_PROVIDER:-None}
+  SecretProvider__Infisical__Url: ${INFISICAL_URL:-https://app.infisical.com}
+  SecretProvider__Infisical__ProjectId: ${INFISICAL_PROJECT_ID:-}
+  SecretProvider__Infisical__ClientId: ${INFISICAL_CLIENT_ID:-}
+  SecretProvider__Infisical__ClientSecret: ${INFISICAL_CLIENT_SECRET:-}
+  SecretProvider__Infisical__Environment: ${INFISICAL_ENV:-dev}
 
 x-postgres-env: &postgres-env
   POSTGRES_USER: ${POSTGRES_USER:-explore}
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-explore}
   POSTGRES_DB: ${POSTGRES_DB:-explore}
+
+# Discrete Postgres credentials consumed by BootstrapSecretLoader.
+# Never pre-build ConnectionStrings__DefaultConnection here - the loader composes the string.
+x-postgres-bootstrap-env: &postgres-bootstrap-env
+  POSTGRESQL_HOST: ${POSTGRESQL_HOST:-postgres}
+  POSTGRESQL_PORT: ${POSTGRESQL_PORT:-5432}
+  POSTGRESQL_DATABASE: ${POSTGRES_DB:-explore}
+  POSTGRESQL_USERNAME: ${POSTGRES_USER:-explore}
+  POSTGRESQL_PASSWORD: ${POSTGRES_PASSWORD:-explore}
 
 x-s3-env: &s3-env
   S3Settings__Endpoint: ${S3_INTERNAL_ENDPOINT:-http://minio:9000}
@@ -91,10 +101,9 @@ services:
       context: .
       dockerfile: Explore.API/Dockerfile
     environment:
-      <<: [*keycloak-env, *s3-env, *secrets-env]
+      <<: [*keycloak-env, *s3-env, *secrets-env, *postgres-bootstrap-env]
       ASPNETCORE_URLS: http://+:8080
       ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__DefaultConnection: Host=postgres;Database=${POSTGRES_DB:-explore};Username=${POSTGRES_USER:-explore};Password=${POSTGRES_PASSWORD:-explore}
       Keycloak__MetadataAddress: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}/realms/${KEYCLOAK_REALM:-explore}/.well-known/openid-configuration
       Keycloak__Authority: ${KEYCLOAK_PUBLIC_URL:-http://keycloak.localhost:8080}/realms/${KEYCLOAK_REALM:-explore}
     ports:
@@ -116,7 +125,7 @@ services:
       context: .
       dockerfile: Explore.Blazor/Dockerfile
     environment:
-      <<: [*keycloak-env, *secrets-env]
+      <<: [*keycloak-env, *secrets-env, *postgres-bootstrap-env]
       ASPNETCORE_URLS: http://+:8080
       ASPNETCORE_ENVIRONMENT: Production
       EXPLORE_API_BASE_URL: ${EXPLORE_API_BASE_URL:-http://eventapi:8080/}

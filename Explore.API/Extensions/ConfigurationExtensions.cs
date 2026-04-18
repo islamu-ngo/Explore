@@ -52,13 +52,16 @@ public static class ConfigurationExtensions
     /// </summary>
     /// <remarks>
     /// This translates between:
-    /// - Infisical naming: POSTGRESQL_PUBLIC_URL, KEYCLOAK_REALM
-    /// - .NET naming: ConnectionStrings:DefaultConnection, Keycloak:Realm
+    /// - Infisical naming: KEYCLOAK_REALM, ISLAMU_EVENT_S3_ENDPOINT
+    /// - .NET naming: Keycloak:Realm, S3Settings:Endpoint
+    /// Postgres is handled separately by <c>BootstrapSecretLoader</c> from discrete
+    /// POSTGRESQL_HOST/PORT/DATABASE/USERNAME/PASSWORD secrets - no URL form.
     /// </remarks>
     private static void ApplyCompatibilityMapping(IConfigurationBuilder configBuilder, IConfiguration config)
     {
-        // Read values (from Infisical, environment, or existing config)
-        var rawDbUrl = config["POSTGRESQL_PUBLIC_URL"] ?? config["ConnectionStrings:DefaultConnection"];
+        // Read values (from Infisical, environment, or existing config).
+        // Postgres connection string is handled exclusively by BootstrapSecretLoader from
+        // discrete POSTGRESQL_* secrets - never mapped here and the URL form is no longer supported.
         var rawRealm = config["Keycloak:Realm"] ?? config["KEYCLOAK_REALM"] ?? "islamu-dev";
         var baseUrl = config["KEYCLOAK_PUBLIC_URL"]
             ?? config["KEYCLOAK_BASE_URL"]
@@ -84,12 +87,6 @@ public static class ConfigurationExtensions
             }
 
             dict[key] = value;
-        }
-
-        // Map Database
-        if (!string.IsNullOrEmpty(rawDbUrl))
-        {
-            TrySet(mappedConfig, config, "ConnectionStrings:DefaultConnection", rawDbUrl);
         }
 
         // Map Keycloak

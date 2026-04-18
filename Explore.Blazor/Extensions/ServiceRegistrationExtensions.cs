@@ -15,9 +15,11 @@ using Explore.Infrastructure.Services;
 using Explore.Persistence;
 using Explore.Persistence.Extensions;
 using Explore.Persistence.Repositories;
+using Explore.Secrets.Bootstrap;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components.Server.Circuits;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Extensions;
 
@@ -71,11 +73,24 @@ public static class ServiceRegistrationExtensions
 
     private static void RegisterResolverConfigDataServices(IServiceCollection services, IConfiguration configuration)
     {
+        // Precedence: explicit ConnectionStrings:DefaultConnection (tests / overrides)
+        // -> BootstrapSecretLoader (Infisical -> POSTGRESQL_* env -> Postgresql:* config). No URL form.
         var connectionString = configuration["ConnectionStrings:DefaultConnection"];
         if (string.IsNullOrWhiteSpace(connectionString))
         {
-            throw new InvalidOperationException(
-                "Connection string 'DefaultConnection' not found in configuration.");
+            using var bootstrapLoggerFactory = LoggerFactory.Create(static builder =>
+            {
+                builder.AddSimpleConsole(static options =>
+                {
+                    options.SingleLine = true;
+                    options.TimestampFormat = "HH:mm:ss.fff ";
+                });
+                builder.SetMinimumLevel(LogLevel.Information);
+            });
+            var bootstrapLogger = bootstrapLoggerFactory.CreateLogger("Explore.Blazor.Bootstrap");
+
+            var credentials = BootstrapSecretLoader.LoadPostgresConnectionString(configuration, bootstrapLogger);
+            connectionString = credentials.ConnectionString;
         }
 
         services.AddPooledDbContextFactory<ExploreDbContext>(options =>

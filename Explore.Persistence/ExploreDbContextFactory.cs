@@ -1,4 +1,7 @@
-using Explore.Secrets.Extensions;
+// ABOUTME: Design-time factory for EF Core migrations/scaffolding.
+// ABOUTME: Routes all Postgres credentials through BootstrapSecretLoader - no URL form, no dual-source fallback.
+
+using Explore.Secrets.Bootstrap;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
@@ -6,81 +9,74 @@ using Microsoft.Extensions.Configuration;
 namespace Explore.Persistence;
 
 /// <summary>
-/// Design-time factory for ExploreDbContext used by EF Core migrations.
-/// Fetches connection string from Infisical using bootstrap credentials from user secrets.
+/// Design-time factory for <see cref="ExploreDbContext"/> used by the EF Core tooling
+/// (<c>dotnet ef migrations add</c>, <c>dotnet ef database update</c>, etc.).
 /// </summary>
 /// <remarks>
-/// This factory uses Infisical to securely fetch the database connection string.
-/// User secrets only contain Infisical bootstrap credentials, NOT the database password.
-/// 
-/// Required user secrets (Infisical bootstrap credentials):
-///   dotnet user-secrets set "Infisical:ProjectId" "your-project-id" --project Explore.Persistence
-///   dotnet user-secrets set "Infisical:ClientId" "your-client-id" --project Explore.Persistence
-///   dotnet user-secrets set "Infisical:ClientSecret" "your-client-secret" --project Explore.Persistence
-///   dotnet user-secrets set "Infisical:Environment" "dev" --project Explore.Persistence
-/// 
-/// Then run migrations:
-///   dotnet ef migrations add MigrationName --project Explore.Persistence --startup-project Explore.API
+/// Resolution order (identical to runtime, see <see cref="BootstrapSecretLoader"/>):
+/// Infisical (folder <c>/postgresql</c>) -> process environment -> appsettings-shaped <c>Postgresql:*</c> config.
+/// No URL form. Each field (Host, Port, Database, Username, Password) resolves independently.
+///
+/// To generate migrations locally against an Infisical-backed project, set the SDK bootstrap creds
+/// as user secrets on this project:
+/// <code>
+///   dotnet user-secrets set "SecretProvider:Infisical:Url" "https://app.infisical.com"  --project Explore.Persistence
+///   dotnet user-secrets set "SecretProvider:Infisical:ProjectId"    "&lt;project-id&gt;"  --project Explore.Persistence
+///   dotnet user-secrets set "SecretProvider:Infisical:ClientId"     "&lt;client-id&gt;"   --project Explore.Persistence
+///   dotnet user-secrets set "SecretProvider:Infisical:ClientSecret" "&lt;secret&gt;"      --project Explore.Persistence
+///   dotnet user-secrets set "SecretProvider:Infisical:Environment"  "dev"               --project Explore.Persistence
+/// </code>
+/// Or, without Infisical, provide the discrete Postgres env vars:
+/// <code>
+///   POSTGRESQL_HOST, POSTGRESQL_PORT, POSTGRESQL_DATABASE, POSTGRESQL_USERNAME, POSTGRESQL_PASSWORD
+/// </code>
 /// </remarks>
 public class ExploreDbContextFactory : IDesignTimeDbContextFactory<ExploreDbContext>
 {
     public ExploreDbContext CreateDbContext(string[] args)
     {
-        // Step 1: Build bootstrap configuration from user secrets (contains Infisical credentials)
-        var bootstrapConfig = new ConfigurationBuilder()
+        var configuration = new ConfigurationBuilder()
             .AddUserSecrets<ExploreDbContextFactory>(optional: true)
             .AddEnvironmentVariables()
             .Build();
 
-        // Step 2: Add Infisical to fetch actual secrets (including database connection string)
-        var configBuilder = new ConfigurationBuilder()
-            .AddUserSecrets<ExploreDbContextFactory>(optional: true)
-            .AddEnvironmentVariables();
-
-        // Add Infisical as configuration source to fetch secrets
-        configBuilder.AddInfisical(bootstrapConfig, source =>
+        BootstrapPostgresCredentials credentials;
+        try
         {
-            source.Paths.Clear();
-            source.Paths.Add("/postgresql");
-            source.ThrowOnFirstLoadFailure = false;
-        });
-
-        var configuration = configBuilder.Build();
-
-        // Step 3: Get connection string (from Infisical or fallback to env var)
-        var connectionString =
-            configuration["POSTGRESQL_PUBLIC_URL"]
-            ?? configuration["ConnectionStrings:DefaultConnection"]
-            ?? Environment.GetEnvironmentVariable("POSTGRESQL_PUBLIC_URL")
-            ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
-
-        if (string.IsNullOrEmpty(connectionString))
+            credentials = BootstrapSecretLoader.LoadPostgresConnectionString(configuration, logger: null);
+        }
+        catch (InvalidOperationException ex)
         {
             throw new InvalidOperationException(
                 """
-                Connection string not found for design-time DbContext creation.
+                Design-time DbContext creation failed: no Postgres credentials could be resolved.
 
-                The factory tried to fetch it from Infisical but failed.
+                Provide ONE of the following:
 
-                Please ensure your Infisical bootstrap credentials are set in user secrets:
+                1. Infisical bootstrap user secrets (preferred for shared teams):
+                     dotnet user-secrets set "SecretProvider:Infisical:Url"          "https://app.infisical.com" --project Explore.Persistence
+                     dotnet user-secrets set "SecretProvider:Infisical:ProjectId"    "<project-id>"              --project Explore.Persistence
+                     dotnet user-secrets set "SecretProvider:Infisical:ClientId"     "<client-id>"               --project Explore.Persistence
+                     dotnet user-secrets set "SecretProvider:Infisical:ClientSecret" "<secret>"                  --project Explore.Persistence
+                     dotnet user-secrets set "SecretProvider:Infisical:Environment"  "dev"                       --project Explore.Persistence
+                   (Folder /postgresql must contain POSTGRESQL_HOST, POSTGRESQL_PORT, POSTGRESQL_DATABASE, POSTGRESQL_USERNAME, POSTGRESQL_PASSWORD.)
 
-                  dotnet user-secrets set "Infisical:ProjectId" "your-project-id" --project Explore.Persistence
-                  dotnet user-secrets set "Infisical:ClientId" "your-client-id" --project Explore.Persistence
-                  dotnet user-secrets set "Infisical:ClientSecret" "your-client-secret" --project Explore.Persistence
-                  dotnet user-secrets set "Infisical:Environment" "dev" --project Explore.Persistence
+                2. Discrete environment variables:
+                     POSTGRESQL_HOST, POSTGRESQL_PORT, POSTGRESQL_DATABASE, POSTGRESQL_USERNAME, POSTGRESQL_PASSWORD
 
-                Or set the connection string directly via environment variable:
-                  $env:POSTGRESQL_PUBLIC_URL = "Host=...;Database=...;Username=...;Password=..."
+                3. Appsettings-shaped user secrets / env:
+                     Postgresql:Host, Postgresql:Port, Postgresql:Database, Postgresql:Username, Postgresql:Password
 
-                Then run your migration command again.
-                """);
+                The URL form (POSTGRESQL_PUBLIC_URL) is no longer supported.
+                """,
+                ex);
         }
 
-        Console.WriteLine("[DesignTime] Connection string loaded successfully from Infisical");
+        Console.WriteLine($"[DesignTime] Postgres bootstrap source: {credentials.Source}");
 
         var optionsBuilder = new DbContextOptionsBuilder<ExploreDbContext>();
         optionsBuilder
-            .UseNpgsql(connectionString, b => b.MigrationsAssembly("Explore.Persistence"))
+            .UseNpgsql(credentials.ConnectionString, b => b.MigrationsAssembly("Explore.Persistence"))
             .UseSnakeCaseNamingConvention();
 
         return new ExploreDbContext(optionsBuilder.Options);

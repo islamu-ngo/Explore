@@ -1,89 +1,58 @@
-// ABOUTME: Configuration extensions for the Migration Service project.
-// Adds Infisical as configuration source and maps PostgreSQL connection string.
+// ABOUTME: Configuration extensions for the Aspire Migration Service worker.
+// Resolves discrete POSTGRESQL_* secrets via BootstrapSecretLoader - no URL form.
 
 namespace Event.MigrationService.Extensions;
 
-using Explore.Secrets.Extensions;
+using Explore.Secrets.Bootstrap;
 
 public static class ConfigurationExtensions
 {
     /// <summary>
-    /// Adds Infisical secrets and applies compatibility mapping for the migration service.
+    /// Resolves the migration service's Postgres connection string from discrete secrets
+    /// (Infisical <c>/postgresql</c> folder, <c>POSTGRESQL_*</c> env vars, or <c>Postgresql:*</c>
+    /// configuration) and exposes it under the Aspire-expected connection-string keys.
     /// </summary>
     /// <remarks>
-    /// This method:
-    /// 1. Loads bootstrap credentials from user secrets (Infisical:ClientId, etc.)
-    /// 2. Connects to Infisical and loads secrets from the /postgresql path
-    /// 3. Maps POSTGRESQL_PUBLIC_URL to ConnectionStrings:EventMigrationService
-    ///
-    /// Required user secrets:
-    /// - Infisical:Url (optional, defaults to app.infisical.com)
-    /// - Infisical:ProjectId (required)
-    /// - Infisical:ClientId (required)
-    /// - Infisical:ClientSecret (required)
-    /// - Infisical:Environment (optional, defaults to "dev")
+    /// Resolution order is owned entirely by <see cref="BootstrapSecretLoader"/>:
+    /// <list type="number">
+    ///   <item>Infisical <c>/postgresql</c> folder (when <c>SecretProvider:Infisical:*</c> bootstrap creds are present).</item>
+    ///   <item>Environment variables <c>POSTGRESQL_HOST</c> / <c>POSTGRESQL_PORT</c> / <c>POSTGRESQL_DATABASE</c> / <c>POSTGRESQL_USERNAME</c> / <c>POSTGRESQL_PASSWORD</c>.</item>
+    ///   <item>Configuration section <c>Postgresql:Host|Port|Database|Username|Password</c>.</item>
+    /// </list>
+    /// If <c>ConnectionStrings:EventMigrationService</c> is already set (for example by Aspire
+    /// resource wiring or by integration-test fixtures), it is used verbatim and the loader is skipped.
     /// </remarks>
-    public static void AddInfisicalMigrationCompatibility(this IConfigurationBuilder configBuilder)
+    public static void AddDiscretePostgresBootstrap(this IConfigurationBuilder configBuilder)
     {
-        // Build temporary config to read bootstrap credentials (from user secrets/env vars)
-        var bootstrapConfig = configBuilder.Build();
+        var existingConfig = configBuilder.Build();
 
-        // Add Infisical as configuration source (loads secrets from Infisical service)
-        // This uses credentials from user secrets to authenticate with Infisical
-        configBuilder.AddInfisical(bootstrapConfig, source =>
+        var existingConnectionString = existingConfig["ConnectionStrings:EventMigrationService"]
+            ?? existingConfig["ConnectionStrings:DefaultConnection"];
+
+        string connectionString;
+        string source;
+
+        if (!string.IsNullOrWhiteSpace(existingConnectionString))
         {
-            // Configure paths to load from Infisical - only need postgresql for migrations
-            source.Paths.Clear();
-            source.Paths.AddRange(["/postgresql"]);
-
-            // Don't fail if Infisical isn't configured (allows local dev without Infisical)
-            source.ThrowOnFirstLoadFailure = false;
-        });
-
-        // Rebuild config after Infisical secrets are added
-        var configWithSecrets = configBuilder.Build();
-
-        // Apply compatibility mapping for connection string
-        ApplyCompatibilityMapping(configBuilder, configWithSecrets);
-    }
-
-    /// <summary>
-    /// Maps Infisical secret names to .NET configuration keys.
-    /// </summary>
-    /// <remarks>
-    /// This translates between:
-    /// - Infisical naming: POSTGRESQL_PUBLIC_URL
-    /// - Aspire naming: ConnectionStrings:EventMigrationService
-    /// </remarks>
-    private static void ApplyCompatibilityMapping(IConfigurationBuilder configBuilder, IConfiguration config)
-    {
-        // Read database URL from Infisical or environment
-        var rawDbUrl = config["POSTGRESQL_PUBLIC_URL"]
-            ?? config["ConnectionStrings:DefaultConnection"]
-            ?? config["ConnectionStrings:EventMigrationService"];
-
-        // Log configuration for debugging
-        Console.WriteLine("===========================================");
-        Console.WriteLine("Migration Service Configuration (from Infisical):");
-        Console.WriteLine($"  Database URL: {(string.IsNullOrEmpty(rawDbUrl) ? "NOT SET!" : "****" + rawDbUrl[Math.Max(0, rawDbUrl.Length - 20)..])}");
-        Console.WriteLine("===========================================");
-
-        // Create mapping dictionary
-        var mappedConfig = new Dictionary<string, string?>();
-
-        // Map Database connection string for Aspire's AddNpgsqlDbContext
-        // Aspire looks for ConnectionStrings:EventMigrationService (based on the name passed to AddNpgsqlDbContext)
-        if (!string.IsNullOrEmpty(rawDbUrl))
+            connectionString = existingConnectionString;
+            source = "ConnectionStrings (explicit)";
+        }
+        else
         {
-            mappedConfig["ConnectionStrings:EventMigrationService"] = rawDbUrl;
-            // Also set DefaultConnection for compatibility
-            mappedConfig["ConnectionStrings:DefaultConnection"] = rawDbUrl;
+            var credentials = BootstrapSecretLoader.LoadPostgresConnectionString(existingConfig, logger: null);
+            connectionString = credentials.ConnectionString;
+            source = credentials.Source;
         }
 
-        // Inject mapped configuration
-        configBuilder.AddInMemoryCollection(
-            mappedConfig.Where(kv => !string.IsNullOrEmpty(kv.Value))
-                        .ToDictionary(kv => kv.Key, kv => kv.Value)!
-        );
+        Console.WriteLine("===========================================");
+        Console.WriteLine("Migration Service Postgres bootstrap:");
+        Console.WriteLine($"  Source: {source}");
+        Console.WriteLine("===========================================");
+
+        configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:EventMigrationService"] = connectionString,
+            ["ConnectionStrings:DefaultConnection"] = connectionString,
+        });
     }
 }

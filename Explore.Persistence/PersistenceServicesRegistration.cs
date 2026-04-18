@@ -8,9 +8,11 @@ using Explore.Persistence.Caching;
 using Explore.Persistence.Extensions;
 using Explore.Persistence.Repositories;
 using Explore.Persistence.Services;
+using Explore.Secrets.Bootstrap;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Explore.Persistence;
 
@@ -29,11 +31,24 @@ public static class PersistenceServicesRegistration
         // Skip DbContext registration when running integration tests (they register their own)
         if (!skipDbContextRegistration)
         {
+            // Precedence: explicit ConnectionStrings:DefaultConnection (tests / overrides)
+            // -> BootstrapSecretLoader (Infisical -> POSTGRESQL_* env -> Postgresql:* config). No URL form.
             var connectionString = configuration["ConnectionStrings:DefaultConnection"];
             if (string.IsNullOrEmpty(connectionString))
             {
-                throw new InvalidOperationException(
-                    "Connection string 'DefaultConnection' not found in configuration.");
+                using var bootstrapLoggerFactory = LoggerFactory.Create(static builder =>
+                {
+                    builder.AddSimpleConsole(static options =>
+                    {
+                        options.SingleLine = true;
+                        options.TimestampFormat = "HH:mm:ss.fff ";
+                    });
+                    builder.SetMinimumLevel(LogLevel.Information);
+                });
+                var bootstrapLogger = bootstrapLoggerFactory.CreateLogger("Explore.Persistence.Bootstrap");
+
+                var credentials = BootstrapSecretLoader.LoadPostgresConnectionString(configuration, bootstrapLogger);
+                connectionString = credentials.ConnectionString;
             }
 
             // Use pooled DbContext factory for performance (EF Core recommended pattern)

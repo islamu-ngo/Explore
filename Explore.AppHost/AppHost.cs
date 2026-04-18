@@ -1,6 +1,6 @@
 // ABOUTME: .NET Aspire AppHost for local development orchestration.
-// Simplified orchestrator - each project loads its own secrets via AddSecretManagement()/AddInfisicalCompatibility().
-// AppHost only orchestrates startup order and service references, no secret passing required.
+// Each project resolves Postgres via BootstrapSecretLoader (Infisical /postgresql -> POSTGRESQL_* env -> Postgresql:* config).
+// AppHost only orchestrates startup order + service references; bootstrap credentials come from user-secrets or the shell env.
 
 using Aspire.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,10 +8,9 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
-// Log environment info
 Console.WriteLine("===========================================");
 Console.WriteLine("Explore AppHost - Local Development Orchestrator");
-Console.WriteLine("Each project loads its own secrets via Infisical");
+Console.WriteLine("Postgres via BootstrapSecretLoader; other secrets via per-project Infisical/env");
 Console.WriteLine("===========================================");
 
 // Delayed health check for startup sequencing

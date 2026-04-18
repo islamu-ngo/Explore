@@ -58,8 +58,9 @@ public static class ConfigurationExtensions
     /// </summary>
     private static void ApplyBlazorCompatibilityMapping(IConfigurationBuilder configBuilder, IConfiguration config)
     {
-        // Read values (from Infisical, environment, or existing config)
-        var rawDbUrl = config["POSTGRESQL_PUBLIC_URL"] ?? config["ConnectionStrings:DefaultConnection"];
+        // Read values (from Infisical, environment, or existing config).
+        // Postgres connection string is handled exclusively by BootstrapSecretLoader from
+        // discrete POSTGRESQL_* secrets - never mapped here and the URL form is no longer supported.
         var rawRealm = config["Keycloak:Realm"] ?? config["KEYCLOAK_REALM"];
         var rawKeycloakClientId = config["Keycloak:ClientId"]
             ?? config["KEYCLOAK_CLIENT_ID"]
@@ -178,11 +179,6 @@ public static class ConfigurationExtensions
         }
 
         // API Mapping
-        if (!string.IsNullOrEmpty(rawDbUrl))
-        {
-            TrySet(mappedConfig, config, "ConnectionStrings:DefaultConnection", rawDbUrl);
-        }
-
         if (!string.IsNullOrEmpty(rawApiUrl))
         {
             TrySet(mappedConfig, config, "ExploreApi:BaseUrl", rawApiUrl);
