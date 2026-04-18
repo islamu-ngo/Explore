@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <PackageReference Include="AWSSDK.S3" />
+    <PackageReference Include="Cerbos.Sdk" />
     <PackageReference Include="MailKit" />
     <PackageReference Include="Polly" />
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" />

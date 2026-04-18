@@ -25,7 +25,8 @@ namespace Explore.Infrastructure.Services;
 /// </list>
 /// <para><b>Failure handling:</b></para>
 /// <list type="bullet">
-/// <item>Instance Cerbos failure → transparent fallback to <see cref="FallbackAuthorizationService"/>.</item>
+/// <item>Instance Cerbos failure → deny all checks. The operator chose Cerbos; falling back
+/// to a potentially more permissive local RBAC would silently bypass intended policies.</item>
 /// <item>BYO Cerbos failure with <c>FailureMode.Closed</c> → Safe-Mode activated (one-way latch):
 /// deny all except instance admin. Prevents bypassing stricter tenant policies.</item>
 /// <item>BYO Cerbos failure with <c>FailureMode.Open</c> → Standard fallback RBAC
@@ -101,8 +102,15 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider
         }
         catch (Exception ex) when (provider == _cerbosProvider)
         {
-            _logger.LogWarning(ex, "Instance Cerbos provider failed for batch ({Count} checks); falling back to local provider", checks.Count);
-            return await _localProvider.IsAllowedBatchAsync(checks, cancellationToken);
+            // When Cerbos is the configured instance authorization provider and is unavailable,
+            // deny all checks. Falling back to a potentially more permissive local RBAC
+            // would silently bypass the policies the operator explicitly chose to enforce.
+            _logger.LogError(ex,
+                "Instance Cerbos provider unavailable for batch ({Count} checks). " +
+                "Denying all — Cerbos is the configured authorization provider. " +
+                "Restore Cerbos connectivity or switch authorization.provider setting to resolve",
+                checks.Count);
+            return checks.Select(_ => false).ToArray();
         }
     }
 
@@ -123,9 +131,11 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider
         }
         catch (Exception ex) when (provider == _cerbosProvider)
         {
-            _logger.LogWarning(ex, "Cerbos provider failed for setting check {SettingKey}:{Action}; falling back to local provider",
+            _logger.LogError(ex,
+                "Instance Cerbos provider unavailable for setting check {SettingKey}:{Action}. " +
+                "Denying — Cerbos is the configured authorization provider",
                 settingKey, action);
-            return await _localProvider.CheckSettingAccessAsync(settingKey, action, tenantId, organizationId, cancellationToken);
+            return false;
         }
     }
 
@@ -164,7 +174,7 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider
             _logger.LogDebug("Routing {Count} auth checks to BYO Cerbos endpoint: {Endpoint}", checks.Count, config.Endpoint);
             return await _cerbosProvider.IsAllowedBatchWithEndpointAsync(config.Endpoint, checks, cancellationToken);
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        catch (Exception ex) when (ex is Grpc.Core.RpcException or HttpRequestException or TaskCanceledException)
         {
             _logger.LogWarning(
                 ex,
