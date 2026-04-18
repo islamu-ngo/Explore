@@ -2,8 +2,10 @@
 // ABOUTME: from Infisical -> environment variables -> IConfiguration, in that strict order.
 
 using System.Globalization;
-using Infisical.Sdk;
-using Infisical.Sdk.Model;
+using System.Net;
+using System.Net.Http.Json;
+using System.Net.Sockets;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Npgsql;
@@ -26,8 +28,10 @@ namespace Explore.Secrets.Bootstrap;
 /// Resolution order (first non-empty match wins, per-field, highest priority first):
 /// </para>
 /// <list type="number">
-///   <item><description>Infisical: when <c>SecretProvider:Infisical:ClientId</c>/<c>ClientSecret</c>
-///     are supplied, the <c>/postgresql</c> folder is fetched directly via <see cref="InfisicalClient"/>
+///   <item><description>Infisical: when <c>Infisical:ClientId</c>/<c>ClientSecret</c>
+///     are supplied (bare keys, the canonical repo-wide convention; the legacy
+///     <c>SecretProvider:Infisical:*</c> prefix is still accepted as a fallback),
+///     the <c>/postgresql</c> folder is fetched directly via <see cref="InfisicalClient"/>
 ///     (no caching layer, one-shot, synchronous-adjacent) and fields are pulled from the
 ///     <c>POSTGRESQL_HOST/PORT/DATABASE/USERNAME/PASSWORD</c> secrets defined by the user.</description></item>
 ///   <item><description>Environment variables: <c>POSTGRESQL_HOST</c>, <c>POSTGRESQL_PORT</c>,
@@ -272,12 +276,20 @@ public static class BootstrapSecretLoader
         IConfiguration configuration,
         ILogger? logger)
     {
-        var section = configuration.GetSection($"{Configuration.SecretProviderOptions.SectionName}:Infisical");
-        var projectId = section["ProjectId"];
-        var clientId = section["ClientId"];
-        var clientSecret = section["ClientSecret"];
-        var environment = section["Environment"] ?? "dev";
-        var url = section["Url"];
+        // Read bare "Infisical:*" keys - the canonical convention used by the rest of
+        // this repo (see Explore.Secrets.Extensions.ConfigurationBuilderExtensions.AddInfisical,
+        // Explore.API/Blazor/MigrationService ConfigurationExtensions, and user-secrets docs
+        // in docs/CONFIGURATION.md). We also accept the legacy "SecretProvider:Infisical:*"
+        // prefix as a secondary fallback so both shapes work.
+        var bareSection = configuration.GetSection("Infisical");
+        var prefixedSection = configuration.GetSection(
+            $"{Configuration.SecretProviderOptions.SectionName}:Infisical");
+
+        var projectId = bareSection["ProjectId"] ?? prefixedSection["ProjectId"];
+        var clientId = bareSection["ClientId"] ?? prefixedSection["ClientId"];
+        var clientSecret = bareSection["ClientSecret"] ?? prefixedSection["ClientSecret"];
+        var environment = bareSection["Environment"] ?? prefixedSection["Environment"] ?? "dev";
+        var url = bareSection["Url"] ?? prefixedSection["Url"];
 
         if (string.IsNullOrWhiteSpace(projectId)
             || string.IsNullOrWhiteSpace(clientId)
@@ -290,65 +302,160 @@ public static class BootstrapSecretLoader
 
         try
         {
-            var settings = new InfisicalSdkSettingsBuilder()
-                .WithHostUri(url ?? "https://app.infisical.com")
-                .Build();
+            var effectiveUrl = (url ?? "https://app.infisical.com").TrimEnd('/');
+            Console.Error.WriteLine(
+                $"[Bootstrap] Infisical bootstrap: host={effectiveUrl} project={projectId} env={environment} clientId={clientId[..Math.Min(8, clientId.Length)]}...");
 
-            var client = new InfisicalClient(settings);
-            try
+            // We call Infisical's REST API directly instead of the Infisical.Sdk 3.x package:
+            // the SDK (at 3.0.4) wraps a native FFI binary whose LoginAsync hangs for 100s
+            // against self-hosted Infisical instances before erroring out, while the equivalent
+            // REST endpoints respond in <500ms. The bootstrap path MUST be fast and reliable,
+            // so we avoid the SDK here entirely.
+            //
+            // We also force IPv4 for the outbound socket: many self-hosted Infisical deployments
+            // publish both A and AAAA records but only the IPv4 address is actually reachable
+            // from operator workstations / CI runners. .NET's default Happy Eyeballs prefers
+            // IPv6 and blocks the whole request to its Timeout when AAAA is black-holed; curl
+            // survives because it tries IPv4 in parallel earlier. Pinning AddressFamily here
+            // keeps the bootstrap path deterministic across networks.
+            using var handler = new SocketsHttpHandler
             {
-                client.Auth().UniversalAuth().LoginAsync(clientId, clientSecret).GetAwaiter().GetResult();
-
-                var options = new ListSecretsOptions
+                ConnectTimeout = TimeSpan.FromSeconds(5),
+                ConnectCallback = static async (context, cancellationToken) =>
                 {
-                    ProjectId = projectId,
-                    EnvironmentSlug = environment,
-                    SecretPath = InfisicalPath,
-                    Recursive = false,
-                    ExpandSecretReferences = true,
-                    ViewSecretValue = true,
-                };
+                    var addresses = await Dns.GetHostAddressesAsync(
+                        context.DnsEndPoint.Host,
+                        AddressFamily.InterNetwork,
+                        cancellationToken).ConfigureAwait(false);
+                    if (addresses.Length == 0)
+                    {
+                        throw new SocketException((int)SocketError.HostNotFound);
+                    }
 
-                var secrets = client.Secrets().ListAsync(options).GetAwaiter().GetResult();
-                if (secrets is null)
-                {
-                    logger?.LogWarning(
-                        "Infisical returned no secrets for path {Path}.", InfisicalPath);
-                    return null;
-                }
-
-                var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                foreach (var secret in secrets)
-                {
-                    dict[secret.SecretKey] = secret.SecretValue;
-                }
-
-                logger?.LogInformation(
-                    "Infisical bootstrap loaded {Count} secrets from {Path}.",
-                    dict.Count,
-                    InfisicalPath);
-                return dict;
-            }
-            finally
+                    var socket = new Socket(
+                        AddressFamily.InterNetwork,
+                        SocketType.Stream,
+                        ProtocolType.Tcp)
+                    { NoDelay = true };
+                    try
+                    {
+                        await socket.ConnectAsync(
+                            addresses,
+                            context.DnsEndPoint.Port,
+                            cancellationToken).ConfigureAwait(false);
+                        return new NetworkStream(socket, ownsSocket: true);
+                    }
+                    catch
+                    {
+                        socket.Dispose();
+                        throw;
+                    }
+                },
+            };
+            using var http = new HttpClient(handler, disposeHandler: true)
             {
-                // InfisicalClient may implement IDisposable or IAsyncDisposable depending
-                // on SDK version; dispose defensively so the client connection is released.
-                if (client is IDisposable disposable)
+                Timeout = TimeSpan.FromSeconds(10),
+            };
+
+            var loginResp = http.PostAsJsonAsync(
+                $"{effectiveUrl}/api/v1/auth/universal-auth/login",
+                new { clientId, clientSecret }).GetAwaiter().GetResult();
+            if (!loginResp.IsSuccessStatusCode)
+            {
+                var body = loginResp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                Console.Error.WriteLine(
+                    $"[Bootstrap] Infisical login HTTP {(int)loginResp.StatusCode}: {body}");
+                return null;
+            }
+
+            var loginJson = loginResp.Content
+                .ReadFromJsonAsync<InfisicalLoginResponse>()
+                .GetAwaiter()
+                .GetResult();
+            var accessToken = loginJson?.AccessToken;
+            if (string.IsNullOrEmpty(accessToken))
+            {
+                Console.Error.WriteLine("[Bootstrap] Infisical login returned empty accessToken.");
+                return null;
+            }
+
+            http.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+
+            var listUrl =
+                $"{effectiveUrl}/api/v3/secrets/raw"
+                + $"?workspaceId={Uri.EscapeDataString(projectId)}"
+                + $"&environment={Uri.EscapeDataString(environment)}"
+                + $"&secretPath={Uri.EscapeDataString(InfisicalPath)}"
+                + "&expandSecretReferences=true&recursive=false";
+
+            var listResp = http.GetAsync(listUrl).GetAwaiter().GetResult();
+            if (!listResp.IsSuccessStatusCode)
+            {
+                var body = listResp.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                Console.Error.WriteLine(
+                    $"[Bootstrap] Infisical list-secrets HTTP {(int)listResp.StatusCode}: {body}");
+                return null;
+            }
+
+            var listJson = listResp.Content
+                .ReadFromJsonAsync<InfisicalListSecretsResponse>()
+                .GetAwaiter()
+                .GetResult();
+            if (listJson?.Secrets is null || listJson.Secrets.Count == 0)
+            {
+                Console.Error.WriteLine(
+                    $"[Bootstrap] Infisical returned no secrets for path {InfisicalPath}.");
+                return null;
+            }
+
+            var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var secret in listJson.Secrets)
+            {
+                if (!string.IsNullOrEmpty(secret.SecretKey))
                 {
-                    disposable.Dispose();
-                }
-                else if (client is IAsyncDisposable asyncDisposable)
-                {
-                    asyncDisposable.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                    dict[secret.SecretKey] = secret.SecretValue ?? string.Empty;
                 }
             }
+
+            Console.Error.WriteLine(
+                $"[Bootstrap] Infisical bootstrap loaded {dict.Count} secrets from {InfisicalPath}.");
+            logger?.LogInformation(
+                "Infisical bootstrap loaded {Count} secrets from {Path}.",
+                dict.Count,
+                InfisicalPath);
+            return dict;
         }
         catch (Exception ex)
         {
             logger?.LogWarning(
                 ex,
                 "Infisical bootstrap failed; falling back to environment variables and IConfiguration.");
+            // Bootstrap runs before DI/logging is wired (design-time EF tooling, Program.Main
+            // before host build). Silent Infisical failure here is the single most common cause
+            // of "no Postgres credentials could be resolved" - always surface it to stderr so the
+            // operator can see WHY the chain fell through to env/config.
+            Console.Error.WriteLine(
+                $"[Bootstrap] Infisical fetch failed ({ex.GetType().Name}): {ex.Message}");
+            if (ex.InnerException is not null)
+            {
+                Console.Error.WriteLine(
+                    $"[Bootstrap]   inner ({ex.InnerException.GetType().Name}): "
+                    + ex.InnerException.Message);
+            }
+            Console.Error.WriteLine(
+                "[Bootstrap] Falling back to environment variables and IConfiguration.");
             return null;
         }
     }
+
+    private sealed record InfisicalLoginResponse(
+        [property: JsonPropertyName("accessToken")] string? AccessToken);
+
+    private sealed record InfisicalListSecretsResponse(
+        [property: JsonPropertyName("secrets")] List<InfisicalRawSecret>? Secrets);
+
+    private sealed record InfisicalRawSecret(
+        [property: JsonPropertyName("secretKey")] string? SecretKey,
+        [property: JsonPropertyName("secretValue")] string? SecretValue);
 }

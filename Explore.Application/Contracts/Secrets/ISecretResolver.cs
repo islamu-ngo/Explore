@@ -1,0 +1,43 @@
+// ABOUTME: Primary abstraction for resolving a secret from its declared single source.
+// ABOUTME: No fallback chains — the SecretBinding row dictates exactly which source is consulted.
+
+using Explore.Domain.Enums;
+
+namespace Explore.Application.Contracts.Secrets;
+
+/// <summary>
+/// Resolves a setting-key to its plaintext value by dispatching to exactly one <see cref="ISecretSource"/>
+/// determined by the corresponding <see cref="Explore.Domain.Secrets.SecretBinding"/>. The resolver MUST NOT
+/// implement a fallback chain — if the declared source cannot produce a value the result is <c>null</c>,
+/// even if other sources could have yielded a value.
+/// </summary>
+public interface ISecretResolver
+{
+    /// <summary>
+    /// Returns the resolved secret for <paramref name="settingKey"/> at the given scope. Attempts the
+    /// tenant scope first (when <paramref name="tenantId"/> is provided) and falls back to the instance
+    /// scope only if no tenant-scoped binding exists. The fallback is at the <em>binding-lookup</em>
+    /// layer, never at the <em>source</em> layer.
+    /// </summary>
+    /// <param name="settingKey">Canonical setting key from <see cref="Explore.Domain.Secrets.SecretDefinitionRegistry.Keys"/>.</param>
+    /// <param name="tenantId">The active tenant id, or <c>null</c> to resolve against the instance scope only.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>
+    /// The resolved secret, or <c>null</c> when (a) no binding exists, (b) no source is registered for the
+    /// binding's declared <see cref="SecretSourceType"/>, or (c) the source returned no value.
+    /// </returns>
+    Task<ResolvedSecret?> ResolveAsync(
+        string settingKey,
+        Guid? tenantId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Evicts the cached value (if any) for a given key/scope. Called by notification handlers when a
+    /// <see cref="Explore.Domain.Secrets.SecretBinding"/> row changes.
+    /// </summary>
+    Task InvalidateAsync(
+        string settingKey,
+        SecretScope scope,
+        Guid? scopeId,
+        CancellationToken cancellationToken = default);
+}

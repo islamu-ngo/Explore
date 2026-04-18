@@ -1,0 +1,198 @@
+// ABOUTME: Produces the authenticated Infisical.Sdk client and wraps it in a library-agnostic
+// ABOUTME: facade (IInfisicalClient) so the Application layer never references the SDK directly.
+
+using Explore.Application.Contracts.Secrets;
+using Explore.Secrets.Configuration;
+using Infisical.Sdk;
+using Infisical.Sdk.Model;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+namespace Explore.Secrets.Infrastructure;
+
+/// <summary>
+/// Thread-safe factory that lazily constructs, authenticates, and caches a single
+/// <see cref="InfisicalClient"/> instance for the lifetime of the application. Returns
+/// <c>null</c> when the Infisical integration is not configured, so callers can report
+/// a clean "not configured" state instead of a misleading authentication failure.
+/// </summary>
+public sealed class InfisicalClientFactory : IInfisicalClientFactory, IAsyncDisposable
+{
+    private readonly ILogger<InfisicalClientFactory> _logger;
+    private readonly InfisicalOptions _options;
+    private readonly SemaphoreSlim _initLock = new(1, 1);
+
+    private InfisicalClient? _client;
+    private IInfisicalClient? _facade;
+    private bool _initialized;
+    private bool _notConfiguredLogged;
+    private bool _disposed;
+
+    public InfisicalClientFactory(
+        ILogger<InfisicalClientFactory> logger,
+        IOptions<SecretProviderOptions> options)
+    {
+        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(options);
+        _logger = logger;
+        _options = options.Value.Infisical;
+    }
+
+    /// <inheritdoc />
+    public async Task<IInfisicalClient?> GetClientAsync(CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (!IsConfigured())
+        {
+            if (!_notConfiguredLogged)
+            {
+                _notConfiguredLogged = true;
+                _logger.LogInformation(
+                    "Infisical integration is not configured; IInfisicalClientFactory will return null.");
+            }
+
+            return null;
+        }
+
+        if (_initialized && _facade is not null)
+        {
+            return _facade;
+        }
+
+        await _initLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (_initialized && _facade is not null)
+            {
+                return _facade;
+            }
+
+            var settings = new InfisicalSdkSettingsBuilder()
+                .WithHostUri(_options.Url ?? "https://app.infisical.com")
+                .Build();
+
+            var client = new InfisicalClient(settings);
+
+            await client.Auth()
+                .UniversalAuth()
+                .LoginAsync(_options.ClientId!, _options.ClientSecret!)
+                .ConfigureAwait(false);
+
+            _client = client;
+            _facade = new InfisicalClientFacade(client, _options.ProjectId!, _logger);
+            _initialized = true;
+
+            _logger.LogInformation(
+                "Infisical client authenticated for project {ProjectId}.",
+                _options.ProjectId);
+
+            return _facade;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to authenticate Infisical client.");
+            // Reset so a later call can retry.
+            _client = null;
+            _facade = null;
+            _initialized = false;
+            return null;
+        }
+        finally
+        {
+            _initLock.Release();
+        }
+    }
+
+    private bool IsConfigured()
+    {
+        return !string.IsNullOrWhiteSpace(_options.ClientId)
+            && !string.IsNullOrWhiteSpace(_options.ClientSecret)
+            && !string.IsNullOrWhiteSpace(_options.ProjectId);
+    }
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _initLock.Dispose();
+
+        if (_client is IAsyncDisposable asyncDisposable)
+        {
+            await asyncDisposable.DisposeAsync().ConfigureAwait(false);
+        }
+        else if (_client is IDisposable disposable)
+        {
+            disposable.Dispose();
+        }
+
+        _client = null;
+        _facade = null;
+    }
+
+    /// <summary>
+    /// Thin adapter from the library-agnostic <see cref="IInfisicalClient"/> contract to the
+    /// concrete Infisical SDK <see cref="InfisicalClient"/>. Keeps the SDK out of Application.
+    /// </summary>
+    private sealed class InfisicalClientFacade : IInfisicalClient
+    {
+        private readonly InfisicalClient _client;
+        private readonly string _projectId;
+        private readonly ILogger _logger;
+
+        public InfisicalClientFacade(InfisicalClient client, string projectId, ILogger logger)
+        {
+            _client = client;
+            _projectId = projectId;
+            _logger = logger;
+        }
+
+        public async Task<string?> GetSecretAsync(
+            string environment,
+            string folderPath,
+            string secretName,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(environment);
+            ArgumentException.ThrowIfNullOrWhiteSpace(folderPath);
+            ArgumentException.ThrowIfNullOrWhiteSpace(secretName);
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var options = new ListSecretsOptions
+            {
+                ProjectId = _projectId,
+                EnvironmentSlug = environment,
+                SecretPath = folderPath,
+                Recursive = false,
+                ExpandSecretReferences = true,
+                ViewSecretValue = true,
+            };
+
+            var secrets = await _client.Secrets().ListAsync(options).ConfigureAwait(false);
+            if (secrets is null)
+            {
+                return null;
+            }
+
+            foreach (var secret in secrets)
+            {
+                if (string.Equals(secret.SecretKey, secretName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return secret.SecretValue;
+                }
+            }
+
+            return null;
+        }
+    }
+}
