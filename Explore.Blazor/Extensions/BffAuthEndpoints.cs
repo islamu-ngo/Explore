@@ -137,6 +137,9 @@ public static class BffAuthEndpoints
 
     private static async Task HandleSignoutAsync(HttpContext ctx)
     {
+        ctx.Response.Headers.CacheControl = "no-store, no-cache";
+        ctx.Response.Headers.Pragma = "no-cache";
+
         var logger = ctx.RequestServices.GetRequiredService<ILoggerFactory>()
             .CreateLogger("AuthEndpoints");
         var returnUrl = GetSafeReturnUrl(ctx, logger);
@@ -194,6 +197,9 @@ public static class BffAuthEndpoints
 
     private static IResult HandleAuthStatus(HttpContext ctx)
     {
+        ctx.Response.Headers.CacheControl = "no-store, no-cache";
+        ctx.Response.Headers.Pragma = "no-cache";
+
         if (ctx.User.Identity?.IsAuthenticated == true)
         {
             return Results.Ok(new { isAuthenticated = true, name = ctx.User.Identity.Name });
@@ -308,6 +314,9 @@ public static class BffAuthEndpoints
 
     private static async Task HandleRefreshSchemesAsync(HttpContext ctx)
     {
+        ctx.Response.Headers.CacheControl = "no-store, no-cache";
+        ctx.Response.Headers.Pragma = "no-cache";
+
         var setupSecret = ctx.Request.Cookies["setup-secret"];
         var schemeManager = ctx.RequestServices.GetRequiredService<IDynamicAuthSchemeManager>();
         await schemeManager.RefreshSchemesAsync(setupSecret);

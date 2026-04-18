@@ -722,8 +722,8 @@ public partial class EventList : ComponentBase, IAsyncDisposable
             var sessionsTask = EventService.GetSessionsByEventAsync(evt.Id!.Value);
             await Task.WhenAll(detailTask, sessionsTask);
 
-            _selectedEventDetail = detailTask.Result;
-            _selectedEventSessions = sessionsTask.Result;
+            _selectedEventDetail = await detailTask;
+            _selectedEventSessions = await sessionsTask;
         }
         catch
         {

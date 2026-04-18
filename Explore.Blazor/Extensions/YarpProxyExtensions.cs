@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Services;
 using Explore.Blazor.Services;
 using Microsoft.AspNetCore.Authentication;
 using Yarp.ReverseProxy.Configuration;
+using Yarp.ReverseProxy.Forwarder;
 using Yarp.ReverseProxy.Transforms;
 
 namespace Explore.Blazor.Extensions;
@@ -50,6 +51,10 @@ public static class YarpProxyExtensions
                 HttpClient = new HttpClientConfig
                 {
                     DangerousAcceptAnyServerCertificate = environment.IsDevelopment()
+                },
+                HttpRequest = new ForwarderRequestConfig
+                {
+                    ActivityTimeout = TimeSpan.FromSeconds(30)
                 }
             }
         };

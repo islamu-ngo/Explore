@@ -24,7 +24,7 @@ public interface ISetupSecretSessionService
 
 public sealed class SetupSecretSessionService : ISetupSecretSessionService
 {
-    private static readonly ConcurrentDictionary<string, SecretEntry> _store = new();
+    private readonly ConcurrentDictionary<string, SecretEntry> _store = new();
 
     public void SetForUser(string userId, string secret)
     {
@@ -68,7 +68,7 @@ public sealed class SetupSecretSessionService : ISetupSecretSessionService
         _store.TryRemove(userId, out _);
     }
 
-    private static void CleanupExpiredEntries()
+    private void CleanupExpiredEntries()
     {
         var cutoff = DateTime.UtcNow.AddHours(-2);
         foreach (var key in _store.Where(kvp => kvp.Value.StoredAtUtc < cutoff).Select(kvp => kvp.Key).ToList())

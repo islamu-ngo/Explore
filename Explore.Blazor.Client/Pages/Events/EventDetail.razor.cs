@@ -130,7 +130,7 @@ public partial class EventDetail : ComponentBase
                     ? AgendaItemService.GetAgendaItemsBySessionAsync(_primarySession.Id.Value)
                     : Task.FromResult<ICollection<EventSessionAgendaItemListDto>>(new List<EventSessionAgendaItemListDto>());
                 await Task.WhenAll(registrationTask, aspectsTask, agendaTask);
-                _agendaItems = agendaTask.Result;
+                _agendaItems = await agendaTask;
             }
         }
         catch (Exception ex)

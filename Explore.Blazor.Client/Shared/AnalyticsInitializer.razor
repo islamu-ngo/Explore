@@ -250,20 +250,23 @@
         await TrackPageViewAsync(NormalizePagePath(NavigationManager.Uri), InitialLoadNavigationSource);
     }
 
-    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        try
+        _ = InvokeAsync(async () =>
         {
-            var navigationSource = e.IsNavigationIntercepted
-                ? InterceptedNavigationSource
-                : ProgrammaticNavigationSource;
+            try
+            {
+                var navigationSource = e.IsNavigationIntercepted
+                    ? InterceptedNavigationSource
+                    : ProgrammaticNavigationSource;
 
-            await TrackPageViewAsync(NormalizePagePath(e.Location), navigationSource);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Analytics pageview tracking failed for {Location}", e.Location);
-        }
+                await TrackPageViewAsync(NormalizePagePath(e.Location), navigationSource);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Analytics pageview tracking failed for {Location}", e.Location);
+            }
+        });
     }
 
     private async Task TrackPageViewAsync(string pagePath, string navigationSource)

@@ -138,7 +138,7 @@ public partial class OrganizationDetails
                 var permissionsTask = CheckEditPermissions();
                 var eventsTask = EventService.GetPublicEventsByActorAsync(Id);
                 await Task.WhenAll(permissionsTask, eventsTask);
-                _orgEvents = eventsTask.Result;
+                _orgEvents = await eventsTask;
                 InitializeEditModel();
             }
             else
