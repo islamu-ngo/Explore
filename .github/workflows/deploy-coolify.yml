@@ -1,26 +1,66 @@
+# ABOUTME: Production CI/CD — builds Docker images and deploys to Coolify on push to main or version tags.
+# ABOUTME: Uses change detection to only build/test/deploy API or UI when their source code changes.
+
 name: Build and Deploy to Coolify (Production)
 
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
-    tags:
-      - "v*"
+    branches: [main]
+    tags: ["v*"]
     paths-ignore:
-      - "**.md"
-      - "docs/**"
-      - "schemas/**"
-      - "dev/**"
+      # AI / tool configuration directories
+      - ".ai/**"
+      - ".caliber/**"
       - ".claude/**"
       - ".codex/**"
-      - ".opencode/**"
+      - ".copilot/**"
       - ".gemini/**"
-      - "**/.gitignore"
-      - "**/LICENSE*"
-      - "**/NOTICE*"
-      # 1. EXPLICITLY IGNORE APPHOST (Local Dev Only)
+      - ".opencode/**"
+      - ".repomix/**"
+      - ".sisyphus/**"
+      - ".taskmaster/**"
+      # BMAD framework
+      - "_bmad/**"
+      - "_bmad-output/**"
+      # Documentation & metadata
+      - "docs/**"
+      - "schemas/**"
+      - "assets/**"
+      - "dev/**"
+      # Project management (Plane)
+      - "event/**"
+      # Cerbos policies (has own workflow)
+      - "cerbos/**"
+      # Local dev infrastructure
+      - "docker/**"
+      - "docker-compose.yml"
       - "Explore.AppHost/**"
+      - "Event.Benchmarks/**"
+      # Empty / unused directories
+      - "amp/**"
+      # Test projects (test-only changes don't affect deployed artifacts)
+      - "Event.Application.UnitTests/**"
+      - "Event.Domain.UnitTests/**"
+      - "Event.Architecture.Tests/**"
+      - "Event.Persistence.IntegrationTests/**"
+      - "Event.API.IntegrationTests/**"
+      - "Explore.Secrets.UnitTests/**"
+      - "Explore.Blazor.Client.Tests/**"
+      - "Explore.Blazor.IntegrationTests/**"
+      - "Explore.Blazor.Client.E2ETests/**"
+      # Markdown & root meta files
+      - "**.md"
+      - "LICENSE"
+      - ".editorconfig"
+      - ".dockerignore"
+      - ".mcp.json"
+      - "repomix.config.json"
+      - "opencode.json"
+      - "jean.json"
+      # GitHub config (except this workflow)
+      - ".github/**"
+      - "!.github/workflows/deploy-coolify.yml"
 
 env:
   REGISTRY: atcr.io
@@ -48,8 +88,11 @@ jobs:
             ui:
               - 'Explore.Blazor/**'
               - 'Explore.Blazor.Client/**'
-              - 'Explore.Blazor.Client.Tests/**'
               - 'Explore.ServiceDefaults/**'
+              - 'Directory.Build.props'
+              - 'Directory.Packages.props'
+              - 'global.json'
+              - 'Explore.sln'
 
             api:
               - 'Explore.API/**'
@@ -59,13 +102,12 @@ jobs:
               - 'Explore.Persistence/**'
               - 'Explore.Diagnostic/**'
               - 'Explore.Secrets/**'
-              - 'Event.API.IntegrationTests/**'
-              - 'Event.Application.UnitTests/**'
-              - 'Event.Architecture.Tests/**'
-              - 'Event.Domain.UnitTests/**'
-              - 'Event.Persistence.IntegrationTests/**'
-              - 'Explore.Secrets.UnitTests/**'
+              - 'Event.MigrationService/**'
               - 'Explore.ServiceDefaults/**'
+              - 'Directory.Build.props'
+              - 'Directory.Packages.props'
+              - 'global.json'
+              - 'Explore.sln'
 
       - name: Check if both changed
         id: check-both

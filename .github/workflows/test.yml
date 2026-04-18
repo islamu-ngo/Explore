@@ -1,13 +1,85 @@
-# ABOUTME: CI workflow running build and all test suites on every push/PR.
-# ABOUTME: Ensures code compiles and tests pass before merge.
+# ABOUTME: CI workflow running build and all test suites on push/PR to main and develop.
+# ABOUTME: Skips non-code changes (docs, AI configs, assets). Ensures code compiles and tests pass before merge.
 
 name: "Build & Test"
 
 on:
   push:
-    branches: [ "main", "develop" ]
+    branches: [main, develop]
+    paths-ignore:
+      # AI / tool configuration directories
+      - ".ai/**"
+      - ".caliber/**"
+      - ".claude/**"
+      - ".codex/**"
+      - ".copilot/**"
+      - ".gemini/**"
+      - ".opencode/**"
+      - ".repomix/**"
+      - ".sisyphus/**"
+      - ".taskmaster/**"
+      # BMAD framework
+      - "_bmad/**"
+      - "_bmad-output/**"
+      # Documentation & metadata
+      - "docs/**"
+      - "schemas/**"
+      - "assets/**"
+      - "dev/**"
+      # Project management (Plane)
+      - "event/**"
+      # Cerbos policies (has own workflow)
+      - "cerbos/**"
+      # Local dev infrastructure
+      - "docker/**"
+      - "docker-compose.yml"
+      - "Explore.AppHost/**"
+      - "Event.Benchmarks/**"
+      # Empty / unused directories
+      - "amp/**"
+      # Markdown & root meta files
+      - "**.md"
+      - "LICENSE"
+      - ".editorconfig"
+      - ".dockerignore"
+      - ".mcp.json"
+      - "repomix.config.json"
+      - "opencode.json"
+      - "jean.json"
   pull_request:
-    branches: [ "main", "develop" ]
+    branches: [main, develop]
+    paths-ignore:
+      - ".ai/**"
+      - ".caliber/**"
+      - ".claude/**"
+      - ".codex/**"
+      - ".copilot/**"
+      - ".gemini/**"
+      - ".opencode/**"
+      - ".repomix/**"
+      - ".sisyphus/**"
+      - ".taskmaster/**"
+      - "_bmad/**"
+      - "_bmad-output/**"
+      - "docs/**"
+      - "schemas/**"
+      - "assets/**"
+      - "dev/**"
+      - "event/**"
+      - "cerbos/**"
+      - "docker/**"
+      - "docker-compose.yml"
+      - "Explore.AppHost/**"
+      - "Event.Benchmarks/**"
+      - "amp/**"
+      - "**.md"
+      - "LICENSE"
+      - ".editorconfig"
+      - ".dockerignore"
+      - ".mcp.json"
+      - "repomix.config.json"
+      - "opencode.json"
+      - "jean.json"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -49,6 +121,9 @@ jobs:
 
       - name: Blazor Client Tests
         run: dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --no-build --verbosity minimal
+
+      - name: Blazor Integration Tests
+        run: dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --no-build --verbosity minimal
 
       # Integration tests excluded from CI — they require PostgreSQL + Keycloak infrastructure
       # - name: Persistence Integration Tests
