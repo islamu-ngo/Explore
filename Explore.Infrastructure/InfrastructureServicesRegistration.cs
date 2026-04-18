@@ -1,5 +1,7 @@
 using Amazon;
 using Amazon.S3;
+using Cerbos.Sdk;
+using Cerbos.Sdk.Builder;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
@@ -77,42 +79,25 @@ public static class InfrastructureServicesRegistration
         services.Configure<CerbosSettings>(configuration.GetSection(CerbosSettings.SectionName));
         services.Configure<CerbosAdminApiSettings>(configuration.GetSection(CerbosAdminApiSettings.SectionName));
 
-        services.AddTransient<CorrelationIdDelegatingHandler>();
-        services.AddHttpClient("CerbosClient", client =>
+        // Cerbos gRPC SDK client (singleton — gRPC channels are long-lived and thread-safe)
+        services.AddSingleton<ICerbosClient>(sp =>
         {
-            var endpoint = configuration["Cerbos:Endpoint"] ?? "http://localhost:3592";
-            client.BaseAddress = new Uri(endpoint);
-        })
-        .AddHttpMessageHandler<CorrelationIdDelegatingHandler>()
-        .AddResilienceHandler("cerbos-resilience", pipeline =>
-        {
-            // Timeout: 2s hard limit for authorization checks
-            pipeline.AddTimeout(TimeSpan.FromSeconds(2));
+            var settings = sp.GetRequiredService<IOptions<CerbosSettings>>().Value;
+            var builder = CerbosClientBuilder.ForTarget(settings.GrpcEndpoint);
 
-            // Circuit breaker: trip after 50% failure rate, break for 15s
-            // No retry — fail-fast to LocalAuthorizationProvider is safer than retrying auth checks
-            pipeline.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
-            {
-                FailureRatio = 0.5,
-                SamplingDuration = TimeSpan.FromSeconds(30),
-                MinimumThroughput = 10,
-                BreakDuration = TimeSpan.FromSeconds(15)
-            });
+            if (settings.PlaintextMode)
+                builder = builder.WithPlaintext();
+
+            return builder.Build();
         });
+
+        // Client factory for BYO (Bring Your Own) Cerbos endpoints — each tenant may have its own PDP
+        services.AddSingleton<ICerbosClientFactory, CerbosClientFactory>();
+
+        // Admin API client for PolicySyncService (HTTP-based, separate from gRPC runtime)
+        services.AddTransient<CorrelationIdDelegatingHandler>();
         services.AddHttpClient("CerbosAdminClient");
-        services.AddHttpClient("CerbosByoClient")
-            .AddHttpMessageHandler<CorrelationIdDelegatingHandler>()
-            .AddResilienceHandler("cerbos-byo-resilience", pipeline =>
-            {
-                pipeline.AddTimeout(TimeSpan.FromSeconds(3));
-                pipeline.AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions
-                {
-                    FailureRatio = 0.5,
-                    SamplingDuration = TimeSpan.FromSeconds(30),
-                    MinimumThroughput = 5,
-                    BreakDuration = TimeSpan.FromSeconds(15)
-                });
-            });
+
         services.AddScoped<CerbosPrincipalBuilder>();
         services.AddScoped<CerbosAuthorizationService>();
         services.AddScoped<FallbackAuthorizationService>();

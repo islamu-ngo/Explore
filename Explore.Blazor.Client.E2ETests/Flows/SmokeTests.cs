@@ -5,8 +5,7 @@ using Explore.Blazor.Client.E2ETests.Fixtures;
 
 namespace Explore.Blazor.Client.E2ETests.Flows;
 
-[ClassDataSource<AppHostFixture>(Shared = SharedType.PerTestSession)]
-[ClassDataSource<PlaywrightFixture>(Shared = SharedType.PerTestSession)]
+[ClassDataSource<AppHostFixture, PlaywrightFixture>(Shared = [SharedType.PerTestSession, SharedType.PerTestSession])]
 [ParallelLimiter<BrowserParallelLimit>]
 public class SmokeTests(AppHostFixture appHost, PlaywrightFixture playwright)
 {

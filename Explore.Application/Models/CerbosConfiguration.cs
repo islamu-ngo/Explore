@@ -10,7 +10,7 @@ namespace Explore.Application.Models;
 /// </summary>
 public class CerbosConfiguration
 {
-    /// <summary>Cerbos PDP HTTP endpoint URL (e.g., "http://localhost:3592").</summary>
+    /// <summary>Cerbos PDP gRPC endpoint URL (e.g., "https://cerbosgrpc.example.com:443" or "http://localhost:3593").</summary>
     public required string Endpoint { get; set; }
 
     /// <summary>Whether this tenant uses the instance PDP or a custom BYO endpoint.</summary>

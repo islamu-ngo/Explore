@@ -141,7 +141,7 @@ public class CerbosConfigResolver : ICerbosConfigResolver
     {
         return new CerbosConfiguration
         {
-            Endpoint = _instanceSettings.Endpoint,
+            Endpoint = _instanceSettings.GrpcEndpoint,
             Mode = CerbosMode.Instance,
             FailureMode = CerbosFailureMode.Open,
             IsInstanceDefault = true
