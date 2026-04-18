@@ -18,13 +18,13 @@ namespace Explore.Persistence;
 /// No URL form. Each field (Host, Port, Database, Username, Password) resolves independently.
 ///
 /// To generate migrations locally against an Infisical-backed project, set the SDK bootstrap creds
-/// as user secrets on this project:
+/// as user secrets on this project (bare Infisical:* keys are the canonical convention):
 /// <code>
-///   dotnet user-secrets set "SecretProvider:Infisical:Url" "https://app.infisical.com"  --project Explore.Persistence
-///   dotnet user-secrets set "SecretProvider:Infisical:ProjectId"    "&lt;project-id&gt;"  --project Explore.Persistence
-///   dotnet user-secrets set "SecretProvider:Infisical:ClientId"     "&lt;client-id&gt;"   --project Explore.Persistence
-///   dotnet user-secrets set "SecretProvider:Infisical:ClientSecret" "&lt;secret&gt;"      --project Explore.Persistence
-///   dotnet user-secrets set "SecretProvider:Infisical:Environment"  "dev"               --project Explore.Persistence
+///   dotnet user-secrets set "Infisical:Url"          "https://app.infisical.com" --project Explore.Persistence
+///   dotnet user-secrets set "Infisical:ProjectId"    "&lt;project-id&gt;"              --project Explore.Persistence
+///   dotnet user-secrets set "Infisical:ClientId"     "&lt;client-id&gt;"               --project Explore.Persistence
+///   dotnet user-secrets set "Infisical:ClientSecret" "&lt;secret&gt;"                  --project Explore.Persistence
+///   dotnet user-secrets set "Infisical:Environment"  "dev"                       --project Explore.Persistence
 /// </code>
 /// Or, without Infisical, provide the discrete Postgres env vars:
 /// <code>
@@ -54,12 +54,13 @@ public class ExploreDbContextFactory : IDesignTimeDbContextFactory<ExploreDbCont
                 Provide ONE of the following:
 
                 1. Infisical bootstrap user secrets (preferred for shared teams):
-                     dotnet user-secrets set "SecretProvider:Infisical:Url"          "https://app.infisical.com" --project Explore.Persistence
-                     dotnet user-secrets set "SecretProvider:Infisical:ProjectId"    "<project-id>"              --project Explore.Persistence
-                     dotnet user-secrets set "SecretProvider:Infisical:ClientId"     "<client-id>"               --project Explore.Persistence
-                     dotnet user-secrets set "SecretProvider:Infisical:ClientSecret" "<secret>"                  --project Explore.Persistence
-                     dotnet user-secrets set "SecretProvider:Infisical:Environment"  "dev"                       --project Explore.Persistence
+                     dotnet user-secrets set "Infisical:Url"          "https://app.infisical.com" --project Explore.Persistence
+                     dotnet user-secrets set "Infisical:ProjectId"    "<project-id>"              --project Explore.Persistence
+                     dotnet user-secrets set "Infisical:ClientId"     "<client-id>"               --project Explore.Persistence
+                     dotnet user-secrets set "Infisical:ClientSecret" "<secret>"                  --project Explore.Persistence
+                     dotnet user-secrets set "Infisical:Environment"  "dev"                       --project Explore.Persistence
                    (Folder /postgresql must contain POSTGRESQL_HOST, POSTGRESQL_PORT, POSTGRESQL_DATABASE, POSTGRESQL_USERNAME, POSTGRESQL_PASSWORD.)
+                   (The legacy "SecretProvider:Infisical:*" prefix is still accepted as a fallback.)
 
                 2. Discrete environment variables:
                      POSTGRESQL_HOST, POSTGRESQL_PORT, POSTGRESQL_DATABASE, POSTGRESQL_USERNAME, POSTGRESQL_PASSWORD

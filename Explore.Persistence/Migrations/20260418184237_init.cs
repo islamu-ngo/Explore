@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -7,7 +7,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Explore.Persistence.Migrations
 {
     /// <inheritdoc />
-    public partial class InitDevelopmentSchema : Migration
+    public partial class init : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -164,6 +164,20 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "data_protection_keys",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    friendly_name = table.Column<string>(type: "text", nullable: true),
+                    xml = table.Column<string>(type: "text", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_data_protection_keys", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "did_custody_types",
                 columns: table => new
                 {
@@ -192,6 +206,20 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "event_registration_policies",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_registration_policies", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "event_statuses",
                 columns: table => new
                 {
@@ -203,6 +231,35 @@ namespace Explore.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_event_statuses", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "external_api_key_credit_periods",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_external_api_key_credit_periods", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "external_api_key_statuses",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    is_usable = table.Column<bool>(type: "boolean", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_external_api_key_statuses", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -231,6 +288,25 @@ namespace Explore.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_group_positions", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "idempotency_records",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    key = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    status_code = table.Column<int>(type: "integer", nullable: false),
+                    response_body = table.Column<string>(type: "text", nullable: true),
+                    content_type = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    expires_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_idempotency_records", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -271,18 +347,99 @@ namespace Explore.Persistence.Migrations
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
+                    modules_enable_islamic_module_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    modules_enable_islamic_module_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    modules_enable_tech_module_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    modules_enable_tech_module_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    events_allow_user_submitted_events_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    events_allow_user_submitted_events_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    events_allow_organization_submitted_events_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    events_allow_organization_submitted_events_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    events_allow_group_submitted_events_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    events_allow_group_submitted_events_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    events_event_card_click_opens_detail_page_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    events_event_card_click_opens_detail_page_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    organizations_require_verification_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    organizations_require_verification_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    organizations_allow_tenant_to_omit_verification_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    organizations_allow_tenant_to_omit_verification_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    organizations_allow_self_registration_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    organizations_allow_self_registration_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    organizations_allow_group_self_registration_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    organizations_allow_group_self_registration_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    branding_display_name_local_value = table.Column<string>(type: "text", nullable: true),
+                    branding_display_name_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    branding_logo_url_local_value = table.Column<string>(type: "text", nullable: true),
+                    branding_logo_url_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    branding_favicon_url_local_value = table.Column<string>(type: "text", nullable: true),
+                    branding_favicon_url_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    branding_custom_css_url_local_value = table.Column<string>(type: "text", nullable: true),
+                    branding_custom_css_url_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    domains_instance_base_domain_local_value = table.Column<string>(type: "text", nullable: true),
+                    domains_instance_base_domain_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    domains_allow_tenant_custom_domains_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    domains_allow_tenant_custom_domains_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    domains_lock_tenant_subdomain_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    domains_lock_tenant_subdomain_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    domains_lock_tenant_custom_domain_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    domains_lock_tenant_custom_domain_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    tenant_delegation_allow_self_service_registration_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    tenant_delegation_allow_self_service_registration_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    tenant_delegation_allow_white_labeling_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    tenant_delegation_allow_white_labeling_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    tenant_delegation_default_public_home_page_local_value = table.Column<string>(type: "text", nullable: true),
+                    tenant_delegation_default_public_home_page_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    tenant_delegation_lock_tenant_smtp_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    tenant_delegation_lock_tenant_smtp_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    tenant_delegation_lock_tenant_storage_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    tenant_delegation_lock_tenant_storage_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    tenant_delegation_lock_tenant_analytics_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    tenant_delegation_lock_tenant_analytics_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    tenant_delegation_decentralization_enabled_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    tenant_delegation_decentralization_enabled_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    tenant_delegation_authorization_provider_local_value = table.Column<string>(type: "text", nullable: true),
+                    tenant_delegation_authorization_provider_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_version_local_value = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_version_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_preset_local_value = table.Column<string>(type: "text", nullable: true),
+                    render_policy_preset_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_enable_advanced_overrides_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    render_policy_enable_advanced_overrides_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_global_render_mode_local_value = table.Column<string>(type: "text", nullable: true),
+                    render_policy_global_render_mode_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_global_prerender_enabled_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    render_policy_global_prerender_enabled_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_public_seo_render_mode_local_value = table.Column<string>(type: "text", nullable: true),
+                    render_policy_public_seo_render_mode_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_public_seo_prerender_enabled_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    render_policy_public_seo_prerender_enabled_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_operational_render_mode_local_value = table.Column<string>(type: "text", nullable: true),
+                    render_policy_operational_render_mode_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_operational_prerender_enabled_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    render_policy_operational_prerender_enabled_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_admin_render_mode_local_value = table.Column<string>(type: "text", nullable: true),
+                    render_policy_admin_render_mode_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_admin_prerender_enabled_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    render_policy_admin_prerender_enabled_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_onboarding_render_mode_local_value = table.Column<string>(type: "text", nullable: true),
+                    render_policy_onboarding_render_mode_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_onboarding_prerender_enabled_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    render_policy_onboarding_prerender_enabled_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_disallow_interactive_server_on_onboarding_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    render_policy_disallow_interactive_server_on_onboarding_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_allow_tenant_override_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    render_policy_allow_tenant_override_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_lock_tenant_public_seo_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    render_policy_lock_tenant_public_seo_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_lock_tenant_operational_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    render_policy_lock_tenant_operational_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_lock_tenant_admin_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    render_policy_lock_tenant_admin_override_mode = table.Column<int>(type: "integer", nullable: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     created_by = table.Column<Guid>(type: "uuid", nullable: true),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false),
-                    branding_policy = table.Column<string>(type: "jsonb", nullable: false),
-                    domains_policy = table.Column<string>(type: "jsonb", nullable: false),
-                    events_policy = table.Column<string>(type: "jsonb", nullable: false),
-                    modules_policy = table.Column<string>(type: "jsonb", nullable: false),
-                    organizations_policy = table.Column<string>(type: "jsonb", nullable: false),
-                    render_policy = table.Column<string>(type: "jsonb", nullable: false),
-                    tenant_delegation_policy = table.Column<string>(type: "jsonb", nullable: false)
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -353,6 +510,20 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "notification_reasons",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_notification_reasons", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "notification_types",
                 columns: table => new
                 {
@@ -373,12 +544,19 @@ namespace Explore.Persistence.Migrations
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     organization_id = table.Column<Guid>(type: "uuid", nullable: false),
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    events_allow_user_submitted_events_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    events_allow_user_submitted_events_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    events_allow_organization_submitted_events_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    events_allow_organization_submitted_events_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    events_allow_group_submitted_events_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    events_allow_group_submitted_events_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    events_event_card_click_opens_detail_page_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    events_event_card_click_opens_detail_page_override_mode = table.Column<int>(type: "integer", nullable: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     created_by = table.Column<Guid>(type: "uuid", nullable: true),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false),
-                    events_policy = table.Column<string>(type: "jsonb", nullable: false)
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -397,6 +575,29 @@ namespace Explore.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_organization_positions", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "outbox_messages",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    aggregate_type = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    aggregate_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_type = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    payload = table.Column<string>(type: "jsonb", nullable: true),
+                    status = table.Column<int>(type: "integer", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    processed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    retry_count = table.Column<int>(type: "integer", nullable: false),
+                    last_error = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    next_retry_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    max_retries = table.Column<int>(type: "integer", nullable: false, defaultValue: 10),
+                    dead_lettered_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_outbox_messages", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -504,6 +705,20 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "registration_scopes",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_registration_scopes", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "roles",
                 columns: table => new
                 {
@@ -517,6 +732,52 @@ namespace Explore.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_roles", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "schedule_item_kinds",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false),
+                    master_code = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_schedule_item_kinds", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "secret_bindings",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    setting_key = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
+                    scope = table.Column<int>(type: "integer", nullable: false),
+                    scope_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    source_type = table.Column<int>(type: "integer", nullable: false),
+                    infisical_environment = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
+                    infisical_path = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: true),
+                    infisical_key = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    environment_variable_name = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    inline_ciphertext = table.Column<byte[]>(type: "bytea", nullable: true),
+                    inline_ciphertext_version = table.Column<int>(type: "integer", nullable: true),
+                    is_locked = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    last_validation_result = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    last_validation_error = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    last_validated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    last_validated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_secret_bindings", x => x.id);
+                    table.CheckConstraint("ck_secret_bindings_scope_scope_id", "(scope = 0 AND scope_id IS NULL) OR (scope = 1 AND scope_id IS NOT NULL)");
+                    table.CheckConstraint("ck_secret_bindings_source_metadata", "(source_type = 0 AND infisical_environment IS NOT NULL AND infisical_path IS NOT NULL AND infisical_key IS NOT NULL   AND environment_variable_name IS NULL AND inline_ciphertext IS NULL AND inline_ciphertext_version IS NULL) OR (source_type = 1 AND inline_ciphertext IS NOT NULL AND inline_ciphertext_version IS NOT NULL   AND infisical_environment IS NULL AND infisical_path IS NULL AND infisical_key IS NULL AND environment_variable_name IS NULL) OR (source_type = 2 AND environment_variable_name IS NOT NULL   AND infisical_environment IS NULL AND infisical_path IS NULL AND infisical_key IS NULL AND inline_ciphertext IS NULL AND inline_ciphertext_version IS NULL)");
                 });
 
             migrationBuilder.CreateTable(
@@ -578,15 +839,71 @@ namespace Explore.Persistence.Migrations
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    events_allow_user_submitted_events_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    events_allow_user_submitted_events_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    events_allow_organization_submitted_events_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    events_allow_organization_submitted_events_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    events_allow_group_submitted_events_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    events_allow_group_submitted_events_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    events_event_card_click_opens_detail_page_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    events_event_card_click_opens_detail_page_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    organizations_require_verification_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    organizations_require_verification_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    organizations_allow_tenant_to_omit_verification_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    organizations_allow_tenant_to_omit_verification_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    organizations_allow_self_registration_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    organizations_allow_self_registration_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    organizations_allow_group_self_registration_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    organizations_allow_group_self_registration_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    branding_display_name_local_value = table.Column<string>(type: "text", nullable: true),
+                    branding_display_name_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    branding_logo_url_local_value = table.Column<string>(type: "text", nullable: true),
+                    branding_logo_url_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    branding_favicon_url_local_value = table.Column<string>(type: "text", nullable: true),
+                    branding_favicon_url_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    branding_custom_css_url_local_value = table.Column<string>(type: "text", nullable: true),
+                    branding_custom_css_url_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_version_local_value = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_version_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_preset_local_value = table.Column<string>(type: "text", nullable: true),
+                    render_policy_preset_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_enable_advanced_overrides_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    render_policy_enable_advanced_overrides_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_global_render_mode_local_value = table.Column<string>(type: "text", nullable: true),
+                    render_policy_global_render_mode_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_global_prerender_enabled_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    render_policy_global_prerender_enabled_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_public_seo_render_mode_local_value = table.Column<string>(type: "text", nullable: true),
+                    render_policy_public_seo_render_mode_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_public_seo_prerender_enabled_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    render_policy_public_seo_prerender_enabled_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_operational_render_mode_local_value = table.Column<string>(type: "text", nullable: true),
+                    render_policy_operational_render_mode_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_operational_prerender_enabled_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    render_policy_operational_prerender_enabled_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_admin_render_mode_local_value = table.Column<string>(type: "text", nullable: true),
+                    render_policy_admin_render_mode_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_admin_prerender_enabled_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    render_policy_admin_prerender_enabled_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_onboarding_render_mode_local_value = table.Column<string>(type: "text", nullable: true),
+                    render_policy_onboarding_render_mode_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_onboarding_prerender_enabled_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    render_policy_onboarding_prerender_enabled_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_disallow_interactive_server_on_onboarding_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    render_policy_disallow_interactive_server_on_onboarding_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_allow_tenant_override_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    render_policy_allow_tenant_override_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_lock_tenant_public_seo_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    render_policy_lock_tenant_public_seo_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_lock_tenant_operational_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    render_policy_lock_tenant_operational_override_mode = table.Column<int>(type: "integer", nullable: false),
+                    render_policy_lock_tenant_admin_local_value = table.Column<bool>(type: "boolean", nullable: false),
+                    render_policy_lock_tenant_admin_override_mode = table.Column<int>(type: "integer", nullable: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     created_by = table.Column<Guid>(type: "uuid", nullable: true),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false),
-                    branding_policy = table.Column<string>(type: "jsonb", nullable: false),
-                    events_policy = table.Column<string>(type: "jsonb", nullable: false),
-                    organizations_policy = table.Column<string>(type: "jsonb", nullable: false),
-                    render_policy = table.Column<string>(type: "jsonb", nullable: false)
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -727,6 +1044,60 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "custom_property_projection_dirty_scope",
+                columns: table => new
+                {
+                    id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityAlwaysColumn),
+                    projection_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    projection_version = table.Column<int>(type: "integer", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    scope_type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    scope_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    definition_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    reason = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    drained_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_custom_property_projection_dirty_scope", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_custom_property_projection_dirty_scope_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "custom_property_projection_status",
+                columns: table => new
+                {
+                    projection_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    projection_version = table.Column<int>(type: "integer", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    state = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    last_rebuild_started_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    last_rebuild_completed_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    rows_processed = table.Column<long>(type: "bigint", nullable: false),
+                    rows_failed = table.Column<long>(type: "bigint", nullable: false),
+                    last_checkpoint = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    last_error_message = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_custom_property_projection_status", x => new { x.projection_name, x.projection_version, x.tenant_id });
+                    table.ForeignKey(
+                        name: "fk_custom_property_projection_status_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "event_types",
                 columns: table => new
                 {
@@ -753,14 +1124,18 @@ namespace Explore.Persistence.Migrations
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true),
                     name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
                     key_id = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
                     secret_hash = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
                     scopes = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
                     owner_type = table.Column<int>(type: "integer", nullable: false),
                     owner_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    status = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
+                    external_api_key_status_id = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
+                    external_api_key_credit_period_id = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
+                    credit_limit = table.Column<int>(type: "integer", nullable: true),
+                    max_rollover_credits = table.Column<int>(type: "integer", nullable: true),
                     expires_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     last_used_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     last_used_ip = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
@@ -772,6 +1147,18 @@ namespace Explore.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_external_api_keys", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_external_api_keys_external_api_key_credit_periods_external_",
+                        column: x => x.external_api_key_credit_period_id,
+                        principalTable: "external_api_key_credit_periods",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_external_api_keys_external_api_key_statuses_external_api_ke",
+                        column: x => x.external_api_key_status_id,
+                        principalTable: "external_api_key_statuses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "fk_external_api_keys_tenants_tenant_id",
                         column: x => x.tenant_id,
@@ -849,6 +1236,31 @@ namespace Explore.Persistence.Migrations
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "fk_tenant_capabilities_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "tenant_footer_link_groups",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    title = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    order = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_tenant_footer_link_groups", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_tenant_footer_link_groups_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalTable: "tenants",
                         principalColumn: "id",
@@ -942,7 +1354,14 @@ namespace Explore.Persistence.Migrations
                     icon = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
                     order = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
                     open_in_new_tab = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true)
+                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -988,6 +1407,7 @@ namespace Explore.Persistence.Migrations
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
                     setting_key = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
                     value = table.Column<string>(type: "text", nullable: false),
+                    is_locked = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     created_by = table.Column<Guid>(type: "uuid", nullable: true),
                     updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
@@ -998,6 +1418,69 @@ namespace Explore.Persistence.Migrations
                     table.PrimaryKey("pk_tenant_setting_overrides", x => x.id);
                     table.ForeignKey(
                         name: "fk_tenant_setting_overrides_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ui_themes",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    theme_key = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    display_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    is_default = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    sort_order = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    light_primary = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_secondary = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_background = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_surface = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_appbar_background = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    light_appbar_text = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_drawer_background = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    light_drawer_text = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_drawer_icon = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_text_primary = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_text_secondary = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_info = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_success = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_warning = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_error = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_lines_default = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    light_divider = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    dark_primary = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_secondary = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_background = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_surface = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_appbar_background = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    dark_appbar_text = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_drawer_background = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    dark_drawer_text = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_drawer_icon = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_text_primary = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_text_secondary = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_info = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_success = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_warning = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_error = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_lines_default = table.Column<string>(type: "character varying(7)", maxLength: 7, nullable: false),
+                    dark_divider = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_ui_themes", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_ui_themes_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalTable: "tenants",
                         principalColumn: "id",
@@ -1066,6 +1549,7 @@ namespace Explore.Persistence.Migrations
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
                     template_key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     display_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
@@ -1101,6 +1585,34 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "external_api_key_quotas",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    external_api_key_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    period_start = table.Column<DateOnly>(type: "date", nullable: false),
+                    period_end = table.Column<DateOnly>(type: "date", nullable: false),
+                    credit_limit = table.Column<int>(type: "integer", nullable: false),
+                    credits_used = table.Column<int>(type: "integer", nullable: false),
+                    rollover_credits = table.Column<int>(type: "integer", nullable: false),
+                    request_count = table.Column<long>(type: "bigint", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_external_api_key_quotas", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_external_api_key_quotas_external_api_keys_external_api_key_",
+                        column: x => x.external_api_key_id,
+                        principalTable: "external_api_keys",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "location_pii",
                 columns: table => new
                 {
@@ -1119,6 +1631,45 @@ namespace Explore.Persistence.Migrations
                         principalTable: "locations",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "location_rooms",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    location_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    slug = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    description = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    capacity = table.Column<int>(type: "integer", nullable: true),
+                    sort_order = table.Column<int>(type: "integer", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_location_rooms", x => x.id);
+                    table.CheckConstraint("CK_LocationRoom_NonNegativeCapacity", "capacity IS NULL OR capacity >= 0");
+                    table.ForeignKey(
+                        name: "fk_location_rooms_locations_location_id",
+                        column: x => x.location_id,
+                        principalTable: "locations",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_location_rooms_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -1147,6 +1698,73 @@ namespace Explore.Persistence.Migrations
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "fk_tag_type_tags_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "tenant_footer_links",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    footer_link_group_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    label = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    url = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
+                    open_in_new_tab = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    order = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_tenant_footer_links", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_tenant_footer_links_tenant_footer_link_groups_footer_link_g",
+                        column: x => x.footer_link_group_id,
+                        principalTable: "tenant_footer_link_groups",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_session_templates",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_template_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    session_template_key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    display_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    version = table.Column<int>(type: "integer", nullable: false),
+                    is_published = table.Column<bool>(type: "boolean", nullable: false),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false),
+                    sort_order = table.Column<int>(type: "integer", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_session_templates", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_event_session_templates_event_templates_event_template_id",
+                        column: x => x.event_template_id,
+                        principalTable: "event_templates",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_session_templates_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalTable: "tenants",
                         principalColumn: "id",
@@ -1207,6 +1825,7 @@ namespace Explore.Persistence.Migrations
                     background_color = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
                     background_effect = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
                     banner_color = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    background_image_id = table.Column<Guid>(type: "uuid", nullable: true),
                     did_custody_type_id = table.Column<int>(type: "integer", nullable: true),
                     pds_host = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
                     description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
@@ -1529,6 +2148,10 @@ namespace Explore.Persistence.Migrations
                     notification_scope_id = table.Column<int>(type: "integer", nullable: false),
                     source_actor_id = table.Column<Guid>(type: "uuid", nullable: true),
                     recipient_context_actor_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    notification_reason_id = table.Column<int>(type: "integer", nullable: true),
+                    is_archived = table.Column<bool>(type: "boolean", nullable: false),
+                    archived_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    snoozed_until = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     created_by = table.Column<Guid>(type: "uuid", nullable: true),
@@ -1563,6 +2186,12 @@ namespace Explore.Persistence.Migrations
                         name: "fk_notifications_notification_entity_types_notification_entity",
                         column: x => x.notification_entity_type_id,
                         principalTable: "notification_entity_types",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_notifications_notification_reasons_notification_reason_id",
+                        column: x => x.notification_reason_id,
+                        principalTable: "notification_reasons",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
@@ -1826,6 +2455,7 @@ namespace Explore.Persistence.Migrations
                     event_series_id = table.Column<Guid>(type: "uuid", nullable: true),
                     series_order = table.Column<int>(type: "integer", nullable: true),
                     event_format_id = table.Column<int>(type: "integer", nullable: false),
+                    registration_policy_id = table.Column<int>(type: "integer", nullable: true),
                     atproto_record_id = table.Column<Guid>(type: "uuid", nullable: true),
                     created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     created_by = table.Column<Guid>(type: "uuid", nullable: true),
@@ -1871,6 +2501,12 @@ namespace Explore.Persistence.Migrations
                         name: "fk_events_event_formats_event_format_id",
                         column: x => x.event_format_id,
                         principalTable: "event_formats",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_events_event_registration_policies_registration_policy_id",
+                        column: x => x.registration_policy_id,
+                        principalTable: "event_registration_policies",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
@@ -2121,6 +2757,53 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "event_days",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    local_date = table.Column<DateOnly>(type: "date", nullable: false),
+                    label = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    description = table.Column<string>(type: "character varying(5000)", maxLength: 5000, nullable: true),
+                    banner_text = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    banner_image_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_published = table.Column<bool>(type: "boolean", nullable: false),
+                    sort_order = table.Column<int>(type: "integer", nullable: false),
+                    allows_day_scope_registration = table.Column<bool>(type: "boolean", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_days", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_event_days_events_event_id",
+                        column: x => x.event_id,
+                        principalTable: "events",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_days_storage_objects_banner_image_id",
+                        column: x => x.banner_image_id,
+                        principalTable: "storage_objects",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_event_days_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "event_islamic_aspects",
                 columns: table => new
                 {
@@ -2153,62 +2836,6 @@ namespace Explore.Persistence.Migrations
                         principalTable: "madhabs",
                         principalColumn: "id",
                         onDelete: ReferentialAction.SetNull);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "event_sessions",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
-                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    start_time = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    end_time = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    location_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    title = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    slug = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    max_audience_attendees = table.Column<int>(type: "integer", nullable: true),
-                    current_audience_attendees = table.Column<int>(type: "integer", nullable: true),
-                    registration_mode_id = table.Column<int>(type: "integer", nullable: true),
-                    price = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: true),
-                    currency_code = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: true),
-                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
-                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
-                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_event_sessions", x => x.id);
-                    table.CheckConstraint("CK_EventSession_NonNegativePrice", "price IS NULL OR price >= 0");
-                    table.ForeignKey(
-                        name: "fk_event_sessions_events_event_id",
-                        column: x => x.event_id,
-                        principalTable: "events",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_event_sessions_locations_location_id",
-                        column: x => x.location_id,
-                        principalTable: "locations",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "fk_event_sessions_registration_modes_registration_mode_id",
-                        column: x => x.registration_mode_id,
-                        principalTable: "registration_modes",
-                        principalColumn: "id");
-                    table.ForeignKey(
-                        name: "fk_event_sessions_tenants_tenant_id",
-                        column: x => x.tenant_id,
-                        principalTable: "tenants",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -2323,12 +2950,232 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "event_agenda_items",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_day_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    title = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    description = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    start_time = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    end_time = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    local_start_date = table.Column<DateOnly>(type: "date", nullable: false),
+                    local_end_date = table.Column<DateOnly>(type: "date", nullable: false),
+                    local_start_time = table.Column<TimeOnly>(type: "time without time zone", nullable: false),
+                    local_end_time = table.Column<TimeOnly>(type: "time without time zone", nullable: false),
+                    local_start_minute_of_day = table.Column<int>(type: "integer", nullable: false),
+                    local_end_minute_of_day = table.Column<int>(type: "integer", nullable: false),
+                    location_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    room_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    kind_id = table.Column<int>(type: "integer", nullable: true),
+                    sort_order = table.Column<int>(type: "integer", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_agenda_items", x => x.id);
+                    table.CheckConstraint("CK_EventAgendaItem_EndAfterStart", "end_time > start_time");
+                    table.ForeignKey(
+                        name: "fk_event_agenda_items_event_days_event_day_id",
+                        column: x => x.event_day_id,
+                        principalTable: "event_days",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_event_agenda_items_events_event_id",
+                        column: x => x.event_id,
+                        principalTable: "events",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_agenda_items_location_rooms_room_id",
+                        column: x => x.room_id,
+                        principalTable: "location_rooms",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_event_agenda_items_locations_location_id",
+                        column: x => x.location_id,
+                        principalTable: "locations",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_event_agenda_items_schedule_item_kinds_kind_id",
+                        column: x => x.kind_id,
+                        principalTable: "schedule_item_kinds",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_agenda_items_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_registration_intents",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    registration_scope_id = table.Column<int>(type: "integer", nullable: false),
+                    selected_event_day_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    registration_policy_snapshot_id = table.Column<int>(type: "integer", nullable: true),
+                    approval_status_id = table.Column<int>(type: "integer", nullable: true),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_registration_intents", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_event_registration_intents_approval_statuses_approval_statu",
+                        column: x => x.approval_status_id,
+                        principalTable: "approval_statuses",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_registration_intents_event_days_selected_event_day_id",
+                        column: x => x.selected_event_day_id,
+                        principalTable: "event_days",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_registration_intents_event_registration_policies_regi",
+                        column: x => x.registration_policy_snapshot_id,
+                        principalTable: "event_registration_policies",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_registration_intents_events_event_id",
+                        column: x => x.event_id,
+                        principalTable: "events",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_registration_intents_registration_scopes_registration",
+                        column: x => x.registration_scope_id,
+                        principalTable: "registration_scopes",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_registration_intents_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_registration_intents_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_sessions",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
+                    event_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_day_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    start_time = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    end_time = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    local_start_date = table.Column<DateOnly>(type: "date", nullable: false),
+                    local_end_date = table.Column<DateOnly>(type: "date", nullable: false),
+                    local_start_time = table.Column<TimeOnly>(type: "time without time zone", nullable: false),
+                    local_end_time = table.Column<TimeOnly>(type: "time without time zone", nullable: false),
+                    local_start_minute_of_day = table.Column<int>(type: "integer", nullable: false),
+                    local_end_minute_of_day = table.Column<int>(type: "integer", nullable: false),
+                    sort_order = table.Column<int>(type: "integer", nullable: false),
+                    location_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    room_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    title = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    slug = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    max_audience_attendees = table.Column<int>(type: "integer", nullable: true),
+                    current_audience_attendees = table.Column<int>(type: "integer", nullable: true),
+                    registration_mode_id = table.Column<int>(type: "integer", nullable: true),
+                    price = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: true),
+                    currency_code = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: true),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_sessions", x => x.id);
+                    table.CheckConstraint("CK_EventSession_EndAfterStart", "end_time > start_time");
+                    table.CheckConstraint("CK_EventSession_NonNegativePrice", "price IS NULL OR price >= 0");
+                    table.ForeignKey(
+                        name: "fk_event_sessions_event_days_event_day_id",
+                        column: x => x.event_day_id,
+                        principalTable: "event_days",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_event_sessions_events_event_id",
+                        column: x => x.event_id,
+                        principalTable: "events",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_sessions_location_rooms_room_id",
+                        column: x => x.room_id,
+                        principalTable: "location_rooms",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_event_sessions_locations_location_id",
+                        column: x => x.location_id,
+                        principalTable: "locations",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_event_sessions_registration_modes_registration_mode_id",
+                        column: x => x.registration_mode_id,
+                        principalTable: "registration_modes",
+                        principalColumn: "id");
+                    table.ForeignKey(
+                        name: "fk_event_sessions_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "event_registrations",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuidv7()"),
                     user_id = table.Column<Guid>(type: "uuid", nullable: false),
                     event_session_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_registration_intent_id = table.Column<Guid>(type: "uuid", nullable: true),
                     approval_status_id = table.Column<int>(type: "integer", nullable: true),
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
                     atproto_record_id = table.Column<Guid>(type: "uuid", nullable: true),
@@ -2353,6 +3200,12 @@ namespace Explore.Persistence.Migrations
                         column: x => x.atproto_record_id,
                         principalTable: "atproto_records",
                         principalColumn: "id");
+                    table.ForeignKey(
+                        name: "fk_event_registrations_event_registration_intents_event_regist",
+                        column: x => x.event_registration_intent_id,
+                        principalTable: "event_registration_intents",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "fk_event_registrations_event_sessions_event_session_id",
                         column: x => x.event_session_id,
@@ -2403,6 +3256,42 @@ namespace Explore.Persistence.Migrations
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "fk_event_session_agenda_items_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_session_categories",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_session_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    category_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_session_categories", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_event_session_categories_categories_category_id",
+                        column: x => x.category_id,
+                        principalTable: "categories",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_session_categories_event_sessions_event_session_id",
+                        column: x => x.event_session_id,
+                        principalTable: "event_sessions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_session_categories_tenants_tenant_id",
                         column: x => x.tenant_id,
                         principalTable: "tenants",
                         principalColumn: "id",
@@ -2498,6 +3387,42 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "event_session_tags",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_session_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tag_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_session_tags", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_event_session_tags_event_sessions_event_session_id",
+                        column: x => x.event_session_id,
+                        principalTable: "event_sessions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_session_tags_tags_tag_id",
+                        column: x => x.tag_id,
+                        principalTable: "tags",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_session_tags_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "event_contact_share_consents",
                 columns: table => new
                 {
@@ -2585,6 +3510,7 @@ namespace Explore.Persistence.Migrations
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
                     entity_type_name = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
                     @namespace = table.Column<string>(name: "namespace", type: "character varying(100)", maxLength: 100, nullable: false),
@@ -2640,6 +3566,7 @@ namespace Explore.Persistence.Migrations
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
                     custom_property_definition_id = table.Column<Guid>(type: "uuid", nullable: false),
                     @namespace = table.Column<string>(name: "namespace", type: "character varying(100)", maxLength: 100, nullable: false),
                     key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
@@ -2680,6 +3607,7 @@ namespace Explore.Persistence.Migrations
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
                     custom_property_definition_id = table.Column<Guid>(type: "uuid", nullable: false),
                     entity_id = table.Column<Guid>(type: "uuid", nullable: false),
                     ordinal = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
@@ -2725,6 +3653,7 @@ namespace Explore.Persistence.Migrations
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
                     event_id = table.Column<Guid>(type: "uuid", nullable: false),
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
                     @namespace = table.Column<string>(name: "namespace", type: "character varying(100)", maxLength: 100, nullable: false),
@@ -2798,6 +3727,7 @@ namespace Explore.Persistence.Migrations
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
                     event_custom_property_definition_id = table.Column<Guid>(type: "uuid", nullable: false),
                     @namespace = table.Column<string>(name: "namespace", type: "character varying(100)", maxLength: 100, nullable: false),
                     key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
@@ -2840,6 +3770,7 @@ namespace Explore.Persistence.Migrations
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
                     event_custom_property_definition_id = table.Column<Guid>(type: "uuid", nullable: false),
                     event_id = table.Column<Guid>(type: "uuid", nullable: false),
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -2949,10 +3880,345 @@ namespace Explore.Persistence.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "event_session_custom_property_definitions",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_session_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    @namespace = table.Column<string>(name: "namespace", type: "character varying(100)", maxLength: 100, nullable: false),
+                    key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    display_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    property_type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    is_required = table.Column<bool>(type: "boolean", nullable: false),
+                    is_multi = table.Column<bool>(type: "boolean", nullable: false),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false),
+                    sort_order = table.Column<int>(type: "integer", nullable: false),
+                    exposure_level = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    is_searchable = table.Column<bool>(type: "boolean", nullable: false),
+                    is_filterable = table.Column<bool>(type: "boolean", nullable: false),
+                    is_exportable = table.Column<bool>(type: "boolean", nullable: false),
+                    is_moderation_relevant = table.Column<bool>(type: "boolean", nullable: false),
+                    is_analytics_relevant = table.Column<bool>(type: "boolean", nullable: false),
+                    is_system_owned = table.Column<bool>(type: "boolean", nullable: false),
+                    default_text_value = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    default_number_value = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: true),
+                    default_boolean_value = table.Column<bool>(type: "boolean", nullable: true),
+                    default_date_time_value = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    default_option_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    min_length = table.Column<int>(type: "integer", nullable: true),
+                    max_length = table.Column<int>(type: "integer", nullable: true),
+                    regex_pattern = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    min_number = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: true),
+                    max_number = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: true),
+                    min_date_time = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    max_date_time = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    allowed_url_schemes = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    source_template_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    source_template_key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    source_template_version = table.Column<int>(type: "integer", nullable: true),
+                    source_template_definition_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    instantiated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    last_synced_from_template_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_session_custom_property_definitions", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_event_session_custom_property_definitions_event_session_tem",
+                        column: x => x.source_template_id,
+                        principalTable: "event_session_templates",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_event_session_custom_property_definitions_event_sessions_ev",
+                        column: x => x.event_session_id,
+                        principalTable: "event_sessions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_session_custom_property_definitions_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_session_custom_property_options",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_session_custom_property_definition_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    @namespace = table.Column<string>(name: "namespace", type: "character varying(100)", maxLength: 100, nullable: false),
+                    key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    display_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    value = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    is_default = table.Column<bool>(type: "boolean", nullable: false),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false),
+                    sort_order = table.Column<int>(type: "integer", nullable: false),
+                    parent_option_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    source_template_option_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    source_template_version = table.Column<int>(type: "integer", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_session_custom_property_options", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_escpo_definition",
+                        column: x => x.event_session_custom_property_definition_id,
+                        principalTable: "event_session_custom_property_definitions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_escpo_parent_option",
+                        column: x => x.parent_option_id,
+                        principalTable: "event_session_custom_property_options",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_session_custom_property_values",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_session_custom_property_definition_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_session_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ordinal = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    text_value = table.Column<string>(type: "character varying(4000)", maxLength: 4000, nullable: true),
+                    number_value = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: true),
+                    boolean_value = table.Column<bool>(type: "boolean", nullable: true),
+                    date_time_value = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    option_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_session_custom_property_values", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_event_session_custom_property_values_event_session_custom_p",
+                        column: x => x.event_session_custom_property_definition_id,
+                        principalTable: "event_session_custom_property_definitions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_session_custom_property_values_event_session_custom_p1",
+                        column: x => x.option_id,
+                        principalTable: "event_session_custom_property_options",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_event_session_custom_property_values_event_sessions_event_s",
+                        column: x => x.event_session_id,
+                        principalTable: "event_sessions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_session_custom_property_values_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_session_custom_property_projections",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_session_custom_property_definition_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_session_custom_property_value_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_session_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    @namespace = table.Column<string>(name: "namespace", type: "character varying(100)", maxLength: 100, nullable: false),
+                    key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    property_type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    exposure_level = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    is_searchable = table.Column<bool>(type: "boolean", nullable: false),
+                    is_filterable = table.Column<bool>(type: "boolean", nullable: false),
+                    is_exportable = table.Column<bool>(type: "boolean", nullable: false),
+                    is_moderation_relevant = table.Column<bool>(type: "boolean", nullable: false),
+                    is_analytics_relevant = table.Column<bool>(type: "boolean", nullable: false),
+                    ordinal = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    option_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    text_value = table.Column<string>(type: "character varying(4000)", maxLength: 4000, nullable: true),
+                    number_value = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: true),
+                    boolean_value = table.Column<bool>(type: "boolean", nullable: true),
+                    date_time_value = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    normalized_value = table.Column<string>(type: "character varying(4000)", maxLength: 4000, nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_session_custom_property_projections", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_event_session_custom_property_projections_event_session_cus",
+                        column: x => x.event_session_custom_property_definition_id,
+                        principalTable: "event_session_custom_property_definitions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_session_custom_property_projections_event_session_cus1",
+                        column: x => x.event_session_custom_property_value_id,
+                        principalTable: "event_session_custom_property_values",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_session_custom_property_projections_event_session_cus2",
+                        column: x => x.option_id,
+                        principalTable: "event_session_custom_property_options",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "fk_event_session_custom_property_projections_event_sessions_ev",
+                        column: x => x.event_session_id,
+                        principalTable: "event_sessions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_session_custom_property_projections_tenants_tenant_id",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_session_template_custom_property_definitions",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_session_template_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    @namespace = table.Column<string>(name: "namespace", type: "character varying(100)", maxLength: 100, nullable: false),
+                    key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    display_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    property_type = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    is_required = table.Column<bool>(type: "boolean", nullable: false),
+                    is_multi = table.Column<bool>(type: "boolean", nullable: false),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false),
+                    sort_order = table.Column<int>(type: "integer", nullable: false),
+                    exposure_level = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    is_searchable = table.Column<bool>(type: "boolean", nullable: false),
+                    is_filterable = table.Column<bool>(type: "boolean", nullable: false),
+                    is_exportable = table.Column<bool>(type: "boolean", nullable: false),
+                    is_moderation_relevant = table.Column<bool>(type: "boolean", nullable: false),
+                    is_analytics_relevant = table.Column<bool>(type: "boolean", nullable: false),
+                    is_system_owned = table.Column<bool>(type: "boolean", nullable: false),
+                    default_text_value = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    default_number_value = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: true),
+                    default_boolean_value = table.Column<bool>(type: "boolean", nullable: true),
+                    default_date_time_value = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    default_option_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    min_length = table.Column<int>(type: "integer", nullable: true),
+                    max_length = table.Column<int>(type: "integer", nullable: true),
+                    regex_pattern = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    min_number = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: true),
+                    max_number = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: true),
+                    min_date_time = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    max_date_time = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    allowed_url_schemes = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_session_template_custom_property_definitions", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_event_session_template_custom_property_definitions_event_se1",
+                        column: x => x.event_session_template_id,
+                        principalTable: "event_session_templates",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_event_session_template_custom_property_definitions_tenants_",
+                        column: x => x.tenant_id,
+                        principalTable: "tenants",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "event_session_template_custom_property_options",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
+                    event_session_template_custom_property_definition_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    @namespace = table.Column<string>(name: "namespace", type: "character varying(100)", maxLength: 100, nullable: false),
+                    key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    display_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    value = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    is_default = table.Column<bool>(type: "boolean", nullable: false),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false),
+                    sort_order = table.Column<int>(type: "integer", nullable: false),
+                    parent_option_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    created_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    updated_by = table.Column<Guid>(type: "uuid", nullable: true),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false),
+                    deleted_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    deleted_by = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_event_session_template_custom_property_options", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_estcpo_definition",
+                        column: x => x.event_session_template_custom_property_definition_id,
+                        principalTable: "event_session_template_custom_property_definitions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_estcpo_parent_option",
+                        column: x => x.parent_option_id,
+                        principalTable: "event_session_template_custom_property_options",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "event_template_custom_property_definitions",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
                     event_template_id = table.Column<Guid>(type: "uuid", nullable: false),
                     tenant_id = table.Column<Guid>(type: "uuid", nullable: false),
                     @namespace = table.Column<string>(name: "namespace", type: "character varying(100)", maxLength: 100, nullable: false),
@@ -3014,6 +4280,7 @@ namespace Explore.Persistence.Migrations
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
+                    concurrency_stamp = table.Column<Guid>(type: "uuid", nullable: false),
                     event_template_custom_property_definition_id = table.Column<Guid>(type: "uuid", nullable: false),
                     @namespace = table.Column<string>(name: "namespace", type: "character varying(100)", maxLength: 100, nullable: false),
                     key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
@@ -3073,6 +4340,11 @@ namespace Explore.Persistence.Migrations
                 name: "ix_actors_actor_type_id",
                 table: "actors",
                 column: "actor_type_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_actors_background_image_id",
+                table: "actors",
+                column: "background_image_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_actors_banner_picture_id",
@@ -3237,6 +4509,28 @@ namespace Explore.Persistence.Migrations
                 column: "parent_option_id");
 
             migrationBuilder.CreateIndex(
+                name: "ix_custom_property_projection_dirty_scope_tenant_id",
+                table: "custom_property_projection_dirty_scope",
+                column: "tenant_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_dirty_scope_pending",
+                table: "custom_property_projection_dirty_scope",
+                columns: new[] { "projection_name", "projection_version", "tenant_id" },
+                filter: "drained_at IS NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_dirty_scope_unique",
+                table: "custom_property_projection_dirty_scope",
+                columns: new[] { "projection_name", "projection_version", "tenant_id", "scope_type", "scope_id", "definition_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_custom_property_projection_status_tenant_id",
+                table: "custom_property_projection_status",
+                column: "tenant_id");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_cpv_definition_entity_ordinal",
                 table: "custom_property_values",
                 columns: new[] { "custom_property_definition_id", "entity_id", "ordinal" },
@@ -3258,6 +4552,41 @@ namespace Explore.Persistence.Migrations
                 column: "option_id");
 
             migrationBuilder.CreateIndex(
+                name: "ix_event_agenda_items_event_day_id",
+                table: "event_agenda_items",
+                column: "event_day_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_agenda_items_event_id",
+                table: "event_agenda_items",
+                column: "event_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_agenda_items_kind_id",
+                table: "event_agenda_items",
+                column: "kind_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_agenda_items_location_id",
+                table: "event_agenda_items",
+                column: "location_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_agenda_items_room_id",
+                table: "event_agenda_items",
+                column: "room_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_agenda_items_tenant_event_local_start",
+                table: "event_agenda_items",
+                columns: new[] { "tenant_id", "event_id", "local_start_date", "local_start_minute_of_day" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_agenda_items_tenant_event_sort",
+                table: "event_agenda_items",
+                columns: new[] { "tenant_id", "event_id", "sort_order" });
+
+            migrationBuilder.CreateIndex(
                 name: "ix_event_categories_category_id",
                 table: "event_categories",
                 column: "category_id");
@@ -3268,9 +4597,10 @@ namespace Explore.Persistence.Migrations
                 column: "event_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_event_categories_tenant_id",
+                name: "ix_event_categories_tenant_event_category",
                 table: "event_categories",
-                column: "tenant_id");
+                columns: new[] { "tenant_id", "event_id", "category_id" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_event_contact_share_consents_recipient_actor_id",
@@ -3428,6 +4758,32 @@ namespace Explore.Persistence.Migrations
                 column: "option_id");
 
             migrationBuilder.CreateIndex(
+                name: "ix_event_days_banner_image_id",
+                table: "event_days",
+                column: "banner_image_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_days_event_id",
+                table: "event_days",
+                column: "event_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_days_tenant_event_local_date",
+                table: "event_days",
+                columns: new[] { "tenant_id", "event_id", "local_date" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_days_tenant_event_published",
+                table: "event_days",
+                columns: new[] { "tenant_id", "event_id", "is_published" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_days_tenant_event_sort",
+                table: "event_days",
+                columns: new[] { "tenant_id", "event_id", "sort_order" });
+
+            migrationBuilder.CreateIndex(
                 name: "ix_event_islamic_aspects_madhab_id",
                 table: "event_islamic_aspects",
                 column: "madhab_id");
@@ -3436,6 +4792,71 @@ namespace Explore.Persistence.Migrations
                 name: "ix_event_islamic_aspects_primary_language_id",
                 table: "event_islamic_aspects",
                 column: "primary_language_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_registration_intents_approval_status_id",
+                table: "event_registration_intents",
+                column: "approval_status_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_registration_intents_event_id",
+                table: "event_registration_intents",
+                column: "event_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_registration_intents_registration_policy_snapshot_id",
+                table: "event_registration_intents",
+                column: "registration_policy_snapshot_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_registration_intents_registration_scope_id",
+                table: "event_registration_intents",
+                column: "registration_scope_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_registration_intents_selected_event_day_id",
+                table: "event_registration_intents",
+                column: "selected_event_day_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_registration_intents_tenant_event_day",
+                table: "event_registration_intents",
+                columns: new[] { "tenant_id", "event_id", "selected_event_day_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_registration_intents_tenant_event_user_scope",
+                table: "event_registration_intents",
+                columns: new[] { "tenant_id", "event_id", "user_id", "registration_scope_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_registration_intents_tenant_user",
+                table: "event_registration_intents",
+                columns: new[] { "tenant_id", "user_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_registration_intents_unique_day_scope",
+                table: "event_registration_intents",
+                columns: new[] { "tenant_id", "event_id", "user_id", "selected_event_day_id" },
+                unique: true,
+                filter: "registration_scope_id = 2 AND is_deleted = false");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_registration_intents_unique_session_selection_scope",
+                table: "event_registration_intents",
+                columns: new[] { "tenant_id", "event_id", "user_id" },
+                unique: true,
+                filter: "registration_scope_id = 3 AND is_deleted = false");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_registration_intents_user_id",
+                table: "event_registration_intents",
+                column: "user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_registration_policies_master_code",
+                table: "event_registration_policies",
+                column: "master_code",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_event_registrations_approval_status_id",
@@ -3451,6 +4872,11 @@ namespace Explore.Persistence.Migrations
                 name: "ix_event_registrations_tenant_id",
                 table: "event_registrations",
                 column: "tenant_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_eventregistrations_intent",
+                table: "event_registrations",
+                column: "event_registration_intent_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_eventregistrations_session_user",
@@ -3510,6 +4936,116 @@ namespace Explore.Persistence.Migrations
                 column: "tenant_id");
 
             migrationBuilder.CreateIndex(
+                name: "ix_event_session_categories_category_id",
+                table: "event_session_categories",
+                column: "category_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_session_categories_event_session_id",
+                table: "event_session_categories",
+                column: "event_session_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_session_categories_tenant_session_category",
+                table: "event_session_categories",
+                columns: new[] { "tenant_id", "event_session_id", "category_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_escpd_session_namespace_key",
+                table: "event_session_custom_property_definitions",
+                columns: new[] { "event_session_id", "namespace", "key" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_escpd_tenant_session_search_filter",
+                table: "event_session_custom_property_definitions",
+                columns: new[] { "tenant_id", "event_session_id", "is_searchable", "is_filterable" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_session_custom_property_definitions_default_option_id",
+                table: "event_session_custom_property_definitions",
+                column: "default_option_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_session_custom_property_definitions_source_template_id",
+                table: "event_session_custom_property_definitions",
+                column: "source_template_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_escpo_definition_namespace_key",
+                table: "event_session_custom_property_options",
+                columns: new[] { "event_session_custom_property_definition_id", "namespace", "key" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_escpo_definition_sort",
+                table: "event_session_custom_property_options",
+                columns: new[] { "event_session_custom_property_definition_id", "sort_order" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_session_custom_property_options_parent_option_id",
+                table: "event_session_custom_property_options",
+                column: "parent_option_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_escpp_tenant_exposure",
+                table: "event_session_custom_property_projections",
+                columns: new[] { "tenant_id", "exposure_level" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_escpp_tenant_namespace_key_normalized",
+                table: "event_session_custom_property_projections",
+                columns: new[] { "tenant_id", "namespace", "key", "normalized_value" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_escpp_tenant_session_namespace_key_ordinal",
+                table: "event_session_custom_property_projections",
+                columns: new[] { "tenant_id", "event_session_id", "namespace", "key", "ordinal" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_escpp_value",
+                table: "event_session_custom_property_projections",
+                column: "event_session_custom_property_value_id",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_session_custom_property_projections_event_session_cus",
+                table: "event_session_custom_property_projections",
+                column: "event_session_custom_property_definition_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_session_custom_property_projections_event_session_id",
+                table: "event_session_custom_property_projections",
+                column: "event_session_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_session_custom_property_projections_option_id",
+                table: "event_session_custom_property_projections",
+                column: "option_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_escpv_definition_session_ordinal",
+                table: "event_session_custom_property_values",
+                columns: new[] { "event_session_custom_property_definition_id", "event_session_id", "ordinal" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_escpv_tenant_session",
+                table: "event_session_custom_property_values",
+                columns: new[] { "tenant_id", "event_session_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_session_custom_property_values_event_session_id",
+                table: "event_session_custom_property_values",
+                column: "event_session_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_session_custom_property_values_option_id",
+                table: "event_session_custom_property_values",
+                column: "option_id");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_event_session_languages_language_id",
                 table: "event_session_languages",
                 column: "language_id");
@@ -3536,9 +5072,74 @@ namespace Explore.Persistence.Migrations
                 column: "event_session_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_event_session_speakers_tenant_id",
+                name: "ix_event_session_speakers_tenant_session_actor",
                 table: "event_session_speakers",
-                column: "tenant_id");
+                columns: new[] { "tenant_id", "event_session_id", "actor_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_session_tags_event_session_id",
+                table: "event_session_tags",
+                column: "event_session_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_session_tags_tag_id",
+                table: "event_session_tags",
+                column: "tag_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_session_tags_tenant_session_tag",
+                table: "event_session_tags",
+                columns: new[] { "tenant_id", "event_session_id", "tag_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_estcpd_template_namespace_key",
+                table: "event_session_template_custom_property_definitions",
+                columns: new[] { "event_session_template_id", "namespace", "key" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_estcpd_tenant_search_filter",
+                table: "event_session_template_custom_property_definitions",
+                columns: new[] { "tenant_id", "is_searchable", "is_filterable" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_session_template_custom_property_definitions_default_",
+                table: "event_session_template_custom_property_definitions",
+                column: "default_option_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_estcpo_definition_namespace_key",
+                table: "event_session_template_custom_property_options",
+                columns: new[] { "event_session_template_custom_property_definition_id", "namespace", "key" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_estcpo_definition_sort",
+                table: "event_session_template_custom_property_options",
+                columns: new[] { "event_session_template_custom_property_definition_id", "sort_order" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_session_template_custom_property_options_parent_optio",
+                table: "event_session_template_custom_property_options",
+                column: "parent_option_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_est_template_key_version",
+                table: "event_session_templates",
+                columns: new[] { "event_template_id", "session_template_key", "version" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_est_tenant_published_active",
+                table: "event_session_templates",
+                columns: new[] { "tenant_id", "is_published", "is_active" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_sessions_event_day_id",
+                table: "event_sessions",
+                column: "event_day_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_event_sessions_event_id",
@@ -3556,9 +5157,24 @@ namespace Explore.Persistence.Migrations
                 column: "registration_mode_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_event_sessions_tenant_id",
+                name: "ix_event_sessions_room_id",
                 table: "event_sessions",
-                column: "tenant_id");
+                column: "room_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_sessions_tenant_day_sort",
+                table: "event_sessions",
+                columns: new[] { "tenant_id", "event_day_id", "sort_order" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_sessions_tenant_event_local_start",
+                table: "event_sessions",
+                columns: new[] { "tenant_id", "event_id", "local_start_date", "local_start_minute_of_day" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_event_sessions_tenant_room_time",
+                table: "event_sessions",
+                columns: new[] { "tenant_id", "room_id", "start_time", "end_time" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_event_tags_event_id",
@@ -3571,9 +5187,10 @@ namespace Explore.Persistence.Migrations
                 column: "tag_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_event_tags_tenant_id",
+                name: "ix_event_tags_tenant_event_tag",
                 table: "event_tags",
-                column: "tenant_id");
+                columns: new[] { "tenant_id", "event_id", "tag_id" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "ix_etcpd_template_namespace_key",
@@ -3693,6 +5310,11 @@ namespace Explore.Persistence.Migrations
                 column: "madhab_id");
 
             migrationBuilder.CreateIndex(
+                name: "ix_events_registration_policy_id",
+                table: "events",
+                column: "registration_policy_id");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_events_tenant_active_status",
                 table: "events",
                 columns: new[] { "tenant_id", "is_deleted", "event_status_id" });
@@ -3724,20 +5346,36 @@ namespace Explore.Persistence.Migrations
                 column: "visibility_type_id");
 
             migrationBuilder.CreateIndex(
+                name: "ix_external_api_key_quotas_external_api_key_id_period_start",
+                table: "external_api_key_quotas",
+                columns: new[] { "external_api_key_id", "period_start" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_external_api_keys_external_api_key_credit_period_id",
+                table: "external_api_keys",
+                column: "external_api_key_credit_period_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_external_api_keys_external_api_key_status_id",
+                table: "external_api_keys",
+                column: "external_api_key_status_id");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_external_api_keys_key_id",
                 table: "external_api_keys",
                 column: "key_id",
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "ix_external_api_keys_tenant_id_external_api_key_status_id",
+                table: "external_api_keys",
+                columns: new[] { "tenant_id", "external_api_key_status_id" });
+
+            migrationBuilder.CreateIndex(
                 name: "ix_external_api_keys_tenant_id_owner_type_owner_id",
                 table: "external_api_keys",
                 columns: new[] { "tenant_id", "owner_type", "owner_id" });
-
-            migrationBuilder.CreateIndex(
-                name: "ix_external_api_keys_tenant_id_status",
-                table: "external_api_keys",
-                columns: new[] { "tenant_id", "status" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_group_members_group_position_id",
@@ -3802,11 +5440,38 @@ namespace Explore.Persistence.Migrations
                 columns: new[] { "tenant_id", "full_name" });
 
             migrationBuilder.CreateIndex(
+                name: "IX_IdempotencyRecords_ExpiresAt",
+                table: "idempotency_records",
+                column: "expires_at");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_IdempotencyRecords_Key_TenantId",
+                table: "idempotency_records",
+                columns: new[] { "key", "tenant_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "ix_instance_bootstrap_state_completed_unique",
                 table: "instance_bootstrap_states",
                 column: "is_completed",
                 unique: true,
                 filter: "\"is_completed\" = true");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_location_rooms_location_id",
+                table: "location_rooms",
+                column: "location_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_location_rooms_tenant_location_name",
+                table: "location_rooms",
+                columns: new[] { "tenant_id", "location_id", "name" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_location_rooms_tenant_location_sort",
+                table: "location_rooms",
+                columns: new[] { "tenant_id", "location_id", "sort_order" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_locations_tenant_city",
@@ -3833,6 +5498,11 @@ namespace Explore.Persistence.Migrations
                 name: "ix_notifications_notification_entity_type_id",
                 table: "notifications",
                 column: "notification_entity_type_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_notifications_notification_reason_id",
+                table: "notifications",
+                column: "notification_reason_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_notifications_notification_scope_id",
@@ -3871,6 +5541,12 @@ namespace Explore.Persistence.Migrations
                 columns: new[] { "tenant_id", "user_id", "created_at" },
                 descending: new[] { false, false, true },
                 filter: "is_read = false AND is_deleted = false");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_notifications_user_archived",
+                table: "notifications",
+                columns: new[] { "user_id", "is_archived", "created_at" },
+                descending: new[] { false, false, true });
 
             migrationBuilder.CreateIndex(
                 name: "ix_notifications_user_scope",
@@ -3966,6 +5642,21 @@ namespace Explore.Persistence.Migrations
                 columns: new[] { "tenant_id", "is_deleted", "approval_status_id" });
 
             migrationBuilder.CreateIndex(
+                name: "IX_OutboxMessages_Aggregate",
+                table: "outbox_messages",
+                columns: new[] { "aggregate_type", "aggregate_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_OutboxMessages_Dedup",
+                table: "outbox_messages",
+                columns: new[] { "aggregate_type", "aggregate_id", "event_type", "created_at" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_OutboxMessages_WorkerPoll",
+                table: "outbox_messages",
+                columns: new[] { "status", "next_retry_at", "created_at" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_PdsSyncOutbox_Did",
                 table: "pds_sync_outbox",
                 column: "did");
@@ -4024,6 +5715,12 @@ namespace Explore.Persistence.Migrations
                 columns: new[] { "status", "next_retry_at" });
 
             migrationBuilder.CreateIndex(
+                name: "ix_registration_scopes_master_code",
+                table: "registration_scopes",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "ix_rolepermissions_permission",
                 table: "role_permissions",
                 column: "permission_id");
@@ -4043,6 +5740,31 @@ namespace Explore.Persistence.Migrations
                 name: "ix_roles_scope",
                 table: "roles",
                 column: "scope");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_schedule_item_kinds_master_code",
+                table: "schedule_item_kinds",
+                column: "master_code",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_secret_bindings_scope_scope_id",
+                table: "secret_bindings",
+                columns: new[] { "scope", "scope_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_secret_bindings_setting_key_instance_unique",
+                table: "secret_bindings",
+                column: "setting_key",
+                unique: true,
+                filter: "scope_id IS NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_secret_bindings_setting_key_scope_id_tenant_unique",
+                table: "secret_bindings",
+                columns: new[] { "setting_key", "scope_id" },
+                unique: true,
+                filter: "scope_id IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "ix_storage_objects_actor_id",
@@ -4102,6 +5824,21 @@ namespace Explore.Persistence.Migrations
                 table: "tenant_capabilities",
                 columns: new[] { "tenant_id", "module_id" },
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_tenant_footer_link_groups_tenant_id",
+                table: "tenant_footer_link_groups",
+                column: "tenant_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_tenant_footer_link_groups_tenant_id_order",
+                table: "tenant_footer_link_groups",
+                columns: new[] { "tenant_id", "order" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_tenant_footer_links_footer_link_group_id_order",
+                table: "tenant_footer_links",
+                columns: new[] { "footer_link_group_id", "order" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_tenant_invitations_role_id",
@@ -4210,6 +5947,34 @@ namespace Explore.Persistence.Migrations
                 column: "tenant_status_id");
 
             migrationBuilder.CreateIndex(
+                name: "ix_ui_themes_is_default",
+                table: "ui_themes",
+                column: "is_default",
+                unique: true,
+                filter: "tenant_id IS NULL AND is_default = true");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ui_themes_tenant_id_is_default",
+                table: "ui_themes",
+                columns: new[] { "tenant_id", "is_default" },
+                unique: true,
+                filter: "tenant_id IS NOT NULL AND is_default = true");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ui_themes_tenant_id_theme_key",
+                table: "ui_themes",
+                columns: new[] { "tenant_id", "theme_key" },
+                unique: true,
+                filter: "tenant_id IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_ui_themes_theme_key",
+                table: "ui_themes",
+                column: "theme_key",
+                unique: true,
+                filter: "tenant_id IS NULL");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_user_authentication_tokens_tenant_id",
                 table: "user_authentication_tokens",
                 column: "tenant_id");
@@ -4279,6 +6044,14 @@ namespace Explore.Persistence.Migrations
                 onDelete: ReferentialAction.Cascade);
 
             migrationBuilder.AddForeignKey(
+                name: "fk_actors_storage_objects_background_image_id",
+                table: "actors",
+                column: "background_image_id",
+                principalTable: "storage_objects",
+                principalColumn: "id",
+                onDelete: ReferentialAction.SetNull);
+
+            migrationBuilder.AddForeignKey(
                 name: "fk_actors_storage_objects_banner_picture_id",
                 table: "actors",
                 column: "banner_picture_id",
@@ -4315,6 +6088,22 @@ namespace Explore.Persistence.Migrations
                 table: "event_custom_property_definitions",
                 column: "default_option_id",
                 principalTable: "event_custom_property_options",
+                principalColumn: "id",
+                onDelete: ReferentialAction.Restrict);
+
+            migrationBuilder.AddForeignKey(
+                name: "fk_event_session_custom_property_definitions_event_session_cus",
+                table: "event_session_custom_property_definitions",
+                column: "default_option_id",
+                principalTable: "event_session_custom_property_options",
+                principalColumn: "id",
+                onDelete: ReferentialAction.Restrict);
+
+            migrationBuilder.AddForeignKey(
+                name: "fk_event_session_template_custom_property_definitions_event_se",
+                table: "event_session_template_custom_property_definitions",
+                column: "default_option_id",
+                principalTable: "event_session_template_custom_property_options",
                 principalColumn: "id",
                 onDelete: ReferentialAction.Restrict);
 
@@ -4363,8 +6152,28 @@ namespace Explore.Persistence.Migrations
                 table: "event_custom_property_definitions");
 
             migrationBuilder.DropForeignKey(
+                name: "fk_event_days_tenants_tenant_id",
+                table: "event_days");
+
+            migrationBuilder.DropForeignKey(
                 name: "fk_event_series_tenants_tenant_id",
                 table: "event_series");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_session_custom_property_definitions_tenants_tenant_id",
+                table: "event_session_custom_property_definitions");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_session_template_custom_property_definitions_tenants_",
+                table: "event_session_template_custom_property_definitions");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_session_templates_tenants_tenant_id",
+                table: "event_session_templates");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_sessions_tenants_tenant_id",
+                table: "event_sessions");
 
             migrationBuilder.DropForeignKey(
                 name: "fk_event_template_custom_property_definitions_tenants_tenant_id",
@@ -4383,8 +6192,20 @@ namespace Explore.Persistence.Migrations
                 table: "events");
 
             migrationBuilder.DropForeignKey(
+                name: "fk_location_rooms_tenants_tenant_id",
+                table: "location_rooms");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_locations_tenants_tenant_id",
+                table: "locations");
+
+            migrationBuilder.DropForeignKey(
                 name: "fk_storage_objects_tenants_tenant_id",
                 table: "storage_objects");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_days_storage_objects_banner_image_id",
+                table: "event_days");
 
             migrationBuilder.DropForeignKey(
                 name: "fk_event_series_storage_objects_featured_image_id",
@@ -4403,16 +6224,52 @@ namespace Explore.Persistence.Migrations
                 table: "custom_property_definitions");
 
             migrationBuilder.DropForeignKey(
+                name: "fk_event_sessions_event_days_event_day_id",
+                table: "event_sessions");
+
+            migrationBuilder.DropForeignKey(
                 name: "fk_event_custom_property_definitions_events_event_id",
                 table: "event_custom_property_definitions");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_sessions_events_event_id",
+                table: "event_sessions");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_sessions_location_rooms_room_id",
+                table: "event_sessions");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_sessions_locations_location_id",
+                table: "event_sessions");
 
             migrationBuilder.DropForeignKey(
                 name: "fk_event_custom_property_definitions_event_custom_property_opt",
                 table: "event_custom_property_definitions");
 
             migrationBuilder.DropForeignKey(
+                name: "fk_event_session_templates_event_templates_event_template_id",
+                table: "event_session_templates");
+
+            migrationBuilder.DropForeignKey(
                 name: "fk_event_template_custom_property_definitions_event_templates_",
                 table: "event_template_custom_property_definitions");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_session_custom_property_definitions_event_sessions_ev",
+                table: "event_session_custom_property_definitions");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_session_custom_property_definitions_event_session_cus",
+                table: "event_session_custom_property_definitions");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_session_template_custom_property_definitions_event_se1",
+                table: "event_session_template_custom_property_definitions");
+
+            migrationBuilder.DropForeignKey(
+                name: "fk_event_session_template_custom_property_definitions_event_se",
+                table: "event_session_template_custom_property_definitions");
 
             migrationBuilder.DropForeignKey(
                 name: "fk_event_template_custom_property_definitions_event_template_c",
@@ -4440,7 +6297,19 @@ namespace Explore.Persistence.Migrations
                 name: "configuration_change_logs");
 
             migrationBuilder.DropTable(
+                name: "custom_property_projection_dirty_scope");
+
+            migrationBuilder.DropTable(
+                name: "custom_property_projection_status");
+
+            migrationBuilder.DropTable(
                 name: "custom_property_values");
+
+            migrationBuilder.DropTable(
+                name: "data_protection_keys");
+
+            migrationBuilder.DropTable(
+                name: "event_agenda_items");
 
             migrationBuilder.DropTable(
                 name: "event_categories");
@@ -4458,6 +6327,12 @@ namespace Explore.Persistence.Migrations
                 name: "event_session_agenda_items");
 
             migrationBuilder.DropTable(
+                name: "event_session_categories");
+
+            migrationBuilder.DropTable(
+                name: "event_session_custom_property_projections");
+
+            migrationBuilder.DropTable(
                 name: "event_session_islamic_aspects");
 
             migrationBuilder.DropTable(
@@ -4467,19 +6342,25 @@ namespace Explore.Persistence.Migrations
                 name: "event_session_speakers");
 
             migrationBuilder.DropTable(
+                name: "event_session_tags");
+
+            migrationBuilder.DropTable(
                 name: "event_tags");
 
             migrationBuilder.DropTable(
                 name: "event_tech_aspects");
 
             migrationBuilder.DropTable(
-                name: "external_api_keys");
+                name: "external_api_key_quotas");
 
             migrationBuilder.DropTable(
                 name: "group_members");
 
             migrationBuilder.DropTable(
                 name: "group_setting_overrides");
+
+            migrationBuilder.DropTable(
+                name: "idempotency_records");
 
             migrationBuilder.DropTable(
                 name: "indexed_dids");
@@ -4512,6 +6393,9 @@ namespace Explore.Persistence.Migrations
                 name: "organization_setting_overrides");
 
             migrationBuilder.DropTable(
+                name: "outbox_messages");
+
+            migrationBuilder.DropTable(
                 name: "owner_types");
 
             migrationBuilder.DropTable(
@@ -4527,6 +6411,9 @@ namespace Explore.Persistence.Migrations
                 name: "role_permissions");
 
             migrationBuilder.DropTable(
+                name: "secret_bindings");
+
+            migrationBuilder.DropTable(
                 name: "sync_states");
 
             migrationBuilder.DropTable(
@@ -4537,6 +6424,9 @@ namespace Explore.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "tenant_capabilities");
+
+            migrationBuilder.DropTable(
+                name: "tenant_footer_links");
 
             migrationBuilder.DropTable(
                 name: "tenant_invitations");
@@ -4563,6 +6453,9 @@ namespace Explore.Persistence.Migrations
                 name: "tenant_settings");
 
             migrationBuilder.DropTable(
+                name: "ui_themes");
+
+            migrationBuilder.DropTable(
                 name: "user_authentication_tokens");
 
             migrationBuilder.DropTable(
@@ -4578,7 +6471,7 @@ namespace Explore.Persistence.Migrations
                 name: "category_types");
 
             migrationBuilder.DropTable(
-                name: "categories");
+                name: "schedule_item_kinds");
 
             migrationBuilder.DropTable(
                 name: "event_contact_share_consents");
@@ -4590,13 +6483,25 @@ namespace Explore.Persistence.Migrations
                 name: "event_custom_property_values");
 
             migrationBuilder.DropTable(
+                name: "categories");
+
+            migrationBuilder.DropTable(
+                name: "event_session_custom_property_values");
+
+            migrationBuilder.DropTable(
                 name: "languages");
+
+            migrationBuilder.DropTable(
+                name: "external_api_keys");
 
             migrationBuilder.DropTable(
                 name: "group_positions");
 
             migrationBuilder.DropTable(
                 name: "notification_entity_types");
+
+            migrationBuilder.DropTable(
+                name: "notification_reasons");
 
             migrationBuilder.DropTable(
                 name: "notification_types");
@@ -4617,19 +6522,25 @@ namespace Explore.Persistence.Migrations
                 name: "module_definitions");
 
             migrationBuilder.DropTable(
+                name: "tenant_footer_link_groups");
+
+            migrationBuilder.DropTable(
                 name: "roles");
 
             migrationBuilder.DropTable(
                 name: "event_registrations");
 
             migrationBuilder.DropTable(
-                name: "event_sessions");
+                name: "external_api_key_credit_periods");
 
             migrationBuilder.DropTable(
-                name: "locations");
+                name: "external_api_key_statuses");
 
             migrationBuilder.DropTable(
-                name: "registration_modes");
+                name: "event_registration_intents");
+
+            migrationBuilder.DropTable(
+                name: "registration_scopes");
 
             migrationBuilder.DropTable(
                 name: "actors");
@@ -4671,6 +6582,9 @@ namespace Explore.Persistence.Migrations
                 name: "custom_property_definitions");
 
             migrationBuilder.DropTable(
+                name: "event_days");
+
+            migrationBuilder.DropTable(
                 name: "events");
 
             migrationBuilder.DropTable(
@@ -4686,6 +6600,9 @@ namespace Explore.Persistence.Migrations
                 name: "event_formats");
 
             migrationBuilder.DropTable(
+                name: "event_registration_policies");
+
+            migrationBuilder.DropTable(
                 name: "event_series");
 
             migrationBuilder.DropTable(
@@ -4698,6 +6615,12 @@ namespace Explore.Persistence.Migrations
                 name: "visibility_types");
 
             migrationBuilder.DropTable(
+                name: "location_rooms");
+
+            migrationBuilder.DropTable(
+                name: "locations");
+
+            migrationBuilder.DropTable(
                 name: "event_custom_property_options");
 
             migrationBuilder.DropTable(
@@ -4708,6 +6631,27 @@ namespace Explore.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "event_types");
+
+            migrationBuilder.DropTable(
+                name: "event_sessions");
+
+            migrationBuilder.DropTable(
+                name: "registration_modes");
+
+            migrationBuilder.DropTable(
+                name: "event_session_custom_property_options");
+
+            migrationBuilder.DropTable(
+                name: "event_session_custom_property_definitions");
+
+            migrationBuilder.DropTable(
+                name: "event_session_templates");
+
+            migrationBuilder.DropTable(
+                name: "event_session_template_custom_property_options");
+
+            migrationBuilder.DropTable(
+                name: "event_session_template_custom_property_definitions");
 
             migrationBuilder.DropTable(
                 name: "event_template_custom_property_options");
