@@ -1,12 +1,14 @@
 // ABOUTME: Core DbContext for the Explore platform with pooled creation and property-injected scoped services.
-// ABOUTME: Split into partial classes: QueryFilters, SaveChanges, DbSets.
+// ABOUTME: Split into partial classes: QueryFilters, SaveChanges, DbSets. Hosts the Data Protection key ring.
 
 using Explore.Application.Contracts.Infrastructure;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence;
 
-public partial class ExploreDbContext : DbContext
+public partial class ExploreDbContext : DbContext, IDataProtectionKeyContext
 {
     /// <summary>
     /// Tenant context for multi-tenant data isolation.
@@ -21,6 +23,13 @@ public partial class ExploreDbContext : DbContext
     /// When null (e.g., during migrations), audit fields use null values.
     /// </summary>
     public ICurrentUserService? CurrentUserService { get; set; }
+
+    /// <summary>
+    /// ASP.NET Core Data Protection key ring, persisted in the primary database.
+    /// Keys are used to Protect/Unprotect inline-encrypted secret bindings
+    /// and any other Data Protection purposes (anti-forgery, auth cookies).
+    /// </summary>
+    public DbSet<DataProtectionKey> DataProtectionKeys { get; set; } = null!;
 
     public ExploreDbContext(DbContextOptions<ExploreDbContext> options) : base(options)
     {

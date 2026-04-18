@@ -4,6 +4,7 @@
 using Explore.Domain;
 using Explore.Domain.Federation;
 using Explore.Domain.Modules;
+using Explore.Domain.Secrets;
 using Microsoft.EntityFrameworkCore;
 using StorageObject = Explore.Domain.StorageObject;
 
@@ -149,6 +150,7 @@ public partial class ExploreDbContext
     public DbSet<GroupSetting> GroupSettingOverrides { get; set; }
     public DbSet<UserPreference> UserPreferences { get; set; }
     public DbSet<AppSetting> AppSettings { get; set; }
+    public DbSet<SecretBinding> SecretBindings { get; set; }
     public DbSet<ConfigurationChangeLog> ConfigurationChangeLogs { get; set; }
     public DbSet<UiTheme> UiThemes { get; set; }
 

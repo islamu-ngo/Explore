@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Persistence.Caching;
+using Explore.Persistence.Extensions;
 using Explore.Persistence.Repositories;
 using Explore.Persistence.Services;
 using Microsoft.EntityFrameworkCore;
@@ -70,6 +71,11 @@ public static class PersistenceServicesRegistration
 
                 return context;
             });
+
+            // ASP.NET Core Data Protection keyring persisted in the same Postgres database.
+            // Used to Protect/Unprotect inline-encrypted SecretBinding ciphertexts (UI-leak defense).
+            // Shared across API + Blazor so ciphertexts written by one can be decrypted by the other.
+            services.AddExploreDataProtection();
         }
 
         // Unit of Work (wraps EF Core transactions)
@@ -207,6 +213,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IGroupSettingRepository, GroupSettingRepository>();
         services.AddScoped<IUserPreferenceRepository, UserPreferenceRepository>();
         services.AddScoped<IAppSettingRepository, AppSettingRepository>();
+        services.AddScoped<ISecretBindingRepository, SecretBindingRepository>();
         services.AddScoped<IUiThemeRepository, UiThemeRepository>();
 
         // Module Governance Repositories

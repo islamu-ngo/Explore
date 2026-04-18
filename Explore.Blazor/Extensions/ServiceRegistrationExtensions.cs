@@ -13,6 +13,7 @@ using Explore.Blazor.Client.Services;
 using Explore.Blazor.Services;
 using Explore.Infrastructure.Services;
 using Explore.Persistence;
+using Explore.Persistence.Extensions;
 using Explore.Persistence.Repositories;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components.Server.Circuits;
@@ -98,5 +99,7 @@ public static class ServiceRegistrationExtensions
         });
 
         services.AddScoped<ISystemSettingRepository, SystemSettingRepository>();
+
+        services.AddExploreDataProtection();
     }
 }
