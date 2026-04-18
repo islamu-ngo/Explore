@@ -3,6 +3,14 @@
   "description": "Resource attributes for group_member resources. Populated by ResourceDescriptors.GroupMember.",
   "type": "object",
   "properties": {
+    "tenantId": {
+      "type": "string",
+      "description": "Owning tenant identifier. Used by tenant_admin derived role."
+    },
+    "organizationId": {
+      "type": "string",
+      "description": "Owning organization identifier. Used by org_admin derived role."
+    },
     "groupId": {
       "type": "string",
       "description": "Parent group identifier."
@@ -12,5 +20,5 @@
       "description": "Member user identifier."
     }
   },
-  "required": ["groupId", "userId"]
+  "required": ["tenantId", "groupId", "userId"]
 }

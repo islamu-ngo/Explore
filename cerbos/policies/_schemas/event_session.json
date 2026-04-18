@@ -10,6 +10,10 @@
     "eventId": {
       "type": "string",
       "description": "Parent event identifier."
+    },
+    "organizationId": {
+      "type": "string",
+      "description": "Owning organization identifier. Used by org_admin derived role."
     }
   },
   "required": ["tenantId", "eventId"]

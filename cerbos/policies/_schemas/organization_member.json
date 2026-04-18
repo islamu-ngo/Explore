@@ -3,6 +3,10 @@
   "description": "Resource attributes for organization_member resources. Populated by ResourceDescriptors.OrganizationMember.",
   "type": "object",
   "properties": {
+    "tenantId": {
+      "type": "string",
+      "description": "Owning tenant identifier. Used by tenant_admin derived role."
+    },
     "organizationId": {
       "type": "string",
       "description": "Parent organization identifier. Used by org_admin derived role."
@@ -12,5 +16,5 @@
       "description": "Member user identifier."
     }
   },
-  "required": ["organizationId", "userId"]
+  "required": ["tenantId", "organizationId", "userId"]
 }

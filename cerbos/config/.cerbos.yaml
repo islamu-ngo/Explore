@@ -34,12 +34,14 @@ storage:
   driver: "overlay"
   
   overlay:
-    # Primary driver: PostgreSQL (for Admin API pushed policies)
-    primaryDriver: "postgres"
+    # Base driver: PostgreSQL (for Admin API pushed policies)
+    baseDriver: "postgres"
     # Fallback driver: Disk (for base policies)
     fallbackDriver: "disk"
     # Number of errors before falling back to disk
     fallbackErrorThreshold: 5
+    # Rolling window in which errors are aggregated
+    fallbackErrorWindow: 5s
   
   disk:
     # Base policies directory (mounted from ./cerbos/policies)

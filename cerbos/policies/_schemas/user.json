@@ -3,10 +3,14 @@
   "description": "Resource attributes for user resources. Populated by ResourceDescriptors.User.",
   "type": "object",
   "properties": {
+    "tenantId": {
+      "type": "string",
+      "description": "Owning tenant identifier. Used by tenant_admin derived role."
+    },
     "actorId": {
       "type": "string",
       "description": "Associated actor identifier."
     }
   },
-  "required": ["actorId"]
+  "required": ["tenantId", "actorId"]
 }

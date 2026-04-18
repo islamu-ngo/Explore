@@ -6,6 +6,10 @@
     "tenantId": {
       "type": "string",
       "description": "Owning tenant identifier. Used by tenant_admin derived role when present."
+    },
+    "organizationId": {
+      "type": "string",
+      "description": "Associated organization identifier. Used by org_admin derived role when present."
     }
   }
 }
