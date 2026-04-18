@@ -74,7 +74,7 @@ Provider selection:
 
 Failure behavior:
 
-- Instance Cerbos failure falls back to local RBAC provider.
+- Instance Cerbos failure denies all authorized requests (fail-closed). The operator explicitly chose Cerbos; falling back to a potentially more permissive local RBAC would silently bypass intended policies.
 - BYO Cerbos:
   - `failure_mode=closed` -> fallback `SafeMode` (deny all except instance admin path).
   - `failure_mode=open` -> standard local RBAC fallback.

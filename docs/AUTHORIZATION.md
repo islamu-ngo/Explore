@@ -103,9 +103,9 @@ The `RuntimeAuthorizationProvider` selects the authorization engine for a given 
 
 ### 4.4. Failure Modes
 
-The system is designed to fail safely.
+The system is designed to fail safely — deny by default when the configured provider is unavailable.
 
--   **Instance Cerbos Failure**: If the connection to the instance-level Cerbos PDP fails (e.g., network error, timeout), the `RuntimeAuthorizationProvider` logs the error and automatically uses the `FallbackAuthorizationService` for that request.
+-   **Instance Cerbos Failure**: If the connection to the instance-level Cerbos PDP fails (e.g., network error, timeout), all authorization checks are denied. The operator explicitly chose Cerbos; falling back to a potentially more permissive local RBAC would silently bypass intended policies. Restore Cerbos connectivity or switch the `authorization.provider` setting to resolve.
 -   **BYO Cerbos Failure**:
     -   If the tenant's BYO configuration has `failure_mode=closed`, the fallback provider runs in `SafeMode`, denying all requests except for those from an instance administrator.
     -   If `failure_mode=open`, the fallback provider runs its standard RBAC logic.

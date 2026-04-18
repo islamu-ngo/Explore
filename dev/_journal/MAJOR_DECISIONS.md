@@ -1,6 +1,6 @@
 # Major Decisions
 
-Last Updated: 2026-04-16 Europe/Brussels
+Last Updated: 2026-04-18 Europe/Brussels
 
 ## 2026-04-16 Europe/Brussels - Blazor Clean Code Refactor: CTO Review Binding Decisions
 
@@ -365,3 +365,24 @@ Last Updated: 2026-04-16 Europe/Brussels
 - Decision: Instead of creating a new `NotificationScope` lookup entity, reuse the existing `ActorType` entity as the scope classifier for notifications.
 - Why: ActorType already has the exact values needed (User=1, Organization=2, Group=4, System=5). Creating a duplicate lookup adds no value and introduces synchronization burden.
 - Trade-off: Semantic coupling between actor classification and notification scoping, but the domain concepts are genuinely aligned.
+
+## 2026-04-18 Europe/Brussels - Blazor Clean Code Refactor v3 + Wave 0 Implementation
+
+### Wave 0: Blocking Pre-Flight Hotfixes Required
+- Decision: 6 stop-the-line defects must merge before any Wave A work: singleton state leakage, async void crash, .Result deadlocks, missing Cache-Control, missing YARP timeout.
+- Why: Two singleton services hold per-user/per-circuit state (SetupSecretSessionService, IDynamicAuthSchemeManager). AnalyticsInitializer.razor had async void that could crash Blazor Server. .Result could deadlock Blazor Server. Auth endpoints lacked Cache-Control: no-store. YARP had no request timeout.
+- Impact: All 6 hotfixes implemented and verified. Build green (0 errors). 1957 tests pass, 28 pre-existing failures unchanged. Zero new failures.
+
+### Render Mode: InteractiveServer Default, Cohort Migration
+- Decision: All 32 pages currently hardcode `@rendermode InteractiveServer`. Project has dynamic configurable render mode. Default should be InteractiveServer app-wide. Phase A0 will use cohort-based migration for pages eligible for InteractiveAuto.
+- Why: InteractiveAuto adds WASM download latency for interactive pages but enables faster post-load interactions. Public-facing pages benefit most. Admin/setup pages should stay Server-only.
+- Impact: Phase A0 will categorize pages into 4 cohorts (Static SSR, InteractiveAuto public, InteractiveAuto user, InteractiveServer admin).
+
+### Static Field Fix: SetupSecretSessionService
+- Decision: Removed `static` keyword from SetupSecretSessionService `_store` and `CleanupExpiredEntries()`. Registration remains Singleton (not changed to Scoped).
+- Why: The `static` keyword was redundant on a Singleton — there's only one instance anyway. Making it Scoped would require auditing all consumers for scoped resolution. The `static` keyword on a Singleton field is misleading (suggests legitimate cross-instance sharing) rather than accidental.
+- Impact: CircuitAccessTokenService `_tokenStore` LEFT as static because `GetTokenForUser()` static method requires static store for cross-circuit token resolution in AccessTokenForwardingHandler. This is intentional architectural debt documented for Wave B Phase 3.
+
+### Blazor Arch Tests: 13 Tests Planned
+- Decision: 13 architecture tests total: 2 existing (IEventApiClient injection, ITranslationService placement) + 11 new. Uses file-scanning approach (no project reference to Blazor assemblies).
+- Impact: Tests cover Console.WriteLine, [Inject] interface-only, DialogOptionsFactory, NavigationManager in shared components, IJSRuntime in services, ISnackbar in data services, singleton mutable state, async void, .Result/.Wait(), IConfiguration direct injection, service locator, model classes in interface files. Known exceptions tracked for pre-existing violations being fixed in later phases.

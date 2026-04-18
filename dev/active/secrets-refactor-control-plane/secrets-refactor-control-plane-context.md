@@ -3,21 +3,103 @@ ABOUTME: Links to every file being introduced, replaced, or deleted so any sessi
 
 # Secrets Refactor - Context
 
-Last Updated: 2026-04-18
+Last Updated: 2026-04-18 (session handoff mid-Phase 3)
 
 ## SESSION PROGRESS
 
 ### ✅ COMPLETED
-- Research: 5 parallel agents mapped current state (see (b1), (b2)) - `Explore.Secrets` internals, all consumers (SETUP_SECRET, S3, Keycloak, Postgres, SMTP, Analytics, AI-not-implemented), onboarding flow, Infisical SDK best practices, Data Protection / Npgsql patterns.
-- Oracle architecture review (see (b3)) - verdict: ship direction with four adjustments: (a) split bootstrap from runtime, (b) introduce `SecretDefinitionRegistry`, (c) normalized metadata columns not polymorphic JSON, (d) drop `Module` scope and `Inherited` source type from v1.
+- Research: 5 parallel agents mapped current state - `Explore.Secrets` internals, all consumers, onboarding flow, Infisical SDK best practices, Data Protection / Npgsql patterns.
+- Oracle architecture review - verdict: ship direction with four adjustments: (a) split bootstrap from runtime, (b) introduce `SecretDefinitionRegistry`, (c) normalized metadata columns not polymorphic JSON, (d) drop `Module` scope and `Inherited` source type from v1.
 - Plan file authored: `secrets-refactor-control-plane-plan.md`.
 - Tasks file authored: `secrets-refactor-control-plane-tasks.md`.
+- **Phase 1 — COMMITTED as `38ce8098`** on branch `develop`: SecretBinding + SecretDefinitionRegistry foundations (24 files changed, 16,650 insertions, 2 deletions).
+  - All 8 sub-tasks (1.1–1.8) complete: enums, entity, registry, EF config, repository, Data Protection keyring, unit tests, architecture scope gate test.
+  - 1,305 tests green across 4 projects.
+- **Phase 2 — COMMITTED as `fc0b2b5a`** on branch `develop`: Discrete Postgres bootstrap via NpgsqlConnectionStringBuilder (12 files changed, 831 insertions, 157 deletions).
+  - All 6 sub-tasks (2.1–2.6) complete: BootstrapSecretLoader, NpgsqlConnectionStringBuilder composition, PersistenceServicesRegistration + Blazor DI refactor, POSTGRESQL_PUBLIC_URL removal from config mappings, docker-compose + AppHost discrete env vars, BootstrapSecretLoaderTests (11 tests).
+  - 1,305 tests green, 0 regressions.
 
-### 🟡 IN PROGRESS
-- Awaiting user approval of the plan before any code edits.
+### 🟡 IN PROGRESS — Phase 3 (mid-flight, context exhausted — session handed off)
+
+**Phase 3 runtime pipeline (sub-tasks 3.1–3.6) — COMPLETE but UNCOMMITTED.** 14 files created, 1 modified. Build verified clean (0 errors on `Explore.Secrets` project).
+
+Files written and sitting on disk (NOT in any commit yet):
+
+**Domain layer (1 new file):**
+- `Explore.Domain/Secrets/Events/SecretBindingUpdatedEvent.cs` — sealed record `(Guid BindingId, string SettingKey, SecretScope Scope, Guid? ScopeId, SecretSourceType SourceType, SecretBindingChangeKind ChangeKind, DateTimeOffset OccurredAt)` + `SecretBindingChangeKind` enum `{ Created=0, Updated=1, Deleted=2, SourceSwitched=3, Validated=4 }`. Zero external deps.
+
+**Application layer (4 new files, all under `Explore.Application/Contracts/Secrets/`):**
+- `ResolvedSecret.cs` — sealed record `(string SettingKey, string Value, SecretSourceType Source, SecretScope Scope, Guid? ScopeId, DateTimeOffset ResolvedAt)`.
+- `ISecretResolver.cs` — `Task<ResolvedSecret?> ResolveAsync(string settingKey, Guid? tenantId, CancellationToken ct)` + `Task InvalidateAsync(string settingKey, SecretScope scope, Guid? scopeId, CancellationToken ct)`.
+- `ISecretSource.cs` — `SecretSourceType SourceType { get; }` + `Task<string?> GetSecretAsync(SecretBinding binding, CancellationToken ct)` + `Task<SecretValidationResult> ValidateAsync(SecretBinding binding, CancellationToken ct)`.
+- `IInfisicalClientFactory.cs` — `Task<IInfisicalClient?> GetClientAsync(CancellationToken ct)` returning a factory-agnostic `IInfisicalClient` with `Task<string?> GetSecretAsync(string env, string folderPath, string secretName, CancellationToken ct)`.
+
+**Secrets infrastructure (9 new files + 1 modified):**
+- `Explore.Secrets/Sources/EnvironmentSecretSource.cs` — sealed `: ISecretSource`, `SourceType = EnvironmentVariable`. Uses `Environment.GetEnvironmentVariable(binding.EnvironmentVariableName)`.
+- `Explore.Secrets/Sources/InlineSecretSource.cs` — sealed `: ISecretSource`, `SourceType = InlineEncrypted`. Uses `IDataProtectionProvider.CreateProtector(ProtectorPurpose)`. `public static readonly string[] ProtectorPurpose = ["Event.Secrets", "Binding", "v1"]`. Static `Protect(IDataProtectionProvider provider, string plaintext)` helper for handlers. `ValidateAsync` decrypts + checks non-empty.
+- `Explore.Secrets/Sources/InfisicalSecretSource.cs` — sealed `: ISecretSource`, `SourceType = Infisical`. Uses `IInfisicalClientFactory`. **Never throws** on source errors (returns null). Rethrows `OperationCanceledException`.
+- `Explore.Secrets/Infrastructure/InfisicalClientFactory.cs` — sealed `: IInfisicalClientFactory, IAsyncDisposable`. Thread-safe lazy init with `SemaphoreSlim`. Returns null when unconfigured (missing `ClientId`/`ClientSecret`/`ProjectId`). On auth failure: logs error, resets state, returns null. Inner `InfisicalClientFacade` adapts `IInfisicalClient` to the SDK's `ListAsync` + `SecretKey` filter pattern (SDK has no direct single-secret Get). Defensive disposal: `if (_client is IAsyncDisposable a) await a.DisposeAsync(); else if (_client is IDisposable d) d.Dispose();`.
+- `Explore.Secrets/Observability/SecretResolverMetrics.cs` — OTel `Meter("Event.Secrets")` + counters (`resolve.success`, `resolve.miss`, `resolve.error`, `cache.hit`, `cache.miss`) + histogram (`resolve.duration_ms`). Tags: `source`, `has_tenant`. **Never includes secret values as tags.**
+- `Explore.Secrets/Services/SecretResolver.cs` — **core no-fallback dispatcher**. Injects `ISecretBindingRepository`, `FrozenDictionary<SecretSourceType, ISecretSource>`, `IMemoryCache` (5-min TTL), `SecretResolverMetrics`. Algorithm: (1) resolve binding in Tenant→Instance hierarchy, (2) dispatch to exactly ONE source by `binding.SourceType` — NO FALLBACK, (3) cache resolved value. Cache key: `secret::{settingKey}::{scope}::{scopeId:N}` or `secret::{settingKey}::Instance::-`.
+- `Explore.Secrets/Services/AuditingSecretResolverDecorator.cs` — wraps `ISecretResolver`. Samples successful reads (every 100th via atomic counter). **NEVER logs secret values** — only key + source + scope + outcome. Always logs misses and invalidations.
+- `Explore.Secrets/HealthChecks/SecretResolverHealthCheck.cs` — `IHealthCheck`. Returns `HealthCheckResult.Degraded` (NOT Unhealthy) on failure — platform designed to run without external secret sources.
+- `Explore.Secrets/Extensions/SecretResolutionServiceCollectionExtensions.cs` — `AddSecretResolution(IConfiguration config)` composition root:
+  - `Configure<InfisicalOptions>` from `SecretProvider:Infisical` section
+  - `AddSingleton<IInfisicalClientFactory, InfisicalClientFactory>`
+  - `AddSingleton<ISecretSource, EnvironmentSecretSource>()`, same for Inline + Infisical (enumerable singletons)
+  - `AddScoped<SecretResolver>()` (the concrete)
+  - `AddScoped<ISecretResolver>(sp => new AuditingSecretResolverDecorator(sp.GetRequiredService<SecretResolver>(), ...))` — public-facing interface
+  - `AddSingleton<SecretResolverMetrics>()`
+  - `AddMemoryCache()`
+  - `AddHealthChecks().AddCheck<SecretResolverHealthCheck>("secret-resolver", failureStatus: HealthStatus.Degraded, tags: ["secrets", "infrastructure"])`
+- `Explore.Secrets/Explore.Secrets.csproj` — **MODIFIED**: dropped `net9.0` TFM (now `<TargetFramework>net10.0</TargetFramework>`), added `<ProjectReference Include="..\Explore.Application\Explore.Application.csproj" />`.
+
+**Build verification done:** `dotnet build Explore.Secrets/Explore.Secrets.csproj --configuration Release` → 0 errors, 66 warnings (all pre-existing + 3 new CA1873 on log-template arg evaluation matching existing codebase style). LSP false positives on a few files (Blazor Components/App, Persistence IDataProtectionKeyContext, Secrets 'Application not found') verified as compiler-clean via `dotnet build`.
+
+**Phase 3 admin surface (sub-tasks 3.7–3.21) — NOT STARTED.**
+
+### 📋 NEXT SESSION ENTRY POINT — PICK UP HERE
+
+**Read in this order:**
+1. This file (you are here).
+2. `dev/active/secrets-refactor-control-plane/phase-3-implementation-plan.md` — full 909-line execution blueprint.
+3. `dev/active/secrets-refactor-control-plane/secrets-refactor-control-plane-tasks.md` — checkbox list.
+4. Verify the 14 uncommitted Phase 3 runtime files still exist via `git status`.
+
+**Remaining work (in order):**
+- **3.7** DTOs + Validators → `Explore.Application/DTOs/SecretBindings/` (SecretBindingDto, SecretBindingListDto, CreateSecretBindingDto, UpdateSecretBindingDto, ValidateSecretBindingDto + FluentValidation rules enforcing `SecretDefinitionRegistry` constraints).
+- **3.8** AutoMapper profile → `Explore.Application/Profiles/SecretBindingMappingProfile.cs` (SecretBinding → Dto/ListDto, look up `SecretKeyName` from registry via AfterMap).
+- **3.9** CQRS Commands (Create/Update/Delete/Validate) — `IRequest<BaseCommandResponse<Guid>>, ISecureRequest` + `[AuthorizeResource("secret_binding", AuthorizationActions.X)]`. **IMPORTANT**: Repository base class `Create/Update/Delete` call `SaveChangesAsync` internally — no separate `IUnitOfWork`. Handlers publish `SecretBindingChangedNotification` (Application-layer `INotification` wrapper around Domain event — keeps Domain pure).
+- **3.10** CQRS Queries — `GetSecretBindingListRequest` (paginated, HybridCache 30s), `GetSecretBindingDetailsRequest`, `GetAvailableSecretsForOnboardingRequest` (enumerates `SecretDefinitionRegistry.GetAll()`).
+- **3.11** Notification handlers — `Explore.Application/Features/SecretBindings/Handlers/Notifications/InvalidateSecretCacheOnUpdatedHandler.cs` + `Explore.Application/Notifications/Secrets/SecretBindingChangedNotification.cs` wrapper.
+- **3.12** `ResourceDescriptors.cs` + `ResourceKinds.cs` — add `SecretBinding = "secret_binding"`.
+- **3.13** `Explore.API/Hateoas/RouteNames.cs` — add `#region Secret Binding Routes` (~7 constants).
+- **3.14** `Explore.API/Controllers/SecretBindingsController.cs` — all `[Authorize]` (admin-only, Cerbos enforces). 6 endpoints.
+- **3.15** HATEOAS — `Explore.API/Hateoas/Policies/SecretBindingLinkPolicy.cs` (detail + collection) + `Assemblers/SecretBindingResourceAssembler.cs`.
+- **3.16** Cerbos policy `cerbos/policies/secret_binding.yaml` (check `cerbos/schemas/` folder first to decide if per-resource JSON schema needed).
+- **3.17** DI wiring — add `AddSecretResolution(configuration)` to `Explore.API/Program.cs` and `Explore.Blazor/Extensions/ServiceRegistrationExtensions.cs`. Also register HATEOAS link policies + assembler.
+- **3.18** Tests (~40–50 new) — no-fallback dispatch, no-value-leak (regex on decorator logs), architecture tests (Domain.Secrets has no Infisical/DataProtection refs), unit + integration.
+- **3.19** Full verification — build + 4 test projects (target ≥1,345 tests green, baseline was 1,305).
+- **3.20** Commit — `git add` only Phase 3 files. Message: `refactor(secrets): phase 3 introduce ISecretResolver + admin bindings API`. Single commit for entire phase.
+- **3.21** Update dev-docs (this file + tasks file + journal entry if notable decisions).
+
+**Key entity reality check** (from committed Phase 1 code — verify before writing DTOs):
+- `SecretBinding` primary key: `string SettingKey` (NOT `int SecretKeyId` as the plan mentions in places — the plan was written before entity finalized).
+- `SecretScope` enum: `Instance = 0, Tenant = 1` (serialized as ints).
+- `SecretSourceType` enum: `Infisical = 0, InlineEncrypted = 1, EnvironmentVariable = 2`.
+- Factory methods on entity: `CreateInfisical/CreateInlineEncrypted/CreateEnvironmentVariable`, `SwitchToInfisical/SwitchToInlineEncrypted/SwitchToEnvironmentVariable`, `RecordValidation`.
+- Entity is `IAuditableEntity` (NOT `ISoftDeletable`) → `Delete` hard-deletes.
+- Registry is `SecretDefinitionRegistry` with `FrozenDictionary` of known keys + `AllowedScopes`/`AllowedSources`/`IsBootstrap` flags.
+
+**Verbatim user directives still in force:**
+- "do not delegate to subagent, just do it all yourself" (m0007 of earlier session)
+- "do not care about backward compatibility at all we are in development mode"
+- "No stops - push through the entire phase" → single Phase 3 commit at end
+- "Follow the repo's conventions and all the industrie best practises, all the design patterns and principles, clean architecture, entreprise grade quality, highly maintainable codebase"
+- One commit per phase, NO push.
 
 ### ⚠️ BLOCKERS
-- **None** once user signs off on the plan. Per CLAUDE.md rule: "Never assume an exception. Get explicit permission before breaking or bending any rule" and the user's original `go refactor` directive means proceed with implementation after plan acceptance.
+- **None** — clean handoff. Runtime files are on disk, ready for admin surface to be layered on top before a single Phase 3 commit.
 
 ## Quick Resume
 
@@ -118,12 +200,19 @@ Last Updated: 2026-04-18
 - `Explore.API/Controllers/InstanceOnboardingController.cs` - remove the `/auth-provider-configuration/internal` endpoint.
 - `Explore.Blazor.Client/Pages/Onboarding/AuthProviderConfiguration.razor` + `.razor.cs` - consume `GetAvailableSecretsForOnboardingQuery` for auto-detection chips per provider.
 
-### Bootstrap refactored in Phase 2
-- `Explore.Persistence/PersistenceServicesRegistration.cs` - read discrete Postgres fields via `BootstrapSecretLoader`, compose via `NpgsqlConnectionStringBuilder`.
-- `Explore.API/Program.cs` - swap `AddInfisicalCompatibility` for `AddBootstrapSecretLoader`; drop compat mapping call.
-- `Explore.Blazor/Program.cs` - same.
-- `Explore.AppHost/AppHost.cs` - pass discrete Postgres env vars to services (not URL form).
-- `docker-compose.yml` - discrete `POSTGRESQL_*` env vars; drop `POSTGRESQL_PUBLIC_URL`; rename Infisical S3/Keycloak names to user's layout.
+### Bootstrap refactored in Phase 2 — COMMITTED as `fc0b2b5a`
+- `Explore.Secrets/Bootstrap/BootstrapPostgresCredentials.cs` - sealed record (ConnectionString, Source, LoadedAt).
+- `Explore.Secrets/Bootstrap/BootstrapSecretLoader.cs` - static LoadPostgresConnectionString (Infisical→env→config), TryLoadInfisicalPostgresFolder, NpgsqlConnectionStringBuilder composition (SslMode=Prefer, TrustServerCertificate=true), DefaultPort=5432.
+- `Explore.Secrets.UnitTests/Bootstrap/BootstrapSecretLoaderTests.cs` - 11 tests (config resolution, env resolution, missing-field errors, port defaults, mixed-source labels).
+- `Explore.Persistence/PersistenceServicesRegistration.cs` - replaced hardcoded ConnectionStrings:DefaultConnection with BootstrapSecretLoader short-circuit.
+- `Explore.Blazor/Extensions/ServiceRegistrationExtensions.cs` - same BootstrapSecretLoader short-circuit.
+- `Explore.Persistence/ExploreDbContextFactory.cs` - fully rewritten: removed AddInfisical/POSTGRESQL_PUBLIC_URL, now uses BootstrapSecretLoader with proper error messages.
+- `Explore.API/Extensions/ConfigurationExtensions.cs` - removed POSTGRESQL_PUBLIC_URL mapping + rawDbUrl variable, added architectural-invariant comment.
+- `Explore.Blazor/Extensions/ConfigurationExtension.cs` - same removal + invariant comment.
+- `Event.MigrationService/Extensions/ConfigurationExtensions.cs` - entirely rewritten: removed AddInfisicalMigrationCompatibility, added AddDiscretePostgresBootstrap using BootstrapSecretLoader.
+- `Event.MigrationService/Program.cs` - changed AddInfisicalMigrationCompatibility() → AddDiscretePostgresBootstrap().
+- `Explore.AppHost/AppHost.cs` - updated ABOUTME comment + Console.WriteLine banner.
+- `docker-compose.yml` - added x-postgres-bootstrap-env anchor with discrete POSTGRESQL_HOST/PORT/DATABASE/USERNAME/PASSWORD, canonicalized x-secrets-env to SecretProvider__Infisical__* format, removed pre-built ConnectionStrings__DefaultConnection from api+blazor services.
 
 ## Key Files - Deleted (PR 6)
 
