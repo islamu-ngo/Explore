@@ -134,6 +134,7 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
     public virtual async Task<HalCollectionResource<TListDto>> ToCollectionResource(
         IEnumerable<TListDto> items,
         string routeName,
+        object? additionalRouteValues,
         HttpContext httpContext)
     {
         var itemsList = items.ToList();
@@ -162,7 +163,7 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
         var links = new Dictionary<string, HalLink>();
 
         // Self link for the collection
-        var selfPath = _linkGenerator.GeneratePath(routeName, null, httpContext);
+        var selfPath = _linkGenerator.GeneratePath(routeName, additionalRouteValues, httpContext);
         if (selfPath is not null)
         {
             links[LinkRelations.Self] = HalLink.Create(selfPath);
@@ -184,6 +185,14 @@ public abstract class ResourceAssemblerBase<TDto, TListDto> : IResourceAssembler
             Links = links,
             Embedded = new HalCollectionEmbedded<TListDto> { Items = halItems }
         };
+    }
+
+    public virtual Task<HalCollectionResource<TListDto>> ToCollectionResource(
+        IEnumerable<TListDto> items,
+        string routeName,
+        HttpContext httpContext)
+    {
+        return ToCollectionResource(items, routeName, null, httpContext);
     }
 
     /// <summary>

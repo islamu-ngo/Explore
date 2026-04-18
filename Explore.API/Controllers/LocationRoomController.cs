@@ -57,6 +57,7 @@ public class LocationRoomController : ControllerBase
         var halResource = await _resourceAssembler.ToCollectionResource(
             rooms,
             RouteNames.GetLocationRoomsByLocation,
+            new { locationId },
             HttpContext);
 
         return Ok(halResource);

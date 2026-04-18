@@ -50,6 +50,20 @@ public interface IResourceAssembler<TDto, TListDto>
     /// </summary>
     /// <param name="items">The list of DTOs.</param>
     /// <param name="routeName">The route name for the collection.</param>
+    /// <param name="additionalRouteValues">Additional route values needed to generate the collection self link.</param>
+    /// <param name="httpContext">The current HTTP context.</param>
+    /// <returns>A HAL collection resource with embedded items.</returns>
+    Task<HalCollectionResource<TListDto>> ToCollectionResource(
+        IEnumerable<TListDto> items,
+        string routeName,
+        object? additionalRouteValues,
+        HttpContext httpContext);
+
+    /// <summary>
+    /// Converts a list of DTOs to a HAL collection resource without pagination.
+    /// </summary>
+    /// <param name="items">The list of DTOs.</param>
+    /// <param name="routeName">The route name for the collection.</param>
     /// <param name="httpContext">The current HTTP context.</param>
     /// <returns>A HAL collection resource with embedded items.</returns>
     Task<HalCollectionResource<TListDto>> ToCollectionResource(

@@ -34,7 +34,7 @@ public class CustomPropertyGovernanceController : ControllerBase
     /// Get governance report listing all active Layer 3 definitions with promotion recommendations.
     /// </summary>
     [HttpGet("governance-report", Name = RouteNames.GetCustomPropertyGovernanceReport)]
-    [EnableRateLimiting("authenticated")]
+    [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
     [RequestTimeout(RequestTimeoutExtensions.LookupPolicy)]
     [ProducesResponseType(typeof(PaginatedResult<CustomPropertyGovernanceRowDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<PaginatedResult<CustomPropertyGovernanceRowDto>>> GetGovernanceReport(

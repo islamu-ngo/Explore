@@ -39,7 +39,7 @@ public class CustomPropertyProjectionAdminController : ControllerBase
     /// Get projection status for a tenant's event custom-property projections.
     /// </summary>
     [HttpGet("status", Name = RouteNames.GetCustomPropertyProjectionStatus)]
-    [EnableRateLimiting("authenticated")]
+    [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
     [RequestTimeout(RequestTimeoutExtensions.LookupPolicy)]
     [ProducesResponseType(typeof(BaseCommandResponse<IReadOnlyList<ProjectionStatusDto>>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -58,7 +58,7 @@ public class CustomPropertyProjectionAdminController : ControllerBase
     /// Rebuild event custom-property projections for a tenant.
     /// </summary>
     [HttpPost("rebuild", Name = RouteNames.RebuildCustomPropertyProjection)]
-    [EnableRateLimiting("write")]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [RequestTimeout(RequestTimeoutExtensions.ComplexPolicy)]
     [ProducesResponseType(typeof(BaseCommandResponse<RebuildProjectionResponseDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -77,7 +77,7 @@ public class CustomPropertyProjectionAdminController : ControllerBase
     /// Rebuild projection rows for a single event.
     /// </summary>
     [HttpPost("rebuild-single-event", Name = RouteNames.RebuildSingleEventCustomPropertyProjection)]
-    [EnableRateLimiting("write")]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [RequestTimeout(RequestTimeoutExtensions.ComplexPolicy)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -96,7 +96,7 @@ public class CustomPropertyProjectionAdminController : ControllerBase
     /// Drain pending dirty scopes for a projection without triggering a full rebuild.
     /// </summary>
     [HttpPost("drain-dirty-scopes", Name = RouteNames.DrainCustomPropertyProjectionDirtyScopes)]
-    [EnableRateLimiting("write")]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [RequestTimeout(RequestTimeoutExtensions.ComplexPolicy)]
     [ProducesResponseType(typeof(BaseCommandResponse<DrainDirtyScopesResponseDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -115,7 +115,7 @@ public class CustomPropertyProjectionAdminController : ControllerBase
     /// Get pending dirty-scope backlog rows for operator inspection.
     /// </summary>
     [HttpGet("dirty-scopes", Name = RouteNames.GetCustomPropertyProjectionDirtyScopes)]
-    [EnableRateLimiting("authenticated")]
+    [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
     [RequestTimeout(RequestTimeoutExtensions.LookupPolicy)]
     [ProducesResponseType(typeof(PaginatedResult<ProjectionDirtyScopeDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<PaginatedResult<ProjectionDirtyScopeDto>>> GetDirtyScopes(
@@ -142,7 +142,7 @@ public class CustomPropertyProjectionAdminController : ControllerBase
     /// Get projection rows for a specific event.
     /// </summary>
     [HttpGet("events/{eventId:guid}", Name = RouteNames.GetCustomPropertyProjectionsForEvent)]
-    [EnableRateLimiting("authenticated")]
+    [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
     [RequestTimeout(RequestTimeoutExtensions.LookupPolicy)]
     [ProducesResponseType(typeof(BaseCommandResponse<IReadOnlyList<EventCustomPropertyProjectionDto>>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -168,7 +168,7 @@ public class CustomPropertyProjectionAdminController : ControllerBase
     /// Get session projection status for a tenant.
     /// </summary>
     [HttpGet("sessions/status", Name = RouteNames.GetSessionCustomPropertyProjectionStatus)]
-    [EnableRateLimiting("authenticated")]
+    [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
     [RequestTimeout(RequestTimeoutExtensions.LookupPolicy)]
     [ProducesResponseType(typeof(BaseCommandResponse<IReadOnlyList<ProjectionStatusDto>>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -187,7 +187,7 @@ public class CustomPropertyProjectionAdminController : ControllerBase
     /// Rebuild event session custom-property projections for a tenant.
     /// </summary>
     [HttpPost("sessions/rebuild", Name = RouteNames.RebuildSessionCustomPropertyProjection)]
-    [EnableRateLimiting("write")]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [RequestTimeout(RequestTimeoutExtensions.ComplexPolicy)]
     [ProducesResponseType(typeof(BaseCommandResponse<RebuildProjectionResponseDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -206,7 +206,7 @@ public class CustomPropertyProjectionAdminController : ControllerBase
     /// Rebuild projection rows for a single event session.
     /// </summary>
     [HttpPost("sessions/rebuild-single", Name = RouteNames.RebuildSingleSessionCustomPropertyProjection)]
-    [EnableRateLimiting("write")]
+    [EnableRateLimiting(RateLimitingExtensions.WritePolicy)]
     [RequestTimeout(RequestTimeoutExtensions.ComplexPolicy)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -225,7 +225,7 @@ public class CustomPropertyProjectionAdminController : ControllerBase
     /// Get projection rows for a specific event session.
     /// </summary>
     [HttpGet("sessions/{eventSessionId:guid}", Name = RouteNames.GetCustomPropertyProjectionsForSession)]
-    [EnableRateLimiting("authenticated")]
+    [EnableRateLimiting(RateLimitingExtensions.AuthenticatedPolicy)]
     [RequestTimeout(RequestTimeoutExtensions.LookupPolicy)]
     [ProducesResponseType(typeof(BaseCommandResponse<IReadOnlyList<EventSessionCustomPropertyProjectionDto>>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

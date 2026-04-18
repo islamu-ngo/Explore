@@ -60,6 +60,7 @@ public class EventAgendaItemController : ControllerBase
         var halResource = await _resourceAssembler.ToCollectionResource(
             items,
             RouteNames.GetEventAgendaItemsByEvent,
+            new { eventId },
             HttpContext);
 
         return Ok(halResource);

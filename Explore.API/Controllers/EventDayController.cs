@@ -57,6 +57,7 @@ public class EventDayController : ControllerBase
         var halResource = await _resourceAssembler.ToCollectionResource(
             days,
             RouteNames.GetEventDaysByEvent,
+            new { eventId },
             HttpContext);
 
         return Ok(halResource);

@@ -18710,147 +18710,147 @@ namespace Explore.Blazor.Client.Clients
                     urlBuilder_.Append('?');
                     if (pageNumber != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("pageNumber")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageNumber, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("PageNumber")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageNumber, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (pageSize != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("pageSize")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageSize, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("PageSize")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageSize, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (searchTerm != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("searchTerm")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(searchTerm, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("SearchTerm")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(searchTerm, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (categoryId != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("categoryId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(categoryId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("CategoryId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(categoryId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (includedCategoryIds != null)
                     {
-                            foreach (var item_ in includedCategoryIds) { urlBuilder_.Append(System.Uri.EscapeDataString("includedCategoryIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in includedCategoryIds) { urlBuilder_.Append(System.Uri.EscapeDataString("IncludedCategoryIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (excludedCategoryIds != null)
                     {
-                            foreach (var item_ in excludedCategoryIds) { urlBuilder_.Append(System.Uri.EscapeDataString("excludedCategoryIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in excludedCategoryIds) { urlBuilder_.Append(System.Uri.EscapeDataString("ExcludedCategoryIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (categoryInclusionMode != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("categoryInclusionMode")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(categoryInclusionMode, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("CategoryInclusionMode")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(categoryInclusionMode, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (categoryExclusionMode != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("categoryExclusionMode")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(categoryExclusionMode, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("CategoryExclusionMode")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(categoryExclusionMode, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (includedTagIds != null)
                     {
-                            foreach (var item_ in includedTagIds) { urlBuilder_.Append(System.Uri.EscapeDataString("includedTagIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in includedTagIds) { urlBuilder_.Append(System.Uri.EscapeDataString("IncludedTagIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (excludedTagIds != null)
                     {
-                            foreach (var item_ in excludedTagIds) { urlBuilder_.Append(System.Uri.EscapeDataString("excludedTagIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in excludedTagIds) { urlBuilder_.Append(System.Uri.EscapeDataString("ExcludedTagIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (inclusionMode != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("inclusionMode")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(inclusionMode, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("InclusionMode")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(inclusionMode, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (exclusionMode != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("exclusionMode")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(exclusionMode, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("ExclusionMode")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(exclusionMode, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (formatIds != null)
                     {
-                            foreach (var item_ in formatIds) { urlBuilder_.Append(System.Uri.EscapeDataString("formatIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in formatIds) { urlBuilder_.Append(System.Uri.EscapeDataString("FormatIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (madhabIds != null)
                     {
-                            foreach (var item_ in madhabIds) { urlBuilder_.Append(System.Uri.EscapeDataString("madhabIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in madhabIds) { urlBuilder_.Append(System.Uri.EscapeDataString("MadhabIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (locationIds != null)
                     {
-                            foreach (var item_ in locationIds) { urlBuilder_.Append(System.Uri.EscapeDataString("locationIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in locationIds) { urlBuilder_.Append(System.Uri.EscapeDataString("LocationIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (registrationModeIds != null)
                     {
-                            foreach (var item_ in registrationModeIds) { urlBuilder_.Append(System.Uri.EscapeDataString("registrationModeIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in registrationModeIds) { urlBuilder_.Append(System.Uri.EscapeDataString("RegistrationModeIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (languageIds != null)
                     {
-                            foreach (var item_ in languageIds) { urlBuilder_.Append(System.Uri.EscapeDataString("languageIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in languageIds) { urlBuilder_.Append(System.Uri.EscapeDataString("LanguageIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (dateFrom != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("dateFrom")).Append('=').Append(System.Uri.EscapeDataString(dateFrom.Value.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("DateFrom")).Append('=').Append(System.Uri.EscapeDataString(dateFrom.Value.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (dateTo != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("dateTo")).Append('=').Append(System.Uri.EscapeDataString(dateTo.Value.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("DateTo")).Append('=').Append(System.Uri.EscapeDataString(dateTo.Value.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (eventTypeIds != null)
                     {
-                            foreach (var item_ in eventTypeIds) { urlBuilder_.Append(System.Uri.EscapeDataString("eventTypeIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in eventTypeIds) { urlBuilder_.Append(System.Uri.EscapeDataString("EventTypeIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (audienceGenderIds != null)
                     {
-                            foreach (var item_ in audienceGenderIds) { urlBuilder_.Append(System.Uri.EscapeDataString("audienceGenderIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in audienceGenderIds) { urlBuilder_.Append(System.Uri.EscapeDataString("AudienceGenderIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (audienceAgeIds != null)
                     {
-                            foreach (var item_ in audienceAgeIds) { urlBuilder_.Append(System.Uri.EscapeDataString("audienceAgeIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in audienceAgeIds) { urlBuilder_.Append(System.Uri.EscapeDataString("AudienceAgeIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (eventStatusIds != null)
                     {
-                            foreach (var item_ in eventStatusIds) { urlBuilder_.Append(System.Uri.EscapeDataString("eventStatusIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in eventStatusIds) { urlBuilder_.Append(System.Uri.EscapeDataString("EventStatusIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (genderModeIds != null)
                     {
-                            foreach (var item_ in genderModeIds) { urlBuilder_.Append(System.Uri.EscapeDataString("genderModeIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in genderModeIds) { urlBuilder_.Append(System.Uri.EscapeDataString("GenderModeIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (includesQuranRecitation != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("includesQuranRecitation")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(includesQuranRecitation, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("IncludesQuranRecitation")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(includesQuranRecitation, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (referencePrayerIds != null)
                     {
-                            foreach (var item_ in referencePrayerIds) { urlBuilder_.Append(System.Uri.EscapeDataString("referencePrayerIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in referencePrayerIds) { urlBuilder_.Append(System.Uri.EscapeDataString("ReferencePrayerIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (islamicPrimaryLanguageIds != null)
                     {
-                            foreach (var item_ in islamicPrimaryLanguageIds) { urlBuilder_.Append(System.Uri.EscapeDataString("islamicPrimaryLanguageIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in islamicPrimaryLanguageIds) { urlBuilder_.Append(System.Uri.EscapeDataString("IslamicPrimaryLanguageIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (hasIslamicAspect != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("hasIslamicAspect")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(hasIslamicAspect, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("HasIslamicAspect")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(hasIslamicAspect, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (skillLevelId != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("skillLevelId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(skillLevelId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("SkillLevelId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(skillLevelId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (isCodingCompetition != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("isCodingCompetition")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(isCodingCompetition, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("IsCodingCompetition")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(isCodingCompetition, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (isHackathon != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("isHackathon")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(isHackathon, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("IsHackathon")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(isHackathon, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (requiresLaptop != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("requiresLaptop")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(requiresLaptop, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("RequiresLaptop")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(requiresLaptop, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (techStackTag != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("techStackTag")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(techStackTag, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("TechStackTag")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(techStackTag, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (hasTechAspect != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("hasTechAspect")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(hasTechAspect, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("HasTechAspect")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(hasTechAspect, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (sortBy != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("sortBy")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(sortBy, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("SortBy")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(sortBy, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (sortDescending != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("sortDescending")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(sortDescending, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("SortDescending")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(sortDescending, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     urlBuilder_.Length--;
 
@@ -19037,147 +19037,147 @@ namespace Explore.Blazor.Client.Clients
                     urlBuilder_.Append('?');
                     if (pageNumber != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("pageNumber")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageNumber, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("PageNumber")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageNumber, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (pageSize != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("pageSize")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageSize, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("PageSize")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageSize, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (searchTerm != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("searchTerm")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(searchTerm, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("SearchTerm")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(searchTerm, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (categoryId != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("categoryId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(categoryId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("CategoryId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(categoryId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (includedCategoryIds != null)
                     {
-                            foreach (var item_ in includedCategoryIds) { urlBuilder_.Append(System.Uri.EscapeDataString("includedCategoryIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in includedCategoryIds) { urlBuilder_.Append(System.Uri.EscapeDataString("IncludedCategoryIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (excludedCategoryIds != null)
                     {
-                            foreach (var item_ in excludedCategoryIds) { urlBuilder_.Append(System.Uri.EscapeDataString("excludedCategoryIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in excludedCategoryIds) { urlBuilder_.Append(System.Uri.EscapeDataString("ExcludedCategoryIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (categoryInclusionMode != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("categoryInclusionMode")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(categoryInclusionMode, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("CategoryInclusionMode")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(categoryInclusionMode, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (categoryExclusionMode != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("categoryExclusionMode")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(categoryExclusionMode, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("CategoryExclusionMode")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(categoryExclusionMode, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (includedTagIds != null)
                     {
-                            foreach (var item_ in includedTagIds) { urlBuilder_.Append(System.Uri.EscapeDataString("includedTagIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in includedTagIds) { urlBuilder_.Append(System.Uri.EscapeDataString("IncludedTagIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (excludedTagIds != null)
                     {
-                            foreach (var item_ in excludedTagIds) { urlBuilder_.Append(System.Uri.EscapeDataString("excludedTagIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in excludedTagIds) { urlBuilder_.Append(System.Uri.EscapeDataString("ExcludedTagIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (inclusionMode != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("inclusionMode")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(inclusionMode, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("InclusionMode")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(inclusionMode, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (exclusionMode != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("exclusionMode")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(exclusionMode, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("ExclusionMode")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(exclusionMode, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (formatIds != null)
                     {
-                            foreach (var item_ in formatIds) { urlBuilder_.Append(System.Uri.EscapeDataString("formatIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in formatIds) { urlBuilder_.Append(System.Uri.EscapeDataString("FormatIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (madhabIds != null)
                     {
-                            foreach (var item_ in madhabIds) { urlBuilder_.Append(System.Uri.EscapeDataString("madhabIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in madhabIds) { urlBuilder_.Append(System.Uri.EscapeDataString("MadhabIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (locationIds != null)
                     {
-                            foreach (var item_ in locationIds) { urlBuilder_.Append(System.Uri.EscapeDataString("locationIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in locationIds) { urlBuilder_.Append(System.Uri.EscapeDataString("LocationIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (registrationModeIds != null)
                     {
-                            foreach (var item_ in registrationModeIds) { urlBuilder_.Append(System.Uri.EscapeDataString("registrationModeIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in registrationModeIds) { urlBuilder_.Append(System.Uri.EscapeDataString("RegistrationModeIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (languageIds != null)
                     {
-                            foreach (var item_ in languageIds) { urlBuilder_.Append(System.Uri.EscapeDataString("languageIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in languageIds) { urlBuilder_.Append(System.Uri.EscapeDataString("LanguageIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (dateFrom != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("dateFrom")).Append('=').Append(System.Uri.EscapeDataString(dateFrom.Value.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("DateFrom")).Append('=').Append(System.Uri.EscapeDataString(dateFrom.Value.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (dateTo != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("dateTo")).Append('=').Append(System.Uri.EscapeDataString(dateTo.Value.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("DateTo")).Append('=').Append(System.Uri.EscapeDataString(dateTo.Value.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (eventTypeIds != null)
                     {
-                            foreach (var item_ in eventTypeIds) { urlBuilder_.Append(System.Uri.EscapeDataString("eventTypeIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in eventTypeIds) { urlBuilder_.Append(System.Uri.EscapeDataString("EventTypeIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (audienceGenderIds != null)
                     {
-                            foreach (var item_ in audienceGenderIds) { urlBuilder_.Append(System.Uri.EscapeDataString("audienceGenderIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in audienceGenderIds) { urlBuilder_.Append(System.Uri.EscapeDataString("AudienceGenderIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (audienceAgeIds != null)
                     {
-                            foreach (var item_ in audienceAgeIds) { urlBuilder_.Append(System.Uri.EscapeDataString("audienceAgeIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in audienceAgeIds) { urlBuilder_.Append(System.Uri.EscapeDataString("AudienceAgeIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (eventStatusIds != null)
                     {
-                            foreach (var item_ in eventStatusIds) { urlBuilder_.Append(System.Uri.EscapeDataString("eventStatusIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in eventStatusIds) { urlBuilder_.Append(System.Uri.EscapeDataString("EventStatusIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (genderModeIds != null)
                     {
-                            foreach (var item_ in genderModeIds) { urlBuilder_.Append(System.Uri.EscapeDataString("genderModeIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in genderModeIds) { urlBuilder_.Append(System.Uri.EscapeDataString("GenderModeIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (includesQuranRecitation != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("includesQuranRecitation")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(includesQuranRecitation, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("IncludesQuranRecitation")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(includesQuranRecitation, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (referencePrayerIds != null)
                     {
-                            foreach (var item_ in referencePrayerIds) { urlBuilder_.Append(System.Uri.EscapeDataString("referencePrayerIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in referencePrayerIds) { urlBuilder_.Append(System.Uri.EscapeDataString("ReferencePrayerIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (islamicPrimaryLanguageIds != null)
                     {
-                            foreach (var item_ in islamicPrimaryLanguageIds) { urlBuilder_.Append(System.Uri.EscapeDataString("islamicPrimaryLanguageIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                            foreach (var item_ in islamicPrimaryLanguageIds) { urlBuilder_.Append(System.Uri.EscapeDataString("IslamicPrimaryLanguageIds")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
                     }
                     if (hasIslamicAspect != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("hasIslamicAspect")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(hasIslamicAspect, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("HasIslamicAspect")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(hasIslamicAspect, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (skillLevelId != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("skillLevelId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(skillLevelId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("SkillLevelId")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(skillLevelId, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (isCodingCompetition != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("isCodingCompetition")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(isCodingCompetition, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("IsCodingCompetition")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(isCodingCompetition, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (isHackathon != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("isHackathon")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(isHackathon, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("IsHackathon")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(isHackathon, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (requiresLaptop != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("requiresLaptop")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(requiresLaptop, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("RequiresLaptop")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(requiresLaptop, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (techStackTag != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("techStackTag")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(techStackTag, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("TechStackTag")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(techStackTag, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (hasTechAspect != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("hasTechAspect")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(hasTechAspect, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("HasTechAspect")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(hasTechAspect, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (sortBy != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("sortBy")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(sortBy, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("SortBy")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(sortBy, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (sortDescending != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("sortDescending")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(sortDescending, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("SortDescending")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(sortDescending, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     urlBuilder_.Length--;
 
