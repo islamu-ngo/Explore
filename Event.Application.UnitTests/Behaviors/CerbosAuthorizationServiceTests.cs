@@ -92,23 +92,23 @@ public class CerbosAuthorizationServiceTests
     }
 
     [Test]
-    public void ToAttributeValue_ConvertsClrTypes()
+    public async Task ToAttributeValue_ConvertsClrTypes()
     {
         // String
         var strVal = CerbosAuthorizationService.ToAttributeValue("hello");
-        Assert.That(strVal, Is.Not.Null);
+        await Assert.That(strVal).IsNotNull();
 
         // Bool
         var boolVal = CerbosAuthorizationService.ToAttributeValue(true);
-        Assert.That(boolVal, Is.Not.Null);
+        await Assert.That(boolVal).IsNotNull();
 
         // Null
         var nullVal = CerbosAuthorizationService.ToAttributeValue(null);
-        Assert.That(nullVal, Is.Not.Null);
+        await Assert.That(nullVal).IsNotNull();
 
         // Int
         var intVal = CerbosAuthorizationService.ToAttributeValue(42);
-        Assert.That(intVal, Is.Not.Null);
+        await Assert.That(intVal).IsNotNull();
     }
 
     private CerbosAuthorizationService CreateService()
