@@ -67,6 +67,7 @@ public class BlazorTestContext : Bunit.TestContext
         AddLocalizationMocks();
         Services.AddSingleton(Substitute.For<IHttpClientFactory>());
         AddAccessibilityMocks();
+        Services.AddScoped(_ => Substitute.For<ILanguagePreferenceService>());
     }
 
     // ── Opt-in domain mock groups ──
