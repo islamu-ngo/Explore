@@ -1,5 +1,5 @@
 // ABOUTME: Authoritative catalog of every secret-backed setting the platform understands.
-// ABOUTME: Encodes the user-specified Infisical layout (api, storage, keycloak, postgresql, smtp, analytics, ai).
+// ABOUTME: Encodes the user-specified Infisical layout (api, storage, keycloak, cerbos, postgresql, smtp, analytics, ai).
 
 using System.Collections.Frozen;
 using Explore.Domain.Enums;
@@ -20,6 +20,7 @@ namespace Explore.Domain.Secrets;
 ///   <item><c>/api</c> — SETUP_SECRET</item>
 ///   <item><c>/storage</c> — STORAGE_S3_*</item>
 ///   <item><c>/keycloak</c> — KEYCLOAK_*</item>
+///   <item><c>/cerbos</c> — CERBOS_GRPC_ENDPOINT</item>
 ///   <item><c>/postgresql</c> — POSTGRESQL_*</item>
 ///   <item><c>/smtp</c> — SMTP_*</item>
 ///   <item><c>/analytics</c> — ANALYTICS_POSTHOG_*</item>
@@ -97,6 +98,11 @@ public static class SecretDefinitionRegistry
         {
             public const string PosthogPublicKey = "analytics.posthog.public_key";
             public const string PosthogHost = "analytics.posthog.host";
+        }
+
+        public static class Cerbos
+        {
+            public const string GrpcEndpoint = "cerbos.grpc_endpoint";
         }
 
         public static class Ai
@@ -295,6 +301,19 @@ public static class SecretDefinitionRegistry
                 DefaultEnvironmentVariableName = "KEYCLOAK_DB_PASSWORD",
                 IsBootstrapSecret = false,
                 Description = "Keycloak backing database password (read by Keycloak itself).",
+            },
+
+            // --- cerbos/CERBOS_GRPC_ENDPOINT ---
+            new()
+            {
+                Key = Keys.Cerbos.GrpcEndpoint,
+                AllowedScopes = instanceOnly,
+                AllowedSources = nonBootstrapSources,
+                DefaultInfisicalPath = "/cerbos",
+                DefaultInfisicalKey = "CERBOS_GRPC_ENDPOINT",
+                DefaultEnvironmentVariableName = "CERBOS_GRPC_ENDPOINT",
+                IsBootstrapSecret = false,
+                Description = "Cerbos PDP gRPC endpoint (e.g. cerbosgrpc.example.com:443).",
             },
 
             // --- postgresql/POSTGRESQL_* (ALL bootstrap) ---

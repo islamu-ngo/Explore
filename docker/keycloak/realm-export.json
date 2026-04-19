@@ -224,9 +224,10 @@
         "profile",
         "email",
         "web-origins",
-        "acr"
+        "acr",
+        "offline_access"
       ],
-      "optionalClientScopes": ["offline_access", "address", "phone"],
+      "optionalClientScopes": ["address", "phone"],
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "http://localhost:7002/*##https://localhost:7177/*##http://localhost/*##https://localhost/*",

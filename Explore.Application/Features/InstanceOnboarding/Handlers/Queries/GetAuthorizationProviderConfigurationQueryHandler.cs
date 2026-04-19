@@ -22,18 +22,10 @@ public class GetAuthorizationProviderConfigurationQueryHandler : IRequestHandler
         var configuration = await _configurationService.ReadConfigurationAsync();
         var isConfigured = await _configurationService.IsConfiguredAsync();
 
-        if (string.IsNullOrWhiteSpace(configuration.CerbosGrpcEndpoint))
-        {
-            return configuration;
-        }
-
-        configuration.CerbosEndpointVerified = await _configurationService.VerifyCerbosEndpointAsync(
-            configuration.CerbosGrpcEndpoint,
-            cancellationToken);
-
-        if (!isConfigured &&
-            configuration.CerbosDetectedFromEnvironment &&
-            configuration.CerbosEndpointVerified)
+        // Auto-select Cerbos when already persisted as provider or detected from environment.
+        // Verification is performed on-demand via the /verify endpoint, not during page load,
+        // to avoid blocking the response with a gRPC health check.
+        if (!isConfigured && configuration.CerbosDetectedFromEnvironment)
         {
             configuration.Provider = "cerbos";
         }

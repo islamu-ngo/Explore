@@ -393,7 +393,6 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
         options.Scope.Add("openid");
         options.Scope.Add("profile");
         options.Scope.Add("email");
-        options.Scope.Add("offline_access");
 
         return options;
     }

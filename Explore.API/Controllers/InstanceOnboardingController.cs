@@ -119,6 +119,19 @@ public class InstanceOnboardingController : ExploreControllerBase
     }
 
     [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
+    [HttpGet("auth-provider-configuration")]
+    [EndpointSummary("Get Auth Provider Configuration (Public)")]
+    [EndpointDescription("Returns auth provider configuration without secrets. Used by BFF at startup to discover configured providers.")]
+    [ProducesResponseType(typeof(AuthProviderConfigurationDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<AuthProviderConfigurationDto>> GetAuthProviderConfiguration(CancellationToken cancellationToken = default)
+    {
+        var service = HttpContext.RequestServices.GetRequiredService<IAuthProviderConfigurationService>();
+        var configuration = await service.ReadConfigurationAsync();
+        return Ok(configuration);
+    }
+
+    [AllowAnonymous]
     [SetupSecretRequired]
     [EndpointClassification(EndpointClass.Admin)]
     [HttpGet("auth-provider-configuration/internal")]

@@ -1,5 +1,5 @@
 // ABOUTME: Unit tests for reading authorization provider configuration for setup and admin flows.
-// ABOUTME: Verifies Cerbos auto-selection only happens for detected, verified, not-yet-configured environments.
+// ABOUTME: Verifies Cerbos auto-selection happens when detected from environment and not yet configured.
 
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
@@ -39,7 +39,7 @@ public class GetAuthorizationProviderConfigurationQueryHandlerTests
     }
 
     [Test]
-    public async Task Handle_WhenDetectedEndpointVerifiesAndConfigurationIsUnset_AutoSelectsCerbos()
+    public async Task Handle_WhenDetectedFromEnvironmentAndNotConfigured_AutoSelectsCerbos()
     {
         var configuration = new AuthorizationProviderConfigurationDto
         {
@@ -50,17 +50,16 @@ public class GetAuthorizationProviderConfigurationQueryHandlerTests
 
         _configurationService.ReadConfigurationAsync().Returns(configuration);
         _configurationService.IsConfiguredAsync().Returns(false);
-        _configurationService.VerifyCerbosEndpointAsync(configuration.CerbosGrpcEndpoint, Arg.Any<CancellationToken>())
-            .Returns(true);
 
         var result = await _handler.Handle(new GetAuthorizationProviderConfigurationQuery(), CancellationToken.None);
 
         await Assert.That(result.Provider).IsEqualTo("cerbos");
-        await Assert.That(result.CerbosEndpointVerified).IsTrue();
+        await Assert.That(result.CerbosEndpointVerified).IsFalse();
+        await _configurationService.DidNotReceive().VerifyCerbosEndpointAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task Handle_WhenAlreadyConfigured_KeepsStoredProviderEvenIfEndpointVerifies()
+    public async Task Handle_WhenAlreadyConfigured_KeepsStoredProvider()
     {
         var configuration = new AuthorizationProviderConfigurationDto
         {
@@ -71,12 +70,10 @@ public class GetAuthorizationProviderConfigurationQueryHandlerTests
 
         _configurationService.ReadConfigurationAsync().Returns(configuration);
         _configurationService.IsConfiguredAsync().Returns(true);
-        _configurationService.VerifyCerbosEndpointAsync(configuration.CerbosGrpcEndpoint, Arg.Any<CancellationToken>())
-            .Returns(true);
 
         var result = await _handler.Handle(new GetAuthorizationProviderConfigurationQuery(), CancellationToken.None);
 
         await Assert.That(result.Provider).IsEqualTo("local");
-        await Assert.That(result.CerbosEndpointVerified).IsTrue();
+        await _configurationService.DidNotReceive().VerifyCerbosEndpointAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 }

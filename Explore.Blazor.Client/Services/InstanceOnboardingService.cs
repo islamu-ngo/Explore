@@ -96,6 +96,37 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         {
             var client = CreateClient();
             var response = await client.PostAsJsonAsync("api/InstanceOnboarding/validate-secret", new { secret });
+
+            if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            {
+                _logger.LogWarning("Setup secret validation rate-limited (429).");
+                return new SetupSecretValidationResult
+                {
+                    Valid = false,
+                    Error = "Too many attempts. Please wait a moment and try again."
+                };
+            }
+
+            if (response.StatusCode == System.Net.HttpStatusCode.Gone)
+            {
+                // Setup already completed — API returns { valid: false, error: "Setup already completed." }
+                var goneResult = await response.Content.ReadFromJsonAsync<SetupSecretValidationResult>();
+                return goneResult ?? new SetupSecretValidationResult { Valid = false, Error = "Setup already completed." };
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError(
+                    "Setup secret validation failed with HTTP {StatusCode}: {ReasonPhrase}.",
+                    (int)response.StatusCode,
+                    response.ReasonPhrase);
+                return new SetupSecretValidationResult
+                {
+                    Valid = false,
+                    Error = $"Validation unavailable (HTTP {(int)response.StatusCode}). Please try again."
+                };
+            }
+
             var result = await response.Content.ReadFromJsonAsync<SetupSecretValidationResult>();
             return result ?? new SetupSecretValidationResult { Valid = false };
         }

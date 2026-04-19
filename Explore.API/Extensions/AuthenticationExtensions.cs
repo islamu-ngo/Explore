@@ -102,6 +102,22 @@ public static class AuthenticationExtensions
                 // Security: PII-safe logging — only exception messages, never token claims or raw values
                 options.Events = new JwtBearerEvents
                 {
+                    // Performance: skip JWT token validation entirely for onboarding paths.
+                    // When Keycloak is unreachable, OIDC metadata discovery times out (3+ minutes),
+                    // blocking [AllowAnonymous] endpoints that don't need authentication at all.
+                    // Only POST /complete requires JWT auth (has [Authorize]) and is excluded.
+                    OnMessageReceived = context =>
+                    {
+                        var path = context.HttpContext.Request.Path;
+                        if (path.StartsWithSegments("/api/instanceonboarding", StringComparison.OrdinalIgnoreCase)
+                            && !path.Value.EndsWith("/complete", StringComparison.OrdinalIgnoreCase))
+                        {
+                            context.Token = null;
+                        }
+
+                        return Task.CompletedTask;
+                    },
+
                     OnAuthenticationFailed = context =>
                     {
                         var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();

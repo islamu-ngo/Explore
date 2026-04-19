@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "https://localhost:35935/"
+      "url": "https://localhost:35701/"
     }
   ],
   "paths": {
@@ -23973,71 +23973,37 @@
         "x-endpoint-class": "Public"
       }
     },
-    "/api/instanceonboarding/auth-provider-configuration/internal": {
-      "get": {
-        "tags": [
-          "InstanceOnboarding"
-        ],
-        "summary": "Get Auth Provider Configuration (Internal)",
-        "description": "Returns auth provider configuration including secrets. For BFF internal use only. Protected by setup token.",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
-                }
-              }
-            }
-          }
-        },
-        "x-endpoint-class": "Admin"
-      }
-    },
-    "/api/v0.1/instanceonboarding/auth-provider-configuration/internal": {
-      "get": {
-        "tags": [
-          "InstanceOnboarding"
-        ],
-        "summary": "Get Auth Provider Configuration (Internal)",
-        "description": "Returns auth provider configuration including secrets. For BFF internal use only. Protected by setup token.",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
-                }
-              }
-            }
-          }
-        },
-        "x-endpoint-class": "Admin"
-      }
-    },
     "/api/instanceonboarding/auth-provider-configuration": {
+      "get": {
+        "tags": [
+          "InstanceOnboarding"
+        ],
+        "summary": "Get Auth Provider Configuration (Public)",
+        "description": "Returns auth provider configuration without secrets. Used by BFF at startup to discover configured providers.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Public"
+      },
       "put": {
         "tags": [
           "InstanceOnboarding"
@@ -24105,6 +24071,36 @@
       }
     },
     "/api/v0.1/instanceonboarding/auth-provider-configuration": {
+      "get": {
+        "tags": [
+          "InstanceOnboarding"
+        ],
+        "summary": "Get Auth Provider Configuration (Public)",
+        "description": "Returns auth provider configuration without secrets. Used by BFF at startup to discover configured providers.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Public"
+      },
       "put": {
         "tags": [
           "InstanceOnboarding"
@@ -24163,6 +24159,70 @@
               "text/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/BaseCommandResponseOfGuid"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Admin"
+      }
+    },
+    "/api/instanceonboarding/auth-provider-configuration/internal": {
+      "get": {
+        "tags": [
+          "InstanceOnboarding"
+        ],
+        "summary": "Get Auth Provider Configuration (Internal)",
+        "description": "Returns auth provider configuration including secrets. For BFF internal use only. Protected by setup token.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Admin"
+      }
+    },
+    "/api/v0.1/instanceonboarding/auth-provider-configuration/internal": {
+      "get": {
+        "tags": [
+          "InstanceOnboarding"
+        ],
+        "summary": "Get Auth Provider Configuration (Internal)",
+        "description": "Returns auth provider configuration including secrets. For BFF internal use only. Protected by setup token.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthProviderConfigurationDto"
                 }
               }
             }
