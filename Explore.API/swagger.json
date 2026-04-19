@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "https://localhost:40665/"
+      "url": "https://localhost:42495/"
     }
   ],
   "paths": {
@@ -1868,6 +1868,7 @@
         ],
         "summary": "Relay Browser Analytics Event",
         "description": "Relays browser analytics through the server for tenants using relay transport mode.",
+        "operationId": "RelayAnalyticsEvent",
         "requestBody": {
           "content": {
             "application/json; v=0.1": {
