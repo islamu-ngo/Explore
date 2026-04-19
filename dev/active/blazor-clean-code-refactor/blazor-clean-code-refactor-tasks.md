@@ -18,17 +18,17 @@ Legend: STRUCTURAL · BEHAVIORAL · SECURITY · CONTRACT · OPERATOR · HOTFIX
 - [x] 0.A.1 Removed `static` from SetupSecretSessionService `_store` and `CleanupExpiredEntries()` (Singleton → instance field is sufficient)
 - [ ] 0.A.1 Integration test: two concurrent user sessions cannot read each other's setup secret (deferred to Wave A Phase 1)
 - [ ] 0.A.2 Split `IDynamicAuthSchemeManager` → deferred to Wave B Phase 6A/6B
-- [ ] 0.A.3 Arch test: no Singleton with mutable user/circuit state (to be written in Wave A Phase 1)
+- [x] 0.A.3 Arch test: no Singleton with mutable user/circuit state (implemented in Wave A Phase 1 as Rule 1.9)
 
 ### Phase 0.B — async void Crash Path Hotfix [HOTFIX/BEHAVIORAL] ✅
 - [x] 0.B.1 Converted `AnalyticsInitializer.razor:253 OnLocationChanged` from `async void` to `_ = InvokeAsync(async () => { ... })` fire-and-forget with try/catch
 - [x] 0.B.2 Audit complete — only 3 remaining `async void` are Timer/event callbacks (Phase 8-10 will fix)
-- [ ] 0.B.2 Arch test forbidding `async void` outside whitelisted patterns (Wave A Phase 1)
+- [x] 0.B.2 Arch test forbidding `async void` outside whitelisted patterns (Wave A Phase 1, Rule 1.10)
 - [x] 0.B.3 NavigationManager subscription properly disposed in IDisposable.Dispose (verified)
 
 ### Phase 0.C — .Result Sync-Over-Async Hotfix [HOTFIX/BEHAVIORAL] ✅
 - [x] 0.C.1 Replaced all 4 `.Result` sites with `await`: EventDetail:133,725,726; EventList:725,726; OrganizationDetails:141
-- [ ] 0.C.2 Arch test forbidding `.Result`/`.Wait()` on Task (Wave A Phase 1)
+- [x] 0.C.2 Arch test forbidding `.Result`/`.Wait()` on Task (Wave A Phase 1, Rule 1.11)
 
 ### Phase 0.D — Auth Endpoints Cache-Control Hotfix [HOTFIX/SECURITY] ✅
 - [x] 0.D.1 Added `Cache-Control: no-store, no-cache` + `Pragma: no-cache` to HandleSignoutAsync, HandleAuthStatus, HandleRefreshSchemesAsync
@@ -55,21 +55,21 @@ Legend: STRUCTURAL · BEHAVIORAL · SECURITY · CONTRACT · OPERATOR · HOTFIX
 - [ ] 0.5 Capture user-visible behavioral baselines via manual smoke (auth, browse/filter, detail+registration, admin save)
 
 ### Phase 1 — Architecture Guardrails [STRUCTURAL]
-- [ ] 1.1 Arch test: No component injects IEventApiClient directly
-- [ ] 1.2 Arch test: No Console.WriteLine in production
-- [ ] 1.3 Arch test: No inline middleware lambdas >5 lines
-- [ ] 1.4 Arch test: All [Inject] services use interfaces
-- [ ] 1.5 Arch test: No `new DialogOptions()` outside DialogOptionsFactory
-- [ ] 1.6 Arch test: No NavigationManager in Components/Common or Components/Collection
-- [ ] 1.7 Arch test: No IJSRuntime in Services/ unless in Interop/ or Http/
-- [ ] 1.8 Arch test: No ISnackbar in data services
-- [ ] 1.9 Arch test: No singleton holding mutable user/circuit/request state
-- [ ] 1.10 Arch test: No async void outside whitelisted event handlers
-- [ ] 1.11 Arch test: No `.Result`/`.Wait()` on Task in Blazor projects
-- [ ] 1.12 Arch test: No IConfiguration injected directly (use IOptions<T>)
-- [ ] 1.13 Arch test: No GetRequiredService<T>() inside callback bodies
-- [ ] 1.14 Arch test: No model classes in `*Service.cs` interface files
-- [ ] 1.15 Arch test: No new hardcoded user-facing strings outside legal pages
+- [x] 1.1 Arch test: No component injects IEventApiClient directly (pre-existing; verified)
+- [x] 1.2 Arch test: No Console.WriteLine in production
+- [x] 1.3 Arch test: No inline middleware lambdas >5 lines
+- [x] 1.4 Arch test: All [Inject] services use interfaces
+- [x] 1.5 Arch test: No `new DialogOptions()` outside DialogOptionsFactory
+- [x] 1.6 Arch test: No NavigationManager in Components/Common or Components/Collection
+- [x] 1.7 Arch test: No IJSRuntime in Services/ unless in Interop/ or Http/
+- [x] 1.8 Arch test: No ISnackbar in data services
+- [x] 1.9 Arch test: No singleton holding mutable user/circuit/request state
+- [x] 1.10 Arch test: No async void outside whitelisted event handlers
+- [x] 1.11 Arch test: No `.Result`/`.Wait()` on Task in Blazor projects
+- [x] 1.12 Arch test: No IConfiguration injected directly (use IOptions<T>)
+- [x] 1.13 Arch test: No GetRequiredService<T>() inside callback bodies
+- [x] 1.14 Arch test: No model classes in `*Service.cs` interface files
+- [ ] 1.15 Arch test: No new hardcoded user-facing strings outside legal pages (DEFERRED — requires localization inventory; revisit in later phase)
 
 ### Phase 5 — Observability Hygiene [BEHAVIORAL/OPERATOR]
 - [ ] 5.1 Remove 8 Console.WriteLines from ConfigurationExtension.cs

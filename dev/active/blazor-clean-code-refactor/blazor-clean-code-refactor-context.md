@@ -448,3 +448,62 @@ All Wave 0 changes are unstaged. Files modified:
    - The arch test project does NOT reference Blazor projects — uses file-scanning approach
 2. **Phase 5**: Remove 8 Console.WriteLines from ConfigurationExtension.cs, add ILogger replacement
 3. **Phase A0**: Render-mode cohort migration — project already has dynamic configurable render mode, default should be InteractiveServer
+
+---
+
+## SESSION PROGRESS LOG — Wave A Phase 1 COMPLETE (2026-04-19)
+
+**Branch:** `refactor/blazor-clean-code-wave-a` (off develop af8a9401)
+
+### Deliverable
+`Event.Architecture.Tests/BlazorClientArchitectureTests.cs` — **843 lines, 14 tests all green**.
+Enforces 14 of 15 planned architecture guardrails (1.1 through 1.14). Rule 1.15 (hardcoded strings) deferred — requires localization inventory.
+
+### Test Design
+- File-scanning approach (arch-test project does not reference Blazor projects).
+- TUnit `[Test]` + `await Assert.That(violations).IsEmpty().Because(...)` pattern matches existing style.
+- Graceful skip if `ResolveProjectRoot` returns null (cross-machine portability).
+- All exception lists use forward-slash paths + `StringComparer.OrdinalIgnoreCase`.
+
+### Exception Lists (documented, time-boxed)
+
+| Rule | Exceptions | Resolution Path |
+|------|------------|-----------------|
+| 1.1 IEventApiClient | `InstanceTenantsSection.razor` | Phase 12 (service decomposition) |
+| 1.2 Console.WriteLine | `ConfigurationExtension.cs`, `LazyAssemblyLoader.cs`, `Setup.razor` | Phase 5 (ILogger swap) |
+| 1.3 Middleware lambdas | `MiddlewareExtensions.cs:35/62/91/143/169` | Phase 3 (extract static methods) |
+| 1.4 [Inject] interfaces | None — test enforces with state-container whitelist | — |
+| 1.5 new DialogOptions | `LoginPromptDialog.razor`, `SettingsConnectedApps.razor`, `TenantLookupTablesSection.razor`, `CreateApiKeyDialog.razor`, `CreateApiKeyDialog.razor.cs` | Phase 13 (DialogOptionsFactory migration) |
+| 1.7 IJSRuntime in Services | `UserSettingsService`, `InstanceOnboardingService`, `AccessibilityFocusService`, `AccessibilityAnnouncerService` | Phase 12 (decomposition) |
+| 1.9 Singleton mutable state | `DynamicAuthSchemeManager`, `CircuitAccessTokenService` | Wave B Phase 6B for DynamicAuthSchemeManager; CircuitAccessTokenService is a deliberate static store |
+| 1.10 async void | 3 timer/event callbacks (EventList.FlushPendingChanges, EventEdit.RemoveSession, CreateEvent.RemoveSession) | Acceptable (event-handler semantics; covered by On/Handle prefix whitelist) |
+| 1.12 IConfiguration | `DynamicAuthSchemeManager.cs` | Wave B Phase 6B |
+| 1.14 Models in interface files | `Contracts/Services/IContactShareConsentService.cs`, `ILocalizationAdminService.cs`, `Footer/IFooterAdminService.cs` | Phase 12 (extract DTOs) |
+
+### Framework / State Container Whitelist (Rule 1.4)
+Framework concrete types always allowed: `NavigationManager`, `PersistentComponentState`, `AuthenticationStateProvider`, `HttpClient`, `IHttpClientFactory`.
+State container heuristic: types ending in `State`, `StateService`, `StateContainer`, `Interop` are allowed.
+Fully-qualified type names are namespace-stripped before check.
+
+### Verification — All CLAUDE.md Test Projects
+
+| Project | Result |
+|---------|--------|
+| Event.Architecture.Tests | 87/87 pass (includes 14 new BlazorClient tests) |
+| Event.Application.UnitTests | 840/840 pass |
+| Event.Domain.UnitTests | 207/207 pass |
+| Explore.Secrets.UnitTests | 201/201 pass |
+| Event.Persistence.IntegrationTests | 36/36 pass |
+| Event.API.IntegrationTests | 553/553 pass |
+| Explore.Blazor.IntegrationTests | 23/23 pass |
+| Explore.Blazor.Client.Tests | 692 pass, 1 pre-existing skip (`ErrorState_RendersRetryButton` — AppButton MudBlazor v9 migration) |
+| **TOTAL** | **2839 pass / 1 skip / 0 fail** |
+
+E2E tests skipped (require Aspire AppHost).
+
+### Precondition Resync
+Branch includes api-contract-stabilization files that develop's HEAD (af8a9401) is missing — required for clean build. Added `RouteNames.GetEventRegistrations` constant to `Explore.API/Hateoas/RouteNames.cs:54`. These are preconditions, not Wave A deliverables; they'll merge cleanly via their own PR or as part of this one.
+
+### Next Phase
+Phase 2 — Component decomposition (service locator removal + DialogOptionsFactory adoption) OR Phase 3 — Middleware extraction. See plan for details.
+
