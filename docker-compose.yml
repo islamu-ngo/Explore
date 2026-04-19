@@ -1,8 +1,8 @@
 name: explore-platform
 
 x-keycloak-env: &keycloak-env
-  KEYCLOAK_REALM: ${KEYCLOAK_REALM:-explore}
-  KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL:-http://keycloak.localhost:8080}
+  KEYCLOAK_REALM: ${KEYCLOAK_REALM:-ISLAMU}
+  KEYCLOAK_ENDPOINT: ${KEYCLOAK_ENDPOINT:-http://keycloak.localhost:8080}
   KEYCLOAK_INTERNAL_URL: http://keycloak:8080
   Keycloak__RequireHttpsMetadata: ${KEYCLOAK_REQUIRE_HTTPS_METADATA:-false}
 
@@ -75,8 +75,8 @@ services:
       KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
       KC_DB_USERNAME: keycloak
       KC_DB_PASSWORD: keycloak
-      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_URL:-http://keycloak.localhost:8080}
-      KC_HOSTNAME_URL: ${KEYCLOAK_PUBLIC_URL:-http://keycloak.localhost:8080}
+      KC_HOSTNAME: ${KEYCLOAK_ENDPOINT:-http://keycloak.localhost:8080}
+      KC_HOSTNAME_URL: ${KEYCLOAK_ENDPOINT:-http://keycloak.localhost:8080}
       KC_HOSTNAME_STRICT: "false"
       KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
       KC_HTTP_ENABLED: "true"
@@ -104,8 +104,8 @@ services:
       <<: [*keycloak-env, *s3-env, *secrets-env, *postgres-bootstrap-env]
       ASPNETCORE_URLS: http://+:8080
       ASPNETCORE_ENVIRONMENT: Production
-      Keycloak__MetadataAddress: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}/realms/${KEYCLOAK_REALM:-explore}/.well-known/openid-configuration
-      Keycloak__Authority: ${KEYCLOAK_PUBLIC_URL:-http://keycloak.localhost:8080}/realms/${KEYCLOAK_REALM:-explore}
+      Keycloak__MetadataAddress: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}/realms/${KEYCLOAK_REALM:-ISLAMU}/.well-known/openid-configuration
+      Keycloak__Authority: ${KEYCLOAK_ENDPOINT:-http://keycloak.localhost:8080}/realms/${KEYCLOAK_REALM:-ISLAMU}
     ports:
       - "7039:8080"
     extra_hosts:
@@ -128,12 +128,12 @@ services:
       <<: [*keycloak-env, *secrets-env, *postgres-bootstrap-env]
       ASPNETCORE_URLS: http://+:8080
       ASPNETCORE_ENVIRONMENT: Production
-      EXPLORE_API_BASE_URL: ${EXPLORE_API_BASE_URL:-http://eventapi:8080/}
-      Keycloak__Authority: ${KEYCLOAK_PUBLIC_URL:-http://keycloak.localhost:8080}/realms/${KEYCLOAK_REALM:-explore}
-      Keycloak__MetadataAddress: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}/realms/${KEYCLOAK_REALM:-explore}/.well-known/openid-configuration
-      Keycloak__Realm: ${KEYCLOAK_REALM:-explore}
-      Keycloak__ClientId: explore-blazor-server
-      Keycloak__ClientSecret: ${KEYCLOAK_BLAZOR_CLIENT_SECRET:-explore-blazor-server-secret}
+      API_ENDPOINT: ${API_ENDPOINT:-http://eventapi:8080/}
+      Keycloak__Authority: ${KEYCLOAK_ENDPOINT:-http://keycloak.localhost:8080}/realms/${KEYCLOAK_REALM:-ISLAMU}
+      Keycloak__MetadataAddress: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}/realms/${KEYCLOAK_REALM:-ISLAMU}/.well-known/openid-configuration
+      Keycloak__Realm: ${KEYCLOAK_REALM:-ISLAMU}
+      Keycloak__ClientId: islamu-event-blazor
+      Keycloak__ClientSecret: ${KEYCLOAK_CLIENT_SECRET:-islamu-event-blazor-secret}
     ports:
       - "7002:8080"
     extra_hosts:
