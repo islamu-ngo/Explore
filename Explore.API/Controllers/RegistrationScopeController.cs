@@ -2,6 +2,7 @@
 // ABOUTME: Provides registration scope options (Event, Day, SessionSelection) for registration flows.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.Application.DTOs.RegistrationScope;
 using Explore.Application.Features.RegistrationScopes.Requests.Queries;
 using MediatR;
@@ -14,6 +15,7 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/[controller]")]
 [ApiController]
+[EndpointClassification(EndpointClass.Public)]
 public class RegistrationScopeController : ControllerBase
 {
     private readonly IMediator _mediator;

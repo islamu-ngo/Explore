@@ -2,6 +2,7 @@
 // ABOUTME: Manages session-local property definitions (ad-hoc or template-instantiated) and their values.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.EventSessionCustomProperty;
 using Explore.Application.Features.EventSessionCustomProperties.Requests.Commands;
@@ -40,6 +41,8 @@ public class EventSessionCustomPropertyController : ControllerBase
     /// <summary>
     /// Get event-session-local custom property definitions with pagination.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet(Name = RouteNames.GetEventSessionCustomPropertyDefinitions)]
     [EndpointSummary("Get all EventSessionCustomPropertyDefinitions")]
     [EndpointDescription("Get a paginated list of custom property definitions for a specific event session. " +
@@ -47,7 +50,6 @@ public class EventSessionCustomPropertyController : ControllerBase
         "Default page size is 20, max is 100. " +
         "Response includes HATEOAS navigation links (first, prev, next, last). " +
         "Send 'Prefer: return=minimal' header to strip links.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<EventSessionCustomPropertyDefinitionListDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<EventSessionCustomPropertyDefinitionListDto>>> GetAll(
@@ -74,11 +76,12 @@ public class EventSessionCustomPropertyController : ControllerBase
     /// <summary>
     /// Get event-session-local custom property definition details by ID.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("{id:guid}", Name = RouteNames.GetEventSessionCustomPropertyDefinitionById)]
     [EndpointSummary("Get EventSessionCustomPropertyDefinition Details")]
     [EndpointDescription("Get full details of an event-session-local custom property definition including its options and provenance information. " +
         "Response includes links to related resources.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalResource<EventSessionCustomPropertyDefinitionDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
@@ -95,11 +98,12 @@ public class EventSessionCustomPropertyController : ControllerBase
     /// <summary>
     /// Create a new ad-hoc event-session-local custom property definition.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost(Name = RouteNames.CreateEventSessionCustomPropertyDefinition)]
     [EndpointSummary("Create EventSessionCustomPropertyDefinition")]
     [EndpointDescription("Create a new ad-hoc custom property definition for a specific event session. " +
         "For template-based definitions, use the event session creation endpoint with a sessionTemplateId instead.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -127,11 +131,12 @@ public class EventSessionCustomPropertyController : ControllerBase
     /// <summary>
     /// Update an event-session-local custom property definition.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("{id:guid}", Name = RouteNames.UpdateEventSessionCustomPropertyDefinition)]
     [EndpointSummary("Update EventSessionCustomPropertyDefinition")]
     [EndpointDescription("Update an existing event-session-local custom property definition and replace its option set. " +
         "Provenance fields (source template information) are read-only and preserved.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -164,8 +169,9 @@ public class EventSessionCustomPropertyController : ControllerBase
     /// <summary>
     /// Delete an event-session-local custom property definition.
     /// </summary>
-    [HttpDelete("{id:guid}", Name = RouteNames.DeleteEventSessionCustomPropertyDefinition)]
     [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpDelete("{id:guid}", Name = RouteNames.DeleteEventSessionCustomPropertyDefinition)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -180,10 +186,11 @@ public class EventSessionCustomPropertyController : ControllerBase
     /// <summary>
     /// Get all custom property values for an event session.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("values", Name = RouteNames.GetEventSessionCustomPropertyValues)]
     [EndpointSummary("Get EventSessionCustomPropertyValues")]
     [EndpointDescription("Get all custom property values for a specific event session across all definitions.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(List<EventSessionCustomPropertyValueDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<List<EventSessionCustomPropertyValueDto>>> GetValues(
@@ -200,11 +207,12 @@ public class EventSessionCustomPropertyController : ControllerBase
     /// <summary>
     /// Set a single custom property value for an event session.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("value", Name = RouteNames.SetEventSessionCustomPropertyValue)]
     [EndpointSummary("Set EventSessionCustomPropertyValue")]
     [EndpointDescription("Set or update a single custom property value for an event session. " +
         "Uses upsert semantics based on definition ID, event session ID, and ordinal.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -230,11 +238,12 @@ public class EventSessionCustomPropertyController : ControllerBase
     /// <summary>
     /// Set multiple values for a multi-value custom property definition on an event session.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("values", Name = RouteNames.SetEventSessionCustomPropertyMultiValues)]
     [EndpointSummary("Set EventSessionCustomPropertyMultiValues")]
     [EndpointDescription("Atomically replace all values for a multi-value custom property definition. " +
         "All existing values for the definition+event session combination are removed and replaced.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]

@@ -2,6 +2,7 @@
 // ABOUTME: Manages user reviews and ratings for verified organizations to build community trust.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.OrganizationReview;
 using Explore.Application.Features.OrganizationReviews.Commands.CreateOrganizationReview;
@@ -31,8 +32,9 @@ public class OrganizationReviewController : ControllerBase
         _resourceAssembler = resourceAssembler;
     }
 
-    [HttpGet(Name = RouteNames.GetOrganizationReviews)]
     [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
+    [HttpGet(Name = RouteNames.GetOrganizationReviews)]
     [ProducesResponseType(typeof(HalCollectionResource<OrganizationReviewDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<OrganizationReviewDto>>> GetAll(CancellationToken cancellationToken = default)
@@ -45,8 +47,9 @@ public class OrganizationReviewController : ControllerBase
         return Ok(halResource);
     }
 
-    [HttpGet("{organizationId}")]
     [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
+    [HttpGet("{organizationId}")]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<List<OrganizationReviewDto>>> Get(Guid organizationId, CancellationToken cancellationToken = default)
     {
@@ -54,16 +57,18 @@ public class OrganizationReviewController : ControllerBase
         return Ok(reviews);
     }
 
-    [HttpGet("user/{userId}")]
     [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
+    [HttpGet("user/{userId}")]
     public async Task<ActionResult<List<OrganizationReviewDto>>> GetByUserId(Guid userId, CancellationToken cancellationToken = default)
     {
         var reviews = await _mediator.Send(new GetMyReviewsQuery { UserId = userId }, cancellationToken);
         return Ok(reviews);
     }
 
-    [HttpPost]
     [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPost]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Post([FromBody] CreateOrganizationReviewDto createOrganizationReviewDto, CancellationToken cancellationToken = default)
     {
         var command = new CreateOrganizationReviewCommand { CreateOrganizationReviewDto = createOrganizationReviewDto };

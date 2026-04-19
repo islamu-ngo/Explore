@@ -2,6 +2,7 @@
 // ABOUTME: Relays browser events through MediatR so tenant-aware governance still applies server-side.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.Application.DTOs.Analytics;
 using Explore.Application.Features.PublicExperience.Requests.Commands;
 using MediatR;
@@ -14,6 +15,7 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/a/t")]
 [ApiController]
+[EndpointClassification(EndpointClass.Public)]
 public class AnalyticsRelayController : ExploreControllerBase
 {
     private readonly IMediator _mediator;
@@ -23,7 +25,7 @@ public class AnalyticsRelayController : ExploreControllerBase
         _mediator = mediator;
     }
 
-    [HttpPost]
+    [HttpPost(Name = "RelayAnalyticsEvent")]
     [AllowAnonymous]
     [EnableRateLimiting(Extensions.RateLimitingExtensions.AnalyticsRelayPolicy)]
     [EndpointSummary("Relay Browser Analytics Event")]

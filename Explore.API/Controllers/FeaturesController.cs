@@ -2,6 +2,7 @@
 // ABOUTME: Blazor UI calls this endpoint to hydrate its local FeatureStateContainer — no SDK in UI.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.Application.Contracts.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,6 +13,7 @@ namespace Explore.API.Controllers;
 [Route("api/features")]
 [ApiController]
 [Authorize]
+[EndpointClassification(EndpointClass.Authenticated)]
 public class FeaturesController : ControllerBase
 {
     private readonly IFeatureFlagService _featureFlagService;

@@ -2,6 +2,7 @@
 // ABOUTME: Implements D2 Operability endpoints with property_governance_admin authorization, rate limiting, and request timeouts.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.API.Extensions;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.CustomPropertyGovernance;
@@ -26,6 +27,7 @@ namespace Explore.API.Controllers;
 [Route("api/admin/custom-property-projections")]
 [ApiController]
 [Authorize]
+[EndpointClassification(EndpointClass.Authenticated)]
 public class CustomPropertyProjectionAdminController : ControllerBase
 {
     private readonly IMediator _mediator;

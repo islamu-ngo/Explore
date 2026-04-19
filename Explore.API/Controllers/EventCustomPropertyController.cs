@@ -2,6 +2,7 @@
 // ABOUTME: Manages event-local property definitions (ad-hoc or template-instantiated) and their values.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.EventCustomProperty;
 using Explore.Application.Features.EventCustomProperties.Requests.Commands;
@@ -40,6 +41,8 @@ public class EventCustomPropertyController : ControllerBase
     /// <summary>
     /// Get event-local custom property definitions with pagination.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet(Name = RouteNames.GetEventCustomPropertyDefinitions)]
     [EndpointSummary("Get all EventCustomPropertyDefinitions")]
     [EndpointDescription("Get a paginated list of custom property definitions for a specific event. " +
@@ -47,7 +50,6 @@ public class EventCustomPropertyController : ControllerBase
         "Default page size is 20, max is 100. " +
         "Response includes HATEOAS navigation links (first, prev, next, last). " +
         "Send 'Prefer: return=minimal' header to strip links.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<EventCustomPropertyDefinitionListDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<EventCustomPropertyDefinitionListDto>>> GetAll(
@@ -74,11 +76,12 @@ public class EventCustomPropertyController : ControllerBase
     /// <summary>
     /// Get event-local custom property definition details by ID.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("{id:guid}", Name = RouteNames.GetEventCustomPropertyDefinitionById)]
     [EndpointSummary("Get EventCustomPropertyDefinition Details")]
     [EndpointDescription("Get full details of an event-local custom property definition including its options and provenance information. " +
         "Response includes links to related resources.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalResource<EventCustomPropertyDefinitionDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
@@ -95,11 +98,12 @@ public class EventCustomPropertyController : ControllerBase
     /// <summary>
     /// Create a new ad-hoc event-local custom property definition.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost(Name = RouteNames.CreateEventCustomPropertyDefinition)]
     [EndpointSummary("Create EventCustomPropertyDefinition")]
     [EndpointDescription("Create a new ad-hoc custom property definition for a specific event. " +
         "For template-based definitions, use the event creation endpoint with a templateId instead.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -127,11 +131,12 @@ public class EventCustomPropertyController : ControllerBase
     /// <summary>
     /// Update an event-local custom property definition.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("{id:guid}", Name = RouteNames.UpdateEventCustomPropertyDefinition)]
     [EndpointSummary("Update EventCustomPropertyDefinition")]
     [EndpointDescription("Update an existing event-local custom property definition and replace its option set. " +
         "Provenance fields (source template information) are read-only and preserved.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -164,8 +169,9 @@ public class EventCustomPropertyController : ControllerBase
     /// <summary>
     /// Delete an event-local custom property definition.
     /// </summary>
-    [HttpDelete("{id:guid}", Name = RouteNames.DeleteEventCustomPropertyDefinition)]
     [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpDelete("{id:guid}", Name = RouteNames.DeleteEventCustomPropertyDefinition)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -180,10 +186,11 @@ public class EventCustomPropertyController : ControllerBase
     /// <summary>
     /// Get all custom property values for an event.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("values", Name = RouteNames.GetEventCustomPropertyValues)]
     [EndpointSummary("Get EventCustomPropertyValues")]
     [EndpointDescription("Get all custom property values for a specific event across all definitions.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(List<EventCustomPropertyValueDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<List<EventCustomPropertyValueDto>>> GetValues(
@@ -200,11 +207,12 @@ public class EventCustomPropertyController : ControllerBase
     /// <summary>
     /// Set a single custom property value for an event.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("value", Name = RouteNames.SetEventCustomPropertyValue)]
     [EndpointSummary("Set EventCustomPropertyValue")]
     [EndpointDescription("Set or update a single custom property value for an event. " +
         "Uses upsert semantics based on definition ID, event ID, and ordinal.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -230,11 +238,12 @@ public class EventCustomPropertyController : ControllerBase
     /// <summary>
     /// Set multiple values for a multi-value custom property definition.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("values", Name = RouteNames.SetEventCustomPropertyMultiValues)]
     [EndpointSummary("Set EventCustomPropertyMultiValues")]
     [EndpointDescription("Atomically replace all values for a multi-value custom property definition. " +
         "All existing values for the definition+event combination are removed and replaced.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]

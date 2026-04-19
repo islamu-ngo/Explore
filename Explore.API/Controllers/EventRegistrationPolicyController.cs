@@ -2,6 +2,7 @@
 // ABOUTME: Provides registration policy options (Open, ApprovalRequired, InvitationOnly) for events.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.Application.DTOs.EventRegistrationPolicy;
 using Explore.Application.Features.EventRegistrationPolicies.Requests.Queries;
 using MediatR;
@@ -14,6 +15,7 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/[controller]")]
 [ApiController]
+[EndpointClassification(EndpointClass.Public)]
 public class EventRegistrationPolicyController : ControllerBase
 {
     private readonly IMediator _mediator;

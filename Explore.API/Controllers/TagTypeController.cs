@@ -2,6 +2,7 @@
 // ABOUTME: Provides tag type categories for event tag classification and filtering.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.Application.DTOs.TagType;
 using Explore.Application.Features.TagTypes.Requests.Queries;
 using Explore.Application.Features.TagTypeTags.Requests.Queries;
@@ -15,6 +16,7 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/[controller]")]
 [ApiController]
+[EndpointClassification(EndpointClass.Public)]
 public class TagTypeController : ControllerBase
 {
     private readonly IMediator _mediator;

@@ -2,6 +2,7 @@
 // ABOUTME: GET endpoints are public; write endpoints require tenant-admin authorization.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Footer;
 using Explore.Application.Features.Footer.Requests.Commands;
@@ -28,8 +29,9 @@ public class FooterController : ExploreControllerBase
 
     // ── Public / tenant-read endpoints ──────────────────────────────────────
 
-    [HttpGet("config", Name = RouteNames.GetFooterConfig)]
     [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
+    [HttpGet("config", Name = RouteNames.GetFooterConfig)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<ActionResult<FooterConfigDto>> GetConfig(CancellationToken cancellationToken)
     {
@@ -39,8 +41,9 @@ public class FooterController : ExploreControllerBase
 
     // ── Link group admin endpoints ───────────────────────────────────────────
 
-    [HttpGet("link-groups", Name = RouteNames.GetFooterLinkGroups)]
     [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpGet("link-groups", Name = RouteNames.GetFooterLinkGroups)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<ActionResult<List<FooterLinkGroupListDto>>> GetLinkGroups(CancellationToken cancellationToken)
     {
@@ -48,8 +51,9 @@ public class FooterController : ExploreControllerBase
         return Ok(result);
     }
 
-    [HttpGet("link-groups/{id:guid}", Name = RouteNames.GetFooterLinkGroupById)]
     [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpGet("link-groups/{id:guid}", Name = RouteNames.GetFooterLinkGroupById)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<FooterLinkGroupDetailsDto>> GetLinkGroupById(Guid id, CancellationToken cancellationToken)
@@ -58,8 +62,9 @@ public class FooterController : ExploreControllerBase
         return Ok(result);
     }
 
-    [HttpPost("link-groups", Name = RouteNames.CreateFooterLinkGroup)]
     [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPost("link-groups", Name = RouteNames.CreateFooterLinkGroup)]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> CreateLinkGroup(
@@ -78,8 +83,9 @@ public class FooterController : ExploreControllerBase
         return CreatedAtAction(nameof(GetLinkGroupById), new { id = result.Id }, result);
     }
 
-    [HttpPut("link-groups/{id:guid}", Name = RouteNames.UpdateFooterLinkGroup)]
     [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPut("link-groups/{id:guid}", Name = RouteNames.UpdateFooterLinkGroup)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -101,8 +107,9 @@ public class FooterController : ExploreControllerBase
         return Ok(result);
     }
 
-    [HttpDelete("link-groups/{id:guid}", Name = RouteNames.DeleteFooterLinkGroup)]
     [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpDelete("link-groups/{id:guid}", Name = RouteNames.DeleteFooterLinkGroup)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<bool>> DeleteLinkGroup(Guid id, CancellationToken cancellationToken)
@@ -112,8 +119,9 @@ public class FooterController : ExploreControllerBase
         return Ok(result);
     }
 
-    [HttpPost("link-groups/reorder", Name = RouteNames.ReorderFooterLinkGroups)]
     [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPost("link-groups/reorder", Name = RouteNames.ReorderFooterLinkGroups)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> ReorderLinkGroups(
@@ -134,8 +142,9 @@ public class FooterController : ExploreControllerBase
 
     // ── Link admin endpoints ─────────────────────────────────────────────────
 
-    [HttpPost("link-groups/{groupId:guid}/links", Name = RouteNames.CreateFooterLink)]
     [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPost("link-groups/{groupId:guid}/links", Name = RouteNames.CreateFooterLink)]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> CreateLink(
@@ -157,8 +166,9 @@ public class FooterController : ExploreControllerBase
         return Created(string.Empty, result);
     }
 
-    [HttpPut("links/{id:guid}", Name = RouteNames.UpdateFooterLink)]
     [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPut("links/{id:guid}", Name = RouteNames.UpdateFooterLink)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -182,8 +192,9 @@ public class FooterController : ExploreControllerBase
         return Ok(result);
     }
 
-    [HttpDelete("links/{id:guid}", Name = RouteNames.DeleteFooterLink)]
     [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpDelete("links/{id:guid}", Name = RouteNames.DeleteFooterLink)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<bool>> DeleteLink(Guid id, CancellationToken cancellationToken)
@@ -195,8 +206,9 @@ public class FooterController : ExploreControllerBase
 
     // ── Tenant settings endpoint ─────────────────────────────────────────────
 
-    [HttpPut("settings", Name = RouteNames.UpdateTenantFooterSettings)]
     [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPut("settings", Name = RouteNames.UpdateTenantFooterSettings)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateSettings(

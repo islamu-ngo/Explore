@@ -2,6 +2,7 @@
 // ABOUTME: Handles creation, updates, and deletion of ATProto records for federation support.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.Features.AtprotoRecords.Requests.Commands;
 using Explore.Application.Features.AtprotoRecords.Requests.Queries;
@@ -16,6 +17,7 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/[controller]")]
 [ApiController]
+[EndpointClassification(EndpointClass.Authenticated)]
 public class AtprotoRecordController : ControllerBase
 {
     private readonly IMediator _mediator;

@@ -166,6 +166,7 @@ builder.Services.AddOpenApi("event-api", options =>
         return Task.CompletedTask;
     });
     options.AddDocumentTransformer<Explore.API.OpenApi.HalDtoSchemaTransformer>();
+    options.AddOperationTransformer<Explore.API.OpenApi.EndpointClassificationTransformer>();
 });
 
 // Add HttpClient for OpenAPI export service
@@ -322,15 +323,21 @@ if (!string.IsNullOrWhiteSpace(setupSecretForStartupReminder))
 }
 
 // Configure the HTTP request pipeline.
+// OpenAPI/Swagger surface is exposed in Development AND Testing so contract-invariant
+// integration tests (Event.API.IntegrationTests) can fetch /openapi/event-api.json.
+if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
+{
+    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v0.1/swagger.json", "Explore API v0.1"));
+    app.MapScalarApiReference();
+}
+
 if (app.Environment.IsDevelopment())
 {
     Microsoft.IdentityModel.Logging.IdentityModelEventSource.ShowPII = true;
 
     //Microsoft.IdentityModel.Tokens.JsonWebTokenHandler.DefaultMapInboundClaims = false;
-    app.MapOpenApi();
-    app.UseSwagger();
-    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v0.1/swagger.json", "Explore API v0.1"));
-    app.MapScalarApiReference();
     app.UseCors("DevPolicy"); // for development purposes only
 
     app.MapPost("/admin/migrate", async (ExploreDbContext context, ILogger<Program> logger) =>

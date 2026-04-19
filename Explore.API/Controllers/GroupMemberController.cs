@@ -2,6 +2,7 @@
 // ABOUTME: Manages user membership in groups and associated permissions via CQRS/MediatR.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.GroupMember;
 using Explore.Application.Features.GroupMembers.Requests.Commands;
@@ -27,8 +28,9 @@ public class GroupMemberController : ExploreControllerBase
         _mediator = mediator;
     }
 
-    [HttpGet("{groupId:guid}", Name = RouteNames.GetGroupMembers)]
     [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
+    [HttpGet("{groupId:guid}", Name = RouteNames.GetGroupMembers)]
     [OutputCache(PolicyName = "ListData")]
     [ProducesResponseType(typeof(List<GroupMemberDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<GroupMemberDto>>> GetByGroupId(Guid groupId, CancellationToken cancellationToken = default)
@@ -37,8 +39,9 @@ public class GroupMemberController : ExploreControllerBase
         return Ok(members);
     }
 
-    [HttpGet("member/{id:guid}", Name = RouteNames.GetGroupMemberById)]
     [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
+    [HttpGet("member/{id:guid}", Name = RouteNames.GetGroupMemberById)]
     [OutputCache(PolicyName = "DetailData")]
     [ProducesResponseType(typeof(GroupMemberDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -49,6 +52,7 @@ public class GroupMemberController : ExploreControllerBase
         return Ok(member);
     }
 
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost(Name = RouteNames.CreateGroupMember)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -75,6 +79,7 @@ public class GroupMemberController : ExploreControllerBase
         return Ok(response);
     }
 
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("role", Name = RouteNames.UpdateGroupMember)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -101,6 +106,7 @@ public class GroupMemberController : ExploreControllerBase
         return Ok(response);
     }
 
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpDelete("{id:guid}", Name = RouteNames.DeleteGroupMember)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

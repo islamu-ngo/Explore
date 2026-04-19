@@ -2,6 +2,7 @@
 // ABOUTME: Surfaces promotion recommendations via Atlassian 4-question matrix for Layer 3 definitions.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.API.Extensions;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.CustomPropertyGovernance;
@@ -21,6 +22,7 @@ namespace Explore.API.Controllers;
 [Route("api/admin/custom-property-definitions")]
 [ApiController]
 [Authorize]
+[EndpointClassification(EndpointClass.Authenticated)]
 public class CustomPropertyGovernanceController : ControllerBase
 {
     private readonly IMediator _mediator;

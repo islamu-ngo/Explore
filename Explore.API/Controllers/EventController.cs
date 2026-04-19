@@ -2,6 +2,7 @@
 // ABOUTME: Supports specification-based queries, soft-delete recovery, and complex event discovery with multiple filter dimensions.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.API.Models;
 using Explore.Application.DTOs.Event;
@@ -48,6 +49,8 @@ public class EventController : ExploreControllerBase
     /// <summary>
     /// Get all events with pagination and optional filtering.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet(Name = RouteNames.GetEvents)]
     [EndpointSummary("Get all Events")]
     [EndpointDescription("Get a paginated, filterable list of all Events (Conference, Webinar, Workshop...). " +
@@ -59,7 +62,6 @@ public class EventController : ExploreControllerBase
         "Supports sorting by date, title, views, or createdAt. " +
         "Response includes HATEOAS navigation links (first, prev, next, last). " +
         "Send 'Prefer: return=minimal' header to strip links.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<EventListDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<EventListDto>>> GetAll(
@@ -118,11 +120,12 @@ public class EventController : ExploreControllerBase
     /// <summary>
     /// Get events for the current user's organizations.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpGet("my", Name = RouteNames.GetMyEvents)]
     [EndpointSummary("Get My Events")]
     [EndpointDescription("Get a paginated list of events created by the current user's organizations. " +
         "Default page size is 20, max is 100.")]
-    [Authorize]
     [ProducesResponseType(typeof(HalCollectionResource<EventListDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<HalCollectionResource<EventListDto>>> GetMyEvents(
@@ -153,11 +156,12 @@ public class EventController : ExploreControllerBase
     /// <summary>
     /// Get event details by ID.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("{id:guid}", Name = RouteNames.GetEventById)]
     [EndpointSummary("Get Event Details")]
     [EndpointDescription("Get full details of an event including actor information, sessions, and related resources. " +
         "Response includes links to related resources (sessions, categories, tags).")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalResource<EventDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
@@ -174,12 +178,13 @@ public class EventController : ExploreControllerBase
     /// <summary>
     /// Create a new event.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost(Name = RouteNames.CreateEvent)]
     [EndpointSummary("Create Event")]
     [EndpointDescription("Creates a new event. If OrganizationId is provided, the event is created under that organization. " +
         "If GroupId is provided, the event is created under that group. " +
         "If neither is provided, the event is created under the user's personal actor when tenant policy allows user-reported publishing.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -203,12 +208,13 @@ public class EventController : ExploreControllerBase
     /// <summary>
     /// Create a new event with sessions in a single transaction.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost("with-sessions")]
     [EndpointSummary("Create Event with Sessions")]
     [EndpointDescription("Creates a new event along with its sessions in a single transaction. " +
         "At least one session is required. FirstSessionDate and LastSessionDate are computed automatically from the sessions. " +
         "OrganizationId and GroupId are optional and mutually exclusive publisher contexts.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -233,10 +239,11 @@ public class EventController : ExploreControllerBase
     /// Update an existing event. Supports full update (EventDto) or targeted field updates (e.g., EventStatusDto).
     /// Supply only the DTO(s) to update; null properties are ignored.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("{id:guid}", Name = RouteNames.UpdateEvent)]
     [EndpointSummary("Update Event")]
     [EndpointDescription("Update an existing event. Supports full update via EventDto or targeted updates via specific DTOs (e.g., EventStatusDto). Null DTOs are ignored.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -263,10 +270,11 @@ public class EventController : ExploreControllerBase
     /// <summary>
     /// Delete an event.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpDelete("{id:guid}", Name = RouteNames.DeleteEvent)]
     [EndpointSummary("Delete Event")]
     [EndpointDescription("Delete an event. User must be a member of the organization that owns the event.")]
-    [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -291,11 +299,12 @@ public class EventController : ExploreControllerBase
     /// <summary>
     /// Get the Islamic aspect for an event.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("{id:guid}/aspects/islamic", Name = RouteNames.GetEventIslamicAspect)]
     [EndpointSummary("Get Event Islamic Aspect")]
     [EndpointDescription("Get the Islamic-specific characteristics of an event (Madhab, prayer timing, gender mode). " +
         "Returns 404 if the event doesn't have an Islamic aspect configured.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(EventIslamicAspectDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
@@ -309,11 +318,12 @@ public class EventController : ExploreControllerBase
     /// <summary>
     /// Create or update the Islamic aspect for an event.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("{id:guid}/aspects/islamic", Name = RouteNames.UpsertEventIslamicAspect)]
     [EndpointSummary("Create/Update Event Islamic Aspect")]
     [EndpointDescription("Creates or updates the Islamic-specific characteristics of an event. " +
         "Includes Madhab, prayer-based scheduling, gender segregation mode, and language settings.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -346,11 +356,12 @@ public class EventController : ExploreControllerBase
     /// <summary>
     /// Delete the Islamic aspect from an event.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpDelete("{id:guid}/aspects/islamic", Name = RouteNames.DeleteEventIslamicAspect)]
     [EndpointSummary("Delete Event Islamic Aspect")]
     [EndpointDescription("Removes the Islamic-specific characteristics from an event. " +
         "The event itself is not deleted.")]
-    [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -364,11 +375,12 @@ public class EventController : ExploreControllerBase
     /// <summary>
     /// Get the Tech aspect for an event.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("{id:guid}/aspects/tech", Name = RouteNames.GetEventTechAspect)]
     [EndpointSummary("Get Event Tech Aspect")]
     [EndpointDescription("Get the tech/developer-specific characteristics of an event (skill level, hackathon details, tech stack). " +
         "Returns 404 if the event doesn't have a Tech aspect configured.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(EventTechAspectDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
@@ -382,11 +394,12 @@ public class EventController : ExploreControllerBase
     /// <summary>
     /// Create or update the Tech aspect for an event.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("{id:guid}/aspects/tech", Name = RouteNames.UpsertEventTechAspect)]
     [EndpointSummary("Create/Update Event Tech Aspect")]
     [EndpointDescription("Creates or updates the tech/developer-specific characteristics of an event. " +
         "Includes skill level requirements, hackathon track, tech stack tags, and competition details.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -419,11 +432,12 @@ public class EventController : ExploreControllerBase
     /// <summary>
     /// Delete the Tech aspect from an event.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpDelete("{id:guid}/aspects/tech", Name = RouteNames.DeleteEventTechAspect)]
     [EndpointSummary("Delete Event Tech Aspect")]
     [EndpointDescription("Removes the tech/developer-specific characteristics from an event. " +
         "The event itself is not deleted.")]
-    [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

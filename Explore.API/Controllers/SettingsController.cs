@@ -2,6 +2,7 @@
 // ABOUTME: Exposes generic CRUD + lock/unlock endpoints consumed by any settings UI (EventList is first consumer).
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Settings;
 using Explore.Application.Features.Settings.Requests.Commands;
@@ -18,6 +19,7 @@ namespace Explore.API.Controllers;
 [Route("api/settings")]
 [ApiController]
 [Authorize]
+[EndpointClassification(EndpointClass.Authenticated)]
 public class SettingsController : ControllerBase
 {
     private readonly IMediator _mediator;

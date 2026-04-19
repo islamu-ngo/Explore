@@ -2,6 +2,7 @@
 // ABOUTME: Allows organizations to define custom fields for events and registrations with type validation.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.CustomPropertyDefinition;
 using Explore.Application.Features.CustomPropertyDefinitions.Requests.Commands;
@@ -41,12 +42,13 @@ public class CustomPropertyDefinitionController : ControllerBase
     /// <summary>
     /// Get shared custom-property definitions with pagination.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet(Name = RouteNames.GetCustomPropertyDefinitions)]
     [EndpointSummary("Get all CustomPropertyDefinitions")]
     [EndpointDescription("Get a paginated list of shared custom-property definitions for one entity scope. Default page size is 20, max is 100. " +
         "Response includes HATEOAS navigation links (first, prev, next, last). " +
         "Send 'Prefer: return=minimal' header to strip links.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<CustomPropertyDefinitionListDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<CustomPropertyDefinitionListDto>>> GetAll(
@@ -74,11 +76,12 @@ public class CustomPropertyDefinitionController : ControllerBase
     /// <summary>
     /// Get shared custom-property definition details by ID.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("{id:guid}", Name = RouteNames.GetCustomPropertyDefinitionById)]
     [EndpointSummary("Get CustomPropertyDefinition Details")]
     [EndpointDescription("Get full details of a custom property definition including its options. " +
         "Response includes links to related resources (events, members).")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalResource<CustomPropertyDefinitionDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
@@ -95,10 +98,11 @@ public class CustomPropertyDefinitionController : ControllerBase
     /// <summary>
     /// Create a new custom property definition.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost(Name = RouteNames.CreateCustomPropertyDefinition)]
     [EndpointSummary("Create CustomPropertyDefinition")]
     [EndpointDescription("Create a new shared custom-property definition for Organization or Group scope.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -126,10 +130,11 @@ public class CustomPropertyDefinitionController : ControllerBase
     /// <summary>
     /// Update a shared custom-property definition.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("{id:guid}", Name = RouteNames.UpdateCustomPropertyDefinition)]
     [EndpointSummary("Update CustomPropertyDefinition")]
     [EndpointDescription("Update an existing shared custom-property definition and replace its option set.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -162,8 +167,9 @@ public class CustomPropertyDefinitionController : ControllerBase
     /// <summary>
     /// Delete a shared custom-property definition.
     /// </summary>
-    [HttpDelete("{id:guid}", Name = RouteNames.DeleteCustomPropertyDefinition)]
     [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpDelete("{id:guid}", Name = RouteNames.DeleteCustomPropertyDefinition)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

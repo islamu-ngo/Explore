@@ -2,6 +2,7 @@
 // ABOUTME: Keeps controllers thin by delegating issuance, listing, and revocation to MediatR handlers.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.Application.DTOs.ExternalApiKey;
 using Explore.Application.Features.ExternalApiKeys.Requests.Commands;
 using Explore.Application.Features.ExternalApiKeys.Requests.Queries;
@@ -17,6 +18,7 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Authorize]
+[EndpointClassification(EndpointClass.Authenticated)]
 public class ExternalApiKeyController : ControllerBase
 {
     private readonly IMediator _mediator;

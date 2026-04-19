@@ -2,6 +2,7 @@
 // ABOUTME: All endpoints require authentication — notifications are personal user data.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.Application.DTOs.Notification;
 using Explore.Application.Features.Notifications.Requests.Commands;
 using Explore.Application.Features.Notifications.Requests.Queries;
@@ -16,6 +17,7 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [Authorize]
+[EndpointClassification(EndpointClass.Authenticated)]
 public class NotificationController : ControllerBase
 {
     private readonly IMediator _mediator;

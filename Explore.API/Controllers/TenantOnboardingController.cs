@@ -2,6 +2,7 @@
 // ABOUTME: Exposes tenant onboarding questionnaire state and completion/update endpoints.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.TenantPolicy;
 using Explore.Application.Features.TenantOnboarding.Requests.Commands;
@@ -16,6 +17,7 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/[controller]")]
 [ApiController]
+[EndpointClassification(EndpointClass.Authenticated)]
 public class TenantOnboardingController : ExploreControllerBase
 {
     private readonly IMediator _mediator;

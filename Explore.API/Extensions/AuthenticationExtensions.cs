@@ -13,9 +13,8 @@ public static class AuthenticationExtensions
     // Security: audiences validated in both 'aud' and 'azp' claims (Keycloak BFF pattern)
     private static readonly string[] ValidAudiences =
     [
-        "explore-api",
-        "explore-blazor-server",
-        "account"
+        "islamu-event-api",
+        "islamu-event-blazor"
     ];
 
     public static IServiceCollection AddApiAuthentication(

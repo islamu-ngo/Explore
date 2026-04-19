@@ -2,6 +2,7 @@
 // ABOUTME: Provides read-only access to supported languages for event sessions and localization.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.Application.DTOs.Language;
 using Explore.Application.Features.Languages.Requests.Queries;
 using MediatR;
@@ -14,6 +15,7 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/[controller]")]
 [ApiController]
+[EndpointClassification(EndpointClass.Public)]
 public class LanguageController : ControllerBase
 {
     private readonly IMediator _mediator;

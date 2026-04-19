@@ -2,6 +2,7 @@
 // ABOUTME: Manages event sessions, agendas, speakers, and session-level registration with HATEOAS.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.Features.EventSessions.Requests.Commands;
@@ -43,13 +44,14 @@ public class EventSessionController : ControllerBase
     /// <summary>
     /// Get all event sessions with pagination.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet(Name = RouteNames.GetEventSessions_List)]
     [EndpointSummary("Get all Event Sessions")]
     [EndpointDescription("Get a paginated list of all event sessions. " +
         "Default page size is 20, max is 100. " +
         "Response includes HATEOAS navigation links. " +
         "Send 'Prefer: return=minimal' header to strip links.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<EventSessionListDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<EventSessionListDto>>> GetAll(
@@ -74,11 +76,12 @@ public class EventSessionController : ControllerBase
     /// <summary>
     /// Get event session details by ID.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("{id:guid}", Name = RouteNames.GetEventSessionById)]
     [EndpointSummary("Get Event Session Details")]
     [EndpointDescription("Get detailed information about a specific event session. " +
         "Response includes links to related resources (event, speakers, agenda).")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalResource<EventSessionDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
@@ -95,10 +98,11 @@ public class EventSessionController : ControllerBase
     /// <summary>
     /// Get sessions for a specific event.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("by-event/{eventId:guid}", Name = RouteNames.GetEventSessions)]
     [EndpointSummary("Get Sessions by Event")]
     [EndpointDescription("Get all sessions for a specific event.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<EventSessionListDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<EventSessionListDto>>> GetByEvent(Guid eventId, CancellationToken cancellationToken = default)
@@ -116,10 +120,11 @@ public class EventSessionController : ControllerBase
     /// <summary>
     /// Create a new event session.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost(Name = RouteNames.CreateEventSession)]
     [EndpointSummary("Create Event Session")]
     [EndpointDescription("Create a new event session. Must be associated with an existing event.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -143,10 +148,11 @@ public class EventSessionController : ControllerBase
     /// <summary>
     /// Update an existing event session.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("{id:guid}", Name = RouteNames.UpdateEventSession)]
     [EndpointSummary("Update Event Session")]
     [EndpointDescription("Update an existing event session.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -173,10 +179,11 @@ public class EventSessionController : ControllerBase
     /// <summary>
     /// Delete an event session.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpDelete("{id:guid}", Name = RouteNames.DeleteEventSession)]
     [EndpointSummary("Delete Event Session")]
     [EndpointDescription("Delete an event session.")]
-    [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

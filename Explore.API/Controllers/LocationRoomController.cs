@@ -2,6 +2,7 @@
 // ABOUTME: Manages rooms within locations for session venue assignment with HATEOAS.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.LocationRoom;
 using Explore.Application.Features.LocationRooms.Requests.Commands;
@@ -44,10 +45,11 @@ public class LocationRoomController : ControllerBase
     /// <summary>
     /// Get all rooms for a specific location.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("by-location/{locationId:guid}", Name = RouteNames.GetLocationRoomsByLocation)]
     [EndpointSummary("Get Rooms by Location")]
     [EndpointDescription("Get all rooms for a specific location, ordered by sort order.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<LocationRoomListDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<LocationRoomListDto>>> GetByLocation(Guid locationId, CancellationToken cancellationToken = default)
@@ -66,10 +68,11 @@ public class LocationRoomController : ControllerBase
     /// <summary>
     /// Get location room details by ID.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("{id:guid}", Name = RouteNames.GetLocationRoomById)]
     [EndpointSummary("Get Room Details")]
     [EndpointDescription("Get detailed information about a specific location room.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalResource<LocationRoomDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
@@ -86,10 +89,11 @@ public class LocationRoomController : ControllerBase
     /// <summary>
     /// Create a new location room.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost(Name = RouteNames.CreateLocationRoom)]
     [EndpointSummary("Create Room")]
     [EndpointDescription("Create a new room within a location.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -113,10 +117,11 @@ public class LocationRoomController : ControllerBase
     /// <summary>
     /// Update an existing location room.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("{id:guid}", Name = RouteNames.UpdateLocationRoom)]
     [EndpointSummary("Update Room")]
     [EndpointDescription("Update an existing location room.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -143,10 +148,11 @@ public class LocationRoomController : ControllerBase
     /// <summary>
     /// Delete a location room.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpDelete("{id:guid}", Name = RouteNames.DeleteLocationRoom)]
     [EndpointSummary("Delete Room")]
     [EndpointDescription("Delete a location room.")]
-    [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

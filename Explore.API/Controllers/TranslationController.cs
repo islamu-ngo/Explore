@@ -2,6 +2,7 @@
 // ABOUTME: All endpoints are AllowAnonymous — Blazor frontend fetches translations without auth.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.Application.Features.Localization.Requests.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -13,6 +14,7 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/[controller]")]
 [ApiController]
+[EndpointClassification(EndpointClass.Public)]
 public class TranslationController : ControllerBase
 {
     private readonly IMediator _mediator;

@@ -4,6 +4,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.Application.DTOs.GroupPosition;
 using Explore.Application.Features.GroupPositions.Requests.Queries;
 using MediatR;
@@ -17,6 +18,7 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/[controller]")]
 [ApiController]
+[EndpointClassification(EndpointClass.Public)]
 public class GroupPositionController : ControllerBase
 {
     private readonly IMediator _mediator;

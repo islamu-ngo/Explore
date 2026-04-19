@@ -2,6 +2,7 @@
 // Provides endpoints to list available modules and check tenant capabilities.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.Application.Contracts.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -34,11 +35,12 @@ public class ModuleController : ControllerBase
     /// <summary>
     /// Get all globally available modules.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("available")]
     [EndpointSummary("Get Available Modules")]
     [EndpointDescription("Returns all modules that are globally active in the system. " +
         "Does not filter by tenant - use /enabled for tenant-specific modules.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(IReadOnlyList<ModuleInfo>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<ModuleInfo>>> GetAvailableModules(CancellationToken cancellationToken)
     {
@@ -49,12 +51,13 @@ public class ModuleController : ControllerBase
     /// <summary>
     /// Get modules enabled for the current tenant.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("enabled")]
     [EndpointSummary("Get Enabled Modules")]
     [EndpointDescription("Returns modules enabled for the current tenant. " +
         "These modules determine which aspects/features are available for events. " +
         "Used by the frontend to drive dynamic form generation.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(IReadOnlyList<ModuleInfo>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<ModuleInfo>>> GetEnabledModules(CancellationToken cancellationToken)
     {
@@ -66,11 +69,12 @@ public class ModuleController : ControllerBase
     /// <summary>
     /// Check if a specific module is enabled for the current tenant.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("{moduleKey}/enabled")]
     [EndpointSummary("Check Module Enabled")]
     [EndpointDescription("Checks if a specific module is enabled for the current tenant. " +
         "Returns a simple boolean response.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(ModuleEnabledResponse), StatusCodes.Status200OK)]
     public async Task<ActionResult<ModuleEnabledResponse>> IsModuleEnabled(
         string moduleKey,
@@ -89,11 +93,12 @@ public class ModuleController : ControllerBase
     /// <summary>
     /// Get the wizard schema URL for a module.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("{moduleKey}/schema")]
     [EndpointSummary("Get Module Schema URL")]
     [EndpointDescription("Returns the wizard schema URL for a module. " +
         "The schema is used to generate dynamic forms for module-specific features.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(ModuleSchemaResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ModuleSchemaResponse>> GetModuleSchemaUrl(
@@ -120,11 +125,12 @@ public class ModuleController : ControllerBase
     /// <summary>
     /// Enable a module for the current tenant (admin only).
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost("{moduleKey}/enable")]
     [EndpointSummary("Enable Module")]
     [EndpointDescription("Enables a module for the current tenant. " +
         "Requires admin privileges.")]
-    [Authorize]
     [ProducesResponseType(typeof(ModuleActionResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -163,12 +169,13 @@ public class ModuleController : ControllerBase
     /// <summary>
     /// Disable a module for the current tenant (admin only).
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost("{moduleKey}/disable")]
     [EndpointSummary("Disable Module")]
     [EndpointDescription("Disables a module for the current tenant. " +
         "Existing data using this module's features will be preserved but hidden. " +
         "Requires admin privileges.")]
-    [Authorize]
     [ProducesResponseType(typeof(ModuleActionResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

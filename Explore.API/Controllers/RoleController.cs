@@ -2,6 +2,7 @@
 // ABOUTME: Supports scope filtering via query parameter (Platform, Tenant, Organization).
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Role;
 using Explore.Application.Features.Roles.Requests.Queries;
@@ -17,6 +18,7 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/[controller]")]
 [ApiController]
+[EndpointClassification(EndpointClass.Public)]
 public class RoleController : ControllerBase
 {
     private readonly IMediator _mediator;

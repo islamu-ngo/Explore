@@ -2,6 +2,7 @@
 // ABOUTME: Exposes the effective appearance settings and server-authoritative preference updates for the current user.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.Application.DTOs.Appearance;
 using Explore.Application.Features.Appearance.Requests.Commands;
 using Explore.Application.Features.Appearance.Requests.Queries;
@@ -16,6 +17,7 @@ namespace Explore.API.Controllers;
 [Route("api/user/appearance")]
 [ApiController]
 [Authorize]
+[EndpointClassification(EndpointClass.Authenticated)]
 public class UserAppearanceController : ControllerBase
 {
     private readonly IMediator _mediator;

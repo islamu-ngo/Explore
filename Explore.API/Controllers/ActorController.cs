@@ -2,6 +2,7 @@
 // ABOUTME: Manages speaker profiles, credentials, and associations with events and organizations.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Actor;
 using Explore.Application.Features.Actors.Requests.Commands;
@@ -24,6 +25,7 @@ namespace Explore.API.Controllers;
 [Route("api/actor")]
 [ApiController]
 [Produces(HateoasConstants.JsonMediaType, HateoasConstants.HalJsonMediaType)]
+[EndpointClassification(EndpointClass.Public)]
 public class ActorController : ControllerBase
 {
     private readonly IMediator _mediator;

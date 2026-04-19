@@ -2,6 +2,7 @@
 // ABOUTME: Manages user groups, group settings, and group-level permissions.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Group;
 using Explore.Application.Features.Groups.Requests.Commands;
@@ -37,10 +38,11 @@ public class GroupController : ExploreControllerBase
         _resourceAssembler = resourceAssembler;
     }
 
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet(Name = RouteNames.GetGroups)]
     [EndpointSummary("Get all Groups")]
     [EndpointDescription("Get a paginated list of all Groups. Default page size is 20, max is 100.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<GroupListDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<GroupListDto>>> GetAll(
@@ -63,10 +65,11 @@ public class GroupController : ExploreControllerBase
         return Ok(halResource);
     }
 
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpGet("my", Name = RouteNames.GetMyGroups)]
     [EndpointSummary("Get my Groups")]
     [EndpointDescription("Get a paginated list of groups where the current user is a member.")]
-    [Authorize]
     [ProducesResponseType(typeof(HalCollectionResource<GroupListDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<HalCollectionResource<GroupListDto>>> GetMyGroups(
@@ -96,10 +99,11 @@ public class GroupController : ExploreControllerBase
         return Ok(halResource);
     }
 
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("{id:guid}", Name = RouteNames.GetGroupById)]
     [EndpointSummary("Get Group Details")]
     [EndpointDescription("Get full details of a group.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalResource<GroupDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
@@ -114,10 +118,11 @@ public class GroupController : ExploreControllerBase
         return Ok(halResource);
     }
 
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost(Name = RouteNames.CreateGroup)]
     [EndpointSummary("Create Group")]
     [EndpointDescription("Create a new group. The authenticated user becomes the creator.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -134,10 +139,11 @@ public class GroupController : ExploreControllerBase
         return CreatedAtRoute(RouteNames.GetGroupById, new { id = response.Id }, response);
     }
 
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("{id:guid}", Name = RouteNames.UpdateGroup)]
     [EndpointSummary("Update Group")]
     [EndpointDescription("Update an existing group. User must have group management permission.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -170,10 +176,11 @@ public class GroupController : ExploreControllerBase
         return Ok(response);
     }
 
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpDelete("{id:guid}", Name = RouteNames.DeleteGroup)]
     [EndpointSummary("Delete Group")]
     [EndpointDescription("Delete a group. User must have group deletion permission.")]
-    [Authorize]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Delete(Guid id, CancellationToken cancellationToken = default)

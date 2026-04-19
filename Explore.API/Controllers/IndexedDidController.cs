@@ -2,6 +2,7 @@
 // ABOUTME: Manages ATProto DID records and federation identity mappings with HATEOAS support.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.IndexedDid;
 using Explore.Application.Features.IndexedDids.Requests.Commands;
@@ -36,8 +37,9 @@ public class IndexedDidController : ControllerBase
     }
 
     // GET: api/indexeddid
-    [HttpGet(Name = RouteNames.GetIndexedDids)]
     [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
+    [HttpGet(Name = RouteNames.GetIndexedDids)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<IndexedDidListDto>>> GetAll(CancellationToken cancellationToken = default)
     {
@@ -50,8 +52,9 @@ public class IndexedDidController : ControllerBase
     }
 
     // GET: api/indexeddid/{did}
-    [HttpGet("{did}", Name = RouteNames.GetIndexedDidByDid)]
     [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
+    [HttpGet("{did}", Name = RouteNames.GetIndexedDidByDid)]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<HalResource<IndexedDidDto>>> GetById(string did, CancellationToken cancellationToken = default)
     {
@@ -64,8 +67,9 @@ public class IndexedDidController : ControllerBase
     }
 
     // POST: api/indexeddid
-    [HttpPost]
     [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPost]
     public async Task<ActionResult<BaseCommandResponse<string>>> Create([FromBody] CreateIndexedDidDto dto, CancellationToken cancellationToken = default)
     {
         var command = new CreateIndexedDidCommand { IndexedDidDto = dto };
@@ -74,8 +78,9 @@ public class IndexedDidController : ControllerBase
     }
 
     // PUT: api/indexeddid/{did}
-    [HttpPut("{did}")]
     [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPut("{did}")]
     public async Task<ActionResult<BaseCommandResponse<string>>> Update(string did, [FromBody] UpdateIndexedDidDto dto, CancellationToken cancellationToken = default)
     {
         if (did != dto.Did)
@@ -95,8 +100,9 @@ public class IndexedDidController : ControllerBase
     }
 
     // DELETE: api/indexeddid/{did}
-    [HttpDelete("{did}")]
     [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpDelete("{did}")]
     public async Task<ActionResult> Delete(string did, CancellationToken cancellationToken = default)
     {
         var command = new DeleteIndexedDidCommand { Did = did };

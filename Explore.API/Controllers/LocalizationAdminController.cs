@@ -2,6 +2,7 @@
 // ABOUTME: Provides endpoints to test TMS connection, view config, export bundles, and health probes.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.Localization;
 using Explore.Application.Features.Localization.Requests.Commands;
@@ -17,6 +18,7 @@ namespace Explore.API.Controllers;
 [Route("api/admin/localization")]
 [ApiController]
 [Authorize]
+[EndpointClassification(EndpointClass.Authenticated)]
 public class LocalizationAdminController : ControllerBase
 {
     private readonly IMediator _mediator;

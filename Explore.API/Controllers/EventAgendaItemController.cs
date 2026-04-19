@@ -2,6 +2,7 @@
 // ABOUTME: Manages non-session schedule entries (breaks, meals, ceremonies) with HATEOAS.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Agenda;
 using Explore.Application.DTOs.EventAgendaItem;
@@ -47,10 +48,11 @@ public class EventAgendaItemController : ControllerBase
     /// <summary>
     /// Get all agenda items for a specific event.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("by-event/{eventId:guid}", Name = RouteNames.GetEventAgendaItemsByEvent)]
     [EndpointSummary("Get Agenda Items by Event")]
     [EndpointDescription("Get all agenda items for a specific event, ordered by sort order.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<EventAgendaItemListDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<EventAgendaItemListDto>>> GetByEvent(Guid eventId, CancellationToken cancellationToken = default)
@@ -69,10 +71,11 @@ public class EventAgendaItemController : ControllerBase
     /// <summary>
     /// Get event agenda item details by ID.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("{id:guid}", Name = RouteNames.GetEventAgendaItemById)]
     [EndpointSummary("Get Agenda Item Details")]
     [EndpointDescription("Get detailed information about a specific agenda item.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalResource<EventAgendaItemDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
@@ -89,11 +92,12 @@ public class EventAgendaItemController : ControllerBase
     /// <summary>
     /// Get the full agenda projection for an event, merging sessions and agenda items by day and room.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("agenda-projection/{eventId:guid}", Name = RouteNames.GetEventAgendaProjection)]
     [EndpointSummary("Get Event Agenda Projection")]
     [EndpointDescription("Get a merged view of all sessions and agenda items for an event, " +
         "grouped by local day and room with local time projections.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(EventAgendaProjectionDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
@@ -109,10 +113,11 @@ public class EventAgendaItemController : ControllerBase
     /// <summary>
     /// Create a new event agenda item.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost(Name = RouteNames.CreateEventAgendaItem)]
     [EndpointSummary("Create Agenda Item")]
     [EndpointDescription("Create a new event agenda item. Must be associated with an existing event.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -136,10 +141,11 @@ public class EventAgendaItemController : ControllerBase
     /// <summary>
     /// Update an existing event agenda item.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("{id:guid}", Name = RouteNames.UpdateEventAgendaItem)]
     [EndpointSummary("Update Agenda Item")]
     [EndpointDescription("Update an existing event agenda item.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -166,10 +172,11 @@ public class EventAgendaItemController : ControllerBase
     /// <summary>
     /// Delete an event agenda item.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpDelete("{id:guid}", Name = RouteNames.DeleteEventAgendaItem)]
     [EndpointSummary("Delete Agenda Item")]
     [EndpointDescription("Delete an event agenda item.")]
-    [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

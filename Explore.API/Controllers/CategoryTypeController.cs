@@ -2,6 +2,7 @@
 // ABOUTME: Provides category type groupings for event category organization and filtering.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.Application.DTOs.CategoryType;
 using Explore.Application.Features.CategoryTypeCategories.Requests.Queries;
 using Explore.Application.Features.CategoryTypes.Requests.Queries;
@@ -15,6 +16,7 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/[controller]")]
 [ApiController]
+[EndpointClassification(EndpointClass.Public)]
 public class CategoryTypeController : ControllerBase
 {
     private readonly IMediator _mediator;

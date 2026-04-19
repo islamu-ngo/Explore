@@ -2,6 +2,7 @@
 // ABOUTME: Manages event days (multi-day event schedule structure) with HATEOAS.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.EventDay;
 using Explore.Application.Features.EventDays.Requests.Commands;
@@ -44,10 +45,11 @@ public class EventDayController : ControllerBase
     /// <summary>
     /// Get all event days for a specific event.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("by-event/{eventId:guid}", Name = RouteNames.GetEventDaysByEvent)]
     [EndpointSummary("Get Event Days by Event")]
     [EndpointDescription("Get all days for a specific event, ordered by sort order.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<EventDayListDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<EventDayListDto>>> GetByEvent(Guid eventId, CancellationToken cancellationToken = default)
@@ -66,10 +68,11 @@ public class EventDayController : ControllerBase
     /// <summary>
     /// Get event day details by ID.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("{id:guid}", Name = RouteNames.GetEventDayById)]
     [EndpointSummary("Get Event Day Details")]
     [EndpointDescription("Get detailed information about a specific event day.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalResource<EventDayDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
@@ -86,10 +89,11 @@ public class EventDayController : ControllerBase
     /// <summary>
     /// Create a new event day.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost(Name = RouteNames.CreateEventDay)]
     [EndpointSummary("Create Event Day")]
     [EndpointDescription("Create a new event day. Must be associated with an existing event.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -113,10 +117,11 @@ public class EventDayController : ControllerBase
     /// <summary>
     /// Update an existing event day.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("{id:guid}", Name = RouteNames.UpdateEventDay)]
     [EndpointSummary("Update Event Day")]
     [EndpointDescription("Update an existing event day.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -143,10 +148,11 @@ public class EventDayController : ControllerBase
     /// <summary>
     /// Delete an event day.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpDelete("{id:guid}", Name = RouteNames.DeleteEventDay)]
     [EndpointSummary("Delete Event Day")]
     [EndpointDescription("Delete an event day.")]
-    [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

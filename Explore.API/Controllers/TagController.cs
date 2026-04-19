@@ -2,6 +2,7 @@
 // ABOUTME: Manages event tags used for categorization and discovery filtering.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Tag;
 using Explore.Application.Features.Tags.Requests.Commands;
@@ -43,13 +44,14 @@ public class TagController : ControllerBase
     /// <summary>
     /// Get all tags with pagination.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet(Name = RouteNames.GetTags)]
     [EndpointSummary("Get all Tags")]
     [EndpointDescription("Retrieve a paginated list of all tags for events. " +
         "Default page size is 20, max is 100. " +
         "Response includes HATEOAS navigation links. " +
         "Send 'Prefer: return=minimal' header to strip links.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<TagListDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<TagListDto>>> GetAll(
@@ -74,11 +76,12 @@ public class TagController : ControllerBase
     /// <summary>
     /// Get tag details by ID.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("{id:guid}", Name = RouteNames.GetTagById)]
     [EndpointSummary("Get Tag Details")]
     [EndpointDescription("Get detailed information about a specific tag. " +
         "Response includes links to events with this tag.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalResource<TagDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
@@ -95,10 +98,11 @@ public class TagController : ControllerBase
     /// <summary>
     /// Create a new tag.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost(Name = RouteNames.CreateTag)]
     [EndpointSummary("Create Tag")]
     [EndpointDescription("Create a new tag for categorizing events.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -122,10 +126,11 @@ public class TagController : ControllerBase
     /// <summary>
     /// Update an existing tag.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("{id:guid}", Name = RouteNames.UpdateTag)]
     [EndpointSummary("Update Tag")]
     [EndpointDescription("Update an existing tag's information.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -152,10 +157,11 @@ public class TagController : ControllerBase
     /// <summary>
     /// Delete a tag.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpDelete("{id:guid}", Name = RouteNames.DeleteTag)]
     [EndpointSummary("Delete Tag")]
     [EndpointDescription("Delete a tag. Events using this tag will be unlinked.")]
-    [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

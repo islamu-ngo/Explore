@@ -2,6 +2,7 @@
 // ABOUTME: Tracks external system synchronization status and provides endpoints for sync operations.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.Application.DTOs.SyncState;
 using Explore.Application.Features.SyncStates.Requests.Commands;
 using Explore.Application.Features.SyncStates.Requests.Queries;
@@ -16,6 +17,7 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/[controller]")]
 [ApiController]
+[EndpointClassification(EndpointClass.Authenticated)]
 public class SyncStateController : ControllerBase
 {
     private readonly IMediator _mediator;

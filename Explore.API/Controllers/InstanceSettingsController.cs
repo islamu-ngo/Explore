@@ -2,6 +2,7 @@
 // ABOUTME: Replaces monolithic GET/PUT settings endpoints with per-domain REST sub-resources.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Services;
@@ -24,6 +25,7 @@ namespace Explore.API.Controllers;
 [Route("api/instance/settings")]
 [ApiController]
 [Authorize]
+[EndpointClassification(EndpointClass.Authenticated)]
 public class InstanceSettingsController : ExploreControllerBase
 {
     private readonly IMediator _mediator;
@@ -508,6 +510,50 @@ public class InstanceSettingsController : ExploreControllerBase
     public async Task<ActionResult> IsAuthProviderConfigured(CancellationToken cancellationToken = default)
     {
         var service = HttpContext.RequestServices.GetRequiredService<IAuthProviderConfigurationService>();
+        var isConfigured = await service.IsConfiguredAsync();
+        return Ok(new { configured = isConfigured });
+    }
+
+    [HttpGet("authz-provider")]
+    [EndpointSummary("Get Authorization Provider Configuration")]
+    [EndpointDescription("Returns current authorization provider configuration for instance administration.")]
+    [ProducesResponseType(typeof(AuthorizationProviderConfigurationDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<AuthorizationProviderConfigurationDto>> GetAuthorizationProviderConfiguration(CancellationToken cancellationToken = default)
+    {
+        if (!await IsInstanceAdmin(cancellationToken)) return Forbid();
+        var configuration = await _mediator.Send(new GetAuthorizationProviderConfigurationQuery(), cancellationToken);
+        return Ok(configuration);
+    }
+
+    [HttpPut("authz-provider")]
+    [EndpointSummary("Update Authorization Provider Configuration")]
+    [EndpointDescription("Updates authorization provider configuration. Requires instance administrator.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateAuthorizationProviderConfiguration(
+        [FromBody] AuthorizationProviderConfigurationDto configuration, CancellationToken cancellationToken = default)
+    {
+        var userId = CurrentUserId;
+        if (!userId.HasValue) return BadRequest(InvalidIdentityResponse());
+
+        var response = await _mediator.Send(
+            new UpdateAuthorizationProviderConfigurationCommand { UserId = userId.Value, Configuration = configuration },
+            cancellationToken);
+
+        return HandleCommandResponse(response);
+    }
+
+    [HttpGet("authz-provider/status")]
+    [AllowAnonymous]
+    [EndpointSummary("Check Authorization Provider Configuration Status")]
+    [EndpointDescription("Returns whether an authorization provider has been configured.")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    public async Task<ActionResult> IsAuthorizationProviderConfigured(CancellationToken cancellationToken = default)
+    {
+        var service = HttpContext.RequestServices.GetRequiredService<IAuthorizationProviderConfigurationService>();
         var isConfigured = await service.IsConfiguredAsync();
         return Ok(new { configured = isConfigured });
     }

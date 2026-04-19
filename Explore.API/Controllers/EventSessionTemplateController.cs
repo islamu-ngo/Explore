@@ -2,6 +2,7 @@
 // ABOUTME: Manages reusable session templates that define sets of custom property definitions for event session creation.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.EventSessionTemplate;
 using Explore.Application.Features.EventSessionTemplates.Requests.Commands;
@@ -40,13 +41,14 @@ public class EventSessionTemplateController : ControllerBase
     /// <summary>
     /// Get event session templates with pagination, filtered by parent event template.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet(Name = RouteNames.GetEventSessionTemplates)]
     [EndpointSummary("Get all EventSessionTemplates")]
     [EndpointDescription("Get a paginated list of event session templates for a specific event template. " +
         "Default page size is 20, max is 100. " +
         "Response includes HATEOAS navigation links (first, prev, next, last). " +
         "Send 'Prefer: return=minimal' header to strip links.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<EventSessionTemplateListDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<EventSessionTemplateListDto>>> GetAll(
@@ -73,11 +75,12 @@ public class EventSessionTemplateController : ControllerBase
     /// <summary>
     /// Get event session template details by ID.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("{id:guid}", Name = RouteNames.GetEventSessionTemplateById)]
     [EndpointSummary("Get EventSessionTemplate Details")]
     [EndpointDescription("Get full details of an event session template including its custom property definitions and options. " +
         "Response includes links to related resources.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalResource<EventSessionTemplateDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
@@ -94,10 +97,11 @@ public class EventSessionTemplateController : ControllerBase
     /// <summary>
     /// Create a new event session template.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost(Name = RouteNames.CreateEventSessionTemplate)]
     [EndpointSummary("Create EventSessionTemplate")]
     [EndpointDescription("Create a new event session template with optional custom property definitions.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -125,10 +129,11 @@ public class EventSessionTemplateController : ControllerBase
     /// <summary>
     /// Update an event session template.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("{id:guid}", Name = RouteNames.UpdateEventSessionTemplate)]
     [EndpointSummary("Update EventSessionTemplate")]
     [EndpointDescription("Update an existing event session template and replace its definition set.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -161,8 +166,9 @@ public class EventSessionTemplateController : ControllerBase
     /// <summary>
     /// Delete an event session template.
     /// </summary>
-    [HttpDelete("{id:guid}", Name = RouteNames.DeleteEventSessionTemplate)]
     [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpDelete("{id:guid}", Name = RouteNames.DeleteEventSessionTemplate)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

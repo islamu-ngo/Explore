@@ -2,6 +2,7 @@
 // ABOUTME: Manages event venues, addresses, and geographic data for event discovery filtering.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Location;
 using Explore.Application.Features.Locations.Requests.Commands;
@@ -43,13 +44,14 @@ public class LocationController : ControllerBase
     /// <summary>
     /// Get all locations with pagination.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet(Name = RouteNames.GetLocations)]
     [EndpointSummary("Get all Locations")]
     [EndpointDescription("Retrieve a paginated list of all locations. " +
         "Default page size is 20, max is 100. " +
         "Response includes HATEOAS navigation links. " +
         "Send 'Prefer: return=minimal' header to strip links.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<LocationListDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<LocationListDto>>> GetAll(
@@ -74,10 +76,11 @@ public class LocationController : ControllerBase
     /// <summary>
     /// Get location details by ID.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("{id:guid}", Name = RouteNames.GetLocationById)]
     [EndpointSummary("Get Location Details")]
     [EndpointDescription("Get detailed information about a specific location including coordinates.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalResource<LocationDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
@@ -94,10 +97,11 @@ public class LocationController : ControllerBase
     /// <summary>
     /// Get locations by city.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("by-city/{city}", Name = RouteNames.GetLocationsByCity)]
     [EndpointSummary("Get Locations by City")]
     [EndpointDescription("Get all locations in a specific city.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<LocationListDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<LocationListDto>>> GetByCity(string city, CancellationToken cancellationToken = default)
@@ -115,10 +119,11 @@ public class LocationController : ControllerBase
     /// <summary>
     /// Get locations by country.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("by-country/{country}", Name = RouteNames.GetLocationsByCountry)]
     [EndpointSummary("Get Locations by Country")]
     [EndpointDescription("Get all locations in a specific country.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<LocationListDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<LocationListDto>>> GetByCountry(string country, CancellationToken cancellationToken = default)
@@ -136,10 +141,11 @@ public class LocationController : ControllerBase
     /// <summary>
     /// Create a new location.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost(Name = RouteNames.CreateLocation)]
     [EndpointSummary("Create Location")]
     [EndpointDescription("Create a new location with address and optional coordinates.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -163,10 +169,11 @@ public class LocationController : ControllerBase
     /// <summary>
     /// Update an existing location.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("{id:guid}", Name = RouteNames.UpdateLocation)]
     [EndpointSummary("Update Location")]
     [EndpointDescription("Update an existing location's information.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -193,10 +200,11 @@ public class LocationController : ControllerBase
     /// <summary>
     /// Delete a location.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpDelete("{id:guid}", Name = RouteNames.DeleteLocation)]
     [EndpointSummary("Delete Location")]
     [EndpointDescription("Delete a location.")]
-    [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.Features.OrganizationMembers.Requests.Commands;
 using Explore.Application.Features.OrganizationMembers.Requests.Queries;
@@ -32,6 +33,7 @@ public class OrganizationMemberController : ControllerBase
 
     [HttpGet("{organizationId}")]
     [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<List<OrganizationMemberDto>>> Get(Guid organizationId, CancellationToken cancellationToken = default)
     {
@@ -39,6 +41,7 @@ public class OrganizationMemberController : ControllerBase
         return Ok(members);
     }
 
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Post([FromBody] AddOrganizationMemberDto dto, CancellationToken cancellationToken = default)
     {
@@ -48,6 +51,7 @@ public class OrganizationMemberController : ControllerBase
         return Ok(response);
     }
 
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("role")]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateRole([FromBody] UpdateOrganizationMemberRoleDto dto, CancellationToken cancellationToken = default)
     {
@@ -57,6 +61,7 @@ public class OrganizationMemberController : ControllerBase
         return Ok(response);
     }
 
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpGet("invitations")]
     public async Task<ActionResult<List<OrganizationInvitationDto>>> GetMyInvitations(CancellationToken cancellationToken = default)
     {
@@ -75,6 +80,7 @@ public class OrganizationMemberController : ControllerBase
         return Ok(response);
     }
 
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost("invitations/{id}/accept")]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> AcceptInvitation(Guid id, CancellationToken cancellationToken = default)
     {
@@ -89,6 +95,7 @@ public class OrganizationMemberController : ControllerBase
         return Ok(response);
     }
 
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost("invitations/{id}/decline")]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> DeclineInvitation(Guid id, CancellationToken cancellationToken = default)
     {
@@ -102,6 +109,7 @@ public class OrganizationMemberController : ControllerBase
         return Ok(response);
     }
 
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpDelete("{id}")]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Delete(Guid id, CancellationToken cancellationToken = default)
     {

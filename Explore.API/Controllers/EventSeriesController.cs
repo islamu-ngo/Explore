@@ -2,6 +2,7 @@
 // ABOUTME: GET endpoints are public, write endpoints require authorization.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.EventSeries;
 using Explore.Application.Features.EventSeries.Requests.Commands;
@@ -26,8 +27,9 @@ public class EventSeriesController : ControllerBase
         _mediator = mediator;
     }
 
-    [HttpGet]
     [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
+    [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<ActionResult<PaginatedResult<EventSeriesListDto>>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10, [FromQuery] Guid? actorId = null)
     {
@@ -40,8 +42,9 @@ public class EventSeriesController : ControllerBase
         return Ok(response);
     }
 
-    [HttpGet("{id:guid}")]
     [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
+    [HttpGet("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EventSeriesDto>> GetById(Guid id)
@@ -51,8 +54,9 @@ public class EventSeriesController : ControllerBase
         return Ok(response);
     }
 
-    [HttpGet("top")]
     [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
+    [HttpGet("top")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<ActionResult<EventSeriesDto>> GetTop()
@@ -65,8 +69,9 @@ public class EventSeriesController : ControllerBase
         return Ok(response);
     }
 
-    [HttpPost]
     [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPost]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventSeriesDto dto)
@@ -79,8 +84,9 @@ public class EventSeriesController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = response.Id }, response);
     }
 
-    [HttpPut("{id:guid}")]
     [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpPut("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -99,8 +105,9 @@ public class EventSeriesController : ControllerBase
         return Ok(response);
     }
 
-    [HttpDelete("{id:guid}")]
     [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<bool>>> Delete(Guid id)

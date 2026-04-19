@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.Application.DTOs.Tenant;
 using Explore.Application.Features.InstanceOnboarding.Requests.Queries;
 using Explore.Application.Features.Tenants.Requests.Commands;
@@ -35,10 +36,11 @@ public class TenantController : ExploreControllerBase
     }
 
     // GET: api/tenant
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpGet]
     [EndpointSummary("Get all Tenants")]
     [EndpointDescription("Retrieve a list of all tenants")]
-    [Authorize]
     [ProducesResponseType(typeof(List<TenantListDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<List<TenantListDto>>> GetAll(CancellationToken cancellationToken = default)
@@ -48,10 +50,11 @@ public class TenantController : ExploreControllerBase
     }
 
     // GET: api/tenant/count
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpGet("count")]
     [EndpointSummary("Get Active Tenant Count")]
     [EndpointDescription("Returns the number of active tenants. Used by deployment mode toggle safeguards.")]
-    [Authorize]
     [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
     public async Task<ActionResult<int>> GetCount(CancellationToken cancellationToken = default)
     {
@@ -60,10 +63,11 @@ public class TenantController : ExploreControllerBase
     }
 
     // GET: api/tenant/{id}
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpGet("{id}")]
     [EndpointSummary("Get Tenant by ID")]
     [EndpointDescription("Retrieve details of a specific tenant")]
-    [Authorize]
     [ProducesResponseType(typeof(TenantDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
@@ -75,10 +79,11 @@ public class TenantController : ExploreControllerBase
     }
 
     // POST: api/tenant
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost]
     [EndpointSummary("Create new Tenant")]
     [EndpointDescription("Create a new tenant")]
-    [Authorize]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateTenantDto dto, CancellationToken cancellationToken = default)
@@ -100,10 +105,11 @@ public class TenantController : ExploreControllerBase
 
 
     // PUT: api/tenant/{id}
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("{id}")]
     [EndpointSummary("Update Tenant")]
     [EndpointDescription("Update an existing tenant")]
-    [Authorize]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -126,10 +132,11 @@ public class TenantController : ExploreControllerBase
     }
 
     // DELETE: api/tenant/{id}
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpDelete("{id}")]
     [EndpointSummary("Delete Tenant")]
     [EndpointDescription("Delete a tenant")]
-    [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
@@ -141,10 +148,11 @@ public class TenantController : ExploreControllerBase
     }
 
     // GET: api/tenant/navigation
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("navigation")]
     [EndpointSummary("Get Tenant Navigation Links")]
     [EndpointDescription("Retrieve all navigation links for the current tenant")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(List<TenantNavigationLinkDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "TenantNav")]
     public async Task<ActionResult<List<TenantNavigationLinkDto>>> GetNavigation(CancellationToken cancellationToken = default)
@@ -154,10 +162,11 @@ public class TenantController : ExploreControllerBase
     }
 
     // POST: api/tenant/navigation
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost("navigation")]
     [EndpointSummary("Create Tenant Navigation Link")]
     [EndpointDescription("Create a new navigation link for the tenant")]
-    [Authorize]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> CreateNavigation(
@@ -180,10 +189,11 @@ public class TenantController : ExploreControllerBase
     }
 
     // PUT: api/tenant/navigation/{id}
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("navigation/{id}")]
     [EndpointSummary("Update Tenant Navigation Link")]
     [EndpointDescription("Update an existing navigation link")]
-    [Authorize]
     [ProducesResponseType(typeof(BaseCommandResponse<bool>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -213,10 +223,11 @@ public class TenantController : ExploreControllerBase
     }
 
     // DELETE: api/tenant/navigation/{id}
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpDelete("navigation/{id}")]
     [EndpointSummary("Delete Tenant Navigation Link")]
     [EndpointDescription("Delete a navigation link")]
-    [Authorize]
     [ProducesResponseType(typeof(BaseCommandResponse<bool>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<bool>>> DeleteNavigation(
@@ -239,10 +250,11 @@ public class TenantController : ExploreControllerBase
     }
 
     // PUT: api/tenant/navigation/reorder
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("navigation/reorder")]
     [EndpointSummary("Reorder Tenant Navigation Links")]
     [EndpointDescription("Reorder multiple navigation links")]
-    [Authorize]
     [ProducesResponseType(typeof(BaseCommandResponse<bool>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<bool>>> ReorderNavigation(

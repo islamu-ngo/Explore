@@ -2,6 +2,7 @@
 // ABOUTME: Manages reusable templates that define sets of custom property definitions for event creation.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.EventTemplate;
 using Explore.Application.Features.EventTemplates.Requests.Commands;
@@ -40,13 +41,14 @@ public class EventTemplateController : ControllerBase
     /// <summary>
     /// Get event templates with pagination, optionally filtered by event type.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet(Name = RouteNames.GetEventTemplates)]
     [EndpointSummary("Get all EventTemplates")]
     [EndpointDescription("Get a paginated list of event templates for the current tenant. " +
         "Optionally filter by event type. Default page size is 20, max is 100. " +
         "Response includes HATEOAS navigation links (first, prev, next, last). " +
         "Send 'Prefer: return=minimal' header to strip links.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<EventTemplateListDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<EventTemplateListDto>>> GetAll(
@@ -73,11 +75,12 @@ public class EventTemplateController : ControllerBase
     /// <summary>
     /// Get event template details by ID.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("{id:guid}", Name = RouteNames.GetEventTemplateById)]
     [EndpointSummary("Get EventTemplate Details")]
     [EndpointDescription("Get full details of an event template including its custom property definitions and options. " +
         "Response includes links to related resources.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalResource<EventTemplateDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
@@ -94,10 +97,11 @@ public class EventTemplateController : ControllerBase
     /// <summary>
     /// Create a new event template.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost(Name = RouteNames.CreateEventTemplate)]
     [EndpointSummary("Create EventTemplate")]
     [EndpointDescription("Create a new event template with optional custom property definitions.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -125,10 +129,11 @@ public class EventTemplateController : ControllerBase
     /// <summary>
     /// Update an event template.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("{id:guid}", Name = RouteNames.UpdateEventTemplate)]
     [EndpointSummary("Update EventTemplate")]
     [EndpointDescription("Update an existing event template and replace its definition set.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -161,8 +166,9 @@ public class EventTemplateController : ControllerBase
     /// <summary>
     /// Delete an event template.
     /// </summary>
-    [HttpDelete("{id:guid}", Name = RouteNames.DeleteEventTemplate)]
     [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
+    [HttpDelete("{id:guid}", Name = RouteNames.DeleteEventTemplate)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

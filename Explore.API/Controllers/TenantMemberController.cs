@@ -2,6 +2,7 @@
 // ABOUTME: Manages user-role assignments within tenants via CQRS/MediatR.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.Application.DTOs.TenantMember;
 using Explore.Application.Features.TenantMembers.Requests.Commands;
 using Explore.Application.Features.TenantMembers.Requests.Queries;
@@ -17,6 +18,7 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/[controller]")]
 [ApiController]
+[EndpointClassification(EndpointClass.Authenticated)]
 public class TenantMemberController : ControllerBase
 {
     private readonly IMediator _mediator;

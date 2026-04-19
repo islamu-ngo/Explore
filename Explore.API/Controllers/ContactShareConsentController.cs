@@ -2,6 +2,7 @@
 // ABOUTME: User endpoints (view/withdraw own consents) and organisation endpoints (view/export shared contacts).
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.ContactShareConsent;
@@ -17,6 +18,7 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/[controller]")]
 [ApiController]
+[EndpointClassification(EndpointClass.Authenticated)]
 public class ContactShareConsentController : ExploreControllerBase
 {
     private readonly IMediator _mediator;

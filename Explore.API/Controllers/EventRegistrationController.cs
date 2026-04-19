@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.Features.EventRegistrations.Requests.Commands;
 using Explore.Application.Features.EventRegistrations.Requests.Queries;
@@ -32,10 +33,11 @@ public class EventRegistrationController : ControllerBase
     }
 
     // GET: api/eventregistration
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet]
     [EndpointSummary("Get all Event Registrations")]
     [EndpointDescription("Retrieve a paginated list of all event registrations across all sessions. Default page size is 20, max is 100.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(PaginatedResult<EventRegistrationListDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<PaginatedResult<EventRegistrationListDto>>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
@@ -49,10 +51,11 @@ public class EventRegistrationController : ControllerBase
     }
 
     // GET: api/eventregistration/{id}
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("{id}")]
     [EndpointSummary("Get Event Registration by ID")]
     [EndpointDescription("Retrieve details of a specific event registration including approval status")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(EventRegistrationDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
@@ -63,10 +66,11 @@ public class EventRegistrationController : ControllerBase
     }
 
     // GET: api/eventregistration/by-session/{eventSessionId}
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("by-session/{eventSessionId}")]
     [EndpointSummary("Get Registrations by Event Session")]
     [EndpointDescription("Retrieve all user registrations for a specific event session")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(List<EventRegistrationListDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<List<EventRegistrationListDto>>> GetRegistrationsBySession(Guid eventSessionId, CancellationToken cancellationToken = default)
@@ -76,10 +80,11 @@ public class EventRegistrationController : ControllerBase
     }
 
     // GET: api/eventregistration/by-user/{userId}
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("by-user/{userId}")]
     [EndpointSummary("Get Registrations by User")]
     [EndpointDescription("Retrieve all event registrations for a specific user")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(List<EventRegistrationListDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<EventRegistrationListDto>>> GetRegistrationsByUser(Guid userId, CancellationToken cancellationToken = default)
     {
@@ -88,10 +93,11 @@ public class EventRegistrationController : ControllerBase
     }
 
     // POST: api/eventregistration
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost]
     [EndpointSummary("Register User for Event Session")]
     [EndpointDescription("Create a new event registration (may require approval depending on registration mode)")]
-    [Authorize]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -103,10 +109,11 @@ public class EventRegistrationController : ControllerBase
     }
 
     // PUT: api/eventregistration/{id}
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("{id}")]
     [EndpointSummary("Update Event Registration")]
     [EndpointDescription("Update an existing event registration (e.g., change approval status)")]
-    [Authorize]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -130,10 +137,11 @@ public class EventRegistrationController : ControllerBase
     }
 
     // DELETE: api/eventregistration/{id}
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpDelete("{id}")]
     [EndpointSummary("Cancel Event Registration")]
     [EndpointDescription("Delete/cancel a user's event registration")]
-    [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

@@ -2,6 +2,7 @@
 // ABOUTME: Provides available event types for event creation and filtering.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.Application.DTOs.EventType;
 using Explore.Application.Features.EventTypes.Requests.Queries;
 using MediatR;
@@ -16,6 +17,7 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/[controller]")]
 [ApiController]
+[EndpointClassification(EndpointClass.Public)]
 public class EventTypeController : ControllerBase
 {
     private readonly IMediator _mediator;

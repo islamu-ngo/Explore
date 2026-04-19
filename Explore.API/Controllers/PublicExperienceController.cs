@@ -2,6 +2,7 @@
 // ABOUTME: Exposes home-page routing and white-label values resolved from cascading policies.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.PublicExperience.Requests.Queries;
 using MediatR;
@@ -14,6 +15,7 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/[controller]")]
 [ApiController]
+[EndpointClassification(EndpointClass.Public)]
 public class PublicExperienceController : ControllerBase
 {
     private readonly IMediator _mediator;

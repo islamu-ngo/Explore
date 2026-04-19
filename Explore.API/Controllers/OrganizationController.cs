@@ -2,6 +2,7 @@
 // ABOUTME: Supports two-tier verification system, role-based access, and cascading organization settings.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Organization;
 using Explore.Application.Features.Organizations.Requests.Commands;
@@ -40,12 +41,13 @@ public class OrganizationController : ExploreControllerBase
     /// <summary>
     /// Get all organizations with pagination.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet(Name = RouteNames.GetOrganizations)]
     [EndpointSummary("Get all Organizations")]
     [EndpointDescription("Get a paginated list of all Organizations. Default page size is 20, max is 100. " +
         "Response includes HATEOAS navigation links (first, prev, next, last). " +
         "Send 'Prefer: return=minimal' header to strip links.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<OrganizationListDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<OrganizationListDto>>> GetAll(
@@ -70,11 +72,12 @@ public class OrganizationController : ExploreControllerBase
     /// <summary>
     /// Get organizations where the current user is a member.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpGet("my", Name = RouteNames.GetMyOrganizations)]
     [EndpointSummary("Get my Organizations")]
     [EndpointDescription("Get a paginated list of organizations where the current user is a member. " +
         "Default page size is 20, max is 100.")]
-    [Authorize]
     [ProducesResponseType(typeof(HalCollectionResource<OrganizationListDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<HalCollectionResource<OrganizationListDto>>> GetMyOrganizations(
@@ -106,11 +109,12 @@ public class OrganizationController : ExploreControllerBase
     /// <summary>
     /// Get organization details by ID.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("{id:guid}", Name = RouteNames.GetOrganizationById)]
     [EndpointSummary("Get Organization Details")]
     [EndpointDescription("Get full details of an organization including actor information and approval status. " +
         "Response includes links to related resources (events, members).")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalResource<OrganizationDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
@@ -127,10 +131,11 @@ public class OrganizationController : ExploreControllerBase
     /// <summary>
     /// Create a new organization.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost(Name = RouteNames.CreateOrganization)]
     [EndpointSummary("Create Organization")]
     [EndpointDescription("Create a new organization. The authenticated user becomes the owner.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -162,10 +167,11 @@ public class OrganizationController : ExploreControllerBase
     /// <summary>
     /// Update an organization.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("{id:guid}", Name = RouteNames.UpdateOrganization)]
     [EndpointSummary("Update Organization")]
     [EndpointDescription("Update an existing organization. User must be a member of the organization.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -201,10 +207,11 @@ public class OrganizationController : ExploreControllerBase
     /// <summary>
     /// Update organization approval status (Admin only).
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("updatestatustype/{id:guid}")]
     [EndpointSummary("Update Organization Approval Status")]
     [EndpointDescription("Update the approval status of an organization. Requires Admin role.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -227,10 +234,11 @@ public class OrganizationController : ExploreControllerBase
     /// <summary>
     /// Delete an organization.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpDelete("{id:guid}", Name = RouteNames.DeleteOrganization)]
     [EndpointSummary("Delete Organization")]
     [EndpointDescription("Delete an organization. Requires ownership or Admin role.")]
-    [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

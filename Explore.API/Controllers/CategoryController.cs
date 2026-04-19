@@ -2,6 +2,7 @@
 // ABOUTME: Manages event categories used for discovery, filtering, and event classification.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.API.Hateoas;
 using Explore.Application.DTOs.Category;
 using Explore.Application.Features.Categories.Requests.Commands;
@@ -43,13 +44,14 @@ public class CategoryController : ControllerBase
     /// <summary>
     /// Get all categories with pagination.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet(Name = RouteNames.GetCategories)]
     [EndpointSummary("Get all Categories")]
     [EndpointDescription("Retrieve a paginated list of all event categories. " +
         "Default page size is 20, max is 100. " +
         "Response includes HATEOAS navigation links. " +
         "Send 'Prefer: return=minimal' header to strip links.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalCollectionResource<CategoryListDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<CategoryListDto>>> GetAll(
@@ -74,11 +76,12 @@ public class CategoryController : ControllerBase
     /// <summary>
     /// Get category details by ID.
     /// </summary>
+    [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
     [HttpGet("{id:guid}", Name = RouteNames.GetCategoryById)]
     [EndpointSummary("Get Category Details")]
     [EndpointDescription("Get detailed information about a specific category. " +
         "Response includes links to parent category, children, and events.")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(HalResource<CategoryDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [OutputCache(PolicyName = "DetailData")]
@@ -95,10 +98,11 @@ public class CategoryController : ControllerBase
     /// <summary>
     /// Create a new category.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPost(Name = RouteNames.CreateCategory)]
     [EndpointSummary("Create Category")]
     [EndpointDescription("Create a new event category. Categories can be nested with parent_id.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -122,10 +126,11 @@ public class CategoryController : ControllerBase
     /// <summary>
     /// Update an existing category.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpPut("{id:guid}", Name = RouteNames.UpdateCategory)]
     [EndpointSummary("Update Category")]
     [EndpointDescription("Update an existing category's information.")]
-    [Authorize]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
@@ -152,10 +157,11 @@ public class CategoryController : ControllerBase
     /// <summary>
     /// Delete a category.
     /// </summary>
+    [Authorize]
+    [EndpointClassification(EndpointClass.Authenticated)]
     [HttpDelete("{id:guid}", Name = RouteNames.DeleteCategory)]
     [EndpointSummary("Delete Category")]
     [EndpointDescription("Delete a category. Will fail if category has child categories.")]
-    [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

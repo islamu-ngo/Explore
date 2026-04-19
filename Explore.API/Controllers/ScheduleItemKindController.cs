@@ -2,6 +2,7 @@
 // ABOUTME: Provides schedule item kind options (Break, Ceremony, Keynote, etc.) for agenda items.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.Application.DTOs.ScheduleItemKind;
 using Explore.Application.Features.ScheduleItemKinds.Requests.Queries;
 using MediatR;
@@ -14,6 +15,7 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/[controller]")]
 [ApiController]
+[EndpointClassification(EndpointClass.Public)]
 public class ScheduleItemKindController : ControllerBase
 {
     private readonly IMediator _mediator;

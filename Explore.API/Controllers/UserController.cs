@@ -3,6 +3,7 @@
 
 using System.Security.Claims;
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.Application.DTOs.Organization;
 using Explore.Application.DTOs.User;
 using Explore.Application.Features.Users.Requests.Commands;
@@ -18,6 +19,7 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [Route("api/[controller]")]
 [ApiController]
+[EndpointClassification(EndpointClass.Authenticated)]
 public class UserController : ControllerBase
 {
     private readonly IMediator _mediator;

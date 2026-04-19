@@ -3,6 +3,7 @@
 
 using System.Security.Claims;
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.API.Filters;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
@@ -35,8 +36,9 @@ public class InstanceOnboardingController : ExploreControllerBase
         _logger = logger;
     }
 
-    [HttpGet("status")]
     [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
+    [HttpGet("status")]
     [EndpointSummary("Get Instance Onboarding Status")]
     [EndpointDescription("Returns whether first-run onboarding is completed and whether the current user is instance admin.")]
     [ProducesResponseType(typeof(InstanceOnboardingStatusDto), StatusCodes.Status200OK)]
@@ -46,9 +48,10 @@ public class InstanceOnboardingController : ExploreControllerBase
         return Ok(status);
     }
 
-    [HttpPost("complete")]
     [Authorize]
     [SetupSecretRequired]
+    [EndpointClassification(EndpointClass.Admin)]
+    [HttpPost("complete")]
     [EndpointSummary("Complete Instance Onboarding")]
     [EndpointDescription("Completes first-run onboarding, assigns the current user as instance admin, and persists deployment mode.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
@@ -97,8 +100,9 @@ public class InstanceOnboardingController : ExploreControllerBase
         return Ok(response);
     }
 
-    [HttpPost("validate-secret")]
     [AllowAnonymous]
+    [EndpointClassification(EndpointClass.Public)]
+    [HttpPost("validate-secret")]
     [EnableRateLimiting("SetupSecret")]
     [EndpointSummary("Validate Setup Secret")]
     [EndpointDescription("Validates the provided setup secret. Returns whether the secret is correct. Rate limited to 5 attempts per minute.")]
@@ -114,9 +118,10 @@ public class InstanceOnboardingController : ExploreControllerBase
         return Ok(new { valid = isValid });
     }
 
-    [HttpGet("auth-provider-configuration/internal")]
     [AllowAnonymous]
     [SetupSecretRequired]
+    [EndpointClassification(EndpointClass.Admin)]
+    [HttpGet("auth-provider-configuration/internal")]
     [EndpointSummary("Get Auth Provider Configuration (Internal)")]
     [EndpointDescription("Returns auth provider configuration including secrets. For BFF internal use only. Protected by setup token.")]
     [ProducesResponseType(typeof(AuthProviderConfigurationDto), StatusCodes.Status200OK)]
@@ -127,9 +132,10 @@ public class InstanceOnboardingController : ExploreControllerBase
         return Ok(configuration);
     }
 
-    [HttpPut("auth-provider-configuration")]
     [AllowAnonymous]
     [SetupSecretRequired]
+    [EndpointClassification(EndpointClass.Admin)]
+    [HttpPut("auth-provider-configuration")]
     [EnableRateLimiting("SetupSecret")]
     [EndpointSummary("Save Auth Provider Configuration (Setup)")]
     [EndpointDescription("Saves auth provider configuration during instance setup. Protected by setup token. At least one provider must be enabled.")]
@@ -152,11 +158,81 @@ public class InstanceOnboardingController : ExploreControllerBase
         return Ok(response);
     }
 
+    [AllowAnonymous]
+    [SetupSecretRequired]
+    [EndpointClassification(EndpointClass.Admin)]
+    [HttpGet("authz-provider-configuration/internal")]
+    [EndpointSummary("Get Authorization Provider Configuration (Internal)")]
+    [EndpointDescription("Returns authorization provider configuration for setup flow. Protected by setup token.")]
+    [ProducesResponseType(typeof(AuthorizationProviderConfigurationDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<AuthorizationProviderConfigurationDto>> GetAuthorizationProviderConfigurationInternal(CancellationToken cancellationToken = default)
+    {
+        var configuration = await _mediator.Send(new GetAuthorizationProviderConfigurationQuery(), cancellationToken);
+        return Ok(configuration);
+    }
+
+    [AllowAnonymous]
+    [SetupSecretRequired]
+    [EndpointClassification(EndpointClass.Admin)]
+    [HttpPut("authz-provider-configuration")]
+    [EnableRateLimiting("SetupSecret")]
+    [EndpointSummary("Save Authorization Provider Configuration (Setup)")]
+    [EndpointDescription("Saves authorization provider configuration during instance setup. Protected by setup token.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> SaveAuthorizationProviderConfiguration([FromBody] AuthorizationProviderConfigurationDto configuration, CancellationToken cancellationToken = default)
+    {
+        var response = await _mediator.Send(
+            new SaveAuthorizationProviderConfigurationCommand { Configuration = configuration },
+            cancellationToken);
+
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
+    [AllowAnonymous]
+    [SetupSecretRequired]
+    [EndpointClassification(EndpointClass.Admin)]
+    [HttpPost("authz-provider-configuration/verify")]
+    [EnableRateLimiting("SetupSecret")]
+    [EndpointSummary("Verify Cerbos Authorization Endpoint")]
+    [EndpointDescription("Verifies a Cerbos gRPC endpoint by calling its gRPC health service. Protected by setup token.")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<BaseCommandResponse<Guid>>> VerifyAuthorizationProviderEndpoint(
+        [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] VerifyCerbosEndpointRequest? request,
+        CancellationToken cancellationToken = default)
+    {
+        var command = new VerifyCerbosEndpointCommand
+        {
+            GrpcEndpoint = request?.GrpcEndpoint ?? string.Empty
+        };
+
+        var response = await _mediator.Send(command, cancellationToken);
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
 }
 
 public class ValidateSetupSecretRequest
 {
     public string? Secret { get; set; }
+}
+
+public class VerifyCerbosEndpointRequest
+{
+    public string? GrpcEndpoint { get; set; }
 }
 
 public class UpdateDeploymentModeRequest

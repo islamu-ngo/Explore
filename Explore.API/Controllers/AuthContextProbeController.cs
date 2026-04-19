@@ -2,6 +2,7 @@
 // ABOUTME: Returns the resolved runtime context for integration tests without exposing the endpoint in API docs.
 
 using Asp.Versioning;
+using Explore.API.Attributes;
 using Explore.Application.Authentication;
 using Explore.Application.Constants;
 using Explore.Application.Contracts.Services;
@@ -15,6 +16,7 @@ namespace Explore.API.Controllers;
 [ApiVersion("0.1")]
 [ApiExplorerSettings(IgnoreApi = true)]
 [Route("api/_internal/auth-probe")]
+[EndpointClassification(EndpointClass.Authenticated)]
 public sealed class AuthContextProbeController : ControllerBase
 {
     [Authorize]
