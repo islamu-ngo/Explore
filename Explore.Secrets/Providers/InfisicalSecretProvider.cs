@@ -290,7 +290,7 @@ public sealed class InfisicalSecretProvider : ISecretProvider, IAsyncDisposable
 
     /// <summary>
     /// Converts an Infisical secret key to canonical format.
-    /// e.g., "KEYCLOAK_PUBLIC_URL" with path "/keycloak" -> "Keycloak:PublicUrl"
+    /// e.g., "KEYCLOAK_ENDPOINT" with path "/keycloak" -> "Keycloak:Endpoint"
     /// </summary>
     private static string ConvertToCanonicalKey(string infisicalKey, string path)
     {
@@ -326,7 +326,7 @@ public sealed class InfisicalSecretProvider : ISecretProvider, IAsyncDisposable
 
     /// <summary>
     /// Converts a canonical key to Infisical format.
-    /// e.g., "Keycloak:PublicUrl" -> "KEYCLOAK_PUBLIC_URL"
+    /// e.g., "Keycloak:Endpoint" -> "KEYCLOAK_ENDPOINT"
     /// </summary>
     private static string ConvertToInfisicalKey(string canonicalKey)
     {
