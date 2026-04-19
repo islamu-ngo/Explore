@@ -35,6 +35,7 @@ Lean rules for Blazor + MudBlazor + render modes + routing.
 - Avoid `HttpContext` in InteractiveAuto/WASM.
 - Use MudBlazor components over raw HTML.
 - BEM class naming for custom CSS (see blazor-css-isolation).
+- **Hierarchical Settings**: UI settings and governance follow a 5‑tier cascade (User → Group → Organization → Tenant → Instance). Use `HierarchicalSettingsResolver` for batch resolution with lock support.
 - Use `[Parameter]` + `EventCallback` for child → parent; `ParameterState<T>` only for custom MudBlazor base components.
 - Blazouter routes/guards defined centrally when used.
 

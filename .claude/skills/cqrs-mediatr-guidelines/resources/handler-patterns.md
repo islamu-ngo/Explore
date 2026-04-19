@@ -7,6 +7,7 @@ ABOUTME: Emphasizes repos, manual validators, and DTO mapping.
 - Repositories only (no DbContext in handlers).
 - Handlers map entities ↔ DTOs; repos return entities.
 - Validators are manually instantiated inside handlers.
+- **Transactional Writes**: Use `IUnitOfWork` for multi‑entity writes. Wrap all write operations in `ExecuteInTransactionAsync`.
 - Always pass `CancellationToken` to async calls.
 
 ## Command vs Query

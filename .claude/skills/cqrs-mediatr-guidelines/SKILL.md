@@ -27,6 +27,7 @@ Keep commands/queries separate and handlers clean, with manual validation and en
 - Handlers are single‑responsibility, controllers are thin.
 - **Repositories return entities**; handlers map to DTOs.
 - **Manual validator instantiation** (no DI).
+- **Atomic writes**: Use `IUnitOfWork.ExecuteInTransactionAsync` for handlers performing multi‑step writes across repositories to ensure transactional integrity.
 - Always pass `CancellationToken`.
 - **Pipeline behaviors**: `PerformanceBehavior` logs requests >500ms. `AuthorizationBehavior` checks `IAuthorizedRequest` / `[AuthorizeResource]` / `ISecureRequest` and throws `AuthorizationException` on deny.
 - **Specification Pattern**: Complex queries use `IQuerySpecification<T>` (immutable fluent builder). `EventQuerySpecification` composes `EventFilter`, `EventSubqueryFilter`, `AspectPresenceFilter`, `IslamicAspectFilter`, `TechAspectFilter`, and `EventCustomPropertyProjectionFilter` via `And(...)` composition. Module‑conditional filters are silently ignored when module disabled.
