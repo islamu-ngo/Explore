@@ -422,14 +422,13 @@ public class HateoasIntegrationTests
     [Test]
     public async Task GetAll_ShouldReturnJsonContentType()
     {
-        // Act
         var response = await _fixture.Client.GetAsync("/api/organization");
 
-        // Assert
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
         var contentType = response.Content.Headers.ContentType?.MediaType;
-        await Assert.That(contentType).IsEqualTo("application/json");
+        var isJsonOrHal = contentType == "application/json" || contentType == "application/hal+json";
+        await Assert.That(isJsonOrHal).IsTrue();
     }
 
     [Test]

@@ -25,8 +25,8 @@ public class AuthenticatedApiTestFixture : IAsyncInitializer, IAsyncDisposable
 
         // Mock Keycloak Environment Variables
         Environment.SetEnvironmentVariable("Keycloak__Authority", "https://auth.example.com");
-        Environment.SetEnvironmentVariable("Keycloak__Realm", "explore");
-        Environment.SetEnvironmentVariable("Keycloak__Audience", "explore-api");
+        Environment.SetEnvironmentVariable("Keycloak__Realm", "ISLAMU");
+        Environment.SetEnvironmentVariable("Keycloak__Audience", "islamu-event-api");
         Environment.SetEnvironmentVariable("Keycloak__RequireHttpsMetadata", "false");
         Environment.SetEnvironmentVariable("Keycloak__MetadataAddress", "https://auth.example.com/.well-known/openid-configuration");
 

@@ -301,6 +301,163 @@ public class InstanceOnboardingControllerTests
         await Assert.That(internalConfig.GoogleClientSecret).IsEqualTo("google-client-secret");
     }
 
+    [Test]
+    public async Task UpdateAuthorizationProviderConfiguration_AdminEndpoint_WithoutAuthentication_ShouldReturnUnauthorized()
+    {
+        using var factory = CreateFactoryWithSetupSecret();
+        using var client = factory.CreateClient();
+
+        var response = await client.PutAsJsonAsync($"{SettingsBaseUrl}/authz-provider", CreateLocalAuthorizationProviderConfiguration());
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task UpdateAuthorizationProviderConfiguration_WhenUserIsNotInstanceAdmin_ShouldReturnForbidden()
+    {
+        using var factory = CreateFactoryWithSetupSecret();
+        using var client = factory.CreateClient();
+
+        var userId = Guid.NewGuid();
+        await EnsureUserExistsAsync(factory, userId);
+
+        using var request = CreateInstanceAdminRequest(
+            HttpMethod.Put,
+            $"{SettingsBaseUrl}/authz-provider",
+            userId,
+            CreateLocalAuthorizationProviderConfiguration(),
+            includeSetupSecret: false);
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+    }
+
+    [Test]
+    public async Task UpdateAuthorizationProviderConfiguration_WhenUserIsInstanceAdmin_ShouldUpdateAndReturnConfiguration()
+    {
+        using var factory = CreateFactoryWithSetupSecret();
+        using var client = factory.CreateClient();
+
+        var userId = Guid.NewGuid();
+        await EnsureUserExistsAsync(factory, userId);
+        await EnsureInstanceAdminRoleAsync(factory, userId);
+
+        using var updateRequest = CreateInstanceAdminRequest(
+            HttpMethod.Put,
+            $"{SettingsBaseUrl}/authz-provider",
+            userId,
+            CreateLocalAuthorizationProviderConfiguration(),
+            includeSetupSecret: false);
+
+        var updateResponse = await client.SendAsync(updateRequest);
+        await Assert.That(updateResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        var updateBody = await updateResponse.Content.ReadFromJsonAsync<BaseCommandResponse<Guid>>();
+        await Assert.That(updateBody).IsNotNull();
+        await Assert.That(updateBody!.Success).IsTrue();
+
+        using var getRequest = CreateInstanceAdminRequest(
+            HttpMethod.Get,
+            $"{SettingsBaseUrl}/authz-provider",
+            userId,
+            body: null,
+            includeSetupSecret: false);
+
+        var getResponse = await client.SendAsync(getRequest);
+        await Assert.That(getResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        var config = await getResponse.Content.ReadFromJsonAsync<AuthorizationProviderConfigurationDto>();
+        await Assert.That(config).IsNotNull();
+        await Assert.That(config!.Provider).IsEqualTo("local");
+        await Assert.That(config.CerbosGrpcEndpoint).IsEqualTo(string.Empty);
+    }
+
+    [Test]
+    public async Task SetupAuthorizationProviderConfigurationFlow_SaveThenComplete_ShouldExposeConfiguredAndProtectPublicReadAfterCompletion()
+    {
+        using var factory = CreateFactoryWithSetupSecret();
+        using var client = factory.CreateClient();
+
+        var userId = Guid.NewGuid();
+        await EnsureUserExistsAsync(factory, userId);
+
+        using var saveRequest = CreateInstanceAdminRequest(
+            HttpMethod.Put,
+            $"{BaseUrl}/authz-provider-configuration",
+            userId,
+            CreateLocalAuthorizationProviderConfiguration(),
+            includeSetupSecret: true);
+        var saveResponse = await client.SendAsync(saveRequest);
+        await Assert.That(saveResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        var configuredResponse = await client.GetAsync($"{SettingsBaseUrl}/authz-provider/status");
+        await Assert.That(configuredResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        var configuredPayload = await configuredResponse.Content.ReadFromJsonAsync<AuthProviderConfiguredResponse>();
+        await Assert.That(configuredPayload).IsNotNull();
+        await Assert.That(configuredPayload!.Configured).IsTrue();
+
+        var completePayload = CreateValidOnboardingRequest();
+        using var completeRequest = CreateInstanceAdminRequest(
+            HttpMethod.Post,
+            $"{BaseUrl}/complete",
+            userId,
+            completePayload,
+            includeSetupSecret: true);
+        var completeResponse = await client.SendAsync(completeRequest);
+        await Assert.That(completeResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        var anonymousGetResponse = await client.GetAsync($"{SettingsBaseUrl}/authz-provider");
+        await Assert.That(anonymousGetResponse.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+
+        using var adminGetRequest = CreateInstanceAdminRequest(
+            HttpMethod.Get,
+            $"{SettingsBaseUrl}/authz-provider",
+            userId,
+            body: null,
+            includeSetupSecret: false);
+        var adminGetResponse = await client.SendAsync(adminGetRequest);
+        await Assert.That(adminGetResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        var adminConfig = await adminGetResponse.Content.ReadFromJsonAsync<AuthorizationProviderConfigurationDto>();
+        await Assert.That(adminConfig).IsNotNull();
+        await Assert.That(adminConfig!.Provider).IsEqualTo("local");
+    }
+
+    [Test]
+    public async Task GetAuthorizationProviderConfigurationInternal_WithSetupSecret_ShouldReturnConfiguration()
+    {
+        using var factory = CreateFactoryWithSetupSecret();
+        using var client = factory.CreateClient();
+
+        var userId = Guid.NewGuid();
+        await EnsureUserExistsAsync(factory, userId);
+        await EnsureInstanceAdminRoleAsync(factory, userId);
+
+        using var saveRequest = CreateInstanceAdminRequest(
+            HttpMethod.Put,
+            $"{BaseUrl}/authz-provider-configuration",
+            userId,
+            CreateLocalAuthorizationProviderConfiguration(),
+            includeSetupSecret: true);
+        var saveResponse = await client.SendAsync(saveRequest);
+        await Assert.That(saveResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        using var internalWithoutSecretRequest = new HttpRequestMessage(HttpMethod.Get, $"{BaseUrl}/authz-provider-configuration/internal");
+        var internalWithoutSecretResponse = await client.SendAsync(internalWithoutSecretRequest);
+        await Assert.That(internalWithoutSecretResponse.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+
+        using var internalWithSecretRequest = new HttpRequestMessage(HttpMethod.Get, $"{BaseUrl}/authz-provider-configuration/internal");
+        internalWithSecretRequest.Headers.Add("X-Setup-Secret", SetupSecret);
+        var internalWithSecretResponse = await client.SendAsync(internalWithSecretRequest);
+        await Assert.That(internalWithSecretResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        var internalConfig = await internalWithSecretResponse.Content.ReadFromJsonAsync<AuthorizationProviderConfigurationDto>();
+        await Assert.That(internalConfig).IsNotNull();
+        await Assert.That(internalConfig!.Provider).IsEqualTo("local");
+        await Assert.That(internalConfig.CerbosGrpcEndpoint).IsEqualTo(string.Empty);
+    }
+
     private static async Task EnsureInstanceAdminRoleAsync(AuthenticatedWebApplicationFactory factory, Guid userId)
     {
         using var scope = factory.Services.CreateScope();
@@ -446,6 +603,17 @@ public class InstanceOnboardingControllerTests
             LockKeycloakEnabled = false,
             LockAtprotoLoginEnabled = false,
             LockGoogleSsoEnabled = false
+        };
+    }
+
+    private static AuthorizationProviderConfigurationDto CreateLocalAuthorizationProviderConfiguration()
+    {
+        return new AuthorizationProviderConfigurationDto
+        {
+            Provider = "local",
+            CerbosGrpcEndpoint = string.Empty,
+            CerbosDetectedFromEnvironment = false,
+            CerbosEndpointVerified = false
         };
     }
 

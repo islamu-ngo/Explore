@@ -17,8 +17,8 @@ public class SingleTenantAuthenticatedApiTestFixture : IAsyncInitializer, IAsync
     {
         Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", "Host=localhost;Database=explore_db_test;Username=postgres;Password=postgres");
         Environment.SetEnvironmentVariable("Keycloak__Authority", "https://auth.example.com");
-        Environment.SetEnvironmentVariable("Keycloak__Realm", "explore");
-        Environment.SetEnvironmentVariable("Keycloak__Audience", "explore-api");
+        Environment.SetEnvironmentVariable("Keycloak__Realm", "ISLAMU");
+        Environment.SetEnvironmentVariable("Keycloak__Audience", "islamu-event-api");
         Environment.SetEnvironmentVariable("Keycloak__RequireHttpsMetadata", "false");
         Environment.SetEnvironmentVariable("Keycloak__MetadataAddress", "https://auth.example.com/.well-known/openid-configuration");
 

@@ -209,7 +209,7 @@ public class SetupTests : IDisposable
         keycloakButton.Click();
 
         // Assert
-        await Assert.That(nav.Uri).EndsWith("/login?provider=keycloak&returnUrl=/setup");
+        await Assert.That(nav.Uri).EndsWith("/login?provider=keycloak&returnUrl=/onboarding/authz-provider");
     }
 
     [Test]

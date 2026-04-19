@@ -43,11 +43,11 @@ public class PostgreSqlApiWebApplicationFactory : WebApplicationFactory<Program>
             var testConfig = new Dictionary<string, string?>
             {
                 ["ConnectionStrings:DefaultConnection"] = _connectionString,
-                ["Keycloak:Authority"] = "https://localhost:8443/realms/explore",
-                ["Keycloak:Realm"] = "explore",
-                ["Keycloak:Audience"] = "explore-api",
+                ["Keycloak:Authority"] = "https://localhost:8443/realms/ISLAMU",
+                ["Keycloak:Realm"] = "ISLAMU",
+                ["Keycloak:Audience"] = "islamu-event-api",
                 ["Keycloak:RequireHttpsMetadata"] = "false",
-                ["Keycloak:MetadataAddress"] = "https://localhost:8443/realms/explore/.well-known/openid-configuration",
+                ["Keycloak:MetadataAddress"] = "https://localhost:8443/realms/ISLAMU/.well-known/openid-configuration",
                 ["S3Settings:Region"] = "us-east-1",
                 ["S3Settings:BucketName"] = "test-bucket",
                 ["S3Settings:AccessKeyId"] = "test-key",

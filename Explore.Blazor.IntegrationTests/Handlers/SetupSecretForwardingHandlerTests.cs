@@ -115,4 +115,61 @@ public class SetupSecretForwardingHandlerTests
         await Assert.That(innerHandler.CapturedRequest!.Headers.Contains("X-Setup-Secret")).IsTrue();
         await Assert.That(innerHandler.CapturedRequest.Headers.GetValues("X-Setup-Secret").Single()).IsEqualTo("session-secret-456");
     }
+
+    [Test]
+    public async Task SendAsync_AuthzOnboardingVerifyPath_WithCookieSecret_AddsXSetupSecretHeader()
+    {
+        var httpContext = new DefaultHttpContext();
+        httpContext.Request.Headers.Cookie = "setup-secret=cookie-secret-789";
+
+        var httpContextAccessor = new HttpContextAccessor { HttpContext = httpContext };
+        var sessionService = new SetupSecretSessionService();
+        var innerHandler = new CapturingHandler();
+        var handler = new SetupSecretForwardingHandler(httpContextAccessor, sessionService)
+        {
+            InnerHandler = innerHandler
+        };
+
+        using var invoker = new HttpMessageInvoker(handler);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.example.com/api/InstanceOnboarding/authz-provider-configuration/verify");
+        _ = await invoker.SendAsync(request, CancellationToken.None);
+
+        await Assert.That(innerHandler.CapturedRequest).IsNotNull();
+        await Assert.That(innerHandler.CapturedRequest!.Headers.Contains("X-Setup-Secret")).IsTrue();
+        await Assert.That(innerHandler.CapturedRequest.Headers.GetValues("X-Setup-Secret").Single()).IsEqualTo("cookie-secret-789");
+    }
+
+    [Test]
+    public async Task SendAsync_AuthzOnboardingInternalPath_WithSessionSecret_AddsXSetupSecretHeader()
+    {
+        var userId = Guid.NewGuid().ToString();
+        var httpContext = new DefaultHttpContext();
+        httpContext.User = new ClaimsPrincipal(
+            new ClaimsIdentity(
+            [
+                new Claim("sub", userId),
+                new Claim(ClaimTypes.NameIdentifier, userId)
+            ],
+            authenticationType: "Test"));
+
+        var httpContextAccessor = new HttpContextAccessor { HttpContext = httpContext };
+        var sessionService = new SetupSecretSessionService();
+        sessionService.SetForUser(userId, "session-secret-999");
+
+        var innerHandler = new CapturingHandler();
+        var handler = new SetupSecretForwardingHandler(httpContextAccessor, sessionService)
+        {
+            InnerHandler = innerHandler
+        };
+
+        using var invoker = new HttpMessageInvoker(handler);
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com/api/InstanceOnboarding/authz-provider-configuration/internal");
+        _ = await invoker.SendAsync(request, CancellationToken.None);
+
+        sessionService.ClearForUser(userId);
+
+        await Assert.That(innerHandler.CapturedRequest).IsNotNull();
+        await Assert.That(innerHandler.CapturedRequest!.Headers.Contains("X-Setup-Secret")).IsTrue();
+        await Assert.That(innerHandler.CapturedRequest.Headers.GetValues("X-Setup-Secret").Single()).IsEqualTo("session-secret-999");
+    }
 }
