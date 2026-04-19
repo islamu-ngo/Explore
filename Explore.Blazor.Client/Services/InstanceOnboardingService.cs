@@ -51,6 +51,12 @@ public interface IInstanceOnboardingService
     Task<bool> IsAuthProviderConfiguredAsync();
     Task RefreshAuthSchemesAsync();
 
+    // Authorization provider configuration
+    Task<AuthorizationProviderConfigurationModel> GetAuthorizationProviderConfigurationAsync();
+    Task<InstanceCommandResponseModel> SaveAuthorizationProviderConfigurationAsync(AuthorizationProviderConfigurationModel config);
+    Task<InstanceCommandResponseModel> VerifyCerbosEndpointAsync(string grpcEndpoint);
+    Task<bool> IsAuthorizationProviderConfiguredAsync();
+
     // Analytics governance
     Task<Models.Analytics.AnalyticsGovernanceSettingsModel> GetAnalyticsGovernanceSettingsAsync();
     Task<InstanceCommandResponseModel> UpdateAnalyticsGovernanceSettingsAsync(Models.Analytics.AnalyticsGovernanceSettingsModel settings);
@@ -227,6 +233,33 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to check auth provider configuration status.");
+            return false;
+        }
+    }
+
+    public async Task<AuthorizationProviderConfigurationModel> GetAuthorizationProviderConfigurationAsync() =>
+        await GetAsync<AuthorizationProviderConfigurationModel>("api/InstanceOnboarding/authz-provider-configuration/internal")
+        ?? new AuthorizationProviderConfigurationModel();
+
+    public Task<InstanceCommandResponseModel> SaveAuthorizationProviderConfigurationAsync(AuthorizationProviderConfigurationModel config) =>
+        SendCommandAsync(HttpMethod.Put, "api/InstanceOnboarding/authz-provider-configuration", config);
+
+    public Task<InstanceCommandResponseModel> VerifyCerbosEndpointAsync(string grpcEndpoint) =>
+        SendCommandAsync(HttpMethod.Post, "api/InstanceOnboarding/authz-provider-configuration/verify", new { GrpcEndpoint = grpcEndpoint });
+
+    public async Task<bool> IsAuthorizationProviderConfiguredAsync()
+    {
+        try
+        {
+            var client = CreateClient();
+            var response = await client.GetAsync("api/instance/settings/authz-provider/status");
+            response.EnsureSuccessStatusCode();
+            var result = await response.Content.ReadFromJsonAsync<AuthorizationProviderConfiguredResult>();
+            return result?.Configured ?? false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to check authorization provider configuration status.");
             return false;
         }
     }
@@ -598,6 +631,19 @@ public class AuthProviderConfigurationModel
 }
 
 public class AuthProviderConfiguredResult
+{
+    public bool Configured { get; set; }
+}
+
+public class AuthorizationProviderConfigurationModel
+{
+    public string Provider { get; set; } = "local";
+    public string CerbosGrpcEndpoint { get; set; } = string.Empty;
+    public bool CerbosDetectedFromEnvironment { get; set; }
+    public bool CerbosEndpointVerified { get; set; }
+}
+
+public class AuthorizationProviderConfiguredResult
 {
     public bool Configured { get; set; }
 }

@@ -1,0 +1,325 @@
+@* ABOUTME: Authorization provider configuration page shown after auth-provider setup and before final onboarding. *@
+@* ABOUTME: Lets operators choose between built-in local RBAC and external Cerbos, with endpoint auto-detection and verification. *@
+
+@page "/onboarding/authz-provider"
+@rendermode InteractiveServer
+@layout SetupLayout
+@inject IInstanceOnboardingService InstanceOnboardingService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+@inject ILogger<AuthorizationProviderConfiguration> Logger
+
+<PageTitle>Authorization Provider</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-8">
+    <MudPaper Class="pa-6">
+        <MudText Typo="Typo.h4" HtmlTag="h1" Class="mb-2">Authorization Provider</MudText>
+        <MudText Typo="Typo.body2" Class="mb-4">
+            Choose how protected API operations are authorized. Cerbos mode fails closed when the external PDP is unavailable.
+        </MudText>
+
+        @if (_isLoading)
+        {
+            <MudStack Spacing="3">
+                <MudSkeleton Width="60%" Height="20px" Class="mb-1" />
+                <MudSkeleton Width="100%" Height="120px" Class="mb-2" />
+                <MudSkeleton Width="100%" Height="180px" Class="mb-2" />
+                <MudSkeleton Width="140px" Height="40px" />
+            </MudStack>
+        }
+        else
+        {
+            @if (!string.IsNullOrWhiteSpace(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(_successMessage))
+            {
+                <MudAlert Severity="Severity.Success" Class="mb-4">@_successMessage</MudAlert>
+            }
+
+            <MudPaper Outlined="true"
+                      Class="pa-4 mb-4"
+                      Style="@GetCardStyle(LocalProvider)"
+                      @onclick="@(() => SelectProvider(LocalProvider))">
+                <MudStack Spacing="2">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                        <MudRadio T="string" Value="@LocalProvider" Selected="@IsSelected(LocalProvider)" />
+                        <MudText Typo="Typo.h6">Local (Built-in RBAC)</MudText>
+                    </MudStack>
+                    <MudText Typo="Typo.body2">
+                        Use the built-in authorization implementation with no external Cerbos dependency.
+                    </MudText>
+                </MudStack>
+            </MudPaper>
+
+            <MudPaper Outlined="true"
+                      Class="pa-4 mb-4"
+                      Style="@GetCardStyle(CerbosProvider)"
+                      @onclick="@(() => SelectProvider(CerbosProvider))">
+                <MudStack Spacing="2">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                        <MudRadio T="string" Value="@CerbosProvider" Selected="@IsSelected(CerbosProvider)" />
+                        <MudText Typo="Typo.h6">Cerbos (External PDP)</MudText>
+                        @if (_model.CerbosDetectedFromEnvironment)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">
+                                Auto-detected from environment
+                            </MudChip>
+                        }
+                        @if (_model.CerbosEndpointVerified)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">
+                                Verified
+                            </MudChip>
+                        }
+                    </MudStack>
+                    <MudText Typo="Typo.body2">
+                        Route all protected authorization checks to Cerbos. When selected, authorized requests are denied if Cerbos is unavailable.
+                    </MudText>
+
+                    @if (_model.Provider.Equals("cerbos", StringComparison.OrdinalIgnoreCase))
+                    {
+                        @if (_model.CerbosDetectedFromEnvironment && _model.CerbosEndpointVerified)
+                        {
+                            <MudAlert Severity="Severity.Info" Dense="true" NoIcon="true">
+                                Cerbos was detected from environment and verified successfully. The endpoint is locked for this setup flow.
+                            </MudAlert>
+                        }
+                        else if (_model.CerbosDetectedFromEnvironment)
+                        {
+                            <MudAlert Severity="Severity.Warning" Dense="true">
+                                A Cerbos endpoint was detected from environment, but it could not be verified. Review it or enter a different endpoint below.
+                            </MudAlert>
+                        }
+
+                        <AppTextField T="string"
+                                      Label="Cerbos gRPC Endpoint"
+                                      Value="_model.CerbosGrpcEndpoint"
+                                      ValueChanged="OnCerbosEndpointChanged"
+                                      Placeholder="https://cerbosgrpc.example.com:443 or cerbosgrpc.example.com:443"
+                                      Disabled="@IsEndpointLocked"
+                                      HelperText="Accepts a full URL or bare host:port. Bare remote endpoints default to HTTPS; localhost defaults to HTTP." />
+
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                            <AppButton Variant="Variant.Outlined"
+                                       Disabled="@(!CanVerify)"
+                                       OnClick="VerifyCerbosEndpointAsync">
+                                @if (_isVerifying)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                    @:Verifying...
+                                }
+                                else
+                                {
+                                    @:Verify Endpoint
+                                }
+                            </AppButton>
+
+                            @if (_model.CerbosEndpointVerified)
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Success">
+                                    Endpoint verified and ready to use.
+                                </MudText>
+                            }
+                        </MudStack>
+                    }
+                </MudStack>
+            </MudPaper>
+
+            @if (_model.Provider.Equals("cerbos", StringComparison.OrdinalIgnoreCase) && !_model.CerbosEndpointVerified)
+            {
+                <MudAlert Severity="Severity.Warning" Class="mb-4">
+                    Verify the Cerbos endpoint before saving this authorization provider.
+                </MudAlert>
+            }
+
+            <MudStack Row="true" Spacing="2" Class="mt-2">
+                <AppButton Disabled="@(!CanSave)"
+                           OnClick="SaveAndContinueAsync">
+                    @if (_isSaving)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        @:Saving...
+                    }
+                    else
+                    {
+                        @:Save & Continue
+                    }
+                </AppButton>
+            </MudStack>
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private const string LocalProvider = "local";
+    private const string CerbosProvider = "cerbos";
+    private AuthorizationProviderConfigurationModel _model = new();
+    private bool _isAuthenticated;
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private bool _isVerifying;
+    private string? _errorMessage;
+    private string? _successMessage;
+    private bool _shouldLoadConfiguration = true;
+    private IJSObjectReference? _bffModule;
+
+    private bool IsEndpointLocked =>
+        _model.CerbosDetectedFromEnvironment && _model.CerbosEndpointVerified;
+
+    private bool CanVerify =>
+        !_isVerifying &&
+        !IsEndpointLocked &&
+        !string.IsNullOrWhiteSpace(_model.CerbosGrpcEndpoint);
+
+    private bool CanSave =>
+        !_isSaving &&
+        (_model.Provider.Equals("local", StringComparison.OrdinalIgnoreCase) ||
+         (!string.IsNullOrWhiteSpace(_model.CerbosGrpcEndpoint) && _model.CerbosEndpointVerified));
+
+    protected override async Task OnInitializedAsync()
+    {
+        var status = await InstanceOnboardingService.GetStatusAsync();
+        if (status?.IsCompleted == true)
+        {
+            _shouldLoadConfiguration = false;
+            Navigation.NavigateTo("/");
+            return;
+        }
+
+        _isAuthenticated = status?.IsAuthenticated == true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !_shouldLoadConfiguration)
+        {
+            return;
+        }
+
+        try
+        {
+            var bffModule = await GetBffModuleAsync();
+            _model = await bffModule.InvokeAsync<AuthorizationProviderConfigurationModel>(
+                "fetchJson",
+                "/api/InstanceOnboarding/authz-provider-configuration/internal");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load authorization provider configuration.");
+            _errorMessage = "Could not load authorization provider configuration. Please refresh and try again.";
+            _model = new AuthorizationProviderConfigurationModel();
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void SelectProvider(string provider)
+    {
+        _model.Provider = provider;
+        _errorMessage = null;
+        _successMessage = null;
+    }
+
+    private bool IsSelected(string provider) =>
+        _model.Provider.Equals(provider, StringComparison.OrdinalIgnoreCase);
+
+    private string GetCardStyle(string provider) =>
+        IsSelected(provider)
+            ? "cursor:pointer; border: 2px solid var(--mud-palette-primary);"
+            : "cursor:pointer;";
+
+    private void OnCerbosEndpointChanged(string value)
+    {
+        var endpointChanged = !string.Equals(_model.CerbosGrpcEndpoint, value, StringComparison.Ordinal);
+        _model.CerbosGrpcEndpoint = value;
+
+        if (endpointChanged)
+        {
+            _model.CerbosEndpointVerified = false;
+        }
+    }
+
+    private async Task VerifyCerbosEndpointAsync()
+    {
+        _isVerifying = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        var bffModule = await GetBffModuleAsync();
+        var response = await bffModule.InvokeAsync<InstanceCommandResponseModel>(
+            "sendCommand",
+            "POST",
+            "/api/InstanceOnboarding/authz-provider-configuration/verify",
+            new { grpcEndpoint = _model.CerbosGrpcEndpoint });
+        _isVerifying = false;
+
+        if (!response.Success)
+        {
+            _model.CerbosEndpointVerified = false;
+            _errorMessage = string.IsNullOrWhiteSpace(response.Message)
+                ? "Failed to verify the Cerbos endpoint."
+                : response.Message;
+
+            if (response.Errors.Count > 0)
+            {
+                _errorMessage += " " + string.Join(" ", response.Errors);
+            }
+
+            return;
+        }
+
+        _model.CerbosEndpointVerified = true;
+        _successMessage = response.Message;
+    }
+
+    private async Task SaveAndContinueAsync()
+    {
+        _isSaving = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        var bffModule = await GetBffModuleAsync();
+        var response = await bffModule.InvokeAsync<InstanceCommandResponseModel>(
+            "sendCommand",
+            "PUT",
+            "/api/InstanceOnboarding/authz-provider-configuration",
+            _model);
+        _isSaving = false;
+
+        if (!response.Success)
+        {
+            _errorMessage = string.IsNullOrWhiteSpace(response.Message)
+                ? "Failed to save authorization provider configuration."
+                : response.Message;
+
+            if (response.Errors.Count > 0)
+            {
+                _errorMessage += " " + string.Join(" ", response.Errors);
+            }
+
+            return;
+        }
+
+        _successMessage = response.Message;
+
+        if (_isAuthenticated)
+        {
+            Navigation.NavigateTo("/onboarding/instance", forceLoad: true);
+            return;
+        }
+
+        Navigation.NavigateTo("/login?returnUrl=/setup", forceLoad: true);
+    }
+
+    private async Task<IJSObjectReference> GetBffModuleAsync()
+    {
+        _bffModule ??= await JSRuntime.InvokeAsync<IJSObjectReference>("import", "/js/bff.js");
+        return _bffModule;
+    }
+}

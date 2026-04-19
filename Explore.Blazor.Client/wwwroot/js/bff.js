@@ -114,6 +114,76 @@ export async function fetchJson(url) {
     return await response.json();
 }
 
+/**
+ * Sends a same-origin JSON command and normalizes API responses into the
+ * InstanceCommandResponseModel shape used by onboarding pages.
+ * @param {string} method - HTTP method
+ * @param {string} url - The URL to call
+ * @param {any} body - Optional JSON body
+ * @returns {Promise<{success: boolean, id: string, message: string, errors: string[]}>}
+ */
+export async function sendCommand(method, url, body) {
+    try {
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        };
+
+        const xsrf = getCookie('XSRF-TOKEN');
+        if (xsrf) {
+            headers['X-CSRF-TOKEN'] = xsrf;
+        }
+
+        const response = await fetch(url, {
+            method,
+            credentials: 'same-origin',
+            headers,
+            body: body === undefined ? undefined : JSON.stringify(body)
+        });
+
+        const text = await response.text();
+        const payload = text ? tryParseJson(text) : null;
+
+        if (payload && typeof payload === 'object' && payload.success !== undefined) {
+            return {
+                success: payload.success === true,
+                id: typeof payload.id === 'string' ? payload.id : '00000000-0000-0000-0000-000000000000',
+                message: typeof payload.message === 'string'
+                    ? payload.message
+                    : (response.ok ? 'OK' : `Failed with status ${response.status}.`),
+                errors: Array.isArray(payload.errors)
+                    ? payload.errors.filter(error => typeof error === 'string')
+                    : []
+            };
+        }
+
+        if (payload && typeof payload === 'object' && payload.title !== undefined) {
+            return {
+                success: false,
+                id: '00000000-0000-0000-0000-000000000000',
+                message: typeof payload.title === 'string' ? payload.title : 'Validation failed.',
+                errors: flattenProblemDetailsErrors(payload.errors)
+            };
+        }
+
+        return {
+            success: response.ok,
+            id: '00000000-0000-0000-0000-000000000000',
+            message: response.ok
+                ? 'OK'
+                : (payload?.detail || payload?.title || `Failed with status ${response.status}.`),
+            errors: []
+        };
+    } catch (error) {
+        return {
+            success: false,
+            id: '00000000-0000-0000-0000-000000000000',
+            message: 'Request failed.',
+            errors: [error instanceof Error ? error.message : String(error)]
+        };
+    }
+}
+
 /** @private Shared mutation helper. Reads XSRF token from cookie if present. */
 async function _bffMutate(method, url, body) {
     try {
@@ -149,4 +219,22 @@ async function _bffMutate(method, url, body) {
         console.log('BFF mutation failed:', error);
         return { ok: false, status: 0, error: error.message };
     }
+}
+
+function tryParseJson(text) {
+    try {
+        return JSON.parse(text);
+    } catch {
+        return null;
+    }
+}
+
+function flattenProblemDetailsErrors(errors) {
+    if (!errors || typeof errors !== 'object') {
+        return [];
+    }
+
+    return Object.values(errors)
+        .flatMap(value => Array.isArray(value) ? value : [])
+        .filter(value => typeof value === 'string');
 }

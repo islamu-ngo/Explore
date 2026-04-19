@@ -62,6 +62,7 @@
             new RouteConfig { Path = "/startup", Component = typeof(StartupGate), Layout = typeof(SetupLayout), Transition = RouteTransition.None, EnableCache = false },
             new RouteConfig { Path = "/setup", Component = typeof(Setup), Layout = typeof(SetupLayout), Transition = RouteTransition.None, EnableCache = false },
             new RouteConfig { Path = "/onboarding/auth-provider", Component = typeof(AuthProviderConfiguration), Layout = typeof(SetupLayout), Transition = RouteTransition.None, EnableCache = false },
+            new RouteConfig { Path = "/onboarding/authz-provider", Component = typeof(AuthorizationProviderConfiguration), Layout = typeof(SetupLayout), Transition = RouteTransition.None, EnableCache = false },
             new RouteConfig { Path = "/login", Component = typeof(LoginRedirect), Transition = RouteTransition.None, EnableCache = false },
             new RouteConfig { Path = "/logout", Component = typeof(LogoutRedirect), Transition = RouteTransition.None, EnableCache = false },
             new RouteConfig
