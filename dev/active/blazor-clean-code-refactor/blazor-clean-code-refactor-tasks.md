@@ -72,7 +72,7 @@ Legend: STRUCTURAL · BEHAVIORAL · SECURITY · CONTRACT · OPERATOR · HOTFIX
 - [ ] 1.15 Arch test: No new hardcoded user-facing strings outside legal pages (DEFERRED — requires localization inventory; revisit in later phase)
 
 ### Phase 5 — Observability Hygiene [BEHAVIORAL/OPERATOR]
-- [ ] 5.1 Remove 8 Console.WriteLines from ConfigurationExtension.cs
+- [x] 5.1 Remove Console.WriteLine from ConfigurationExtension.cs + LazyAssemblyLoader.cs + Setup.razor — swapped to structured ILogger (commit `17243e4e`); Rule 1.02 arch guardrail now enforces zero violations
 - [ ] 5.2 Audit ILogger severity semantics in BFF
 - [ ] 5.3 Verify correlation ID propagation BFF → YARP → API
 - [ ] 5.4 Add event IDs / log categories
@@ -139,13 +139,15 @@ Legend: STRUCTURAL · BEHAVIORAL · SECURITY · CONTRACT · OPERATOR · HOTFIX
 - [ ] 3.5 Split CircuitAccessTokenService → SetupSecretSessionService own file
 
 ### Phase 4 — BFF Middleware Extraction [STRUCTURAL]
-- [ ] 4.1 Extract AntiforgeryTokenDistributionMiddleware
-- [ ] 4.2 Extract StartupRedirectMiddleware
-- [ ] 4.3 Extract AccessTokenCaptureMiddleware
-- [ ] 4.4 Move Console.CancelKeyPress to Program.cs / hosted service
+- [~] 4.1 Extract AntiforgeryTokenDistributionMiddleware — lightweight path taken (lambda → private static `DistributeAntiforgeryTokenAsync`, same file). Full IMiddleware class deferred
+- [~] 4.2 Extract StartupRedirectMiddleware — lightweight path taken (lambda → private static `HandleStartupRedirectAsync`). Full IMiddleware class deferred
+- [~] 4.3 Extract AccessTokenCaptureMiddleware — lightweight path taken (lambda → private static `CaptureAccessTokenAsync`). Full IMiddleware class deferred
+- [~] 4.4 Move Console.CancelKeyPress to Program.cs / hosted service — lambda → private static `OnCancelKeyPress` (same file). Full hosted service deferred
 - [ ] 4.5 Verify pipeline order after extraction
 - [ ] 4.6 Document pipeline order as living table in docs/BLAZOR.md
 - [ ] 4.7 Per-handler timeout overrides in DelegatingHandlers (linked CancellationTokenSource)
+
+**Phase 4 Lightweight Completion Note** (commit `6e5e37f0`): Per user decision, this session performed the *minimal* refactor — extracted all 5 inline middleware lambdas AND 3 shutdown event-handler lambdas into private static methods inside `Explore.Blazor/Extensions/MiddlewareExtensions.cs` (same file, no new classes). Arch guardrail Rule 1.03 now enforces zero violations (`Known_MiddlewareLambda_LongBodies` HashSet is empty). The formal Phase 4 items 4.1–4.4 remain open for future IMiddleware-class extraction + hosted-service isolation.
 
 ### Phase 16 — BFF Claims & HttpClient Rationalization [BEHAVIORAL/SECURITY]
 - [ ] 16.1 Extract shared claim type constants
