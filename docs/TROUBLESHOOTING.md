@@ -43,7 +43,7 @@ Checks:
 Checks:
 - user is authenticated in BFF (`GET /auth/status`).
 - YARP is forwarding bearer token to `/api/*`.
-- API token contains expected audience (`explore-api` or `explore-blazor-server`) and valid issuer.
+- API token contains expected audience (`islamu-event-api` or `islamu-event-blazor`) and valid issuer.
 
 ### OIDC redirect URI errors behind proxy
 

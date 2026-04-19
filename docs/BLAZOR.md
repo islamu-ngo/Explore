@@ -65,6 +65,7 @@ YARP transform behavior is security-sensitive:
 1. Interactive rendering is configured through server + WASM render modes.
 2. Route-level rendering policy decisions are governed by runtime policy services (see `docs/RENDER_POLICIES.md`).
 3. Public experience settings are fetched from `api/PublicExperience/settings` and cached client-side for 5 minutes.
+4. **Hierarchical Settings**: Governance and UI settings follow a 5-tier resolution cascade: User → Group → Organization → Tenant → Instance. Resolution is performed in batch via `HierarchicalSettingsResolver` with support for instance-level locks and single-tenant bypass.
 
 ## Analytics Bootstrap And Degradation
 1. `AnalyticsInitializer` reads `PublicExperienceSettingsDto` once after first render and initializes the JS bridge through `IAnalyticsInterop`.

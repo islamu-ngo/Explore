@@ -1,10 +1,11 @@
 ABOUTME: ADR for authorization provider architecture in the current codebase.
-ABOUTME: Captures runtime provider routing, HTTP transport choice, and fallback semantics.
+ABOUTME: Captures runtime provider routing, gRPC SDK transport choice, and fallback semantics.
 
 # ADR-001: Authorization Provider Architecture
 
 **Status:** Accepted  
 **Date:** 2026-02-14  
+**Updated:** 2026-02-24 (Migrated from HTTP REST to official Cerbos gRPC SDK)  
 **Deciders:** ISLAMU Event Core Team
 
 ## Context
@@ -17,24 +18,25 @@ The platform needs resource-level authorization that:
 ## Decision
 
 Use one runtime wrapper (`RuntimeAuthorizationProvider`) that delegates to:
-- `CerbosAuthorizationService` (HTTP PDP checks),
+- `CerbosAuthorizationService` (gRPC PDP checks via official `Cerbos.Sdk`),
 - `FallbackAuthorizationService` (local DB-backed authorization).
 
 Provider resolution order:
 1. tenant BYO Cerbos config (if present),
-2. otherwise instance-level `AuthorizationProvider` setting (`"cerbos"` or local default),
-3. fallback to local provider on Cerbos failure.
+2. otherwise instance-level `AuthorizationProvider` setting (`"cerbos"` or local default).
 
-## HTTP Transport And Resilience
+When `authorization.provider=cerbos`: all-in on Cerbos. If Cerbos is down, deny all (fail-closed).
+When `authorization.provider=local`: use FallbackAuthorizationService exclusively.
 
-Cerbos communication uses HTTP clients:
-- instance PDP client: `CerbosClient`
-- tenant BYO client: `CerbosByoClient`
+## gRPC Transport
 
-Configured resilience:
-- instance: timeout 2s, circuit-breaker 50% failure ratio, 30s sampling, min throughput 10, break 15s.
-- BYO: timeout 3s, circuit-breaker 50% failure ratio, 30s sampling, min throughput 5, break 15s.
-- no retry policy is configured for authorization checks.
+Cerbos communication uses the official `Cerbos.Sdk` NuGet package (gRPC):
+- Instance PDP: singleton `ICerbosClient` built via `CerbosClientBuilder.ForTarget(grpcEndpoint)`
+- BYO PDP: `ICerbosClientFactory` caches gRPC clients per endpoint (thread-safe, long-lived channels)
+- No admin credentials needed for runtime `CheckResources` — credentials are Admin API only
+- TLS: production endpoints use `https://` prefix; dev uses `http://` with `PlaintextMode=true`
+
+No retry policy is configured — fail-fast to deny is safer than retrying authorization checks.
 
 ## Failure Mode Contract
 
@@ -43,7 +45,8 @@ When BYO Cerbos fails:
 - `failure_mode=open` -> local provider runs normal fallback authorization.
 
 When instance Cerbos fails:
-- runtime provider logs and falls back to local authorization.
+- All checks are denied. The operator chose Cerbos; falling back to a potentially more permissive
+  local RBAC would silently bypass intended policies.
 
 ## Consequences
 

@@ -8,7 +8,7 @@ ABOUTME: Replaces generic template guidance with repo-specific constraints and l
 > This document defines naming conventions, organizational patterns, and architectural decisions.
 > For code examples and implementation patterns, see the relevant skills in `.claude/skills/`.
 
-**Last Updated**: January 2026
+**Last Updated**: 2026-04-19
 
 ---
 
@@ -21,6 +21,7 @@ ABOUTME: Replaces generic template guidance with repo-specific constraints and l
 5. [Design Principles](#design-principles)
 6. [Pattern Selection Guide](#pattern-selection-guide)
 7. [Decision Framework](#decision-framework)
+8. [API Contract Rules](#api-contract-rules)
 
 ---
 
@@ -52,7 +53,7 @@ These rules are **non-negotiable**. Violations break architectural integrity.
 | Element | Convention | Example |
 |---------|------------|---------|
 | Public members | PascalCase | `Title`, `CreatedAt` |
-| Private fields | _camelCase with underscore | `_eventRepository` |
+| Private fields | _camelCase with underscore | `_eventRepository`, `_resourceAssembler`, `_mediator`, `_userContext`, `_cache` |
 | Parameters | camelCase | `eventId`, `createDto` |
 | Constants | PascalCase | `DefaultPageSize` |
 | Interfaces | IPascalCase | `IEventRepository` |
@@ -303,10 +304,84 @@ Explore.Persistence/
 
 ---
 
+## API Contract Rules
+
+> **Scope**: Every controller action in `Explore.API` is part of a **governed product artifact** — the OpenAPI document at `/openapi/event-api.json`. Both server consumers (integrations, webhooks) and the generated `IEventApiClient` (used by `Explore.Blazor` and `Explore.Blazor.Client`) depend on this contract being stable, unambiguous, and ergonomic.
+>
+> These rules are enforced by tests in `Event.API.IntegrationTests/Features/ContractInvariantsTests.cs` and `Explore.Blazor.Client.Tests/ApiClientNamingTests.cs`. Violations fail CI.
+
+### Versioning Strategy (Multi-Reader, Non-URL)
+
+Version is negotiated via **three equal-status readers**, never via URL segment:
+
+| Reader | Syntax | Primary consumer |
+|---|---|---|
+| Media type | `Accept: application/json;v=0.1` | REST-pure clients, HATEOAS navigation |
+| Query string | `?api-version=0.1` | Webhooks, ad-hoc tools, browser debugging |
+| Custom header | `X-Api-Version: 0.1` | Service-to-service integrations that cannot set media type |
+
+The URL-segment pattern (`/api/v0.1/...`) is **banned**. It is the root cause of duplicate OpenAPI operations, it clutters HATEOAS links, and it prevents content negotiation from being the source of truth. Controllers carry exactly one `[Route("api/[controller]")]` attribute. Runtime requests to `/api/v{n}/...` must return 404.
+
+### Endpoint Classification
+
+Every controller action must carry exactly one of the following classifications, enforced by an architecture test:
+
+| Class | Semantics | Authorization | Rate limit baseline |
+|---|---|---|---|
+| **Public** | Safe for unauthenticated read. No tenant mutation. | `[AllowAnonymous]` | `global` |
+| **Authenticated** | Any logged-in user. Tenant-scoped or user-scoped write, or privileged read. | `[Authorize]` (no roles required) | `authenticated` or `write` |
+| **Admin** | Operator / setup / diagnostics. Not exposed to the generated client. | `[Authorize(Roles=...)]` or `[SetupSecretRequired]` | `setup_secret` or `authenticated` |
+
+The classification lives in controller action metadata via the `[EndpointClassification(EndpointClass.X)]` attribute (`Explore.API.Attributes`) and is the single source of truth for OpenAPI tagging (injected as `x-endpoint-class` operation extension by `EndpointClassificationTransformer`), client-generation filters, and Cerbos policy scaffolding. Every controller action must carry exactly one classification (class-level attribute is inherited by actions; action-level attribute overrides). Enforced by `EndpointClassificationArchitectureTests` in `Event.Architecture.Tests`.
+
+### Operation IDs
+
+- **Every action has an `operationId`.** `operationId` is the filename of the generated client method (plus `Async` suffix). Missing IDs cause NSwag to emit placeholder names (`GET`, `GET2`, `TenantDELETE2`) that break ergonomics and block the HATEOAS link-name alignment.
+- **Operation IDs are unique across the whole document.** Uniqueness is a tested invariant, not an emergent behavior of good naming.
+- **Naming pattern:** `{ControllerShortName}_{ActionName}` (PascalCase, underscore-separated). Example: `Tenant_GetById`, `EventRegistration_ListByEvent`. This is policy, not physics — see [NAMING_CONVENTIONS.md](NAMING_CONVENTIONS.md) for rationale and exceptions.
+- **Route Name ↔ Operation ID alignment is intentional.** `[HttpGet(Name = "Tenant_GetById")]` and its derived `operationId` should match. They are kept aligned by convention, not by runtime equality — both are allowed to drift independently if a specific action needs it, but drift must be documented on the action.
+
+### Banned Names
+
+The following method names on `IEventApiClient` are always defects. CI fails if any appear:
+
+- Any method whose name matches the regex `\d+Async$` (e.g. `Foo2Async`, `TenantGET3Async`).
+- Any method whose name equals one of `GETAsync`, `POSTAsync`, `PUTAsync`, `DELETEAsync`, `PATCHAsync` — with or without a digit suffix.
+- Any operationId equal to a raw HTTP verb (`GET`, `POST`, etc.) or a raw verb followed by digits.
+
+These are NSwag's collision-disambiguation fallbacks and carry zero semantic information.
+
+### Client-Ergonomics Bar
+
+Generated client methods must be **readable without the OpenAPI doc**:
+
+- **Collections vs single**: `ListEventsAsync` not `GetEventsAsync`; `GetEventAsync(id)` not `GetEventsAsync(id)`.
+- **Mutations are business actions**: `PublishEventAsync`, `ApproveRegistrationAsync` — not `PutEvent2Async`.
+- **No verb-only names**: A method called `GetAsync` on a 100+ entity client is a contract defect regardless of whether the compiler accepts it.
+
+The ergonomics bar is a governed quality gate. Violations block release, though they do not block routine dev builds (they surface as schema-diff warnings in CI and fail only the explicit `ApiClientNamingTests`).
+
+### Contract Ownership & Change Control
+
+- **OpenAPI changes require PR review.** The checked-in `Explore.API/swagger.json` is an artifact of CI regeneration — it must never be hand-edited. Any PR touching controller signatures, route attributes, `[ApiVersion]`, or `[ProducesResponseType]` is implicitly a contract change.
+- **Schema-diff is surfaced in CI.** Before 1.0 it is non-blocking (visibility only). At 1.0 it flips to blocking for breaking diffs.
+- **Regeneration is a discrete step.** Do not regenerate `Explore.Blazor.Client/Clients/EventApiClient.g.cs` casually. Regenerate only when the API-side contract is stable and a tracked change-set justifies it.
+
+### Authoring Checklist (new controller action)
+
+1. Add `[HttpGet(Name = "X_Y")]` (or equivalent verb attribute) with a stable name.
+2. Add `[ProducesResponseType]` for every possible response shape, including 400/401/403/404.
+3. Pick an **Endpoint Classification** and apply the matching authorization attribute(s).
+4. Confirm the OpenAPI doc still round-trips cleanly (`dotnet test --project Event.API.IntegrationTests --filter ContractInvariants`).
+5. If the generated client needs regeneration, open a separate contract PR — do not mix contract and feature work.
+
+---
+
 ## Related Documentation
 
 - **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)** - Critical rules with examples
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture overview
+- **[NAMING_CONVENTIONS.md](NAMING_CONVENTIONS.md)** - OperationId naming policy and exceptions
 - **[TEMPLATE_GLOSSARY.md](TEMPLATE_GLOSSARY.md)** - Placeholder definitions
 
 ## Code Review Checklist

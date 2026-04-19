@@ -38,6 +38,7 @@ Dependency direction is inward: presentation -> application -> domain.
 2. In `SingleTenant`, default tenant is used for all requests.
 3. In `MultiTenant`, tenant is resolved from header/domain/subdomain fallback chain.
 4. EF query filters enforce tenant isolation centrally in `ExploreDbContext`.
+5. **Hierarchical Settings**: Governance settings follow a 5-tier resolution cascade: User → Group → Organization → Tenant → Instance. Resolution is performed in batch via `HierarchicalSettingsResolver` with support for instance-level locks and single-tenant bypass.
 
 ## Authorization Architecture
 1. Endpoint-level auth is handled via ASP.NET attributes/policies. `[AuthorizeResource]` attribute pairs a resource kind with a domain action constant from `AuthorizationActions`.

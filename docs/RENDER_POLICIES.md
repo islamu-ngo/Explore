@@ -12,7 +12,7 @@ Client runtime resolver:
 Data source:
 
 - `PublicExperienceSettingsDto` from API (`GetPublicExperienceSettingsQueryHandler`)
-- values originate from `InstanceGovernanceSettingService.ReadEffectiveSettingsForTenantAsync(tenantId)`
+- values originate from `HierarchicalSettingsResolver.ResolveEffectiveSettingsAsync()` which applies the 5-tier cascade (User → Group → Organization → Tenant → Instance).
 
 ## Route Groups
 

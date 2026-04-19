@@ -26,7 +26,7 @@ This project stores most entities directly under `Explore.Domain/` (not in an `E
 
 ### 1) PII Split (1:1 extension tables)
 
-Some entities keep sensitive fields in dedicated PII tables and expose convenience properties via `NotMapped` wrappers:
+Some entities keep sensitive fields in dedicated PII tables and expose convenience properties via `NotMapped` wrappers. This allows hard-deletion of PII while preserving the main entity for auditing/history.
 
 - `User` -> `UserPii` (`Email`, `FirstName`, `LastName`)
 - `Organization` -> `OrganizationPii` (`FullName`, `Email`, address fields)
@@ -35,163 +35,63 @@ Some entities keep sensitive fields in dedicated PII tables and expose convenien
 
 `EnsurePii()` helper methods create PII objects lazily when mapped properties are set.
 
-### 2) Optional Event Aspects (vertical partitioning / Layer 2 typed schema)
+### 2) Optional Event Aspects (Layer 2 typed schema)
 
-Base event data stays in `Event`. Optional modules add 1:1 aspect records:
+Base event data stays in `Event`. Optional modules add 1:1 aspect records sharing the same primary key:
 
-- `EventIslamicAspect` (shared primary key `Id = Event.Id`)
-- `EventTechAspect` (shared primary key `Id = Event.Id`)
-- `EventSessionIslamicAspect` (session-level extension with key `EventSessionId`)
+- `EventIslamicAspect` (Id = Event.Id)
+- `EventTechAspect` (Id = Event.Id)
+- `EventSessionIslamicAspect` (session-level extension)
 
-Aspects are optional; an event/session can exist without aspect rows.
+Aspects are optional; an event/session can exist without aspect rows. Sector-standard semantics belong here, not only in Layer 3 custom properties.
 
-These aspect families are the current Layer 2 precedent. Sector-standard semantics belong here, not only in Layer 3 custom properties.
+### 3) Layer 3 Governed Custom-Property Extension Model
 
-### 3) Layer 3 custom-property extension model
+The platform provides a flexible EAV-based extension system across multiple scopes:
 
-The repo now contains a strengthened Layer 3 custom-property family:
+- **Shared Definitions**: `CustomPropertyDefinition` for Organization and Group extensions, plus "Shared Event Definitions".
+- **Event Templates**: `EventTemplate` blueprints with `EventTemplateCustomPropertyDefinition`.
+- **Event Runtime**: `EventCustomPropertyDefinition` tied to specific events, materialized from templates or created directly.
+- **Event Values**: `EventCustomPropertyValue` stores typed runtime data with multi-value ordinal support.
+- **Projections**: `EventCustomPropertyProjection` provides a denormalized read-model for discovery/filtering.
 
-- shared definitions for `Organization` and `Group` via `CustomPropertyDefinition`, `CustomPropertyOption`, and `CustomPropertyValue`
-- event template entities via `EventTemplate`, `EventTemplateCustomPropertyDefinition`, and `EventTemplateCustomPropertyOption`
-- event-local runtime entities via `EventCustomPropertyDefinition`, `EventCustomPropertyOption`, and `EventCustomPropertyValue`
-- derived read-side projection rows via `EventCustomPropertyProjection`
+**Key Rule**: Layer 3 exists for long-tail extensions. Standard sector fields must use Layer 2 typed schema.
 
-Planned next extension of the same architecture:
+### 4) Tenant and Soft-Delete Interfaces
 
-- session template entities under the parent event template
-- session-local runtime entities for `EventSession`
-- derived session projection rows and aggregate event-with-sessions read views
+Isolation and lifecycle are enforced via marker interfaces:
 
-Important boundary rule:
+- `ITenantEntity` -> `TenantId` (Global filter in DbContext)
+- `IAuditableEntity` -> `CreatedAt/By`, `UpdatedAt/By` (Auto-populated in SaveChanges)
+- `ISoftDeletable` -> `IsDeleted`, `DeletedAt/By` (Converted from Delete state in SaveChanges)
 
-- Layer 3 exists for tenant-specific and organizer-specific long-tail extensions.
-- Layer 3 must not become the only home of filtering, moderation, policy, or sector-standard semantics.
-- `Namespace + Key` is the machine identity; `DisplayName` is mutable UI text.
-- `Event` and `EventSession` remain separate canonical resources even when read models merge them for UX.
-
-### 4) Tenant and soft-delete interfaces
-
-Key interfaces:
-
-- `ITenantEntity` -> `TenantId`
-- `IAuditableEntity` -> `CreatedAt/By`, `UpdatedAt/By`
-- `ISoftDeletable` -> `IsDeleted`, `DeletedAt/By`
-
-In `ExploreDbContext.SaveChangesAsync`:
-
-- delete operations on `ISoftDeletable` are converted to soft delete;
-- audit fields are auto-populated for added/modified/deleted entities.
-
-## Persistence-Enforced Rules (from EF configuration)
-
-These are enforced at database/model level today.
-
-## Event rules
-
-- `Event.Title` required, max length 200.
-- `Event` uses dedicated first-class appearance fields such as `BackgroundColor`, `BackgroundEffect`, and `BackgroundImageId`; current architecture should not reintroduce `MetadataJson` as the event extension model.
-- `Event.Price` uses precision `(19,4)` and check constraint `price >= 0` when not null.
-- Indexes include:
-  - tenant + soft-delete + status (`ix_events_tenant_active_status`)
-  - tenant + actor + created-at
-  - tenant + date range
-  - tenant + event type
-  - tenant + slug
-
-## Event session rules
-
-- `EventSession.Price` precision `(19,4)` with non-negative check.
-- `EventSession.Location` uses `SetNull` on delete.
-- `EventSession -> Event` uses cascade delete.
-- `EventSessionIslamicAspect` has constraint requiring prayer fields when `StartTimeType` is relative-to-prayer.
-- `EventSession` is the scheduled child aggregate, not a peer `Event` row in canonical persistence.
-
-## Actor ownership rules
-
-`ActorConfiguration` enforces:
-
-- unique nullable indexes for `UserId`, `OrganizationId`, and `GroupId` (one actor per owner),
-- check constraint allowing exactly one owner FK or none (bot/service actor case).
-
-## Organization rules
-
-- `Organization.ApprovalStatusId` default is `Pending`.
-- `Organization.Pii` is `AutoInclude` and cascades on delete.
-- tenant-oriented indexes target active listing queries.
-
-## App settings guardrail
-
-`AppSettingConfiguration` blocks high-value secret keys via DB constraint:
-
-- disallows keys starting with `Database:`, `Security:MasterKey`, `ConnectionStrings:`.
-
-## Query Filter Behavior
-
-`ExploreDbContext` applies named global filters:
-
-- `Tenant` filter on tenant-scoped entities,
-- `SoftDelete` filter on soft-deletable entities.
-
-Notable exception:
-
-- `User` is soft-delete filtered but not tenant-scoped.
-- `EventType` allows global values (`TenantId = null`) plus tenant-specific values.
-
-## Outbox And Messaging Entities
+## Messaging and Reliability
 
 ### OutboxMessage
 
-General-purpose transactional outbox entity for reliable asynchronous event dispatch:
+Transactional outbox entity for reliable asynchronous event dispatch (at-least-once delivery):
 
 | Field | Type | Notes |
 |---|---|---|
 | `Id` | `Guid` | UUID v7 (time-sortable) |
-| `AggregateType` | `string(200)` | Source entity type name |
+| `AggregateType` | `string` | e.g., "Event", "Actor" |
 | `AggregateId` | `Guid` | Source entity ID |
-| `EventType` | `string(200)` | Event classification |
-| `Payload` | `string?` | JSONB serialized event data |
-| `Status` | `OutboxMessageStatus` | Pending(1), Processing(2), Completed(3), Failed(4), DeadLettered(5) |
-| `CreatedAt` | `DateTime` | When the message was created |
-| `ProcessedAt` | `DateTime?` | When successfully dispatched |
-| `RetryCount` | `int` | Current retry attempt |
-| `LastError` | `string?(2000)` | Most recent error message |
-| `NextRetryAt` | `DateTime?` | Scheduled next retry (exponential backoff) |
-| `MaxRetries` | `int` | Default 10 |
-| `DeadLetteredAt` | `DateTime?` | When permanently failed |
+| `EventType` | `string` | Event classification |
+| `Payload` | `string?` | JSONB serialized data |
+| `Status` | `Enum` | Pending, Processing, Completed, Failed, DeadLettered |
+| `NextRetryAt` | `DateTime?`| Exponential backoff schedule |
 
-Specialized variants: `PdsSyncOutbox` (federation), `PolicyChangeOutbox` (authorization policy changes).
+Specialized variants: `PdsSyncOutbox` (federation), `PolicyChangeOutbox` (governance).
 
-## Footer Entities
+## Persistence-Enforced Rules (from EF configuration)
 
-Two entities support per-tenant footer customization:
-
-- **`TenantFooterLinkGroup`** — `Id` (Guid), `TenantId`, `Title`, `Order`, `IsActive`, auditing fields. Owns a collection of `TenantFooterLink`.
-- **`TenantFooterLink`** — `Id` (Guid), `FooterLinkGroupId` (FK), `Label`, `Url`, `OpenInNewTab`, `Order`, `IsActive`, auditing fields.
-
-Footer behavior (template, social links, description, copyright) is governed through `TenantSetting` entries with `footer.*` keys. Instance-level locks prevent tenant overrides.
-
-## Actor Appearance Fields
-
-`Actor` includes visual customization fields persisted at the database level:
-
-- `BackgroundColor` — hex color for actor profile background.
-- `BackgroundEffect` — visual effect overlay (None, SoftOverlay, StrongOverlay, Blur).
-- `BannerColor` — hex color for banner area.
-- `BannerPictureId` — FK to `StorageObject` for banner image.
-- `BackgroundImageId` — FK to `StorageObject` for background image.
-
-These follow the same appearance pattern as `Event` (which has `BackgroundColor`, `BackgroundEffect`, `BackgroundImageId`).
-
-## What Is Not Implemented as a Domain Primitive
-
-- No dedicated domain-event dispatch model is defined in `Explore.Domain` (no `IDomainEvent` pattern in current code).
-- Most business invariants are currently enforced in handlers/services and EF configuration, not rich domain methods.
-- `IOutboxMessageDispatcher` is currently a no-op (`LoggingOutboxMessageDispatcher`) — real dispatch logic is deferred until integration requirements solidify.
+- `Event.Title`: Required, max 200.
+- `Event.Price`: Precision (19,4), non-negative constraint.
+- `AppSetting`: Blocks high-value secret keys (e.g., `Database:`, `ConnectionStrings:`) via DB constraint.
+- `Actor`: Unique nullable owner FKs (exactly one of UserId, OrganizationId, or GroupId).
 
 ## Related
 - [ARCHITECTURE.md](ARCHITECTURE.md)
 - [CUSTOM_PROPERTIES.md](CUSTOM_PROPERTIES.md)
-- [CODEBASE_INSIGHTS.md](CODEBASE_INSIGHTS.md)
 - [MULTI_TENANCY.md](MULTI_TENANCY.md)
 - [OUTBOX_PATTERN.md](OUTBOX_PATTERN.md)
-- [FOOTER_MANAGEMENT.md](FOOTER_MANAGEMENT.md)

@@ -258,15 +258,22 @@ HTTP method → action mapping: GET→read, POST→create, PUT/PATCH→update, D
 
 ---
 
-## 11. Settings Resolution Chain
+## 11. Hierarchical Settings Resolution Cascade
 
-The governance settings system has a three-tier resolution:
+The governance settings system has a five-tier resolution implemented in `HierarchicalSettingsResolver`:
 
-1. **SystemSetting** (instance-wide defaults) — e.g., "require event approval = true"
-2. **TenantSetting** (per-tenant overrides) — e.g., Tenant A overrides to "false"
-3. **PlatformDefaults** (code-level fallback) — if neither DB value exists
+1. **User Preference** — individual user settings.
+2. **GroupSetting** — group-level overrides.
+3. **OrganizationSetting** — organization-level overrides.
+4. **TenantSetting** — per-tenant overrides.
+5. **SystemSetting** — instance-wide platform defaults.
 
-`SettingsResolver` implements this cascade. Settings values are stored as **JSON-serialized strings** in the database. The `TenantContext.cs` file shows the deserialization pattern: `JsonSerializer.Deserialize<T>(rawValue)` with fallback to raw parsing.
+### Mechanics
+
+- **Batch Loading**: The resolver pre-fetches all tiers for requested keys in exactly two queries (one for system, one for scoped tiers) to avoid N+1 query patterns.
+- **Lock Precedence**: If a lower tier (e.g., System) marks a setting as `IsLocked`, the resolver ignores overrides from higher tiers (Tenant, Org, etc.).
+- **Serialization**: Values are stored as JSON-serialized strings in the database. The `SettingValueSerializer` handles typed deserialization.
+- **Single-Tenant Bypass**: In single-tenant mode, instance-level locks are automatically bypassed to give the tenant full administrative control.
 
 ### GovernanceSettingKeys
 

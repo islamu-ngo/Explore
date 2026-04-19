@@ -68,17 +68,26 @@ Notable cases:
 - `User` is soft-delete filtered but not tenant-scoped.
 - some entities combine tenant and soft-delete filters.
 
-## Tenant Override Model
+## Hierarchical Settings Model
 
-Tenant-specific customization uses `TenantSetting` records keyed by `SettingKey`.
+Customization follows a 5-tier resolution cascade implemented in `HierarchicalSettingsResolver`:
 
-Resolution flow (`SettingsResolver`):
+1. **Instance** (`SystemSetting`) — Platform-wide defaults.
+2. **Tenant** (`TenantSetting`) — Per-tenant overrides.
+3. **Organization** (`OrganizationSetting`) — Specific organization overrides.
+4. **Group** (`GroupSetting`) — Specific group overrides.
+5. **User** (`UserPreference`) — Individual user preferences.
 
-1. read system setting,
-2. if unlocked and tenant override exists, use tenant value,
-3. otherwise use system value.
+Resolution flow:
+- Reads all tiers for the requested key(s) in a single batch operation.
+- Merges values from top (User) to bottom (Instance).
+- **Locking**: If a higher tier locks a setting (e.g., `SystemSetting.IsLocked=true`), lower-tier overrides are ignored.
+- **Single-Tenant Bypass**: In single-tenant mode, system locks are bypassed to allow the default tenant full control.
 
-If setting is locked (`SystemSetting.IsLocked=true`), tenant overrides are ignored/removed by policy services.
+Cache behavior:
+- Each tier has its own cache prefix (e.g., `HierSettings:Tenant:{id}`).
+- Default TTL: 5 minutes.
+- Updates to settings invalidate the corresponding scope cache.
 
 ## Tenant Lifecycle States
 

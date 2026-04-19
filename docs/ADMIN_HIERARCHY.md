@@ -64,6 +64,16 @@ The platform implements a strict hierarchical authority model that separates inf
 - Create and manage events
 - Approve registrations
 - Respond to reviews
+- Configure organization-specific settings
+
+### Group Administrator
+
+**Identity**: A user with elevated privileges within a specific group (sub-unit of an organization or tenant).
+
+**Authority Scope**:
+- Manage group members
+- Create events within the group
+- Configure group-specific settings
 
 ### Standard User
 
@@ -74,6 +84,7 @@ The platform implements a strict hierarchical authority model that separates inf
 - Register for events (if permitted)
 - Manage own profile
 - Create content (if permitted by policies)
+- Manage personal preferences
 
 ---
 
@@ -109,19 +120,27 @@ These are hard boundaries protecting platform integrity:
 
 ### Setting Resolution Order
 
-1. **System Default** → Baseline value
-2. **Instance Policy** → May override or lock
-3. **Tenant Configuration** → May override if not locked
-4. **User Preference** → May override if delegated
+Resolution follows a 5-tier cascade via `HierarchicalSettingsResolver`:
+
+1. **User Preference** (Highest priority)
+2. **Group Setting**
+3. **Organization Setting**
+4. **Tenant Configuration**
+5. **System Default** (Lowest priority)
 
 ### Lock States
 
-| State | Instance Admin | Tenant Admin | User |
-|-------|----------------|--------------|------|
-| **System Default** | Override ✅ | Override ✅ | Override ✅ |
-| **Instance Locked** | Override ✅ | Override ❌ | Override ❌ |
-| **Tenant Locked** | Override ✅ | Override ✅ | Override ❌ |
-| **User Preference** | Override ✅ | Override ✅ | Override ✅ |
+Higher tiers can lock settings to prevent lower-tier overrides.
+
+| Tier | Can Override | Can Be Locked By |
+|-------|----------------|--------------|
+| **User** | Yes | Group, Org, Tenant, Instance |
+| **Group** | Yes | Org, Tenant, Instance |
+| **Organization** | Yes | Tenant, Instance |
+| **Tenant** | Yes | Instance |
+| **Instance** | N/A | — |
+
+**Note**: In single-tenant mode, instance-level locks are bypassed for the default tenant.
 
 ---
 

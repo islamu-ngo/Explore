@@ -173,7 +173,7 @@ Non-GET responses additionally receive:
 
 ### JWT Bearer Configuration
 - Authority: Keycloak OIDC metadata endpoint.
-- Multi-client audience validation: `explore-api`, `explore-blazor-server`, `account`.
+- Multi-client audience validation: `islamu-event-api`, `islamu-event-blazor`.
 - Custom `AudienceValidator`: checks both `aud` claim and `azp` (Keycloak authorized party) claim.
 - Clock skew tolerance: 5 minutes.
 - Dev mode: accepts self-signed certificates.
@@ -438,8 +438,9 @@ Write operations support the `Idempotency-Key` HTTP header for safe retries:
    - `MultiTenant`: `ApiTenantResolutionMiddleware` resolves trusted `X-Tenant-Slug` first, then normalized `Request.Host.Host` after forwarded-header processing; unresolved non-API-key requests fail closed with `404`.
    - API-key requests may carry a requested tenant hint through pre-auth middleware and are finalized by `ApiTenantPostAuthenticationMiddleware`, which can return `404 Tenant mismatch` or `401 API key authentication failed`.
 3. EF query filters enforce tenant scoping in persistence.
+4. **Hierarchical Settings**: Governance settings follow a 5-tier resolution cascade: User → Group → Organization → Tenant → Instance. Resolution is performed in batch via `HierarchicalSettingsResolver` with support for instance-level locks and single-tenant bypass.
 
----
+## Key Endpoint Groups
 
 ## Key Endpoint Groups
 

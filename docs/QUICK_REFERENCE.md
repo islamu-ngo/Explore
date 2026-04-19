@@ -34,6 +34,8 @@ Runtime tenant resolution:
 
 Single-tenant fallback default tenant ID: `018e4e5c-7f00-7000-8000-000000000001`.
 
+Governance settings resolution uses a **5-tier cascade**: User → Group → Organization → Tenant → Instance. Instance-level locks prevent higher-tier overrides unless in single-tenant mode.
+
 ## Auditing And Soft Delete
 1. Auditable entities use `CreatedAt/By` and `UpdatedAt/By`.
 2. Soft-deletable entities use `IsDeleted` (and often `DeletedAt/By`).

@@ -2,7 +2,7 @@
 
 > Comprehensive naming patterns used across the codebase.
 > Follow these exactly when creating new files, classes, or members.
-> Last Updated: February 2026
+> Last Updated: 2026-04-19
 
 ---
 
@@ -333,6 +333,97 @@ Domains.InstanceBaseDomain
 ```
 
 Defined in `Explore.Domain/Constants/GovernanceSettingKeys.cs`.
+
+---
+
+## API Contract Naming (Routes, Route Names, Operation IDs)
+
+> Governed by [docs/GOVERNANCE.md#api-contract-rules](GOVERNANCE.md#api-contract-rules).
+> These rules are enforced by `ContractInvariantsTests` (Event.API.IntegrationTests),
+> `ApiClientNamingTests` (Explore.Blazor.Client.Tests), and the auto-generated inventory
+> at `dev/active/api-contract-stabilization/api-contract-stabilization-action-inventory.md`.
+
+### Controller Route
+
+Every controller carries **exactly one** `[Route]` attribute using the conventional template:
+
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public sealed class ActorController : ControllerBase { ... }
+```
+
+Banned:
+- Multiple `[Route]` attributes on the same controller.
+- URL-segment versioning — `/api/v{version:apiVersion}/...`, `/api/v0.1/...` etc. must 404 at runtime.
+- Hard-coded absolute URLs or non-`api/` prefixes.
+
+Versioning is **multi-reader, non-URL**: media-type (`Accept: application/json;v=0.1`), query (`?api-version=0.1`), custom header (`X-Api-Version: 0.1`).
+
+### Route Names (HATEOAS + HttpGet Name=)
+
+The single source of truth is `Explore.API/Hateoas/RouteNames.cs` (static `RouteNames` class).
+Every GET action that participates in HATEOAS **must** declare `[HttpGet(Name = RouteNames.XXX)]`.
+
+| Concern | Rule |
+|---|---|
+| Constant name | PascalCase verb+subject — `GetActors`, `GetActorById`, `SearchEvents` |
+| Constant value | Same as constant name (string literal) — `"GetActors"` |
+| Scope | Unique **per API deployment** (enforced by test) |
+| Collision | No two route-name constants may share a value |
+| Usage | Reference via `RouteNames.GetActors`, never hard-code the string |
+| Grouping | Organize into `#region` blocks per aggregate (Organization / Event / Actor / …) |
+
+### Operation IDs (OpenAPI)
+
+Operation IDs power client-generation (NSwag) and OpenAPI tooling. They are governed as product artifacts.
+
+**Format:** `{ControllerShortName}_{ActionName}` — PascalCase segments separated by a single underscore.
+
+| Example endpoint | Operation ID |
+|---|---|
+| `GET  /api/actor` (list) | `Actor_GetActors` |
+| `GET  /api/actor/{id}` | `Actor_GetActorById` |
+| `POST /api/actor` | `Actor_CreateActor` |
+| `PUT  /api/actor/{id}` | `Actor_UpdateActor` |
+| `DELETE /api/actor/{id}` | `Actor_DeleteActor` |
+| `POST /api/event/{id}/publish` | `Event_PublishEvent` |
+
+Required invariants (enforced by `ContractInvariantsTests`):
+
+1. **Every operation has an `operationId`.** No null/empty/whitespace values in the exported OpenAPI document.
+2. **Operation IDs are unique** across the entire document.
+3. **Operation IDs alias to Route Names by policy**, not by framework coupling. When a GET action declares `[HttpGet(Name = RouteNames.X)]` the operationId should be semantically equivalent (e.g., route name `GetActors`, operationId `Actor_GetActors`). Maintain this alignment deliberately.
+4. **No placeholder / collision-fallback names.** The following are banned and fail CI:
+   - Bare HTTP verbs: `GETAsync`, `POSTAsync`, `PUTAsync`, `PATCHAsync`, `DELETEAsync`, `GET`, `POST`, `PUT`, `PATCH`, `DELETE`
+   - Any operationId matching `\d+$` or generated client method matching `\d+Async$` (e.g., `TenantGET2Async`, `Status7Async`)
+   - operationIds equal to raw HTTP verbs in any casing
+5. **Generated client method names** (`IEventApiClient` via NSwag) must match regex `^[A-Z][A-Za-z0-9]+Async$` and must not collide. NSwag derives method names from operationId; fixing operationIds upstream fixes client names automatically.
+
+### Client-Ergonomics Bar
+
+Operation IDs (and therefore generated client methods) are **API consumer surface**. They must read as a product API, not generator output.
+
+| Concern | Good | Bad |
+|---|---|---|
+| Collection vs single | `Actor_GetActors` / `Actor_GetActorById` | `Actor_Get` / `Actor_Get2` |
+| Mutation reads as business action | `Event_PublishEvent` / `Event_ArchiveEvent` | `Event_Post` / `Event_Put2` |
+| Verb on noun, not noun on verb | `Registration_CancelRegistration` | `Cancel_Registration` (inverted) |
+| No raw verbs | `Tenant_UpdateTenant` | `TenantPUT` / `TenantPUTAsync` |
+
+### Endpoint Classification (tagging)
+
+Every action is classified as one of `Public`, `Authenticated`, `Admin` via the `[EndpointClassification(EndpointClass.X)]` attribute (`Explore.API.Attributes`). The attribute is read by `EndpointClassificationTransformer` and emitted as the `x-endpoint-class` operation extension in `/openapi/event-api.json`. Used as the single source of truth for OpenAPI audience filters and Cerbos scaffolding. Controller-level attribute is inherited by actions; action-level attribute overrides. Enforced by `EndpointClassificationArchitectureTests`. See [docs/GOVERNANCE.md#api-contract-rules](GOVERNANCE.md#api-contract-rules) for the classification decision table.
+
+### Authoring Checklist for a New Controller Action
+
+1. Declare a single `[Route("api/[controller]")]` on the controller — never URL-segment versioning.
+2. For GETs that participate in HATEOAS, add `RouteNames.{Name}` constant and use `[HttpGet(Name = RouteNames.{Name})]`.
+3. Ensure the action produces a stable, policy-conformant `operationId` via the `{Controller}_{Action}` convention.
+4. Declare `[ProducesResponseType]` for success + error cases.
+5. Pick an Endpoint Classification (Public / Authenticated / Admin).
+6. Run `Event.API.IntegrationTests` — `ContractInvariantsTests` and `ApiContractInventoryGeneratorTests` must both pass.
+7. Regenerate the NSwag client only as a discrete, reviewed step — never mixed with feature PRs.
 
 ---
 

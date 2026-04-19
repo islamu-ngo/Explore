@@ -21,7 +21,7 @@ The platform uses a BFF model:
 ## JWT Bearer Configuration (API)
 
 - Authority: Keycloak OIDC metadata endpoint.
-- Multi-client audience validation: `explore-api`, `explore-blazor-server`, `account`.
+- Multi-client audience validation: `islamu-event-api`, `islamu-event-blazor`.
 - Custom `AudienceValidator`: checks both `aud` claim and `azp` (Keycloak authorized party) claim. Accepts if either contains a valid audience.
 - Clock skew tolerance: 5 minutes.
 - Dev mode: accepts self-signed certificates, suppresses HTTPS metadata requirement.

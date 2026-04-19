@@ -41,9 +41,11 @@ Refresh behavior binds from `SecretRefresh` and runs via hosted `SecretRefreshSe
 
 `Explore.API.Extensions.ConfigurationExtensions` maps external secret names to canonical keys, including:
 
-- `POSTGRESQL_PUBLIC_URL` -> `ConnectionStrings:DefaultConnection`
+- `KEYCLOAK_ENDPOINT` (Infisical `/keycloak`) -> `Keycloak:Authority` (via base URL + realm)
 - keycloak realm/base URL values -> `Keycloak:Authority`, `Keycloak:MetadataAddress`, `Keycloak:Audience`
 - S3 integration values -> `S3Settings:*`
+
+Keycloak base URL: `KEYCLOAK_ENDPOINT` (Infisical `/keycloak`). No hardcoded fallback — if not set, Keycloak mapping is skipped.
 
 Important behavior:
 
@@ -52,6 +54,8 @@ Important behavior:
 ## Blazor Server Compatibility Mapping
 
 `Explore.Blazor.Extensions.ConfigurationExtensions` maps Keycloak and API base URL keys similarly.
+
+API base URL: `API_ENDPOINT` (Infisical `/blazor`) or `ExploreApi:BaseUrl`. Inline code fallback `https://localhost:7039/` is used only when no value is configured at all.
 
 Important behavior:
 
@@ -205,8 +209,51 @@ TMS API keys/tokens are stored via `SecretProvider`, not governance settings.
 
 See [LOCALIZATION.md](LOCALIZATION.md) for full architecture.
 
+## Custom Property Quotas (Governance)
+
+Hard-limit quota definitions for Layer 3 custom properties (Rule 16). Each has a tenant-overridable default and a platform maximum.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `custom_properties.max_definitions_per_tenant_per_entity_scope` | int | `500` | Max definitions per (Org/Group/Event). Max: 5000. |
+| `custom_properties.max_definitions_per_event` | int | `100` | Max runtime definitions per Event. Max: 1000. |
+| `custom_properties.max_definitions_per_event_session` | int | `50` | Max runtime definitions per Session. Max: 500. |
+| `custom_properties.max_options_per_definition` | int | `200` | Max option rows per definition. Max: 2000. |
+| `custom_properties.max_multi_value_rows_per_value` | int | `20` | Max rows for multi-valued property. Max: 200. |
+| `custom_properties.projection_rebuild_batch_size` | int | `500` | Batch size for projection worker. Max: 5000. |
+| `custom_properties.projection_discovery_enabled` | bool | `false` | Tenant feature flag for projection-backed search/filter. |
+
+## AI Assistant Settings (Governance)
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `ai_assistant.enabled` | bool | `false` | Enable AI assistant features |
+| `ai_assistant.endpoint_url` | string | `""` | AI provider API base URL |
+| `ai_assistant.api_key` | string | `""` | AI provider API key |
+
+## Tenant Delegation & Locking (Governance)
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `governance.lock_tenant_smtp` | bool | `false` | Prevent tenant from overriding instance SMTP |
+| `governance.lock_tenant_storage` | bool | `false` | Prevent tenant from overriding instance S3 |
+| `governance.lock_tenant_analytics` | bool | `false` | Prevent tenant from overriding instance analytics |
+| `governance.lock_tenant_ai_assistant` | bool | `false` | Prevent tenant from overriding instance AI assistant |
+
+## Event List Visibility (Governance)
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `event_list.browse_mode` | string | `"Standard"` | Default browse experience |
+| `event_list.page_size` | int | `20` | Default items per page |
+| `event_list.card.show_organizer` | bool | `true` | Show organization in cards |
+| `event_list.card.show_price` | bool | `true` | Show price in cards |
+| `event_list.card.show_tags` | bool | `true` | Show tags in cards |
+
 ## Related
 
 - [MULTI_TENANCY.md](MULTI_TENANCY.md)
 - [RENDER_POLICIES.md](RENDER_POLICIES.md)
 - [OPERATIONS.md](OPERATIONS.md)
+- [CUSTOM_PROPERTIES.md](CUSTOM_PROPERTIES.md)
+- [LOCALIZATION.md](LOCALIZATION.md)
