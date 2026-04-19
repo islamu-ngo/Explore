@@ -31,23 +31,8 @@ public static class MiddlewareExtensions
 
         app.UseForwardedHeaders(options);
 
-        // Debug-level logging for auth-related paths
-        app.Use(async (context, next) =>
-        {
-            if (context.Request.Path.StartsWithSegments("/auth") ||
-                context.Request.Path.StartsWithSegments("/login") ||
-                context.Request.Path.StartsWithSegments("/logout"))
-            {
-                app.Logger.LogDebug(
-                    "[ForwardedHeaders] Path: {Path}, Scheme: {Scheme}, Host: {Host}, Proto Header: {Proto}",
-                    context.Request.Path,
-                    context.Request.Scheme,
-                    context.Request.Host,
-                    context.Request.Headers["X-Forwarded-Proto"].ToString());
-            }
-
-            await next();
-        });
+        var logger = app.Logger;
+        app.Use((context, next) => LogForwardedHeadersAsync(context, next, logger));
 
         return app;
     }
@@ -58,26 +43,8 @@ public static class MiddlewareExtensions
     public static WebApplication UseAntiforgeryTokenMiddleware(this WebApplication app)
     {
         var antiforgery = app.Services.GetRequiredService<IAntiforgery>();
-
-        app.Use(async (ctx, next) =>
-        {
-            if (HttpMethods.IsGet(ctx.Request.Method))
-            {
-                var tokens = antiforgery.GetAndStoreTokens(ctx);
-                if (!string.IsNullOrEmpty(tokens.RequestToken))
-                {
-                    ctx.Response.Cookies.Append("XSRF-TOKEN", tokens.RequestToken, new CookieOptions
-                    {
-                        HttpOnly = false,
-                        Secure = !app.Environment.IsDevelopment(),
-                        SameSite = SameSiteMode.Lax,
-                        Path = "/"
-                    });
-                }
-            }
-
-            await next();
-        });
+        var secureCookie = !app.Environment.IsDevelopment();
+        app.Use((ctx, next) => DistributeAntiforgeryTokenAsync(ctx, next, antiforgery, secureCookie));
 
         return app;
     }
@@ -88,42 +55,8 @@ public static class MiddlewareExtensions
     /// </summary>
     public static WebApplication UseStartupRedirectMiddleware(this WebApplication app)
     {
-        app.Use(async (ctx, next) =>
-        {
-            if (HttpMethods.IsGet(ctx.Request.Method) &&
-                (string.Equals(ctx.Request.Path.Value, "/", StringComparison.Ordinal) ||
-                 string.Equals(ctx.Request.Path.Value, "/setup", StringComparison.Ordinal)))
-            {
-                var isCompleted = false;
-                try
-                {
-                    var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
-                    var statusClient = clientFactory.CreateClient("BffClient");
-                    var status = await statusClient.GetFromJsonAsync<InstanceOnboardingStatusModel>(
-                        "api/InstanceOnboarding/status");
-                    isCompleted = status?.IsCompleted == true;
-                }
-                catch (Exception ex)
-                {
-                    app.Logger.LogWarning(ex,
-                        "Failed to resolve instance onboarding status for startup redirect.");
-                }
-
-                if (string.Equals(ctx.Request.Path.Value, "/", StringComparison.Ordinal) && !isCompleted)
-                {
-                    ctx.Response.Redirect("/setup");
-                    return;
-                }
-
-                if (string.Equals(ctx.Request.Path.Value, "/setup", StringComparison.Ordinal) && isCompleted)
-                {
-                    ctx.Response.Redirect("/");
-                    return;
-                }
-            }
-
-            await next();
-        });
+        var logger = app.Logger;
+        app.Use((ctx, next) => HandleStartupRedirectAsync(ctx, next, logger));
 
         return app;
     }
@@ -140,24 +73,7 @@ public static class MiddlewareExtensions
     /// </summary>
     public static WebApplication UseAccessTokenCaptureMiddleware(this WebApplication app)
     {
-        app.Use(async (ctx, next) =>
-        {
-            if (ctx.User?.Identity?.IsAuthenticated == true)
-            {
-                var accessToken = await ctx.GetTokenAsync("access_token");
-
-                if (!string.IsNullOrEmpty(accessToken))
-                {
-                    ctx.Items["AccessToken"] = accessToken;
-
-                    var tokenService = ctx.RequestServices.GetService<ICircuitAccessTokenService>();
-                    tokenService?.SetToken(accessToken);
-                }
-            }
-
-            await next();
-        });
-
+        app.Use(CaptureAccessTokenAsync);
         return app;
     }
 
@@ -166,24 +82,8 @@ public static class MiddlewareExtensions
     /// </summary>
     public static WebApplication UseBffDiagnosticsMiddleware(this WebApplication app)
     {
-        app.Use(async (ctx, next) =>
-        {
-            if (ctx.Request.Path.StartsWithSegments("/api/v1", StringComparison.OrdinalIgnoreCase))
-            {
-                var endpoint = ctx.GetEndpoint();
-                var requiresAuth = endpoint?.Metadata
-                    .GetMetadata<Microsoft.AspNetCore.Authorization.IAuthorizeData>() != null;
-
-                if (requiresAuth && ctx.User?.Identity?.IsAuthenticated != true)
-                {
-                    app.Logger.LogInformation(
-                        "BFF: unauthenticated request to protected endpoint {Method} {Path}",
-                        ctx.Request.Method, ctx.Request.Path);
-                }
-            }
-
-            await next();
-        });
+        var logger = app.Logger;
+        app.Use((ctx, next) => LogUnauthenticatedBffRequestsAsync(ctx, next, logger));
 
         return app;
     }
@@ -196,37 +96,168 @@ public static class MiddlewareExtensions
         this WebApplication app,
         GracefulShutdownState shutdownState)
     {
-        app.Lifetime.ApplicationStopping.Register(() =>
-        {
-            shutdownState.IsShuttingDown = true;
-            app.Logger.LogInformation(
-                "SIGTERM received. Starting graceful shutdown. Health checks return 503. " +
-                "Accepting requests for {Seconds} more seconds...",
-                GracefulShutdownState.GracePeriodSeconds);
-        });
-
-        Console.CancelKeyPress += (sender, e) =>
-        {
-            app.Logger.LogWarning("SIGINT received. Initiating immediate shutdown...");
-            e.Cancel = false;
-            shutdownState.CancellationTokenSource.Cancel();
-            Environment.Exit(0);
-        };
-
-        AppDomain.CurrentDomain.ProcessExit += (sender, e) =>
-        {
-            if (!shutdownState.IsShuttingDown)
-            {
-                shutdownState.IsShuttingDown = true;
-                app.Logger.LogInformation(
-                    "Process exit signal received. Graceful shutdown with {Seconds} second grace period...",
-                    GracefulShutdownState.GracePeriodSeconds);
-
-                Thread.Sleep(TimeSpan.FromSeconds(GracefulShutdownState.GracePeriodSeconds));
-            }
-        };
+        app.Lifetime.ApplicationStopping.Register(() => OnApplicationStopping(app.Logger, shutdownState));
+        Console.CancelKeyPress += (sender, e) => OnCancelKeyPress(app.Logger, shutdownState, e);
+        AppDomain.CurrentDomain.ProcessExit += (sender, e) => OnProcessExit(app.Logger, shutdownState);
 
         return app;
+    }
+
+    // --- Private middleware handlers -------------------------------------------------
+
+    // Debug-level logging for auth-related paths; extracted from inline lambda to satisfy arch Rule 1.03.
+    private static async Task LogForwardedHeadersAsync(HttpContext context, Func<Task> next, ILogger logger)
+    {
+        if (context.Request.Path.StartsWithSegments("/auth") ||
+            context.Request.Path.StartsWithSegments("/login") ||
+            context.Request.Path.StartsWithSegments("/logout"))
+        {
+            logger.LogDebug(
+                "[ForwardedHeaders] Path: {Path}, Scheme: {Scheme}, Host: {Host}, Proto Header: {Proto}",
+                context.Request.Path,
+                context.Request.Scheme,
+                context.Request.Host,
+                context.Request.Headers["X-Forwarded-Proto"].ToString());
+        }
+
+        await next();
+    }
+
+    // Stores the XSRF request token in a non-HttpOnly cookie so the SPA can echo it as a header.
+    private static async Task DistributeAntiforgeryTokenAsync(
+        HttpContext ctx,
+        Func<Task> next,
+        IAntiforgery antiforgery,
+        bool secureCookie)
+    {
+        if (HttpMethods.IsGet(ctx.Request.Method))
+        {
+            var tokens = antiforgery.GetAndStoreTokens(ctx);
+            if (!string.IsNullOrEmpty(tokens.RequestToken))
+            {
+                ctx.Response.Cookies.Append("XSRF-TOKEN", tokens.RequestToken, new CookieOptions
+                {
+                    HttpOnly = false,
+                    Secure = secureCookie,
+                    SameSite = SameSiteMode.Lax,
+                    Path = "/"
+                });
+            }
+        }
+
+        await next();
+    }
+
+    // Gates "/" and "/setup" against onboarding status so the landing page matches the tenant state.
+    private static async Task HandleStartupRedirectAsync(HttpContext ctx, Func<Task> next, ILogger logger)
+    {
+        if (HttpMethods.IsGet(ctx.Request.Method) &&
+            (string.Equals(ctx.Request.Path.Value, "/", StringComparison.Ordinal) ||
+             string.Equals(ctx.Request.Path.Value, "/setup", StringComparison.Ordinal)))
+        {
+            var isCompleted = false;
+            try
+            {
+                var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
+                var statusClient = clientFactory.CreateClient("BffClient");
+                var status = await statusClient.GetFromJsonAsync<InstanceOnboardingStatusModel>(
+                    "api/InstanceOnboarding/status");
+                isCompleted = status?.IsCompleted == true;
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex,
+                    "Failed to resolve instance onboarding status for startup redirect.");
+            }
+
+            if (string.Equals(ctx.Request.Path.Value, "/", StringComparison.Ordinal) && !isCompleted)
+            {
+                ctx.Response.Redirect("/setup");
+                return;
+            }
+
+            if (string.Equals(ctx.Request.Path.Value, "/setup", StringComparison.Ordinal) && isCompleted)
+            {
+                ctx.Response.Redirect("/");
+                return;
+            }
+        }
+
+        await next();
+    }
+
+    // Surfaces the OIDC access token into HttpContext.Items and the per-circuit token service.
+    private static async Task CaptureAccessTokenAsync(HttpContext ctx, Func<Task> next)
+    {
+        if (ctx.User?.Identity?.IsAuthenticated == true)
+        {
+            var accessToken = await ctx.GetTokenAsync("access_token");
+
+            if (!string.IsNullOrEmpty(accessToken))
+            {
+                ctx.Items["AccessToken"] = accessToken;
+
+                var tokenService = ctx.RequestServices.GetService<ICircuitAccessTokenService>();
+                tokenService?.SetToken(accessToken);
+            }
+        }
+
+        await next();
+    }
+
+    // Emits an Information-level log when anonymous traffic reaches an authorized BFF endpoint.
+    private static async Task LogUnauthenticatedBffRequestsAsync(HttpContext ctx, Func<Task> next, ILogger logger)
+    {
+        if (ctx.Request.Path.StartsWithSegments("/api/v1", StringComparison.OrdinalIgnoreCase))
+        {
+            var endpoint = ctx.GetEndpoint();
+            var requiresAuth = endpoint?.Metadata
+                .GetMetadata<Microsoft.AspNetCore.Authorization.IAuthorizeData>() != null;
+
+            if (requiresAuth && ctx.User?.Identity?.IsAuthenticated != true)
+            {
+                logger.LogInformation(
+                    "BFF: unauthenticated request to protected endpoint {Method} {Path}",
+                    ctx.Request.Method, ctx.Request.Path);
+            }
+        }
+
+        await next();
+    }
+
+    // --- Graceful shutdown handlers --------------------------------------------------
+
+    private static void OnApplicationStopping(ILogger logger, GracefulShutdownState shutdownState)
+    {
+        shutdownState.IsShuttingDown = true;
+        logger.LogInformation(
+            "SIGTERM received. Starting graceful shutdown. Health checks return 503. " +
+            "Accepting requests for {Seconds} more seconds...",
+            GracefulShutdownState.GracePeriodSeconds);
+    }
+
+    private static void OnCancelKeyPress(
+        ILogger logger,
+        GracefulShutdownState shutdownState,
+        ConsoleCancelEventArgs e)
+    {
+        logger.LogWarning("SIGINT received. Initiating immediate shutdown...");
+        e.Cancel = false;
+        shutdownState.CancellationTokenSource.Cancel();
+        Environment.Exit(0);
+    }
+
+    private static void OnProcessExit(ILogger logger, GracefulShutdownState shutdownState)
+    {
+        if (!shutdownState.IsShuttingDown)
+        {
+            shutdownState.IsShuttingDown = true;
+            logger.LogInformation(
+                "Process exit signal received. Graceful shutdown with {Seconds} second grace period...",
+                GracefulShutdownState.GracePeriodSeconds);
+
+            Thread.Sleep(TimeSpan.FromSeconds(GracefulShutdownState.GracePeriodSeconds));
+        }
     }
 }
 

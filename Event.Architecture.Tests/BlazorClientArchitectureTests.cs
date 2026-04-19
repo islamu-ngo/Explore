@@ -36,15 +36,7 @@ public class BlazorClientArchitectureTests
         "Explore.Blazor.Client/Pages/Setup.razor",
     };
 
-    private static readonly HashSet<string> Known_MiddlewareLambda_LongBodies = new(StringComparer.OrdinalIgnoreCase)
-    {
-        // Inline lambdas >5 lines — Wave B refactors into private static methods.
-        "Explore.Blazor/Extensions/MiddlewareExtensions.cs:35",
-        "Explore.Blazor/Extensions/MiddlewareExtensions.cs:62",
-        "Explore.Blazor/Extensions/MiddlewareExtensions.cs:91",
-        "Explore.Blazor/Extensions/MiddlewareExtensions.cs:143",
-        "Explore.Blazor/Extensions/MiddlewareExtensions.cs:169",
-    };
+    private static readonly HashSet<string> Known_MiddlewareLambda_LongBodies = new(StringComparer.OrdinalIgnoreCase);
 
     private static readonly HashSet<string> Known_NewDialogOptions_Files = new(StringComparer.OrdinalIgnoreCase)
     {
