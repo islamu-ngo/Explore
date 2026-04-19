@@ -26,15 +26,7 @@ public class BlazorClientArchitectureTests
         "Pages/Admin/Instance/Components/InstanceTenantsSection.razor",
     };
 
-    private static readonly HashSet<string> Known_ConsoleWriteLine_Files = new(StringComparer.OrdinalIgnoreCase)
-    {
-        // Bootstrap diagnostics (~8 writes). Phase 5 swaps to ILogger.
-        "Explore.Blazor/Extensions/ConfigurationExtension.cs",
-        // WebAssembly lazy-assembly-loading diagnostics. Phase 5 swaps to ILogger.
-        "Explore.Blazor.Client/Services/LazyAssemblyLoader.cs",
-        // Setup wizard entry page — uses Console for pre-auth diagnostics. Phase 5 swaps to ILogger.
-        "Explore.Blazor.Client/Pages/Setup.razor",
-    };
+    private static readonly HashSet<string> Known_ConsoleWriteLine_Files = new(StringComparer.OrdinalIgnoreCase);
 
     private static readonly HashSet<string> Known_MiddlewareLambda_LongBodies = new(StringComparer.OrdinalIgnoreCase);
 
