@@ -162,6 +162,7 @@ public static class GovernanceSettingKeys
 
     public static class Cerbos
     {
+        public const string GrpcEndpoint = "cerbos.grpc_endpoint";
         public const string TenantCustomizationEnabled = "cerbos.tenant_customization_enabled";
         public const string Mode = "cerbos.mode";
         public const string CustomEndpoint = "cerbos.custom_endpoint";
