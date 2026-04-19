@@ -18,17 +18,17 @@ Legend: STRUCTURAL · BEHAVIORAL · SECURITY · CONTRACT · OPERATOR · HOTFIX
 - [x] 0.A.1 Removed `static` from SetupSecretSessionService `_store` and `CleanupExpiredEntries()` (Singleton → instance field is sufficient)
 - [ ] 0.A.1 Integration test: two concurrent user sessions cannot read each other's setup secret (deferred to Wave A Phase 1)
 - [ ] 0.A.2 Split `IDynamicAuthSchemeManager` → deferred to Wave B Phase 6A/6B
-- [ ] 0.A.3 Arch test: no Singleton with mutable user/circuit state (to be written in Wave A Phase 1)
+- [x] 0.A.3 Arch test: no Singleton with mutable user/circuit state (implemented in Wave A Phase 1 as Rule 1.9)
 
 ### Phase 0.B — async void Crash Path Hotfix [HOTFIX/BEHAVIORAL] ✅
 - [x] 0.B.1 Converted `AnalyticsInitializer.razor:253 OnLocationChanged` from `async void` to `_ = InvokeAsync(async () => { ... })` fire-and-forget with try/catch
 - [x] 0.B.2 Audit complete — only 3 remaining `async void` are Timer/event callbacks (Phase 8-10 will fix)
-- [ ] 0.B.2 Arch test forbidding `async void` outside whitelisted patterns (Wave A Phase 1)
+- [x] 0.B.2 Arch test forbidding `async void` outside whitelisted patterns (Wave A Phase 1, Rule 1.10)
 - [x] 0.B.3 NavigationManager subscription properly disposed in IDisposable.Dispose (verified)
 
 ### Phase 0.C — .Result Sync-Over-Async Hotfix [HOTFIX/BEHAVIORAL] ✅
 - [x] 0.C.1 Replaced all 4 `.Result` sites with `await`: EventDetail:133,725,726; EventList:725,726; OrganizationDetails:141
-- [ ] 0.C.2 Arch test forbidding `.Result`/`.Wait()` on Task (Wave A Phase 1)
+- [x] 0.C.2 Arch test forbidding `.Result`/`.Wait()` on Task (Wave A Phase 1, Rule 1.11)
 
 ### Phase 0.D — Auth Endpoints Cache-Control Hotfix [HOTFIX/SECURITY] ✅
 - [x] 0.D.1 Added `Cache-Control: no-store, no-cache` + `Pragma: no-cache` to HandleSignoutAsync, HandleAuthStatus, HandleRefreshSchemesAsync
@@ -55,24 +55,24 @@ Legend: STRUCTURAL · BEHAVIORAL · SECURITY · CONTRACT · OPERATOR · HOTFIX
 - [ ] 0.5 Capture user-visible behavioral baselines via manual smoke (auth, browse/filter, detail+registration, admin save)
 
 ### Phase 1 — Architecture Guardrails [STRUCTURAL]
-- [ ] 1.1 Arch test: No component injects IEventApiClient directly
-- [ ] 1.2 Arch test: No Console.WriteLine in production
-- [ ] 1.3 Arch test: No inline middleware lambdas >5 lines
-- [ ] 1.4 Arch test: All [Inject] services use interfaces
-- [ ] 1.5 Arch test: No `new DialogOptions()` outside DialogOptionsFactory
-- [ ] 1.6 Arch test: No NavigationManager in Components/Common or Components/Collection
-- [ ] 1.7 Arch test: No IJSRuntime in Services/ unless in Interop/ or Http/
-- [ ] 1.8 Arch test: No ISnackbar in data services
-- [ ] 1.9 Arch test: No singleton holding mutable user/circuit/request state
-- [ ] 1.10 Arch test: No async void outside whitelisted event handlers
-- [ ] 1.11 Arch test: No `.Result`/`.Wait()` on Task in Blazor projects
-- [ ] 1.12 Arch test: No IConfiguration injected directly (use IOptions<T>)
-- [ ] 1.13 Arch test: No GetRequiredService<T>() inside callback bodies
-- [ ] 1.14 Arch test: No model classes in `*Service.cs` interface files
-- [ ] 1.15 Arch test: No new hardcoded user-facing strings outside legal pages
+- [x] 1.1 Arch test: No component injects IEventApiClient directly (pre-existing; verified)
+- [x] 1.2 Arch test: No Console.WriteLine in production
+- [x] 1.3 Arch test: No inline middleware lambdas >5 lines
+- [x] 1.4 Arch test: All [Inject] services use interfaces
+- [x] 1.5 Arch test: No `new DialogOptions()` outside DialogOptionsFactory
+- [x] 1.6 Arch test: No NavigationManager in Components/Common or Components/Collection
+- [x] 1.7 Arch test: No IJSRuntime in Services/ unless in Interop/ or Http/
+- [x] 1.8 Arch test: No ISnackbar in data services
+- [x] 1.9 Arch test: No singleton holding mutable user/circuit/request state
+- [x] 1.10 Arch test: No async void outside whitelisted event handlers
+- [x] 1.11 Arch test: No `.Result`/`.Wait()` on Task in Blazor projects
+- [x] 1.12 Arch test: No IConfiguration injected directly (use IOptions<T>)
+- [x] 1.13 Arch test: No GetRequiredService<T>() inside callback bodies
+- [x] 1.14 Arch test: No model classes in `*Service.cs` interface files
+- [ ] 1.15 Arch test: No new hardcoded user-facing strings outside legal pages (DEFERRED — requires localization inventory; revisit in later phase)
 
 ### Phase 5 — Observability Hygiene [BEHAVIORAL/OPERATOR]
-- [ ] 5.1 Remove 8 Console.WriteLines from ConfigurationExtension.cs
+- [x] 5.1 Remove Console.WriteLine from ConfigurationExtension.cs + LazyAssemblyLoader.cs + Setup.razor — swapped to structured ILogger (commit `17243e4e`); Rule 1.02 arch guardrail now enforces zero violations
 - [ ] 5.2 Audit ILogger severity semantics in BFF
 - [ ] 5.3 Verify correlation ID propagation BFF → YARP → API
 - [ ] 5.4 Add event IDs / log categories
@@ -139,13 +139,15 @@ Legend: STRUCTURAL · BEHAVIORAL · SECURITY · CONTRACT · OPERATOR · HOTFIX
 - [ ] 3.5 Split CircuitAccessTokenService → SetupSecretSessionService own file
 
 ### Phase 4 — BFF Middleware Extraction [STRUCTURAL]
-- [ ] 4.1 Extract AntiforgeryTokenDistributionMiddleware
-- [ ] 4.2 Extract StartupRedirectMiddleware
-- [ ] 4.3 Extract AccessTokenCaptureMiddleware
-- [ ] 4.4 Move Console.CancelKeyPress to Program.cs / hosted service
+- [~] 4.1 Extract AntiforgeryTokenDistributionMiddleware — lightweight path taken (lambda → private static `DistributeAntiforgeryTokenAsync`, same file). Full IMiddleware class deferred
+- [~] 4.2 Extract StartupRedirectMiddleware — lightweight path taken (lambda → private static `HandleStartupRedirectAsync`). Full IMiddleware class deferred
+- [~] 4.3 Extract AccessTokenCaptureMiddleware — lightweight path taken (lambda → private static `CaptureAccessTokenAsync`). Full IMiddleware class deferred
+- [~] 4.4 Move Console.CancelKeyPress to Program.cs / hosted service — lambda → private static `OnCancelKeyPress` (same file). Full hosted service deferred
 - [ ] 4.5 Verify pipeline order after extraction
 - [ ] 4.6 Document pipeline order as living table in docs/BLAZOR.md
 - [ ] 4.7 Per-handler timeout overrides in DelegatingHandlers (linked CancellationTokenSource)
+
+**Phase 4 Lightweight Completion Note** (commit `6e5e37f0`): Per user decision, this session performed the *minimal* refactor — extracted all 5 inline middleware lambdas AND 3 shutdown event-handler lambdas into private static methods inside `Explore.Blazor/Extensions/MiddlewareExtensions.cs` (same file, no new classes). Arch guardrail Rule 1.03 now enforces zero violations (`Known_MiddlewareLambda_LongBodies` HashSet is empty). The formal Phase 4 items 4.1–4.4 remain open for future IMiddleware-class extraction + hosted-service isolation.
 
 ### Phase 16 — BFF Claims & HttpClient Rationalization [BEHAVIORAL/SECURITY]
 - [ ] 16.1 Extract shared claim type constants

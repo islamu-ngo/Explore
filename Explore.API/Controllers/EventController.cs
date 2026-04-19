@@ -210,7 +210,7 @@ public class EventController : ExploreControllerBase
     /// </summary>
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPost("with-sessions")]
+    [HttpPost("with-sessions", Name = RouteNames.CreateEventWithSessions)]
     [EndpointSummary("Create Event with Sessions")]
     [EndpointDescription("Creates a new event along with its sessions in a single transaction. " +
         "At least one session is required. FirstSessionDate and LastSessionDate are computed automatically from the sessions. " +

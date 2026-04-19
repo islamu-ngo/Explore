@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.StatusType;
 using Explore.Application.Features.StatusTypes.Requests.Queries;
 using MediatR;
@@ -28,7 +29,7 @@ public class ApprovalStatusController : ControllerBase
     }
 
     // GET: api/<StatusTypeController>
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetApprovalStatusOptions)]
     [EndpointSummary("Get all Status Types")]
     [EndpointDescription("Get A List of all the Status Type Options")]
     [AllowAnonymous] //allow anonymous in case i want in beginning to let unverified org publish programs en ban them if necessery, then when there is lot's then change this business logic
@@ -40,7 +41,7 @@ public class ApprovalStatusController : ControllerBase
     }
 
     // GET api/<StatusTypeController>/5
-    [HttpGet("{id}")]
+    [HttpGet("{id}", Name = RouteNames.GetApprovalStatusOptionById)]
     [OutputCache(PolicyName = "DetailData")]
     public string Get(int id)
     {
@@ -48,19 +49,19 @@ public class ApprovalStatusController : ControllerBase
     }
 
     // POST api/<StatusTypeController>
-    [HttpPost]
+    [HttpPost(Name = RouteNames.CreateApprovalStatusOption)]
     public void Post([FromBody] string value)
     {
     }
 
     // PUT api/<StatusTypeController>/5
-    [HttpPut("{id}")]
+    [HttpPut("{id}", Name = RouteNames.UpdateApprovalStatusOption)]
     public void Put(int id, [FromBody] string value)
     {
     }
 
     // DELETE api/<StatusTypeController>/5
-    [HttpDelete("{id}")]
+    [HttpDelete("{id}", Name = RouteNames.DeleteApprovalStatusOption)]
     public void Delete(int id)
     {
     }

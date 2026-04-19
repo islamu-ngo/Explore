@@ -448,3 +448,134 @@ All Wave 0 changes are unstaged. Files modified:
    - The arch test project does NOT reference Blazor projects — uses file-scanning approach
 2. **Phase 5**: Remove 8 Console.WriteLines from ConfigurationExtension.cs, add ILogger replacement
 3. **Phase A0**: Render-mode cohort migration — project already has dynamic configurable render mode, default should be InteractiveServer
+
+---
+
+## SESSION PROGRESS LOG — Wave A Phase 1 COMPLETE (2026-04-19)
+
+**Branch:** `refactor/blazor-clean-code-wave-a` (off develop af8a9401)
+
+### Deliverable
+`Event.Architecture.Tests/BlazorClientArchitectureTests.cs` — **843 lines, 14 tests all green**.
+Enforces 14 of 15 planned architecture guardrails (1.1 through 1.14). Rule 1.15 (hardcoded strings) deferred — requires localization inventory.
+
+### Test Design
+- File-scanning approach (arch-test project does not reference Blazor projects).
+- TUnit `[Test]` + `await Assert.That(violations).IsEmpty().Because(...)` pattern matches existing style.
+- Graceful skip if `ResolveProjectRoot` returns null (cross-machine portability).
+- All exception lists use forward-slash paths + `StringComparer.OrdinalIgnoreCase`.
+
+### Exception Lists (documented, time-boxed)
+
+| Rule | Exceptions | Resolution Path |
+|------|------------|-----------------|
+| 1.1 IEventApiClient | `InstanceTenantsSection.razor` | Phase 12 (service decomposition) |
+| 1.2 Console.WriteLine | `ConfigurationExtension.cs`, `LazyAssemblyLoader.cs`, `Setup.razor` | Phase 5 (ILogger swap) |
+| 1.3 Middleware lambdas | `MiddlewareExtensions.cs:35/62/91/143/169` | Phase 3 (extract static methods) |
+| 1.4 [Inject] interfaces | None — test enforces with state-container whitelist | — |
+| 1.5 new DialogOptions | `LoginPromptDialog.razor`, `SettingsConnectedApps.razor`, `TenantLookupTablesSection.razor`, `CreateApiKeyDialog.razor`, `CreateApiKeyDialog.razor.cs` | Phase 13 (DialogOptionsFactory migration) |
+| 1.7 IJSRuntime in Services | `UserSettingsService`, `InstanceOnboardingService`, `AccessibilityFocusService`, `AccessibilityAnnouncerService` | Phase 12 (decomposition) |
+| 1.9 Singleton mutable state | `DynamicAuthSchemeManager`, `CircuitAccessTokenService` | Wave B Phase 6B for DynamicAuthSchemeManager; CircuitAccessTokenService is a deliberate static store |
+| 1.10 async void | 3 timer/event callbacks (EventList.FlushPendingChanges, EventEdit.RemoveSession, CreateEvent.RemoveSession) | Acceptable (event-handler semantics; covered by On/Handle prefix whitelist) |
+| 1.12 IConfiguration | `DynamicAuthSchemeManager.cs` | Wave B Phase 6B |
+| 1.14 Models in interface files | `Contracts/Services/IContactShareConsentService.cs`, `ILocalizationAdminService.cs`, `Footer/IFooterAdminService.cs` | Phase 12 (extract DTOs) |
+
+### Framework / State Container Whitelist (Rule 1.4)
+Framework concrete types always allowed: `NavigationManager`, `PersistentComponentState`, `AuthenticationStateProvider`, `HttpClient`, `IHttpClientFactory`.
+State container heuristic: types ending in `State`, `StateService`, `StateContainer`, `Interop` are allowed.
+Fully-qualified type names are namespace-stripped before check.
+
+### Verification — All CLAUDE.md Test Projects
+
+| Project | Result |
+|---------|--------|
+| Event.Architecture.Tests | 87/87 pass (includes 14 new BlazorClient tests) |
+| Event.Application.UnitTests | 840/840 pass |
+| Event.Domain.UnitTests | 207/207 pass |
+| Explore.Secrets.UnitTests | 201/201 pass |
+| Event.Persistence.IntegrationTests | 36/36 pass |
+| Event.API.IntegrationTests | 553/553 pass |
+| Explore.Blazor.IntegrationTests | 23/23 pass |
+| Explore.Blazor.Client.Tests | 692 pass, 1 pre-existing skip (`ErrorState_RendersRetryButton` — AppButton MudBlazor v9 migration) |
+| **TOTAL** | **2839 pass / 1 skip / 0 fail** |
+
+E2E tests skipped (require Aspire AppHost).
+
+### Precondition Resync
+Branch includes api-contract-stabilization files that develop's HEAD (af8a9401) is missing — required for clean build. Added `RouteNames.GetEventRegistrations` constant to `Explore.API/Hateoas/RouteNames.cs:54`. These are preconditions, not Wave A deliverables; they'll merge cleanly via their own PR or as part of this one.
+
+### Next Phase
+Phase 2 — Component decomposition (service locator removal + DialogOptionsFactory adoption) OR Phase 3 — Middleware extraction. See plan for details.
+
+---
+
+## SESSION PROGRESS LOG — 2026-04-19 (continued)
+
+### Phase 4 Lightweight — Middleware Lambda Extraction (commit `6e5e37f0`)
+
+Per user directive ("simple lambda → static-method refactor only"), executed minimal refactor of `Explore.Blazor/Extensions/MiddlewareExtensions.cs`:
+
+- Extracted all 5 inline `app.Use(...)` middleware lambda bodies into private static methods within the same file:
+  - `LogForwardedHeadersAsync(HttpContext, Func<Task>, ILogger)`
+  - `DistributeAntiforgeryTokenAsync(HttpContext, Func<Task>, IAntiforgery, bool)`
+  - `HandleStartupRedirectAsync(HttpContext, Func<Task>, ILogger)`
+  - `CaptureAccessTokenAsync(HttpContext, Func<Task>)`
+  - `LogUnauthenticatedBffRequestsAsync(HttpContext, Func<Task>, ILogger)`
+- Extracted 3 shutdown event-handler lambdas into private static methods:
+  - `OnApplicationStopping(ILogger, GracefulShutdownState)`
+  - `OnCancelKeyPress(ILogger, GracefulShutdownState, ConsoleCancelEventArgs)`
+  - `OnProcessExit(ILogger, GracefulShutdownState)`
+- Public `Use*Middleware` API surface unchanged — thin wrappers capture dependencies via closure and delegate to private static handlers.
+- Key type-signature correction: `Func<Task>` not `RequestDelegate` for the `next` parameter (ASP.NET's `app.Use((ctx, next) => ...)` with parameterless `await next()` resolves to the `Func<HttpContext, Func<Task>, Task>` overload).
+- Arch guardrail `Known_MiddlewareLambda_LongBodies` reduced from 5 entries to empty HashSet. Rule 1.03 now enforces zero violations.
+- **Note**: Formal Phase 4 (IMiddleware classes + hosted service isolation) remains open in the plan as items 4.5–4.7.
+
+### Phase 5 — ILogger Swap (commit `17243e4e`)
+
+Replaced all remaining `Console.WriteLine` / `Console.Error.WriteLine` calls in 3 files with structured ILogger logging:
+
+**1. `Explore.Blazor.Client/Services/LazyAssemblyLoader.cs`** (WASM lazy-load diagnostics)
+- Added `ABOUTME:` 2-line header (was missing, CLAUDE.md mandate).
+- Converted to primary-constructor DI: `public class LazyAssemblyLoaderService(ILogger<LazyAssemblyLoaderService> logger) : ILazyAssemblyLoader`.
+- `Console.WriteLine` → `_logger.LogDebug("Assembly {AssemblyName} will be loaded by the Router when needed.", assemblyName)`.
+- `Console.Error.WriteLine` → `_logger.LogWarning(ex, "Failed to load assembly {AssemblyName}.", assemblyName)`.
+
+**2. `Explore.Blazor.Client/Pages/Setup.razor`** (onboarding provider detection)
+- `@inject ILogger<Setup> Logger` + `@using Microsoft.Extensions.Logging`.
+- 3 Console.WriteLine replaced with structured `Logger.LogInformation` / `Logger.LogWarning` calls on lines 366/376/380.
+
+**3. `Explore.Blazor/Extensions/ConfigurationExtension.cs`** (pre-DI bootstrap)
+- **Special case**: runs during `configBuilder.Build()` *before* the host DI container exists, so ILogger<T> cannot be injected.
+- Solution: static `LoggerFactory` + `ILogger` bootstrap pair at the top of the class:
+  ```csharp
+  private static readonly ILoggerFactory BootstrapLoggerFactory =
+      LoggerFactory.Create(builder => builder.AddSimpleConsole(opt => { opt.SingleLine = true; opt.IncludeScopes = false; }));
+  private static readonly ILogger BootstrapLogger = BootstrapLoggerFactory.CreateLogger("Explore.Blazor.Bootstrap.Infisical");
+  ```
+- 12 individual `Console.WriteLine` calls collapsed into 3 structured `BootstrapLogger.LogInformation(...)` calls with named placeholders (HasKeycloakInput/Authority/ClientId/HasClientSecret/HasGoogleClientId/HasGoogleClientSecret/ApiBaseUrl).
+
+Arch guardrail `Known_ConsoleWriteLine_Files` reduced from 3 entries to empty HashSet. Rule 1.02 now enforces zero violations across Blazor host + WASM client.
+
+### Final Test Evidence (post Phase 4-lite + Phase 5)
+
+| Project | Result |
+|---------|--------|
+| Event.Architecture.Tests | 87/87 pass |
+| Event.Application.UnitTests | 840/840 pass |
+| Event.Domain.UnitTests | 207/207 pass |
+| Explore.Secrets.UnitTests | 201/201 pass |
+| Event.Persistence.IntegrationTests | 36/36 pass |
+| Event.API.IntegrationTests | 551/551 pass |
+| Explore.Blazor.IntegrationTests | 23/23 pass |
+| Explore.Blazor.Client.Tests | 692 pass, 1 pre-existing skip (`ErrorState_RendersRetryButton` — AppButton MudBlazor v9) |
+| **TOTAL** | **2837 pass / 1 skip / 0 fail** |
+
+Full solution build: 0 errors, pre-existing vulnerability/deprecation warnings only. E2E skipped (requires Aspire).
+
+### Wave A Commits Landed (4 on branch `refactor/blazor-clean-code-wave-a`)
+
+1. **`fbea36f2`** — `test(test/blazor): enforce 14 architecture guardrails for Blazor client` (850 insertions, 64 deletions, 3 files)
+2. **`259a2764`** — `chore(api/contracts): precondition resync for api-contract-stabilization + blazor bff fixes` (605 insertions, 786 deletions, 26 files)
+3. **`6e5e37f0`** — `refactor(blazor/middleware): extract inline lambdas into private static methods` (163 insertions, 140 deletions, 2 files)
+4. **`17243e4e`** — `refactor(blazor/logging): swap Console.WriteLine for ILogger in bootstrap, lazy loader, and setup` (48 insertions, 33 deletions, 4 files)
+

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.ActorType;
 using Explore.Application.Features.ActorTypes.Requests.Queries;
 using MediatR;
@@ -29,7 +30,7 @@ public class ActorTypeController : ControllerBase
     }
 
     // GET: api/actortype
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetActorTypes)]
     [EndpointSummary("Get all Actor Types")]
     [EndpointDescription("Retrieve a list of all actor types (User, Organization, Service, Bot)")]
     [AllowAnonymous]
@@ -42,7 +43,7 @@ public class ActorTypeController : ControllerBase
     }
 
     // GET: api/actortype/{id}
-    [HttpGet("{id}")]
+    [HttpGet("{id}", Name = RouteNames.GetActorTypeById)]
     [EndpointSummary("Get Actor Type by ID")]
     [EndpointDescription("Retrieve details of a specific actor type")]
     [AllowAnonymous]

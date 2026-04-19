@@ -9,7 +9,9 @@
 @inject IInstanceOnboardingService InstanceOnboardingService
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
+@inject ILogger<Setup> Logger
 @using Microsoft.JSInterop
+@using Microsoft.Extensions.Logging
 @using Explore.Blazor.Client.Models.Responses
 
 <PageTitle>Setup Access</PageTitle>
@@ -363,7 +365,9 @@
             var response = await bffModule.InvokeAsync<AuthProvidersResponse>("fetchJson", "/auth/providers");
             var allProviders = response?.Providers ?? [];
 
-            Console.WriteLine($"[Setup] /auth/providers returned {allProviders.Count} provider(s): " +
+            Logger.LogInformation(
+                "/auth/providers returned {ProviderCount} provider(s): {Providers}",
+                allProviders.Count,
                 string.Join(", ", allProviders.Select(p => $"{p.Name}({p.Type})")));
 
             _detectedProviders = allProviders
@@ -373,11 +377,11 @@
                     || provider.Name.Equals("Google", StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
-            Console.WriteLine($"[Setup] Filtered to {_detectedProviders.Count} quick-action provider(s)");
+            Logger.LogInformation("Filtered to {Count} quick-action provider(s)", _detectedProviders.Count);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[Setup] Failed to load auth providers: {ex.Message}");
+            Logger.LogWarning(ex, "Failed to load auth providers");
             _detectedProviders = [];
         }
         finally

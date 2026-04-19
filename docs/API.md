@@ -47,12 +47,14 @@ The middleware pipeline in `Program.cs` is ordered precisely. Changing order wil
 
 ## API Versioning
 
-Dual-strategy versioning — both strategies work simultaneously:
+Three-reader non-URL versioning — clients may use any of the following; all three are read simultaneously via `ApiVersionReader.Combine`:
 
 1. **Media-type strategy**: `Accept: application/json;v=0.1` or `application/hal+json;v=0.1`.
-2. **URL segment strategy**: `/api/v0.1/controller`. `VersionedRouteConvention` auto-adds URL routes to all controllers.
-3. Default API version is `0.1` when unspecified.
-4. Version is reported in response headers via `Asp.Versioning` middleware.
+2. **Query-string strategy**: `?api-version=0.1` appended to the request URL.
+3. **Custom-header strategy**: `X-Api-Version: 0.1` request header.
+4. Default API version is `0.1` when unspecified (`AssumeDefaultVersionWhenUnspecified = true`).
+5. Version is reported in response headers via `Asp.Versioning` middleware (`ReportApiVersions = true`).
+6. **URL-segment versioning is intentionally NOT supported** — every endpoint has exactly one canonical path (`/api/controller`). This invariant is enforced by the `NoUrlSegmentVersioning` contract test so that `operationId`, `RouteNames`, and HAL link generation stay stable across versions.
 
 ## Controller Conventions
 

@@ -76,12 +76,29 @@ public static class YarpProxyExtensions
 
     private static async Task ForwardBearerTokenAsync(RequestTransformContext context)
     {
+        if (IsAnonymousOnboardingPath(context.HttpContext.Request.Path))
+        {
+            context.ProxyRequest.Headers.Authorization = null;
+            return;
+        }
+
         var token = await context.HttpContext.GetTokenAsync("access_token");
         if (!string.IsNullOrEmpty(token))
         {
             context.ProxyRequest.Headers.Authorization =
                 new AuthenticationHeaderValue("Bearer", token);
         }
+    }
+
+    private static bool IsAnonymousOnboardingPath(PathString path)
+    {
+        if (!path.StartsWithSegments("/api/InstanceOnboarding", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return path.Value is null
+            || !path.Value.EndsWith("/complete", StringComparison.OrdinalIgnoreCase);
     }
 
     private static void ForwardTenantHeaders(RequestTransformContext context)
@@ -119,7 +136,8 @@ public static class YarpProxyExtensions
             httpContext.User.Identity?.IsAuthenticated == true)
         {
             var userId = httpContext.User.FindFirst("sub")?.Value
-                ?? httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                ?? httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? httpContext.User.FindFirst("sid")?.Value;
 
             if (!string.IsNullOrWhiteSpace(userId))
             {

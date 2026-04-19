@@ -60,8 +60,7 @@ public class ContractInvariantsTests
         await Assert.That(response.Content.Headers.ContentType?.MediaType).IsEqualTo("application/json");
     }
 
-    // TODO (Phase 2): re-enable after URL-segment versioning is removed. See dev/active/api-contract-stabilization/.
-    // [Test]
+    [Test]
     public async Task OpenApiDocument_ContainsNoUrlSegmentVersionedPaths()
     {
         using var document = await GetOpenApiDocumentAsync();

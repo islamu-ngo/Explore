@@ -166,6 +166,7 @@ builder.Services.AddOpenApi("event-api", options =>
         return Task.CompletedTask;
     });
     options.AddDocumentTransformer<Explore.API.OpenApi.HalDtoSchemaTransformer>();
+    options.AddDocumentTransformer<Explore.API.OpenApi.OperationIdInvariantTransformer>();
     options.AddOperationTransformer<Explore.API.OpenApi.EndpointClassificationTransformer>();
 });
 

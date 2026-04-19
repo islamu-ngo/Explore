@@ -3,9 +3,9 @@ ABOUTME: Update the SESSION PROGRESS section every meaningful step — this is w
 
 # API Contract Stabilization - Context
 
-**Last Updated:** 2026-04-19
+**Last Updated:** 2026-04-19 (Phase 2 complete, Phase 3 started)
 **Parent of:** `dev/active/hateoas-client-alignment/`
-**Status:** Phase 0 ✅ COMPLETE | Phase 1 🟡 IN PROGRESS (1.5 bulk annotation of 70 controllers; 2/3 agents done, 3rd running)
+**Status:** Phase 0 ✅ COMPLETE | Phase 1 ✅ COMPLETE | Phase 2 ✅ COMPLETE | Phase 3 🟡 IN PROGRESS
 
 ---
 
@@ -35,15 +35,22 @@ ABOUTME: Update the SESSION PROGRESS section every meaningful step — this is w
   - `dotnet build` → 0 errors, zero warnings from new files.
 
 ### 🟡 IN PROGRESS
-- **Phase 1.5 bulk annotation** — 70 non-abstract controllers split across 3 parallel `deep` agents.
-  - Agent 1 `bg_d46fc264` — 25 uniform-Public class-level. ✅ COMPLETED.
-  - Agent 2 `bg_68d607b1` — 19 uniform-Authenticated class-level. ✅ COMPLETED.
-  - Agent 3 `bg_ef573d93` — 27 mixed-auth per-action. 🟡 RUNNING (~9m+, large per-action workload).
+- **Phase 3.1** — Survey existing `Explore.API/Hateoas/RouteNames.cs` and inventory the 198 operations (from regenerated inventory) still missing explicit `operationId`. Plan: add `[HttpVerb(Name="ControllerShortName_ActionName")]` to each action; `Name` value doubles as both `operationId` and `RouteNames` constant.
 
-### ⏳ NOT STARTED (awaiting Phase 1 completion + user Phase 2 approval)
-- Phase 2 — **Delete URL-segment only**, keep media-type + add query-string + custom-header readers (locked per user m0044)
-- Phase 3 — Stable operationIds
-- Phase 4 — Regenerate `IEventApiClient`
+### ✅ PHASE 2 COMPLETED (2026-04-19)
+- **ApiVersioningExtensions.cs rewritten** — `VersionedRouteConvention` class + registration deleted; `ApiVersionReader.Combine` now uses media-type + query-string (`?api-version=0.1`) + custom header (`X-Api-Version: 0.1`) readers; `UrlSegmentApiVersionReader` intentionally removed.
+- **docs/ARCHITECTURE.md line 58 + docs/API.md lines 48-55** — rewritten to document three-reader (non-URL) versioning strategy.
+- **Pre-existing fixture bug fixed** in `Explore.API/Extensions/ServiceCollectionExtensions.cs:24-39` — made Keycloak OAuth2 security definition conditional on `!string.IsNullOrWhiteSpace(configuration["Keycloak:AuthorizationUrl"])`. Previously `new Uri(null)` blew up `WebApplicationFactory` startup in test/dev environments, silently blocking every contract-invariant assertion. Bug pre-dated this session (commit `3b2db0b6`).
+- **`OpenApiDocument_ContainsNoUrlSegmentVersionedPaths` test re-enabled** in `ContractInvariantsTests.cs`.
+- **Verification:**
+  - Build: `dotnet build --configuration Release` → **0 errors**.
+  - `ContractInvariantsTests`: **5/5 PASS** (up from 4/4 RED). Both Phase 2 invariants (NoUrlSegmentVersioning + NoDuplicatePathMethodPairs) green.
+  - `Event.Architecture.Tests`: **75/75 PASS** (zero regression).
+  - Inventory regenerated 2026-04-19 08:58:01Z: **470→235 paths, 726→363 operations (halved), 561→198 missing operationId, 363→0 URL-segment paths ✅, Admin/Auth/Public = 6/228/129**.
+
+### ⏳ NOT STARTED (Phase 3+ queued; user approved auto-continuation per m0021 Q2)
+- Phase 3 — Stable operationIds (198 remaining operations need explicit `Name=` on their HTTP verb attribute)
+- Phase 4 — Regenerate `IEventApiClient` (464 `\dAsync` method fallbacks will evaporate)
 - Phase 5A — Contract-surface hygiene
 - Phase 5B — Client-consumer hygiene + smoke test
 - Phase 5C — UI cleanups

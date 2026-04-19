@@ -2,11 +2,24 @@
 // ABOUTME: Adds Infisical as configuration source and maps Infisical secret names to .NET config keys.
 
 using Explore.Secrets.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Extensions;
 
 public static class ConfigurationExtensions
 {
+    // Bootstrap logging runs before the host's DI container exists, so Infisical wiring cannot use
+    // an injected ILogger<T>. A dedicated LoggerFactory keeps output on the standard logging pipeline.
+    private static readonly ILoggerFactory BootstrapLoggerFactory =
+        LoggerFactory.Create(builder => builder.AddSimpleConsole(opt =>
+        {
+            opt.SingleLine = true;
+            opt.IncludeScopes = false;
+        }));
+
+    private static readonly ILogger BootstrapLogger =
+        BootstrapLoggerFactory.CreateLogger("Explore.Blazor.Bootstrap.Infisical");
+
     /// <summary>
     /// Adds Infisical secrets and maps them to canonical .NET configuration keys for Blazor Server.
     /// </summary>
@@ -14,10 +27,12 @@ public static class ConfigurationExtensions
     {
         var bootstrapConfig = configBuilder.Build();
 
-        Console.WriteLine("[Blazor Infisical] Checking bootstrap credentials...");
-        Console.WriteLine($"[Blazor Infisical] ProjectId: {(string.IsNullOrEmpty(bootstrapConfig["Infisical:ProjectId"]) ? "(not set)" : "(set)")}");
-        Console.WriteLine($"[Blazor Infisical] ClientId: {(string.IsNullOrEmpty(bootstrapConfig["Infisical:ClientId"]) ? "(not set)" : "(set)")}");
-        Console.WriteLine($"[Blazor Infisical] HasClientSecret: {!string.IsNullOrEmpty(bootstrapConfig["Infisical:ClientSecret"])}");
+        BootstrapLogger.LogInformation("Checking bootstrap credentials...");
+        BootstrapLogger.LogInformation(
+            "Bootstrap state: ProjectId={ProjectIdState}, ClientId={ClientIdState}, HasClientSecret={HasClientSecret}",
+            string.IsNullOrEmpty(bootstrapConfig["Infisical:ProjectId"]) ? "(not set)" : "(set)",
+            string.IsNullOrEmpty(bootstrapConfig["Infisical:ClientId"]) ? "(not set)" : "(set)",
+            !string.IsNullOrEmpty(bootstrapConfig["Infisical:ClientSecret"]));
 
         configBuilder.AddInfisical(bootstrapConfig, source =>
         {
@@ -76,14 +91,15 @@ public static class ConfigurationExtensions
             ? null
             : $"{keycloakAuthority}/.well-known/openid-configuration";
 
-        Console.WriteLine("[Blazor Infisical] Keycloak configuration mapped:");
-        Console.WriteLine($"  HasKeycloakInput: {hasKeycloakInput}");
-        Console.WriteLine($"  Authority: {keycloakAuthority ?? "(not mapped)"}");
-        Console.WriteLine($"  ClientId: {keycloakClientId ?? "(not mapped)"}");
-        Console.WriteLine($"  HasClientSecret: {!string.IsNullOrEmpty(rawClientSecret)}");
-        Console.WriteLine($"  HasGoogleClientId: {!string.IsNullOrEmpty(rawGoogleClientId)}");
-        Console.WriteLine($"  HasGoogleClientSecret: {!string.IsNullOrEmpty(rawGoogleClientSecret)}");
-        Console.WriteLine($"  API BaseUrl: {rawApiUrl ?? "(not set, will use default)"}");
+        BootstrapLogger.LogInformation(
+            "Keycloak configuration mapped: HasKeycloakInput={HasKeycloakInput}, Authority={Authority}, ClientId={ClientId}, HasClientSecret={HasClientSecret}, HasGoogleClientId={HasGoogleClientId}, HasGoogleClientSecret={HasGoogleClientSecret}, ApiBaseUrl={ApiBaseUrl}",
+            hasKeycloakInput,
+            keycloakAuthority ?? "(not mapped)",
+            keycloakClientId ?? "(not mapped)",
+            !string.IsNullOrEmpty(rawClientSecret),
+            !string.IsNullOrEmpty(rawGoogleClientId),
+            !string.IsNullOrEmpty(rawGoogleClientSecret),
+            rawApiUrl ?? "(not set, will use default)");
 
         var mappedConfig = new Dictionary<string, string?>();
 

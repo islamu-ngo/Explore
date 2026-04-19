@@ -7,6 +7,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.Features.EventRegistrations.Requests.Commands;
 using Explore.Application.Features.EventRegistrations.Requests.Queries;
@@ -35,7 +36,7 @@ public class EventRegistrationController : ControllerBase
     // GET: api/eventregistration
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetEventRegistrations)]
     [EndpointSummary("Get all Event Registrations")]
     [EndpointDescription("Retrieve a paginated list of all event registrations across all sessions. Default page size is 20, max is 100.")]
     [ProducesResponseType(typeof(PaginatedResult<EventRegistrationListDto>), StatusCodes.Status200OK)]

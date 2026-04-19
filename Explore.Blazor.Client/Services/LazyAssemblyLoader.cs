@@ -1,5 +1,9 @@
+// ABOUTME: Default implementation of Blazor WASM lazy assembly loading.
+// ABOUTME: Routes diagnostics through ILogger rather than Console for consistent observability.
+
 using System.Reflection;
 using Explore.Blazor.Client.Contracts.Providers;
+using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
 
@@ -8,12 +12,14 @@ namespace Explore.Blazor.Client.Services;
 /// Uses the built-in Blazor lazy loading mechanism via the Router component's AdditionalAssemblies parameter.
 /// This service provides a convenient interface for loading assemblies on-demand.
 /// </summary>
-public class LazyAssemblyLoaderService : ILazyAssemblyLoader
+public class LazyAssemblyLoaderService(ILogger<LazyAssemblyLoaderService> logger) : ILazyAssemblyLoader
 {
+    private readonly ILogger<LazyAssemblyLoaderService> _logger = logger;
+
     /// <summary>
     /// Loads assemblies dynamically at runtime.
     /// In Blazor WASM, assemblies marked with BlazorWebAssemblyLazyLoad in the .csproj
-    /// are automatically loaded when referenced in the Router's AdditionalAssemblies.
+    /// are automatically loaded when referenced in the Router's AdditionalAssemblies parameter.
     /// </summary>
     /// <param name="assemblyNames">Names of assemblies to load (e.g., "Explore.Blazor.Client.Pages.Admin.dll")</param>
     /// <returns>List of loaded assemblies</returns>
@@ -25,9 +31,8 @@ public class LazyAssemblyLoaderService : ILazyAssemblyLoader
         {
             try
             {
-                // In Blazor WASM, lazy-loaded assemblies are loaded automatically by the runtime
-                // when they're referenced in the Router's AdditionalAssemblies parameter.
-                // This method simulates the loading by attempting to load the assembly from the AppDomain.
+                // Blazor WASM loads lazy assemblies via the Router's AdditionalAssemblies parameter;
+                // this method resolves already-loaded ones from the AppDomain and logs the rest.
                 var assembly = AppDomain.CurrentDomain.GetAssemblies()
                     .FirstOrDefault(a => a.GetName().Name == assemblyName.Replace(".dll", ""));
 
@@ -37,14 +42,12 @@ public class LazyAssemblyLoaderService : ILazyAssemblyLoader
                 }
                 else
                 {
-                    // Assembly not yet loaded - it will be loaded by the Router when needed
-                    Console.WriteLine($"Assembly '{assemblyName}' will be loaded by the Router when needed.");
+                    _logger.LogDebug("Assembly {AssemblyName} will be loaded by the Router when needed.", assemblyName);
                 }
             }
             catch (Exception ex)
             {
-                // Log error but continue loading other assemblies
-                Console.Error.WriteLine($"Failed to load assembly '{assemblyName}': {ex.Message}");
+                _logger.LogWarning(ex, "Failed to load assembly {AssemblyName}.", assemblyName);
             }
         }
 

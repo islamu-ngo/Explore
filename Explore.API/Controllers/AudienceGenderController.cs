@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.AudienceGender;
 using Explore.Application.Features.AudienceGenders.Requests.Queries;
 using MediatR;
@@ -29,7 +30,7 @@ public class AudienceGenderController : ControllerBase
     }
 
     // GET: api/audiencegender
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetAudienceGenderOptions)]
     [EndpointSummary("Get all Audience Gender types")]
     [EndpointDescription("Retrieve a list of all audience gender types (Men-only, Women-only, Mixed, Family)")]
     [AllowAnonymous]
@@ -42,7 +43,7 @@ public class AudienceGenderController : ControllerBase
     }
 
     // GET: api/audiencegender/{id}
-    [HttpGet("{id}")]
+    [HttpGet("{id}", Name = RouteNames.GetAudienceGenderOptionById)]
     [EndpointSummary("Get Audience Gender type by ID")]
     [EndpointDescription("Retrieve details of a specific audience gender type")]
     [AllowAnonymous]

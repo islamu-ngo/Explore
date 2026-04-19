@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.ActorKeyStore;
 using Explore.Application.Features.ActorKeyStores.Requests.Commands;
 using Explore.Application.Features.ActorKeyStores.Requests.Queries;
@@ -31,7 +32,7 @@ public class ActorKeyStoreController : ControllerBase
     }
 
     // GET: api/actorkeystore
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetActorKeyStores)]
     [EndpointSummary("Get all Actor Key Stores")]
     [EndpointDescription("Retrieve a list of all actor key stores")]
     [Authorize]
@@ -44,7 +45,7 @@ public class ActorKeyStoreController : ControllerBase
     }
 
     // GET: api/actorkeystore/{id}
-    [HttpGet("{id}")]
+    [HttpGet("{id}", Name = RouteNames.GetActorKeyStoreById)]
     [EndpointSummary("Get Actor Key Store by ID")]
     [EndpointDescription("Retrieve details of a specific actor key store")]
     [Authorize]
@@ -59,7 +60,7 @@ public class ActorKeyStoreController : ControllerBase
     }
 
     // POST: api/actorkeystore
-    [HttpPost]
+    [HttpPost(Name = RouteNames.CreateActorKeyStore)]
     [EndpointSummary("Create new Actor Key Store")]
     [EndpointDescription("Create a new actor key store")]
     [Authorize]
@@ -79,7 +80,7 @@ public class ActorKeyStoreController : ControllerBase
     }
 
     // PUT: api/actorkeystore/{id}
-    [HttpPut("{id}")]
+    [HttpPut("{id}", Name = RouteNames.UpdateActorKeyStore)]
     [EndpointSummary("Update Actor Key Store")]
     [EndpointDescription("Update an existing actor key store")]
     [Authorize]
@@ -105,7 +106,7 @@ public class ActorKeyStoreController : ControllerBase
     }
 
     // DELETE: api/actorkeystore/{id}
-    [HttpDelete("{id}")]
+    [HttpDelete("{id}", Name = RouteNames.DeleteActorKeyStore)]
     [EndpointSummary("Delete Actor Key Store")]
     [EndpointDescription("Delete an actor key store")]
     [Authorize]

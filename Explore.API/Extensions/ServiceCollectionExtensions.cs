@@ -21,34 +21,42 @@ internal static class ServiceCollectionExtensions
             // Add schema filter for HAL wrapper types to properly expose inner DTOs
             options.SchemaFilter<HalSchemaFilter>();
 
-            options.AddSecurityDefinition("Keycloak", new OpenApiSecurityScheme
+            // Register the Keycloak OAuth2 security definition only when the authorization URL
+            // is configured. In test/dev environments where Keycloak is not wired up, we skip this
+            // block so that OpenAPI generation still succeeds (enabling contract-invariant tests
+            // and local swagger browsing to work without a live identity provider).
+            var keycloakAuthorizationUrl = configuration["Keycloak:AuthorizationUrl"];
+            if (!string.IsNullOrWhiteSpace(keycloakAuthorizationUrl))
             {
-                Type = SecuritySchemeType.OAuth2,
-                Flows = new OpenApiOAuthFlows
+                options.AddSecurityDefinition("Keycloak", new OpenApiSecurityScheme
                 {
-                    Implicit = new OpenApiOAuthFlow
+                    Type = SecuritySchemeType.OAuth2,
+                    Flows = new OpenApiOAuthFlows
                     {
-                        AuthorizationUrl = new Uri(configuration["Keycloak:AuthorizationUrl"]!),
-                        Scopes = new Dictionary<string, string>
+                        Implicit = new OpenApiOAuthFlow
                         {
-                            { "openid", "openid" },
-                            { "profile", "profile" }
+                            AuthorizationUrl = new Uri(keycloakAuthorizationUrl),
+                            Scopes = new Dictionary<string, string>
+                            {
+                                { "openid", "openid" },
+                                { "profile", "profile" }
+                            }
                         }
                     }
-                }
-            });
+                });
 
-            // Swashbuckle 10.x requires a Func<OpenApiDocument, OpenApiSecurityRequirement>
-            options.AddSecurityRequirement(document =>
-            {
-                // Get the security scheme reference from the document
-                var securitySchemeRef = new OpenApiSecuritySchemeReference("Keycloak", document);
-
-                return new OpenApiSecurityRequirement
+                // Swashbuckle 10.x requires a Func<OpenApiDocument, OpenApiSecurityRequirement>
+                options.AddSecurityRequirement(document =>
                 {
-                    { securitySchemeRef, new List<string>() }
-                };
-            });
+                    // Get the security scheme reference from the document
+                    var securitySchemeRef = new OpenApiSecuritySchemeReference("Keycloak", document);
+
+                    return new OpenApiSecurityRequirement
+                    {
+                        { securitySchemeRef, new List<string>() }
+                    };
+                });
+            }
         });
 
         return services;

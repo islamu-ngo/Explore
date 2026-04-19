@@ -55,7 +55,7 @@ Dependency direction is inward: presentation -> application -> domain.
 2. `Prefer: return=minimal` can reduce link payload where clients do not need hypermedia.
 3. OpenAPI is exposed and exported in development for client generation.
 4. `HalSchemaTransformer` adjusts OpenAPI schemas to reflect HAL structure.
-5. Dual API versioning: media-type (`Accept: application/json;v=0.1`) and URL segment (`/api/v0.1/controller`) supported simultaneously via `VersionedRouteConvention`.
+5. API versioning is read from three non-URL sources combined (`ApiVersionReader.Combine`): media-type parameter (`Accept: application/json;v=0.1`), query string (`?api-version=0.1`), and custom header (`X-Api-Version: 0.1`). URL-segment versioning (e.g. `/api/v0.1/controller`) is intentionally unsupported — every endpoint has exactly one canonical path so that `operationId`, `RouteNames`, and HAL link generation stay stable across versions.
 
 ## Specification Pattern (Query Composition)
 Complex filtering uses a custom Specification Pattern:
