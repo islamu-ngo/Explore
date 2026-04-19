@@ -5,7 +5,7 @@
 
 # API Contract Action Inventory
 
-**Generated:** 2026-04-19 06:37:09Z (UTC)
+**Generated:** 2026-04-19 07:02:36Z (UTC)
 **Source:** `/openapi/event-api.json`
 **Governed by:** [docs/GOVERNANCE.md#api-contract-rules](../../../docs/GOVERNANCE.md#api-contract-rules)
 
@@ -13,7 +13,7 @@
 
 - Total paths: **470**
 - Total operations: **724**
-- Operations missing `operationId`: **560**
+- Operations missing `operationId`: **559**
 - Operation IDs with placeholder fallback pattern (ends in digit or `\dAsync`): **0**
 - URL-segment-versioned paths (`^/api/v\d`, banned by governance): **362**
 - Operations missing `x-endpoint-class` extension: **0**
@@ -23,7 +23,7 @@
 
 | # | Path | Method | OperationId | Summary | Tags | RouteName | Classification | Has Auth? |
 |---:|---|---|---|---|---|---|---|---|
-| 1 | `/api/a/t` | `POST` | _(missing)_ | Relay Browser Analytics Event | AnalyticsRelay | _(Phase 1.4)_ | `Public` | no |
+| 1 | `/api/a/t` | `POST` | `RelayAnalyticsEvent` | Relay Browser Analytics Event | AnalyticsRelay | _(Phase 1.4)_ | `Public` | no |
 | 2 | `/api/actor` | `GET` | `GetActors` | Get all Actors | Actor | _(Phase 1.4)_ | `Public` | no |
 | 3 | `/api/actor` | `POST` | `CreateActor` | Create Actor | Actor | _(Phase 1.4)_ | `Public` | no |
 | 4 | `/api/actor/by-did/{did}` | `GET` | `GetActorByDid` | Get Actor by DID | Actor | _(Phase 1.4)_ | `Public` | no |

@@ -361,15 +361,23 @@
         {
             var bffModule = await GetBffModuleAsync();
             var response = await bffModule.InvokeAsync<AuthProvidersResponse>("fetchJson", "/auth/providers");
-            _detectedProviders = (response?.Providers ?? [])
+            var allProviders = response?.Providers ?? [];
+
+            Console.WriteLine($"[Setup] /auth/providers returned {allProviders.Count} provider(s): " +
+                string.Join(", ", allProviders.Select(p => $"{p.Name}({p.Type})")));
+
+            _detectedProviders = allProviders
                 .Where(provider => provider.Type.Equals("button", StringComparison.OrdinalIgnoreCase))
                 .Where(provider =>
                     provider.Name.Equals("Keycloak", StringComparison.OrdinalIgnoreCase)
                     || provider.Name.Equals("Google", StringComparison.OrdinalIgnoreCase))
                 .ToList();
+
+            Console.WriteLine($"[Setup] Filtered to {_detectedProviders.Count} quick-action provider(s)");
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Console.WriteLine($"[Setup] Failed to load auth providers: {ex.Message}");
             _detectedProviders = [];
         }
         finally

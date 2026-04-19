@@ -35,14 +35,14 @@ public static class ConfigurationExtensions
     /// </summary>
     /// <remarks>
     /// Canonical Infisical keys:
-    ///   /keycloak: KEYCLOAK_ENDPOINT, KEYCLOAK_REALM, KEYCLOAK_CLIENT_ID, KEYCLOAK_CLIENT_SECRET
+    ///   /keycloak: KEYCLOAK_ENDPOINT, KEYCLOAK_REALM, KEYCLOAK_CLIENT_ID, KEYCLOAK_BLAZOR_CLIENT_SECRET
     ///   /blazor:   API_ENDPOINT, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
     /// </remarks>
     private static void ApplyBlazorMapping(IConfigurationBuilder configBuilder, IConfiguration config)
     {
         var rawRealm = config["KEYCLOAK_REALM"] ?? config["Keycloak:Realm"];
         var rawKeycloakClientId = config["KEYCLOAK_CLIENT_ID"] ?? config["Keycloak:ClientId"];
-        var rawClientSecret = config["KEYCLOAK_CLIENT_SECRET"] ?? config["Keycloak:ClientSecret"];
+        var rawClientSecret = config["KEYCLOAK_BLAZOR_CLIENT_SECRET"] ?? config["Keycloak:ClientSecret"];
         var rawGoogleClientId = config["GOOGLE_CLIENT_ID"] ?? config["Google:ClientId"];
         var rawGoogleClientSecret = config["GOOGLE_CLIENT_SECRET"] ?? config["Google:ClientSecret"];
         var rawApiUrl = config["API_ENDPOINT"] ?? config["ExploreApi:BaseUrl"];

@@ -163,11 +163,11 @@ public class AuditingSecretProviderDecoratorTests
     {
         // Arrange
         _innerProvider.ProviderType.Returns(SecretProviderType.AzureKeyVault);
-        _innerProvider.GetSecretAsync("Keycloak:ClientSecret", Arg.Any<CancellationToken>())
+        _innerProvider.GetSecretAsync("Keycloak:BlazorClientSecret", Arg.Any<CancellationToken>())
             .Returns("client-secret-value");
 
         // Act
-        await _decorator.GetSecretAsync("Keycloak:ClientSecret");
+        await _decorator.GetSecretAsync("Keycloak:BlazorClientSecret");
 
         // Assert
         _capturedAuditEntries[0].KeyPattern.Should().Be("Keycloak:***");

@@ -133,7 +133,7 @@ services:
       Keycloak__MetadataAddress: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}/realms/${KEYCLOAK_REALM:-ISLAMU}/.well-known/openid-configuration
       Keycloak__Realm: ${KEYCLOAK_REALM:-ISLAMU}
       Keycloak__ClientId: islamu-event-blazor
-      Keycloak__ClientSecret: ${KEYCLOAK_CLIENT_SECRET:-islamu-event-blazor-secret}
+      Keycloak__ClientSecret: ${KEYCLOAK_BLAZOR_CLIENT_SECRET:-islamu-event-blazor-secret}
     ports:
       - "7002:8080"
     extra_hosts:

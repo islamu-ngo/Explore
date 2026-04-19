@@ -66,7 +66,9 @@ public static class SecretDefinitionRegistry
         {
             public const string Realm = "keycloak.realm";
             public const string ClientId = "keycloak.client_id";
-            public const string ClientSecret = "keycloak.client_secret";
+            public const string BlazorClientSecret = "keycloak.blazor_client_secret";
+            public const string ApiClientSecret = "keycloak.api_client_secret";
+            public const string Endpoint = "keycloak.endpoint";
             public const string AdminUsername = "keycloak.admin_username";
             public const string AdminPassword = "keycloak.admin_password";
             public const string DbPassword = "keycloak.db_password";
@@ -230,14 +232,36 @@ public static class SecretDefinitionRegistry
             },
             new()
             {
-                Key = Keys.Keycloak.ClientSecret,
+                Key = Keys.Keycloak.BlazorClientSecret,
                 AllowedScopes = instanceOnly,
                 AllowedSources = nonBootstrapSources,
                 DefaultInfisicalPath = "/keycloak",
-                DefaultInfisicalKey = "KEYCLOAK_CLIENT_SECRET",
-                DefaultEnvironmentVariableName = "KEYCLOAK_CLIENT_SECRET",
+                DefaultInfisicalKey = "KEYCLOAK_BLAZOR_CLIENT_SECRET",
+                DefaultEnvironmentVariableName = "KEYCLOAK_BLAZOR_CLIENT_SECRET",
                 IsBootstrapSecret = false,
-                Description = "Keycloak OIDC client secret (Blazor Server BFF).",
+                Description = "Keycloak OIDC client secret for the Blazor Server BFF (confidential client).",
+            },
+            new()
+            {
+                Key = Keys.Keycloak.ApiClientSecret,
+                AllowedScopes = instanceOnly,
+                AllowedSources = nonBootstrapSources,
+                DefaultInfisicalPath = "/keycloak",
+                DefaultInfisicalKey = "KEYCLOAK_API_CLIENT_SECRET",
+                DefaultEnvironmentVariableName = "KEYCLOAK_API_CLIENT_SECRET",
+                IsBootstrapSecret = false,
+                Description = "Keycloak OIDC client secret for the API service (confidential client).",
+            },
+            new()
+            {
+                Key = Keys.Keycloak.Endpoint,
+                AllowedScopes = instanceOnly,
+                AllowedSources = nonBootstrapSources,
+                DefaultInfisicalPath = "/keycloak",
+                DefaultInfisicalKey = "KEYCLOAK_ENDPOINT",
+                DefaultEnvironmentVariableName = "KEYCLOAK_ENDPOINT",
+                IsBootstrapSecret = false,
+                Description = "Keycloak base URL (e.g. https://auth.example.com).",
             },
             new()
             {

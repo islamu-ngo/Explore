@@ -111,7 +111,7 @@ volumes:
 |----------|-------------|---------|
 | `Keycloak__Authority` | OIDC authority URL | `https://auth.example.com/realms/islamu` |
 | `Keycloak__ClientId` | OIDC client ID | `islamu-event` |
-| `Keycloak__ClientSecret` | OIDC client secret | (from Keycloak) |
+| `Keycloak__ClientSecret` | OIDC client secret (set via `KEYCLOAK_BLAZOR_CLIENT_SECRET` in Infisical) | (from Keycloak) |
 
 ### Storage (MinIO / S3)
 

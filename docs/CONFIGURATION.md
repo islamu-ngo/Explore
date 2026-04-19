@@ -59,7 +59,7 @@ API base URL: `API_ENDPOINT` (Infisical `/blazor`) or `ExploreApi:BaseUrl`. Inli
 
 Important behavior:
 
-- `Keycloak:ClientSecret` is explicitly overridden when a mapped secret is present.
+- `Keycloak:ClientSecret` is explicitly overridden when `KEYCLOAK_BLAZOR_CLIENT_SECRET` (Infisical) is present.
 
 ## Governance Settings (Database)
 

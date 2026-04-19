@@ -72,7 +72,17 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
             if (!string.IsNullOrEmpty(envAuthority) && !string.IsNullOrEmpty(envClientId))
             {
                 _logger.LogInformation(
-                    "Keycloak config detected in environment variables — registering Keycloak scheme from env");
+                    "Keycloak config detected in environment variables — registering Keycloak scheme from env " +
+                    "(authority={Authority}, clientId={ClientId}, hasSecret={HasSecret})",
+                    envAuthority, envClientId, !string.IsNullOrEmpty(envClientSecret));
+
+                if (string.IsNullOrEmpty(envClientSecret))
+                {
+                    _logger.LogWarning(
+"⚠️ KEYCLOAK_BLAZOR_CLIENT_SECRET is NOT set — Keycloak confidential clients will fail " +
+                    "token exchange with 'unauthorized_client'. Ensure KEYCLOAK_BLAZOR_CLIENT_SECRET is set " +
+                    "in Infisical (path: /keycloak) or as an environment variable.");
+                }
 
                 RegisterKeycloakScheme(envAuthority, envClientId, envClientSecret, envMetadataAddress);
             }

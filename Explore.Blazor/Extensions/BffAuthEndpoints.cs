@@ -268,6 +268,10 @@ public static class BffAuthEndpoints
             var schemeManager = ctx.RequestServices.GetRequiredService<IDynamicAuthSchemeManager>();
             var registered = await schemeManager.GetRegisteredProviderSchemesAsync();
 
+            logger.LogInformation(
+                "[AuthEndpoints] /auth/providers — registered schemes: [{Schemes}]",
+                string.Join(", ", registered));
+
             var config = ctx.RequestServices.GetRequiredService<IConfiguration>();
             var keycloakFromEnv = !string.IsNullOrEmpty(config["Keycloak:Authority"]);
 
@@ -275,9 +279,24 @@ public static class BffAuthEndpoints
 
             foreach (var scheme in registered)
             {
-                if (!await IsProviderReadyAsync(ctx, scheme))
+                var ready = await IsProviderReadyAsync(ctx, scheme);
+                if (!ready)
                 {
-                    continue;
+                    // Provider is registered but discovery endpoint is unreachable.
+                    // For env/config-sourced providers (authority + clientId present),
+                    // still include them — the user configured them intentionally.
+                    var hasMinimalConfig = HasMinimalProviderConfig(ctx, scheme);
+                    if (!hasMinimalConfig)
+                    {
+                        logger.LogWarning(
+                            "[AuthEndpoints] /auth/providers — scheme {Scheme} is registered but NOT ready and has no env config — skipping",
+                            scheme);
+                        continue;
+                    }
+
+                    logger.LogWarning(
+                        "[AuthEndpoints] /auth/providers — scheme {Scheme} discovery check failed but env/config present — including anyway",
+                        scheme);
                 }
 
                 providers.Add(new
@@ -298,6 +317,10 @@ public static class BffAuthEndpoints
                     recommended = scheme == AuthSchemeNames.Keycloak && keycloakFromEnv
                 });
             }
+
+            logger.LogInformation(
+                "[AuthEndpoints] /auth/providers — returning {Count} ready provider(s)",
+                providers.Count);
 
             ctx.Response.ContentType = "application/json";
             await ctx.Response.WriteAsJsonAsync(new { providers });
@@ -444,19 +467,55 @@ public static class BffAuthEndpoints
     {
         var logger = ctx.RequestServices.GetRequiredService<ILoggerFactory>()
             .CreateLogger("AuthEndpoints");
-        var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
 
         try
         {
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ctx.RequestAborted);
-            timeoutCts.CancelAfter(TimeSpan.FromSeconds(5));
+            timeoutCts.CancelAfter(TimeSpan.FromSeconds(10));
 
-            using var httpClient = clientFactory.CreateClient();
+            // Force IPv4 to avoid Happy Eyeballs hanging on unreachable AAAA records
+            // (same pattern as the OIDC backchannel handler in DynamicAuthSchemeManager).
+            using var handler = new SocketsHttpHandler
+            {
+                ConnectTimeout = TimeSpan.FromSeconds(10),
+                ConnectCallback = async (context, cancellationToken) =>
+                {
+                    var socket = new System.Net.Sockets.Socket(
+                        System.Net.Sockets.AddressFamily.InterNetwork,
+                        System.Net.Sockets.SocketType.Stream,
+                        System.Net.Sockets.ProtocolType.Tcp);
+                    try
+                    {
+                        await socket.ConnectAsync(context.DnsEndPoint, cancellationToken);
+                        return new System.Net.Sockets.NetworkStream(socket, ownsSocket: true);
+                    }
+                    catch
+                    {
+                        socket.Dispose();
+                        throw;
+                    }
+                }
+            };
+
+            // Allow self-signed / dev certs for non-production Keycloak instances
+            var environment = ctx.RequestServices.GetRequiredService<IWebHostEnvironment>();
+            if (environment.IsDevelopment())
+            {
+                handler.SslOptions.RemoteCertificateValidationCallback = (_, _, _, _) => true;
+            }
+
+            using var httpClient = new HttpClient(handler, disposeHandler: false);
+            httpClient.Timeout = TimeSpan.FromSeconds(10);
+
+            logger.LogInformation(
+                "[AuthEndpoints] Checking OIDC discovery for {Provider} at {MetadataAddress}",
+                provider, metadataAddress);
+
             using var response = await httpClient.GetAsync(metadataAddress, timeoutCts.Token);
             if (!response.IsSuccessStatusCode)
             {
-                logger.LogDebug(
-                    "Skipping {Provider} quick action: discovery endpoint returned status {StatusCode} at {MetadataAddress}",
+                logger.LogWarning(
+                    "[AuthEndpoints] {Provider} discovery endpoint returned status {StatusCode} at {MetadataAddress}",
                     provider,
                     (int)response.StatusCode,
                     metadataAddress);
@@ -471,6 +530,9 @@ public static class BffAuthEndpoints
                 || !TryGetNonEmptyString(root, "authorization_endpoint", out _)
                 || !TryGetNonEmptyString(root, "token_endpoint", out _))
             {
+                logger.LogWarning(
+                    "[AuthEndpoints] {Provider} discovery document at {MetadataAddress} is missing required fields (issuer/authorization_endpoint/token_endpoint)",
+                    provider, metadataAddress);
                 return false;
             }
 
@@ -481,16 +543,23 @@ public static class BffAuthEndpoints
                 return false;
             }
 
+            logger.LogInformation(
+                "[AuthEndpoints] {Provider} discovery check passed (issuer: {Issuer})",
+                provider, issuer);
             return true;
         }
         catch (OperationCanceledException)
         {
-            logger.LogDebug("Skipping {Provider} quick action: discovery request timed out for {MetadataAddress}", provider, metadataAddress);
+            logger.LogWarning(
+                "[AuthEndpoints] {Provider} discovery request TIMED OUT for {MetadataAddress}",
+                provider, metadataAddress);
             return false;
         }
         catch (Exception ex)
         {
-            logger.LogDebug(ex, "Skipping {Provider} quick action: failed to validate discovery metadata at {MetadataAddress}", provider, metadataAddress);
+            logger.LogWarning(ex,
+                "[AuthEndpoints] {Provider} discovery check FAILED at {MetadataAddress}: {Error}",
+                provider, metadataAddress, ex.Message);
             return false;
         }
     }
@@ -511,6 +580,30 @@ public static class BffAuthEndpoints
 
         value = raw;
         return true;
+    }
+
+    /// <summary>
+    /// Checks if a provider has minimal configuration from env/secrets (authority + clientId)
+    /// so it can be shown even when the discovery endpoint is temporarily unreachable.
+    /// </summary>
+    private static bool HasMinimalProviderConfig(HttpContext ctx, string scheme)
+    {
+        if (scheme == AuthSchemeNames.Atproto)
+        {
+            return true;
+        }
+
+        try
+        {
+            var optionsMonitor = ctx.RequestServices.GetRequiredService<IOptionsMonitor<OpenIdConnectOptions>>();
+            var options = optionsMonitor.Get(scheme);
+            return !string.IsNullOrWhiteSpace(options.Authority)
+                && !string.IsNullOrWhiteSpace(options.ClientId);
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static string? MapSchemeToProviderQueryValue(string scheme)
