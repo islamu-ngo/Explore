@@ -11,6 +11,7 @@ using Cerbos.Sdk.Utility;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Settings;
+using Explore.Application.Utilities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using CerbosCheckResourcesRequest = Cerbos.Sdk.Builder.CheckResourcesRequest;
@@ -321,10 +322,14 @@ public class CerbosClientFactory : ICerbosClientFactory
 
     public ICerbosClient GetOrCreate(string grpcEndpoint)
     {
-        return _clients.GetOrAdd(grpcEndpoint, endpoint =>
+        var normalizedEndpoint = GrpcEndpointNormalizer.Normalize(grpcEndpoint);
+
+        return _clients.GetOrAdd(normalizedEndpoint, endpoint =>
         {
             _logger.LogInformation("Creating Cerbos gRPC client for BYO endpoint: {Endpoint}", endpoint);
-            var builder = CerbosClientBuilder.ForTarget(endpoint);
+            var builder = CerbosClientBuilder
+                .ForTarget(endpoint)
+                .WithGrpcChannelOptions(CerbosGrpcChannelOptionsFactory.Create());
 
             if (endpoint.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
                 builder = builder.WithPlaintext();

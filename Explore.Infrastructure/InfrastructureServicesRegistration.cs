@@ -7,6 +7,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Services;
 using Explore.Application.Contracts.Strategies;
 using Explore.Application.Models;
+using Explore.Application.Utilities;
 using Explore.Infrastructure.Analytics;
 using Explore.Infrastructure.Identity;
 using Explore.Infrastructure.Localization;
@@ -73,6 +74,7 @@ public static class InfrastructureServicesRegistration
 
         // Configuration audit logging
         services.AddScoped<IConfigurationChangeLogService, ConfigurationChangeLogService>();
+        services.AddScoped<IAuthorizationProviderConfigurationService, AuthorizationProviderConfigurationService>();
 
         // Authorization providers (runtime-switchable via SystemSetting "authorization.provider")
         // Both concrete providers are always registered; RuntimeAuthorizationProvider delegates at runtime.
@@ -83,9 +85,12 @@ public static class InfrastructureServicesRegistration
         services.AddSingleton<ICerbosClient>(sp =>
         {
             var settings = sp.GetRequiredService<IOptions<CerbosSettings>>().Value;
-            var builder = CerbosClientBuilder.ForTarget(settings.GrpcEndpoint);
+            var grpcEndpoint = GrpcEndpointNormalizer.Normalize(settings.GrpcEndpoint);
+            var builder = CerbosClientBuilder
+                .ForTarget(grpcEndpoint)
+                .WithGrpcChannelOptions(CerbosGrpcChannelOptionsFactory.Create());
 
-            if (settings.PlaintextMode)
+            if (grpcEndpoint.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
                 builder = builder.WithPlaintext();
 
             return builder.Build();
