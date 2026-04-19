@@ -433,6 +433,8 @@ public partial class EventEdit
             var latestEnd = sessions.Max(s => DateTimeHelper.ConvertLocalToUtc(s.EndTime));
             updateDto.FirstSessionDate = earliestStart;
             updateDto.LastSessionDate = latestEnd;
+            updateDto.FirstSessionStartUtc = earliestStart;
+            updateDto.LastSessionStartUtc = latestEnd;
 
             if (!updateDto.Id.HasValue)
             {

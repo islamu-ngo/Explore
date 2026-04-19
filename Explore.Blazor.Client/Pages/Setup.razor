@@ -119,7 +119,7 @@
                                    Size="Size.Large"
                                    OnClick="ContinueToOnboardingAsync"
                                    Class="mb-2">
-                            Continue to Instance Onboarding
+                            Continue Setup
                         </AppButton>
                         <AppButton Variant="Variant.Text" Color="Color.Default" FullWidth="true" OnClick="ClearStoredSecretAsync">
                             Clear Secret
@@ -292,7 +292,7 @@
             _ => provider.Name.ToLowerInvariant()
         };
 
-        Navigation.NavigateTo($"/login?provider={Uri.EscapeDataString(providerQuery)}&returnUrl=/setup", forceLoad: true);
+        Navigation.NavigateTo($"/login?provider={Uri.EscapeDataString(providerQuery)}&returnUrl=/onboarding/authz-provider", forceLoad: true);
     }
 
     private async Task RestorePersistedSecretAsync()
@@ -390,7 +390,8 @@
             }
         }
 
-        Navigation.NavigateTo("/onboarding/instance");
+        var authorizationProviderConfigured = await InstanceOnboardingService.IsAuthorizationProviderConfiguredAsync();
+        Navigation.NavigateTo(authorizationProviderConfigured ? "/onboarding/instance" : "/onboarding/authz-provider");
     }
 
     private async Task EnsureSecretSyncedForAuthenticatedSessionAsync()

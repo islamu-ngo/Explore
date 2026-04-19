@@ -1,6 +1,8 @@
 // ABOUTME: Runtime authentication scheme manager that dynamically registers OIDC/OAuth schemes.
 // ABOUTME: Reads auth config from API + env vars, registers Keycloak/Google/ATProto schemes without restart.
 
+using System.Net;
+using System.Net.Sockets;
 using Explore.Blazor.Constants;
 using Explore.Blazor.Models;
 using Microsoft.AspNetCore.Authentication;
@@ -291,9 +293,12 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
         if (!string.IsNullOrEmpty(clientSecret?.Trim()))
             _currentKeycloakSecret = clientSecret;
 
+        var trimmedSecret = clientSecret?.Trim();
         _logger.LogInformation(
-            "Registered Keycloak OIDC scheme (authority: {Authority}, clientId: {ClientId}, secretLength: {SecretLen})",
-            authority, clientId, clientSecret?.Trim().Length ?? 0);
+            "[OIDC-DIAG] Registered Keycloak OIDC scheme (authority={Authority}, clientId={ClientId}, " +
+            "secretLength={SecretLen}, secretPrefix={SecretPrefix})",
+            authority, clientId, trimmedSecret?.Length ?? 0,
+            trimmedSecret?.Length > 4 ? trimmedSecret[..4] + "..." : "(none)");
     }
 
     private void UpdateKeycloakSchemeOptions(string authority, string clientId, string? clientSecret)
@@ -348,6 +353,10 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
             // PKCE protects the authorization code in the query string.
             ResponseMode = OpenIdConnectResponseMode.Query,
             PushedAuthorizationBehavior = PushedAuthorizationBehavior.Disable,
+            // Force IPv4 for backchannel calls (token exchange, discovery, userinfo).
+            // Self-hosted Keycloak domains may have unreachable AAAA records that cause
+            // .NET's Happy Eyeballs to hang before falling back to IPv4.
+            BackchannelHttpHandler = CreateIpv4Handler(),
             CorrelationCookie =
             {
                 SameSite = SameSiteMode.Lax,
@@ -497,6 +506,51 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
     {
         return new OpenIdConnectEvents
         {
+            OnRedirectToIdentityProvider = context =>
+            {
+                var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("AuthEndpoints");
+                logger.LogInformation(
+                    "[OIDC-DIAG] Redirecting to IDP: {AuthorizationEndpoint}, clientId={ClientId}, " +
+                    "redirectUri={RedirectUri}, responseType={ResponseType}, scope={Scope}",
+                    context.ProtocolMessage.AuthorizationEndpoint,
+                    context.ProtocolMessage.ClientId,
+                    context.ProtocolMessage.RedirectUri,
+                    context.ProtocolMessage.ResponseType,
+                    context.ProtocolMessage.Scope);
+                return Task.CompletedTask;
+            },
+            OnAuthorizationCodeReceived = context =>
+            {
+                var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("AuthEndpoints");
+                var secret = context.TokenEndpointRequest?.ClientSecret;
+                logger.LogInformation(
+                    "[OIDC-DIAG] Authorization code received. " +
+                    "tokenEndpoint={TokenEndpoint}, clientId={ClientId}, secretLength={SecretLen}, " +
+                    "secretPrefix={SecretPrefix}",
+                    context.TokenEndpointRequest?.TokenEndpoint,
+                    context.TokenEndpointRequest?.ClientId,
+                    secret?.Length ?? 0,
+                    secret?.Length > 4 ? secret[..4] + "..." : "(empty)");
+                return Task.CompletedTask;
+            },
+            OnTokenResponseReceived = context =>
+            {
+                // Store the OIDC scheme name so TokenRefreshCookieEvents knows which IdP to call
+                context.Properties?.Items[TokenRefreshCookieEvents.OidcSchemePropertyKey] = context.Scheme.Name;
+
+                var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("AuthEndpoints");
+                logger.LogInformation(
+                    "[OIDC-DIAG] Token response received (idToken={HasIdToken}, accessToken={HasAccessToken}, " +
+                    "error={Error}, errorDescription={ErrorDescription})",
+                    !string.IsNullOrEmpty(context.TokenEndpointResponse?.IdToken),
+                    !string.IsNullOrEmpty(context.TokenEndpointResponse?.AccessToken),
+                    context.TokenEndpointResponse?.Error,
+                    context.TokenEndpointResponse?.ErrorDescription);
+                return Task.CompletedTask;
+            },
             OnRemoteFailure = context =>
             {
                 var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
@@ -510,24 +564,70 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
                     .GetRequiredService<IOptionsMonitor<OpenIdConnectOptions>>()
                     .Get(context.Scheme.Name);
 
+                var secret = oidcOptions.ClientSecret;
                 var innerMsg = context.Failure?.InnerException?.Message;
+                var errorMsg = context.Failure?.Message ?? "unknown";
+                var exType = context.Failure?.GetType().Name ?? "unknown";
+                var secretLen = secret?.Length ?? 0;
+                var secretPrefix = secret?.Length > 4 ? secret[..4] + "..." : "(none)";
+
                 logger.LogError(
                     context.Failure,
-                    "Remote authentication failure for {Provider}: {Error} " +
+                    "[OIDC-DIAG] Remote authentication FAILURE for {Provider}: {Error} " +
                     "(innerError={InnerError}, exceptionType={ExType}, " +
-                    "clientId={ClientId}, secretLength={SecretLen}, authority={Authority})",
-                    provider, context.Failure?.Message,
+                    "clientId={ClientId}, secretLength={SecretLen}, secretPrefix={SecretPrefix}, " +
+                    "authority={Authority}, callbackPath={CallbackPath})",
+                    provider, errorMsg,
                     innerMsg,
-                    context.Failure?.GetType().Name,
+                    exType,
                     oidcOptions.ClientId,
-                    oidcOptions.ClientSecret?.Length ?? 0,
-                    oidcOptions.Authority);
+                    secretLen,
+                    secretPrefix,
+                    oidcOptions.Authority,
+                    oidcOptions.CallbackPath);
 
+                // Write to stderr so it's visible even when Aspire dashboard misses structured logs
+                Console.Error.WriteLine(
+                    $"[OIDC-DIAG] FAILURE: {errorMsg} | inner={innerMsg} | type={exType} | " +
+                    $"clientId={oidcOptions.ClientId} | secretLen={secretLen} | secretPrefix={secretPrefix} | " +
+                    $"authority={oidcOptions.Authority}");
+
+                // Include error detail in redirect URL for immediate browser visibility
+                var errorDetail = Uri.EscapeDataString(
+                    $"{errorMsg}|secretLen={secretLen}|clientId={oidcOptions.ClientId}");
                 var redirectUrl = $"/login?returnUrl={Uri.EscapeDataString(returnUrl)}" +
-                                  $"&challengeError=1&provider={Uri.EscapeDataString(provider)}";
+                                  $"&challengeError=1&provider={Uri.EscapeDataString(provider)}" +
+                                  $"&errorDetail={errorDetail}";
                 context.Response.Redirect(redirectUrl);
                 context.HandleResponse();
                 return Task.CompletedTask;
+            }
+        };
+    }
+
+    /// <summary>
+    /// Creates an HTTP handler that forces IPv4 connections. Self-hosted domains
+    /// (Keycloak, Infisical) may have unreachable AAAA records; .NET's Happy Eyeballs
+    /// tries IPv6 first and hangs before falling back to IPv4.
+    /// </summary>
+    private static SocketsHttpHandler CreateIpv4Handler()
+    {
+        return new SocketsHttpHandler
+        {
+            ConnectTimeout = TimeSpan.FromSeconds(10),
+            ConnectCallback = async (context, cancellationToken) =>
+            {
+                var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                try
+                {
+                    await socket.ConnectAsync(context.DnsEndPoint, cancellationToken);
+                    return new NetworkStream(socket, ownsSocket: true);
+                }
+                catch
+                {
+                    socket.Dispose();
+                    throw;
+                }
             }
         };
     }

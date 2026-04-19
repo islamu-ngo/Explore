@@ -577,6 +577,8 @@ public partial class CreateEvent
 
             createDto.FirstSessionDate = earliestStart;
             createDto.LastSessionDate = latestEnd;
+            createDto.FirstSessionStartUtc = earliestStart;
+            createDto.LastSessionStartUtc = latestEnd;
 
             Logger.LogInformation(
                 "Creating event (publisherMode={Mode}, organizationId={OrgId}, groupId={GroupId})",

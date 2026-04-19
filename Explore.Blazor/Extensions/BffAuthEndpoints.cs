@@ -112,7 +112,14 @@ public static class BffAuthEndpoints
                 "[AuthEndpoints] Error during {Provider} login challenge: {Error}",
                 schemeName, ex.InnerException?.Message ?? ex.Message);
 
-            ctx.Response.Redirect(BuildLoginRedirectUrl(returnUrl, provider, challengeError: true));
+            Console.Error.WriteLine(
+                $"[AuthEndpoints] Challenge FAILED: {ex.Message} | inner={ex.InnerException?.Message}");
+
+            var errorDetail = Uri.EscapeDataString(
+                $"challenge:{ex.InnerException?.Message ?? ex.Message}");
+            var redirectUrl = BuildLoginRedirectUrl(returnUrl, provider, challengeError: true)
+                + $"&errorDetail={errorDetail}";
+            ctx.Response.Redirect(redirectUrl);
         }
     }
 

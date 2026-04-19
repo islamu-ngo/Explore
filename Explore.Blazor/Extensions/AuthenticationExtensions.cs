@@ -46,7 +46,13 @@ public static class AuthenticationExtensions
                     ? CookieSecurePolicy.SameAsRequest
                     : CookieSecurePolicy.Always;
                 options.Cookie.SameSite = SameSiteMode.Lax;
+
+                // Refresh expired access tokens automatically on each cookie validation
+                options.EventsType = typeof(Services.TokenRefreshCookieEvents);
             });
+
+        // Token refresh cookie events — resolves OIDC options to call the IdP token endpoint
+        services.AddScoped<Services.TokenRefreshCookieEvents>();
 
         // Register the ATProto auth handler options so the scheme can be added dynamically.
         // The handler itself is registered by DynamicAuthSchemeManager when ATProto is enabled.

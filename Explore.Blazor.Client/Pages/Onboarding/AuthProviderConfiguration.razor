@@ -281,7 +281,7 @@
         _isSaving = false;
 
         // Navigate to login so the admin can authenticate with the chosen provider
-        Navigation.NavigateTo("/login?returnUrl=/setup", forceLoad: true);
+        Navigation.NavigateTo("/onboarding/authz-provider", forceLoad: true);
     }
 
     private static bool IsPrivateUrl(string url)
