@@ -25,6 +25,7 @@ public static class RouteNames
     public const string GetEventById = "GetEventById";
     public const string GetMyEvents = "GetMyEvents";
     public const string CreateEvent = "CreateEvent";
+    public const string CreateEventWithSessions = "CreateEventWithSessions";
     public const string UpdateEvent = "UpdateEvent";
     public const string DeleteEvent = "DeleteEvent";
     public const string GetEventSessions = "GetEventSessions";
@@ -50,6 +51,7 @@ public static class RouteNames
     public const string DeleteEventSession = "DeleteEventSession";
     public const string GetEventSessionSpeakers = "GetEventSessionSpeakers";
     public const string GetEventSessionAgendaItems = "GetEventSessionAgendaItems";
+    public const string GetEventRegistrations = "GetEventRegistrations";
 
     #endregion
 
@@ -63,6 +65,13 @@ public static class RouteNames
     public const string UpdateActor = "UpdateActor";
     public const string DeleteActor = "DeleteActor";
     public const string GetActorEvents = "GetActorEvents";
+    public const string GetActorKeyStores = "GetActorKeyStores";
+    public const string GetActorKeyStoreById = "GetActorKeyStoreById";
+    public const string CreateActorKeyStore = "CreateActorKeyStore";
+    public const string UpdateActorKeyStore = "UpdateActorKeyStore";
+    public const string DeleteActorKeyStore = "DeleteActorKeyStore";
+    public const string GetActorTypes = "GetActorTypes";
+    public const string GetActorTypeById = "GetActorTypeById";
 
     #endregion
 
@@ -123,6 +132,22 @@ public static class RouteNames
     public const string GetMadhabs = "GetMadhabs";
     public const string GetLanguages = "GetLanguages";
     public const string GetTagTypes = "GetTagTypes";
+    public const string GetApprovalStatusOptions = "GetApprovalStatusOptions";
+    public const string CreateApprovalStatusOption = "CreateApprovalStatusOption";
+    public const string GetApprovalStatusOptionById = "GetApprovalStatusOptionById";
+    public const string UpdateApprovalStatusOption = "UpdateApprovalStatusOption";
+    public const string DeleteApprovalStatusOption = "DeleteApprovalStatusOption";
+    public const string GetAudienceAgeOptions = "GetAudienceAgeOptions";
+    public const string GetAudienceAgeOptionById = "GetAudienceAgeOptionById";
+    public const string GetAudienceGenderOptions = "GetAudienceGenderOptions";
+    public const string GetAudienceGenderOptionById = "GetAudienceGenderOptionById";
+    public const string GetCategoryTypeOptions = "GetCategoryTypeOptions";
+    public const string GetCategoryTypeOptionById = "GetCategoryTypeOptionById";
+    public const string GetCategoryTypeOptionsWithCategories = "GetCategoryTypeOptionsWithCategories";
+    public const string GetDidCustodyTypeOptions = "GetDidCustodyTypeOptions";
+    public const string GetDidCustodyTypeOptionById = "GetDidCustodyTypeOptionById";
+    public const string GetEventFormatOptions = "GetEventFormatOptions";
+    public const string GetEventFormatOptionById = "GetEventFormatOptionById";
 
     #endregion
 
@@ -255,6 +280,11 @@ public static class RouteNames
     public const string GetAtprotoRecordByUri = "GetAtprotoRecordByUri";
     public const string CreateAtprotoRecord = "CreateAtprotoRecord";
     public const string DeleteAtprotoRecord = "DeleteAtprotoRecord";
+    public const string GetAtprotoRecordEntries = "GetAtprotoRecordEntries";
+    public const string GetAtprotoRecordEntryById = "GetAtprotoRecordEntryById";
+    public const string CreateAtprotoRecordEntry = "CreateAtprotoRecordEntry";
+    public const string UpdateAtprotoRecordEntry = "UpdateAtprotoRecordEntry";
+    public const string DeleteAtprotoRecordEntry = "DeleteAtprotoRecordEntry";
 
     public const string GetIndexedDids = "GetIndexedDids";
     public const string GetIndexedDidByDid = "GetIndexedDidByDid";
@@ -270,6 +300,16 @@ public static class RouteNames
     public const string WithdrawContactShareConsent = "WithdrawContactShareConsent";
     public const string GetOrganizationSharedContacts = "GetOrganizationSharedContacts";
     public const string ExportOrganizationSharedContacts = "ExportOrganizationSharedContacts";
+
+    #endregion
+
+    #region Localization Admin Routes
+
+    public const string CheckLocalizationBundleHealth = "CheckLocalizationBundleHealth";
+    public const string GetLocalizationConfiguration = "GetLocalizationConfiguration";
+    public const string ExportLocalizationFromTms = "ExportLocalizationFromTms";
+    public const string UpdateLocalizationGovernance = "UpdateLocalizationGovernance";
+    public const string TestLocalizationTmsConnection = "TestLocalizationTmsConnection";
 
     #endregion
 

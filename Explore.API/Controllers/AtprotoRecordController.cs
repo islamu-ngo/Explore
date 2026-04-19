@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.Features.AtprotoRecords.Requests.Commands;
 using Explore.Application.Features.AtprotoRecords.Requests.Queries;
@@ -32,7 +33,7 @@ public class AtprotoRecordController : ControllerBase
     }
 
     // GET: api/atprotoRecord
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetAtprotoRecordEntries)]
     [Authorize]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<List<AtprotoRecordListDto>>> GetAll(CancellationToken cancellationToken = default)
@@ -42,7 +43,7 @@ public class AtprotoRecordController : ControllerBase
     }
 
     // GET: api/atprotoRecord/{id}
-    [HttpGet("{id}")]
+    [HttpGet("{id}", Name = RouteNames.GetAtprotoRecordEntryById)]
     [Authorize]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<AtprotoRecordDto>> GetById(Guid id, CancellationToken cancellationToken = default)
@@ -53,7 +54,7 @@ public class AtprotoRecordController : ControllerBase
     }
 
     // POST: api/atprotoRecord
-    [HttpPost]
+    [HttpPost(Name = RouteNames.CreateAtprotoRecordEntry)]
     [Authorize]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateAtprotoRecordDto dto, CancellationToken cancellationToken = default)
     {
@@ -63,7 +64,7 @@ public class AtprotoRecordController : ControllerBase
     }
 
     // PUT: api/atprotoRecord/{id}
-    [HttpPut("{id}")]
+    [HttpPut("{id}", Name = RouteNames.UpdateAtprotoRecordEntry)]
     [Authorize]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateAtprotoRecordDto dto, CancellationToken cancellationToken = default)
     {
@@ -84,7 +85,7 @@ public class AtprotoRecordController : ControllerBase
     }
 
     // DELETE: api/atprotoRecord/{id}
-    [HttpDelete("{id}")]
+    [HttpDelete("{id}", Name = RouteNames.DeleteAtprotoRecordEntry)]
     [Authorize]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
     {

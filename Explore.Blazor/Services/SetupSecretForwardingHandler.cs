@@ -43,7 +43,8 @@ public class SetupSecretForwardingHandler : DelegatingHandler
         if (string.IsNullOrWhiteSpace(setupSecret))
         {
             var userId = httpContext?.User?.FindFirst("sub")?.Value
-                ?? httpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                ?? httpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? httpContext?.User?.FindFirst("sid")?.Value;
 
             if (!string.IsNullOrWhiteSpace(userId))
             {

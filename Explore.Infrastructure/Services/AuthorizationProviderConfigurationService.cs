@@ -9,6 +9,7 @@ using Explore.Application.Utilities;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
+using Grpc.Core;
 using Grpc.Health.V1;
 using Grpc.Net.Client;
 using Microsoft.Extensions.Configuration;
@@ -111,9 +112,24 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
             _logger.LogInformation("Cerbos gRPC health check for {Endpoint}: {Status}", normalizedEndpoint, response.Status);
             return isHealthy;
         }
+        catch (RpcException rpcEx)
+        {
+            _logger.LogWarning(
+                rpcEx,
+                "Cerbos gRPC health check failed for endpoint {Endpoint}: gRPC status={GrpcStatusCode} detail={GrpcStatusDetail}",
+                normalizedEndpoint,
+                rpcEx.StatusCode,
+                rpcEx.Status.Detail);
+            return false;
+        }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Cerbos gRPC health check failed for endpoint: {Endpoint}", normalizedEndpoint);
+            _logger.LogWarning(
+                ex,
+                "Cerbos gRPC health check failed for endpoint {Endpoint}: exception={ExceptionType} message={ExceptionMessage}",
+                normalizedEndpoint,
+                ex.GetType().FullName,
+                ex.Message);
             return false;
         }
     }

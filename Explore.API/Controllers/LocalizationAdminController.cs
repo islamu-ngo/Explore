@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.Localization;
 using Explore.Application.Features.Localization.Requests.Commands;
@@ -38,7 +39,7 @@ public class LocalizationAdminController : ControllerBase
     /// <summary>
     /// Test connection to the configured TMS provider.
     /// </summary>
-    [HttpPost("test-connection")]
+    [HttpPost("test-connection", Name = RouteNames.TestLocalizationTmsConnection)]
     [EndpointSummary("Test TMS Connection")]
     [EndpointDescription("Verifies that the configured Translation Management System (Tolgee/Weblate) is reachable.")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -57,7 +58,7 @@ public class LocalizationAdminController : ControllerBase
     /// <summary>
     /// Get current localization configuration.
     /// </summary>
-    [HttpGet("configuration")]
+    [HttpGet("configuration", Name = RouteNames.GetLocalizationConfiguration)]
     [EndpointSummary("Get Localization Configuration")]
     [EndpointDescription("Returns the current TMS provider settings and connection status.")]
     [ProducesResponseType(typeof(LocalizationConfigDto), StatusCodes.Status200OK)]
@@ -85,7 +86,7 @@ public class LocalizationAdminController : ControllerBase
     /// <summary>
     /// Probes the writable bundle path for health — directory existence and write permission.
     /// </summary>
-    [HttpGet("bundle-health")]
+    [HttpGet("bundle-health", Name = RouteNames.CheckLocalizationBundleHealth)]
     [EndpointSummary("Check Bundle Path Health")]
     [EndpointDescription("Reports whether the offline bundle target directory is writable. Admin UI surfaces this as a health banner.")]
     [ProducesResponseType(typeof(WritablePathHealth), StatusCodes.Status200OK)]
@@ -99,7 +100,7 @@ public class LocalizationAdminController : ControllerBase
     /// <summary>
     /// Update localization governance settings (TMS provider, enabled languages, kill-switches, fallback language).
     /// </summary>
-    [HttpPut("governance")]
+    [HttpPut("governance", Name = RouteNames.UpdateLocalizationGovernance)]
     [EndpointSummary("Update Localization Governance")]
     [EndpointDescription("Persists TMS provider configuration, enabled languages, fallback language, and kill-switches.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
@@ -122,7 +123,7 @@ public class LocalizationAdminController : ControllerBase
     /// <summary>
     /// Export translations from TMS for a specific language.
     /// </summary>
-    [HttpPost("export-from-tms")]
+    [HttpPost("export-from-tms", Name = RouteNames.ExportLocalizationFromTms)]
     [EndpointSummary("Export Translations from TMS")]
     [EndpointDescription("Pulls translations from the connected TMS for the specified language and refreshes the cache.")]
     [ProducesResponseType(StatusCodes.Status200OK)]

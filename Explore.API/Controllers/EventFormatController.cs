@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.EventFormat;
 using Explore.Application.Features.EventFormats.Requests.Queries;
 using MediatR;
@@ -29,7 +30,7 @@ public class EventFormatController : ControllerBase
     }
 
     // GET: api/eventformat
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetEventFormatOptions)]
     [EndpointSummary("Get all Event Formats")]
     [EndpointDescription("Retrieve a list of all event delivery formats (In-person Local, Digital Online, Hybrid)")]
     [AllowAnonymous]
@@ -42,7 +43,7 @@ public class EventFormatController : ControllerBase
     }
 
     // GET: api/eventformat/{id}
-    [HttpGet("{id}")]
+    [HttpGet("{id}", Name = RouteNames.GetEventFormatOptionById)]
     [EndpointSummary("Get Event Format by ID")]
     [EndpointDescription("Retrieve details of a specific event delivery format")]
     [AllowAnonymous]

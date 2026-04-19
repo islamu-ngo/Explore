@@ -3,8 +3,8 @@ ABOUTME: Mark checkboxes as work progresses; add discovered tasks inline; keep o
 
 # API Contract Stabilization - Task Checklist
 
-**Last Updated:** 2026-04-19 (v3 post-user versioning decision — Phase 0 + 1 complete; Phase 1.5 annotation in flight)
-**Status:** Phase 0 ✅ COMPLETE | Phase 1 🟡 IN PROGRESS (1.5 bulk annotation running) | Phase 2+ ⏳ NOT STARTED
+**Last Updated:** 2026-04-19 (v5 — Phase 2 fully complete, Phase 3 in progress)
+**Status:** Phase 0 ✅ COMPLETE | Phase 1 ✅ COMPLETE | Phase 2 ✅ COMPLETE | Phase 3 🟡 IN PROGRESS
 
 Legend: `[ ]` not started — `[🟡]` in progress — `[x]` complete — `[!]` blocked
 
@@ -61,7 +61,7 @@ Goal: deterministic, unique, stable operationId + endpoint class for every actio
   - 3 `[Test]` methods reflecting over `Explore.API.Hateoas.RouteNames` public const string fields vs `EndpointDataSource` resolved from `_fixture.Factory.Services`.
   - Asserts: every `RouteNames.*` constant resolves to exactly one endpoint (no missing, no ambiguous), every `RouteNameMetadata.RouteName` on registered endpoints has a matching `RouteNames.*` constant, sanity check `≥1 constant`.
   - **Status:** File committed. Will run as part of `Event.API.IntegrationTests` matrix.
-- [🟡] **1.5** Assign **Endpoint Classification** to every action (user decision m0083: explicit `[EndpointClassification(...)]` attribute over convention inference; m0086: full rollout now, enum labels Public/Authenticated/Admin).
+- [x] **1.5** Assign **Endpoint Classification** to every action (user decision m0083: explicit `[EndpointClassification(...)]` attribute over convention inference; m0086: full rollout now, enum labels Public/Authenticated/Admin).
   - **Infrastructure (✅ COMPLETE):**
     - `Explore.API/Attributes/EndpointClass.cs` — enum Public=0, Authenticated=1, Admin=2.
     - `Explore.API/Attributes/EndpointClassificationAttribute.cs` — sealed, `[AttributeUsage(Class|Method, Inherited=true, AllowMultiple=false)]`.
@@ -70,37 +70,64 @@ Goal: deterministic, unique, stable operationId + endpoint class for every actio
     - `Event.Architecture.Tests/EndpointClassificationArchitectureTests.cs` — enumerates `ControllerBase` subclasses via NetArchTest, asserts every controller (or every HTTP action method if no class-level attribute) carries `[EndpointClassification]`. Uses `typeof(EndpointClassificationAttribute).Assembly` to avoid latent `typeof(Program)` trap present in other arch tests.
     - `docs/GOVERNANCE.md` + `docs/NAMING_CONVENTIONS.md` — labels updated to final **Public / Authenticated / Admin**.
     - **Build:** `dotnet build Explore.API.csproj --configuration Release --verbosity quiet` → **0 errors** (71 pre-existing warnings, zero from new files).
-  - **Bulk annotation (🟡 IN PROGRESS):** 70 non-abstract controllers split across 3 parallel `deep` agents.
-    - Agent 1 `bg_d46fc264` — 25 uniform-Public class-level controllers. ✅ COMPLETED (2m 54s).
-    - Agent 2 `bg_68d607b1` — 19 uniform-Authenticated class-level controllers. ✅ COMPLETED (2m 11s).
-    - Agent 3 `bg_ef573d93` — 27 mixed-auth per-action controllers. 🟡 RUNNING (9m+).
+  - **Bulk annotation (✅ COMPLETE):** All 71 non-abstract `ControllerBase` subclasses carry `[EndpointClassification]` (class- or action-level). Agent 3 completed and committed before session reset. Verified 2026-04-19 post-reset: `grep -l EndpointClassification Explore.API/Controllers/*.cs` returns 71/72 files (72nd is `ExploreControllerBase` — abstract, correctly excluded). Inventory shows `0` operations missing `x-endpoint-class`; classification breakdown `Admin`=12, `Authenticated`=456, `Public`=258.
   - **Known flags (to be surfaced in final report):**
     - `InstanceSettingsController` classified **Authenticated** (declared) but runtime checks `IsInstanceAdmin` in every action — real classification is Admin but strict attribute-based rules can't capture runtime checks.
     - `TenantController` writes classified **Authenticated** (no `Roles=` attribute exists anywhere in codebase) — arguably should be Admin; flag for future role-based authorization pass.
     - Zero `Roles=` attributes exist codebase-wide. Current auth policy is inline runtime checks, not declarative.
   - **Acceptance:** Every `ControllerBase` subclass has `[EndpointClassification]` (class- or action-level); `EndpointClassificationArchitectureTests` passes; inventory generator populates `Classification` column from `x-endpoint-class`.
 
-**Phase 1 complete when:** Generator committed ✅, inventory produced by generator, naming policy documented ✅, RouteNameCoverageTests committed ✅, every controller action classified (🟡 agent 3 finishing), full build clean.
+**Phase 1 complete when:** Generator committed ✅, inventory produced by generator ✅, naming policy documented ✅, RouteNameCoverageTests committed ✅, every controller action classified ✅, full build clean ✅.
+
+**Phase 1 VERIFICATION (2026-04-19 post-reset):**
+- `dotnet build --configuration Release --verbosity quiet` → **0 errors** (4099 pre-existing CA1707 warnings in test projects, unrelated).
+- `dotnet test --project Event.Architecture.Tests` → **75/75 PASSED** including `EndpointClassificationArchitectureTests`.
+- `ContractInvariantsTests` → **4/4 FAILED** (expected RED — intentional Phase 0.1 guardrail; flips green after Phase 2-3).
+- Inventory auto-regenerated 2026-04-19 08:06:40Z: 470 paths / 726 operations; 363 URL-segment-versioned paths to be deleted in Phase 2; 561 operations missing explicit `operationId` to be fixed in Phase 3.
 
 ---
 
-## Phase 2 — Delete URL-segment alias routes (1.0 day) ⏳ NOT STARTED
+## Phase 2 — Delete URL-segment alias routes (1.0 day) ✅ COMPLETE (2026-04-19)
 
 Goal: remove the `/api/v0.1/...` surface entirely, not just from OpenAPI.
 
-- [ ] **2.1** Confirm active OpenAPI pipeline (native .NET 10 vs Swashbuckle) under `OpenApiExportService`.
-  - **Acceptance:** One-line answer recorded in `context.md` decisions section.
-- [ ] **2.2** **Primary approach — kill the alias at source.** Modify `Explore.API/VersionedRouteConvention.cs` so selector clones for `/api/v0.1/...` are no longer registered. Likely: delete the class entirely and remove its registration in `ApiVersioningExtensions`.
-  - **Acceptance:** `GET /api/v0.1/tenant/{id}` returns 404. `GET /api/tenant/{id}` returns 200. Exported OpenAPI contains no `^/api/v` paths.
-- [ ] **2.3** Remove orphaned versioning plumbing. If `VersionedRouteConvention` has no other callers, delete the file (**report as deletion candidate** per shell rules).
-- [ ] **2.4** **Escalation gate** — before Phase 2.2 execution, verify no external consumer depends on `/api/v0.1/...`. Grep repo + Blazor + tests. If clean: proceed. If consumer discovered: escalate to user. Fallback options (in order): time-boxed transitional alias (one release, deprecation log), separate OpenAPI document.
-  - **Acceptance:** Yes/no recorded in `context.md` decisions section.
-- [ ] **2.5** **Decide on media-type versioning** (CTO challenge to original D2). Grep repo for any `Accept: application/json;v=0.1` usage (code, tests, docs). Default: remove media-type versioning as well — pre-1.0 sophistication without value. Escalate before executing.
-  - **Acceptance:** Yes/no recorded in `context.md`. If "remove": rewrite `docs/ARCHITECTURE.md` line 57 accordingly. If "keep": document the consumer that needs it.
-- [ ] **2.6** Fallback path (if 2.2 cascades unexpectedly): set `ApiExplorerSettings.IgnoreApi = true` on the clones. Use only if deletion proves infeasible.
-- [ ] **2.7** Tertiary fallback (if both 2.2 and 2.6 blocked): add `IDocumentTransformer` in `OpenApiExportService` filtering `^/api/v\d` paths before emit.
+- [x] **2.1** Confirmed active OpenAPI pipeline = **Swashbuckle** (`AddSwaggerGenWithAuth` in `Explore.API/Extensions/ServiceCollectionExtensions.cs`), with native `.NET 10` `MapOpenApi()` also wired via `AddOpenApi`. `/openapi/event-api.json` served by Swashbuckle.
+  - **Acceptance met:** Pipeline confirmed; no migration required.
+- [x] **2.2** **Primary approach executed.** Edited `Explore.API/Extensions/ApiVersioningExtensions.cs`:
+  - Removed `options.Conventions.Add(new VersionedRouteConvention())` registration.
+  - Replaced `ApiVersionReader.Combine(mediaType, UrlSegmentApiVersionReader)` with `ApiVersionReader.Combine(mediaType, QueryStringApiVersionReader("api-version"), HeaderApiVersionReader("X-Api-Version"))` per user decision m0044 D15.
+  - Deleted the `internal sealed class VersionedRouteConvention : IApplicationModelConvention` block entirely.
+  - **Acceptance met:** `GET /api/v0.1/...` now 404 at runtime. Inventory regenerated: 0 URL-segment paths (down from 363).
+- [x] **2.3** Orphaned plumbing removed. `VersionedRouteConvention` class had no other callers (verified via grep); deleted inline.
+  - **Acceptance met:** class gone; using-import `Microsoft.AspNetCore.Mvc.ApplicationModels` also removed.
+- [x] **2.4** **Escalation gate cleared** — confirmed zero first-party consumers of `/api/v0.1/...` (all matches were docs, generated artifacts, or external-service URLs for Infisical/Zipkin which are unrelated to our API). **User-approved deletion** before execution (m0021 Q1 = "Yes - proceed with full Phase 2").
+  - **Acceptance met:** Decision recorded here and in context.md.
+- [x] **2.5** **Media-type versioning decision: KEEP + ADD query-string + custom-header** (user decision m0044 D15). Confirmed via grep: zero consumer code reads the header; retained anyway because strategy is documented and low-cost.
+  - **Acceptance met:** `docs/ARCHITECTURE.md` line 58 + `docs/API.md` lines 48-55 rewritten to describe three-reader (non-URL) versioning.
+- [~] **2.6** Fallback path not needed — primary approach (2.2) succeeded cleanly.
+- [~] **2.7** Tertiary fallback not needed — primary approach (2.2) succeeded cleanly.
 
-**Phase 2 complete when:** `/api/v0.1/...` returns 404 at runtime, exported OpenAPI has zero versioned paths, Phase 2.5 decision recorded.
+**Phase 2 extras (pre-existing bug discovered during verification):**
+
+- [x] **2.8** Fixed `Explore.API/Extensions/ServiceCollectionExtensions.cs:24-39` — made `AddSecurityDefinition("Keycloak", ...)` conditional on `!string.IsNullOrWhiteSpace(configuration["Keycloak:AuthorizationUrl"])`. Previously crashed `new Uri(null)` whenever the Keycloak URL was absent (dev/test environments), preventing `WebApplicationFactory` from starting and hence blocking **every** contract-invariant test from executing its assertions. Bug pre-dated this session (commit `3b2db0b6`). Now the security definition is silently omitted when the URL is missing, allowing OpenAPI to generate in test/dev.
+- [x] **2.9** Uncommented `OpenApiDocument_ContainsNoUrlSegmentVersionedPaths` test in `Event.API.IntegrationTests/Features/ContractInvariantsTests.cs` — the Phase 2 guardrail was intentionally disabled awaiting this phase.
+
+**Phase 2 verification evidence:**
+
+- `dotnet build --configuration Release --verbosity quiet` → **0 errors** (753 pre-existing CA warnings unrelated).
+- `dotnet test --project Event.API.IntegrationTests -- --treenode-filter "/*/*/ContractInvariantsTests/*"` → **5/5 PASS** (including newly-enabled NoUrlSegmentVersionedPaths).
+- `dotnet test --project Event.Architecture.Tests` → **75/75 PASS** (zero regression).
+- `dotnet test --project Event.API.IntegrationTests -- --treenode-filter "/*/*/ApiContractInventoryGeneratorTests/*"` → inventory regenerated.
+- **Inventory delta (2026-04-19 08:58:01Z):**
+  - Total paths: 470 → **235** (halved)
+  - Total operations: 726 → **363** (halved)
+  - Missing `operationId`: 561 → **198** (halved; remaining 198 target of Phase 3)
+  - URL-segment-versioned paths: 363 → **0** ✅
+  - Placeholder-fallback (`\dAsync`/`\d$`): 0 → **0**
+  - Missing `x-endpoint-class`: 0 → **0**
+  - Classification breakdown: `Admin=12, Authenticated=456, Public=258` → `Admin=6, Authenticated=228, Public=129` (all halved, consistent with alias removal)
+
+**Phase 2 complete:** `/api/v0.1/...` returns 404 at runtime, exported OpenAPI has zero versioned paths, user decisions m0021 Q1 + m0044 D15 recorded and implemented, fixture bug fixed as side-effect.
 
 ---
 

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.DidCustodyType;
 using Explore.Application.Features.DidCustodyTypes.Requests.Queries;
 using MediatR;
@@ -29,7 +30,7 @@ public class DidCustodyTypeController : ControllerBase
     }
 
     // GET: api/didcustodytype
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetDidCustodyTypeOptions)]
     [EndpointSummary("Get all DID Custody Types")]
     [EndpointDescription("Retrieve a list of all DID custody types (Self-Custodied, Custodial, Managed)")]
     [AllowAnonymous]
@@ -42,7 +43,7 @@ public class DidCustodyTypeController : ControllerBase
     }
 
     // GET: api/didcustodytype/{id}
-    [HttpGet("{id}")]
+    [HttpGet("{id}", Name = RouteNames.GetDidCustodyTypeOptionById)]
     [EndpointSummary("Get DID Custody Type by ID")]
     [EndpointDescription("Retrieve details of a specific DID custody type")]
     [AllowAnonymous]

@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.CategoryType;
 using Explore.Application.Features.CategoryTypeCategories.Requests.Queries;
 using Explore.Application.Features.CategoryTypes.Requests.Queries;
@@ -27,7 +28,7 @@ public class CategoryTypeController : ControllerBase
     }
 
     // GET: api/categorytype
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetCategoryTypeOptions)]
     [AllowAnonymous]
     [OutputCache(PolicyName = "LookupData")]
     public async Task<ActionResult<List<CategoryTypeListDto>>> GetAll(CancellationToken cancellationToken = default)
@@ -37,7 +38,7 @@ public class CategoryTypeController : ControllerBase
     }
 
     // GET: api/categorytype/{id}
-    [HttpGet("{id}")]
+    [HttpGet("{id}", Name = RouteNames.GetCategoryTypeOptionById)]
     [AllowAnonymous]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<CategoryTypeDto>> GetById(int id, CancellationToken cancellationToken = default)
@@ -47,7 +48,7 @@ public class CategoryTypeController : ControllerBase
     }
 
     // GET: api/categorytype/with-categories
-    [HttpGet("with-categories")]
+    [HttpGet("with-categories", Name = RouteNames.GetCategoryTypeOptionsWithCategories)]
     [EndpointSummary("Get Category Types with Categories")]
     [EndpointDescription("Returns all category types with their associated categories grouped. Used by the tri-state category filter dropdown.")]
     [AllowAnonymous]
