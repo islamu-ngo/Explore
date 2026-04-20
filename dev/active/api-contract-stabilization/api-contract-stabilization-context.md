@@ -3,215 +3,178 @@ ABOUTME: Update the SESSION PROGRESS section every meaningful step — this is w
 
 # API Contract Stabilization - Context
 
-**Last Updated:** 2026-04-19 (Phase 2 complete, Phase 3 started)
+**Last Updated:** 2026-04-20 (Phase 3 complete; Phase 4 in progress; ALL changes UNCOMMITTED)
 **Parent of:** `dev/active/hateoas-client-alignment/`
-**Status:** Phase 0 ✅ COMPLETE | Phase 1 ✅ COMPLETE | Phase 2 ✅ COMPLETE | Phase 3 🟡 IN PROGRESS
+**Status:** Phase 0 ✅ | Phase 1 ✅ | Phase 2 ✅ | Phase 3 ✅ | Phase 4 🟡 IN PROGRESS
 
 ---
 
-## SESSION PROGRESS (2026-04-19)
+## SESSION HANDOFF — 2026-04-20
 
-### ✅ COMPLETED
-- 5-agent parallel Blazor audit (ApiClient wiring, service layer, pages/admin, BFF/auth, controller-to-client coverage).
-- Oracle strategy consultation — confirmed API/OpenAPI contract defect (not NSwag).
-- Identified true root cause: dual-versioning routes (`/api/...` + `/api/v0.1/...`) both landing in `swagger.json`; versioned selector copies lose `operationId`; NSwag collides → **464 `\dAsync` methods**.
-- Identified minimal Blazor blast radius: **only 5 service wrappers** call suffixed methods directly.
-- **CTO review applied 2026-04-19** — 12 revisions (see plan changelog).
-- **Plan v3 written** (post-user versioning decision m0044): multi-reader API versioning locked (media-type primary + query-string + custom-header; URL-segment deleted); **enum labels finalized to Public / Authenticated / Admin** (user decision m0086).
-- **Phase 0 COMPLETE (all 3 sub-tasks):**
-  - `Event.API.IntegrationTests/Features/ContractInvariantsTests.cs` (6 RED tests over `/openapi/event-api.json`).
-  - `Explore.Blazor.Client.Tests/ApiClientNamingTests.cs` (6 RED tests reflecting over `IEventApiClient`).
-  - `docs/GOVERNANCE.md` — new "API Contract Rules" section (versioning strategy, endpoint classification with final labels, operation IDs, banned names, client-ergonomics bar, contract ownership, authoring checklist).
-- **Phase 1.1 COMPLETE:** inventory generator implemented as TUnit integration test (`ApiContractInventoryGeneratorTests.cs`) with `Classification` column sourced from `x-endpoint-class` OpenAPI extension.
-- **Phase 1.2 COMPLETE:** `docs/NAMING_CONVENTIONS.md` — new "API Contract Naming" section with operation ID naming policy + Route Name vs Operation Id language + authoring checklist.
-- **Phase 1.3 COMPLETE:** collision detection provided by Phase 0.1 + Phase 1.1 combined (no duplicate detector needed).
-- **Phase 1.4 COMPLETE:** `Event.API.IntegrationTests/Features/RouteNameCoverageTests.cs` — 3 tests enforcing 1:1 coverage between `RouteNames` constants and `EndpointDataSource` named endpoints.
-- **Phase 1.5 infrastructure COMPLETE:**
-  - `Explore.API/Attributes/EndpointClass.cs` (enum Public/Authenticated/Admin).
-  - `Explore.API/Attributes/EndpointClassificationAttribute.cs`.
-  - `Explore.API/OpenApi/EndpointClassificationTransformer.cs` (`IOpenApiOperationTransformer`; emits `x-endpoint-class`).
-  - `Explore.API/Program.cs` wiring.
-  - `Event.Architecture.Tests/EndpointClassificationArchitectureTests.cs` (arch test).
-  - `dotnet build` → 0 errors, zero warnings from new files.
+### 🚨 UNCOMMITTED WORKING TREE (read BEFORE resuming)
 
-### 🟡 IN PROGRESS
-- **Phase 3.1** — Survey existing `Explore.API/Hateoas/RouteNames.cs` and inventory the 198 operations (from regenerated inventory) still missing explicit `operationId`. Plan: add `[HttpVerb(Name="ControllerShortName_ActionName")]` to each action; `Name` value doubles as both `operationId` and `RouteNames` constant.
+Branch `develop`, **50 commits ahead of origin/develop**. The working tree carries a large uncommitted Phase 3 + partial Phase 4 payload. Do **not** stash blindly — inspect first.
 
-### ✅ PHASE 2 COMPLETED (2026-04-19)
-- **ApiVersioningExtensions.cs rewritten** — `VersionedRouteConvention` class + registration deleted; `ApiVersionReader.Combine` now uses media-type + query-string (`?api-version=0.1`) + custom header (`X-Api-Version: 0.1`) readers; `UrlSegmentApiVersionReader` intentionally removed.
-- **docs/ARCHITECTURE.md line 58 + docs/API.md lines 48-55** — rewritten to document three-reader (non-URL) versioning strategy.
-- **Pre-existing fixture bug fixed** in `Explore.API/Extensions/ServiceCollectionExtensions.cs:24-39` — made Keycloak OAuth2 security definition conditional on `!string.IsNullOrWhiteSpace(configuration["Keycloak:AuthorizationUrl"])`. Previously `new Uri(null)` blew up `WebApplicationFactory` startup in test/dev environments, silently blocking every contract-invariant assertion. Bug pre-dated this session (commit `3b2db0b6`).
-- **`OpenApiDocument_ContainsNoUrlSegmentVersionedPaths` test re-enabled** in `ContractInvariantsTests.cs`.
-- **Verification:**
-  - Build: `dotnet build --configuration Release` → **0 errors**.
-  - `ContractInvariantsTests`: **5/5 PASS** (up from 4/4 RED). Both Phase 2 invariants (NoUrlSegmentVersioning + NoDuplicatePathMethodPairs) green.
-  - `Event.Architecture.Tests`: **75/75 PASS** (zero regression).
-  - Inventory regenerated 2026-04-19 08:58:01Z: **470→235 paths, 726→363 operations (halved), 561→198 missing operationId, 363→0 URL-segment paths ✅, Admin/Auth/Public = 6/228/129**.
+```
+M  39 Explore.API/Controllers/*.cs          (Phase 3.1 — `Name = RouteNames.X` added)
+M  Explore.API/Hateoas/RouteNames.cs        (+183 lines, 65+ new constants)
+M  Explore.API/swagger.json                 (regenerated; ~46k delete / 20k add — halved)
+M  Explore.Blazor.Client/Clients/EventApiClient.g.cs  (regenerated; ~86k → ~54k lines)
+M  Explore.Blazor.Client/packages.lock.json
+M  Explore.Blazor.Client/Pages/Onboarding/AuthorizationProviderConfiguration.razor
+M  Explore.Blazor/Extensions/BffSetupSecretEndpoints.cs
+M  Explore.Blazor/Extensions/MiddlewareExtensions.cs
+M  Explore.Blazor/Program.cs
+M  dev/_journal/journal.md
+M  dev/active/api-contract-stabilization/api-contract-stabilization-action-inventory.md  (regenerated)
+M  dev/active/api-contract-stabilization/api-contract-stabilization-tasks.md
+D  dev/active/blazor-clean-code-refactor/*                (moved to dev/pause/)
+?? Event.API.IntegrationTests/Features/SwaggerJsonExportTests.cs  (Phase 4.1 exporter — NEW)
+?? dev/pause/blazor-clean-code-refactor/                  (parked — Wave A shipped in `697d2d99`)
+```
 
-### ⏳ NOT STARTED (Phase 3+ queued; user approved auto-continuation per m0021 Q2)
-- Phase 3 — Stable operationIds (198 remaining operations need explicit `Name=` on their HTTP verb attribute)
-- Phase 4 — Regenerate `IEventApiClient` (464 `\dAsync` method fallbacks will evaporate)
-- Phase 5A — Contract-surface hygiene
-- Phase 5B — Client-consumer hygiene + smoke test
-- Phase 5C — UI cleanups
-- Phase 6 — Fold `hateoas-client-alignment`
-- Phase 7 — Verification + schema-diff visibility + forward standard
+**What's safe to commit as one Phase-3 change-set:**
+- 39 controllers + `RouteNames.cs` + `swagger.json` + `EventApiClient.g.cs` + `action-inventory.md` + `tasks.md` + new `SwaggerJsonExportTests.cs`.
 
-### 🚩 KNOWN FLAGS (surface in Phase 0+1 report)
-- **`InstanceSettingsController`** classified `Authenticated` (class `[Authorize]`) but every action runtime-checks `IsInstanceAdmin` → real classification is **Admin**. Strict attribute-based rules can't capture runtime checks. Future: add `[Authorize(Roles=...)]` or policy attribute.
-- **`TenantController` writes** classified `Authenticated` (no `Roles=` attribute) — arguably should be **Admin**. Flag for future role-based authorization pass.
-- **Zero `Roles=` attributes codebase-wide.** Current auth policy is inline runtime checks, not declarative. Consider declarative roles/policies in a future workstream.
+**What's unrelated drift (keep separate):**
+- `.claude/context-state.json` (tooling state).
+- 4 Blazor/Explore.Blazor files (onboarding razor, middleware, program, bff setup secret endpoints, packages.lock) — appears unrelated to api-contract-stabilization; inspect before including.
+- `dev/active/blazor-clean-code-refactor/` → `dev/pause/` move (Wave A already merged in `697d2d99`).
 
-### ⚠️ BLOCKERS / DECISIONS NEEDED (remaining for Phase 2+)
-- ~~**Decision (Phase 2.4):** URL-segment alias consumers?~~ **RESOLVED (m0044):** Delete URL-segment entirely.
-- ~~**Decision (Phase 2.5):** Media-type versioning consumers?~~ **RESOLVED (m0044):** KEEP media-type versioning. ADD `QueryStringApiVersionReader("api-version")` + `HeaderApiVersionReader("X-Api-Version")` via `ApiVersionReader.Combine`. No URL-segment.
-- **Decision (Phase 2.1):** Confirm native OpenAPI (.NET 10) vs Swashbuckle pipeline under `OpenApiExportService`. One-line finding.
-- **Decision (Phase 5A.3):** Storage/SMTP/Localization test-connection endpoints — Authenticated Admin (expose through typed client, default) vs Internal (BFF-only).
-- **Decision (Phase 5C.3):** `ImageStorageService` SRP split approval — nice-to-have, not strictly required.
-- **Decision (pre-Phase 2):** User approval for `VersionedRouteConvention.cs` deletion candidate (per shell rules).
+### ✅ COMPLETED THIS SESSION (Phase 3)
+
+Phase 3.1 — **85 actions named** across 10 controllers via `[HttpVerb("route", Name = RouteNames.X)]`:
+- TenantController (11), InstanceSettingsController (32), StorageObjectController (10), InstanceOnboardingController (9), OrganizationMemberController (7), UserController (6), TenantOnboardingController (5), OrganizationReviewController (3), OrganizationController (1), ModuleController (1).
+- `:guid` route constraints added wherever `{id}`/`{userId}`/`{organizationId}` were unconstrained.
+
+Phase 3.2 — startup-time **OperationIdInvariantTransformer** already wired (`Explore.API/OpenApi/OperationIdInvariantTransformer.cs:110`, registered in `Program.cs:165`). Throws aggregated `InvalidOperationException` in Development with remediation on any placeholder or missing operationId.
+
+Phase 3.3 — **65+ new `RouteNames.*` constants** added in 10 regions (Tenant Navigation Routes, StorageObject, User, Organization Member/Review/Main, Instance Settings, Instance Onboarding, Tenant Onboarding, Module).
+
+Phase 3.4 — endpoint classification carried forward from Phase 1.5: `0` operations missing `x-endpoint-class`. Stable breakdown `Admin=6, Authenticated=228, Public=129`.
+
+Phase 3.5 — **OpenAPI + inventory regenerated** (2026-04-20 11:24:06Z). Inventory shows `0` `_(missing)_`, `0` placeholder fallbacks. `ContractInvariantsTests` 5/5 GREEN, `RouteNameCoverageTests` 1/1 GREEN.
+
+Phase 4.1 (partial) — `Event.API.IntegrationTests/Features/SwaggerJsonExportTests.cs` created as a **test-based swagger.json refresher** (reuses `ContractApiFixture`, walks up from `AppContext.BaseDirectory` to repo root, pretty-prints, writes `Explore.API/swagger.json`). **Untracked.**
+
+Phase 4.2 (partial) — `EventApiClient.g.cs` **regenerated** from the new swagger. Line count 86 632 → **54 563**. Numeric-suffix fallbacks **464 → 11 unique methods**:
+```
+BySession2Async, Complete2Async, EventseriesGET2Async, EventsessionagendaitemGET2Async,
+Internal2Async, SettingsGET2Async, Status2Async, Status3Async, Status4Async,
+StorageobjectGET2Async, Test2Async
+```
+
+### 🟡 IN PROGRESS / NEXT STEP
+
+**Phase 4.3 — inspect regeneration diff.** 11 residual numeric-suffix methods remain. Investigation options:
+1. Each represents a controller that still has a collision on `(controller, short-verb)` after Phase 3 — likely the 5 controllers NOT in the 10 touched (EventSeries, EventSessionAgendaItem, StorageObject has one left → means 10-controller pass missed an action; verify).
+2. May also indicate controllers never touched (EventStatus, RegistrationScope, etc. — `Status2Async/3Async/4Async`).
+
+**Verify before Phase 4.4 build:** Run `grep -nE "[A-Za-z]+[0-9]+Async\b" Explore.Blazor.Client/Clients/EventApiClient.g.cs | sort -u -t: -k2,2` then map each to the originating controller action. Add `Name = RouteNames.X` + register constant for each. Regenerate `swagger.json` via `SwaggerJsonExportTests` then `dotnet nswag run` in `Explore.Blazor.Client`.
+
+**Then Phase 4.4 + 4.5a-e.** Build is expected to fail in the 5 service wrappers (UserService, EventRegistrationService, EventSeriesService, EventSessionAgendaItemService, OrganizationMemberService) — they call the old suffixed method names. Rename call sites; no logic changes.
+
+### ⏳ NOT STARTED
+
+- Phase 5A — contract-surface hygiene (verify classification, review test-connection endpoints)
+- Phase 5B — client-consumer hygiene + smoke test (`GeneratedClientSmokeTests.cs`)
+- Phase 5C — UI cleanups (delete legacy `InstanceSettings.razor` / `TenantPolicySettings.razor` — note: `b50264ab` already removed these per commit log; **re-verify before Phase 5C**)
+- Phase 6 — fold `hateoas-client-alignment` (add parent-pointer header only)
+- Phase 7 — CI wiring, schema-diff job, forward standard in `docs/QUICK_REFERENCE.md`, new `ApiContractArchitectureTests`
+
+### 🚩 KNOWN FLAGS
+
+- `InstanceSettingsController` declared `Authenticated` but every action runtime-checks `IsInstanceAdmin`. True class is **Admin**. Phase 5A review target.
+- `TenantController` writes declared `Authenticated` (no `Roles=` attribute anywhere in codebase). Arguably Admin. Same review bucket.
+- Zero `[Authorize(Roles=...)]` attributes codebase-wide — auth is inline runtime checks. Separate workstream.
+- **Wave A Blazor clean-code refactor merged (`697d2d99`).** `dev/active/blazor-clean-code-refactor/` moved to `dev/pause/`. Formal Phase 3 (BFF endpoint decomposition) + Phase 4 (IMiddleware + per-handler timeouts) still open. Not a blocker for this plan.
+
+### ⚠️ BLOCKERS / DECISIONS NEEDED (carried forward)
+
+- **Phase 4.3:** 11 residual collisions — need one-pass fix before Phase 4.4 build.
+- **Phase 5A.3:** Storage/SMTP/Localization test-connection endpoints — Authenticated Admin vs Internal.
+- **Phase 5C.3:** `ImageStorageService` SRP split approval (nice-to-have).
+- **Pre-commit:** Split the working-tree into three commit groups: (a) Phase 3 + Phase 4 partials, (b) unrelated Blazor drift (onboarding/middleware/bff), (c) blazor-clean-code-refactor archival move. Ask user which grouping to adopt before `git add`.
 
 ---
 
 ## Key Files
 
-### The root-cause evidence
-- **`Explore.Blazor.Client/Clients/EventApiClient.g.cs`** (86 632 lines)
-  - Generated NSwag client. 464 methods match `\dAsync`.
-  - Verified pairs: `TenantDELETEAsync` (65032) / `TenantDELETE2Async` (65316); `TenantGET2Async`/`TenantGET3Async`; `AuthProviderGETAsync`/`AuthProviderGET2Async`; `Status7Async`/`Status8Async` (TenantOnboarding); `InternalAsync`/`Internal2Async`; `AuthProviderConfigurationAsync`/`AuthProviderConfiguration2Async`.
-- **`Explore.API/swagger.json`** (checked-in)
-  - NSwag input. Contains both `/api/tenant/{id}` and `/api/v0.1/tenant/{id}` entries; versioned entries have no `operationId`.
-- **`Explore.Blazor.Client/nswag.json`** (93 lines)
-  - Uses `operationGenerationMode: "SingleClientFromOperationId"`. Correct setting — problem is upstream.
+### The root-cause evidence (post-regeneration)
+- **`Explore.Blazor.Client/Clients/EventApiClient.g.cs`** (54 563 lines, down from 86 632)
+  - Unique `\dAsync` methods: **11** (down from 464). Remaining residue is Phase 4.3 target.
+- **`Explore.API/swagger.json`** — regenerated via `SwaggerJsonExportTests`. Zero `/api/v0.1/...` paths, zero missing operationIds, zero placeholder patterns.
+- **`Explore.Blazor.Client/nswag.json`** — unchanged. `operationGenerationMode: SingleClientFromOperationId`.
 
-### Controllers to study for naming policy
-- **`Explore.API/Controllers/TenantController.cs`**
-  - `[ApiVersion("0.1")]` + `[Route("api/[controller]")]`. Explicit `GetById`/`Update`/`Delete` actions (lines 62-141).
-  - **No explicit action names.** Generates `TenantGET/TenantGET2` soup. **First controller fixed in Phase 3.**
-- **`Explore.API/Controllers/ActorController.cs`**
-  - `[Route("api/actor")]` (explicit, non-template). Explicit action names → clean generation. **Baseline to copy.**
+### Controllers — Phase 3 references
+- **`Explore.API/Controllers/TenantController.cs`** — first controller converted; 11 actions named `Tenant_GetAll`/`Tenant_GetById`/`Tenant_Update`/… See commit log for the exact constant naming.
+- **`Explore.API/Controllers/ActorController.cs`** — baseline good citizen; explicit action names, already Route-constant-friendly pre-Phase-3.
+- **`Explore.API/Controllers/InstanceSettingsController.cs`** — largest single-controller change (32 actions named).
 
-### The versioning plumbing (Phase 2 surgery)
-- **`Explore.API/Extensions/ApiVersioningExtensions.cs`** — ASP.NET versioning setup. Primary Phase 2 touch point.
-- **`Explore.API/VersionedRouteConvention.cs`** — selector-cloning convention; creates `/api/v0.1/...` aliases. **Likely deleted in Phase 2.2.**
-- **`Explore.API/Services/OpenApiExportService.cs`** — writes `/openapi/event-api.json`. Phase 3.2 invariant check hooks here.
+### The versioning plumbing (Phase 2 — LOCKED IN)
+- **`Explore.API/Extensions/ApiVersioningExtensions.cs`** — multi-reader (media-type + query-string `?api-version=0.1` + header `X-Api-Version: 0.1`). `VersionedRouteConvention` deleted.
 
-### The 5 service wrappers that break on regeneration (Phase 4.5)
+### Phase 4.3-4.5 targets (5 service wrappers)
 - `Explore.Blazor.Client/Services/UserService.cs`
 - `Explore.Blazor.Client/Services/EventRegistrationService.cs`
 - `Explore.Blazor.Client/Services/EventSeriesService.cs`
 - `Explore.Blazor.Client/Services/EventSessionAgendaItemService.cs`
 - `Explore.Blazor.Client/Services/OrganizationMemberService.cs`
 
-### Audit cleanup targets (Phase 5C — lowest strategic priority)
-- `Explore.Blazor/Components/Pages/Admin/InstanceSettings.razor` — legacy redirect (delete candidate).
-- `Explore.Blazor/Components/Pages/Admin/TenantPolicySettings.razor` — check replacement status.
-- `Explore.Blazor.Client/Services/ImageStorageService.cs` — SRP split candidate.
+### Phase 5C cleanup targets
+- `Explore.Blazor/Components/Pages/Admin/InstanceSettings.razor` — **MAY BE DELETED already** (commit `b50426ac: refactor(blazor/ui): remove legacy InstanceSettings and TenantPolicySettings pages`). Verify with `git log --all -- <path>`.
+- `Explore.Blazor/Components/Pages/Admin/TenantPolicySettings.razor` — same (above commit).
+- `Explore.Blazor.Client/Services/ImageStorageService.cs` — SRP split candidate (deferrable).
 
-### Guardrail test locations (Phase 0, 5B, 7)
-- `Event.API.IntegrationTests/ContractInvariantsTests.cs` (Phase 0.1 — new)
-- `Explore.Blazor.Client.Tests/ApiClientNamingTests.cs` (Phase 0.2 — new)
-- `Explore.Blazor.Client.Tests/GeneratedClientSmokeTests.cs` (Phase 5B.4 — new)
-- `Event.Architecture.Tests/ApiContractArchitectureTests.cs` (Phase 7.4 — new)
+### Guardrail tests
+- `Event.API.IntegrationTests/Features/ContractInvariantsTests.cs` (Phase 0.1 — 5/5 GREEN after Phase 3)
+- `Event.API.IntegrationTests/Features/RouteNameCoverageTests.cs` (Phase 1.4 — 1/1 GREEN)
+- `Event.API.IntegrationTests/Features/ApiContractInventoryGeneratorTests.cs` (Phase 1.1 — generator)
+- `Event.API.IntegrationTests/Features/SwaggerJsonExportTests.cs` (Phase 4.1 — untracked, refresher)
+- `Event.Architecture.Tests/EndpointClassificationArchitectureTests.cs` (Phase 1.5 — 75/75 project green)
+- `Explore.Blazor.Client.Tests/ApiClientNamingTests.cs` (Phase 0.2 — still RED while 11 residues exist)
+- `Explore.Blazor.Client.Tests/GeneratedClientSmokeTests.cs` (Phase 5B.4 — NOT YET CREATED)
+- `Event.Architecture.Tests/ApiContractArchitectureTests.cs` (Phase 7.4 — NOT YET CREATED)
 
-### Tooling (Phase 1.1 — new)
-- `Explore.API/Tools/ActionInventoryExporter.cs` (or equivalent) — CLI generator walking `IApiDescriptionGroupCollectionProvider` to emit `api-contract-stabilization-action-inventory.md`. **Generator, not hand-curation.**
-
-### Documentation
-- `docs/ARCHITECTURE.md` — line 57 (dual-versioning decision; **subject to Phase 2.5 rewrite** if media-type versioning is also dropped).
-- `docs/QUICK_REFERENCE.md` — rule 20 (named routes in `RouteNames` must match `[HttpGet(Name=...)]`). **Phase 7.6 adds** the forward controller-authoring standard.
-- `docs/NAMING_CONVENTIONS.md` — Phase 1.2 adds operationId naming policy + route-name vs operation-id language.
-- `docs/GOVERNANCE.md` — Phase 0.3 adds "API Contract Rules" subsection; Phase 5B.3 adds "Generated-Client Ergonomics Bar".
-
-### Related plan
-- **`dev/active/hateoas-client-alignment/`** — downstream. Phase 6 adds parent-pointer header.
+### Documentation (updated in prior commits)
+- `docs/ARCHITECTURE.md` line 58 — multi-reader versioning documented.
+- `docs/API.md` lines 48-55 — three-reader (non-URL) versioning.
+- `docs/GOVERNANCE.md` — "API Contract Rules" subsection (lines 321-373 approx).
+- `docs/NAMING_CONVENTIONS.md` — "API Contract Naming" section with format `{ControllerShortName}_{ActionName}`.
+- `docs/QUICK_REFERENCE.md` — rule 20 (named routes match `[HttpGet(Name=...)]`). Phase 7.6 adds forward standard.
 
 ---
 
-## Important Decisions
+## Important Decisions (stable — reference only)
 
-### D1 — Do NOT set `useOperationIds=false`
-Oracle recommendation. That would only rename symptoms. **Confirmed CTO-approved.**
-
-### D2 (revised again per user m0044) — Maximum-flexibility versioning: media-type + query-string + custom-header, NO URL-segment
-**Original D2:** keep media-type canonical, strip URL-segment from OpenAPI.
-**CTO revision:** delete URL-segment AND media-type entirely, single unversioned contract.
-**User override (m0044):** keep media-type versioning (architecturally correct, REST-pure with HATEOAS). **Delete URL-segment** (duplicates all routes, clutters HATEOAS link generation, makes OpenAPI messy → root cause of 464 duplicates). **Additionally add** `QueryStringApiVersionReader("api-version")` + `HeaderApiVersionReader("X-Api-Version")` as flexibility fallbacks for webhooks / browser scripts / clients that can't set `Accept`.
-
-**Target configuration:**
-```csharp
-builder.Services.AddApiVersioning(options =>
-{
-    options.DefaultApiVersion = new ApiVersion(0, 1);
-    options.AssumeDefaultVersionWhenUnspecified = true;
-    options.ReportApiVersions = true;
-    options.ApiVersionReader = ApiVersionReader.Combine(
-        new MediaTypeApiVersionReader("v"),           // Accept: application/json;v=0.1
-        new QueryStringApiVersionReader("api-version"),// ?api-version=0.1
-        new HeaderApiVersionReader("X-Api-Version")    // X-Api-Version: 0.1
-    );
-});
-```
-
-**Controllers:** single `[Route("api/[controller]")]` only. No `[Route("api/v{version:apiVersion}/[controller]")]`. No dual-route decoration.
-
-**No env-var toggle.** Versioning strategy is contract-level, identical across environments.
-
-Rationale (user): ASP.NET Core framework handles conflict detection (400 Bad Request on ambiguous versioning). Clean routing, predictable HATEOAS link generation, flexibility for basic consumers without abandoning REST purity.
-
-### D3 — One OpenAPI document, not two
-Single canonical document exported from `OpenApiExportService`. Second document only if a late-discovered external consumer requires it — NSwag points only at the primary.
-
-### D4 — Guardrails first, surgery second
-Phase 0 is non-negotiable. Failing tests define the invariant. **Confirmed CTO-approved (strongest part of the plan).**
-
-### D5 — `hateoas-client-alignment` is downstream
-Waits until Phase 4 merged. Avoids regenerating the client twice.
-
-### D6 (revised per CTO) — Route Name and Operation Id are intentionally aligned, not inherently identical
-**Original D6:** prefer `[HttpGet(Name = "...")]` so route name = operation id = `RouteNames` constant.
-**Revised D6:** today they align via `[HttpGet(Name = "...")]`. Conceptually they are distinct: route name = routing/HAL identity; operation id = client contract identity. Policy documents the alignment as deliberate; allows divergence when future need justifies it.
-
-### D7 (revised per CTO) — Preferred Phase-2 mechanism: delete the alias strategy
-**Original D7:** `ApiExplorerSettings.IgnoreApi = true` on versioned selector clones.
-**Revised D7:** delete the alias cloning entirely in `VersionedRouteConvention` (or remove the class). Runtime returns 404 for `/api/v0.1/...` which is correct for a deleted surface. `IgnoreApi` on clones is a fallback only if deletion cascades into unexpected breakage. Document-transform filtering is a tertiary fallback.
-
+### D1 — Do NOT set `useOperationIds=false` (Oracle — CTO-approved)
+### D2 / D15 (user m0044) — Multi-reader versioning: media-type + query-string + custom-header, NO URL-segment (LOCKED IN — implemented Phase 2)
+### D3 — One OpenAPI document
+### D4 — Guardrails first, surgery second (Phase 0 non-negotiable)
+### D5 — `hateoas-client-alignment` is downstream (Phase 6 adds parent-pointer)
+### D6 — Route Name and Operation Id intentionally aligned, not inherently identical
+### D7 — Preferred Phase 2 mechanism: delete alias strategy (done)
 ### D8 — No domain changes
-Pure API-contract + Blazor-client work. Do not touch `Explore.Domain` or `Explore.Application`.
-
-### D9 — No backwards compatibility
-Development mode. Break freely. Delete duplicates. **Confirmed CTO-approved — "perfect moment to make contract-breaking cleanup moves".**
-
-### D10 (new) — OpenAPI is a governed product artifact
-Checked-in `swagger.json` is first-class. Changes to public routes, operationIds, schemas, or response semantics require PR review. Governance language added to `docs/GOVERNANCE.md` in Phase 0.3.
-
-### D11 (new) — Every action has an endpoint class
-Public / Authenticated Admin / Internal. Unclassified = architecture test fails. Drives OpenAPI inclusion, role gating, and client-generation eligibility.
-
-### D12 (new) — Schema-diff visible in CI, not blocking (pre-1.0)
-Phase 7.5 surfaces added/removed/changed operations and schemas at PR time. No block today. Flip to blocking at 1.0.
-
-### D13 (new) — Generated-client ergonomics bar
-No verb-only names. Collection vs single distinguishable. Mutation names reflect business action where meaningful. Asserted via Phase 0.2 expanded assertions.
-
-### D14 (new) — Action inventory generated, not hand-curated
-Phase 1.1 adds a CLI generator that walks ApiExplorer. Phase 7.1 CI wiring detects inventory drift.
-
-### D15 (new, user m0044) — Multi-reader API versioning is the permanent strategy
-Media-type is primary (REST-pure, preferred in Blazor frontend). Query-string and custom header are secondary flexibility readers. The framework resolves conflicts (400 on ambiguity). URL-segment is explicitly NOT a reader — runtime returns 404 for `/api/v0.1/...` after Phase 2. This policy is permanent, not pre-1.0 temporary; it survives 1.0+ without redesign.
+### D9 — No backwards compatibility (CTO-approved)
+### D10 — OpenAPI is a governed product artifact
+### D11 — Every action has an endpoint class (Phase 1.5 done; 0 unclassified)
+### D12 — Schema-diff visible in CI, not blocking (pre-1.0) — Phase 7.5 pending
+### D13 — Generated-client ergonomics bar — Phase 0.2 asserts; `ApiClientNamingTests` flips green after Phase 4.3-4.5
+### D14 — Action inventory generated, not hand-curated (Phase 1.1 done)
 
 ---
 
-## Technical Constraints (Non-Inferable — from `CLAUDE.md` + `docs/QUICK_REFERENCE.md`)
+## Technical Constraints (from CLAUDE.md + docs/QUICK_REFERENCE.md)
 
 1. Repositories return **entities**, never DTOs; mapping in handlers.
 2. Validators manually instantiated (no DI).
 3. Commands return `BaseCommandResponse<TId>`.
-4. GET = `[AllowAnonymous]`, write = `[Authorize]`, admin = roles.
+4. GET = `[AllowAnonymous]`, write = `[Authorize]`, admin = roles (runtime checks only today).
 5. UserId fallback: `sub` → `nameidentifier` → `sid`.
 6. File-scoped namespaces for new C# files.
-7. Named route constants in `RouteNames` must match `[HttpGet(Name = "...")]` values.
+7. Named route constants in `RouteNames` must match `[HttpGet(Name = "...")]` values. (RouteNameCoverageTests enforces.)
 8. All files start with `ABOUTME:` two-line summary.
-9. Auditing fields on entities: `CreatedAt/By`, `UpdatedAt/By`, `IsDeleted`.
+9. Auditing fields: `CreatedAt/By`, `UpdatedAt/By`, `IsDeleted`.
 10. EF soft-delete filter named `SoftDelete`.
 
 ---
@@ -223,7 +186,14 @@ Media-type is primary (REST-pure, preferred in Blazor frontend). Query-string an
 dotnet build --configuration Release --verbosity quiet
 ```
 
-**Test projects run individually** (NOT solution-level):
+**Current expected state post-Phase 3 (verified 2026-04-20):**
+- Build: **0 errors** (72 pre-existing warnings).
+- `Event.API.IntegrationTests` ContractInvariantsTests: **5/5 GREEN**.
+- `Event.API.IntegrationTests` RouteNameCoverageTests: **1/1 GREEN**.
+- `Event.Architecture.Tests`: **75/75 GREEN**.
+- `Explore.Blazor.Client.Tests` ApiClientNamingTests: still **RED** (11 residual `\dAsync` offenders — Phase 4.3 target).
+
+**Test projects run individually:**
 - `Event.Application.UnitTests`
 - `Event.Domain.UnitTests`
 - `Event.Architecture.Tests`
@@ -233,25 +203,25 @@ dotnet build --configuration Release --verbosity quiet
 - `Explore.Blazor.IntegrationTests`
 - `Explore.Blazor.Client.Tests`
 
-`Explore.Blazor.Client.E2ETests` requires Aspire AppHost running; not part of standard run.
+---
+
+## Quick Resume (2026-04-20 handoff)
+
+1. **Inspect uncommitted tree first.** `git status` — you should see ~45 modified + 1 untracked `SwaggerJsonExportTests.cs` + `dev/pause/blazor-clean-code-refactor/` relocation + 4 unrelated Blazor drift files (onboarding razor, middleware, bff setup secret, program, packages.lock).
+2. **Decide commit grouping with the user** before any `git add`. Three natural groups: (a) Phase 3 + Phase 4.1-4.2 payload, (b) unrelated Blazor drift, (c) blazor-clean-code-refactor archival move.
+3. **Phase 4.3** — identify the 11 residual numeric-suffix collisions and resolve:
+   ```
+   grep -oE "[A-Za-z]+[0-9]+Async\b" Explore.Blazor.Client/Clients/EventApiClient.g.cs | sort -u
+   ```
+   Map each to originating controller action, add `[HttpVerb("route", Name = RouteNames.X)]`, add constant to `RouteNames.cs`, regenerate `swagger.json` (run `SwaggerJsonExportTests`), regenerate client (`dotnet nswag run nswag.json` in `Explore.Blazor.Client`).
+4. **Phase 4.4** build. Expect compile errors only in the 5 service wrappers.
+5. **Phase 4.5a-e** — rename call sites in the 5 wrapper files. `lsp_diagnostics` clean after each.
+6. **Re-run** `ApiClientNamingTests` — expect all 6 tests GREEN when Phase 4 complete.
+7. Flag Phase 5C verification: check if `InstanceSettings.razor`/`TenantPolicySettings.razor` still exist (commit `b50426ac` may have already deleted them).
 
 ---
 
-## Quick Resume
-
-To continue from any future session:
-
-1. **Read** this file first. SESSION PROGRESS tells you current state.
-2. **Read** `api-contract-stabilization-plan.md` for strategy and phase definitions (v2 post-CTO review).
-3. **Read** `api-contract-stabilization-tasks.md` for live checklist.
-4. **Verify** nothing has drifted: `grep -c "\dAsync" Explore.Blazor.Client/Clients/EventApiClient.g.cs` should still be ~464 if Phase 4 hasn't run.
-5. **If Phase 0 isn't done yet, START THERE.** Guardrails before surgery.
-6. **Do not regenerate the client** until Phases 2 and 3 are complete.
-7. **Before Phase 2 execution**, confirm the Phase 2.4 and 2.5 escalation gates with the user (URL-segment consumers? media-type consumers?). Default: delete both.
-
----
-
-## Session IDs (for deeper-dive continuation)
+## Session IDs (earlier context resets — do not reuse unless continuing that specific thread)
 
 - ApiClient audit: `ses_25e130f03ffeDihkcd5maMz6AO`
 - Services map: `ses_25e12def5ffeOYPGSjO79aOl8w`
