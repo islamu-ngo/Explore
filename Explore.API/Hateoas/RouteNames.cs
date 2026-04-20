@@ -631,4 +631,10 @@ public static class RouteNames
 
     #endregion
 
+    #region Admin Utility Routes
+
+    public const string ApplyDatabaseMigrations = "ApplyDatabaseMigrations";
+
+    #endregion
+
 }

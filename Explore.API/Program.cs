@@ -357,7 +357,8 @@ if (app.Environment.IsDevelopment())
                 return Results.Problem("Migration failed: " + ex.Message);
             }
         })
-        .RequireAuthorization(); // S�curisez cet endpoint !
+        .WithName(Explore.API.Hateoas.RouteNames.ApplyDatabaseMigrations)
+        .RequireAuthorization();
 }
 else
 {
