@@ -578,4 +578,34 @@ Full solution build: 0 errors, pre-existing vulnerability/deprecation warnings o
 2. **`259a2764`** — `chore(api/contracts): precondition resync for api-contract-stabilization + blazor bff fixes` (605 insertions, 786 deletions, 26 files)
 3. **`6e5e37f0`** — `refactor(blazor/middleware): extract inline lambdas into private static methods` (163 insertions, 140 deletions, 2 files)
 4. **`17243e4e`** — `refactor(blazor/logging): swap Console.WriteLine for ILogger in bootstrap, lazy loader, and setup` (48 insertions, 33 deletions, 4 files)
+5. **`dceed487`** — `docs(dev/blazor-clean-code-refactor): log Phase 4-lite middleware + Phase 5 ILogger completion` (79 insertions, 5 deletions, 2 files)
+
+### Wave A Merge to develop (2026-04-19)
+
+- **`697d2d99`** — `Merge branch 'refactor/blazor-clean-code-wave-a' into develop` (merged by user)
+- **`10e98619`** — `docs: implementation plan update` (post-merge doc tweak on develop)
+
+Current branch: `develop`. Wave A is fully shipped. The `refactor/blazor-clean-code-wave-a` branch may be deleted locally at the user's discretion.
+
+### Wave A Handoff Summary
+
+**Shipped:**
+- 14 Blazor-client architecture guardrails (Rules 1.01-1.14) enforcing clean-code invariants via file-scanning in `Event.Architecture.Tests`.
+- Rule 1.02 (no `Console.WriteLine`) HashSet now empty — all 3 bootstrap files swapped to `ILogger`.
+- Rule 1.03 (no inline middleware lambdas >5 lines) HashSet now empty — all 5 extracted to `private static` methods in `MiddlewareExtensions.cs`.
+
+**Remaining exception lists (deferred to future Wave A/B phases with documented target phase):**
+- `Known_IEventApiClient_ComponentExceptions` (1 entry — `InstanceTenantsSection.razor`)
+- `Known_NewDialogOptions_Files` (5 entries — DialogOptionsFactory migration)
+- `Known_IJSRuntimeInServices_Files` (4 entries — Interop/ extraction)
+- `Known_MutableStateSingleton_Files` (2 entries — `DynamicAuthSchemeManager` → Wave B Phase 6A/B; `CircuitAccessTokenService` → Wave B Phase 3)
+- `Known_IConfigurationInjection_Files` (1 entry — `DynamicAuthSchemeManager`)
+- `Known_ModelTypesInInterfaceFile_Files` (3 entries in `Contracts/` — service-contract reform)
+
+**Not attempted (formal plan Phase 3/4, remain open for future wave iteration):**
+- Phase 3 — BFF Endpoint Decomposition (split `BffAuthEndpoints`/`BffSetupSecretEndpoints`/`BffPreferenceEndpoints`, `HttpContextExtensions.GetLogger`, `CircuitAccessTokenService` split; acceptance: no endpoint file >150 lines)
+- Phase 4 (full) — `IMiddleware` class extraction + hosted service for `Console.CancelKeyPress`; per-handler `DelegatingHandler` timeouts (4.7 is Wave B)
+- Phase 5.2-5.8 — ILogger severity audit, correlation ID verification, event IDs, secret leakage check, startup config validation, tenant-aware log scope, 36-site `GetLogger` migration
+
+**Test baseline after Wave A:** 2837 pass / 1 skip (pre-existing MudBlazor v9) / 0 fail across 8 test projects (E2E skipped — Aspire dependency).
 
