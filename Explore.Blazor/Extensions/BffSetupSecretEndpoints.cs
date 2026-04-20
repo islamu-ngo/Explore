@@ -223,6 +223,9 @@ public static class BffSetupSecretEndpoints
                 logger.LogDebug(ex, "Could not parse setup secret validation response body.");
             }
 
+            // Preserve upstream meaning: previously every non-2xx (incl. 429 from rate limiter and
+            // 403 from invalid secret) was flattened to a generic 502, masking the real failure
+            // and confusing UX during onboarding flows that re-validate frequently.
             if (response.StatusCode == System.Net.HttpStatusCode.Gone)
             {
                 return new SetupSecretValidationResult(
@@ -230,11 +233,32 @@ public static class BffSetupSecretEndpoints
                     body?.Error ?? "Setup already completed.");
             }
 
-            if (!response.IsSuccessStatusCode)
+            if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            {
+                return new SetupSecretValidationResult(
+                    false, StatusCodes.Status429TooManyRequests,
+                    body?.Error ?? "Too many setup secret validation attempts. Please wait a minute and try again.");
+            }
+
+            if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+            {
+                return new SetupSecretValidationResult(
+                    false, StatusCodes.Status403Forbidden,
+                    body?.Error ?? "Invalid setup secret.");
+            }
+
+            if ((int)response.StatusCode >= 500)
             {
                 return new SetupSecretValidationResult(
                     false, StatusCodes.Status502BadGateway,
                     "Could not validate setup secret at this time.");
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return new SetupSecretValidationResult(
+                    false, (int)response.StatusCode,
+                    body?.Error ?? "Setup secret validation failed.");
             }
 
             if (body?.Valid == true)
