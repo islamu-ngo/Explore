@@ -136,6 +136,7 @@ app.UseAuthentication();
 app.UseRequestLocalization();
 app.UseAccessTokenCaptureMiddleware();
 app.UseBffDiagnosticsMiddleware();
+app.UseOnboardingAuthGateMiddleware();
 app.UseAuthorization();
 app.UseRateLimiter();
 app.UseAntiforgery();

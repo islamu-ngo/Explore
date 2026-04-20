@@ -308,13 +308,19 @@
 
         _successMessage = response.Message;
 
-        if (_isAuthenticated)
+        // Re-fetch onboarding status post-save: principal may have changed (Keycloak refresh, scheme rebuild),
+        // so the cached _isAuthenticated from OnInitializedAsync can be stale. The next step is always
+        // /onboarding/instance — anonymous users must land back there after login, NOT on /setup.
+        var freshStatus = await InstanceOnboardingService.GetStatusAsync();
+        var isAuthenticated = freshStatus?.IsAuthenticated == true;
+
+        if (isAuthenticated)
         {
             Navigation.NavigateTo("/onboarding/instance", forceLoad: true);
             return;
         }
 
-        Navigation.NavigateTo("/login?returnUrl=/setup", forceLoad: true);
+        Navigation.NavigateTo("/login?returnUrl=/onboarding/instance", forceLoad: true);
     }
 
     private async Task<IJSObjectReference> GetBffModuleAsync()

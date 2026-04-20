@@ -89,6 +89,18 @@ public static class MiddlewareExtensions
     }
 
     /// <summary>
+    /// Server-side authentication gate for onboarding entry routes that must require a logged-in user.
+    /// Razor [Authorize] is inert in this app (App.razor uses CascadingAuthenticationState without
+    /// AuthorizeRouteView), and the Blazouter route guards run client-side only. This middleware is
+    /// the authoritative gate that redirects anonymous GETs to /login before any component renders.
+    /// </summary>
+    public static WebApplication UseOnboardingAuthGateMiddleware(this WebApplication app)
+    {
+        app.Use(EnforceOnboardingAuthGateAsync);
+        return app;
+    }
+
+    /// <summary>
     /// Registers graceful shutdown handlers for zero-downtime deployments.
     /// SIGTERM: 25 second grace period. SIGINT: Immediate shutdown.
     /// </summary>
@@ -205,7 +217,53 @@ public static class MiddlewareExtensions
         await next();
     }
 
-    // Emits an Information-level log when anonymous traffic reaches an authorized BFF endpoint.
+    private static readonly string[] OnboardingProtectedPaths =
+    [
+        "/onboarding/instance",
+        "/onboarding/tenant"
+    ];
+
+    private static async Task EnforceOnboardingAuthGateAsync(HttpContext ctx, Func<Task> next)
+    {
+        if (!HttpMethods.IsGet(ctx.Request.Method))
+        {
+            await next();
+            return;
+        }
+
+        var path = ctx.Request.Path.Value;
+        if (string.IsNullOrEmpty(path))
+        {
+            await next();
+            return;
+        }
+
+        var isProtected = false;
+        foreach (var protectedPath in OnboardingProtectedPaths)
+        {
+            if (path.StartsWith(protectedPath, StringComparison.OrdinalIgnoreCase))
+            {
+                isProtected = true;
+                break;
+            }
+        }
+
+        if (!isProtected)
+        {
+            await next();
+            return;
+        }
+
+        if (ctx.User?.Identity?.IsAuthenticated == true)
+        {
+            await next();
+            return;
+        }
+
+        var returnUrl = Uri.EscapeDataString(path + ctx.Request.QueryString);
+        ctx.Response.Redirect($"/login?returnUrl={returnUrl}");
+    }
+
     private static async Task LogUnauthenticatedBffRequestsAsync(HttpContext ctx, Func<Task> next, ILogger logger)
     {
         if (ctx.Request.Path.StartsWithSegments("/api/v1", StringComparison.OrdinalIgnoreCase))
