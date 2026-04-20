@@ -44,7 +44,7 @@ public class ExternalApiKeyService : IExternalApiKeyService
     {
         try
         {
-            return await _apiClient.ExternalapikeyAllAsync() ?? [];
+            return await _apiClient.GetExternalApiKeysAsync() ?? [];
         }
         catch (ApiException ex)
         {
@@ -63,7 +63,7 @@ public class ExternalApiKeyService : IExternalApiKeyService
     {
         try
         {
-            return await _apiClient.ExternalapikeyGETAsync(id);
+            return await _apiClient.GetExternalApiKeyByIdAsync(id);
         }
         catch (ApiException ex)
         {
@@ -82,7 +82,7 @@ public class ExternalApiKeyService : IExternalApiKeyService
     {
         try
         {
-            return await _apiClient.ExternalapikeyPOSTAsync(dto);
+            return await _apiClient.CreateExternalApiKeyAsync(dto);
         }
         catch (ApiException ex) when (ex.StatusCode == 400)
         {
@@ -127,7 +127,7 @@ public class ExternalApiKeyService : IExternalApiKeyService
     {
         try
         {
-            return await _apiClient.ExternalapikeyPUTAsync(id, dto);
+            return await _apiClient.UpdateExternalApiKeyAsync(id, dto);
         }
         catch (ApiException ex)
         {
@@ -141,7 +141,7 @@ public class ExternalApiKeyService : IExternalApiKeyService
     {
         try
         {
-            await _apiClient.ExternalapikeyDELETEAsync(id);
+            await _apiClient.DeleteExternalApiKeyAsync(id);
         }
         catch (ApiException ex)
         {

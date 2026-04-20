@@ -19,7 +19,7 @@ public class EventSessionAgendaItemService : IEventSessionAgendaItemService
     {
         try
         {
-            return await _client.BySession3Async(sessionId);
+            return await _client.GetEventSessionAgendaItemsBySessionAsync(sessionId);
         }
         catch (Exception ex)
         {
@@ -32,7 +32,7 @@ public class EventSessionAgendaItemService : IEventSessionAgendaItemService
     {
         try
         {
-            return await _client.EventsessionagendaitemPOSTAsync(item);
+            return await _client.CreateEventSessionAgendaItemAsync(item);
         }
         catch (Exception ex)
         {
@@ -45,7 +45,7 @@ public class EventSessionAgendaItemService : IEventSessionAgendaItemService
     {
         try
         {
-            return await _client.EventsessionagendaitemPUTAsync(id, item);
+            return await _client.UpdateEventSessionAgendaItemAsync(id, item);
         }
         catch (Exception ex)
         {
@@ -58,7 +58,7 @@ public class EventSessionAgendaItemService : IEventSessionAgendaItemService
     {
         try
         {
-            await _client.EventsessionagendaitemDELETEAsync(agendaItemId);
+            await _client.DeleteEventSessionAgendaItemAsync(agendaItemId);
             return true;
         }
         catch (Exception ex)

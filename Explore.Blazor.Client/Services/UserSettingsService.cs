@@ -41,7 +41,7 @@ public sealed class UserSettingsService : IUserSettingsService, IAsyncDisposable
         {
             if (await _authState.IsAuthenticatedAsync())
             {
-                var result = await _apiClient.GetUserSettingsAsync(category, ct);
+                var result = await _apiClient.GetUserSettingsAsync(category, cancellationToken: ct);
                 _cache[category] = (result, DateTime.UtcNow.Add(CacheDuration));
                 return result;
             }
@@ -97,7 +97,7 @@ public sealed class UserSettingsService : IUserSettingsService, IAsyncDisposable
                     Values = new Dictionary<string, string>(values),
                     Mode = 0 // BestEffort — skip locked settings, apply the rest
                 };
-                return await _apiClient.UpdateUserSettingsBatchAsync(category, batchDto, ct);
+                return await _apiClient.UpdateUserSettingsBatchAsync(category, batchDto, cancellationToken: ct);
             }
 
             // Anonymous: persist each value to localStorage
@@ -136,7 +136,7 @@ public sealed class UserSettingsService : IUserSettingsService, IAsyncDisposable
             if (await _authState.IsAuthenticatedAsync())
             {
                 var dto = new UpdateSettingValueDto { Value = value };
-                await _apiClient.UpdateUserSettingAsync(key, dto, ct);
+                await _apiClient.UpdateUserSettingAsync(key, dto, cancellationToken: ct);
                 return true;
             }
 
@@ -162,7 +162,7 @@ public sealed class UserSettingsService : IUserSettingsService, IAsyncDisposable
 
             if (await _authState.IsAuthenticatedAsync())
             {
-                await _apiClient.ResetUserSettingAsync(key, ct);
+                await _apiClient.ResetUserSettingAsync(key, cancellationToken: ct);
                 return true;
             }
 
@@ -189,11 +189,11 @@ public sealed class UserSettingsService : IUserSettingsService, IAsyncDisposable
             if (await _authState.IsAuthenticatedAsync())
             {
                 // Fetch current settings to identify all keys, then reset each in parallel
-                var current = await _apiClient.GetUserSettingsAsync(category, ct);
+                var current = await _apiClient.GetUserSettingsAsync(category, cancellationToken: ct);
                 if (current?.Settings is { Count: > 0 })
                 {
                     var resetTasks = current.Settings
-                        .Select(s => _apiClient.ResetUserSettingAsync(s.Key, ct));
+                        .Select(s => _apiClient.ResetUserSettingAsync(s.Key, cancellationToken: ct));
                     await Task.WhenAll(resetTasks);
                 }
 

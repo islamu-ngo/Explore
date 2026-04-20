@@ -124,7 +124,7 @@ public class CategoryService : ICategoryService
     {
         try
         {
-            return await _apiClient.WithCategoriesAsync() ?? new List<CategoryTypeWithCategoriesDto>();
+            return await _apiClient.GetCategoryTypeOptionsWithCategoriesAsync() ?? new List<CategoryTypeWithCategoriesDto>();
         }
         catch (ApiException ex)
         {

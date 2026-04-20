@@ -16,12 +16,12 @@ public class EventFormatService : IEventFormatService
 
     public async Task<ICollection<EventFormatListDto>> GetEventFormatsAsync()
     {
-        return await _client.EventformatAllAsync();
+        return await _client.GetEventFormatOptionsAsync();
     }
 
     public async Task<EventFormatDto> GetEventFormatByIdAsync(int id)
     {
-        return await _client.EventformatAsync(id);
+        return await _client.GetEventFormatOptionByIdAsync(id);
     }
 }
 

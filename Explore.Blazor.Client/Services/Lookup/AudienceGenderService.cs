@@ -16,12 +16,12 @@ public class AudienceGenderService : IAudienceGenderService
 
     public async Task<ICollection<AudienceGenderListDto>> GetAudienceGendersAsync()
     {
-        return await _client.AudiencegenderAllAsync();
+        return await _client.GetAudienceGenderOptionsAsync();
     }
 
     public async Task<AudienceGenderDto> GetAudienceGenderByIdAsync(int id)
     {
-        return await _client.AudiencegenderAsync(id);
+        return await _client.GetAudienceGenderOptionByIdAsync(id);
     }
 }
 

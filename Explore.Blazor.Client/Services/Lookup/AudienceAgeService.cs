@@ -16,12 +16,12 @@ public class AudienceAgeService : IAudienceAgeService
 
     public async Task<ICollection<AudienceAgeListDto>> GetAudienceAgesAsync()
     {
-        return await _client.AudienceageAllAsync();
+        return await _client.GetAudienceAgeOptionsAsync();
     }
 
     public async Task<AudienceAgeDto> GetAudienceAgeByIdAsync(int id)
     {
-        return await _client.AudienceageAsync(id);
+        return await _client.GetAudienceAgeOptionByIdAsync(id);
     }
 }
 

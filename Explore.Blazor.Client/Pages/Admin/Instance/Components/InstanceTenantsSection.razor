@@ -173,7 +173,7 @@
 
         try
         {
-            _tenants = await ApiClient.TenantAllAsync();
+            _tenants = await ApiClient.GetTenantsAsync();
             await TenantCountChanged.InvokeAsync(_tenants.Count);
         }
         catch (Exception ex)
@@ -208,7 +208,7 @@
             };
             dto.AdditionalProperties["assignCurrentUserAsTenantAdmin"] = _assignSelfAsTenantAdmin;
 
-            var response = await ApiClient.TenantPOSTAsync(dto);
+            var response = await ApiClient.CreateTenantAsync(dto);
             if (response.Success == true)
             {
                 _showCreateDialog = false;
@@ -250,7 +250,7 @@
 
         try
         {
-            await ApiClient.TenantDELETEAsync(_tenantToDelete.Id.Value);
+            await ApiClient.DeleteTenantAsync(_tenantToDelete.Id.Value);
             _showDeleteDialog = false;
             Snackbar.Add($"Tenant '{_tenantToDelete.FullName}' deleted.", Severity.Success);
             _tenantToDelete = null;

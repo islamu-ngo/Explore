@@ -86,7 +86,7 @@ public class TranslationService : ITranslationService, IDisposable
             }
 
             _logger.LogInformation("[TRANSLATION] Cache miss, fetching from API");
-            var translations = await _apiClient.TranslationAsync(normalised, ct);
+            var translations = await _apiClient.GetTranslationByLanguageAsync(normalised, cancellationToken: ct);
             _translationsCache = new CacheEntry<IDictionary<string, string>>(translations, DateTime.UtcNow.Add(CacheDuration));
             return translations;
         }
@@ -118,7 +118,7 @@ public class TranslationService : ITranslationService, IDisposable
                 return cache.Data;
 
             _logger.LogDebug("[TRANSLATION] Languages cache miss, fetching from API");
-            var languages = await _apiClient.LanguagesAsync(ct);
+            var languages = await _apiClient.GetAvailableTranslationLanguagesAsync(cancellationToken: ct);
             _languagesCache = new CacheEntry<ICollection<string>>(languages, DateTime.UtcNow.Add(CacheDuration));
             return languages;
         }

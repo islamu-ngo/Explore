@@ -197,7 +197,7 @@ public class ImageStorageService : IImageStorageService
             if (response == null)
             {
                 _logger.LogWarning("BFF upload URL request returned no usable response. Falling back to generated API client.");
-                response = await _apiClient.GenerateUploadUrlAsync(request);
+                response = await _apiClient.GenerateStorageObjectUploadUrlAsync(request);
             }
 
             // Defensive: server might return non-null DTO but with an empty UploadUrl.
@@ -525,7 +525,7 @@ public class ImageStorageService : IImageStorageService
             BaseCommandResponseOfGuid? createResponse = null;
             try
             {
-                createResponse = await _apiClient.StorageobjectPOSTAsync(createDto);
+                createResponse = await _apiClient.CreateStorageObjectAsync(createDto);
                 _logger.LogInformation("StorageObject API response received: Success={Success}, Id={Id}, Message={Message}",
                     createResponse?.Success, createResponse?.Id, createResponse?.Message);
             }
@@ -646,7 +646,7 @@ public class ImageStorageService : IImageStorageService
             BaseCommandResponseOfGuid? createResponse;
             try
             {
-                createResponse = await _apiClient.StorageobjectPOSTAsync(createDto);
+                createResponse = await _apiClient.CreateStorageObjectAsync(createDto);
             }
             catch (ApiException<ProblemDetails> apiEx)
             {

@@ -89,7 +89,7 @@ public class OrganizationService : IOrganizationService
     {
         try
         {
-            return await _apiClient.ApprovalstatusAllAsync() ?? new List<StatusTypeListDto>();
+            return await _apiClient.GetApprovalStatusOptionsAsync() ?? new List<StatusTypeListDto>();
         }
         catch (ApiException ex)
         {

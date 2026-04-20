@@ -35,7 +35,7 @@ public class OrganizationMemberService : IOrganizationMemberService
     {
         try
         {
-            var response = await _apiClient.OrganizationmemberAllAsync(organizationId);
+            var response = await _apiClient.GetOrganizationMembersByOrganizationAsync(organizationId);
             return response ?? new List<OrganizationMemberDto>();
         }
         catch (ApiException ex)
@@ -54,7 +54,7 @@ public class OrganizationMemberService : IOrganizationMemberService
     {
         try
         {
-            return await _apiClient.OrganizationmemberPOSTAsync(member);
+            return await _apiClient.AddOrganizationMemberAsync(member);
         }
         catch (ApiException ex)
         {
@@ -72,7 +72,7 @@ public class OrganizationMemberService : IOrganizationMemberService
     {
         try
         {
-            return await _apiClient.RolePUT2Async(updateDto);
+            return await _apiClient.UpdateOrganizationMemberRoleAsync(updateDto);
         }
         catch (ApiException ex)
         {
@@ -90,7 +90,7 @@ public class OrganizationMemberService : IOrganizationMemberService
     {
         try
         {
-            var response = await _apiClient.InvitationsAsync();
+            var response = await _apiClient.GetMyOrganizationInvitationsAsync();
             return response ?? new List<OrganizationInvitationDto>();
         }
         catch (ApiException ex)
@@ -109,7 +109,7 @@ public class OrganizationMemberService : IOrganizationMemberService
     {
         try
         {
-            return await _apiClient.AcceptAsync(invitationId);
+            return await _apiClient.AcceptOrganizationInvitationAsync(invitationId);
         }
         catch (ApiException ex)
         {
@@ -127,7 +127,7 @@ public class OrganizationMemberService : IOrganizationMemberService
     {
         try
         {
-            return await _apiClient.DeclineAsync(invitationId);
+            return await _apiClient.DeclineOrganizationInvitationAsync(invitationId);
         }
         catch (ApiException ex)
         {
@@ -145,7 +145,7 @@ public class OrganizationMemberService : IOrganizationMemberService
     {
         try
         {
-            return await _apiClient.OrganizationmemberDELETEAsync(memberId);
+            return await _apiClient.DeleteOrganizationMemberAsync(memberId);
         }
         catch (ApiException ex)
         {

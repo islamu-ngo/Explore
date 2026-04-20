@@ -16,7 +16,7 @@ public class EventTypeService : IEventTypeService
 
     public async Task<ICollection<EventTypeListDto>> GetEventTypesAsync()
     {
-        return await _client.EventtypeAllAsync();
+        return await _client.GetEventTypesAsync();
     }
 }
 

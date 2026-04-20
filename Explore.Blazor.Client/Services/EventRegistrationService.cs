@@ -35,7 +35,7 @@ public class EventRegistrationService : IEventRegistrationService
         try
         {
             _logger.LogInformation("[REGISTRATION SERVICE] Fetching all registrations...");
-            var response = await _apiClient.EventregistrationGETAsync(pageNumber: ApiConstants.FirstPage, pageSize: ApiConstants.DefaultPageSize);
+            var response = await _apiClient.GetEventRegistrationsAsync(ApiConstants.FirstPage, ApiConstants.DefaultPageSize);
             _logger.LogInformation("[REGISTRATION SERVICE] Received {Count} registrations from {Total} total", response?.Items?.Count ?? 0, response?.TotalCount ?? 0);
             return response?.Items ?? new List<EventRegistrationListDto>();
         }
@@ -55,7 +55,7 @@ public class EventRegistrationService : IEventRegistrationService
     {
         try
         {
-            var response = await _apiClient.EventregistrationGETAsync(pageNumber, pageSize);
+            var response = await _apiClient.GetEventRegistrationsAsync(pageNumber, pageSize);
             return response.ToPaginatedResult();
         }
         catch (Exception ex)
@@ -69,7 +69,7 @@ public class EventRegistrationService : IEventRegistrationService
     {
         try
         {
-            return await _apiClient.EventregistrationGET3Async(registrationId);
+            return await _apiClient.GetEventRegistrationByIdAsync(registrationId);
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {
@@ -93,7 +93,7 @@ public class EventRegistrationService : IEventRegistrationService
         try
         {
             _logger.LogInformation("[REGISTRATION SERVICE] Registering user for event: {EventId}", dto.EventId);
-            return await _apiClient.EventregistrationPOSTAsync(dto);
+            return await _apiClient.CreateEventRegistrationAsync(dto);
         }
         catch (ApiException ex)
         {
@@ -121,7 +121,7 @@ public class EventRegistrationService : IEventRegistrationService
     {
         try
         {
-            return await _apiClient.EventregistrationPUTAsync(id, dto);
+            return await _apiClient.UpdateEventRegistrationAsync(id, dto);
         }
         catch (ApiException ex)
         {
@@ -149,7 +149,7 @@ public class EventRegistrationService : IEventRegistrationService
     {
         try
         {
-            await _apiClient.EventregistrationDELETEAsync(registrationId);
+            await _apiClient.DeleteEventRegistrationAsync(registrationId);
             _logger.LogInformation("[REGISTRATION SERVICE] Registration cancelled: {RegistrationId}", registrationId);
             return true;
         }
@@ -169,7 +169,7 @@ public class EventRegistrationService : IEventRegistrationService
     {
         try
         {
-            var response = await _apiClient.BySessionAsync(sessionId);
+            var response = await _apiClient.GetRegistrationsBySessionAsync(sessionId);
             return response ?? new List<EventRegistrationListDto>();
         }
         catch (ApiException ex)
@@ -188,7 +188,7 @@ public class EventRegistrationService : IEventRegistrationService
     {
         try
         {
-            var response = await _apiClient.ByUserAsync(userId);
+            var response = await _apiClient.GetRegistrationsByUserAsync(userId);
             return response ?? new List<EventRegistrationListDto>();
         }
         catch (ApiException ex)

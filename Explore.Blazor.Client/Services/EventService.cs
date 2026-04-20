@@ -345,9 +345,9 @@ public partial class EventService : IEventService
         }
     }
 
-    public Task<ICollection<EventTypeListDto>> GetEventTypesAsync() => _apiClient.EventtypeAllAsync();
+    public Task<ICollection<EventTypeListDto>> GetEventTypesAsync() => _apiClient.GetEventTypesAsync();
 
-    public Task<ICollection<EventFormatListDto>> GetEventFormatsAsync() => _apiClient.EventformatAllAsync();
+    public Task<ICollection<EventFormatListDto>> GetEventFormatsAsync() => _apiClient.GetEventFormatOptionsAsync();
 
     public async Task<ICollection<EventSessionListDto>> GetAllSessionsAsync()
     {
@@ -370,17 +370,17 @@ public partial class EventService : IEventService
         try { await _apiClient.DeleteEventSessionAsync(sessionId); return true; } catch { return false; }
     }
 
-    public Task<BaseCommandResponseOfGuid> RegisterForEventSessionAsync(CreateEventRegistrationDto registration) => _apiClient.EventregistrationPOSTAsync(registration);
+    public Task<BaseCommandResponseOfGuid> RegisterForEventSessionAsync(CreateEventRegistrationDto registration) => _apiClient.CreateEventRegistrationAsync(registration);
 
-    public Task<ICollection<EventRegistrationListDto>> GetRegistrationsForSessionAsync(Guid sessionId) => _apiClient.BySessionAsync(sessionId);
+    public Task<ICollection<EventRegistrationListDto>> GetRegistrationsForSessionAsync(Guid sessionId) => _apiClient.GetRegistrationsBySessionAsync(sessionId);
 
-    public Task<ICollection<EventRegistrationListDto>> GetRegistrationsByUserAsync(Guid userId) => _apiClient.ByUserAsync(userId);
+    public Task<ICollection<EventRegistrationListDto>> GetRegistrationsByUserAsync(Guid userId) => _apiClient.GetRegistrationsByUserAsync(userId);
 
-    public Task<BaseCommandResponseOfGuid> UpdateRegistrationAsync(UpdateEventRegistrationDto registration) => _apiClient.EventregistrationPUTAsync(registration.Id ?? Guid.Empty, registration);
+    public Task<BaseCommandResponseOfGuid> UpdateRegistrationAsync(UpdateEventRegistrationDto registration) => _apiClient.UpdateEventRegistrationAsync(registration.Id ?? Guid.Empty, registration);
 
     public async Task<bool> CancelEventRegistrationAsync(Guid registrationId)
     {
-        try { await _apiClient.EventregistrationDELETEAsync(registrationId); return true; } catch { return false; }
+        try { await _apiClient.DeleteEventRegistrationAsync(registrationId); return true; } catch { return false; }
     }
 
     public async Task<EventSessionDto?> GetSessionByIdAsync(Guid sessionId)

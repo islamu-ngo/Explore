@@ -16,11 +16,11 @@ public class MadhabService : IMadhabService
 
     public async Task<ICollection<MadhabListDto>> GetMadhabsAsync()
     {
-        return await _client.MadhabAllAsync();
+        return await _client.GetMadhabsAsync();
     }
 
     public async Task<MadhabDto> GetMadhabByIdAsync(int id)
     {
-        return await _client.MadhabAsync(id);
+        return await _client.GetMadhabByIdAsync(id);
     }
 }

@@ -124,7 +124,7 @@ public class TagService : ITagService
     {
         try
         {
-            return await _apiClient.WithTagsAsync() ?? new List<TagTypeWithTagsDto>();
+            return await _apiClient.GetTagTypesWithTagsAsync() ?? new List<TagTypeWithTagsDto>();
         }
         catch (ApiException ex)
         {

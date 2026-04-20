@@ -16,12 +16,12 @@ public class EventStatusService : IEventStatusService
 
     public async Task<ICollection<EventStatusListDto>> GetEventStatusesAsync()
     {
-        return await _client.EventstatusAllAsync();
+        return await _client.GetEventStatusesAsync();
     }
 
     public async Task<EventStatusDto> GetEventStatusByIdAsync(int id)
     {
-        return await _client.EventstatusAsync(id);
+        return await _client.GetEventStatusByIdAsync(id);
     }
 }
 

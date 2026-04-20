@@ -129,7 +129,7 @@ public class AdminService : IAdminService
         try
         {
             var updateDto = new UpdateOrganizationApprovalStatusDto { ApprovalStatusId = ApprovalStatusId.Approved };
-            await _apiClient.UpdatestatustypeAsync(id, updateDto);
+            await _apiClient.UpdateOrganizationApprovalStatusAsync(id, updateDto);
             return true;
         }
         catch (ApiException ex) when (ex.StatusCode is 204 or 200)
@@ -153,7 +153,7 @@ public class AdminService : IAdminService
         try
         {
             var updateDto = new UpdateOrganizationApprovalStatusDto { ApprovalStatusId = ApprovalStatusId.Rejected };
-            await _apiClient.UpdatestatustypeAsync(id, updateDto);
+            await _apiClient.UpdateOrganizationApprovalStatusAsync(id, updateDto);
             return true;
         }
         catch (ApiException ex) when (ex.StatusCode is 204 or 200)
@@ -177,7 +177,7 @@ public class AdminService : IAdminService
         try
         {
             var updateDto = new UpdateOrganizationApprovalStatusDto { ApprovalStatusId = ApprovalStatusId.Pending };
-            await _apiClient.UpdatestatustypeAsync(id, updateDto);
+            await _apiClient.UpdateOrganizationApprovalStatusAsync(id, updateDto);
             return true;
         }
         catch (ApiException ex) when (ex.StatusCode is 204 or 200)
@@ -200,7 +200,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.EventtypeAllAsync();
+            return await _apiClient.GetEventTypesAsync();
         }
         catch (ApiException ex)
         {
@@ -218,7 +218,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.AudiencegenderAllAsync();
+            return await _apiClient.GetAudienceGenderOptionsAsync();
         }
         catch (ApiException ex)
         {
@@ -236,7 +236,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.AudienceageAllAsync();
+            return await _apiClient.GetAudienceAgeOptionsAsync();
         }
         catch (ApiException ex)
         {
@@ -254,7 +254,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.EventformatAllAsync();
+            return await _apiClient.GetEventFormatOptionsAsync();
         }
         catch (ApiException ex)
         {
@@ -272,7 +272,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.EventstatusAllAsync();
+            return await _apiClient.GetEventStatusesAsync();
         }
         catch (ApiException ex)
         {
@@ -290,7 +290,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.MadhabAllAsync();
+            return await _apiClient.GetMadhabsAsync();
         }
         catch (ApiException ex)
         {
@@ -308,7 +308,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.VisibilitytypeAllAsync();
+            return await _apiClient.GetVisibilityTypesAsync();
         }
         catch (ApiException ex)
         {
@@ -326,7 +326,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.RegistrationmodeAllAsync();
+            return await _apiClient.GetRegistrationModesAsync();
         }
         catch (ApiException ex)
         {
@@ -344,7 +344,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.LanguageAllAsync();
+            return await _apiClient.GetLanguagesAsync();
         }
         catch (ApiException ex)
         {
@@ -362,7 +362,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.OrganizationpositionAllAsync();
+            return await _apiClient.GetOrganizationPositionsAsync();
         }
         catch (Exception ex)
         {
@@ -375,7 +375,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.ActortypeAllAsync();
+            return await _apiClient.GetActorTypesAsync();
         }
         catch (ApiException ex)
         {
@@ -393,7 +393,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.ApprovalstatusAllAsync();
+            return await _apiClient.GetApprovalStatusOptionsAsync();
         }
         catch (ApiException ex)
         {
@@ -411,7 +411,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.FiletypeAllAsync();
+            return await _apiClient.GetFileTypesAsync();
         }
         catch (ApiException ex)
         {
@@ -429,7 +429,7 @@ public class AdminService : IAdminService
     {
         try
         {
-            return await _apiClient.DidcustodytypeAllAsync();
+            return await _apiClient.GetDidCustodyTypeOptionsAsync();
         }
         catch (ApiException ex)
         {

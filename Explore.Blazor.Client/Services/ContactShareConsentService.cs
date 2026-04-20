@@ -22,7 +22,7 @@ public class ContactShareConsentService : IContactShareConsentService
     {
         try
         {
-            return await _apiClient.CheckConsentForOrganizerAsync(organizerActorId, ct);
+            return await _apiClient.CheckConsentForOrganizerAsync(organizerActorId, cancellationToken: ct);
         }
         catch (ApiException ex) when (ex.StatusCode == 404)
         {
@@ -39,7 +39,7 @@ public class ContactShareConsentService : IContactShareConsentService
     {
         try
         {
-            var consents = await _apiClient.GetUserContactShareConsentsAsync(ct);
+            var consents = await _apiClient.GetUserContactShareConsentsAsync(cancellationToken: ct);
             return consents?.Select(c => new UserConsentViewModel
             {
                 Id = c.Id ?? Guid.Empty,
@@ -65,7 +65,7 @@ public class ContactShareConsentService : IContactShareConsentService
     {
         try
         {
-            var result = await _apiClient.WithdrawContactShareConsentAsync(consentId, ct);
+            var result = await _apiClient.WithdrawContactShareConsentAsync(consentId, cancellationToken: ct);
             return result?.Success ?? false;
         }
         catch (Exception ex)
@@ -85,7 +85,7 @@ public class ContactShareConsentService : IContactShareConsentService
     {
         try
         {
-            var result = await _apiClient.GetOrganizationSharedContactsAsync(organizationActorId, eventId, searchEmail, pageNumber, pageSize, ct);
+            var result = await _apiClient.GetOrganizationSharedContactsAsync(organizationActorId, eventId, searchEmail, pageNumber, pageSize, cancellationToken: ct);
             return result?.Items?.Select(c => new SharedContactViewModel
             {
                 ConsentId = c.ConsentId ?? Guid.Empty,
@@ -111,7 +111,7 @@ public class ContactShareConsentService : IContactShareConsentService
     {
         try
         {
-            var result = await _apiClient.ExportOrganizationSharedContactsAsync(organizationActorId, format, eventId, ct);
+            var result = await _apiClient.ExportOrganizationSharedContactsAsync(organizationActorId, format, eventId, cancellationToken: ct);
             if (result?.FileContents == null || result.FileContents.Length == 0) return null;
 
             var extension = format.Equals("tsv", StringComparison.OrdinalIgnoreCase) ? "tsv" : "csv";

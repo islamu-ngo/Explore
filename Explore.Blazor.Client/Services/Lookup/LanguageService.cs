@@ -16,11 +16,11 @@ public class LanguageService : ILanguageService
 
     public async Task<ICollection<LanguageListDto>> GetLanguagesAsync()
     {
-        return await _client.LanguageAllAsync();
+        return await _client.GetLanguagesAsync();
     }
 
     public async Task<LanguageDto> GetLanguageByIdAsync(int id)
     {
-        return await _client.LanguageAsync(id);
+        return await _client.GetLanguageByIdAsync(id);
     }
 }

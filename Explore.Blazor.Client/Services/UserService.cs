@@ -50,7 +50,7 @@ public class UserService : IUserService
         try
         {
             _logger.LogInformation("Syncing user");
-            var response = await _apiClient.SyncAsync();
+            var response = await _apiClient.SyncUserAsync();
             _logger.LogInformation("Sync result: Success={Success}, Id={Id}", response?.Success, response?.Id);
             return response;
         }
@@ -93,7 +93,7 @@ public class UserService : IUserService
         try
         {
             _logger.LogInformation("Fetching current user");
-            var user = await _apiClient.UserGET2Async();
+            var user = await _apiClient.GetCurrentUserAsync();
             _logger.LogInformation("User found: {Email}", user?.Email);
             return user;
         }
@@ -109,7 +109,7 @@ public class UserService : IUserService
                 {
                     _logger.LogInformation("Auto-sync successful, retrying GetCurrentUser");
                     await Task.Delay(100); // Wait for DB write to complete
-                    return await _apiClient.UserGET2Async();
+                    return await _apiClient.GetCurrentUserAsync();
                 }
                 else
                 {
@@ -146,7 +146,7 @@ public class UserService : IUserService
         try
         {
             _logger.LogInformation("Updating user");
-            return await _apiClient.UserPUT2Async(userDto);
+            return await _apiClient.UpdateCurrentUserAsync(userDto);
         }
         catch (ApiException ex)
         {
@@ -166,7 +166,7 @@ public class UserService : IUserService
         try
         {
             _logger.LogInformation("Deleting user");
-            await _apiClient.UserDELETEAsync();
+            await _apiClient.DeleteCurrentUserAsync();
             return true;
         }
         catch (ApiException ex)
