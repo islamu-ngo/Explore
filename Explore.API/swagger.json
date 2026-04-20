@@ -172,7 +172,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Authenticated"
       }
     },
     "/api/actor/{id}": {
@@ -363,7 +363,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Authenticated"
       },
       "delete": {
         "tags": [
@@ -457,7 +457,7 @@
             }
           }
         },
-        "x-endpoint-class": "Public"
+        "x-endpoint-class": "Authenticated"
       }
     },
     "/api/actor/by-did/{did}": {

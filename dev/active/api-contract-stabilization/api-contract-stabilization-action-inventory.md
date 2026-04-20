@@ -5,7 +5,7 @@
 
 # API Contract Action Inventory
 
-**Generated:** 2026-04-20 15:52:45Z (UTC)
+**Generated:** 2026-04-20 18:43:02Z (UTC)
 **Source:** `/openapi/event-api.json`
 **Governed by:** [docs/GOVERNANCE.md#api-contract-rules](../../../docs/GOVERNANCE.md#api-contract-rules)
 
@@ -17,7 +17,7 @@
 - Operation IDs with placeholder fallback pattern (ends in digit or `\dAsync`): **0**
 - URL-segment-versioned paths (`^/api/v\d`, banned by governance): **0**
 - Operations missing `x-endpoint-class` extension: **0**
-- Classification breakdown: `Admin`=6, `Authenticated`=228, `Public`=129
+- Classification breakdown: `Admin`=6, `Authenticated`=231, `Public`=126
 
 ## Operations
 
@@ -25,12 +25,12 @@
 |---:|---|---|---|---|---|---|---|---|
 | 1 | `/api/a/t` | `POST` | `RelayAnalyticsEvent` | Relay Browser Analytics Event | AnalyticsRelay | _(Phase 1.4)_ | `Public` | no |
 | 2 | `/api/actor` | `GET` | `GetActors` | Get all Actors | Actor | _(Phase 1.4)_ | `Public` | no |
-| 3 | `/api/actor` | `POST` | `CreateActor` | Create Actor | Actor | _(Phase 1.4)_ | `Public` | no |
+| 3 | `/api/actor` | `POST` | `CreateActor` | Create Actor | Actor | _(Phase 1.4)_ | `Authenticated` | no |
 | 4 | `/api/actor/by-did/{did}` | `GET` | `GetActorByDid` | Get Actor by DID | Actor | _(Phase 1.4)_ | `Public` | no |
 | 5 | `/api/actor/by-tenant/{tenantId}` | `GET` | `GetActorsByTenant` | Get Actors by Tenant | Actor | _(Phase 1.4)_ | `Public` | no |
 | 6 | `/api/actor/{id}` | `GET` | `GetActorById` | Get Actor Details | Actor | _(Phase 1.4)_ | `Public` | no |
-| 7 | `/api/actor/{id}` | `PUT` | `UpdateActor` | Update Actor | Actor | _(Phase 1.4)_ | `Public` | no |
-| 8 | `/api/actor/{id}` | `DELETE` | `DeleteActor` | Delete Actor | Actor | _(Phase 1.4)_ | `Public` | no |
+| 7 | `/api/actor/{id}` | `PUT` | `UpdateActor` | Update Actor | Actor | _(Phase 1.4)_ | `Authenticated` | no |
+| 8 | `/api/actor/{id}` | `DELETE` | `DeleteActor` | Delete Actor | Actor | _(Phase 1.4)_ | `Authenticated` | no |
 | 9 | `/api/actorkeystore` | `GET` | `GetActorKeyStores` | Get all Actor Key Stores | ActorKeyStore | _(Phase 1.4)_ | `Authenticated` | no |
 | 10 | `/api/actorkeystore` | `POST` | `CreateActorKeyStore` | Create new Actor Key Store | ActorKeyStore | _(Phase 1.4)_ | `Authenticated` | no |
 | 11 | `/api/actorkeystore/{id}` | `GET` | `GetActorKeyStoreById` | Get Actor Key Store by ID | ActorKeyStore | _(Phase 1.4)_ | `Authenticated` | no |

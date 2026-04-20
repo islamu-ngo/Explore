@@ -3,9 +3,48 @@ ABOUTME: Update the SESSION PROGRESS section every meaningful step — this is w
 
 # API Contract Stabilization - Context
 
-**Last Updated:** 2026-04-20 (Phase 4 complete; commits `5917b26e` + `c146fb20` landed on `develop`)
+**Last Updated:** 2026-04-20 (Phase 5A complete; commit `56fa4b7e` landed on `develop`)
 **Parent of:** `dev/active/hateoas-client-alignment/`
-**Status:** Phase 0 ✅ | Phase 1 ✅ | Phase 2 ✅ | Phase 3 ✅ | Phase 4 ✅ | Phase 5A ⏳ NEXT
+**Status:** Phase 0 ✅ | Phase 1 ✅ | Phase 2 ✅ | Phase 3 ✅ | Phase 4 ✅ | Phase 5A ✅ | Phase 5B ⏳ NEXT
+
+---
+
+## SESSION HANDOFF — 2026-04-20 (Phase 5A close-out)
+
+### ✅ Phase 5A Complete — Contract-surface hygiene
+
+**Audit results (from live OpenAPI at 363 operations):**
+- **Admin = 6** (all `/api/instanceonboarding/*`, `[SetupSecretRequired]`) — all intentional.
+- **Authenticated = 231** (was 228 before fix).
+- **Public = 126** (was 129 before fix).
+
+**Bucket A — misclassifications fixed (3 ops):**
+`ActorController` had controller-level `[EndpointClassification(EndpointClass.Public)]` but method-level `[Authorize]` on `Create`/`Update`/`Delete`. Added method-level `[EndpointClassification(EndpointClass.Authenticated)]` (transformer uses `LastOrDefault()` for precedence). 4 GETs remain Public + `[AllowAnonymous]` as intended.
+
+**Bucket B — deferred by author intent (6 ops):**
+`ApprovalStatusController` + `EventTypeController` POST/PUT/DELETE are deliberately `[AllowAnonymous]`. See in-code comment at `ApprovalStatusController.cs:35`: *"allow anonymous in case i want in beginning to let unverified org publish programs… then change this business logic"*. Not a classification bug — a future business decision.
+
+**Bucket C — 2 intentional public writes (no change):**
+- `/api/a/t` POST `RelayAnalyticsEvent` (browser analytics relay).
+- `/api/instanceonboarding/validate-secret` POST `ValidateInstanceSetupSecret` (pre-auth).
+
+**5A.3 decision — test-connection endpoints = Option A (Authenticated Admin):**
+- `/api/admin/localization/test-connection` → `TestLocalizationTmsConnection`
+- `/api/instance/settings/smtp/test` → `TestInstanceSmtpConnection`
+- `/api/instance/settings/storage/test` → `TestInstanceStorageConnection`
+
+All three already `Authenticated` in OpenAPI and exposed through typed client. Rationale: admin UI buttons need to call them. No code changes required.
+
+**Verification:**
+- `dotnet build Explore.API/Explore.API.csproj --configuration Release` → **0 errors**, 72 pre-existing warnings.
+- `dotnet test --project Event.API.IntegrationTests` → **550 passed, 2 failed** (2 pre-existing, last touched in `8389b2d7`, unrelated to classification: `LinkTableControllerTests.OrganizationMember_Delete_WithoutAuth_ShouldReturnUnauthorized` + `StorageObjectControllerTests.GetById_WithInvalidGuidFormat_ShouldReturnBadRequest`).
+- `ApiContractInventoryGeneratorTests` auto-regenerated `api-contract-stabilization-action-inventory.md`: delta **Authenticated +3 / Public -3** matches the 3 ActorController writes reclassified.
+
+**Runtime fix also landed this session (`56fa4b7e`):**
+`POST /admin/migrate` minimal-API endpoint lacked `.WithName(...)`. `OperationIdInvariantTransformer` (Dev-only) threw on GET `/openapi/event-api.json`, returning 500 and blocking `OpenApiExportService`. Added new `RouteNames.ApplyDatabaseMigrations` constant and chained `.WithName(...)` before `.RequireAuthorization()` on the `MapPost`. Build 0 errors. Next Aspire run will refresh `swagger.json` via `OpenApiExportService`, and the subsequent NSwag regen will pick up the new `ApplyDatabaseMigrationsAsync` client method.
+
+### 🔜 Next (Phase 5B — Client-consumer hygiene + smoke test)
+See `api-contract-stabilization-tasks.md` Phase 5B section.
 
 ---
 

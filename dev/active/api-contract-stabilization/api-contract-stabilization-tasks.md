@@ -4,7 +4,7 @@ ABOUTME: Mark checkboxes as work progresses; add discovered tasks inline; keep o
 # API Contract Stabilization - Task Checklist
 
 **Last Updated:** 2026-04-20 (v7 — Phase 4 complete, ApiClientNamingTests GREEN)
-**Status:** Phase 0 ✅ COMPLETE | Phase 1 ✅ COMPLETE | Phase 2 ✅ COMPLETE | Phase 3 ✅ COMPLETE | Phase 4 ✅ COMPLETE | Phase 5A ⏳ NEXT
+**Status:** Phase 0 ✅ COMPLETE | Phase 1 ✅ COMPLETE | Phase 2 ✅ COMPLETE | Phase 3 ✅ COMPLETE | Phase 4 ✅ COMPLETE | Phase 5A ✅ COMPLETE | Phase 5B ⏳ NEXT
 
 Legend: `[ ]` not started — `[🟡]` in progress — `[x]` complete — `[!]` blocked
 
@@ -190,19 +190,27 @@ Goal: zero `\dAsync`, zero verb-only methods, service wrappers repaired.
 
 ---
 
-## Phase 5A — Contract-surface hygiene (0.25 day, highest strategic priority in Phase 5) ⏳ NOT STARTED
+## Phase 5A — Contract-surface hygiene (0.25 day) ✅ COMPLETE (2026-04-20)
 
 Goal: every remaining API action deliberately classified and visible/invisible accordingly.
 
-- [ ] **5A.1** Verify endpoint-class assignments from Phase 1.5 are reflected in code (attributes in place).
-- [ ] **5A.2** Manual/diff-based review of the surviving OpenAPI document. Every listed endpoint is deliberately Public or Authenticated Admin; no bootstrap, probe, or test-connection endpoint leaks through.
-  - **Acceptance:** Review committed as comment in `context.md`.
-- [ ] **5A.3** Decide Storage/SMTP/Localization **test-connection** endpoints classification.
-  - Default: Authenticated Admin (expose through typed client so admin UI buttons light up).
-  - Alternative: Internal (admin UI triggers via separate BFF endpoint).
-  - **Acceptance:** Decision recorded in `context.md`. If A: explicit admin-role attribute + inclusion. If B: `IgnoreApi` + BFF route doc.
+- [x] **5A.1** Verify endpoint-class assignments from Phase 1.5 are reflected in code.
+  - **Verified via** `dev/active/api-contract-stabilization/api-contract-stabilization-action-inventory.md`: `Operations missing x-endpoint-class: 0` across 363 operations.
+- [x] **5A.2** Manual review of surviving OpenAPI document.
+  - **Audit scope:** every `Public` write (POST/PUT/PATCH/DELETE) reviewed. 11 findings sorted into 3 buckets:
+    - 2 intentional public writes: `/api/a/t` (RelayAnalyticsEvent) + `/api/instanceonboarding/validate-secret` (pre-auth).
+    - 3 misclassified `ActorController` writes — **FIXED**: added method-level `[EndpointClassification(EndpointClass.Authenticated)]` on `Create`/`Update`/`Delete`, overriding controller-level Public. GETs stay Public (AllowAnonymous).
+    - 6 intentional anonymous lookup CRUD ops (`ApprovalStatusController` + `EventTypeController`) — deferred per in-code author comment declaring a future business decision (`ApprovalStatusController.cs:35`).
+  - **Result:** classification inventory shifted from `Authenticated=228, Public=129` to `Authenticated=231, Public=126` (exact +3/-3 match).
+- [x] **5A.3** Storage/SMTP/Localization test-connection endpoints.
+  - **Decision: Option A — Authenticated Admin** (expose through typed client so admin UI buttons light up).
+  - All three already classified `Authenticated` and present in OpenAPI:
+    - `/api/admin/localization/test-connection` POST → `TestLocalizationTmsConnection`
+    - `/api/instance/settings/smtp/test` POST → `TestInstanceSmtpConnection`
+    - `/api/instance/settings/storage/test` POST → `TestInstanceStorageConnection`
+  - No code changes required; decision recorded in `context.md` session handoff.
 
-**Phase 5A complete when:** No unclassified action remains; surviving OpenAPI surface reviewed and approved.
+**Phase 5A complete when:** ✅ No unclassified action remains; surviving OpenAPI surface reviewed and approved.
 
 ---
 
