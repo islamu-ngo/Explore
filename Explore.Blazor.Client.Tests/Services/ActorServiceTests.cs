@@ -31,7 +31,7 @@ public class ActorServiceTests
         var actors = new List<ActorListDto> { new(), new() };
         var halResponse = CreateActorCollectionResponse(actors);
 
-        _apiClient.GetActorsAsync(ApiConstants.FirstPage, ApiConstants.DefaultPageSize, Arg.Any<CancellationToken>())
+        _apiClient.GetActorsAsync(ApiConstants.FirstPage, ApiConstants.DefaultPageSize, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(halResponse);
 
         // Act
@@ -45,7 +45,7 @@ public class ActorServiceTests
     public async Task GetActorsAsync_ReturnsEmptyList_WhenApiReturnsNull()
     {
         // Arrange
-        _apiClient.GetActorsAsync(ApiConstants.FirstPage, ApiConstants.DefaultPageSize, Arg.Any<CancellationToken>())
+        _apiClient.GetActorsAsync(ApiConstants.FirstPage, ApiConstants.DefaultPageSize, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((HalCollectionResourceOfActorListDto?)null);
 
         // Act
@@ -59,7 +59,7 @@ public class ActorServiceTests
     public async Task GetActorsAsync_Throws_WhenApiThrows()
     {
         // Arrange
-        _apiClient.GetActorsAsync(ApiConstants.FirstPage, ApiConstants.DefaultPageSize, Arg.Any<CancellationToken>())
+        _apiClient.GetActorsAsync(ApiConstants.FirstPage, ApiConstants.DefaultPageSize, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
 
         // Act & Assert
@@ -79,7 +79,7 @@ public class ActorServiceTests
         var actorId = Guid.NewGuid();
         var halResponse = new HalResourceOfActorDto { Id = actorId };
 
-        _apiClient.GetActorByIdAsync(actorId, Arg.Any<CancellationToken>()).Returns(halResponse);
+        _apiClient.GetActorByIdAsync(actorId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(halResponse);
         _apiClient.GetActorByIdAsync(actorId).Returns(halResponse);
 
         // Act
@@ -96,7 +96,7 @@ public class ActorServiceTests
         // Arrange
         var actorId = Guid.NewGuid();
 
-        _apiClient.GetActorByIdAsync(actorId, Arg.Any<CancellationToken>()).Returns((HalResourceOfActorDto?)null);
+        _apiClient.GetActorByIdAsync(actorId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns((HalResourceOfActorDto?)null);
         _apiClient.GetActorByIdAsync(actorId).Returns((HalResourceOfActorDto?)null);
 
         // Act
@@ -112,7 +112,7 @@ public class ActorServiceTests
         // Arrange
         var actorId = Guid.NewGuid();
 
-        _apiClient.GetActorByIdAsync(actorId, Arg.Any<CancellationToken>())
+        _apiClient.GetActorByIdAsync(actorId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
         _apiClient.GetActorByIdAsync(actorId)
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));

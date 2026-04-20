@@ -26,7 +26,7 @@ public class MadhabServiceTests
     {
         // Arrange
         var items = new List<MadhabListDto> { new() };
-        _apiClient.MadhabAllAsync(Arg.Any<CancellationToken>()).Returns(items);
+        _apiClient.GetMadhabsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(items);
 
         // Act
         var result = await _service.GetMadhabsAsync();
@@ -39,7 +39,7 @@ public class MadhabServiceTests
     public async Task GetMadhabsAsync_Throws_WhenApiThrows()
     {
         // Arrange
-        _apiClient.MadhabAllAsync(Arg.Any<CancellationToken>())
+        _apiClient.GetMadhabsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
 
         // Act & Assert
@@ -59,8 +59,8 @@ public class MadhabServiceTests
         const int id = 1;
         var item = new MadhabDto();
 
-        _apiClient.MadhabAsync(id, Arg.Any<CancellationToken>()).Returns(item);
-        _apiClient.MadhabAsync(id).Returns(item);
+        _apiClient.GetMadhabByIdAsync(id, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(item);
+        _apiClient.GetMadhabByIdAsync(id).Returns(item);
 
         // Act
         var result = await _service.GetMadhabByIdAsync(id);
@@ -75,9 +75,9 @@ public class MadhabServiceTests
         // Arrange
         const int id = 1;
 
-        _apiClient.MadhabAsync(id, Arg.Any<CancellationToken>())
+        _apiClient.GetMadhabByIdAsync(id, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
-        _apiClient.MadhabAsync(id)
+        _apiClient.GetMadhabByIdAsync(id)
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
 
         // Act & Assert

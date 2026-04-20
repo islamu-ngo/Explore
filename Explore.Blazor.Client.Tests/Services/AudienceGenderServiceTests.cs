@@ -26,7 +26,7 @@ public class AudienceGenderServiceTests
     {
         // Arrange
         var items = new List<AudienceGenderListDto> { new() };
-        _apiClient.AudiencegenderAllAsync(Arg.Any<CancellationToken>()).Returns(items);
+        _apiClient.GetAudienceGenderOptionsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(items);
 
         // Act
         var result = await _service.GetAudienceGendersAsync();
@@ -39,7 +39,7 @@ public class AudienceGenderServiceTests
     public async Task GetAudienceGendersAsync_Throws_WhenApiThrows()
     {
         // Arrange
-        _apiClient.AudiencegenderAllAsync(Arg.Any<CancellationToken>())
+        _apiClient.GetAudienceGenderOptionsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
 
         // Act & Assert
@@ -59,8 +59,8 @@ public class AudienceGenderServiceTests
         const int id = 1;
         var item = new AudienceGenderDto();
 
-        _apiClient.AudiencegenderAsync(id, Arg.Any<CancellationToken>()).Returns(item);
-        _apiClient.AudiencegenderAsync(id).Returns(item);
+        _apiClient.GetAudienceGenderOptionByIdAsync(id, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(item);
+        _apiClient.GetAudienceGenderOptionByIdAsync(id).Returns(item);
 
         // Act
         var result = await _service.GetAudienceGenderByIdAsync(id);
@@ -75,9 +75,9 @@ public class AudienceGenderServiceTests
         // Arrange
         const int id = 1;
 
-        _apiClient.AudiencegenderAsync(id, Arg.Any<CancellationToken>())
+        _apiClient.GetAudienceGenderOptionByIdAsync(id, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
-        _apiClient.AudiencegenderAsync(id)
+        _apiClient.GetAudienceGenderOptionByIdAsync(id)
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
 
         // Act & Assert

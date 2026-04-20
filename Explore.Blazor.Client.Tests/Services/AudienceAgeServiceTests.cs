@@ -26,7 +26,7 @@ public class AudienceAgeServiceTests
     {
         // Arrange
         var items = new List<AudienceAgeListDto> { new() };
-        _apiClient.AudienceageAllAsync(Arg.Any<CancellationToken>()).Returns(items);
+        _apiClient.GetAudienceAgeOptionsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(items);
 
         // Act
         var result = await _service.GetAudienceAgesAsync();
@@ -39,7 +39,7 @@ public class AudienceAgeServiceTests
     public async Task GetAudienceAgesAsync_Throws_WhenApiThrows()
     {
         // Arrange
-        _apiClient.AudienceageAllAsync(Arg.Any<CancellationToken>())
+        _apiClient.GetAudienceAgeOptionsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
 
         // Act & Assert
@@ -59,8 +59,8 @@ public class AudienceAgeServiceTests
         const int id = 1;
         var item = new AudienceAgeDto();
 
-        _apiClient.AudienceageAsync(id, Arg.Any<CancellationToken>()).Returns(item);
-        _apiClient.AudienceageAsync(id).Returns(item);
+        _apiClient.GetAudienceAgeOptionByIdAsync(id, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(item);
+        _apiClient.GetAudienceAgeOptionByIdAsync(id).Returns(item);
 
         // Act
         var result = await _service.GetAudienceAgeByIdAsync(id);
@@ -75,9 +75,9 @@ public class AudienceAgeServiceTests
         // Arrange
         const int id = 1;
 
-        _apiClient.AudienceageAsync(id, Arg.Any<CancellationToken>())
+        _apiClient.GetAudienceAgeOptionByIdAsync(id, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
-        _apiClient.AudienceageAsync(id)
+        _apiClient.GetAudienceAgeOptionByIdAsync(id)
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
 
         // Act & Assert

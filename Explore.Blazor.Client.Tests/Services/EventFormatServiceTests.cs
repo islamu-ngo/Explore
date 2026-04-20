@@ -26,7 +26,7 @@ public class EventFormatServiceTests
     {
         // Arrange
         var items = new List<EventFormatListDto> { new() };
-        _apiClient.EventformatAllAsync(Arg.Any<CancellationToken>()).Returns(items);
+        _apiClient.GetEventFormatOptionsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(items);
 
         // Act
         var result = await _service.GetEventFormatsAsync();
@@ -39,7 +39,7 @@ public class EventFormatServiceTests
     public async Task GetEventFormatsAsync_Throws_WhenApiThrows()
     {
         // Arrange
-        _apiClient.EventformatAllAsync(Arg.Any<CancellationToken>())
+        _apiClient.GetEventFormatOptionsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
 
         // Act & Assert
@@ -59,8 +59,8 @@ public class EventFormatServiceTests
         const int id = 1;
         var item = new EventFormatDto();
 
-        _apiClient.EventformatAsync(id, Arg.Any<CancellationToken>()).Returns(item);
-        _apiClient.EventformatAsync(id).Returns(item);
+        _apiClient.GetEventFormatOptionByIdAsync(id, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(item);
+        _apiClient.GetEventFormatOptionByIdAsync(id).Returns(item);
 
         // Act
         var result = await _service.GetEventFormatByIdAsync(id);
@@ -75,9 +75,9 @@ public class EventFormatServiceTests
         // Arrange
         const int id = 1;
 
-        _apiClient.EventformatAsync(id, Arg.Any<CancellationToken>())
+        _apiClient.GetEventFormatOptionByIdAsync(id, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
-        _apiClient.EventformatAsync(id)
+        _apiClient.GetEventFormatOptionByIdAsync(id)
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
 
         // Act & Assert

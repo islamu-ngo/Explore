@@ -40,7 +40,7 @@ public class LocationServiceTests
         var locations = ComponentDataBuilder.LocationListDto.Generate(3);
         var halResponse = CreateLocationCollectionResponse(locations);
 
-        _apiClient.GetLocationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetLocationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(halResponse);
 
         // Act
@@ -55,7 +55,7 @@ public class LocationServiceTests
     public async Task GetAllLocationsAsync_ReturnsEmptyList_WhenApiReturnsNull()
     {
         // Arrange
-        _apiClient.GetLocationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetLocationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((HalCollectionResourceOfLocationListDto?)null);
 
         // Act
@@ -69,7 +69,7 @@ public class LocationServiceTests
     public async Task GetAllLocationsAsync_ReturnsEmptyList_WhenApiThrows()
     {
         // Arrange
-        _apiClient.GetLocationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetLocationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
 
         // Act
@@ -84,7 +84,7 @@ public class LocationServiceTests
     {
         // Arrange
         var halResponse = CreateLocationCollectionResponse(new List<LocationListDto>());
-        _apiClient.GetLocationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetLocationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(halResponse);
 
         // Act
@@ -94,7 +94,7 @@ public class LocationServiceTests
         await _apiClient.Received(1).GetLocationsAsync(
             ApiConstants.FirstPage,
             ApiConstants.DefaultPageSize,
-            Arg.Any<CancellationToken>());
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     #endregion
@@ -110,7 +110,7 @@ public class LocationServiceTests
         var locations = ComponentDataBuilder.LocationListDto.Generate(2);
         var halResponse = CreateLocationCollectionResponse(locations);
 
-        _apiClient.GetLocationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetLocationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(halResponse);
 
         // Act
@@ -142,7 +142,7 @@ public class LocationServiceTests
             Postcode = "SW1A 1AA"
         };
 
-        _apiClient.GetLocationByIdAsync(locationId, Arg.Any<CancellationToken>())
+        _apiClient.GetLocationByIdAsync(locationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(halResponse);
 
         // Act
@@ -159,7 +159,7 @@ public class LocationServiceTests
     {
         // Arrange
         var locationId = Guid.NewGuid();
-        _apiClient.GetLocationByIdAsync(locationId, Arg.Any<CancellationToken>())
+        _apiClient.GetLocationByIdAsync(locationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Not Found", 404, null, null, null));
 
         // Act
@@ -174,7 +174,7 @@ public class LocationServiceTests
     {
         // Arrange
         var locationId = Guid.NewGuid();
-        _apiClient.GetLocationByIdAsync(locationId, Arg.Any<CancellationToken>())
+        _apiClient.GetLocationByIdAsync(locationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
 
         // Act
@@ -204,7 +204,7 @@ public class LocationServiceTests
         };
         var expectedResponse = ComponentDataBuilder.SuccessResponse();
 
-        _apiClient.CreateLocationAsync(Arg.Any<CreateLocationDto>(), Arg.Any<CancellationToken>())
+        _apiClient.CreateLocationAsync(Arg.Any<CreateLocationDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
@@ -228,7 +228,7 @@ public class LocationServiceTests
             Timezone = "Europe/Paris"
         };
 
-        _apiClient.CreateLocationAsync(Arg.Any<CreateLocationDto>(), Arg.Any<CancellationToken>())
+        _apiClient.CreateLocationAsync(Arg.Any<CreateLocationDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Bad Request", 400, "validation error", null, null));
 
         // Act
@@ -262,7 +262,7 @@ public class LocationServiceTests
         };
         var expectedResponse = ComponentDataBuilder.SuccessResponse(locationId);
 
-        _apiClient.UpdateLocationAsync(Arg.Any<Guid>(), Arg.Any<UpdateLocationDto>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateLocationAsync(Arg.Any<Guid>(), Arg.Any<UpdateLocationDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
@@ -289,7 +289,7 @@ public class LocationServiceTests
             Timezone = "Europe/Berlin"
         };
 
-        _apiClient.UpdateLocationAsync(Arg.Any<Guid>(), Arg.Any<UpdateLocationDto>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateLocationAsync(Arg.Any<Guid>(), Arg.Any<UpdateLocationDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Bad Request", 400, "validation error", null, null));
 
         // Act
@@ -312,7 +312,7 @@ public class LocationServiceTests
     {
         // Arrange
         var locationId = Guid.NewGuid();
-        _apiClient.DeleteLocationAsync(locationId, Arg.Any<CancellationToken>())
+        _apiClient.DeleteLocationAsync(locationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
         // Act
@@ -327,7 +327,7 @@ public class LocationServiceTests
     {
         // Arrange
         var locationId = Guid.NewGuid();
-        _apiClient.DeleteLocationAsync(locationId, Arg.Any<CancellationToken>())
+        _apiClient.DeleteLocationAsync(locationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Forbidden", 403, null, null, null));
 
         // Act
@@ -351,7 +351,7 @@ public class LocationServiceTests
         var locations = ComponentDataBuilder.LocationListDto.Generate(2);
         var halResponse = CreateLocationCollectionResponse(locations);
 
-        _apiClient.GetLocationsByCityAsync(city, Arg.Any<CancellationToken>())
+        _apiClient.GetLocationsByCityAsync(city, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(halResponse);
 
         // Act
@@ -366,7 +366,7 @@ public class LocationServiceTests
     {
         // Arrange
         var city = "London";
-        _apiClient.GetLocationsByCityAsync(city, Arg.Any<CancellationToken>())
+        _apiClient.GetLocationsByCityAsync(city, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
 
         // Act
@@ -390,7 +390,7 @@ public class LocationServiceTests
         var locations = ComponentDataBuilder.LocationListDto.Generate(2);
         var halResponse = CreateLocationCollectionResponse(locations);
 
-        _apiClient.GetLocationsByCountryAsync(country, Arg.Any<CancellationToken>())
+        _apiClient.GetLocationsByCountryAsync(country, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(halResponse);
 
         // Act
@@ -405,7 +405,7 @@ public class LocationServiceTests
     {
         // Arrange
         var country = "United Kingdom";
-        _apiClient.GetLocationsByCountryAsync(country, Arg.Any<CancellationToken>())
+        _apiClient.GetLocationsByCountryAsync(country, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
 
         // Act

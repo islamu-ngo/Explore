@@ -51,7 +51,7 @@ public class NotificationServiceTests
         _apiClient.GetNotificationsAsync(
                 Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<bool?>(),
                 Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<int?>(),
-                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<CancellationToken>())
+                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
@@ -79,7 +79,7 @@ public class NotificationServiceTests
         _apiClient.GetNotificationsAsync(
                 Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<bool?>(),
                 Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<int?>(),
-                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<CancellationToken>())
+                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
@@ -88,7 +88,7 @@ public class NotificationServiceTests
         // Assert
         await _apiClient.Received(1).GetNotificationsAsync(
             1, 20, false, Arg.Any<int?>(), 2, Arg.Any<int?>(),
-            Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<CancellationToken>());
+            Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -98,7 +98,7 @@ public class NotificationServiceTests
         _apiClient.GetNotificationsAsync(
                 Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<bool?>(),
                 Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<int?>(),
-                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<CancellationToken>())
+                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Server Error", 500));
 
         // Act
@@ -116,7 +116,7 @@ public class NotificationServiceTests
         _apiClient.GetNotificationsAsync(
                 Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<bool?>(),
                 Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<int?>(),
-                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<CancellationToken>())
+                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Network failure"));
 
         // Act
@@ -142,7 +142,7 @@ public class NotificationServiceTests
         _apiClient.GetNotificationsAsync(
                 Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<bool?>(),
                 Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<int?>(),
-                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<CancellationToken>())
+                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
@@ -167,7 +167,7 @@ public class NotificationServiceTests
         _apiClient.GetNotificationsAsync(
                 Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<bool?>(),
                 Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<int?>(),
-                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<CancellationToken>())
+                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
@@ -176,7 +176,7 @@ public class NotificationServiceTests
         // Assert
         await _apiClient.Received(1).GetNotificationsAsync(
             1, 20, Arg.Any<bool?>(), null, Arg.Any<int?>(), 2,
-            Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<CancellationToken>());
+            Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -194,7 +194,7 @@ public class NotificationServiceTests
         _apiClient.GetNotificationsAsync(
                 Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<bool?>(),
                 Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<int?>(),
-                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<CancellationToken>())
+                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
@@ -203,7 +203,7 @@ public class NotificationServiceTests
         // Assert
         await _apiClient.Received(1).GetNotificationsAsync(
             1, 20, Arg.Any<bool?>(), null, Arg.Any<int?>(), Arg.Any<int?>(),
-            true, Arg.Any<bool?>(), Arg.Any<CancellationToken>());
+            true, Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -221,7 +221,7 @@ public class NotificationServiceTests
         _apiClient.GetNotificationsAsync(
                 Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<bool?>(),
                 Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<int?>(),
-                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<CancellationToken>())
+                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
@@ -230,7 +230,7 @@ public class NotificationServiceTests
         // Assert
         await _apiClient.Received(1).GetNotificationsAsync(
             1, 20, Arg.Any<bool?>(), null, Arg.Any<int?>(), Arg.Any<int?>(),
-            Arg.Any<bool?>(), true, Arg.Any<CancellationToken>());
+            Arg.Any<bool?>(), true, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -248,7 +248,7 @@ public class NotificationServiceTests
         _apiClient.GetNotificationsAsync(
                 Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<bool?>(),
                 Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<int?>(),
-                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<CancellationToken>())
+                Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
@@ -258,7 +258,7 @@ public class NotificationServiceTests
 
         // Assert
         await _apiClient.Received(1).GetNotificationsAsync(
-            1, 20, false, null, 2, 3, true, false, Arg.Any<CancellationToken>());
+            1, 20, false, null, 2, 3, true, false, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     #endregion
@@ -274,7 +274,7 @@ public class NotificationServiceTests
         var notificationId = Guid.NewGuid();
         var notification = new NotificationDto { Id = notificationId, Title = "Test Notification" };
 
-        _apiClient.GetNotificationByIdAsync(notificationId, Arg.Any<CancellationToken>())
+        _apiClient.GetNotificationByIdAsync(notificationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(notification);
 
         // Act
@@ -290,7 +290,7 @@ public class NotificationServiceTests
     {
         // Arrange
         var notificationId = Guid.NewGuid();
-        _apiClient.GetNotificationByIdAsync(notificationId, Arg.Any<CancellationToken>())
+        _apiClient.GetNotificationByIdAsync(notificationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Not Found", 404));
 
         // Act
@@ -305,7 +305,7 @@ public class NotificationServiceTests
     {
         // Arrange
         var notificationId = Guid.NewGuid();
-        _apiClient.GetNotificationByIdAsync(notificationId, Arg.Any<CancellationToken>())
+        _apiClient.GetNotificationByIdAsync(notificationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Server Error", 500));
 
         // Act
@@ -320,7 +320,7 @@ public class NotificationServiceTests
     {
         // Arrange
         var notificationId = Guid.NewGuid();
-        _apiClient.GetNotificationByIdAsync(notificationId, Arg.Any<CancellationToken>())
+        _apiClient.GetNotificationByIdAsync(notificationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Network failure"));
 
         // Act
@@ -341,7 +341,7 @@ public class NotificationServiceTests
     {
         // Arrange
         var response = new UnreadCountDto { UnreadCount = 5 };
-        _apiClient.GetUnreadNotificationCountAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetUnreadNotificationCountAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
@@ -356,14 +356,14 @@ public class NotificationServiceTests
     {
         // Arrange
         var response = new UnreadCountDto { UnreadCount = 3 };
-        _apiClient.GetUnreadNotificationCountAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetUnreadNotificationCountAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
         var result = await _service.GetUnreadCountAsync(notificationScopeId: 2);
 
         // Assert
-        await _apiClient.Received(1).GetUnreadNotificationCountAsync(2, Arg.Any<CancellationToken>());
+        await _apiClient.Received(1).GetUnreadNotificationCountAsync(2, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
         await Assert.That(result).IsEqualTo(3);
     }
 
@@ -372,7 +372,7 @@ public class NotificationServiceTests
     {
         // Arrange
         var response = new UnreadCountDto { UnreadCount = null };
-        _apiClient.GetUnreadNotificationCountAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetUnreadNotificationCountAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
@@ -386,7 +386,7 @@ public class NotificationServiceTests
     public async Task GetUnreadCountAsync_ReturnsZero_WhenApiThrows()
     {
         // Arrange
-        _apiClient.GetUnreadNotificationCountAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetUnreadNotificationCountAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Server Error", 500));
 
         // Act
@@ -400,7 +400,7 @@ public class NotificationServiceTests
     public async Task GetUnreadCountAsync_ReturnsZero_WhenGeneralExceptionThrown()
     {
         // Arrange
-        _apiClient.GetUnreadNotificationCountAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetUnreadNotificationCountAsync(Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Network failure"));
 
         // Act
@@ -422,7 +422,7 @@ public class NotificationServiceTests
         // Arrange
         var notificationId = Guid.NewGuid();
         var response = new BaseCommandResponseOfGuid { Success = true, Id = notificationId };
-        _apiClient.MarkNotificationAsReadAsync(notificationId, Arg.Any<CancellationToken>())
+        _apiClient.MarkNotificationAsReadAsync(notificationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
@@ -438,7 +438,7 @@ public class NotificationServiceTests
         // Arrange
         var notificationId = Guid.NewGuid();
         var response = new BaseCommandResponseOfGuid { Success = false };
-        _apiClient.MarkNotificationAsReadAsync(notificationId, Arg.Any<CancellationToken>())
+        _apiClient.MarkNotificationAsReadAsync(notificationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
@@ -454,7 +454,7 @@ public class NotificationServiceTests
         // Arrange
         var notificationId = Guid.NewGuid();
         var response = new BaseCommandResponseOfGuid { Success = null };
-        _apiClient.MarkNotificationAsReadAsync(notificationId, Arg.Any<CancellationToken>())
+        _apiClient.MarkNotificationAsReadAsync(notificationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
@@ -469,7 +469,7 @@ public class NotificationServiceTests
     {
         // Arrange
         var notificationId = Guid.NewGuid();
-        _apiClient.MarkNotificationAsReadAsync(notificationId, Arg.Any<CancellationToken>())
+        _apiClient.MarkNotificationAsReadAsync(notificationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Server Error", 500));
 
         // Act
@@ -484,7 +484,7 @@ public class NotificationServiceTests
     {
         // Arrange
         var notificationId = Guid.NewGuid();
-        _apiClient.MarkNotificationAsReadAsync(notificationId, Arg.Any<CancellationToken>())
+        _apiClient.MarkNotificationAsReadAsync(notificationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Network failure"));
 
         // Act
@@ -505,7 +505,7 @@ public class NotificationServiceTests
     {
         // Arrange
         var response = new BaseCommandResponseOfGuid { Success = true };
-        _apiClient.MarkAllNotificationsAsReadAsync(Arg.Any<CancellationToken>())
+        _apiClient.MarkAllNotificationsAsReadAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
@@ -520,7 +520,7 @@ public class NotificationServiceTests
     {
         // Arrange
         var response = new BaseCommandResponseOfGuid { Success = false };
-        _apiClient.MarkAllNotificationsAsReadAsync(Arg.Any<CancellationToken>())
+        _apiClient.MarkAllNotificationsAsReadAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
@@ -534,7 +534,7 @@ public class NotificationServiceTests
     public async Task MarkAllAsReadAsync_ReturnsFalse_WhenApiThrows()
     {
         // Arrange
-        _apiClient.MarkAllNotificationsAsReadAsync(Arg.Any<CancellationToken>())
+        _apiClient.MarkAllNotificationsAsReadAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Server Error", 500));
 
         // Act
@@ -548,7 +548,7 @@ public class NotificationServiceTests
     public async Task MarkAllAsReadAsync_ReturnsFalse_WhenGeneralExceptionThrown()
     {
         // Arrange
-        _apiClient.MarkAllNotificationsAsReadAsync(Arg.Any<CancellationToken>())
+        _apiClient.MarkAllNotificationsAsReadAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Network failure"));
 
         // Act
@@ -569,7 +569,7 @@ public class NotificationServiceTests
     {
         // Arrange
         var notificationId = Guid.NewGuid();
-        _apiClient.DeleteNotificationAsync(notificationId, Arg.Any<CancellationToken>())
+        _apiClient.DeleteNotificationAsync(notificationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
         // Act
@@ -584,7 +584,7 @@ public class NotificationServiceTests
     {
         // Arrange
         var notificationId = Guid.NewGuid();
-        _apiClient.DeleteNotificationAsync(notificationId, Arg.Any<CancellationToken>())
+        _apiClient.DeleteNotificationAsync(notificationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Server Error", 500));
 
         // Act
@@ -599,7 +599,7 @@ public class NotificationServiceTests
     {
         // Arrange
         var notificationId = Guid.NewGuid();
-        _apiClient.DeleteNotificationAsync(notificationId, Arg.Any<CancellationToken>())
+        _apiClient.DeleteNotificationAsync(notificationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Network failure"));
 
         // Act
@@ -621,7 +621,7 @@ public class NotificationServiceTests
         // Arrange
         var notificationId = Guid.NewGuid();
         var response = new BaseCommandResponseOfGuid { Success = true, Id = notificationId };
-        _apiClient.ArchiveNotificationAsync(notificationId, true, Arg.Any<CancellationToken>())
+        _apiClient.ArchiveNotificationAsync(notificationId, true, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
@@ -637,7 +637,7 @@ public class NotificationServiceTests
         // Arrange
         var notificationId = Guid.NewGuid();
         var response = new BaseCommandResponseOfGuid { Success = true, Id = notificationId };
-        _apiClient.ArchiveNotificationAsync(notificationId, false, Arg.Any<CancellationToken>())
+        _apiClient.ArchiveNotificationAsync(notificationId, false, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
@@ -645,7 +645,7 @@ public class NotificationServiceTests
 
         // Assert
         await Assert.That(result).IsTrue();
-        await _apiClient.Received(1).ArchiveNotificationAsync(notificationId, false, Arg.Any<CancellationToken>());
+        await _apiClient.Received(1).ArchiveNotificationAsync(notificationId, false, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -654,7 +654,7 @@ public class NotificationServiceTests
         // Arrange
         var notificationId = Guid.NewGuid();
         var response = new BaseCommandResponseOfGuid { Success = false };
-        _apiClient.ArchiveNotificationAsync(notificationId, true, Arg.Any<CancellationToken>())
+        _apiClient.ArchiveNotificationAsync(notificationId, true, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
@@ -669,7 +669,7 @@ public class NotificationServiceTests
     {
         // Arrange
         var notificationId = Guid.NewGuid();
-        _apiClient.ArchiveNotificationAsync(notificationId, Arg.Any<bool?>(), Arg.Any<CancellationToken>())
+        _apiClient.ArchiveNotificationAsync(notificationId, Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Server Error", 500));
 
         // Act
@@ -684,7 +684,7 @@ public class NotificationServiceTests
     {
         // Arrange
         var notificationId = Guid.NewGuid();
-        _apiClient.ArchiveNotificationAsync(notificationId, Arg.Any<bool?>(), Arg.Any<CancellationToken>())
+        _apiClient.ArchiveNotificationAsync(notificationId, Arg.Any<bool?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Network failure"));
 
         // Act
@@ -707,7 +707,7 @@ public class NotificationServiceTests
         var notificationId = Guid.NewGuid();
         var snoozedUntil = DateTimeOffset.UtcNow.AddHours(3);
         var response = new BaseCommandResponseOfGuid { Success = true, Id = notificationId };
-        _apiClient.SnoozeNotificationAsync(notificationId, snoozedUntil, Arg.Any<CancellationToken>())
+        _apiClient.SnoozeNotificationAsync(notificationId, snoozedUntil, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
@@ -724,14 +724,14 @@ public class NotificationServiceTests
         var notificationId = Guid.NewGuid();
         var snoozedUntil = DateTimeOffset.UtcNow.AddDays(1);
         var response = new BaseCommandResponseOfGuid { Success = true, Id = notificationId };
-        _apiClient.SnoozeNotificationAsync(notificationId, snoozedUntil, Arg.Any<CancellationToken>())
+        _apiClient.SnoozeNotificationAsync(notificationId, snoozedUntil, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
         await _service.SnoozeAsync(notificationId, snoozedUntil);
 
         // Assert
-        await _apiClient.Received(1).SnoozeNotificationAsync(notificationId, snoozedUntil, Arg.Any<CancellationToken>());
+        await _apiClient.Received(1).SnoozeNotificationAsync(notificationId, snoozedUntil, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -741,7 +741,7 @@ public class NotificationServiceTests
         var notificationId = Guid.NewGuid();
         var snoozedUntil = DateTimeOffset.UtcNow.AddHours(3);
         var response = new BaseCommandResponseOfGuid { Success = false };
-        _apiClient.SnoozeNotificationAsync(notificationId, snoozedUntil, Arg.Any<CancellationToken>())
+        _apiClient.SnoozeNotificationAsync(notificationId, snoozedUntil, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
@@ -757,7 +757,7 @@ public class NotificationServiceTests
         // Arrange
         var notificationId = Guid.NewGuid();
         var snoozedUntil = DateTimeOffset.UtcNow.AddHours(3);
-        _apiClient.SnoozeNotificationAsync(notificationId, Arg.Any<DateTimeOffset?>(), Arg.Any<CancellationToken>())
+        _apiClient.SnoozeNotificationAsync(notificationId, Arg.Any<DateTimeOffset?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Server Error", 500));
 
         // Act
@@ -773,7 +773,7 @@ public class NotificationServiceTests
         // Arrange
         var notificationId = Guid.NewGuid();
         var snoozedUntil = DateTimeOffset.UtcNow.AddHours(3);
-        _apiClient.SnoozeNotificationAsync(notificationId, Arg.Any<DateTimeOffset?>(), Arg.Any<CancellationToken>())
+        _apiClient.SnoozeNotificationAsync(notificationId, Arg.Any<DateTimeOffset?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Network failure"));
 
         // Act

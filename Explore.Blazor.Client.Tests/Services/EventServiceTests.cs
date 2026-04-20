@@ -121,7 +121,7 @@ public class EventServiceTests
         var expectedEvents = ComponentDataBuilder.EventListDto.Generate(2);
         var halResponse = CreateHalCollectionResponse(expectedEvents);
 
-        _apiClient.GetMyEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetMyEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(halResponse);
 
         // Act
@@ -135,7 +135,7 @@ public class EventServiceTests
     public async Task GetMyEventsAsync_ReturnsEmptyList_WhenApiThrowsException()
     {
         // Arrange
-        _apiClient.GetMyEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetMyEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Unauthorized", 401));
 
         // Act
@@ -149,7 +149,7 @@ public class EventServiceTests
     public async Task GetMyEventsAsync_ReturnsEmptyList_WhenApiReturnsNull()
     {
         // Arrange
-        _apiClient.GetMyEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetMyEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((HalCollectionResourceOfEventListDto?)null);
 
         // Act
@@ -164,14 +164,14 @@ public class EventServiceTests
     {
         // Arrange
         var halResponse = CreateHalCollectionResponse(new List<EventListDto>());
-        _apiClient.GetMyEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetMyEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(halResponse);
 
         // Act
         await _service.GetMyEventsAsync();
 
         // Assert - Service should request page 1 with size 100
-        await _apiClient.Received(1).GetMyEventsAsync(1, 100, Arg.Any<CancellationToken>());
+        await _apiClient.Received(1).GetMyEventsAsync(1, 100, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     #endregion
@@ -201,7 +201,7 @@ public class EventServiceTests
         expectedEvent.Timezone = "UTC";
         var halResponse = CreateHalResourceResponse(expectedEvent);
 
-        _apiClient.GetEventByIdAsync(eventId, Arg.Any<CancellationToken>())
+        _apiClient.GetEventByIdAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(halResponse);
 
         // Act
@@ -218,7 +218,7 @@ public class EventServiceTests
     {
         // Arrange
         var eventId = Guid.NewGuid();
-        _apiClient.GetEventByIdAsync(eventId, Arg.Any<CancellationToken>())
+        _apiClient.GetEventByIdAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Not Found", 404));
 
         // Act
@@ -233,7 +233,7 @@ public class EventServiceTests
     {
         // Arrange
         var eventId = Guid.NewGuid();
-        _apiClient.GetEventByIdAsync(eventId, Arg.Any<CancellationToken>())
+        _apiClient.GetEventByIdAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Server Error", 500));
 
         // Act
@@ -254,14 +254,14 @@ public class EventServiceTests
             Title = "Tracked Event"
         };
 
-        _apiClient.GetEventByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        _apiClient.GetEventByIdAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(halResponse);
 
         // Act
         await _service.GetEventByIdAsync(eventId);
 
         // Assert
-        await _apiClient.Received(1).GetEventByIdAsync(eventId, Arg.Any<CancellationToken>());
+        await _apiClient.Received(1).GetEventByIdAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     #endregion
@@ -276,7 +276,7 @@ public class EventServiceTests
         var expectedId = Guid.NewGuid();
         var expectedResponse = ComponentDataBuilder.SuccessResponse(expectedId);
 
-        _apiClient.CreateEventAsync(Arg.Any<CreateEventDto>(), Arg.Any<CancellationToken>())
+        _apiClient.CreateEventAsync(Arg.Any<CreateEventDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
@@ -293,7 +293,7 @@ public class EventServiceTests
     {
         // Arrange
         var createDto = ComponentDataBuilder.CreateEventDto.Generate();
-        _apiClient.CreateEventAsync(Arg.Any<CreateEventDto>(), Arg.Any<CancellationToken>())
+        _apiClient.CreateEventAsync(Arg.Any<CreateEventDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Bad Request", 400, "Validation failed"));
 
         // Act
@@ -309,14 +309,14 @@ public class EventServiceTests
         // Arrange
         var createDto = ComponentDataBuilder.CreateEventDto.Generate();
         var expectedResponse = ComponentDataBuilder.SuccessResponse();
-        _apiClient.CreateEventAsync(Arg.Any<CreateEventDto>(), Arg.Any<CancellationToken>())
+        _apiClient.CreateEventAsync(Arg.Any<CreateEventDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
         await _service.CreateEventAsync(createDto);
 
         // Assert
-        await _apiClient.Received(1).CreateEventAsync(createDto, Arg.Any<CancellationToken>());
+        await _apiClient.Received(1).CreateEventAsync(createDto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     #endregion
@@ -331,7 +331,7 @@ public class EventServiceTests
         var updateDto = new UpdateEventDto { Id = eventId, Title = "Updated Title" };
         var expectedResponse = ComponentDataBuilder.SuccessResponse(eventId);
 
-        _apiClient.UpdateEventAsync(Arg.Any<Guid>(), Arg.Any<UpdateEventRequestDto>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateEventAsync(Arg.Any<Guid>(), Arg.Any<UpdateEventRequestDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
@@ -349,7 +349,7 @@ public class EventServiceTests
         // Arrange
         var eventId = Guid.NewGuid();
         var updateDto = new UpdateEventDto { Id = eventId };
-        _apiClient.UpdateEventAsync(Arg.Any<Guid>(), Arg.Any<UpdateEventRequestDto>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateEventAsync(Arg.Any<Guid>(), Arg.Any<UpdateEventRequestDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Not Found", 404));
 
         // Act
@@ -366,7 +366,7 @@ public class EventServiceTests
         var eventId = new Guid("d415b43c-3f93-4b68-9a2d-59021d838e11");
         var updateDto = new UpdateEventDto { Id = eventId, Title = "Test Title" };
         var expectedResponse = ComponentDataBuilder.SuccessResponse(eventId);
-        _apiClient.UpdateEventAsync(Arg.Any<Guid>(), Arg.Any<UpdateEventRequestDto>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateEventAsync(Arg.Any<Guid>(), Arg.Any<UpdateEventRequestDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
@@ -376,7 +376,7 @@ public class EventServiceTests
         await _apiClient.Received(1).UpdateEventAsync(
             eventId,
             Arg.Is<UpdateEventRequestDto>(c => c.EventDto == updateDto),
-            Arg.Any<CancellationToken>());
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     #endregion
@@ -388,7 +388,7 @@ public class EventServiceTests
     {
         // Arrange
         var eventId = Guid.NewGuid();
-        _apiClient.DeleteEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        _apiClient.DeleteEventAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
         // Act
@@ -403,7 +403,7 @@ public class EventServiceTests
     {
         // Arrange
         var eventId = Guid.NewGuid();
-        _apiClient.DeleteEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        _apiClient.DeleteEventAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Not Found", 404));
 
         // Act
@@ -418,7 +418,7 @@ public class EventServiceTests
     {
         // Arrange
         var eventId = Guid.NewGuid();
-        _apiClient.DeleteEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        _apiClient.DeleteEventAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Unauthorized", 401));
 
         // Act
@@ -433,14 +433,14 @@ public class EventServiceTests
     {
         // Arrange
         var eventId = Guid.NewGuid();
-        _apiClient.DeleteEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        _apiClient.DeleteEventAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
         // Act
         await _service.DeleteEventAsync(eventId);
 
         // Assert
-        await _apiClient.Received(1).DeleteEventAsync(eventId, Arg.Any<CancellationToken>());
+        await _apiClient.Received(1).DeleteEventAsync(eventId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     #endregion
@@ -465,7 +465,7 @@ public class EventServiceTests
             CurrentAudienceAttendees = 10
         };
 
-        _apiClient.GetEventSessionByIdAsync(sessionId, Arg.Any<CancellationToken>())
+        _apiClient.GetEventSessionByIdAsync(sessionId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(expectedSession);
 
         // Act
@@ -482,7 +482,7 @@ public class EventServiceTests
     {
         // Arrange
         var sessionId = Guid.NewGuid();
-        _apiClient.GetEventSessionByIdAsync(sessionId, Arg.Any<CancellationToken>())
+        _apiClient.GetEventSessionByIdAsync(sessionId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Not Found", 404));
 
         // Act
@@ -497,7 +497,7 @@ public class EventServiceTests
     {
         // Arrange
         var sessionId = Guid.NewGuid();
-        _apiClient.GetEventSessionByIdAsync(sessionId, Arg.Any<CancellationToken>())
+        _apiClient.GetEventSessionByIdAsync(sessionId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Server Error", 500));
 
         // Act
@@ -513,14 +513,14 @@ public class EventServiceTests
         // Arrange
         var sessionId = Guid.NewGuid();
         var expectedSession = new HalResourceOfEventSessionDto { Id = sessionId };
-        _apiClient.GetEventSessionByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        _apiClient.GetEventSessionByIdAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(expectedSession);
 
         // Act
         await _service.GetSessionByIdAsync(sessionId);
 
         // Assert
-        await _apiClient.Received(1).GetEventSessionByIdAsync(sessionId, Arg.Any<CancellationToken>());
+        await _apiClient.Received(1).GetEventSessionByIdAsync(sessionId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -528,7 +528,7 @@ public class EventServiceTests
     {
         // Arrange
         var eventId = Guid.NewGuid();
-        _apiClient.DeleteEventAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        _apiClient.DeleteEventAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Server Error", 500));
 
         // Act

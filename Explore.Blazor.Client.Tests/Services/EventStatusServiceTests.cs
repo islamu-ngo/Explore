@@ -26,7 +26,7 @@ public class EventStatusServiceTests
     {
         // Arrange
         var items = new List<EventStatusListDto> { new() };
-        _apiClient.EventstatusAllAsync(Arg.Any<CancellationToken>()).Returns(items);
+        _apiClient.GetEventStatusesAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(items);
 
         // Act
         var result = await _service.GetEventStatusesAsync();
@@ -39,7 +39,7 @@ public class EventStatusServiceTests
     public async Task GetEventStatusesAsync_Throws_WhenApiThrows()
     {
         // Arrange
-        _apiClient.EventstatusAllAsync(Arg.Any<CancellationToken>())
+        _apiClient.GetEventStatusesAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
 
         // Act & Assert
@@ -59,8 +59,8 @@ public class EventStatusServiceTests
         const int id = 1;
         var item = new EventStatusDto();
 
-        _apiClient.EventstatusAsync(id, Arg.Any<CancellationToken>()).Returns(item);
-        _apiClient.EventstatusAsync(id).Returns(item);
+        _apiClient.GetEventStatusByIdAsync(id, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(item);
+        _apiClient.GetEventStatusByIdAsync(id).Returns(item);
 
         // Act
         var result = await _service.GetEventStatusByIdAsync(id);
@@ -75,9 +75,9 @@ public class EventStatusServiceTests
         // Arrange
         const int id = 1;
 
-        _apiClient.EventstatusAsync(id, Arg.Any<CancellationToken>())
+        _apiClient.GetEventStatusByIdAsync(id, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
-        _apiClient.EventstatusAsync(id)
+        _apiClient.GetEventStatusByIdAsync(id)
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
 
         // Act & Assert

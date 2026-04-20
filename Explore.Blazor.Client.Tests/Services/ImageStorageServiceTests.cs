@@ -77,7 +77,7 @@ public class ImageStorageServiceTests
     public async Task GetUploadUrlAsync_ReturnsResponse_WhenApiSucceeds()
     {
         // Arrange
-        _apiClient.GenerateUploadUrlAsync(Arg.Any<UploadRequestDto>())
+        _apiClient.GenerateStorageObjectUploadUrlAsync(Arg.Any<UploadRequestDto>())
             .Returns(new UploadUrlResponseDto
             {
                 UploadUrl = "https://upload.example.com/object",
@@ -101,7 +101,7 @@ public class ImageStorageServiceTests
     public async Task GetUploadUrlAsync_ReturnsNull_WhenApiReturnsNull()
     {
         // Arrange
-        _apiClient.GenerateUploadUrlAsync(Arg.Any<UploadRequestDto>())
+        _apiClient.GenerateStorageObjectUploadUrlAsync(Arg.Any<UploadRequestDto>())
             .Returns((UploadUrlResponseDto?)null);
 
         // Act
@@ -115,7 +115,7 @@ public class ImageStorageServiceTests
     public async Task GetUploadUrlAsync_ReturnsNull_WhenApiThrows()
     {
         // Arrange
-        _apiClient.GenerateUploadUrlAsync(Arg.Any<UploadRequestDto>())
+        _apiClient.GenerateStorageObjectUploadUrlAsync(Arg.Any<UploadRequestDto>())
             .ThrowsAsync(new ApiException("Error", 500, null, null, null));
 
         // Act
@@ -207,7 +207,7 @@ public class ImageStorageServiceTests
     public async Task UploadAndCreateRecordFromBytesAsync_ReturnsSuccess_WhenFullFlowSucceeds()
     {
         // Arrange
-        _apiClient.GenerateUploadUrlAsync(Arg.Any<UploadRequestDto>())
+        _apiClient.GenerateStorageObjectUploadUrlAsync(Arg.Any<UploadRequestDto>())
             .Returns(new UploadUrlResponseDto
             {
                 UploadUrl = "https://upload.example.com/object",
@@ -220,7 +220,7 @@ public class ImageStorageServiceTests
             .Returns(CreateHttpClient(new HttpResponseMessage(HttpStatusCode.OK)));
 
         var storageId = Guid.NewGuid();
-        _apiClient.StorageobjectPOSTAsync(Arg.Any<CreateStorageObjectDto>())
+        _apiClient.CreateStorageObjectAsync(Arg.Any<CreateStorageObjectDto>())
             .Returns(new BaseCommandResponseOfGuid
             {
                 Success = true,
@@ -249,7 +249,7 @@ public class ImageStorageServiceTests
     public async Task UploadAndCreateRecordFromBytesAsync_ReturnsFailure_WhenUploadUrlFails()
     {
         // Arrange
-        _apiClient.GenerateUploadUrlAsync(Arg.Any<UploadRequestDto>())
+        _apiClient.GenerateStorageObjectUploadUrlAsync(Arg.Any<UploadRequestDto>())
             .Returns((UploadUrlResponseDto?)null);
 
         var fileData = new FileUploadData

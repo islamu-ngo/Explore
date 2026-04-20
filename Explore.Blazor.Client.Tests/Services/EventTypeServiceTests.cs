@@ -26,7 +26,7 @@ public class EventTypeServiceTests
     {
         // Arrange
         var items = new List<EventTypeListDto> { new() };
-        _apiClient.EventtypeAllAsync(Arg.Any<CancellationToken>()).Returns(items);
+        _apiClient.GetEventTypesAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(items);
 
         // Act
         var result = await _service.GetEventTypesAsync();
@@ -39,7 +39,7 @@ public class EventTypeServiceTests
     public async Task GetEventTypesAsync_Throws_WhenApiThrows()
     {
         // Arrange
-        _apiClient.EventtypeAllAsync(Arg.Any<CancellationToken>())
+        _apiClient.GetEventTypesAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
 
         // Act & Assert

@@ -39,7 +39,7 @@ public class AdminServiceTests
         var orgs = ComponentDataBuilder.OrganizationListDto.Generate(3);
         var halResponse = CreateOrgCollectionResponse(orgs);
 
-        _apiClient.GetOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(halResponse);
 
         // Act
@@ -54,7 +54,7 @@ public class AdminServiceTests
     public async Task GetOrganizationRequestsAsync_ReturnsEmptyList_WhenApiThrows()
     {
         // Arrange
-        _apiClient.GetOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Server Error", 500));
 
         // Act
@@ -69,7 +69,7 @@ public class AdminServiceTests
     {
         // Arrange
         var halResponse = CreateOrgCollectionResponse(new List<OrganizationListDto>());
-        _apiClient.GetOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(halResponse);
 
         // Act
@@ -79,7 +79,7 @@ public class AdminServiceTests
         await _apiClient.Received(1).GetOrganizationsAsync(
             ApiConstants.FirstPage,
             ApiConstants.DefaultPageSize,
-            Arg.Any<CancellationToken>());
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -91,7 +91,7 @@ public class AdminServiceTests
         expected.Id = orgId;
         var halResponse = CreateOrgResourceResponse(expected);
 
-        _apiClient.GetOrganizationByIdAsync(orgId, Arg.Any<CancellationToken>())
+        _apiClient.GetOrganizationByIdAsync(orgId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(halResponse);
 
         // Act
@@ -108,7 +108,7 @@ public class AdminServiceTests
     {
         // Arrange
         var orgId = Guid.NewGuid();
-        _apiClient.GetOrganizationByIdAsync(orgId, Arg.Any<CancellationToken>())
+        _apiClient.GetOrganizationByIdAsync(orgId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Not Found", 404));
 
         // Act
@@ -129,7 +129,7 @@ public class AdminServiceTests
     {
         // Arrange
         var orgId = Guid.NewGuid();
-        _apiClient.UpdatestatustypeAsync(orgId, Arg.Any<UpdateOrganizationApprovalStatusDto>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateOrganizationApprovalStatusAsync(orgId, Arg.Any<UpdateOrganizationApprovalStatusDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
         // Act
@@ -137,10 +137,10 @@ public class AdminServiceTests
 
         // Assert
         await Assert.That(result).IsTrue();
-        await _apiClient.Received(1).UpdatestatustypeAsync(
+        await _apiClient.Received(1).UpdateOrganizationApprovalStatusAsync(
             orgId,
             Arg.Is<UpdateOrganizationApprovalStatusDto>(d => d.ApprovalStatusId == ApprovalStatusId.Approved),
-            Arg.Any<CancellationToken>());
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -148,7 +148,7 @@ public class AdminServiceTests
     {
         // Arrange
         var orgId = Guid.NewGuid();
-        _apiClient.UpdatestatustypeAsync(orgId, Arg.Any<UpdateOrganizationApprovalStatusDto>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateOrganizationApprovalStatusAsync(orgId, Arg.Any<UpdateOrganizationApprovalStatusDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("No content body", 200));
 
         // Act
@@ -163,7 +163,7 @@ public class AdminServiceTests
     {
         // Arrange
         var orgId = Guid.NewGuid();
-        _apiClient.UpdatestatustypeAsync(orgId, Arg.Any<UpdateOrganizationApprovalStatusDto>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateOrganizationApprovalStatusAsync(orgId, Arg.Any<UpdateOrganizationApprovalStatusDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("No content body", 204));
 
         // Act
@@ -178,7 +178,7 @@ public class AdminServiceTests
     {
         // Arrange
         var orgId = Guid.NewGuid();
-        _apiClient.UpdatestatustypeAsync(orgId, Arg.Any<UpdateOrganizationApprovalStatusDto>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateOrganizationApprovalStatusAsync(orgId, Arg.Any<UpdateOrganizationApprovalStatusDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
         // Act
@@ -186,10 +186,10 @@ public class AdminServiceTests
 
         // Assert
         await Assert.That(result).IsTrue();
-        await _apiClient.Received(1).UpdatestatustypeAsync(
+        await _apiClient.Received(1).UpdateOrganizationApprovalStatusAsync(
             orgId,
             Arg.Is<UpdateOrganizationApprovalStatusDto>(d => d.ApprovalStatusId == ApprovalStatusId.Rejected),
-            Arg.Any<CancellationToken>());
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -197,7 +197,7 @@ public class AdminServiceTests
     {
         // Arrange
         var orgId = Guid.NewGuid();
-        _apiClient.UpdatestatustypeAsync(orgId, Arg.Any<UpdateOrganizationApprovalStatusDto>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateOrganizationApprovalStatusAsync(orgId, Arg.Any<UpdateOrganizationApprovalStatusDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Forbidden", 403));
 
         // Act
@@ -222,7 +222,7 @@ public class AdminServiceTests
             new() { Id = 1, FullName = "Conference", MasterCode = "CONF" },
             new() { Id = 2, FullName = "Workshop", MasterCode = "WKSP" }
         };
-        _apiClient.EventtypeAllAsync(Arg.Any<CancellationToken>()).Returns(types);
+        _apiClient.GetEventTypesAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(types);
 
         // Act
         var result = await _service.GetEventTypesAsync();
@@ -236,7 +236,7 @@ public class AdminServiceTests
     public async Task GetEventTypesAsync_ReturnsEmptyList_WhenApiThrows()
     {
         // Arrange
-        _apiClient.EventtypeAllAsync(Arg.Any<CancellationToken>())
+        _apiClient.GetEventTypesAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Error", 500));
 
         // Act
@@ -255,7 +255,7 @@ public class AdminServiceTests
             new() { Id = 1, FullName = "Hanafi", MasterCode = "HAN" },
             new() { Id = 2, FullName = "Maliki", MasterCode = "MAL" }
         };
-        _apiClient.MadhabAllAsync(Arg.Any<CancellationToken>()).Returns(madhabs);
+        _apiClient.GetMadhabsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(madhabs);
 
         // Act
         var result = await _service.GetMadhabsAsync();
@@ -269,7 +269,7 @@ public class AdminServiceTests
     public async Task GetLanguagesAsync_ReturnsEmptyList_WhenApiThrows()
     {
         // Arrange
-        _apiClient.LanguageAllAsync(Arg.Any<CancellationToken>())
+        _apiClient.GetLanguagesAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Error", 500));
 
         // Act
@@ -288,7 +288,7 @@ public class AdminServiceTests
             new() { Id = 1, FullName = "Pending", MasterCode = "PEND" },
             new() { Id = 2, FullName = "Approved", MasterCode = "APPR" }
         };
-        _apiClient.ApprovalstatusAllAsync(Arg.Any<CancellationToken>()).Returns(statuses);
+        _apiClient.GetApprovalStatusOptionsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(statuses);
 
         // Act
         var result = await _service.GetApprovalStatusesAsync();
@@ -302,7 +302,7 @@ public class AdminServiceTests
     public async Task GetActorTypesAsync_ReturnsEmptyList_WhenApiThrows()
     {
         // Arrange
-        _apiClient.ActortypeAllAsync(Arg.Any<CancellationToken>())
+        _apiClient.GetActorTypesAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Error", 500));
 
         // Act
@@ -325,7 +325,7 @@ public class AdminServiceTests
         var categories = ComponentDataBuilder.CategoryListDto.Generate(3);
         var halResponse = CreateCategoryCollectionResponse(categories);
 
-        _apiClient.GetCategoriesAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetCategoriesAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(halResponse);
 
         // Act
@@ -340,7 +340,7 @@ public class AdminServiceTests
     public async Task GetCategoriesAsync_ReturnsEmptyList_WhenApiThrows()
     {
         // Arrange
-        _apiClient.GetCategoriesAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetCategoriesAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Error", 500));
 
         // Act
@@ -357,7 +357,7 @@ public class AdminServiceTests
         var categoryId = Guid.NewGuid();
         var halResponse = new HalResourceOfCategoryDto { Id = categoryId, FullName = "Education", MasterCode = "EDU" };
 
-        _apiClient.GetCategoryByIdAsync(categoryId, Arg.Any<CancellationToken>())
+        _apiClient.GetCategoryByIdAsync(categoryId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(halResponse);
         _apiClient.GetCategoryByIdAsync(categoryId)
             .Returns(halResponse);
@@ -376,7 +376,7 @@ public class AdminServiceTests
     {
         // Arrange
         var categoryId = Guid.NewGuid();
-        _apiClient.GetCategoryByIdAsync(categoryId, Arg.Any<CancellationToken>())
+        _apiClient.GetCategoryByIdAsync(categoryId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Not Found", 404));
         _apiClient.GetCategoryByIdAsync(categoryId)
             .ThrowsAsync(CreateApiException("Not Found", 404));
@@ -393,7 +393,7 @@ public class AdminServiceTests
     {
         // Arrange
         var dto = new CreateCategoryDto { FullName = "New Category" };
-        _apiClient.CreateCategoryAsync(dto, Arg.Any<CancellationToken>())
+        _apiClient.CreateCategoryAsync(dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(ComponentDataBuilder.SuccessResponse());
 
         // Act
@@ -401,7 +401,7 @@ public class AdminServiceTests
 
         // Assert
         await Assert.That(result).IsTrue();
-        await _apiClient.Received(1).CreateCategoryAsync(dto, Arg.Any<CancellationToken>());
+        await _apiClient.Received(1).CreateCategoryAsync(dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -409,7 +409,7 @@ public class AdminServiceTests
     {
         // Arrange
         var dto = new CreateCategoryDto { FullName = "New Category" };
-        _apiClient.CreateCategoryAsync(dto, Arg.Any<CancellationToken>())
+        _apiClient.CreateCategoryAsync(dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Bad Request", 400));
 
         // Act
@@ -425,7 +425,7 @@ public class AdminServiceTests
         // Arrange
         var categoryId = Guid.NewGuid();
         var dto = new UpdateCategoryDto { Id = categoryId, FullName = "Updated Category" };
-        _apiClient.UpdateCategoryAsync(categoryId, dto, Arg.Any<CancellationToken>())
+        _apiClient.UpdateCategoryAsync(categoryId, dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(ComponentDataBuilder.SuccessResponse(categoryId));
 
         // Act
@@ -433,7 +433,7 @@ public class AdminServiceTests
 
         // Assert
         await Assert.That(result).IsTrue();
-        await _apiClient.Received(1).UpdateCategoryAsync(categoryId, dto, Arg.Any<CancellationToken>());
+        await _apiClient.Received(1).UpdateCategoryAsync(categoryId, dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -448,7 +448,7 @@ public class AdminServiceTests
         // Assert
         await Assert.That(result).IsFalse();
         await _apiClient.DidNotReceive().UpdateCategoryAsync(
-            Arg.Any<Guid>(), Arg.Any<UpdateCategoryDto>(), Arg.Any<CancellationToken>());
+            Arg.Any<Guid>(), Arg.Any<UpdateCategoryDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -456,7 +456,7 @@ public class AdminServiceTests
     {
         // Arrange
         var categoryId = Guid.NewGuid();
-        _apiClient.DeleteCategoryAsync(categoryId, Arg.Any<CancellationToken>())
+        _apiClient.DeleteCategoryAsync(categoryId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
         // Act
@@ -464,7 +464,7 @@ public class AdminServiceTests
 
         // Assert
         await Assert.That(result).IsTrue();
-        await _apiClient.Received(1).DeleteCategoryAsync(categoryId, Arg.Any<CancellationToken>());
+        await _apiClient.Received(1).DeleteCategoryAsync(categoryId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -472,7 +472,7 @@ public class AdminServiceTests
     {
         // Arrange
         var categoryId = Guid.NewGuid();
-        _apiClient.DeleteCategoryAsync(categoryId, Arg.Any<CancellationToken>())
+        _apiClient.DeleteCategoryAsync(categoryId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Forbidden", 403));
 
         // Act
@@ -495,7 +495,7 @@ public class AdminServiceTests
         var tags = ComponentDataBuilder.TagListDto.Generate(2);
         var halResponse = CreateTagCollectionResponse(tags);
 
-        _apiClient.GetTagsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetTagsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(halResponse);
 
         // Act
@@ -511,7 +511,7 @@ public class AdminServiceTests
     {
         // Arrange
         var dto = new CreateTagDto { FullName = "New Tag" };
-        _apiClient.CreateTagAsync(dto, Arg.Any<CancellationToken>())
+        _apiClient.CreateTagAsync(dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(ComponentDataBuilder.SuccessResponse());
 
         // Act
@@ -533,7 +533,7 @@ public class AdminServiceTests
         // Assert
         await Assert.That(result).IsFalse();
         await _apiClient.DidNotReceive().UpdateTagAsync(
-            Arg.Any<Guid>(), Arg.Any<UpdateTagDto>(), Arg.Any<CancellationToken>());
+            Arg.Any<Guid>(), Arg.Any<UpdateTagDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -541,7 +541,7 @@ public class AdminServiceTests
     {
         // Arrange
         var tagId = Guid.NewGuid();
-        _apiClient.DeleteTagAsync(tagId, Arg.Any<CancellationToken>())
+        _apiClient.DeleteTagAsync(tagId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
         // Act
@@ -564,7 +564,7 @@ public class AdminServiceTests
         var locations = ComponentDataBuilder.LocationListDto.Generate(2);
         var halResponse = CreateLocationCollectionResponse(locations);
 
-        _apiClient.GetLocationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetLocationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(halResponse);
 
         // Act
@@ -580,7 +580,7 @@ public class AdminServiceTests
     {
         // Arrange
         var dto = new CreateLocationDto { FullName = "New Location" };
-        _apiClient.CreateLocationAsync(dto, Arg.Any<CancellationToken>())
+        _apiClient.CreateLocationAsync(dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(ComponentDataBuilder.SuccessResponse());
 
         // Act
@@ -602,7 +602,7 @@ public class AdminServiceTests
         // Assert
         await Assert.That(result).IsFalse();
         await _apiClient.DidNotReceive().UpdateLocationAsync(
-            Arg.Any<Guid>(), Arg.Any<UpdateLocationDto>(), Arg.Any<CancellationToken>());
+            Arg.Any<Guid>(), Arg.Any<UpdateLocationDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -610,7 +610,7 @@ public class AdminServiceTests
     {
         // Arrange
         var locationId = Guid.NewGuid();
-        _apiClient.DeleteLocationAsync(locationId, Arg.Any<CancellationToken>())
+        _apiClient.DeleteLocationAsync(locationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Not Found", 404));
 
         // Act

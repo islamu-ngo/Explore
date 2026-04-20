@@ -39,7 +39,7 @@ public static class MockServiceFactory
         });
 
         // Configure default successful empty responses for my events (HAL collection)
-        mock.GetMyEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        mock.GetMyEventsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(new HalCollectionResourceOfEventListDto
             {
                 _embedded = new HalCollectionEmbeddedOfEventListDto
@@ -49,7 +49,7 @@ public static class MockServiceFactory
             });
 
         // Configure default successful empty responses for organizations (HAL collection)
-        mock.GetOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        mock.GetOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(new HalCollectionResourceOfOrganizationListDto
             {
                 _embedded = new HalCollectionEmbeddedOfOrganizationListDto
@@ -59,7 +59,7 @@ public static class MockServiceFactory
             });
 
         // Configure default successful empty responses for my organizations (HAL collection)
-        mock.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        mock.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(new HalCollectionResourceOfOrganizationListDto
             {
                 _embedded = new HalCollectionEmbeddedOfOrganizationListDto

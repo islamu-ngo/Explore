@@ -31,7 +31,7 @@ public class ContactShareConsentServiceTests
     public async Task CheckConsentForOrganizerAsync_ReturnsTrue_WhenApiReturnsTrue()
     {
         var actorId = Guid.NewGuid();
-        _apiClient.CheckConsentForOrganizerAsync(actorId, Arg.Any<CancellationToken>()).Returns(true);
+        _apiClient.CheckConsentForOrganizerAsync(actorId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(true);
 
         var result = await _service.CheckConsentForOrganizerAsync(actorId);
 
@@ -42,7 +42,7 @@ public class ContactShareConsentServiceTests
     public async Task CheckConsentForOrganizerAsync_ReturnsFalse_WhenApiReturnsFalse()
     {
         var actorId = Guid.NewGuid();
-        _apiClient.CheckConsentForOrganizerAsync(actorId, Arg.Any<CancellationToken>()).Returns(false);
+        _apiClient.CheckConsentForOrganizerAsync(actorId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(false);
 
         var result = await _service.CheckConsentForOrganizerAsync(actorId);
 
@@ -53,7 +53,7 @@ public class ContactShareConsentServiceTests
     public async Task CheckConsentForOrganizerAsync_ReturnsFalse_WhenApiThrows404()
     {
         var actorId = Guid.NewGuid();
-        _apiClient.CheckConsentForOrganizerAsync(actorId, Arg.Any<CancellationToken>())
+        _apiClient.CheckConsentForOrganizerAsync(actorId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Not found", 404));
 
         var result = await _service.CheckConsentForOrganizerAsync(actorId);
@@ -65,7 +65,7 @@ public class ContactShareConsentServiceTests
     public async Task CheckConsentForOrganizerAsync_ReturnsFalse_WhenApiThrowsServerError()
     {
         var actorId = Guid.NewGuid();
-        _apiClient.CheckConsentForOrganizerAsync(actorId, Arg.Any<CancellationToken>())
+        _apiClient.CheckConsentForOrganizerAsync(actorId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Server error"));
 
         var result = await _service.CheckConsentForOrganizerAsync(actorId);
@@ -93,7 +93,7 @@ public class ContactShareConsentServiceTests
                 GrantedAt = DateTimeOffset.UtcNow.AddDays(-5)
             }
         };
-        _apiClient.GetUserContactShareConsentsAsync(Arg.Any<CancellationToken>())
+        _apiClient.GetUserContactShareConsentsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(consents);
 
         var result = await _service.GetMyConsentsAsync();
@@ -107,7 +107,7 @@ public class ContactShareConsentServiceTests
     [Test]
     public async Task GetMyConsentsAsync_ReturnsEmptyList_WhenApiThrows()
     {
-        _apiClient.GetUserContactShareConsentsAsync(Arg.Any<CancellationToken>())
+        _apiClient.GetUserContactShareConsentsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Error", 500));
 
         var result = await _service.GetMyConsentsAsync();
@@ -132,7 +132,7 @@ public class ContactShareConsentServiceTests
                 WithdrawnAt = DateTimeOffset.UtcNow
             }
         };
-        _apiClient.GetUserContactShareConsentsAsync(Arg.Any<CancellationToken>())
+        _apiClient.GetUserContactShareConsentsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(consents);
 
         var result = await _service.GetMyConsentsAsync();
@@ -148,7 +148,7 @@ public class ContactShareConsentServiceTests
     public async Task WithdrawConsentAsync_ReturnsTrue_WhenApiSucceeds()
     {
         var consentId = Guid.NewGuid();
-        _apiClient.WithdrawContactShareConsentAsync(consentId, Arg.Any<CancellationToken>())
+        _apiClient.WithdrawContactShareConsentAsync(consentId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(new BaseCommandResponseOfGuid { Success = true, Id = consentId });
 
         var result = await _service.WithdrawConsentAsync(consentId);
@@ -160,7 +160,7 @@ public class ContactShareConsentServiceTests
     public async Task WithdrawConsentAsync_ReturnsFalse_WhenApiThrows()
     {
         var consentId = Guid.NewGuid();
-        _apiClient.WithdrawContactShareConsentAsync(consentId, Arg.Any<CancellationToken>())
+        _apiClient.WithdrawContactShareConsentAsync(consentId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Error", 500));
 
         var result = await _service.WithdrawConsentAsync(consentId);
@@ -192,7 +192,7 @@ public class ContactShareConsentServiceTests
             PageNumber = 1,
             PageSize = 50
         };
-        _apiClient.GetOrganizationSharedContactsAsync(actorId, null, null, 1, 50, Arg.Any<CancellationToken>())
+        _apiClient.GetOrganizationSharedContactsAsync(actorId, null, null, 1, 50, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(paginatedResult);
 
         var result = await _service.GetOrganizationSharedContactsAsync(actorId);
@@ -205,7 +205,7 @@ public class ContactShareConsentServiceTests
     public async Task GetOrganizationSharedContactsAsync_ReturnsEmptyList_WhenApiThrows()
     {
         var actorId = Guid.NewGuid();
-        _apiClient.GetOrganizationSharedContactsAsync(actorId, null, null, 1, 50, Arg.Any<CancellationToken>())
+        _apiClient.GetOrganizationSharedContactsAsync(actorId, null, null, 1, 50, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Error", 500));
 
         var result = await _service.GetOrganizationSharedContactsAsync(actorId);
@@ -228,7 +228,7 @@ public class ContactShareConsentServiceTests
             FileDownloadName = "shared-contacts-export.csv",
             ContentType = "text/csv"
         };
-        _apiClient.ExportOrganizationSharedContactsAsync(actorId, "csv", null, Arg.Any<CancellationToken>())
+        _apiClient.ExportOrganizationSharedContactsAsync(actorId, "csv", null, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         var result = await _service.ExportSharedContactsAsync(actorId);
@@ -242,7 +242,7 @@ public class ContactShareConsentServiceTests
     public async Task ExportSharedContactsAsync_ReturnsNull_WhenApiThrows()
     {
         var actorId = Guid.NewGuid();
-        _apiClient.ExportOrganizationSharedContactsAsync(actorId, "csv", null, Arg.Any<CancellationToken>())
+        _apiClient.ExportOrganizationSharedContactsAsync(actorId, "csv", null, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Error", 500));
 
         var result = await _service.ExportSharedContactsAsync(actorId);
@@ -260,7 +260,7 @@ public class ContactShareConsentServiceTests
             FileDownloadName = "export.tsv",
             ContentType = "text/tab-separated-values"
         };
-        _apiClient.ExportOrganizationSharedContactsAsync(actorId, "tsv", null, Arg.Any<CancellationToken>())
+        _apiClient.ExportOrganizationSharedContactsAsync(actorId, "tsv", null, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         var result = await _service.ExportSharedContactsAsync(actorId, "tsv");

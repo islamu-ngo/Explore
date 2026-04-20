@@ -26,7 +26,7 @@ public class LanguageServiceTests
     {
         // Arrange
         var items = new List<LanguageListDto> { new() };
-        _apiClient.LanguageAllAsync(Arg.Any<CancellationToken>()).Returns(items);
+        _apiClient.GetLanguagesAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(items);
 
         // Act
         var result = await _service.GetLanguagesAsync();
@@ -39,7 +39,7 @@ public class LanguageServiceTests
     public async Task GetLanguagesAsync_Throws_WhenApiThrows()
     {
         // Arrange
-        _apiClient.LanguageAllAsync(Arg.Any<CancellationToken>())
+        _apiClient.GetLanguagesAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
 
         // Act & Assert
@@ -59,8 +59,8 @@ public class LanguageServiceTests
         const int id = 1;
         var item = new LanguageDto();
 
-        _apiClient.LanguageAsync(id, Arg.Any<CancellationToken>()).Returns(item);
-        _apiClient.LanguageAsync(id).Returns(item);
+        _apiClient.GetLanguageByIdAsync(id, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(item);
+        _apiClient.GetLanguageByIdAsync(id).Returns(item);
 
         // Act
         var result = await _service.GetLanguageByIdAsync(id);
@@ -75,9 +75,9 @@ public class LanguageServiceTests
         // Arrange
         const int id = 1;
 
-        _apiClient.LanguageAsync(id, Arg.Any<CancellationToken>())
+        _apiClient.GetLanguageByIdAsync(id, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
-        _apiClient.LanguageAsync(id)
+        _apiClient.GetLanguageByIdAsync(id)
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
 
         // Act & Assert

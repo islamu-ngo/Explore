@@ -41,7 +41,7 @@ public class OrganizationServiceTests
         var organizations = ComponentDataBuilder.OrganizationListDto.Generate(2);
         var halResponse = CreateOrgCollectionResponse(organizations);
 
-        _apiClient.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(halResponse);
 
         // Act
@@ -56,7 +56,7 @@ public class OrganizationServiceTests
     public async Task GetMyOrganizationsAsync_ReturnsEmptyList_WhenApiThrows()
     {
         // Arrange
-        _apiClient.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("API Error", 500));
 
         // Act
@@ -70,7 +70,7 @@ public class OrganizationServiceTests
     public async Task GetMyOrganizationsAsync_ReturnsEmptyList_WhenApiReturnsNull()
     {
         // Arrange
-        _apiClient.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((HalCollectionResourceOfOrganizationListDto?)null);
 
         // Act
@@ -85,7 +85,7 @@ public class OrganizationServiceTests
     {
         // Arrange
         var halResponse = CreateOrgCollectionResponse(new List<OrganizationListDto>());
-        _apiClient.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(halResponse);
 
         // Act
@@ -95,7 +95,7 @@ public class OrganizationServiceTests
         await _apiClient.Received(1).GetMyOrganizationsAsync(
             ApiConstants.FirstPage,
             ApiConstants.DefaultPageSize,
-            Arg.Any<CancellationToken>());
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     #endregion
@@ -112,7 +112,7 @@ public class OrganizationServiceTests
         var organizations = ComponentDataBuilder.OrganizationListDto.Generate(3);
         var halResponse = CreateOrgCollectionResponse(organizations);
 
-        _apiClient.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(halResponse);
 
         // Act
@@ -128,7 +128,7 @@ public class OrganizationServiceTests
     {
         // Arrange
         var userId = Guid.NewGuid();
-        _apiClient.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Forbidden", 403));
 
         // Act
@@ -145,7 +145,7 @@ public class OrganizationServiceTests
         var userId = Guid.NewGuid();
         var halResponse = CreateOrgCollectionResponse(new List<OrganizationListDto>());
 
-        _apiClient.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(halResponse);
 
         // Act
@@ -155,7 +155,7 @@ public class OrganizationServiceTests
         await _apiClient.Received(1).GetMyOrganizationsAsync(
             ApiConstants.FirstPage,
             ApiConstants.DefaultPageSize,
-            Arg.Any<CancellationToken>());
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -163,7 +163,7 @@ public class OrganizationServiceTests
     {
         // Arrange
         var userId = Guid.NewGuid();
-        _apiClient.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((HalCollectionResourceOfOrganizationListDto?)null);
 
         // Act
@@ -178,7 +178,7 @@ public class OrganizationServiceTests
     {
         // Arrange
         var userId = Guid.NewGuid();
-        _apiClient.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetMyOrganizationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Server Error", 500));
 
         // Act
@@ -203,7 +203,7 @@ public class OrganizationServiceTests
         organization.Id = organizationId;
         var halResponse = CreateOrgResourceResponse(organization);
 
-        _apiClient.GetOrganizationByIdAsync(organizationId, Arg.Any<CancellationToken>())
+        _apiClient.GetOrganizationByIdAsync(organizationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(halResponse);
 
         // Act
@@ -220,7 +220,7 @@ public class OrganizationServiceTests
     {
         // Arrange
         var organizationId = Guid.NewGuid();
-        _apiClient.GetOrganizationByIdAsync(organizationId, Arg.Any<CancellationToken>())
+        _apiClient.GetOrganizationByIdAsync(organizationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Not Found", 404));
 
         // Act
@@ -235,7 +235,7 @@ public class OrganizationServiceTests
     {
         // Arrange
         var organizationId = Guid.NewGuid();
-        _apiClient.GetOrganizationByIdAsync(organizationId, Arg.Any<CancellationToken>())
+        _apiClient.GetOrganizationByIdAsync(organizationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Server Error", 500));
 
         // Act
@@ -258,7 +258,7 @@ public class OrganizationServiceTests
         var createDto = ComponentDataBuilder.CreateOrganizationDto.Generate();
         var expectedResponse = ComponentDataBuilder.SuccessResponse();
 
-        _apiClient.CreateOrganizationAsync(Arg.Any<CreateOrganizationDto>(), Arg.Any<CancellationToken>())
+        _apiClient.CreateOrganizationAsync(Arg.Any<CreateOrganizationDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
@@ -274,7 +274,7 @@ public class OrganizationServiceTests
     {
         // Arrange
         var createDto = ComponentDataBuilder.CreateOrganizationDto.Generate();
-        _apiClient.CreateOrganizationAsync(Arg.Any<CreateOrganizationDto>(), Arg.Any<CancellationToken>())
+        _apiClient.CreateOrganizationAsync(Arg.Any<CreateOrganizationDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Server error", 500));
 
         // Act & Assert
@@ -299,7 +299,7 @@ public class OrganizationServiceTests
         };
         var expectedResponse = ComponentDataBuilder.SuccessResponse(organizationId);
 
-        _apiClient.UpdateOrganizationAsync(Arg.Any<Guid>(), Arg.Any<UpdateOrganizationDto>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateOrganizationAsync(Arg.Any<Guid>(), Arg.Any<UpdateOrganizationDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
@@ -322,7 +322,7 @@ public class OrganizationServiceTests
             Email = "updated@example.com"
         };
 
-        _apiClient.UpdateOrganizationAsync(Arg.Any<Guid>(), Arg.Any<UpdateOrganizationDto>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateOrganizationAsync(Arg.Any<Guid>(), Arg.Any<UpdateOrganizationDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Bad Request", 400));
 
         // Act & Assert
@@ -344,7 +344,7 @@ public class OrganizationServiceTests
             new() { Id = 1, FullName = "Pending", MasterCode = "PEND" },
             new() { Id = 2, FullName = "Approved", MasterCode = "APPR" }
         };
-        _apiClient.ApprovalstatusAllAsync(Arg.Any<CancellationToken>())
+        _apiClient.GetApprovalStatusOptionsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(statuses);
 
         // Act
@@ -359,7 +359,7 @@ public class OrganizationServiceTests
     public async Task GetStatusTypesAsync_ReturnsEmptyList_WhenApiReturnsNull()
     {
         // Arrange
-        _apiClient.ApprovalstatusAllAsync(Arg.Any<CancellationToken>())
+        _apiClient.GetApprovalStatusOptionsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((ICollection<StatusTypeListDto>?)null);
 
         // Act
@@ -373,7 +373,7 @@ public class OrganizationServiceTests
     public async Task GetStatusTypesAsync_ReturnsEmptyList_WhenApiThrows_Exception()
     {
         // Arrange
-        _apiClient.ApprovalstatusAllAsync(Arg.Any<CancellationToken>())
+        _apiClient.GetApprovalStatusOptionsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Internal Server Error", 500));
 
         // Act
@@ -387,7 +387,7 @@ public class OrganizationServiceTests
     public async Task GetStatusTypesAsync_ReturnsEmptyList_WhenApiReturnsUnauthorized()
     {
         // Arrange
-        _apiClient.ApprovalstatusAllAsync(Arg.Any<CancellationToken>())
+        _apiClient.GetApprovalStatusOptionsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Unauthorized", 401));
 
         // Act

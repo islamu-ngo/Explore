@@ -49,7 +49,7 @@ public class TagServiceCrudErrorHandlingTests
             }
         };
 
-        _apiClient.GetTagsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>()).Returns(halResponse);
+        _apiClient.GetTagsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(halResponse);
         _apiClient.GetTagsAsync(Arg.Any<int?>(), Arg.Any<int?>()).Returns(halResponse);
 
         // Act
@@ -64,7 +64,7 @@ public class TagServiceCrudErrorHandlingTests
     {
         // Arrange
         var ex = new ApiException("Server Error", 500, null, null, null);
-        _apiClient.GetTagsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>()).ThrowsAsync(ex);
+        _apiClient.GetTagsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).ThrowsAsync(ex);
         _apiClient.GetTagsAsync(Arg.Any<int?>(), Arg.Any<int?>()).ThrowsAsync(ex);
 
         // Act
@@ -83,7 +83,7 @@ public class TagServiceCrudErrorHandlingTests
         {
             _embedded = new HalCollectionEmbeddedOfTagListDto { Items = tags.Cast<object>().ToList() }
         };
-        _apiClient.GetTagsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>()).Returns(halResponse);
+        _apiClient.GetTagsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(halResponse);
         _apiClient.GetTagsAsync(Arg.Any<int?>(), Arg.Any<int?>()).Returns(halResponse);
 
         // Act
@@ -105,7 +105,7 @@ public class TagServiceCrudErrorHandlingTests
         // Arrange
         var id = Guid.NewGuid();
         var hal = new HalResourceOfTagDto { Id = id, FullName = "Education" };
-        _apiClient.GetTagByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(hal);
+        _apiClient.GetTagByIdAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(hal);
         _apiClient.GetTagByIdAsync(Arg.Any<Guid>()).Returns(hal);
 
         // Act
@@ -122,7 +122,7 @@ public class TagServiceCrudErrorHandlingTests
         // Arrange
         var id = Guid.NewGuid();
         var ex = new ApiException("Not Found", 404, null, null, null);
-        _apiClient.GetTagByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).ThrowsAsync(ex);
+        _apiClient.GetTagByIdAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).ThrowsAsync(ex);
         _apiClient.GetTagByIdAsync(Arg.Any<Guid>()).ThrowsAsync(ex);
 
         // Act
@@ -138,7 +138,7 @@ public class TagServiceCrudErrorHandlingTests
         // Arrange
         var id = Guid.NewGuid();
         var ex = new ApiException("Server Error", 500, null, null, null);
-        _apiClient.GetTagByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).ThrowsAsync(ex);
+        _apiClient.GetTagByIdAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).ThrowsAsync(ex);
         _apiClient.GetTagByIdAsync(Arg.Any<Guid>()).ThrowsAsync(ex);
 
         // Act
@@ -160,7 +160,7 @@ public class TagServiceCrudErrorHandlingTests
         // Arrange
         var dto = new CreateTagDto { FullName = "NewTag", MasterCode = "NEW" };
         var ex = new ApiException("Bad Request", 400, "validation error", null, null);
-        _apiClient.CreateTagAsync(Arg.Any<CreateTagDto>(), Arg.Any<CancellationToken>()).ThrowsAsync(ex);
+        _apiClient.CreateTagAsync(Arg.Any<CreateTagDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).ThrowsAsync(ex);
         _apiClient.CreateTagAsync(Arg.Any<CreateTagDto>()).ThrowsAsync(ex);
 
         // Act
@@ -184,7 +184,7 @@ public class TagServiceCrudErrorHandlingTests
         var id = Guid.NewGuid();
         var dto = new UpdateTagDto { Id = id, FullName = "Updated", MasterCode = "UPD" };
         var ex = new ApiException("Bad Request", 400, "validation error", null, null);
-        _apiClient.UpdateTagAsync(Arg.Any<Guid>(), Arg.Any<UpdateTagDto>(), Arg.Any<CancellationToken>()).ThrowsAsync(ex);
+        _apiClient.UpdateTagAsync(Arg.Any<Guid>(), Arg.Any<UpdateTagDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).ThrowsAsync(ex);
         _apiClient.UpdateTagAsync(Arg.Any<Guid>(), Arg.Any<UpdateTagDto>()).ThrowsAsync(ex);
 
         // Act
@@ -206,7 +206,7 @@ public class TagServiceCrudErrorHandlingTests
     {
         // Arrange
         var id = Guid.NewGuid();
-        _apiClient.DeleteTagAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        _apiClient.DeleteTagAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
         _apiClient.DeleteTagAsync(Arg.Any<Guid>()).Returns(Task.CompletedTask);
 
         // Act
@@ -222,7 +222,7 @@ public class TagServiceCrudErrorHandlingTests
         // Arrange
         var id = Guid.NewGuid();
         var ex = new ApiException("Forbidden", 403, null, null, null);
-        _apiClient.DeleteTagAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).ThrowsAsync(ex);
+        _apiClient.DeleteTagAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).ThrowsAsync(ex);
         _apiClient.DeleteTagAsync(Arg.Any<Guid>()).ThrowsAsync(ex);
 
         // Act

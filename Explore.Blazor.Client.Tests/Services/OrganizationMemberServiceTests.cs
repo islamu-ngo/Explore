@@ -35,7 +35,7 @@ public class OrganizationMemberServiceTests
              new() { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), OrganizationId = organizationId }
          };
 
-        _apiClient.OrganizationmemberAllAsync(organizationId, Arg.Any<CancellationToken>())
+        _apiClient.GetOrganizationMembersByOrganizationAsync(organizationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(members);
 
         // Act
@@ -50,7 +50,7 @@ public class OrganizationMemberServiceTests
     {
         // Arrange
         var organizationId = Guid.NewGuid();
-        _apiClient.OrganizationmemberAllAsync(organizationId, Arg.Any<CancellationToken>())
+        _apiClient.GetOrganizationMembersByOrganizationAsync(organizationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("API Error", 500, null, null, null));
 
         // Act
@@ -65,7 +65,7 @@ public class OrganizationMemberServiceTests
     {
         // Arrange
         var organizationId = Guid.NewGuid();
-        _apiClient.OrganizationmemberAllAsync(organizationId, Arg.Any<CancellationToken>())
+        _apiClient.GetOrganizationMembersByOrganizationAsync(organizationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((ICollection<OrganizationMemberDto>?)null);
 
         // Act
@@ -89,7 +89,7 @@ public class OrganizationMemberServiceTests
             new() { Id = Guid.NewGuid(), OrganizationId = Guid.NewGuid(), Email = "user2@example.com" }
         };
 
-        _apiClient.InvitationsAsync(Arg.Any<CancellationToken>()).Returns(invitations);
+        _apiClient.GetMyOrganizationInvitationsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(invitations);
 
         // Act
         var result = await _service.GetMyInvitationsAsync();
@@ -102,7 +102,7 @@ public class OrganizationMemberServiceTests
     public async Task GetMyInvitationsAsync_ReturnsEmptyList_WhenApiThrows()
     {
         // Arrange
-        _apiClient.InvitationsAsync(Arg.Any<CancellationToken>())
+        _apiClient.GetMyOrganizationInvitationsAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("API Error", 500, null, null, null));
 
         // Act
@@ -129,7 +129,7 @@ public class OrganizationMemberServiceTests
         };
         var expected = ComponentDataBuilder.SuccessResponse();
 
-        _apiClient.OrganizationmemberPOSTAsync(dto, Arg.Any<CancellationToken>()).Returns(expected);
+        _apiClient.AddOrganizationMemberAsync(dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(expected);
 
         // Act
         var result = await _service.InviteMemberAsync(dto);
@@ -148,7 +148,7 @@ public class OrganizationMemberServiceTests
             OrganizationId = Guid.NewGuid(),
             Email = "test@example.com"
         };
-        _apiClient.OrganizationmemberPOSTAsync(dto, Arg.Any<CancellationToken>())
+        _apiClient.AddOrganizationMemberAsync(dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Bad Request", 400, null, null, null));
 
         // Act & Assert
@@ -164,7 +164,7 @@ public class OrganizationMemberServiceTests
     {
         // Arrange
         var invitationId = Guid.NewGuid();
-        _apiClient.AcceptAsync(invitationId, Arg.Any<CancellationToken>())
+        _apiClient.AcceptOrganizationInvitationAsync(invitationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Not Found", 404, null, null, null));
 
         // Act & Assert
@@ -180,7 +180,7 @@ public class OrganizationMemberServiceTests
     {
         // Arrange
         var invitationId = Guid.NewGuid();
-        _apiClient.DeclineAsync(invitationId, Arg.Any<CancellationToken>())
+        _apiClient.DeclineOrganizationInvitationAsync(invitationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Not Found", 404, null, null, null));
 
         // Act & Assert
@@ -196,7 +196,7 @@ public class OrganizationMemberServiceTests
     {
         // Arrange
         var memberId = Guid.NewGuid();
-        _apiClient.OrganizationmemberDELETEAsync(memberId, Arg.Any<CancellationToken>())
+        _apiClient.DeleteOrganizationMemberAsync(memberId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Forbidden", 403, null, null, null));
 
         // Act & Assert

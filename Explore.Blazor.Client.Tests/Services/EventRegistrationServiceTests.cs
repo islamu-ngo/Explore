@@ -48,7 +48,7 @@ public class EventRegistrationServiceTests
             TotalCount = 2
         };
 
-        _apiClient.EventregistrationGETAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetEventRegistrationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
@@ -62,7 +62,7 @@ public class EventRegistrationServiceTests
     public async Task GetAllRegistrationsAsync_ReturnsEmptyList_WhenApiThrows()
     {
         // Arrange
-        _apiClient.EventregistrationGETAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetEventRegistrationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Server Error", 500));
 
         // Act
@@ -81,7 +81,7 @@ public class EventRegistrationServiceTests
             Items = null,
             TotalCount = 0
         };
-        _apiClient.EventregistrationGETAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetEventRegistrationsAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
@@ -109,7 +109,7 @@ public class EventRegistrationServiceTests
             EventSessionId = Guid.NewGuid()
         };
 
-        _apiClient.EventregistrationGET3Async(registrationId, Arg.Any<CancellationToken>())
+        _apiClient.GetEventRegistrationByIdAsync(registrationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(expected);
 
         // Act
@@ -125,7 +125,7 @@ public class EventRegistrationServiceTests
     {
         // Arrange
         var registrationId = Guid.NewGuid();
-        _apiClient.EventregistrationGET3Async(registrationId, Arg.Any<CancellationToken>())
+        _apiClient.GetEventRegistrationByIdAsync(registrationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Not Found", 404));
 
         // Act
@@ -140,7 +140,7 @@ public class EventRegistrationServiceTests
     {
         // Arrange
         var registrationId = Guid.NewGuid();
-        _apiClient.EventregistrationGET3Async(registrationId, Arg.Any<CancellationToken>())
+        _apiClient.GetEventRegistrationByIdAsync(registrationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Server Error", 500));
 
         // Act
@@ -173,7 +173,7 @@ public class EventRegistrationServiceTests
             TotalCount = 47
         };
 
-        _apiClient.EventregistrationGETAsync(2, 15, Arg.Any<CancellationToken>())
+        _apiClient.GetEventRegistrationsAsync(2, 15, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(response);
 
         // Act
@@ -190,7 +190,7 @@ public class EventRegistrationServiceTests
     public async Task GetRegistrationsPagedAsync_ReturnsEmptyResult_WhenApiThrows()
     {
         // Arrange
-        _apiClient.EventregistrationGETAsync(3, 20, Arg.Any<CancellationToken>())
+        _apiClient.GetEventRegistrationsAsync(3, 20, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Server Error", 500));
 
         // Act
@@ -223,7 +223,7 @@ public class EventRegistrationServiceTests
         };
         var expectedResponse = ComponentDataBuilder.SuccessResponse();
 
-        _apiClient.EventregistrationPOSTAsync(dto, Arg.Any<CancellationToken>())
+        _apiClient.CreateEventRegistrationAsync(dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
@@ -245,7 +245,7 @@ public class EventRegistrationServiceTests
             RegistrationScopeId = 3,
             SelectedSessionIds = new List<Guid> { Guid.NewGuid() },
         };
-        _apiClient.EventregistrationPOSTAsync(dto, Arg.Any<CancellationToken>())
+        _apiClient.CreateEventRegistrationAsync(dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Bad Request", 400));
 
         // Act
@@ -267,14 +267,14 @@ public class EventRegistrationServiceTests
             RegistrationScopeId = 3,
             SelectedSessionIds = new List<Guid> { Guid.NewGuid() },
         };
-        _apiClient.EventregistrationPOSTAsync(Arg.Any<CreateEventRegistrationDto>(), Arg.Any<CancellationToken>())
+        _apiClient.CreateEventRegistrationAsync(Arg.Any<CreateEventRegistrationDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(ComponentDataBuilder.SuccessResponse());
 
         // Act
         await _service.RegisterForSessionAsync(dto);
 
         // Assert
-        await _apiClient.Received(1).EventregistrationPOSTAsync(dto, Arg.Any<CancellationToken>());
+        await _apiClient.Received(1).CreateEventRegistrationAsync(dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     #endregion
@@ -291,7 +291,7 @@ public class EventRegistrationServiceTests
         var dto = new UpdateEventRegistrationDto { Id = registrationId };
         var expectedResponse = ComponentDataBuilder.SuccessResponse(registrationId);
 
-        _apiClient.EventregistrationPUTAsync(registrationId, dto, Arg.Any<CancellationToken>())
+        _apiClient.UpdateEventRegistrationAsync(registrationId, dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
@@ -308,7 +308,7 @@ public class EventRegistrationServiceTests
         // Arrange
         var registrationId = Guid.NewGuid();
         var dto = new UpdateEventRegistrationDto { Id = registrationId };
-        _apiClient.EventregistrationPUTAsync(registrationId, dto, Arg.Any<CancellationToken>())
+        _apiClient.UpdateEventRegistrationAsync(registrationId, dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Bad Request", 400));
 
         // Act
@@ -330,7 +330,7 @@ public class EventRegistrationServiceTests
     {
         // Arrange
         var registrationId = Guid.NewGuid();
-        _apiClient.EventregistrationDELETEAsync(registrationId, Arg.Any<CancellationToken>())
+        _apiClient.DeleteEventRegistrationAsync(registrationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
         // Act
@@ -345,7 +345,7 @@ public class EventRegistrationServiceTests
     {
         // Arrange
         var registrationId = Guid.NewGuid();
-        _apiClient.EventregistrationDELETEAsync(registrationId, Arg.Any<CancellationToken>())
+        _apiClient.DeleteEventRegistrationAsync(registrationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Not Found", 404));
 
         // Act
@@ -360,7 +360,7 @@ public class EventRegistrationServiceTests
     {
         // Arrange
         var registrationId = Guid.NewGuid();
-        _apiClient.EventregistrationDELETEAsync(registrationId, Arg.Any<CancellationToken>())
+        _apiClient.DeleteEventRegistrationAsync(registrationId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Unauthorized", 401));
 
         // Act
@@ -387,7 +387,7 @@ public class EventRegistrationServiceTests
             new() { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), EventSessionId = sessionId }
         };
 
-        _apiClient.BySessionAsync(sessionId, Arg.Any<CancellationToken>())
+        _apiClient.GetRegistrationsBySessionAsync(sessionId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(registrations);
 
         // Act
@@ -402,7 +402,7 @@ public class EventRegistrationServiceTests
     {
         // Arrange
         var sessionId = Guid.NewGuid();
-        _apiClient.BySessionAsync(sessionId, Arg.Any<CancellationToken>())
+        _apiClient.GetRegistrationsBySessionAsync(sessionId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Error", 500));
 
         // Act
@@ -417,7 +417,7 @@ public class EventRegistrationServiceTests
     {
         // Arrange
         var sessionId = Guid.NewGuid();
-        _apiClient.BySessionAsync(sessionId, Arg.Any<CancellationToken>())
+        _apiClient.GetRegistrationsBySessionAsync(sessionId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((ICollection<EventRegistrationListDto>?)null);
 
         // Act
@@ -443,7 +443,7 @@ public class EventRegistrationServiceTests
             new() { Id = Guid.NewGuid(), UserId = userId, EventSessionId = Guid.NewGuid() }
         };
 
-        _apiClient.ByUserAsync(userId, Arg.Any<CancellationToken>())
+        _apiClient.GetRegistrationsByUserAsync(userId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(registrations);
 
         // Act
@@ -458,7 +458,7 @@ public class EventRegistrationServiceTests
     {
         // Arrange
         var userId = Guid.NewGuid();
-        _apiClient.ByUserAsync(userId, Arg.Any<CancellationToken>())
+        _apiClient.GetRegistrationsByUserAsync(userId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Error", 500));
 
         // Act
@@ -485,7 +485,7 @@ public class EventRegistrationServiceTests
             new() { Id = Guid.NewGuid(), UserId = userId, EventSessionId = sessionId }
         };
 
-        _apiClient.BySessionAsync(sessionId, Arg.Any<CancellationToken>())
+        _apiClient.GetRegistrationsBySessionAsync(sessionId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(registrations);
 
         // Act
@@ -507,7 +507,7 @@ public class EventRegistrationServiceTests
             new() { Id = Guid.NewGuid(), UserId = otherUserId, EventSessionId = sessionId }
         };
 
-        _apiClient.BySessionAsync(sessionId, Arg.Any<CancellationToken>())
+        _apiClient.GetRegistrationsBySessionAsync(sessionId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(registrations);
 
         // Act
@@ -523,7 +523,7 @@ public class EventRegistrationServiceTests
         // Arrange
         var sessionId = Guid.NewGuid();
         var userId = Guid.NewGuid();
-        _apiClient.BySessionAsync(sessionId, Arg.Any<CancellationToken>())
+        _apiClient.GetRegistrationsBySessionAsync(sessionId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Error", 500));
 
         // Act

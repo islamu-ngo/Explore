@@ -40,7 +40,7 @@ public class CategoryServiceTests
         var categories = ComponentDataBuilder.CategoryListDto.Generate(3);
         var halResponse = CreateCategoryCollectionResponse(categories);
 
-        _apiClient.GetCategoriesAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetCategoriesAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(halResponse);
 
         // Act
@@ -55,7 +55,7 @@ public class CategoryServiceTests
     public async Task GetCategoriesAsync_ReturnsEmptyList_WhenApiReturnsNull()
     {
         // Arrange
-        _apiClient.GetCategoriesAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetCategoriesAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((HalCollectionResourceOfCategoryListDto?)null);
 
         // Act
@@ -69,7 +69,7 @@ public class CategoryServiceTests
     public async Task GetCategoriesAsync_ReturnsEmptyList_WhenApiThrows()
     {
         // Arrange
-        _apiClient.GetCategoriesAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetCategoriesAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
 
         // Act
@@ -84,7 +84,7 @@ public class CategoryServiceTests
     {
         // Arrange
         var halResponse = CreateCategoryCollectionResponse(new List<CategoryListDto>());
-        _apiClient.GetCategoriesAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetCategoriesAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(halResponse);
 
         // Act
@@ -94,7 +94,7 @@ public class CategoryServiceTests
         await _apiClient.Received(1).GetCategoriesAsync(
             ApiConstants.FirstPage,
             ApiConstants.DefaultPageSize,
-            Arg.Any<CancellationToken>());
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     #endregion
@@ -110,7 +110,7 @@ public class CategoryServiceTests
         var categories = ComponentDataBuilder.CategoryListDto.Generate(2);
         var halResponse = CreateCategoryCollectionResponse(categories);
 
-        _apiClient.GetCategoriesAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+        _apiClient.GetCategoriesAsync(Arg.Any<int?>(), Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(halResponse);
 
         // Act
@@ -131,7 +131,7 @@ public class CategoryServiceTests
     {
         // Arrange
         var categoryId = Guid.NewGuid();
-        _apiClient.GetCategoryByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        _apiClient.GetCategoryByIdAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((HalResourceOfCategoryDto?)null);
         _apiClient.GetCategoryByIdAsync(Arg.Any<Guid>())
             .Returns((HalResourceOfCategoryDto?)null);
@@ -148,7 +148,7 @@ public class CategoryServiceTests
     {
         // Arrange
         var categoryId = Guid.NewGuid();
-        _apiClient.GetCategoryByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        _apiClient.GetCategoryByIdAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Not Found", 404, null, null, null));
         _apiClient.GetCategoryByIdAsync(Arg.Any<Guid>())
             .ThrowsAsync(new ApiException("Not Found", 404, null, null, null));
@@ -165,7 +165,7 @@ public class CategoryServiceTests
     {
         // Arrange
         var categoryId = Guid.NewGuid();
-        _apiClient.GetCategoryByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        _apiClient.GetCategoryByIdAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
         _apiClient.GetCategoryByIdAsync(Arg.Any<Guid>())
             .ThrowsAsync(new ApiException("Server Error", 500, null, null, null));
@@ -194,7 +194,7 @@ public class CategoryServiceTests
         };
         var expectedResponse = ComponentDataBuilder.SuccessResponse();
 
-        _apiClient.CreateCategoryAsync(Arg.Any<CreateCategoryDto>(), Arg.Any<CancellationToken>())
+        _apiClient.CreateCategoryAsync(Arg.Any<CreateCategoryDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
@@ -215,7 +215,7 @@ public class CategoryServiceTests
             MasterCode = "NEWCAT"
         };
 
-        _apiClient.CreateCategoryAsync(Arg.Any<CreateCategoryDto>(), Arg.Any<CancellationToken>())
+        _apiClient.CreateCategoryAsync(Arg.Any<CreateCategoryDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Bad Request", 400, "validation error", null, null));
 
         // Act
@@ -246,7 +246,7 @@ public class CategoryServiceTests
         };
         var expectedResponse = ComponentDataBuilder.SuccessResponse(categoryId);
 
-        _apiClient.UpdateCategoryAsync(Arg.Any<Guid>(), Arg.Any<UpdateCategoryDto>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateCategoryAsync(Arg.Any<Guid>(), Arg.Any<UpdateCategoryDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
@@ -270,7 +270,7 @@ public class CategoryServiceTests
             MasterCode = "UPDCAT"
         };
 
-        _apiClient.UpdateCategoryAsync(Arg.Any<Guid>(), Arg.Any<UpdateCategoryDto>(), Arg.Any<CancellationToken>())
+        _apiClient.UpdateCategoryAsync(Arg.Any<Guid>(), Arg.Any<UpdateCategoryDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Bad Request", 400, "validation error", null, null));
 
         // Act
@@ -293,7 +293,7 @@ public class CategoryServiceTests
     {
         // Arrange
         var categoryId = Guid.NewGuid();
-        _apiClient.DeleteCategoryAsync(categoryId, Arg.Any<CancellationToken>())
+        _apiClient.DeleteCategoryAsync(categoryId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
         // Act
@@ -308,7 +308,7 @@ public class CategoryServiceTests
     {
         // Arrange
         var categoryId = Guid.NewGuid();
-        _apiClient.DeleteCategoryAsync(categoryId, Arg.Any<CancellationToken>())
+        _apiClient.DeleteCategoryAsync(categoryId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ApiException("Forbidden", 403, null, null, null));
 
         // Act
