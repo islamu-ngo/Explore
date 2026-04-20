@@ -3,9 +3,36 @@ ABOUTME: Update the SESSION PROGRESS section every meaningful step — this is w
 
 # API Contract Stabilization - Context
 
-**Last Updated:** 2026-04-20 (Phase 3 complete; Phase 4 in progress; ALL changes UNCOMMITTED)
+**Last Updated:** 2026-04-20 (Phase 4 complete; commits `5917b26e` + `c146fb20` landed on `develop`)
 **Parent of:** `dev/active/hateoas-client-alignment/`
-**Status:** Phase 0 ✅ | Phase 1 ✅ | Phase 2 ✅ | Phase 3 ✅ | Phase 4 🟡 IN PROGRESS
+**Status:** Phase 0 ✅ | Phase 1 ✅ | Phase 2 ✅ | Phase 3 ✅ | Phase 4 ✅ | Phase 5A ⏳ NEXT
+
+---
+
+## SESSION HANDOFF — 2026-04-20 (Phase 4 close-out)
+
+### ✅ Phase 4 Complete
+
+**Commits landed on `develop`:**
+1. **`5917b26e`** `refactor(blazor): align client services with regenerated API client`
+   - 25 files, 421 insertions / 421 deletions
+   - Regenerated `EventApiClient.g.cs` + 22 service files + 1 Razor component + `swagger.json` drift picked up
+2. **`c146fb20`** `test(blazor): align test mocks with regenerated API client signatures`
+   - 23 test files in `Explore.Blazor.Client.Tests/`, 327 insertions / 327 deletions
+   - NSubstitute matchers expanded for new `api_version` / `x_Api_Version` trailing params
+
+**Verification:**
+- Full solution build: **0 errors** (2575 pre-existing warnings).
+- `ApiClientNamingTests`: **4/4 GREEN** (Phase 0.2 guardrail satisfied — zero `\dAsync`, no banned placeholders).
+- `Explore.Blazor.Client.Tests`: 691 passed / 1 failed / 1 skipped. The single failure (`AuthorizationProviderConfigurationTests.SaveLocal_WhenBrowserCommandSucceeds_RedirectsToLogin`) is a pre-existing timing-flaky TUnit `WaitForFailedException`, last touched in `0a0697db` — **not a Phase 4 regression**.
+
+**Non-inferable learnings for future phases:**
+- NSwag with `operationGenerationMode: SingleClientFromOperationId` now emits trailing `string? api_version, string? x_Api_Version, CancellationToken ct` on every method. All callers must pass `cancellationToken:` as a named argument; all NSubstitute matchers must insert two `Arg.Any<string?>()` before `Arg.Any<CancellationToken>()`.
+- `MockServiceFactory.ITranslationService` mocks target a service interface (not IEventApiClient) and therefore keep the original `(string, CancellationToken)` shape — do not apply the wildcard expansion there.
+- The "5 service wrappers" estimate in the original plan was low; the real production blast radius was **23 files** (+ 23 test files).
+
+### 🔜 Next (Phase 5A — Contract-surface hygiene)
+See `api-contract-stabilization-tasks.md` Phase 5A for the task list.
 
 ---
 

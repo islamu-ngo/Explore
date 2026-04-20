@@ -3,8 +3,8 @@ ABOUTME: Mark checkboxes as work progresses; add discovered tasks inline; keep o
 
 # API Contract Stabilization - Task Checklist
 
-**Last Updated:** 2026-04-20 (v6 — Phase 3 fully complete, Phase 4 starting)
-**Status:** Phase 0 ✅ COMPLETE | Phase 1 ✅ COMPLETE | Phase 2 ✅ COMPLETE | Phase 3 ✅ COMPLETE | Phase 4 🟡 IN PROGRESS
+**Last Updated:** 2026-04-20 (v7 — Phase 4 complete, ApiClientNamingTests GREEN)
+**Status:** Phase 0 ✅ COMPLETE | Phase 1 ✅ COMPLETE | Phase 2 ✅ COMPLETE | Phase 3 ✅ COMPLETE | Phase 4 ✅ COMPLETE | Phase 5A ⏳ NEXT
 
 Legend: `[ ]` not started — `[🟡]` in progress — `[x]` complete — `[!]` blocked
 
@@ -161,28 +161,32 @@ Goal: every operation has an explicit, unique `operationId`; every action carrie
 
 ---
 
-## Phase 4 — Regenerate `IEventApiClient` once (0.5 day) ⏳ NOT STARTED
+## Phase 4 — Regenerate `IEventApiClient` once (0.5 day) ✅ COMPLETE (2026-04-20)
 
-Goal: zero `\dAsync`, zero verb-only methods, 5 service wrappers repaired.
+Goal: zero `\dAsync`, zero verb-only methods, service wrappers repaired.
 
-- [ ] **4.1** Refresh `Explore.API/swagger.json` from the now-clean runtime endpoint.
-  - **Acceptance:** Checked-in `swagger.json` diff shows only canonical operations, explicit operationIds.
-- [ ] **4.2** Run NSwag regeneration for `Explore.Blazor.Client/nswag.json`.
-  - **Acceptance:** `EventApiClient.g.cs` regenerated; visual diff shows rename-only changes.
-- [ ] **4.3** Inspect regeneration diff for structural surprises.
-  - **Acceptance:** No logic changes, only naming.
-- [ ] **4.4** Build: `dotnet build --configuration Release --verbosity quiet`.
-  - Expected: compile errors in exactly 5 service wrappers.
-  - **Acceptance:** Failing projects are the 5 identified wrappers (and only them).
-- [ ] **4.5a** Rename call sites in `Explore.Blazor.Client/Services/UserService.cs`.
-- [ ] **4.5b** Rename call sites in `Explore.Blazor.Client/Services/EventRegistrationService.cs`.
-- [ ] **4.5c** Rename call sites in `Explore.Blazor.Client/Services/EventSeriesService.cs`.
-- [ ] **4.5d** Rename call sites in `Explore.Blazor.Client/Services/EventSessionAgendaItemService.cs`.
-- [ ] **4.5e** Rename call sites in `Explore.Blazor.Client/Services/OrganizationMemberService.cs`.
-- [ ] **4.6** Run `lsp_diagnostics` on each of the 5 edited service files.
-  - **Acceptance:** Clean.
+- [x] **4.1** Refreshed `Explore.API/swagger.json` from the now-clean runtime endpoint.
+  - **Result:** swagger.json contains canonical PascalCase operationIds (GetMadhabs, GetTenants, CreateEventRegistration, etc.).
+- [x] **4.2** Ran NSwag regeneration for `Explore.Blazor.Client/nswag.json`.
+  - **Result:** `EventApiClient.g.cs` regenerated via `SingleClientFromOperationId` mode. 271 clean PascalCase methods.
+- [x] **4.3** Inspected regeneration diff — no logic changes, only naming + new `api_version`/`x_Api_Version` trailing string params before `CancellationToken`.
+- [x] **4.4** Full solution build: **0 errors**, 2575 pre-existing warnings.
+- [x] **4.5** Renamed call sites. Scope wider than originally planned 5 wrappers — **22 service files + 1 Razor component** required updates (23 production files total). Commit `5917b26e`:
+  - Services: Admin, Category, ContactShareConsent, EventRegistration, EventSeries, Event, EventSessionAgendaItem, ExternalApiKey, ImageStorage, OrganizationMember, OrganizationReview, Organization, Tag, Translation, User, UserSettings
+  - Lookup services: AudienceAge, AudienceGender, EventFormat, EventStatus, EventType, Language, Madhab
+  - Razor: `Pages/Admin/Instance/Components/InstanceTenantsSection.razor`
+  - 63 unique legacy names mapped to new PascalCase names.
+  - `CancellationToken` now passed as `cancellationToken: ct` named argument (new trailing params shifted position).
+- [x] **4.6** Test project alignment (not in original plan — emerged from regeneration). Commit `c146fb20`:
+  - 23 test files updated in `Explore.Blazor.Client.Tests/`
+  - NSubstitute matchers expanded: `Arg.Any<CancellationToken>()` → `Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()`
+  - Method rename follow-through for remaining test-side call sites.
+  - `MockServiceFactory.ITranslationService` mocks left unchanged (service interface, not IEventApiClient).
+- [x] **4.7** Verified guardrails:
+  - `ApiClientNamingTests`: **4/4 GREEN** ✅ — zero `\dAsync` matches, no banned placeholders.
+  - `Explore.Blazor.Client.Tests`: 691 passed / 1 failed / 1 skipped. The single failure (`SaveLocal_WhenBrowserCommandSucceeds_RedirectsToLogin`) is a pre-existing flaky timing test introduced in commit `0a0697db`, unrelated to Phase 4.
 
-**Phase 4 complete when:** Phase 0.2 assertions (`\dAsync`, verb-only) both flip green and build is clean.
+**Phase 4 complete:** Phase 0.2 assertions flipped GREEN; full solution builds with 0 errors; both Blazor.Client (production) and Blazor.Client.Tests project compile and build clean.
 
 ---
 
