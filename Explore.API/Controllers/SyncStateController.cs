@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.SyncState;
 using Explore.Application.Features.SyncStates.Requests.Commands;
 using Explore.Application.Features.SyncStates.Requests.Queries;
@@ -32,7 +33,7 @@ public class SyncStateController : ControllerBase
     }
 
     // GET: api/syncstate
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetSyncStates)]
     [Authorize]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<List<SyncStateListDto>>> GetAll(CancellationToken cancellationToken = default)
@@ -42,7 +43,7 @@ public class SyncStateController : ControllerBase
     }
 
     // GET: api/syncstate/{id}
-    [HttpGet("{id}")]
+    [HttpGet("{id}", Name = RouteNames.GetSyncStateById)]
     [Authorize]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<SyncStateDto>> GetById(int id, CancellationToken cancellationToken = default)
@@ -53,7 +54,7 @@ public class SyncStateController : ControllerBase
     }
 
     // POST: api/syncstate
-    [HttpPost]
+    [HttpPost(Name = RouteNames.CreateSyncState)]
     [Authorize]
     public async Task<ActionResult<BaseCommandResponse<int>>> Create([FromBody] CreateSyncStateDto dto, CancellationToken cancellationToken = default)
     {
@@ -63,7 +64,7 @@ public class SyncStateController : ControllerBase
     }
 
     // PUT: api/syncstate/{id}
-    [HttpPut("{id}")]
+    [HttpPut("{id}", Name = RouteNames.UpdateSyncState)]
     [Authorize]
     public async Task<ActionResult<BaseCommandResponse<int>>> Update(int id, [FromBody] UpdateSyncStateDto dto, CancellationToken cancellationToken = default)
     {
@@ -84,7 +85,7 @@ public class SyncStateController : ControllerBase
     }
 
     // DELETE: api/syncstate/{id}
-    [HttpDelete("{id}")]
+    [HttpDelete("{id}", Name = RouteNames.DeleteSyncState)]
     [Authorize]
     public async Task<ActionResult> Delete(int id, CancellationToken cancellationToken = default)
     {

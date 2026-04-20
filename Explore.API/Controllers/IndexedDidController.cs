@@ -69,7 +69,7 @@ public class IndexedDidController : ControllerBase
     // POST: api/indexeddid
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPost]
+    [HttpPost(Name = RouteNames.CreateIndexedDid)]
     public async Task<ActionResult<BaseCommandResponse<string>>> Create([FromBody] CreateIndexedDidDto dto, CancellationToken cancellationToken = default)
     {
         var command = new CreateIndexedDidCommand { IndexedDidDto = dto };
@@ -80,7 +80,7 @@ public class IndexedDidController : ControllerBase
     // PUT: api/indexeddid/{did}
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("{did}")]
+    [HttpPut("{did}", Name = RouteNames.UpdateIndexedDid)]
     public async Task<ActionResult<BaseCommandResponse<string>>> Update(string did, [FromBody] UpdateIndexedDidDto dto, CancellationToken cancellationToken = default)
     {
         if (did != dto.Did)
@@ -102,7 +102,7 @@ public class IndexedDidController : ControllerBase
     // DELETE: api/indexeddid/{did}
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpDelete("{did}")]
+    [HttpDelete("{did}", Name = RouteNames.DeleteIndexedDid)]
     public async Task<ActionResult> Delete(string did, CancellationToken cancellationToken = default)
     {
         var command = new DeleteIndexedDidCommand { Did = did };

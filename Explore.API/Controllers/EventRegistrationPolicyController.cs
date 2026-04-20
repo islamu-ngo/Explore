@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.EventRegistrationPolicy;
 using Explore.Application.Features.EventRegistrationPolicies.Requests.Queries;
 using MediatR;
@@ -26,7 +27,7 @@ public class EventRegistrationPolicyController : ControllerBase
     }
 
     // GET: api/eventregistrationpolicy
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetEventRegistrationPolicies)]
     [EndpointSummary("Get all Event Registration Policies")]
     [EndpointDescription("Retrieve a list of all registration policies (Open, ApprovalRequired, InvitationOnly)")]
     [AllowAnonymous]

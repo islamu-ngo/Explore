@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.RegistrationMode;
 using Explore.Application.Features.RegistrationModes.Requests.Queries;
 using MediatR;
@@ -29,7 +30,7 @@ public class RegistrationModeController : ControllerBase
     }
 
     // GET: api/registrationmode
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetRegistrationModes)]
     [EndpointSummary("Get all Registration Modes")]
     [EndpointDescription("Retrieve a list of all registration modes (Open, ApprovalRequired, InvitationOnly)")]
     [AllowAnonymous]
@@ -42,7 +43,7 @@ public class RegistrationModeController : ControllerBase
     }
 
     // GET: api/registrationmode/{id}
-    [HttpGet("{id}")]
+    [HttpGet("{id}", Name = RouteNames.GetRegistrationModeById)]
     [EndpointSummary("Get Registration Mode by ID")]
     [EndpointDescription("Retrieve details of a specific registration mode")]
     [AllowAnonymous]

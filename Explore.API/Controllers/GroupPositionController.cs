@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.GroupPosition;
 using Explore.Application.Features.GroupPositions.Requests.Queries;
 using MediatR;
@@ -28,7 +29,7 @@ public class GroupPositionController : ControllerBase
         _mediator = mediator;
     }
 
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetGroupPositions)]
     [EndpointSummary("Get all Group Positions")]
     [EndpointDescription("Retrieve a list of all group positions (Leader, Coordinator, Member, etc.)")]
     [AllowAnonymous]
@@ -40,7 +41,7 @@ public class GroupPositionController : ControllerBase
         return Ok(groupPositions);
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("{id}", Name = RouteNames.GetGroupPositionById)]
     [EndpointSummary("Get Group Position by ID")]
     [EndpointDescription("Retrieve details of a specific group position")]
     [AllowAnonymous]

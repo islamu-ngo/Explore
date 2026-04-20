@@ -13,6 +13,7 @@ public static class RouteNames
     public const string GetMyOrganizations = "GetMyOrganizations";
     public const string CreateOrganization = "CreateOrganization";
     public const string UpdateOrganization = "UpdateOrganization";
+    public const string UpdateOrganizationApprovalStatus = "UpdateOrganizationApprovalStatus";
     public const string DeleteOrganization = "DeleteOrganization";
     public const string GetOrganizationEvents = "GetOrganizationEvents";
     public const string GetOrganizationMembers = "GetOrganizationMembers";
@@ -148,6 +149,44 @@ public static class RouteNames
     public const string GetDidCustodyTypeOptionById = "GetDidCustodyTypeOptionById";
     public const string GetEventFormatOptions = "GetEventFormatOptions";
     public const string GetEventFormatOptionById = "GetEventFormatOptionById";
+    public const string GetEventStatusById = "GetEventStatusById";
+    public const string GetLanguageById = "GetLanguageById";
+    public const string GetMadhabById = "GetMadhabById";
+    public const string GetRegistrationModes = "GetRegistrationModes";
+    public const string GetRegistrationModeById = "GetRegistrationModeById";
+    public const string GetRegistrationScopes = "GetRegistrationScopes";
+    public const string GetScheduleItemKinds = "GetScheduleItemKinds";
+    public const string GetVisibilityTypes = "GetVisibilityTypes";
+    public const string GetVisibilityTypeById = "GetVisibilityTypeById";
+    public const string GetFileTypes = "GetFileTypes";
+    public const string GetFileTypeById = "GetFileTypeById";
+    public const string GetGroupPositions = "GetGroupPositions";
+    public const string GetGroupPositionById = "GetGroupPositionById";
+    public const string GetOrganizationPositions = "GetOrganizationPositions";
+    public const string GetOrganizationPositionById = "GetOrganizationPositionById";
+    public const string GetEventTypeById = "GetEventTypeById";
+    public const string CreateEventType = "CreateEventType";
+    public const string UpdateEventType = "UpdateEventType";
+    public const string DeleteEventType = "DeleteEventType";
+    public const string GetTagTypeById = "GetTagTypeById";
+    public const string GetTagTypesWithTags = "GetTagTypesWithTags";
+    public const string GetMyFeatureFlags = "GetMyFeatureFlags";
+    public const string GetPublicExperienceSettings = "GetPublicExperienceSettings";
+    public const string GetTranslationByLanguage = "GetTranslationByLanguage";
+    public const string GetAvailableTranslationLanguages = "GetAvailableTranslationLanguages";
+    public const string GetEventSeries = "GetEventSeries";
+    public const string GetEventSeriesById = "GetEventSeriesById";
+    public const string GetTopEventSeries = "GetTopEventSeries";
+    public const string CreateEventSeries = "CreateEventSeries";
+    public const string UpdateEventSeries = "UpdateEventSeries";
+    public const string DeleteEventSeries = "DeleteEventSeries";
+    public const string GetEventRegistrationPolicies = "GetEventRegistrationPolicies";
+    public const string GetEventRegistrationById = "GetEventRegistrationById";
+    public const string GetRegistrationsBySession = "GetRegistrationsBySession";
+    public const string GetRegistrationsByUser = "GetRegistrationsByUser";
+    public const string CreateEventRegistration = "CreateEventRegistration";
+    public const string UpdateEventRegistration = "UpdateEventRegistration";
+    public const string DeleteEventRegistration = "DeleteEventRegistration";
 
     #endregion
 
@@ -161,6 +200,10 @@ public static class RouteNames
     public const string DeleteUser = "DeleteUser";
     public const string GetUserOrganizations = "GetUserOrganizations";
     public const string GetUserRegistrations = "GetUserRegistrations";
+    public const string SyncUser = "SyncUser";
+    public const string GetCurrentUserAdminAuthority = "GetCurrentUserAdminAuthority";
+    public const string UpdateCurrentUser = "UpdateCurrentUser";
+    public const string DeleteCurrentUser = "DeleteCurrentUser";
 
     #endregion
 
@@ -173,6 +216,17 @@ public static class RouteNames
     public const string UpdateTenant = "UpdateTenant";
     public const string DeleteTenant = "DeleteTenant";
     public const string GetTenantSettings = "GetTenantSettings";
+    public const string GetActiveTenantCount = "GetActiveTenantCount";
+
+    #endregion
+
+    #region Tenant Navigation Routes
+
+    public const string GetTenantNavigationLinks = "GetTenantNavigationLinks";
+    public const string CreateTenantNavigationLink = "CreateTenantNavigationLink";
+    public const string UpdateTenantNavigationLink = "UpdateTenantNavigationLink";
+    public const string DeleteTenantNavigationLink = "DeleteTenantNavigationLink";
+    public const string ReorderTenantNavigationLinks = "ReorderTenantNavigationLinks";
 
     #endregion
 
@@ -203,9 +257,15 @@ public static class RouteNames
     #region Organization Member Routes
 
     public const string GetOrganizationMemberById = "GetOrganizationMemberById";
+    public const string GetOrganizationMembersByOrganization = "GetOrganizationMembersByOrganization";
+    public const string AddOrganizationMember = "AddOrganizationMember";
     public const string CreateOrganizationMember = "CreateOrganizationMember";
     public const string UpdateOrganizationMember = "UpdateOrganizationMember";
+    public const string UpdateOrganizationMemberRole = "UpdateOrganizationMemberRole";
     public const string DeleteOrganizationMember = "DeleteOrganizationMember";
+    public const string GetMyOrganizationInvitations = "GetMyOrganizationInvitations";
+    public const string AcceptOrganizationInvitation = "AcceptOrganizationInvitation";
+    public const string DeclineOrganizationInvitation = "DeclineOrganizationInvitation";
 
     #endregion
 
@@ -231,6 +291,7 @@ public static class RouteNames
     public const string CreateEventSessionAgendaItem = "CreateEventSessionAgendaItem";
     public const string UpdateEventSessionAgendaItem = "UpdateEventSessionAgendaItem";
     public const string DeleteEventSessionAgendaItem = "DeleteEventSessionAgendaItem";
+    public const string GetEventSessionAgendaItemsBySession = "GetEventSessionAgendaItemsBySession";
 
     #endregion
 
@@ -239,7 +300,13 @@ public static class RouteNames
     public const string GetStorageObjects = "GetStorageObjects";
     public const string GetStorageObjectById = "GetStorageObjectById";
     public const string CreateStorageObject = "CreateStorageObject";
+    public const string UpdateStorageObject = "UpdateStorageObject";
     public const string DeleteStorageObject = "DeleteStorageObject";
+    public const string GetStorageObjectFile = "GetStorageObjectFile";
+    public const string GetPublicStorageObjectImage = "GetPublicStorageObjectImage";
+    public const string GetStorageObjectPresignedDownloadUrl = "GetStorageObjectPresignedDownloadUrl";
+    public const string GetStorageObjectPresignedDownloadUrlByKey = "GetStorageObjectPresignedDownloadUrlByKey";
+    public const string GenerateStorageObjectUploadUrl = "GenerateStorageObjectUploadUrl";
 
     #endregion
 
@@ -247,6 +314,8 @@ public static class RouteNames
 
     public const string GetOrganizationReviews = "GetOrganizationReviews";
     public const string GetOrganizationReviewById = "GetOrganizationReviewById";
+    public const string GetOrganizationReviewsByOrganization = "GetOrganizationReviewsByOrganization";
+    public const string GetOrganizationReviewsByUser = "GetOrganizationReviewsByUser";
     public const string CreateOrganizationReview = "CreateOrganizationReview";
     public const string UpdateOrganizationReview = "UpdateOrganizationReview";
     public const string DeleteOrganizationReview = "DeleteOrganizationReview";
@@ -290,6 +359,7 @@ public static class RouteNames
     public const string GetIndexedDidByDid = "GetIndexedDidByDid";
     public const string CreateIndexedDid = "CreateIndexedDid";
     public const string UpdateIndexedDid = "UpdateIndexedDid";
+    public const string DeleteIndexedDid = "DeleteIndexedDid";
 
     #endregion
 
@@ -445,6 +515,119 @@ public static class RouteNames
     public const string RebuildSingleSessionCustomPropertyProjection = "RebuildSingleSessionCustomPropertyProjection";
     public const string GetCustomPropertyProjectionsForSession = "GetCustomPropertyProjectionsForSession";
     public const string GetCustomPropertyGovernanceReport = "GetCustomPropertyGovernanceReport";
+
+    #endregion
+
+    #region Sync State Routes
+
+    public const string GetSyncStates = "GetSyncStates";
+    public const string GetSyncStateById = "GetSyncStateById";
+    public const string CreateSyncState = "CreateSyncState";
+    public const string UpdateSyncState = "UpdateSyncState";
+    public const string DeleteSyncState = "DeleteSyncState";
+
+    #endregion
+
+    #region User Authentication Token Routes
+
+    public const string GetUserAuthenticationTokens = "GetUserAuthenticationTokens";
+    public const string GetUserAuthenticationTokenById = "GetUserAuthenticationTokenById";
+    public const string CreateUserAuthenticationToken = "CreateUserAuthenticationToken";
+    public const string UpdateUserAuthenticationToken = "UpdateUserAuthenticationToken";
+    public const string DeleteUserAuthenticationToken = "DeleteUserAuthenticationToken";
+
+    #endregion
+
+    #region User External Login Routes
+
+    public const string GetUserExternalLogins = "GetUserExternalLogins";
+    public const string GetUserExternalLoginById = "GetUserExternalLoginById";
+    public const string CreateUserExternalLogin = "CreateUserExternalLogin";
+    public const string UpdateUserExternalLogin = "UpdateUserExternalLogin";
+    public const string DeleteUserExternalLogin = "DeleteUserExternalLogin";
+
+    #endregion
+
+    #region External API Key Routes
+
+    public const string GetExternalApiKeys = "GetExternalApiKeys";
+    public const string GetExternalApiKeyById = "GetExternalApiKeyById";
+    public const string CreateExternalApiKey = "CreateExternalApiKey";
+    public const string UpdateExternalApiKey = "UpdateExternalApiKey";
+    public const string DeleteExternalApiKey = "DeleteExternalApiKey";
+    public const string GetExternalApiKeyUsageReport = "GetExternalApiKeyUsageReport";
+
+    #endregion
+
+    #region Module Routes
+
+    public const string GetAvailableModules = "GetAvailableModules";
+    public const string GetEnabledModules = "GetEnabledModules";
+    public const string CheckModuleEnabled = "CheckModuleEnabled";
+    public const string GetModuleSchemaUrl = "GetModuleSchemaUrl";
+    public const string EnableModule = "EnableModule";
+    public const string DisableModule = "DisableModule";
+
+    #endregion
+
+    #region Instance Settings Routes
+
+    public const string GetInstanceModuleSettings = "GetInstanceModuleSettings";
+    public const string UpdateInstanceModuleSettings = "UpdateInstanceModuleSettings";
+    public const string GetInstanceEventPolicy = "GetInstanceEventPolicy";
+    public const string UpdateInstanceEventPolicy = "UpdateInstanceEventPolicy";
+    public const string GetInstanceOrganizationPolicy = "GetInstanceOrganizationPolicy";
+    public const string UpdateInstanceOrganizationPolicy = "UpdateInstanceOrganizationPolicy";
+    public const string GetInstanceBrandingSettings = "GetInstanceBrandingSettings";
+    public const string UpdateInstanceBrandingSettings = "UpdateInstanceBrandingSettings";
+    public const string GetInstanceDomainSettings = "GetInstanceDomainSettings";
+    public const string UpdateInstanceDomainSettings = "UpdateInstanceDomainSettings";
+    public const string GetInstanceTenantDelegationSettings = "GetInstanceTenantDelegationSettings";
+    public const string UpdateInstanceTenantDelegationSettings = "UpdateInstanceTenantDelegationSettings";
+    public const string GetInstanceRenderPolicySettings = "GetInstanceRenderPolicySettings";
+    public const string UpdateInstanceRenderPolicySettings = "UpdateInstanceRenderPolicySettings";
+    public const string GetInstanceDeploymentMode = "GetInstanceDeploymentMode";
+    public const string UpdateInstanceDeploymentMode = "UpdateInstanceDeploymentMode";
+    public const string GetInstanceStorageSettings = "GetInstanceStorageSettings";
+    public const string UpdateInstanceStorageSettings = "UpdateInstanceStorageSettings";
+    public const string TestInstanceStorageConnection = "TestInstanceStorageConnection";
+    public const string GetInstanceSmtpSettings = "GetInstanceSmtpSettings";
+    public const string UpdateInstanceSmtpSettings = "UpdateInstanceSmtpSettings";
+    public const string TestInstanceSmtpConnection = "TestInstanceSmtpConnection";
+    public const string GetInstanceResolverConfiguration = "GetInstanceResolverConfiguration";
+    public const string UpdateInstanceResolverConfiguration = "UpdateInstanceResolverConfiguration";
+    public const string GetInstanceAnalyticsGovernanceSettings = "GetInstanceAnalyticsGovernanceSettings";
+    public const string UpdateInstanceAnalyticsGovernanceSettings = "UpdateInstanceAnalyticsGovernanceSettings";
+    public const string GetInstanceAuthProviderConfiguration = "GetInstanceAuthProviderConfiguration";
+    public const string UpdateInstanceAuthProviderConfiguration = "UpdateInstanceAuthProviderConfiguration";
+    public const string GetInstanceAuthProviderConfigurationStatus = "GetInstanceAuthProviderConfigurationStatus";
+    public const string GetInstanceAuthorizationProviderConfiguration = "GetInstanceAuthorizationProviderConfiguration";
+    public const string UpdateInstanceAuthorizationProviderConfiguration = "UpdateInstanceAuthorizationProviderConfiguration";
+    public const string GetInstanceAuthorizationProviderConfigurationStatus = "GetInstanceAuthorizationProviderConfigurationStatus";
+
+    #endregion
+
+    #region Instance Onboarding Routes
+
+    public const string GetInstanceOnboardingStatus = "GetInstanceOnboardingStatus";
+    public const string CompleteInstanceOnboarding = "CompleteInstanceOnboarding";
+    public const string ValidateInstanceSetupSecret = "ValidateInstanceSetupSecret";
+    public const string GetInstanceOnboardingAuthProviderConfiguration = "GetInstanceOnboardingAuthProviderConfiguration";
+    public const string GetInstanceOnboardingAuthProviderConfigurationInternal = "GetInstanceOnboardingAuthProviderConfigurationInternal";
+    public const string SaveInstanceOnboardingAuthProviderConfiguration = "SaveInstanceOnboardingAuthProviderConfiguration";
+    public const string GetInstanceOnboardingAuthorizationProviderConfigurationInternal = "GetInstanceOnboardingAuthorizationProviderConfigurationInternal";
+    public const string SaveInstanceOnboardingAuthorizationProviderConfiguration = "SaveInstanceOnboardingAuthorizationProviderConfiguration";
+    public const string VerifyInstanceOnboardingAuthorizationProviderEndpoint = "VerifyInstanceOnboardingAuthorizationProviderEndpoint";
+
+    #endregion
+
+    #region Tenant Onboarding Routes
+
+    public const string GetTenantOnboardingStatus = "GetTenantOnboardingStatus";
+    public const string GetTenantOnboardingPolicySettings = "GetTenantOnboardingPolicySettings";
+    public const string CompleteTenantOnboarding = "CompleteTenantOnboarding";
+    public const string UpdateTenantOnboardingPolicySettings = "UpdateTenantOnboardingPolicySettings";
+    public const string SaveTenantOnboardingStepProgress = "SaveTenantOnboardingStepProgress";
 
     #endregion
 

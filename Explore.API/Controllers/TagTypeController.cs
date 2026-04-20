@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.TagType;
 using Explore.Application.Features.TagTypes.Requests.Queries;
 using Explore.Application.Features.TagTypeTags.Requests.Queries;
@@ -27,7 +28,7 @@ public class TagTypeController : ControllerBase
     }
 
     // GET: api/tagtype
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetTagTypes)]
     [AllowAnonymous]
     [OutputCache(PolicyName = "LookupData")]
     public async Task<ActionResult<List<TagTypeListDto>>> GetAll(CancellationToken cancellationToken = default)
@@ -37,7 +38,7 @@ public class TagTypeController : ControllerBase
     }
 
     // GET: api/tagtype/{id}
-    [HttpGet("{id}")]
+    [HttpGet("{id}", Name = RouteNames.GetTagTypeById)]
     [AllowAnonymous]
     [OutputCache(PolicyName = "DetailData")]
     public async Task<ActionResult<TagTypeDto>> GetById(int id, CancellationToken cancellationToken = default)
@@ -47,7 +48,7 @@ public class TagTypeController : ControllerBase
     }
 
     // GET: api/tagtype/with-tags
-    [HttpGet("with-tags")]
+    [HttpGet("with-tags", Name = RouteNames.GetTagTypesWithTags)]
     [EndpointSummary("Get Tag Types with Tags")]
     [EndpointDescription("Returns all tag types with their associated tags grouped. Used by the tri-state tag filter dropdown.")]
     [AllowAnonymous]

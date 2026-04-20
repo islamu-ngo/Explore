@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.Tenant;
 using Explore.Application.Features.InstanceOnboarding.Requests.Queries;
 using Explore.Application.Features.Tenants.Requests.Commands;
@@ -38,7 +39,7 @@ public class TenantController : ExploreControllerBase
     // GET: api/tenant
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetTenants)]
     [EndpointSummary("Get all Tenants")]
     [EndpointDescription("Retrieve a list of all tenants")]
     [ProducesResponseType(typeof(List<TenantListDto>), StatusCodes.Status200OK)]
@@ -52,7 +53,7 @@ public class TenantController : ExploreControllerBase
     // GET: api/tenant/count
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpGet("count")]
+    [HttpGet("count", Name = RouteNames.GetActiveTenantCount)]
     [EndpointSummary("Get Active Tenant Count")]
     [EndpointDescription("Returns the number of active tenants. Used by deployment mode toggle safeguards.")]
     [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
@@ -65,7 +66,7 @@ public class TenantController : ExploreControllerBase
     // GET: api/tenant/{id}
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpGet("{id}")]
+    [HttpGet("{id:guid}", Name = RouteNames.GetTenantById)]
     [EndpointSummary("Get Tenant by ID")]
     [EndpointDescription("Retrieve details of a specific tenant")]
     [ProducesResponseType(typeof(TenantDto), StatusCodes.Status200OK)]
@@ -81,7 +82,7 @@ public class TenantController : ExploreControllerBase
     // POST: api/tenant
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPost]
+    [HttpPost(Name = RouteNames.CreateTenant)]
     [EndpointSummary("Create new Tenant")]
     [EndpointDescription("Create a new tenant")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
@@ -107,7 +108,7 @@ public class TenantController : ExploreControllerBase
     // PUT: api/tenant/{id}
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("{id}")]
+    [HttpPut("{id:guid}", Name = RouteNames.UpdateTenant)]
     [EndpointSummary("Update Tenant")]
     [EndpointDescription("Update an existing tenant")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
@@ -134,7 +135,7 @@ public class TenantController : ExploreControllerBase
     // DELETE: api/tenant/{id}
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:guid}", Name = RouteNames.DeleteTenant)]
     [EndpointSummary("Delete Tenant")]
     [EndpointDescription("Delete a tenant")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -150,7 +151,7 @@ public class TenantController : ExploreControllerBase
     // GET: api/tenant/navigation
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
-    [HttpGet("navigation")]
+    [HttpGet("navigation", Name = RouteNames.GetTenantNavigationLinks)]
     [EndpointSummary("Get Tenant Navigation Links")]
     [EndpointDescription("Retrieve all navigation links for the current tenant")]
     [ProducesResponseType(typeof(List<TenantNavigationLinkDto>), StatusCodes.Status200OK)]
@@ -164,7 +165,7 @@ public class TenantController : ExploreControllerBase
     // POST: api/tenant/navigation
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPost("navigation")]
+    [HttpPost("navigation", Name = RouteNames.CreateTenantNavigationLink)]
     [EndpointSummary("Create Tenant Navigation Link")]
     [EndpointDescription("Create a new navigation link for the tenant")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
@@ -191,7 +192,7 @@ public class TenantController : ExploreControllerBase
     // PUT: api/tenant/navigation/{id}
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("navigation/{id}")]
+    [HttpPut("navigation/{id:guid}", Name = RouteNames.UpdateTenantNavigationLink)]
     [EndpointSummary("Update Tenant Navigation Link")]
     [EndpointDescription("Update an existing navigation link")]
     [ProducesResponseType(typeof(BaseCommandResponse<bool>), StatusCodes.Status200OK)]
@@ -225,7 +226,7 @@ public class TenantController : ExploreControllerBase
     // DELETE: api/tenant/navigation/{id}
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpDelete("navigation/{id}")]
+    [HttpDelete("navigation/{id:guid}", Name = RouteNames.DeleteTenantNavigationLink)]
     [EndpointSummary("Delete Tenant Navigation Link")]
     [EndpointDescription("Delete a navigation link")]
     [ProducesResponseType(typeof(BaseCommandResponse<bool>), StatusCodes.Status200OK)]
@@ -252,7 +253,7 @@ public class TenantController : ExploreControllerBase
     // PUT: api/tenant/navigation/reorder
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("navigation/reorder")]
+    [HttpPut("navigation/reorder", Name = RouteNames.ReorderTenantNavigationLinks)]
     [EndpointSummary("Reorder Tenant Navigation Links")]
     [EndpointDescription("Reorder multiple navigation links")]
     [ProducesResponseType(typeof(BaseCommandResponse<bool>), StatusCodes.Status200OK)]

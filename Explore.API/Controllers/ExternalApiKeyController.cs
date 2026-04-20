@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.ExternalApiKey;
 using Explore.Application.Features.ExternalApiKeys.Requests.Commands;
 using Explore.Application.Features.ExternalApiKeys.Requests.Queries;
@@ -28,7 +29,7 @@ public class ExternalApiKeyController : ControllerBase
         _mediator = mediator;
     }
 
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetExternalApiKeys)]
     [EndpointSummary("Get visible external API keys")]
     [EndpointDescription("Retrieve API keys owned by the current user or organizations they can manage.")]
     [ProducesResponseType(typeof(List<ExternalApiKeyListDto>), StatusCodes.Status200OK)]
@@ -39,7 +40,7 @@ public class ExternalApiKeyController : ControllerBase
         return Ok(keys);
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("{id}", Name = RouteNames.GetExternalApiKeyById)]
     [EndpointSummary("Get external API key details")]
     [EndpointDescription("Retrieve metadata for a specific external API key visible to the current caller.")]
     [ProducesResponseType(typeof(ExternalApiKeyListDto), StatusCodes.Status200OK)]
@@ -54,7 +55,7 @@ public class ExternalApiKeyController : ControllerBase
         return Ok(key);
     }
 
-    [HttpPost]
+    [HttpPost(Name = RouteNames.CreateExternalApiKey)]
     [EndpointSummary("Create a new external API key")]
     [EndpointDescription("Issue a tenant-bound external API key and reveal the raw secret once.")]
     [ProducesResponseType(typeof(CreateExternalApiKeyCommandResponse), StatusCodes.Status200OK)]
@@ -72,7 +73,7 @@ public class ExternalApiKeyController : ControllerBase
         return Ok(response);
     }
 
-    [HttpPut("{id}")]
+    [HttpPut("{id}", Name = RouteNames.UpdateExternalApiKey)]
     [EndpointSummary("Update an external API key policy")]
     [EndpointDescription("Update editable policy fields for a visible external API key.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
@@ -101,7 +102,7 @@ public class ExternalApiKeyController : ControllerBase
         return Ok(response);
     }
 
-    [HttpDelete("{id}")]
+    [HttpDelete("{id}", Name = RouteNames.DeleteExternalApiKey)]
     [EndpointSummary("Revoke an external API key")]
     [EndpointDescription("Revoke an external API key visible to the current caller.")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -113,7 +114,7 @@ public class ExternalApiKeyController : ControllerBase
         return NoContent();
     }
 
-    [HttpGet("usage-report")]
+    [HttpGet("usage-report", Name = RouteNames.GetExternalApiKeyUsageReport)]
     [EndpointSummary("Get API key usage report")]
     [EndpointDescription("Aggregated request counts and credit usage per API key. Instance admins see platform-wide data; tenant admins see their tenant only. Does not expose secret material.")]
     [ProducesResponseType(typeof(List<ExternalApiKeyUsageReportDto>), StatusCodes.Status200OK)]

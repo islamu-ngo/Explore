@@ -5,6 +5,7 @@ using System.Security.Claims;
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.Filters;
+using Explore.API.Hateoas;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
@@ -38,7 +39,7 @@ public class InstanceOnboardingController : ExploreControllerBase
 
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
-    [HttpGet("status")]
+    [HttpGet("status", Name = RouteNames.GetInstanceOnboardingStatus)]
     [EndpointSummary("Get Instance Onboarding Status")]
     [EndpointDescription("Returns whether first-run onboarding is completed and whether the current user is instance admin.")]
     [ProducesResponseType(typeof(InstanceOnboardingStatusDto), StatusCodes.Status200OK)]
@@ -51,7 +52,7 @@ public class InstanceOnboardingController : ExploreControllerBase
     [Authorize]
     [SetupSecretRequired]
     [EndpointClassification(EndpointClass.Admin)]
-    [HttpPost("complete")]
+    [HttpPost("complete", Name = RouteNames.CompleteInstanceOnboarding)]
     [EndpointSummary("Complete Instance Onboarding")]
     [EndpointDescription("Completes first-run onboarding, assigns the current user as instance admin, and persists deployment mode.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
@@ -102,7 +103,7 @@ public class InstanceOnboardingController : ExploreControllerBase
 
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
-    [HttpPost("validate-secret")]
+    [HttpPost("validate-secret", Name = RouteNames.ValidateInstanceSetupSecret)]
     [EnableRateLimiting("SetupSecret")]
     [EndpointSummary("Validate Setup Secret")]
     [EndpointDescription("Validates the provided setup secret. Returns whether the secret is correct. Rate limited to 5 attempts per minute.")]
@@ -120,7 +121,7 @@ public class InstanceOnboardingController : ExploreControllerBase
 
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
-    [HttpGet("auth-provider-configuration")]
+    [HttpGet("auth-provider-configuration", Name = RouteNames.GetInstanceOnboardingAuthProviderConfiguration)]
     [EndpointSummary("Get Auth Provider Configuration (Public)")]
     [EndpointDescription("Returns auth provider configuration without secrets. Used by BFF at startup to discover configured providers.")]
     [ProducesResponseType(typeof(AuthProviderConfigurationDto), StatusCodes.Status200OK)]
@@ -134,7 +135,7 @@ public class InstanceOnboardingController : ExploreControllerBase
     [AllowAnonymous]
     [SetupSecretRequired]
     [EndpointClassification(EndpointClass.Admin)]
-    [HttpGet("auth-provider-configuration/internal")]
+    [HttpGet("auth-provider-configuration/internal", Name = RouteNames.GetInstanceOnboardingAuthProviderConfigurationInternal)]
     [EndpointSummary("Get Auth Provider Configuration (Internal)")]
     [EndpointDescription("Returns auth provider configuration including secrets. For BFF internal use only. Protected by setup token.")]
     [ProducesResponseType(typeof(AuthProviderConfigurationDto), StatusCodes.Status200OK)]
@@ -148,7 +149,7 @@ public class InstanceOnboardingController : ExploreControllerBase
     [AllowAnonymous]
     [SetupSecretRequired]
     [EndpointClassification(EndpointClass.Admin)]
-    [HttpPut("auth-provider-configuration")]
+    [HttpPut("auth-provider-configuration", Name = RouteNames.SaveInstanceOnboardingAuthProviderConfiguration)]
     [EnableRateLimiting("SetupSecret")]
     [EndpointSummary("Save Auth Provider Configuration (Setup)")]
     [EndpointDescription("Saves auth provider configuration during instance setup. Protected by setup token. At least one provider must be enabled.")]
@@ -174,7 +175,7 @@ public class InstanceOnboardingController : ExploreControllerBase
     [AllowAnonymous]
     [SetupSecretRequired]
     [EndpointClassification(EndpointClass.Admin)]
-    [HttpGet("authz-provider-configuration/internal")]
+    [HttpGet("authz-provider-configuration/internal", Name = RouteNames.GetInstanceOnboardingAuthorizationProviderConfigurationInternal)]
     [EndpointSummary("Get Authorization Provider Configuration (Internal)")]
     [EndpointDescription("Returns authorization provider configuration for setup flow. Protected by setup token.")]
     [ProducesResponseType(typeof(AuthorizationProviderConfigurationDto), StatusCodes.Status200OK)]
@@ -187,7 +188,7 @@ public class InstanceOnboardingController : ExploreControllerBase
     [AllowAnonymous]
     [SetupSecretRequired]
     [EndpointClassification(EndpointClass.Admin)]
-    [HttpPut("authz-provider-configuration")]
+    [HttpPut("authz-provider-configuration", Name = RouteNames.SaveInstanceOnboardingAuthorizationProviderConfiguration)]
     [EnableRateLimiting("SetupSecret")]
     [EndpointSummary("Save Authorization Provider Configuration (Setup)")]
     [EndpointDescription("Saves authorization provider configuration during instance setup. Protected by setup token.")]
@@ -211,7 +212,7 @@ public class InstanceOnboardingController : ExploreControllerBase
     [AllowAnonymous]
     [SetupSecretRequired]
     [EndpointClassification(EndpointClass.Admin)]
-    [HttpPost("authz-provider-configuration/verify")]
+    [HttpPost("authz-provider-configuration/verify", Name = RouteNames.VerifyInstanceOnboardingAuthorizationProviderEndpoint)]
     [EnableRateLimiting("SetupSecret")]
     [EndpointSummary("Verify Cerbos Authorization Endpoint")]
     [EndpointDescription("Verifies a Cerbos gRPC endpoint by calling its gRPC health service. Protected by setup token.")]

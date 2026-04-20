@@ -4,6 +4,7 @@
 using System.Security.Claims;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.Organization;
 using Explore.Application.DTOs.User;
 using Explore.Application.Features.Users.Requests.Commands;
@@ -34,7 +35,7 @@ public class UserController : ControllerBase
     /// Creates a new User and Actor if they don't exist, otherwise updates the user's basic info.
     /// Call this endpoint after login/registration to ensure user exists in the system.
     /// </summary>
-    [HttpPost("sync")]
+    [HttpPost("sync", Name = RouteNames.SyncUser)]
     [Authorize]
     [EndpointSummary("Sync user from identity provider")]
     [EndpointDescription("Creates or updates the user in the local database and ensures external provider linkage. Also creates the user's personal Actor if new user. Call this after login/registration.")]
@@ -162,7 +163,7 @@ public class UserController : ControllerBase
         };
     }
 
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetCurrentUser)]
     [Authorize]
     public async Task<ActionResult<UserDto>> GetCurrentUser(CancellationToken cancellationToken = default)
     {
@@ -182,7 +183,7 @@ public class UserController : ControllerBase
     /// Returns the admin authority of the current authenticated user.
     /// Used by the BFF claims transformation to enrich the ClaimsPrincipal with admin claims.
     /// </summary>
-    [HttpGet("admin-authority")]
+    [HttpGet("admin-authority", Name = RouteNames.GetCurrentUserAdminAuthority)]
     [Authorize]
     [EndpointSummary("Get current user's admin authority")]
     [EndpointDescription("Returns instance, tenant, and organization admin status for the authenticated user. Consumed by BFF claims transformation.")]
@@ -204,7 +205,7 @@ public class UserController : ControllerBase
     /// Gets all organizations the specified user is a member of.
     /// Returns the user's role in each organization.
     /// </summary>
-    [HttpGet("{userId:guid}/organizations")]
+    [HttpGet("{userId:guid}/organizations", Name = RouteNames.GetUserOrganizations)]
     [Authorize]
     [EndpointSummary("Get user's organizations")]
     [EndpointDescription("Gets all organizations the user is a member of, including their role in each organization.")]
@@ -230,7 +231,7 @@ public class UserController : ControllerBase
         return Ok(organizations);
     }
 
-    [HttpPut]
+    [HttpPut(Name = RouteNames.UpdateCurrentUser)]
     [Authorize]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateUser([FromBody] UpdateUserDto userDto, CancellationToken cancellationToken = default)
     {
@@ -250,7 +251,7 @@ public class UserController : ControllerBase
         return Ok(response);
     }
 
-    [HttpDelete]
+    [HttpDelete(Name = RouteNames.DeleteCurrentUser)]
     [Authorize]
     public async Task<ActionResult> DeleteUser(CancellationToken cancellationToken = default)
     {

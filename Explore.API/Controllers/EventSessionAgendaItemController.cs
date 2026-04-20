@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.EventSessionAgendaItem;
 using Explore.Application.Features.EventSessionAgendaItems.Requests.Commands;
 using Explore.Application.Features.EventSessionAgendaItems.Requests.Queries;
@@ -34,7 +35,7 @@ public class EventSessionAgendaItemController : ControllerBase
     // GET: api/eventsessionagendaitem
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetEventSessionAgendaItems)]
     [EndpointSummary("Get all Agenda Items")]
     [EndpointDescription("Retrieve a paginated list of all event session agenda items. Default page size is 20, max is 100.")]
     [ProducesResponseType(typeof(PaginatedResult<EventSessionAgendaItemListDto>), StatusCodes.Status200OK)]
@@ -52,7 +53,7 @@ public class EventSessionAgendaItemController : ControllerBase
     // GET: api/eventsessionagendaitem/{id}
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
-    [HttpGet("{id}")]
+    [HttpGet("{id}", Name = RouteNames.GetEventSessionAgendaItemById)]
     [EndpointSummary("Get Agenda Item Details")]
     [EndpointDescription("Get detailed information about a specific agenda item")]
     [OutputCache(PolicyName = "DetailData")]
@@ -66,7 +67,7 @@ public class EventSessionAgendaItemController : ControllerBase
     // GET: api/eventsessionagendaitem/by-session/{sessionId}
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
-    [HttpGet("by-session/{sessionId}")]
+    [HttpGet("by-session/{sessionId}", Name = RouteNames.GetEventSessionAgendaItemsBySession)]
     [EndpointSummary("Get Agenda Items by Session")]
     [EndpointDescription("Get all agenda items for a specific event session")]
     [OutputCache(PolicyName = "ListData")]
@@ -79,7 +80,7 @@ public class EventSessionAgendaItemController : ControllerBase
     // POST: api/eventsessionagendaitem
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPost]
+    [HttpPost(Name = RouteNames.CreateEventSessionAgendaItem)]
     [EndpointSummary("Create Agenda Item")]
     [EndpointDescription("Create a new agenda item for an event session")]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventSessionAgendaItemDto agendaItem, CancellationToken cancellationToken = default)
@@ -98,7 +99,7 @@ public class EventSessionAgendaItemController : ControllerBase
     // PUT: api/eventsessionagendaitem/{id}
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("{id}")]
+    [HttpPut("{id}", Name = RouteNames.UpdateEventSessionAgendaItem)]
     [EndpointSummary("Update Agenda Item")]
     [EndpointDescription("Update an existing agenda item")]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Update(Guid id, [FromBody] UpdateEventSessionAgendaItemDto agendaItem, CancellationToken cancellationToken = default)
@@ -122,7 +123,7 @@ public class EventSessionAgendaItemController : ControllerBase
     // DELETE: api/eventsessionagendaitem/{id}
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpDelete("{id}")]
+    [HttpDelete("{id}", Name = RouteNames.DeleteEventSessionAgendaItem)]
     [EndpointSummary("Delete Agenda Item")]
     [EndpointDescription("Delete an agenda item")]
     public async Task<ActionResult> Delete(Guid id, CancellationToken cancellationToken = default)

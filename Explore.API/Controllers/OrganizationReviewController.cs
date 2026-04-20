@@ -49,7 +49,7 @@ public class OrganizationReviewController : ControllerBase
 
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
-    [HttpGet("{organizationId}")]
+    [HttpGet("{organizationId:guid}", Name = RouteNames.GetOrganizationReviewsByOrganization)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<List<OrganizationReviewDto>>> Get(Guid organizationId, CancellationToken cancellationToken = default)
     {
@@ -59,7 +59,7 @@ public class OrganizationReviewController : ControllerBase
 
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
-    [HttpGet("user/{userId}")]
+    [HttpGet("user/{userId:guid}", Name = RouteNames.GetOrganizationReviewsByUser)]
     public async Task<ActionResult<List<OrganizationReviewDto>>> GetByUserId(Guid userId, CancellationToken cancellationToken = default)
     {
         var reviews = await _mediator.Send(new GetMyReviewsQuery { UserId = userId }, cancellationToken);
@@ -68,7 +68,7 @@ public class OrganizationReviewController : ControllerBase
 
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPost]
+    [HttpPost(Name = RouteNames.CreateOrganizationReview)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Post([FromBody] CreateOrganizationReviewDto createOrganizationReviewDto, CancellationToken cancellationToken = default)
     {
         var command = new CreateOrganizationReviewCommand { CreateOrganizationReviewDto = createOrganizationReviewDto };

@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.Features.Localization.Requests.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -27,7 +28,7 @@ public class TranslationController : ControllerBase
     /// <summary>
     /// Get all translations for a language.
     /// </summary>
-    [HttpGet("{languageCode}")]
+    [HttpGet("{languageCode}", Name = RouteNames.GetTranslationByLanguage)]
     [AllowAnonymous]
     [EndpointSummary("Get Translations")]
     [EndpointDescription("Returns all translation key-value pairs for the specified language code.")]
@@ -45,7 +46,7 @@ public class TranslationController : ControllerBase
     /// <summary>
     /// Get available translation languages.
     /// </summary>
-    [HttpGet("languages")]
+    [HttpGet("languages", Name = RouteNames.GetAvailableTranslationLanguages)]
     [AllowAnonymous]
     [EndpointSummary("Get Available Languages")]
     [EndpointDescription("Returns the list of language codes that have translations available.")]

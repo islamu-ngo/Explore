@@ -39,7 +39,7 @@ public class InstanceSettingsController : ExploreControllerBase
 
     // ── Governance Sub-Resource Endpoints ──────────────────────────────
 
-    [HttpGet("modules")]
+    [HttpGet("modules", Name = RouteNames.GetInstanceModuleSettings)]
     [EndpointSummary("Get Module Settings")]
     [EndpointDescription("Returns instance module enablement flags.")]
     [ProducesResponseType(typeof(ModuleSettingsDto), StatusCodes.Status200OK)]
@@ -51,7 +51,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(settings.Modules);
     }
 
-    [HttpPut("modules")]
+    [HttpPut("modules", Name = RouteNames.UpdateInstanceModuleSettings)]
     [EndpointSummary("Update Module Settings")]
     [EndpointDescription("Updates instance module enablement flags. Requires instance administrator.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
@@ -67,7 +67,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return HandleCommandResponse(response);
     }
 
-    [HttpGet("events")]
+    [HttpGet("events", Name = RouteNames.GetInstanceEventPolicy)]
     [EndpointSummary("Get Event Policy")]
     [EndpointDescription("Returns instance event lifecycle policy settings.")]
     [ProducesResponseType(typeof(EventPolicyDto), StatusCodes.Status200OK)]
@@ -79,7 +79,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(settings.EventPolicy);
     }
 
-    [HttpPut("events")]
+    [HttpPut("events", Name = RouteNames.UpdateInstanceEventPolicy)]
     [EndpointSummary("Update Event Policy")]
     [EndpointDescription("Updates instance event lifecycle policy. Requires instance administrator.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
@@ -95,7 +95,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return HandleCommandResponse(response);
     }
 
-    [HttpGet("organizations")]
+    [HttpGet("organizations", Name = RouteNames.GetInstanceOrganizationPolicy)]
     [EndpointSummary("Get Organization Policy")]
     [EndpointDescription("Returns instance organization registration policy settings.")]
     [ProducesResponseType(typeof(OrganizationPolicyDto), StatusCodes.Status200OK)]
@@ -107,7 +107,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(settings.OrganizationPolicy);
     }
 
-    [HttpPut("organizations")]
+    [HttpPut("organizations", Name = RouteNames.UpdateInstanceOrganizationPolicy)]
     [EndpointSummary("Update Organization Policy")]
     [EndpointDescription("Updates instance organization policy. Requires instance administrator.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
@@ -123,7 +123,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return HandleCommandResponse(response);
     }
 
-    [HttpGet("branding")]
+    [HttpGet("branding", Name = RouteNames.GetInstanceBrandingSettings)]
     [EndpointSummary("Get Branding Settings")]
     [EndpointDescription("Returns instance branding and identity settings.")]
     [ProducesResponseType(typeof(BrandingSettingsDto), StatusCodes.Status200OK)]
@@ -135,7 +135,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(settings.Branding);
     }
 
-    [HttpPut("branding")]
+    [HttpPut("branding", Name = RouteNames.UpdateInstanceBrandingSettings)]
     [EndpointSummary("Update Branding Settings")]
     [EndpointDescription("Updates instance branding settings. Requires instance administrator.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
@@ -151,7 +151,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return HandleCommandResponse(response);
     }
 
-    [HttpGet("domains")]
+    [HttpGet("domains", Name = RouteNames.GetInstanceDomainSettings)]
     [EndpointSummary("Get Domain Settings")]
     [EndpointDescription("Returns instance domain and auth provider settings.")]
     [ProducesResponseType(typeof(DomainSettingsDto), StatusCodes.Status200OK)]
@@ -163,7 +163,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(settings.Domains);
     }
 
-    [HttpPut("domains")]
+    [HttpPut("domains", Name = RouteNames.UpdateInstanceDomainSettings)]
     [EndpointSummary("Update Domain Settings")]
     [EndpointDescription("Updates instance domain settings. Requires instance administrator.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
@@ -179,7 +179,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return HandleCommandResponse(response);
     }
 
-    [HttpGet("tenant-delegation")]
+    [HttpGet("tenant-delegation", Name = RouteNames.GetInstanceTenantDelegationSettings)]
     [EndpointSummary("Get Tenant Delegation Settings")]
     [EndpointDescription("Returns instance tenant delegation and override lock settings.")]
     [ProducesResponseType(typeof(TenantDelegationSettingsDto), StatusCodes.Status200OK)]
@@ -191,7 +191,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(settings.TenantDelegation);
     }
 
-    [HttpPut("tenant-delegation")]
+    [HttpPut("tenant-delegation", Name = RouteNames.UpdateInstanceTenantDelegationSettings)]
     [EndpointSummary("Update Tenant Delegation Settings")]
     [EndpointDescription("Updates instance tenant delegation settings. Requires instance administrator.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
@@ -207,7 +207,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return HandleCommandResponse(response);
     }
 
-    [HttpGet("render-policy")]
+    [HttpGet("render-policy", Name = RouteNames.GetInstanceRenderPolicySettings)]
     [EndpointSummary("Get Render Policy Settings")]
     [EndpointDescription("Returns instance render policy and UI mode settings.")]
     [ProducesResponseType(typeof(RenderPolicySettingsDto), StatusCodes.Status200OK)]
@@ -219,7 +219,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(settings.RenderPolicy);
     }
 
-    [HttpPut("render-policy")]
+    [HttpPut("render-policy", Name = RouteNames.UpdateInstanceRenderPolicySettings)]
     [EndpointSummary("Update Render Policy Settings")]
     [EndpointDescription("Updates instance render policy settings. Requires instance administrator.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
@@ -235,7 +235,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return HandleCommandResponse(response);
     }
 
-    [HttpGet("deployment-mode")]
+    [HttpGet("deployment-mode", Name = RouteNames.GetInstanceDeploymentMode)]
     [EndpointSummary("Get Deployment Mode")]
     [EndpointDescription("Returns the current instance deployment mode.")]
     [ProducesResponseType(typeof(DeploymentModeDto), StatusCodes.Status200OK)]
@@ -247,7 +247,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(settings.DeploymentMode);
     }
 
-    [HttpPost("deployment-mode")]
+    [HttpPost("deployment-mode", Name = RouteNames.UpdateInstanceDeploymentMode)]
     [EndpointSummary("Switch Deployment Mode")]
     [EndpointDescription("Switches the instance between SingleTenant and MultiTenant mode. Requires instance administrator.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
@@ -295,7 +295,7 @@ public class InstanceSettingsController : ExploreControllerBase
 
     // ── Infrastructure Settings (Storage, SMTP, Auth) ──────────────────
 
-    [HttpGet("storage")]
+    [HttpGet("storage", Name = RouteNames.GetInstanceStorageSettings)]
     [EndpointSummary("Get Instance Storage Settings")]
     [EndpointDescription("Returns instance S3 storage settings. Only instance admins can access.")]
     [ProducesResponseType(typeof(InstanceStorageSettingsDto), StatusCodes.Status200OK)]
@@ -307,7 +307,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(settings);
     }
 
-    [HttpPut("storage")]
+    [HttpPut("storage", Name = RouteNames.UpdateInstanceStorageSettings)]
     [EndpointSummary("Update Instance Storage Settings")]
     [EndpointDescription("Updates instance S3 storage settings. Requires instance administrator.")]
     [Consumes("application/json")]
@@ -324,7 +324,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return HandleCommandResponse(response);
     }
 
-    [HttpPost("storage/test")]
+    [HttpPost("storage/test", Name = RouteNames.TestInstanceStorageConnection)]
     [EndpointSummary("Test Storage Connection")]
     [EndpointDescription("Tests the S3 storage connection using current settings.")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
@@ -338,7 +338,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(new { success, message = success ? "Connection successful." : "Connection failed. Please verify your S3 settings." });
     }
 
-    [HttpGet("smtp")]
+    [HttpGet("smtp", Name = RouteNames.GetInstanceSmtpSettings)]
     [EndpointSummary("Get Instance SMTP Settings")]
     [EndpointDescription("Returns instance SMTP settings. Only instance admins can access.")]
     [ProducesResponseType(typeof(InstanceSmtpSettingsDto), StatusCodes.Status200OK)]
@@ -350,7 +350,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(settings);
     }
 
-    [HttpPut("smtp")]
+    [HttpPut("smtp", Name = RouteNames.UpdateInstanceSmtpSettings)]
     [EndpointSummary("Update Instance SMTP Settings")]
     [EndpointDescription("Updates instance SMTP settings. Requires instance administrator.")]
     [Consumes("application/json")]
@@ -367,7 +367,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return HandleCommandResponse(response);
     }
 
-    [HttpPost("smtp/test")]
+    [HttpPost("smtp/test", Name = RouteNames.TestInstanceSmtpConnection)]
     [EndpointSummary("Test SMTP Connection")]
     [EndpointDescription("Tests the SMTP connection using current settings.")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
@@ -386,7 +386,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(new { success = result.Success, message });
     }
 
-    [HttpGet("resolver-config")]
+    [HttpGet("resolver-config", Name = RouteNames.GetInstanceResolverConfiguration)]
     [EndpointSummary("Get Tenant Resolver Configuration")]
     [EndpointDescription("Returns instance-level tenant resolver configuration.")]
     [ProducesResponseType(typeof(ResolverConfigurationDto), StatusCodes.Status200OK)]
@@ -398,7 +398,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(configuration);
     }
 
-    [HttpPut("resolver-config")]
+    [HttpPut("resolver-config", Name = RouteNames.UpdateInstanceResolverConfiguration)]
     [EndpointSummary("Update Tenant Resolver Configuration")]
     [EndpointDescription("Updates instance-level tenant resolver configuration. Requires instance administrator.")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
@@ -414,7 +414,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return HandleCommandResponse(response);
     }
 
-    [HttpGet("analytics-governance")]
+    [HttpGet("analytics-governance", Name = RouteNames.GetInstanceAnalyticsGovernanceSettings)]
     [EndpointSummary("Get Analytics Governance Settings")]
     [EndpointDescription("Returns analytics and cookie consent governance settings.")]
     [ProducesResponseType(typeof(AnalyticsGovernanceSettingsDto), StatusCodes.Status200OK)]
@@ -426,7 +426,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(settings);
     }
 
-    [HttpPut("analytics-governance")]
+    [HttpPut("analytics-governance", Name = RouteNames.UpdateInstanceAnalyticsGovernanceSettings)]
     [EndpointSummary("Update Analytics Governance Settings")]
     [EndpointDescription("Updates analytics and cookie consent governance settings. Requires instance administrator.")]
     [Consumes("application/json")]
@@ -473,7 +473,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return HandleCommandResponse(response);
     }
 
-    [HttpGet("auth-provider")]
+    [HttpGet("auth-provider", Name = RouteNames.GetInstanceAuthProviderConfiguration)]
     [EndpointSummary("Get Auth Provider Configuration")]
     [EndpointDescription("Returns current auth provider configuration. Secrets are redacted.")]
     [ProducesResponseType(typeof(AuthProviderConfigurationDto), StatusCodes.Status200OK)]
@@ -485,7 +485,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(configuration);
     }
 
-    [HttpPut("auth-provider")]
+    [HttpPut("auth-provider", Name = RouteNames.UpdateInstanceAuthProviderConfiguration)]
     [EndpointSummary("Update Auth Provider Configuration")]
     [EndpointDescription("Updates auth provider configuration. Requires instance administrator and blocks self-lockout.")]
     [Consumes("application/json")]
@@ -502,7 +502,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return HandleCommandResponse(response);
     }
 
-    [HttpGet("auth-provider/status")]
+    [HttpGet("auth-provider/status", Name = RouteNames.GetInstanceAuthProviderConfigurationStatus)]
     [AllowAnonymous]
     [EndpointSummary("Check Auth Provider Configuration Status")]
     [EndpointDescription("Returns whether any auth provider has been configured.")]
@@ -514,7 +514,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(new { configured = isConfigured });
     }
 
-    [HttpGet("authz-provider")]
+    [HttpGet("authz-provider", Name = RouteNames.GetInstanceAuthorizationProviderConfiguration)]
     [EndpointSummary("Get Authorization Provider Configuration")]
     [EndpointDescription("Returns current authorization provider configuration for instance administration.")]
     [ProducesResponseType(typeof(AuthorizationProviderConfigurationDto), StatusCodes.Status200OK)]
@@ -526,7 +526,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return Ok(configuration);
     }
 
-    [HttpPut("authz-provider")]
+    [HttpPut("authz-provider", Name = RouteNames.UpdateInstanceAuthorizationProviderConfiguration)]
     [EndpointSummary("Update Authorization Provider Configuration")]
     [EndpointDescription("Updates authorization provider configuration. Requires instance administrator.")]
     [Consumes("application/json")]
@@ -546,7 +546,7 @@ public class InstanceSettingsController : ExploreControllerBase
         return HandleCommandResponse(response);
     }
 
-    [HttpGet("authz-provider/status")]
+    [HttpGet("authz-provider/status", Name = RouteNames.GetInstanceAuthorizationProviderConfigurationStatus)]
     [AllowAnonymous]
     [EndpointSummary("Check Authorization Provider Configuration Status")]
     [EndpointDescription("Returns whether an authorization provider has been configured.")]

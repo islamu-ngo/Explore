@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.ScheduleItemKind;
 using Explore.Application.Features.ScheduleItemKinds.Requests.Queries;
 using MediatR;
@@ -26,7 +27,7 @@ public class ScheduleItemKindController : ControllerBase
     }
 
     // GET: api/scheduleitemkind
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetScheduleItemKinds)]
     [EndpointSummary("Get all Schedule Item Kinds")]
     [EndpointDescription("Retrieve a list of all schedule item kinds (Break, Ceremony, Keynote, Panel, etc.)")]
     [AllowAnonymous]

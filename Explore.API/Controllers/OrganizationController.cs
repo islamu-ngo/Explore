@@ -209,7 +209,7 @@ public class OrganizationController : ExploreControllerBase
     /// </summary>
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("updatestatustype/{id:guid}")]
+    [HttpPut("updatestatustype/{id:guid}", Name = RouteNames.UpdateOrganizationApprovalStatus)]
     [EndpointSummary("Update Organization Approval Status")]
     [EndpointDescription("Update the approval status of an organization. Requires Admin role.")]
     [Consumes("application/json")]

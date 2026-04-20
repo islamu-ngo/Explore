@@ -3,8 +3,8 @@ ABOUTME: Mark checkboxes as work progresses; add discovered tasks inline; keep o
 
 # API Contract Stabilization - Task Checklist
 
-**Last Updated:** 2026-04-19 (v5 — Phase 2 fully complete, Phase 3 in progress)
-**Status:** Phase 0 ✅ COMPLETE | Phase 1 ✅ COMPLETE | Phase 2 ✅ COMPLETE | Phase 3 🟡 IN PROGRESS
+**Last Updated:** 2026-04-20 (v6 — Phase 3 fully complete, Phase 4 starting)
+**Status:** Phase 0 ✅ COMPLETE | Phase 1 ✅ COMPLETE | Phase 2 ✅ COMPLETE | Phase 3 ✅ COMPLETE | Phase 4 🟡 IN PROGRESS
 
 Legend: `[ ]` not started — `[🟡]` in progress — `[x]` complete — `[!]` blocked
 
@@ -131,28 +131,33 @@ Goal: remove the `/api/v0.1/...` surface entirely, not just from OpenAPI.
 
 ---
 
-## Phase 3 — Stable operationIds + endpoint classification (1.0 day) ⏳ NOT STARTED
+## Phase 3 — Stable operationIds + endpoint classification (1.0 day) ✅ COMPLETE (2026-04-20)
 
 Goal: every operation has an explicit, unique `operationId`; every action carries a classification.
 
-- [ ] **3.1** Apply proposed operationIds per Phase 1 inventory.
-  - Preferred: `[HttpGet("{id:guid}", Name = "Tenant_GetById")]` (doubles as `RouteNames` constant).
-  - Fallback: `[EndpointName("Tenant_GetById")]` if Name claimed elsewhere.
-  - **Acceptance:** Every action in `Explore.API/Controllers/*.cs` carries an explicit name or `EndpointName`.
-- [ ] **3.2** Add startup-time invariant check via `IOperationTransformer` / document transformer.
-  - Throws in development if an operation is emitted without `operationId` or matches banned placeholder patterns.
-  - **Acceptance:** App fails fast locally on new unclassified controller action.
-- [ ] **3.3** Create/update `RouteNames.*` constants (non-inferable rule #20).
-  - **Acceptance:** Every named route has its constant.
-- [ ] **3.4** Apply **endpoint classification** metadata.
-  - Internal/Diagnostic: `[ApiExplorerSettings(IgnoreApi = true)]`.
-  - Authenticated Admin: explicit `[Authorize(Roles=...)]`.
-  - Public: explicit `[AllowAnonymous]` on GET, `[Authorize]` elsewhere.
-  - **Acceptance:** Every controller action has an authorization attribute and an explicit OpenAPI-inclusion decision.
-- [ ] **3.5** Regenerate canonical OpenAPI document locally; visually diff.
-  - **Acceptance:** `operationId`s human-readable, unique, stable; no `TenantGET2` style names survive; no Internal endpoints leak through.
+- [x] **3.1** Apply proposed operationIds per Phase 1 inventory.
+  - **Preferred approach used:** `[HttpVerb("route", Name = RouteNames.X)]` doubles as `RouteNames` constant. Framework's `AttributeRouteInfo.Name → operationId` propagation works perfectly via .NET 10 native OpenAPI (confirmed at `OpenApiDocumentService.cs:348` in dotnet/aspnetcore).
+  - **10 controllers edited** to add `Name = RouteNames.X` to every action: TenantController (11), InstanceSettingsController (32), StorageObjectController (10), InstanceOnboardingController (9), OrganizationMemberController (7), UserController (6), TenantOnboardingController (5), OrganizationReviewController (3), OrganizationController (1), ModuleController (1) = 85 actions named.
+  - `:guid` route constraints added wherever `{id}`/`{userId}`/`{organizationId}` were unconstrained.
+  - **Acceptance met:** Every controller action in `Explore.API/Controllers/*.cs` carries an explicit `Name = RouteNames.X` (verified via inventory regeneration showing 0 missing operationIds).
+- [x] **3.2** Startup-time invariant transformer **already implemented** at `Explore.API/OpenApi/OperationIdInvariantTransformer.cs` (110 lines, `IOpenApiDocumentTransformer`, sealed). Throws aggregated `InvalidOperationException` in `Development` with all violations + remediation guidance. Two checks: (a) non-null/empty operationId, (b) no placeholder/verb-only/numeric-suffix patterns via compiled regex `^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)(Async)?$|\d+$|\d+Async$`. Wired in `Program.cs` line 165 via `options.AddDocumentTransformer<OperationIdInvariantTransformer>()`. Documentation comments on the class accurately describe behavior.
+  - **Acceptance met:** App fails fast locally with clear remediation message on any future unclassified controller action.
+- [x] **3.3** Created/updated `RouteNames.*` constants. Added 65+ new constants across 10 new/extended regions: Tenant Navigation Routes (5), StorageObject (6), User (4), Organization Member (6), Organization Review (2), Organization (1), Instance Settings (32), Instance Onboarding (9), Tenant Onboarding (5).
+  - **Acceptance met:** Every `Name = RouteNames.X` resolves to a defined constant (verified by `RouteNameCoverageTests`).
+- [x] **3.4** Endpoint classification metadata applied in Phase 1.5; verified during Phase 3 — inventory shows `0` operations missing `x-endpoint-class`. Classification breakdown stable: `Admin=6, Authenticated=228, Public=129`.
+  - **Acceptance met:** Every controller action classified.
+- [x] **3.5** Canonical OpenAPI document regenerated; inventory regenerated.
+  - **Acceptance met:** All operationIds human-readable, unique, stable. Zero `_(missing)_` entries in inventory. Zero placeholder/verb-only fallbacks.
 
-**Phase 3 complete when:** Phase 0.1 `every operation has operationId`, `no shared operationId`, `no placeholder operationId` assertions all flip green.
+**Phase 3 complete:** Phase 0.1 assertions all GREEN.
+
+**Phase 3 verification evidence (2026-04-20):**
+- `dotnet build Explore.API/Explore.API.csproj --configuration Release --verbosity quiet` → **0 errors** (72 pre-existing warnings unrelated).
+- `dotnet test --project Event.API.IntegrationTests -- --treenode-filter "/*/*/ApiContractInventoryGeneratorTests/*"` → **PASSED**, inventory regenerated.
+- `grep -c "_(missing)_" dev/active/api-contract-stabilization/api-contract-stabilization-action-inventory.md` → **0** ✅
+- `dotnet test --project Event.API.IntegrationTests -- --treenode-filter "/*/*/ContractInvariantsTests/*"` → **5/5 PASS** ✅ (every-operation-has-operationId, operationIds-unique, no-placeholder-operationId, no-URL-segment-paths, reachability all green)
+- `dotnet test --project Event.API.IntegrationTests -- --treenode-filter "/*/*/RouteNameCoverageTests/*"` → **1/1 PASS** ✅
+- Inventory delta: Missing operationIds: 198 (post-Phase-2) → **0** ✅
 
 ---
 

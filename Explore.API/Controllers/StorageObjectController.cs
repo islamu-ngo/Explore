@@ -9,6 +9,7 @@ using Explore.API.Attributes;
 using Explore.Application.DTOs.StorageObject;
 using Explore.Application.Features.StorageObjects.Requests.Commands;
 using Explore.Application.Features.StorageObjects.Requests.Queries;
+using Explore.API.Hateoas;
 using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -32,7 +33,7 @@ public class StorageObjectController : ControllerBase
     // GET: api/storageobject
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetStorageObjects)]
     [EndpointSummary("Get all Storage Objects")]
     [EndpointDescription("Retrieve a paginated list of all storage objects (files, images, documents, etc.). Default page size is 20, max is 100.")]
     [ProducesResponseType(typeof(PaginatedResult<StorageObjectListDto>), StatusCodes.Status200OK)]
@@ -50,7 +51,7 @@ public class StorageObjectController : ControllerBase
     // GET: api/storageobject/{id}
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
-    [HttpGet("{id}")]
+    [HttpGet("{id:guid}", Name = RouteNames.GetStorageObjectById)]
     [EndpointSummary("Get Storage Object by ID")]
     [EndpointDescription("Retrieve details of a specific storage object")]
     [ProducesResponseType(typeof(StorageObjectDto), StatusCodes.Status200OK)]
@@ -66,7 +67,7 @@ public class StorageObjectController : ControllerBase
     // GET: api/storageobject/file/{*fileKey}
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
-    [HttpGet("file/{*fileKey}")]
+    [HttpGet("file/{*fileKey}", Name = RouteNames.GetStorageObjectFile)]
     [EndpointSummary("Get File Content")]
     [EndpointDescription("Retrieve the content of a file from storage by its key")]
     [ResponseCache(Duration = 86400, Location = ResponseCacheLocation.Any)] // Cache for 1 day
@@ -83,7 +84,7 @@ public class StorageObjectController : ControllerBase
     // GET: api/storageobject/{id}/public
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
-    [HttpGet("{id}/public")]
+    [HttpGet("{id:guid}/public", Name = RouteNames.GetPublicStorageObjectImage)]
     [EndpointSummary("Get Public Image")]
     [EndpointDescription("Serves an image directly by storage object ID. Returns a stable, non-expiring URL " +
         "suitable for OG image tags and social media preview cards. Images are cached for 7 days.")]
@@ -104,7 +105,7 @@ public class StorageObjectController : ControllerBase
     // GET: api/storageobject/{id}/presigned-url
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
-    [HttpGet("{id}/presigned-url")]
+    [HttpGet("{id:guid}/presigned-url", Name = RouteNames.GetStorageObjectPresignedDownloadUrl)]
     [EndpointSummary("Get Presigned Download URL")]
     [EndpointDescription("Generate a time-limited presigned URL for viewing/downloading a file from S3-compatible storage")]
     [ProducesResponseType(typeof(PresignedDownloadUrlResponseDto), StatusCodes.Status200OK)]
@@ -124,7 +125,7 @@ public class StorageObjectController : ControllerBase
     // GET: api/storageobject/presigned-url-by-key/{*objectKey}
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
-    [HttpGet("presigned-url-by-key/{*objectKey}")]
+    [HttpGet("presigned-url-by-key/{*objectKey}", Name = RouteNames.GetStorageObjectPresignedDownloadUrlByKey)]
     [EndpointSummary("Get Presigned Download URL by Key")]
     [EndpointDescription("Generate a time-limited presigned URL for viewing/downloading a file using its object key")]
     [ProducesResponseType(typeof(PresignedDownloadUrlResponseDto), StatusCodes.Status200OK)]
@@ -154,7 +155,7 @@ public class StorageObjectController : ControllerBase
     // POST: api/storageobject/generate-upload-url
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPost("generate-upload-url")]
+    [HttpPost("generate-upload-url", Name = RouteNames.GenerateStorageObjectUploadUrl)]
     [EndpointSummary("Generate Pre-signed Upload URL")]
     [EndpointDescription("Generate a pre-signed URL for uploading a file directly to S3-compatible storage (Hetzner Object Storage)")]
     [ProducesResponseType(typeof(UploadUrlResponseDto), StatusCodes.Status200OK)]
@@ -174,7 +175,7 @@ public class StorageObjectController : ControllerBase
     // POST: api/storageobject
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPost]
+    [HttpPost(Name = RouteNames.CreateStorageObject)]
     [EndpointSummary("Create Storage Object Record")]
     [EndpointDescription("Create a storage object record after successful file upload to S3")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
@@ -190,7 +191,7 @@ public class StorageObjectController : ControllerBase
     // PUT: api/storageobject/{id}
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("{id}")]
+    [HttpPut("{id:guid}", Name = RouteNames.UpdateStorageObject)]
     [EndpointSummary("Update Storage Object")]
     [EndpointDescription("Update an existing storage object")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
@@ -218,7 +219,7 @@ public class StorageObjectController : ControllerBase
     // DELETE: api/storageobject/{id}
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:guid}", Name = RouteNames.DeleteStorageObject)]
     [EndpointSummary("Delete Storage Object")]
     [EndpointDescription("Delete a storage object")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

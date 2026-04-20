@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.VisibilityType;
 using Explore.Application.Features.VisibilityTypes.Requests.Queries;
 using MediatR;
@@ -29,7 +30,7 @@ public class VisibilityTypeController : ControllerBase
     }
 
     // GET: api/visibilitytype
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetVisibilityTypes)]
     [EndpointSummary("Get all Visibility Types")]
     [EndpointDescription("Retrieve a list of all event visibility types (Public, Private, Unlisted)")]
     [AllowAnonymous]
@@ -42,7 +43,7 @@ public class VisibilityTypeController : ControllerBase
     }
 
     // GET: api/visibilitytype/{id}
-    [HttpGet("{id}")]
+    [HttpGet("{id}", Name = RouteNames.GetVisibilityTypeById)]
     [EndpointSummary("Get Visibility Type by ID")]
     [EndpointDescription("Retrieve details of a specific event visibility type")]
     [AllowAnonymous]

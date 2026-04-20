@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.Contracts.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -37,7 +38,7 @@ public class ModuleController : ControllerBase
     /// </summary>
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
-    [HttpGet("available")]
+    [HttpGet("available", Name = RouteNames.GetAvailableModules)]
     [EndpointSummary("Get Available Modules")]
     [EndpointDescription("Returns all modules that are globally active in the system. " +
         "Does not filter by tenant - use /enabled for tenant-specific modules.")]
@@ -53,7 +54,7 @@ public class ModuleController : ControllerBase
     /// </summary>
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
-    [HttpGet("enabled")]
+    [HttpGet("enabled", Name = RouteNames.GetEnabledModules)]
     [EndpointSummary("Get Enabled Modules")]
     [EndpointDescription("Returns modules enabled for the current tenant. " +
         "These modules determine which aspects/features are available for events. " +
@@ -71,7 +72,7 @@ public class ModuleController : ControllerBase
     /// </summary>
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
-    [HttpGet("{moduleKey}/enabled")]
+    [HttpGet("{moduleKey}/enabled", Name = RouteNames.CheckModuleEnabled)]
     [EndpointSummary("Check Module Enabled")]
     [EndpointDescription("Checks if a specific module is enabled for the current tenant. " +
         "Returns a simple boolean response.")]
@@ -95,7 +96,7 @@ public class ModuleController : ControllerBase
     /// </summary>
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
-    [HttpGet("{moduleKey}/schema")]
+    [HttpGet("{moduleKey}/schema", Name = RouteNames.GetModuleSchemaUrl)]
     [EndpointSummary("Get Module Schema URL")]
     [EndpointDescription("Returns the wizard schema URL for a module. " +
         "The schema is used to generate dynamic forms for module-specific features.")]
@@ -127,7 +128,7 @@ public class ModuleController : ControllerBase
     /// </summary>
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPost("{moduleKey}/enable")]
+    [HttpPost("{moduleKey}/enable", Name = RouteNames.EnableModule)]
     [EndpointSummary("Enable Module")]
     [EndpointDescription("Enables a module for the current tenant. " +
         "Requires admin privileges.")]
@@ -171,7 +172,7 @@ public class ModuleController : ControllerBase
     /// </summary>
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPost("{moduleKey}/disable")]
+    [HttpPost("{moduleKey}/disable", Name = RouteNames.DisableModule)]
     [EndpointSummary("Disable Module")]
     [EndpointDescription("Disables a module for the current tenant. " +
         "Existing data using this module's features will be preserved but hidden. " +

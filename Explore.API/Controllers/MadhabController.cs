@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.Madhab;
 using Explore.Application.Features.Madhabs.Requests.Queries;
 using MediatR;
@@ -29,7 +30,7 @@ public class MadhabController : ControllerBase
     }
 
     // GET: api/madhab
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetMadhabs)]
     [EndpointSummary("Get all Madhabs")]
     [EndpointDescription("Retrieve a list of all Islamic jurisprudence schools (Hanafi, Maliki, Shafi'i, Hanbali)")]
     [AllowAnonymous]
@@ -42,7 +43,7 @@ public class MadhabController : ControllerBase
     }
 
     // GET: api/madhab/{id}
-    [HttpGet("{id}")]
+    [HttpGet("{id}", Name = RouteNames.GetMadhabById)]
     [EndpointSummary("Get Madhab by ID")]
     [EndpointDescription("Retrieve details of a specific Islamic jurisprudence school")]
     [AllowAnonymous]

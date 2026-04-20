@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.FileType;
 using Explore.Application.Features.FileTypes.Requests.Queries;
 using MediatR;
@@ -29,7 +30,7 @@ public class FileTypeController : ControllerBase
     }
 
     // GET: api/filetype
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetFileTypes)]
     [EndpointSummary("Get all File Types")]
     [EndpointDescription("Retrieve a list of all file types (Image, Document, Video, Audio)")]
     [AllowAnonymous]
@@ -42,7 +43,7 @@ public class FileTypeController : ControllerBase
     }
 
     // GET: api/filetype/{id}
-    [HttpGet("{id}")]
+    [HttpGet("{id}", Name = RouteNames.GetFileTypeById)]
     [EndpointSummary("Get File Type by ID")]
     [EndpointDescription("Retrieve details of a specific file type")]
     [AllowAnonymous]

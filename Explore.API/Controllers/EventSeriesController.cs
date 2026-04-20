@@ -29,7 +29,7 @@ public class EventSeriesController : ControllerBase
 
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetEventSeries)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<ActionResult<PaginatedResult<EventSeriesListDto>>> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10, [FromQuery] Guid? actorId = null)
     {
@@ -44,7 +44,7 @@ public class EventSeriesController : ControllerBase
 
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
-    [HttpGet("{id:guid}")]
+    [HttpGet("{id:guid}", Name = RouteNames.GetEventSeriesById)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EventSeriesDto>> GetById(Guid id)
@@ -56,7 +56,7 @@ public class EventSeriesController : ControllerBase
 
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
-    [HttpGet("top")]
+    [HttpGet("top", Name = RouteNames.GetTopEventSeries)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<ActionResult<EventSeriesDto>> GetTop()
@@ -71,7 +71,7 @@ public class EventSeriesController : ControllerBase
 
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPost]
+    [HttpPost(Name = RouteNames.CreateEventSeries)]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Create([FromBody] CreateEventSeriesDto dto)
@@ -86,7 +86,7 @@ public class EventSeriesController : ControllerBase
 
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("{id:guid}")]
+    [HttpPut("{id:guid}", Name = RouteNames.UpdateEventSeries)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -107,7 +107,7 @@ public class EventSeriesController : ControllerBase
 
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpDelete("{id:guid}")]
+    [HttpDelete("{id:guid}", Name = RouteNames.DeleteEventSeries)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BaseCommandResponse<bool>>> Delete(Guid id)

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.EventStatus;
 using Explore.Application.Features.EventStatuses.Requests.Queries;
 using MediatR;
@@ -29,7 +30,7 @@ public class EventStatusController : ControllerBase
     }
 
     // GET: api/eventstatus
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetEventStatuses)]
     [EndpointSummary("Get all Event Statuses")]
     [EndpointDescription("Retrieve a list of all event lifecycle statuses (Draft, Published, Cancelled, Completed)")]
     [AllowAnonymous]
@@ -42,7 +43,7 @@ public class EventStatusController : ControllerBase
     }
 
     // GET: api/eventstatus/{id}
-    [HttpGet("{id}")]
+    [HttpGet("{id}", Name = RouteNames.GetEventStatusById)]
     [EndpointSummary("Get Event Status by ID")]
     [EndpointDescription("Retrieve details of a specific event lifecycle status")]
     [AllowAnonymous]

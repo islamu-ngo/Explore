@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.EventType;
 using Explore.Application.Features.EventTypes.Requests.Queries;
 using MediatR;
@@ -28,7 +29,7 @@ public class EventTypeController : ControllerBase
     }
 
     // GET: api/<EventTypeController>
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetEventTypes)]
     [EndpointSummary("Get all Event TYpes")]
     [EndpointDescription("Get A List of all the Event Type Options")]
     [AllowAnonymous]
@@ -40,7 +41,7 @@ public class EventTypeController : ControllerBase
     }
 
     // GET api/<EventTypeController>/5
-    [HttpGet("{id}")]
+    [HttpGet("{id}", Name = RouteNames.GetEventTypeById)]
     [OutputCache(PolicyName = "DetailData")]
     public string Get(int id)
     {
@@ -48,19 +49,19 @@ public class EventTypeController : ControllerBase
     }
 
     // POST api/<EventTypeController>
-    [HttpPost]
+    [HttpPost(Name = RouteNames.CreateEventType)]
     public void Post([FromBody] string value)
     {
     }
 
     // PUT api/<EventTypeController>/5
-    [HttpPut("{id}")]
+    [HttpPut("{id}", Name = RouteNames.UpdateEventType)]
     public void Put(int id, [FromBody] string value)
     {
     }
 
     // DELETE api/<EventTypeController>/5
-    [HttpDelete("{id}")]
+    [HttpDelete("{id}", Name = RouteNames.DeleteEventType)]
     public void Delete(int id)
     {
     }

@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.Features.PublicExperience.Requests.Queries;
 using MediatR;
@@ -25,7 +26,7 @@ public class PublicExperienceController : ControllerBase
         _mediator = mediator;
     }
 
-    [HttpGet("settings")]
+    [HttpGet("settings", Name = RouteNames.GetPublicExperienceSettings)]
     [AllowAnonymous]
     [EndpointSummary("Get Public Experience Settings")]
     [EndpointDescription("Returns effective home-page and white-label settings for the current tenant context.")]

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.OrganizationPosition;
 using Explore.Application.Features.OrganizationPositions.Requests.Queries;
 using MediatR;
@@ -29,7 +30,7 @@ public class OrganizationPositionController : ControllerBase
     }
 
     // GET: api/organizationposition
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetOrganizationPositions)]
     [EndpointSummary("Get all Organization Positions")]
     [EndpointDescription("Retrieve a list of all organization positions (President, Secretary, Member)")]
     [AllowAnonymous]
@@ -42,7 +43,7 @@ public class OrganizationPositionController : ControllerBase
     }
 
     // GET: api/organizationposition/{id}
-    [HttpGet("{id}")]
+    [HttpGet("{id}", Name = RouteNames.GetOrganizationPositionById)]
     [EndpointSummary("Get Organization Position by ID")]
     [EndpointDescription("Retrieve details of a specific organization position")]
     [AllowAnonymous]

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.UserExternalLogin;
 using Explore.Application.Features.UserExternalLogins.Requests.Commands;
 using Explore.Application.Features.UserExternalLogins.Requests.Queries;
@@ -31,7 +32,7 @@ public class UserExternalLoginController : ControllerBase
     }
 
     // GET: api/userexternallogin
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetUserExternalLogins)]
     [EndpointSummary("Get all User External Logins")]
     [EndpointDescription("Retrieve a list of all user external logins")]
     [Authorize]
@@ -44,7 +45,7 @@ public class UserExternalLoginController : ControllerBase
     }
 
     // GET: api/userexternallogin/{id}
-    [HttpGet("{id}")]
+    [HttpGet("{id}", Name = RouteNames.GetUserExternalLoginById)]
     [EndpointSummary("Get User External Login by ID")]
     [EndpointDescription("Retrieve details of a specific user external login")]
     [Authorize]
@@ -59,7 +60,7 @@ public class UserExternalLoginController : ControllerBase
     }
 
     // POST: api/userexternallogin
-    [HttpPost]
+    [HttpPost(Name = RouteNames.CreateUserExternalLogin)]
     [EndpointSummary("Create new User External Login")]
     [EndpointDescription("Create a new user external login")]
     [Authorize]
@@ -79,7 +80,7 @@ public class UserExternalLoginController : ControllerBase
     }
 
     // PUT: api/userexternallogin/{id}
-    [HttpPut("{id}")]
+    [HttpPut("{id}", Name = RouteNames.UpdateUserExternalLogin)]
     [EndpointSummary("Update User External Login")]
     [EndpointDescription("Update an existing user external login")]
     [Authorize]
@@ -105,7 +106,7 @@ public class UserExternalLoginController : ControllerBase
     }
 
     // DELETE: api/userexternallogin/{id}
-    [HttpDelete("{id}")]
+    [HttpDelete("{id}", Name = RouteNames.DeleteUserExternalLogin)]
     [EndpointSummary("Delete User External Login")]
     [EndpointDescription("Delete a user external login")]
     [Authorize]

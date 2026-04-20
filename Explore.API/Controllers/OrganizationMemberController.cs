@@ -7,6 +7,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.OrganizationMember;
 using Explore.Application.Features.OrganizationMembers.Requests.Commands;
 using Explore.Application.Features.OrganizationMembers.Requests.Queries;
@@ -31,7 +32,7 @@ public class OrganizationMemberController : ControllerBase
         _mediator = mediator;
     }
 
-    [HttpGet("{organizationId}")]
+    [HttpGet("{organizationId:guid}", Name = RouteNames.GetOrganizationMembersByOrganization)]
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
     [OutputCache(PolicyName = "ListData")]
@@ -42,7 +43,7 @@ public class OrganizationMemberController : ControllerBase
     }
 
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPost]
+    [HttpPost(Name = RouteNames.AddOrganizationMember)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Post([FromBody] AddOrganizationMemberDto dto, CancellationToken cancellationToken = default)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -52,7 +53,7 @@ public class OrganizationMemberController : ControllerBase
     }
 
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("role")]
+    [HttpPut("role", Name = RouteNames.UpdateOrganizationMemberRole)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateRole([FromBody] UpdateOrganizationMemberRoleDto dto, CancellationToken cancellationToken = default)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -62,7 +63,7 @@ public class OrganizationMemberController : ControllerBase
     }
 
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpGet("invitations")]
+    [HttpGet("invitations", Name = RouteNames.GetMyOrganizationInvitations)]
     public async Task<ActionResult<List<OrganizationInvitationDto>>> GetMyInvitations(CancellationToken cancellationToken = default)
     {
         var email = User.FindFirstValue(ClaimTypes.Email);
@@ -81,7 +82,7 @@ public class OrganizationMemberController : ControllerBase
     }
 
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPost("invitations/{id}/accept")]
+    [HttpPost("invitations/{id:guid}/accept", Name = RouteNames.AcceptOrganizationInvitation)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> AcceptInvitation(Guid id, CancellationToken cancellationToken = default)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -96,7 +97,7 @@ public class OrganizationMemberController : ControllerBase
     }
 
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPost("invitations/{id}/decline")]
+    [HttpPost("invitations/{id:guid}/decline", Name = RouteNames.DeclineOrganizationInvitation)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> DeclineInvitation(Guid id, CancellationToken cancellationToken = default)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -110,7 +111,7 @@ public class OrganizationMemberController : ControllerBase
     }
 
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:guid}", Name = RouteNames.DeleteOrganizationMember)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);

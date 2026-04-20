@@ -54,7 +54,7 @@ public class EventRegistrationController : ControllerBase
     // GET: api/eventregistration/{id}
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
-    [HttpGet("{id}")]
+    [HttpGet("{id}", Name = RouteNames.GetEventRegistrationById)]
     [EndpointSummary("Get Event Registration by ID")]
     [EndpointDescription("Retrieve details of a specific event registration including approval status")]
     [ProducesResponseType(typeof(EventRegistrationDto), StatusCodes.Status200OK)]
@@ -69,7 +69,7 @@ public class EventRegistrationController : ControllerBase
     // GET: api/eventregistration/by-session/{eventSessionId}
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
-    [HttpGet("by-session/{eventSessionId}")]
+    [HttpGet("by-session/{eventSessionId}", Name = RouteNames.GetRegistrationsBySession)]
     [EndpointSummary("Get Registrations by Event Session")]
     [EndpointDescription("Retrieve all user registrations for a specific event session")]
     [ProducesResponseType(typeof(List<EventRegistrationListDto>), StatusCodes.Status200OK)]
@@ -83,7 +83,7 @@ public class EventRegistrationController : ControllerBase
     // GET: api/eventregistration/by-user/{userId}
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
-    [HttpGet("by-user/{userId}")]
+    [HttpGet("by-user/{userId}", Name = RouteNames.GetRegistrationsByUser)]
     [EndpointSummary("Get Registrations by User")]
     [EndpointDescription("Retrieve all event registrations for a specific user")]
     [ProducesResponseType(typeof(List<EventRegistrationListDto>), StatusCodes.Status200OK)]
@@ -96,7 +96,7 @@ public class EventRegistrationController : ControllerBase
     // POST: api/eventregistration
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPost]
+    [HttpPost(Name = RouteNames.CreateEventRegistration)]
     [EndpointSummary("Register User for Event Session")]
     [EndpointDescription("Create a new event registration (may require approval depending on registration mode)")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
@@ -112,7 +112,7 @@ public class EventRegistrationController : ControllerBase
     // PUT: api/eventregistration/{id}
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpPut("{id}")]
+    [HttpPut("{id}", Name = RouteNames.UpdateEventRegistration)]
     [EndpointSummary("Update Event Registration")]
     [EndpointDescription("Update an existing event registration (e.g., change approval status)")]
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status200OK)]
@@ -140,7 +140,7 @@ public class EventRegistrationController : ControllerBase
     // DELETE: api/eventregistration/{id}
     [Authorize]
     [EndpointClassification(EndpointClass.Authenticated)]
-    [HttpDelete("{id}")]
+    [HttpDelete("{id}", Name = RouteNames.DeleteEventRegistration)]
     [EndpointSummary("Cancel Event Registration")]
     [EndpointDescription("Delete/cancel a user's event registration")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

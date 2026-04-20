@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.RegistrationScope;
 using Explore.Application.Features.RegistrationScopes.Requests.Queries;
 using MediatR;
@@ -26,7 +27,7 @@ public class RegistrationScopeController : ControllerBase
     }
 
     // GET: api/registrationscope
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetRegistrationScopes)]
     [EndpointSummary("Get all Registration Scopes")]
     [EndpointDescription("Retrieve a list of all registration scopes (Event, Day, SessionSelection)")]
     [AllowAnonymous]

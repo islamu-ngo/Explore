@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.Onboarding;
 using Explore.Application.DTOs.TenantPolicy;
 using Explore.Application.Features.TenantOnboarding.Requests.Commands;
@@ -27,7 +28,7 @@ public class TenantOnboardingController : ExploreControllerBase
         _mediator = mediator;
     }
 
-    [HttpGet("status")]
+    [HttpGet("status", Name = RouteNames.GetTenantOnboardingStatus)]
     [Authorize]
     [EndpointSummary("Get Tenant Onboarding Status")]
     [EndpointDescription("Returns whether the current tenant onboarding has been completed and whether the current user can complete it.")]
@@ -38,7 +39,7 @@ public class TenantOnboardingController : ExploreControllerBase
         return Ok(status);
     }
 
-    [HttpGet("settings")]
+    [HttpGet("settings", Name = RouteNames.GetTenantOnboardingPolicySettings)]
     [Authorize]
     [EndpointSummary("Get Tenant Policy Settings")]
     [EndpointDescription("Returns effective tenant policy settings used for tenant onboarding and runtime settings management.")]
@@ -49,7 +50,7 @@ public class TenantOnboardingController : ExploreControllerBase
         return Ok(settings);
     }
 
-    [HttpPost("complete")]
+    [HttpPost("complete", Name = RouteNames.CompleteTenantOnboarding)]
     [Authorize]
     [EndpointSummary("Complete Tenant Onboarding")]
     [EndpointDescription("Completes tenant onboarding and persists tenant policy answers.")]
@@ -87,7 +88,7 @@ public class TenantOnboardingController : ExploreControllerBase
         return Ok(response);
     }
 
-    [HttpPut("settings")]
+    [HttpPut("settings", Name = RouteNames.UpdateTenantOnboardingPolicySettings)]
     [Authorize]
     [EndpointSummary("Update Tenant Policy Settings")]
     [EndpointDescription("Updates tenant policy settings after onboarding.")]
@@ -125,7 +126,7 @@ public class TenantOnboardingController : ExploreControllerBase
         return Ok(response);
     }
 
-    [HttpPut("steps")]
+    [HttpPut("steps", Name = RouteNames.SaveTenantOnboardingStepProgress)]
     [Authorize]
     [EndpointSummary("Save Tenant Onboarding Step Progress")]
     [EndpointDescription("Persists tenant onboarding step progress without completing onboarding.")]

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.UserAuthenticationToken;
 using Explore.Application.Features.UserAuthenticationTokens.Requests.Commands;
 using Explore.Application.Features.UserAuthenticationTokens.Requests.Queries;
@@ -31,7 +32,7 @@ public class UserAuthenticationTokenController : ControllerBase
     }
 
     // GET: api/userauthenticationtoken
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetUserAuthenticationTokens)]
     [EndpointSummary("Get all User Authentication Tokens")]
     [EndpointDescription("Retrieve a list of all user authentication tokens")]
     [Authorize]
@@ -44,7 +45,7 @@ public class UserAuthenticationTokenController : ControllerBase
     }
 
     // GET: api/userauthenticationtoken/{id}
-    [HttpGet("{id}")]
+    [HttpGet("{id}", Name = RouteNames.GetUserAuthenticationTokenById)]
     [EndpointSummary("Get User Authentication Token by ID")]
     [EndpointDescription("Retrieve details of a specific user authentication token")]
     [Authorize]
@@ -59,7 +60,7 @@ public class UserAuthenticationTokenController : ControllerBase
     }
 
     // POST: api/userauthenticationtoken
-    [HttpPost]
+    [HttpPost(Name = RouteNames.CreateUserAuthenticationToken)]
     [EndpointSummary("Create new User Authentication Token")]
     [EndpointDescription("Create a new user authentication token")]
     [Authorize]
@@ -79,7 +80,7 @@ public class UserAuthenticationTokenController : ControllerBase
     }
 
     // PUT: api/userauthenticationtoken/{id}
-    [HttpPut("{id}")]
+    [HttpPut("{id}", Name = RouteNames.UpdateUserAuthenticationToken)]
     [EndpointSummary("Update User Authentication Token")]
     [EndpointDescription("Update an existing user authentication token")]
     [Authorize]
@@ -105,7 +106,7 @@ public class UserAuthenticationTokenController : ControllerBase
     }
 
     // DELETE: api/userauthenticationtoken/{id}
-    [HttpDelete("{id}")]
+    [HttpDelete("{id}", Name = RouteNames.DeleteUserAuthenticationToken)]
     [EndpointSummary("Delete User Authentication Token")]
     [EndpointDescription("Delete a user authentication token")]
     [Authorize]

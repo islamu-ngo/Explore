@@ -3,6 +3,7 @@
 
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Hateoas;
 using Explore.Application.DTOs.Language;
 using Explore.Application.Features.Languages.Requests.Queries;
 using MediatR;
@@ -26,7 +27,7 @@ public class LanguageController : ControllerBase
     }
 
     // GET: api/language
-    [HttpGet]
+    [HttpGet(Name = RouteNames.GetLanguages)]
     [EndpointSummary("Get all Languages")]
     [EndpointDescription("Get a list of all available languages (lookup table)")]
     [AllowAnonymous]
@@ -38,7 +39,7 @@ public class LanguageController : ControllerBase
     }
 
     // GET: api/language/{id}
-    [HttpGet("{id}")]
+    [HttpGet("{id}", Name = RouteNames.GetLanguageById)]
     [EndpointSummary("Get Language Details")]
     [EndpointDescription("Get detailed information about a specific language")]
     [AllowAnonymous]
