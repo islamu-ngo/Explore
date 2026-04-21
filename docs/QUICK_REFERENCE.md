@@ -24,6 +24,7 @@ ABOUTME: Focuses on non-inferable constraints and project-specific behavior.
 18. Module-conditional filters (Islamic, Tech) are silently ignored when the module is disabled for the tenant.
 19. ETag middleware uses weak ETags (SHA256) — only on `application/json` and `application/hal+json` responses.
 20. Named route constants in `RouteNames` must match `[HttpGet(Name = "...")]` attribute values on controller actions.
+21. **HAL links are the single source of truth for UI**: Clients must gate action affordances (Edit, Delete, etc.) by checking for the presence of the corresponding link in the `_links` object, never by local role/claim inspection.
 
 ## Multi-Tenancy Reminder
 Runtime tenant resolution:

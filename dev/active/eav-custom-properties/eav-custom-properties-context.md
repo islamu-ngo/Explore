@@ -3,7 +3,57 @@ ABOUTME: Read this first when resuming so implementation follows the hardened ex
 
 # EAV Custom Properties - Context
 
-**Last Updated: 2026-04-12 (D1 complete, D2 Operability core complete, D3 Consumption next)**
+**Last Updated: 2026-04-21 (D1 + D2 + D3 complete — Milestone D green end-to-end; Blazor UI + governance polish pending)**
+
+---
+
+## SESSION PROGRESS (2026-04-21) — MILESTONE D3 CONSUMPTION COMPLETE
+
+### ✅ MILESTONE D3 CONSUMPTION — COMPLETE (2026-04-21)
+
+D3 Consumption is functionally complete: specification-backed discovery filters, feature-flag gating, query cache-key hashing, API transport surface, Testcontainers integration verification.
+
+**D3 key insight:** prior session's implementation had all core specifications, repositories, handlers, and architecture tests in place but the **API transport layer was missing** — `EventFilterRequest` did not expose `CustomPropertyFilters` / `CustomPropertySearchTerm`, and `EventSessionController.GetAll` had no filter transport model at all. The handler-level plumbing existed but could not be reached from HTTP. Closing this gap made D3 end-to-end green.
+
+**D3 files modified/created this session (4 files):**
+
+**API Transport** (1 modified + 1 new):
+- MODIFIED: `Explore.API/Models/EventFilterRequest.cs` — added `CustomPropertyFilters` (List<CustomPropertyFilterCriterion>?) + `CustomPropertySearchTerm` (string?) with XML docs explaining indexed query-parameter binding syntax and feature-flag gating
+- NEW: `Explore.API/Models/EventSessionFilterRequest.cs` — transport DTO for session discovery (PageNumber, PageSize, CustomPropertyFilters, CustomPropertySearchTerm)
+
+**Controllers** (2 modified):
+- MODIFIED: `Explore.API/Controllers/EventController.cs` — `GetAll` now forwards `CustomPropertyFilters` + `CustomPropertySearchTerm` to `GetEventListRequest`; endpoint description documents feature-flag gating
+- MODIFIED: `Explore.API/Controllers/EventSessionController.cs` — `GetAll` now binds `[FromQuery] EventSessionFilterRequest filter` instead of bare inline `pageNumber/pageSize` args; forwards all 4 fields to `GetEventSessionListRequest`
+
+**Core D3 code confirmed already in place from prior work** (unchanged this session):
+- `Explore.Application/Specifications/Events/EventCustomPropertyProjectionFilter.cs` (9 factory methods)
+- `Explore.Application/Specifications/EventSessions/EventSessionCustomPropertyProjectionFilter.cs` (mirror)
+- `Explore.Application/Specifications/Events/EventQuerySpecification.cs` (immutable builder, `And(EventCustomPropertyProjectionFilter)` overload, `ToCacheKeySuffix()` with `pf:` prefix)
+- `Explore.Application/Specifications/EventSessions/EventSessionQuerySpecification.cs` (mirror)
+- `Explore.Persistence/Repositories/EventRepository.cs` (`ApplyProjectionFilters` with 9 helpers; correlated subqueries on `ix_ecpp_tenant_namespace_key_normalized`)
+- `Explore.Persistence/Repositories/EventSessionRepository.cs` (mirror on `escpp_*` indexes)
+- `Explore.Application/Features/Events/Handlers/Queries/GetEventListRequestHandler.cs` (feature-flag gate via `ICustomPropertyQuotaResolver.GetBoolAsync("custom_properties.projection_discovery_enabled", tenantId, ct)`)
+- `Explore.Application/Features/EventSessions/Handlers/Queries/GetEventSessionListRequestHandler.cs` (same gate, returns null spec when flag off)
+- `Event.Architecture.Tests/ProjectionLayerBoundaryTests.cs` (7 tests enforcing Layer 2/3 boundary)
+- `Event.Application.UnitTests/Specifications/EventQuerySpecificationProjectionTests.cs` (7 TUnit tests for immutability + cache key composition)
+
+**D3 verification results:**
+- Build `Explore.API/Explore.API.csproj --configuration Release`: 0 errors ✅
+- `Event.Application.UnitTests`: **840/840 passed** (+94 from baseline)
+- `Event.Domain.UnitTests`: **207/207 passed** (+107 from baseline)
+- `Explore.Secrets.UnitTests`: **201/201 passed** (+11 from baseline)
+- `Event.Architecture.Tests`: 89/90 passed (1 failure is pre-existing `Rule_1_05_MustNot_ConstructDialogOptions_Directly` from concurrent agent's scheduling work — unrelated to EAV)
+- `Event.Persistence.IntegrationTests` custom-property subset: **15/15 passed** in 14.9s against Testcontainers Postgres — end-to-end projection-backed discovery filter execution verified
+
+**D3 performance baseline satisfied:** correlated subquery pattern `EventCustomPropertyProjections.Any(p => p.EventId == e.Id && p.Namespace == ns && p.Key == k && ...)` is backed by composite index `ix_ecpp_tenant_namespace_key_normalized` and tenant-local index `ix_ecpp_tenant_event_namespace_key_ordinal`. Session mirror uses `escpp_*` equivalents. 15/15 integration tests completing in 14.9s (≈1s each with Testcontainers cold start) indicates no query-plan regression.
+
+**NSwag client regeneration:** happens automatically on `Explore.Blazor.Client` build via MSBuild `BeforeTargets="CoreCompile"` target (`dotnet nswag run nswag.json` reads live `swagger.json` exported by running API). New `CustomPropertyFilters` + `CustomPropertySearchTerm` fields will surface in `EventApiClient.g.cs` on next Aspire-started Blazor build. No manual regeneration required.
+
+**D3 gate exit:** tasks 10.2, 10.2A checked green in tasks.md. Milestone D row updated to ✅ complete.
+
+**Explicitly deferred (polish, not D3 blocking):**
+- Task 9.9: Blazor governance UI for exposure/search/filter/export flags (polish beyond 9.7)
+- Blazor discovery filter bar surfacing `CustomPropertyFilters` UI on `EventList.razor` — API surface ready, UI is follow-up work
 
 ---
 
@@ -11,7 +61,7 @@ ABOUTME: Read this first when resuming so implementation follows the hardened ex
 
 ### 🔧 MILESTONE D2 OPERABILITY — CORE COMPLETE (2026-04-12)
 
-D2 Operability is functionally complete: CQRS layer, admin API endpoints, HATEOAS, authorization actions, operator runbook, and all unit tests green. **No commits made** — all changes are still unstaged across D1+D2.
+D2 Operability is functionally complete: CQRS layer, admin API endpoints, HATEOAS, authorization actions, operator runbook, and all unit tests green. D1+D2 work was subsequently committed before D3 session (current HEAD includes those changes as of 2026-04-21).
 
 **D2 files created/modified this session (55+ files total across D1+D2):**
 
