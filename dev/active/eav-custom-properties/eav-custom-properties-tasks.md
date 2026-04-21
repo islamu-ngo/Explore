@@ -3,7 +3,7 @@ ABOUTME: Reflects extension-layer boundaries, namespaced machine keys, projectio
 
 # EAV Custom Properties - Task Checklist
 
-**Last Updated: 2026-04-21 (D1 + D2 + D3 complete — Milestone D green; Blazor UI + governance polish pending)**
+**Last Updated: 2026-04-21 (D1 + D2 + D3 complete — Milestone D green end-to-end; Phase 9.7 + 9.9 governance UI shipped)**
 
 ---
 
@@ -525,12 +525,12 @@ OUT of scope:
 - [ ] **9.6** Add template selection preview admin overview (**Milestone B follow-up**)
   - [ ] **9.6.1** Lists events created from a given template + when + by whom
 - [ ] **9.6A** Add session blueprint preview admin overview (**Milestone C follow-up**)
-- [ ] **9.7** Add exposure / searchability / exportability governance UX (**Milestone D**)
-  - [ ] **9.7.1** `ExposureGovernance.razor` admin page
-  - [ ] **9.7.2** MudDataGrid with flag toggles
-  - [ ] **9.7.3** Inline projection update on flag change
-  - [ ] **9.7.4** Bulk selection + bulk update
-  - [ ] **9.7.5** Tooltip explanations for each exposure flag
+- [x] **9.7** Add exposure / searchability / exportability governance UX (**Milestone D**) ✅ 2026-04-21
+  - [x] **9.7.1** `CustomPropertyGovernance.razor` admin page at `/admin/tenant/custom-properties` with 3 tabs (Exposure / Governance Report / Projection Status) ✅
+  - [x] **9.7.2** `ExposureGovernanceSection.razor` — `MudDataGrid<CustomPropertyDefinitionListModel>` with 6 flag columns (exposure chip + 5 boolean indicators) ✅
+  - [x] **9.7.3** Inline projection update on flag change — server `UpdateCustomPropertyDefinitionCommandHandler` already triggers projection refresh on update ✅
+  - [x] **9.7.4** `MultiSelection` with `SelectColumn` + bulk-edit dialog sharing same editor; `UpdateManyDefinitionFlagsAsync` aggregates per-row PUTs ✅
+  - [x] **9.7.5** Tooltip explanations centralised in `GovernanceTooltips` static class (6 copy constants) rendered via `MudTooltip` in flag column headers ✅
 - [ ] **9.8** Add event template diff / sync UX (**Milestone E**)
   - [ ] **9.8.1** `EventTemplateSyncPage.razor` component
   - [ ] **9.8.2** Header with event + current + target template version selector
@@ -544,7 +544,7 @@ OUT of scope:
   - [ ] **9.8.10** Focus trap + restore in dialogs
 - [ ] **9.8A** Add event session template diff / sync UX (**Milestone E**)
   - [ ] **9.8A.1** Mirror 9.8.1-9.8.10 for session scope
-- [ ] **9.9** Add governance UI for exposure/search/filter/export flags (polish + tooltips beyond 9.7)
+- [x] **9.9** Add governance UI for exposure/search/filter/export flags (polish + tooltips beyond 9.7) ✅ 2026-04-21 — `GovernanceTooltips` copy + doc link to `/docs/CUSTOM_PROPERTIES.md` on header opens in new tab; governance report + projection status sections added as polish to satisfy Milestone D operator coverage
 - [ ] **9.10** Update Organization and Group pages to remove any stale metadata-blob assumptions
 - [ ] **9.11** Regenerate generated API clients after milestone API contract changes
 

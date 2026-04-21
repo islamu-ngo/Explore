@@ -3,7 +3,37 @@ ABOUTME: Read this first when resuming so implementation follows the hardened ex
 
 # EAV Custom Properties - Context
 
-**Last Updated: 2026-04-21 (D1 + D2 + D3 complete — Milestone D green end-to-end; Blazor UI + governance polish pending)**
+**Last Updated: 2026-04-21 (D1 + D2 + D3 complete + Phase 9.7/9.9 governance UI shipped)**
+
+---
+
+## SESSION PROGRESS (2026-04-21 — follow-up) — PHASE 9.7 + 9.9 GOVERNANCE UI SHIPPED
+
+Tenant-scoped governance admin surface for Layer 3 custom-property definitions now lives at `/admin/tenant/custom-properties`. Operators can audit exposure flags, toggle searchability/filterability/exportability/moderation/analytics in-place or in bulk, consult promotion recommendations, and drive projection rebuild/drain without leaving the UI.
+
+**New client-side assets (all under `Explore.Blazor.Client`):**
+
+- `Models/CustomProperties/*` — 9 DTO mirrors (`CustomPropertyDefinitionListModel`, `CustomPropertyDefinitionDetailModel`, `CustomPropertyOptionModel`, `DefinitionFlagUpdateModel`, `CustomPropertyGovernanceRowModel`, `ProjectionStatusModel`, `ProjectionDirtyScopeModel`, `RebuildProjectionResult`, `DrainDirtyScopesResult`).
+- `Contracts/Services/CustomProperties/ICustomPropertyAdminService.cs` — 10-method façade over the generated NSwag client with tenant + paging ergonomics.
+- `Services/CustomPropertyAdminService.cs` — wraps `IEventApiClient`. Governance-flag writes fetch the full definition, mutate only flag fields, then PUT the full DTO (no backend bulk endpoint exists yet, so `UpdateManyDefinitionFlagsAsync` iterates sequentially and aggregates failures).
+- `Helpers/HalResourceExtensions.cs` — `GetItems`, `ToPaginatedResult`, `ToModel` overloads for `HalCollectionResourceOfCustomPropertyDefinitionListDto` and `HalResourceOfCustomPropertyDefinitionDto` via JSON roundtrip through `AdditionalProperties`.
+- `Extensions/ServiceCollectionExtensions.cs` — scoped registration of `ICustomPropertyAdminService`.
+- `Pages/Admin/CustomProperties/CustomPropertyGovernance.razor` + `.razor.css` — page shell, `@rendermode InteractiveServer`, header with doc link to `/docs/CUSTOM_PROPERTIES.md` (new tab), three `MudTabPanel`s.
+- `Pages/Admin/CustomProperties/Components/GovernanceTooltips.cs` — 6-constant copy bank + `ExposureColor` mapping.
+- `Pages/Admin/CustomProperties/Components/ExposureGovernanceSection.razor` — Task 9.7 meat: `MudDataGrid` with `MultiSelection`, entity-scope selector, search box, bulk-edit button, tooltip-decorated flag columns.
+- `Pages/Admin/CustomProperties/Components/GovernanceReportSection.razor` — filterable table of `CustomPropertyGovernanceRowModel` with colour-coded `PromotionRecommendation` chip.
+- `Pages/Admin/CustomProperties/Components/ProjectionStatusSection.razor` — dual-card event/session projection health, rebuild + drain controls (with `DialogOptionsFactory.Confirmation()` confirmation), dirty-scope table.
+- `Pages/Admin/CustomProperties/Dialogs/EditDefinitionFlagsDialog.razor` (+ code-behind) — single & bulk flag editor with `MudSelect<ExposureLevel>` + 5 switches, tooltip-decorated.
+- `Layout/NavMenu.razor` — new "Custom Property Governance" link inside the tenant-admin dropdown (gated by `IsTenantAdmin`).
+
+**Tests** (`Explore.Blazor.Client.Tests/Pages/Admin/CustomPropertyGovernanceTests.cs`): 8 bUnit tests covering loading / success / error states across all three sections. Full Blazor test suite: **794 passed + 1 skipped**, 0 failures. `Event.Architecture.Tests` **90/90** (pre-existing `DialogOptions` violation from scheduling code resolved by concurrent workstream).
+
+**Key enforcement notes:**
+
+- No direct `DialogOptions` construction — uses `DialogOptionsFactory.Medium()` / `.Confirmation()`.
+- No reflection on `PropertyType` for rendering — strongly-typed `PropertyType` enum exclusively.
+- No role/claim gating of per-row action affordance — `IsSystemOwned` + HAL link presence drive disable state (per CLAUDE.md rule 12).
+- `ABOUTME:` header on every new C# file; file-scoped namespaces; BEM class names (`custom-property-governance__header`, `exposure-governance__toolbar`, etc.).
 
 ---
 
