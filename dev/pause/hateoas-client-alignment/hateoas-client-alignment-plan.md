@@ -1,6 +1,9 @@
 # HATEOAS Client Alignment — Implementation Plan
 
 > Last Updated: 2026-03-27
+>
+> **Parent plan:** `dev/active/api-contract-stabilization/api-contract-stabilization-plan.md`
+> **Do not start before:** Phase 4 of parent plan merged (✅ complete as of 2026-04-20).
 
 ---
 

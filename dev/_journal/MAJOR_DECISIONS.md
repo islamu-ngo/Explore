@@ -1,6 +1,6 @@
 # Major Decisions
 
-Last Updated: 2026-04-18 Europe/Brussels
+Last Updated: 2026-04-20 Europe/Brussels
 
 ## 2026-04-16 Europe/Brussels - Blazor Clean Code Refactor: CTO Review Binding Decisions
 
@@ -386,3 +386,20 @@ Last Updated: 2026-04-18 Europe/Brussels
 ### Blazor Arch Tests: 13 Tests Planned
 - Decision: 13 architecture tests total: 2 existing (IEventApiClient injection, ITranslationService placement) + 11 new. Uses file-scanning approach (no project reference to Blazor assemblies).
 - Impact: Tests cover Console.WriteLine, [Inject] interface-only, DialogOptionsFactory, NavigationManager in shared components, IJSRuntime in services, ISnackbar in data services, singleton mutable state, async void, .Result/.Wait(), IConfiguration direct injection, service locator, model classes in interface files. Known exceptions tracked for pre-existing violations being fixed in later phases.
+
+## 2026-04-20 Europe/Brussels - Event Scheduling Refactor Session 3: Blazor UI + Inline Scheduling
+
+### CreateEvent Inline Scheduling: API-First Creation Order
+- Decision: CreateEvent sends Days/Rooms/AgendaItems as nested collections in `CreateEventDto`. The `CreateEventCommandHandler` creates the event first, gets the EventId, then cascades child records in order (Days → Rooms → AgendaItems). This mirrors the existing session + template instantiation pattern.
+- Why: The UI previously could not schedule days/rooms/agenda at creation time because the EventId didn't exist yet. By moving the creation-order logic to the API handler within the existing transaction, the UI collects all data locally and sends it in one POST request.
+- Impact: `CreateEventDto` extended with 3 optional nested collections (`InlineEventDayDto`, `InlineLocationRoomDto`, `InlineEventAgendaItemDto`). Handler's `CreateInlineSchedulingAsync` method auto-links EventDayId from created days. EditEvent continues using separate service calls (event already has an ID).
+
+### Client-Side DTO Mirrors for HAL Deserialization
+- Decision: Manually create client-side DTO classes in `SchedulingDtos.cs` rather than relying on NSwag-generated types.
+- Why: NSwag generates HAL wrapper types (`HalResourceOfEventDayDto`) as empty shells with only `[JsonExtensionData] AdditionalProperties`. The embedded items come as `ICollection<object>`. Client DTOs with `[JsonPropertyName]` attributes enable JSON round-trip deserialization via `HalResourceExtensions.DeserializeItems<T>()`.
+- Impact: 6 new DTO classes (`EventDayListDto`, `EventDayDto`, `EventAgendaItemListDto`, `EventAgendaItemDto`, `LocationRoomListDto`, `LocationRoomDto`). Using `string.Empty` defaults instead of `required` keyword to avoid CS9035 with the `?? new T()` fallback pattern.
+
+### RegistrationPolicyHelper: Client-Side Mirror of Domain Rules
+- Decision: Duplicate `RegistrationPolicyRules` logic in the Blazor client project as `RegistrationPolicyHelper` rather than sharing the Domain assembly.
+- Why: Explore.Blazor.Client cannot reference Explore.Domain (WASM payload bloat, Clean Architecture rules). The policy rules are simple static mappings (6 policies → 3 scopes) that are stable and unlikely to diverge.
+- Impact: `RegistrationPolicyHelper.cs` in `Helpers/` namespace. Constants for scope/policy IDs match the Domain enum values. 17 bUnit tests verify all policy→scope mappings.
