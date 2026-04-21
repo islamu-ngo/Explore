@@ -68,6 +68,11 @@ public interface IAdminService
     Task<bool> CreateLocationAsync(CreateLocationDto location);
     Task<bool> UpdateLocationAsync(UpdateLocationDto location);
     Task<bool> DeleteLocationAsync(Guid id);
+
+    // Tenant management
+    Task<ICollection<TenantListDto>> GetTenantsAsync();
+    Task<BaseCommandResponseOfGuid?> CreateTenantAsync(CreateTenantDto dto, bool assignCurrentUserAsTenantAdmin = false);
+    Task<bool> DeleteTenantAsync(Guid id);
 }
 
 public class AdminService : IAdminService
@@ -757,6 +762,62 @@ public class AdminService : IAdminService
         catch (Exception ex)
         {
             _logger.LogError(ex, "[AdminService.DeleteLocationAsync] Unexpected error deleting location. LocationId: {LocationId}", id);
+            return false;
+        }
+    }
+
+    public async Task<ICollection<TenantListDto>> GetTenantsAsync()
+    {
+        try
+        {
+            return await _apiClient.GetTenantsAsync() ?? new List<TenantListDto>();
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.GetTenantsAsync] API error fetching tenants. StatusCode: {StatusCode}", ex.StatusCode);
+            return new List<TenantListDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[AdminService.GetTenantsAsync] Unexpected error fetching tenants");
+            return new List<TenantListDto>();
+        }
+    }
+
+    public async Task<BaseCommandResponseOfGuid?> CreateTenantAsync(CreateTenantDto dto, bool assignCurrentUserAsTenantAdmin = false)
+    {
+        try
+        {
+            dto.AdditionalProperties["assignCurrentUserAsTenantAdmin"] = assignCurrentUserAsTenantAdmin;
+            return await _apiClient.CreateTenantAsync(dto);
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.CreateTenantAsync] API error creating tenant. StatusCode: {StatusCode}", ex.StatusCode);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[AdminService.CreateTenantAsync] Unexpected error creating tenant");
+            return null;
+        }
+    }
+
+    public async Task<bool> DeleteTenantAsync(Guid id)
+    {
+        try
+        {
+            await _apiClient.DeleteTenantAsync(id);
+            return true;
+        }
+        catch (ApiException ex)
+        {
+            _logger.LogError(ex, "[AdminService.DeleteTenantAsync] API error deleting tenant. TenantId: {TenantId}, StatusCode: {StatusCode}", id, ex.StatusCode);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[AdminService.DeleteTenantAsync] Unexpected error deleting tenant. TenantId: {TenantId}", id);
             return false;
         }
     }

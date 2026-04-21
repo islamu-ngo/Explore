@@ -1,12 +1,11 @@
 // ABOUTME: Code-behind for the OrganizationDetails page.
-// ABOUTME: Loads organization info, edit permissions, and public events by this organization.
+// ABOUTME: Uses HAL _links from API response to determine edit permissions instead of client-side role checks.
 
 using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Logging;
 using MudBlazor;
 
@@ -15,10 +14,8 @@ namespace Explore.Blazor.Client.Pages.Organizations;
 public partial class OrganizationDetails
 {
     [Inject] protected IOrganizationService OrganizationService { get; set; } = null!;
-    [Inject] protected IOrganizationMemberService MemberService { get; set; } = null!;
     [Inject] protected IEventService EventService { get; set; } = null!;
     [Inject] protected NavigationManager NavigationManager { get; set; } = null!;
-    [Inject] protected AuthenticationStateProvider AuthenticationStateProvider { get; set; } = null!;
     [Inject] protected RouterStateService RouterState { get; set; } = null!;
     [Inject] protected ILogger<OrganizationDetails> Logger { get; set; } = null!;
 
@@ -31,8 +28,6 @@ public partial class OrganizationDetails
     private bool canEdit = false;
     private string? errorMessage;
     private string? successMessage;
-    private string? currentUserId;
-    private int? currentUserRole;
 
     private ICollection<EventListDto> _orgEvents = new List<EventListDto>();
 
@@ -60,12 +55,6 @@ public partial class OrganizationDetails
 
         try
         {
-            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-            var user = authState.User;
-            currentUserId = user.FindFirst("sub")?.Value
-                ?? user.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value
-                ?? user.FindFirst("oid")?.Value;
-
             await LoadOrganization();
         }
         catch (Exception ex)
@@ -100,26 +89,9 @@ public partial class OrganizationDetails
         }
     }
 
-    private async Task CheckEditPermissions()
+    private void CheckEditPermissions()
     {
-        if (organization != null && !string.IsNullOrEmpty(currentUserId))
-        {
-            try
-            {
-                var members = await MemberService.GetMembersAsync(Id);
-                var me = members.FirstOrDefault(m => m.UserId.ToString().Equals(currentUserId, StringComparison.OrdinalIgnoreCase));
-                if (me != null)
-                {
-                    currentUserRole = me.RoleId;
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.LogWarning(ex, "Error loading members for permission check");
-            }
-
-            canEdit = RoleHelper.CanManage(currentUserRole);
-        }
+        canEdit = organization?.HasHalLink("edit") ?? false;
     }
 
     private async Task LoadOrganization()
@@ -135,10 +107,8 @@ public partial class OrganizationDetails
             if (organization != null)
             {
                 Logger.LogDebug("Loaded organization: {OrganizationName}", organization.FullName);
-                var permissionsTask = CheckEditPermissions();
-                var eventsTask = EventService.GetPublicEventsByActorAsync(Id);
-                await Task.WhenAll(permissionsTask, eventsTask);
-                _orgEvents = await eventsTask;
+                CheckEditPermissions();
+                _orgEvents = await EventService.GetPublicEventsByActorAsync(Id);
                 InitializeEditModel();
             }
             else

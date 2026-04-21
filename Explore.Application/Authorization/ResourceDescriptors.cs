@@ -80,6 +80,17 @@ public static class ResourceDescriptors
         },
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
 
+    /// <summary>List DTO variant for collection item-level permission checks.</summary>
+    public static readonly ResourceDescriptor<OrganizationListDto> OrganizationList = new(
+        ResourceKinds.Organization,
+        dto => dto.Id.ToString(),
+        dto => new Dictionary<string, object>
+        {
+            ["organizationId"] = dto.Id.ToString(),
+            ["tenantId"] = dto.TenantId.ToString()
+        },
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
     public static readonly ResourceDescriptor<TenantDto> Tenant = new(
         ResourceKinds.Tenant,
         dto => dto.Id.ToString(),
@@ -229,6 +240,17 @@ public static class ResourceDescriptors
         dto => dto.Id.ToString(),
         dto => new Dictionary<string, object>
         {
+            ["tenantId"] = dto.TenantId.ToString()
+        },
+        dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));
+
+    /// <summary>List DTO variant for collection item-level permission checks.</summary>
+    public static readonly ResourceDescriptor<GroupListDto> GroupList = new(
+        ResourceKinds.Group,
+        dto => dto.Id.ToString(),
+        dto => new Dictionary<string, object>
+        {
+            ["groupId"] = dto.Id.ToString(),
             ["tenantId"] = dto.TenantId.ToString()
         },
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));

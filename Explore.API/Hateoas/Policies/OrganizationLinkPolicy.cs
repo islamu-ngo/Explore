@@ -81,6 +81,18 @@ public sealed class OrganizationCollectionLinkPolicy : ICollectionLinkPolicy<Org
             LinkRelations.Members,
             RouteNames.GetOrganizationMembers,
             new { id = dto.Id });
+
+        // Edit link - requires authorization
+        yield return LinkDefinition.Edit(
+            RouteNames.UpdateOrganization,
+            new { id = dto.Id })
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.OrganizationList, dto);
+
+        // Delete link - requires authorization
+        yield return LinkDefinition.Delete(
+            RouteNames.DeleteOrganization,
+            new { id = dto.Id })
+            .RequirePermission(AuthorizationActions.Delete, ResourceDescriptors.OrganizationList, dto);
     }
 
     public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)

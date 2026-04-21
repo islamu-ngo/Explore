@@ -1,8 +1,8 @@
-@* ABOUTME: Tenant management section for multi-tenant mode within Instance Administration. *@
-@* Provides listing, creation, and deletion of tenants using the generated API client. *@
+@* ABOUTME: Tenant management section for multi-tenant mode within Instance Administration.
+   Uses IAdminService wrapper instead of IEventApiClient directly. *@
 
 @using MudBlazor
-@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Services
 
 <div class="settings-section">
     <div class="settings-section-header">
@@ -138,7 +138,7 @@
 </div>
 
 @code {
-    [Inject] private IEventApiClient ApiClient { get; set; } = null!;
+    [Inject] private IAdminService AdminService { get; set; } = null!;
     [Inject] private ISnackbar Snackbar { get; set; } = null!;
 
     [Parameter]
@@ -173,7 +173,7 @@
 
         try
         {
-            _tenants = await ApiClient.GetTenantsAsync();
+            _tenants = await AdminService.GetTenantsAsync();
             await TenantCountChanged.InvokeAsync(_tenants.Count);
         }
         catch (Exception ex)
@@ -206,10 +206,9 @@
                 FullName = _newTenantName.Trim(),
                 Slug = _newTenantSlug.Trim().ToLowerInvariant()
             };
-            dto.AdditionalProperties["assignCurrentUserAsTenantAdmin"] = _assignSelfAsTenantAdmin;
 
-            var response = await ApiClient.CreateTenantAsync(dto);
-            if (response.Success == true)
+            var response = await AdminService.CreateTenantAsync(dto, _assignSelfAsTenantAdmin);
+            if (response?.Success == true)
             {
                 _showCreateDialog = false;
                 var adminNote = _assignSelfAsTenantAdmin ? " You have been assigned as tenant administrator." : string.Empty;
@@ -218,9 +217,9 @@
             }
             else
             {
-                _errorMessage = string.IsNullOrWhiteSpace(response.Message)
+                _errorMessage = string.IsNullOrWhiteSpace(response?.Message)
                     ? "Failed to create tenant."
-                    : response.Message;
+                    : response?.Message;
             }
         }
         catch (Exception ex)
@@ -250,7 +249,7 @@
 
         try
         {
-            await ApiClient.DeleteTenantAsync(_tenantToDelete.Id.Value);
+            await AdminService.DeleteTenantAsync(_tenantToDelete.Id.Value);
             _showDeleteDialog = false;
             Snackbar.Add($"Tenant '{_tenantToDelete.FullName}' deleted.", Severity.Success);
             _tenantToDelete = null;

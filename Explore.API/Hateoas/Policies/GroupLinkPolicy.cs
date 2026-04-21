@@ -61,6 +61,16 @@ public sealed class GroupCollectionLinkPolicy : ICollectionLinkPolicy<GroupListD
             LinkRelations.Members,
             RouteNames.GetGroupMembers,
             new { groupId = dto.Id });
+
+        yield return LinkDefinition.Edit(
+            RouteNames.UpdateGroup,
+            new { id = dto.Id })
+            .RequirePermission(AuthorizationActions.Update, ResourceDescriptors.GroupList, dto);
+
+        yield return LinkDefinition.Delete(
+            RouteNames.DeleteGroup,
+            new { id = dto.Id })
+            .RequirePermission(AuthorizationActions.Delete, ResourceDescriptors.GroupList, dto);
     }
 
     public IEnumerable<LinkDefinition> GetCollectionLinks(ClaimsPrincipal? user)

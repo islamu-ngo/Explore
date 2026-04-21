@@ -10,6 +10,7 @@ namespace Explore.Application.DTOs.Organization;
 public class OrganizationListDto
 {
     public Guid Id { get; set; }
+    public Guid TenantId { get; set; }
     public required string FullName { get; set; }
     public string? WebsiteUrl { get; set; }
     public required string Email { get; set; }

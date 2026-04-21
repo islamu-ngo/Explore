@@ -6,6 +6,7 @@ namespace Explore.Application.DTOs.Group;
 public class GroupListDto
 {
     public Guid Id { get; set; }
+    public Guid TenantId { get; set; }
     public required string FullName { get; set; }
     public string? Description { get; set; }
 
