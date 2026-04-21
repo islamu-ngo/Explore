@@ -4,6 +4,7 @@
 using System.Text.Json;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Models;
+using Explore.Blazor.Client.Models.CustomProperties;
 
 namespace Explore.Blazor.Client.Helpers;
 
@@ -469,6 +470,39 @@ public static class HalResourceExtensions
     {
         var json = JsonSerializer.Serialize(halResource, JsonOptions);
         return JsonSerializer.Deserialize<LocationRoomDto>(json, JsonOptions) ?? new LocationRoomDto();
+    }
+
+    // ========== Custom Property Definition Extensions ==========
+
+    public static ICollection<CustomPropertyDefinitionListModel> GetItems(this HalCollectionResourceOfCustomPropertyDefinitionListDto collection)
+    {
+        if (collection._embedded?.Items == null)
+            return new List<CustomPropertyDefinitionListModel>();
+
+        return DeserializeItems<CustomPropertyDefinitionListModel>(collection._embedded.Items);
+    }
+
+    public static PaginatedResult<CustomPropertyDefinitionListModel> ToPaginatedResult(this HalCollectionResourceOfCustomPropertyDefinitionListDto? collection)
+    {
+        if (collection is null)
+            return PaginatedResult<CustomPropertyDefinitionListModel>.Empty();
+
+        return new PaginatedResult<CustomPropertyDefinitionListModel>
+        {
+            Items = collection.GetItems().ToList(),
+            PageNumber = collection.PageNumber ?? 1,
+            PageSize = collection.PageSize ?? 20,
+            TotalCount = collection.TotalCount ?? 0
+        };
+    }
+
+    public static CustomPropertyDefinitionDetailModel? ToModel(this HalResourceOfCustomPropertyDefinitionDto? halResource)
+    {
+        if (halResource is null)
+            return null;
+
+        var json = JsonSerializer.Serialize(halResource.AdditionalProperties, JsonOptions);
+        return JsonSerializer.Deserialize<CustomPropertyDefinitionDetailModel>(json, JsonOptions);
     }
 
     // ========== Non-HAL Paginated Result Mappers ==========

@@ -4,6 +4,7 @@
 using Explore.Blazor.Client.Contracts.Providers;
 using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
+using Explore.Blazor.Client.Contracts.Services.CustomProperties;
 using Explore.Blazor.Client.Contracts.Services.Events;
 using Explore.Blazor.Client.Contracts.Services.Lookup;
 using Explore.Blazor.Client.Contracts.Services.Notifications;
@@ -30,6 +31,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IOrganizationService, OrganizationService>();
         services.AddScoped<IOrganizationMemberService, OrganizationMemberService>();
         services.AddScoped<IAdminService, AdminService>();
+        services.AddScoped<ICustomPropertyAdminService, CustomPropertyAdminService>();
         services.AddScoped<ILandingPageService, LandingPageService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IOrganizationReviewService, OrganizationReviewService>();
