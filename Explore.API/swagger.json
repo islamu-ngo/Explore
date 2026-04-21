@@ -1,4 +1,4 @@
-﻿{
+{
   "openapi": "3.1.1",
   "info": {
     "title": "Event API",
@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "http://localhost/"
+      "url": "https://localhost:42861/"
     }
   ],
   "paths": {
@@ -5060,7 +5060,7 @@
           "Event"
         ],
         "summary": "Get all Events",
-        "description": "Get a paginated, filterable list of all Events (Conference, Webinar, Workshop...). Default page size is 20, max is 100. Supports filtering by category, tag, format, madhab, location, language, date range, and free-text search. Supports module-conditional aspect filters: Islamic (genderMode, quranRecitation, referencePrayer, islamicLanguage) and Tech (skillLevel, codingCompetition, hackathon, requiresLaptop, techStack). Aspect filters are silently ignored when the corresponding module is not enabled for the tenant. Supports sorting by date, title, views, or createdAt. Response includes HATEOAS navigation links (first, prev, next, last). Send \u0027Prefer: return=minimal\u0027 header to strip links.",
+        "description": "Get a paginated, filterable list of all Events (Conference, Webinar, Workshop...). Default page size is 20, max is 100. Supports filtering by category, tag, format, madhab, location, language, date range, and free-text search. Supports module-conditional aspect filters: Islamic (genderMode, quranRecitation, referencePrayer, islamicLanguage) and Tech (skillLevel, codingCompetition, hackathon, requiresLaptop, techStack). Aspect filters are silently ignored when the corresponding module is not enabled for the tenant. Supports custom-property projection filters and text search gated behind the tenant feature flag \u0027custom_properties.projection_discovery_enabled\u0027 \u2014 silently ignored when disabled. Supports sorting by date, title, views, or createdAt. Response includes HATEOAS navigation links (first, prev, next, last). Send \u0027Prefer: return=minimal\u0027 header to strip links.",
         "operationId": "GetEvents",
         "parameters": [
           {
@@ -5439,6 +5439,23 @@
             "in": "query",
             "schema": {
               "type": "boolean"
+            }
+          },
+          {
+            "name": "CustomPropertyFilters",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/CustomPropertyFilterCriterion"
+              }
+            }
+          },
+          {
+            "name": "CustomPropertySearchTerm",
+            "in": "query",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -9327,11 +9344,11 @@
           "EventSession"
         ],
         "summary": "Get all Event Sessions",
-        "description": "Get a paginated list of all event sessions. Default page size is 20, max is 100. Response includes HATEOAS navigation links. Send \u0027Prefer: return=minimal\u0027 header to strip links.",
+        "description": "Get a paginated list of all event sessions. Default page size is 20, max is 100. Supports custom-property projection filters and text search gated behind the tenant feature flag \u0027custom_properties.projection_discovery_enabled\u0027. Response includes HATEOAS navigation links. Send \u0027Prefer: return=minimal\u0027 header to strip links.",
         "operationId": "GetEventSessionsList",
         "parameters": [
           {
-            "name": "pageNumber",
+            "name": "PageNumber",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -9339,12 +9356,11 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 1
+              "format": "int32"
             }
           },
           {
-            "name": "pageSize",
+            "name": "PageSize",
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -9352,8 +9368,24 @@
                 "integer",
                 "string"
               ],
-              "format": "int32",
-              "default": 20
+              "format": "int32"
+            }
+          },
+          {
+            "name": "CustomPropertyFilters",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/CustomPropertyFilterCriterion"
+              }
+            }
+          },
+          {
+            "name": "CustomPropertySearchTerm",
+            "in": "query",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -28878,6 +28910,19 @@
         },
         "x-endpoint-class": "Public"
       }
+    },
+    "/admin/migrate": {
+      "post": {
+        "tags": [
+          "Explore.API"
+        ],
+        "operationId": "ApplyDatabaseMigrations",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -33426,6 +33471,82 @@
             "type": "string"
           }
         }
+      },
+      "CustomPropertyFilterCriterion": {
+        "required": [
+          "namespace",
+          "key"
+        ],
+        "type": "object",
+        "properties": {
+          "namespace": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "operator": {
+            "$ref": "#/components/schemas/CustomPropertyFilterOperator"
+          },
+          "value": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "optionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "optionIds": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "minNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "maxNumber": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "dateFrom": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "dateTo": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "CustomPropertyFilterOperator": {
+        "type": "integer"
       },
       "CustomPropertyGovernanceRowDto": {
         "type": "object",
@@ -45959,6 +46080,9 @@
     },
     {
       "name": "VisibilityType"
+    },
+    {
+      "name": "Explore.API"
     }
   ]
 }

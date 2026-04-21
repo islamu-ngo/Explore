@@ -623,11 +623,11 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Events
         /// </summary>
         /// <remarks>
-        /// Get a paginated, filterable list of all Events (Conference, Webinar, Workshop...). Default page size is 20, max is 100. Supports filtering by category, tag, format, madhab, location, language, date range, and free-text search. Supports module-conditional aspect filters: Islamic (genderMode, quranRecitation, referencePrayer, islamicLanguage) and Tech (skillLevel, codingCompetition, hackathon, requiresLaptop, techStack). Aspect filters are silently ignored when the corresponding module is not enabled for the tenant. Supports sorting by date, title, views, or createdAt. Response includes HATEOAS navigation links (first, prev, next, last). Send 'Prefer: return=minimal' header to strip links.
+        /// Get a paginated, filterable list of all Events (Conference, Webinar, Workshop...). Default page size is 20, max is 100. Supports filtering by category, tag, format, madhab, location, language, date range, and free-text search. Supports module-conditional aspect filters: Islamic (genderMode, quranRecitation, referencePrayer, islamicLanguage) and Tech (skillLevel, codingCompetition, hackathon, requiresLaptop, techStack). Aspect filters are silently ignored when the corresponding module is not enabled for the tenant. Supports custom-property projection filters and text search gated behind the tenant feature flag 'custom_properties.projection_discovery_enabled' — silently ignored when disabled. Supports sorting by date, title, views, or createdAt. Response includes HATEOAS navigation links (first, prev, next, last). Send 'Prefer: return=minimal' header to strip links.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<HalCollectionResourceOfEventListDto> GetEventsAsync(int? pageNumber = null, int? pageSize = null, string? searchTerm = null, System.Guid? categoryId = null, System.Collections.Generic.IEnumerable<System.Guid>? includedCategoryIds = null, System.Collections.Generic.IEnumerable<System.Guid>? excludedCategoryIds = null, string? categoryInclusionMode = null, string? categoryExclusionMode = null, System.Collections.Generic.IEnumerable<System.Guid>? includedTagIds = null, System.Collections.Generic.IEnumerable<System.Guid>? excludedTagIds = null, string? inclusionMode = null, string? exclusionMode = null, System.Collections.Generic.IEnumerable<int>? formatIds = null, System.Collections.Generic.IEnumerable<int>? madhabIds = null, System.Collections.Generic.IEnumerable<System.Guid>? locationIds = null, System.Collections.Generic.IEnumerable<int>? registrationModeIds = null, System.Collections.Generic.IEnumerable<int>? languageIds = null, System.DateTimeOffset? dateFrom = null, System.DateTimeOffset? dateTo = null, System.Collections.Generic.IEnumerable<int>? eventTypeIds = null, System.Collections.Generic.IEnumerable<int>? audienceGenderIds = null, System.Collections.Generic.IEnumerable<int>? audienceAgeIds = null, System.Collections.Generic.IEnumerable<int>? eventStatusIds = null, System.Collections.Generic.IEnumerable<int>? genderModeIds = null, bool? includesQuranRecitation = null, System.Collections.Generic.IEnumerable<int>? referencePrayerIds = null, System.Collections.Generic.IEnumerable<int>? islamicPrimaryLanguageIds = null, bool? hasIslamicAspect = null, int? skillLevelId = null, bool? isCodingCompetition = null, bool? isHackathon = null, bool? requiresLaptop = null, string? techStackTag = null, bool? hasTechAspect = null, string? sortBy = null, bool? sortDescending = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<HalCollectionResourceOfEventListDto> GetEventsAsync(int? pageNumber = null, int? pageSize = null, string? searchTerm = null, System.Guid? categoryId = null, System.Collections.Generic.IEnumerable<System.Guid>? includedCategoryIds = null, System.Collections.Generic.IEnumerable<System.Guid>? excludedCategoryIds = null, string? categoryInclusionMode = null, string? categoryExclusionMode = null, System.Collections.Generic.IEnumerable<System.Guid>? includedTagIds = null, System.Collections.Generic.IEnumerable<System.Guid>? excludedTagIds = null, string? inclusionMode = null, string? exclusionMode = null, System.Collections.Generic.IEnumerable<int>? formatIds = null, System.Collections.Generic.IEnumerable<int>? madhabIds = null, System.Collections.Generic.IEnumerable<System.Guid>? locationIds = null, System.Collections.Generic.IEnumerable<int>? registrationModeIds = null, System.Collections.Generic.IEnumerable<int>? languageIds = null, System.DateTimeOffset? dateFrom = null, System.DateTimeOffset? dateTo = null, System.Collections.Generic.IEnumerable<int>? eventTypeIds = null, System.Collections.Generic.IEnumerable<int>? audienceGenderIds = null, System.Collections.Generic.IEnumerable<int>? audienceAgeIds = null, System.Collections.Generic.IEnumerable<int>? eventStatusIds = null, System.Collections.Generic.IEnumerable<int>? genderModeIds = null, bool? includesQuranRecitation = null, System.Collections.Generic.IEnumerable<int>? referencePrayerIds = null, System.Collections.Generic.IEnumerable<int>? islamicPrimaryLanguageIds = null, bool? hasIslamicAspect = null, int? skillLevelId = null, bool? isCodingCompetition = null, bool? isHackathon = null, bool? requiresLaptop = null, string? techStackTag = null, bool? hasTechAspect = null, string? sortBy = null, bool? sortDescending = null, System.Collections.Generic.IEnumerable<CustomPropertyFilterCriterion>? customPropertyFilters = null, string? customPropertySearchTerm = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -1109,11 +1109,11 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Event Sessions
         /// </summary>
         /// <remarks>
-        /// Get a paginated list of all event sessions. Default page size is 20, max is 100. Response includes HATEOAS navigation links. Send 'Prefer: return=minimal' header to strip links.
+        /// Get a paginated list of all event sessions. Default page size is 20, max is 100. Supports custom-property projection filters and text search gated behind the tenant feature flag 'custom_properties.projection_discovery_enabled'. Response includes HATEOAS navigation links. Send 'Prefer: return=minimal' header to strip links.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task<HalCollectionResourceOfEventSessionListDto> GetEventSessionsListAsync(int? pageNumber = null, int? pageSize = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<HalCollectionResourceOfEventSessionListDto> GetEventSessionsListAsync(int? pageNumber = null, int? pageSize = null, System.Collections.Generic.IEnumerable<CustomPropertyFilterCriterion>? customPropertyFilters = null, string? customPropertySearchTerm = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <summary>
@@ -3542,6 +3542,11 @@ namespace Explore.Blazor.Client.Clients
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
         System.Threading.Tasks.Task<VisibilityTypeDto> GetVisibilityTypeByIdAsync(int id, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        System.Threading.Tasks.Task ApplyDatabaseMigrationsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
     }
 
@@ -10023,11 +10028,11 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Events
         /// </summary>
         /// <remarks>
-        /// Get a paginated, filterable list of all Events (Conference, Webinar, Workshop...). Default page size is 20, max is 100. Supports filtering by category, tag, format, madhab, location, language, date range, and free-text search. Supports module-conditional aspect filters: Islamic (genderMode, quranRecitation, referencePrayer, islamicLanguage) and Tech (skillLevel, codingCompetition, hackathon, requiresLaptop, techStack). Aspect filters are silently ignored when the corresponding module is not enabled for the tenant. Supports sorting by date, title, views, or createdAt. Response includes HATEOAS navigation links (first, prev, next, last). Send 'Prefer: return=minimal' header to strip links.
+        /// Get a paginated, filterable list of all Events (Conference, Webinar, Workshop...). Default page size is 20, max is 100. Supports filtering by category, tag, format, madhab, location, language, date range, and free-text search. Supports module-conditional aspect filters: Islamic (genderMode, quranRecitation, referencePrayer, islamicLanguage) and Tech (skillLevel, codingCompetition, hackathon, requiresLaptop, techStack). Aspect filters are silently ignored when the corresponding module is not enabled for the tenant. Supports custom-property projection filters and text search gated behind the tenant feature flag 'custom_properties.projection_discovery_enabled' — silently ignored when disabled. Supports sorting by date, title, views, or createdAt. Response includes HATEOAS navigation links (first, prev, next, last). Send 'Prefer: return=minimal' header to strip links.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<HalCollectionResourceOfEventListDto> GetEventsAsync(int? pageNumber = null, int? pageSize = null, string? searchTerm = null, System.Guid? categoryId = null, System.Collections.Generic.IEnumerable<System.Guid>? includedCategoryIds = null, System.Collections.Generic.IEnumerable<System.Guid>? excludedCategoryIds = null, string? categoryInclusionMode = null, string? categoryExclusionMode = null, System.Collections.Generic.IEnumerable<System.Guid>? includedTagIds = null, System.Collections.Generic.IEnumerable<System.Guid>? excludedTagIds = null, string? inclusionMode = null, string? exclusionMode = null, System.Collections.Generic.IEnumerable<int>? formatIds = null, System.Collections.Generic.IEnumerable<int>? madhabIds = null, System.Collections.Generic.IEnumerable<System.Guid>? locationIds = null, System.Collections.Generic.IEnumerable<int>? registrationModeIds = null, System.Collections.Generic.IEnumerable<int>? languageIds = null, System.DateTimeOffset? dateFrom = null, System.DateTimeOffset? dateTo = null, System.Collections.Generic.IEnumerable<int>? eventTypeIds = null, System.Collections.Generic.IEnumerable<int>? audienceGenderIds = null, System.Collections.Generic.IEnumerable<int>? audienceAgeIds = null, System.Collections.Generic.IEnumerable<int>? eventStatusIds = null, System.Collections.Generic.IEnumerable<int>? genderModeIds = null, bool? includesQuranRecitation = null, System.Collections.Generic.IEnumerable<int>? referencePrayerIds = null, System.Collections.Generic.IEnumerable<int>? islamicPrimaryLanguageIds = null, bool? hasIslamicAspect = null, int? skillLevelId = null, bool? isCodingCompetition = null, bool? isHackathon = null, bool? requiresLaptop = null, string? techStackTag = null, bool? hasTechAspect = null, string? sortBy = null, bool? sortDescending = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<HalCollectionResourceOfEventListDto> GetEventsAsync(int? pageNumber = null, int? pageSize = null, string? searchTerm = null, System.Guid? categoryId = null, System.Collections.Generic.IEnumerable<System.Guid>? includedCategoryIds = null, System.Collections.Generic.IEnumerable<System.Guid>? excludedCategoryIds = null, string? categoryInclusionMode = null, string? categoryExclusionMode = null, System.Collections.Generic.IEnumerable<System.Guid>? includedTagIds = null, System.Collections.Generic.IEnumerable<System.Guid>? excludedTagIds = null, string? inclusionMode = null, string? exclusionMode = null, System.Collections.Generic.IEnumerable<int>? formatIds = null, System.Collections.Generic.IEnumerable<int>? madhabIds = null, System.Collections.Generic.IEnumerable<System.Guid>? locationIds = null, System.Collections.Generic.IEnumerable<int>? registrationModeIds = null, System.Collections.Generic.IEnumerable<int>? languageIds = null, System.DateTimeOffset? dateFrom = null, System.DateTimeOffset? dateTo = null, System.Collections.Generic.IEnumerable<int>? eventTypeIds = null, System.Collections.Generic.IEnumerable<int>? audienceGenderIds = null, System.Collections.Generic.IEnumerable<int>? audienceAgeIds = null, System.Collections.Generic.IEnumerable<int>? eventStatusIds = null, System.Collections.Generic.IEnumerable<int>? genderModeIds = null, bool? includesQuranRecitation = null, System.Collections.Generic.IEnumerable<int>? referencePrayerIds = null, System.Collections.Generic.IEnumerable<int>? islamicPrimaryLanguageIds = null, bool? hasIslamicAspect = null, int? skillLevelId = null, bool? isCodingCompetition = null, bool? isHackathon = null, bool? requiresLaptop = null, string? techStackTag = null, bool? hasTechAspect = null, string? sortBy = null, bool? sortDescending = null, System.Collections.Generic.IEnumerable<CustomPropertyFilterCriterion>? customPropertyFilters = null, string? customPropertySearchTerm = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -10189,6 +10194,14 @@ namespace Explore.Blazor.Client.Clients
                     if (sortDescending != null)
                     {
                         urlBuilder_.Append(System.Uri.EscapeDataString("SortDescending")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(sortDescending, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (customPropertyFilters != null)
+                    {
+                            foreach (var item_ in customPropertyFilters) { urlBuilder_.Append(System.Uri.EscapeDataString("CustomPropertyFilters")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                    }
+                    if (customPropertySearchTerm != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("CustomPropertySearchTerm")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(customPropertySearchTerm, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (api_version != null)
                     {
@@ -15095,11 +15108,11 @@ namespace Explore.Blazor.Client.Clients
         /// Get all Event Sessions
         /// </summary>
         /// <remarks>
-        /// Get a paginated list of all event sessions. Default page size is 20, max is 100. Response includes HATEOAS navigation links. Send 'Prefer: return=minimal' header to strip links.
+        /// Get a paginated list of all event sessions. Default page size is 20, max is 100. Supports custom-property projection filters and text search gated behind the tenant feature flag 'custom_properties.projection_discovery_enabled'. Response includes HATEOAS navigation links. Send 'Prefer: return=minimal' header to strip links.
         /// </remarks>
         /// <returns>OK</returns>
         /// <exception cref="ApiException">A server side error occurred.</exception>
-        public virtual async System.Threading.Tasks.Task<HalCollectionResourceOfEventSessionListDto> GetEventSessionsListAsync(int? pageNumber = null, int? pageSize = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        public virtual async System.Threading.Tasks.Task<HalCollectionResourceOfEventSessionListDto> GetEventSessionsListAsync(int? pageNumber = null, int? pageSize = null, System.Collections.Generic.IEnumerable<CustomPropertyFilterCriterion>? customPropertyFilters = null, string? customPropertySearchTerm = null, string? api_version = null, string? x_Api_Version = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
         {
             var client_ = _httpClient;
             var disposeClient_ = false;
@@ -15120,11 +15133,19 @@ namespace Explore.Blazor.Client.Clients
                     urlBuilder_.Append('?');
                     if (pageNumber != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("pageNumber")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageNumber, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("PageNumber")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageNumber, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (pageSize != null)
                     {
-                        urlBuilder_.Append(System.Uri.EscapeDataString("pageSize")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageSize, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                        urlBuilder_.Append(System.Uri.EscapeDataString("PageSize")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(pageSize, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
+                    }
+                    if (customPropertyFilters != null)
+                    {
+                            foreach (var item_ in customPropertyFilters) { urlBuilder_.Append(System.Uri.EscapeDataString("CustomPropertyFilters")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(item_, System.Globalization.CultureInfo.InvariantCulture))).Append('&'); }
+                    }
+                    if (customPropertySearchTerm != null)
+                    {
+                        urlBuilder_.Append(System.Uri.EscapeDataString("CustomPropertySearchTerm")).Append('=').Append(System.Uri.EscapeDataString(ConvertToString(customPropertySearchTerm, System.Globalization.CultureInfo.InvariantCulture))).Append('&');
                     }
                     if (api_version != null)
                     {
@@ -39848,6 +39869,72 @@ namespace Explore.Blazor.Client.Clients
             }
         }
 
+        /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
+        /// <returns>OK</returns>
+        /// <exception cref="ApiException">A server side error occurred.</exception>
+        public virtual async System.Threading.Tasks.Task ApplyDatabaseMigrationsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken))
+        {
+            var client_ = _httpClient;
+            var disposeClient_ = false;
+            try
+            {
+                using (var request_ = new System.Net.Http.HttpRequestMessage())
+                {
+                    request_.Content = new System.Net.Http.StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json");
+                    request_.Method = new System.Net.Http.HttpMethod("POST");
+
+                    var urlBuilder_ = new System.Text.StringBuilder();
+                
+                    // Operation Path: "admin/migrate"
+                    urlBuilder_.Append("admin/migrate");
+
+                    PrepareRequest(client_, request_, urlBuilder_);
+
+                    var url_ = urlBuilder_.ToString();
+                    request_.RequestUri = new System.Uri(url_, System.UriKind.RelativeOrAbsolute);
+
+                    PrepareRequest(client_, request_, url_);
+
+                    var response_ = await client_.SendAsync(request_, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    var disposeResponse_ = true;
+                    try
+                    {
+                        var headers_ = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IEnumerable<string>>();
+                        foreach (var item_ in response_.Headers)
+                            headers_[item_.Key] = item_.Value;
+                        if (response_.Content != null && response_.Content.Headers != null)
+                        {
+                            foreach (var item_ in response_.Content.Headers)
+                                headers_[item_.Key] = item_.Value;
+                        }
+
+                        ProcessResponse(client_, response_);
+
+                        var status_ = (int)response_.StatusCode;
+                        if (status_ == 200)
+                        {
+                            return;
+                        }
+                        else
+                        {
+                            var responseData_ = response_.Content == null ? null : await ReadAsStringAsync(response_.Content, cancellationToken).ConfigureAwait(false);
+                            throw new ApiException("The HTTP status code of the response was not expected (" + status_ + ").", status_, responseData_, headers_, null);
+                        }
+                    }
+                    finally
+                    {
+                        if (disposeResponse_)
+                            response_.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                if (disposeClient_)
+                    client_.Dispose();
+            }
+        }
+
         protected struct ObjectResponseResult<T>
         {
             public ObjectResponseResult(T responseObject, string responseText)
@@ -43667,6 +43754,55 @@ namespace Explore.Blazor.Client.Clients
         [System.Text.Json.Serialization.JsonPropertyName("providerDisplayName")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string ProviderDisplayName { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class CustomPropertyFilterCriterion
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("namespace")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Namespace { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("key")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Key { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("operator")]
+        public int? Operator { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("value")]
+        public string? Value { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("optionId")]
+        public System.Guid? OptionId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("optionIds")]
+        public System.Collections.Generic.ICollection<System.Guid>? OptionIds { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("minNumber")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double? MinNumber { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("maxNumber")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)(?:\.\d+)?$")]
+        public double? MaxNumber { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("dateFrom")]
+        public System.DateTimeOffset? DateFrom { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("dateTo")]
+        public System.DateTimeOffset? DateTo { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
