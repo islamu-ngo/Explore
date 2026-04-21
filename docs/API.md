@@ -229,6 +229,48 @@ Links are conditionally included via a 4-phase capability planning pipeline:
 3. **Deduplication**: Identical `AuthorizationCheck` records (same resource kind + id + action) collapse before batch evaluation.
 4. **Fail-closed**: If batch authorization fails, all permission-bound links are denied. Non-permission links are unaffected.
 
+### Blazor Client Consumption Pattern
+
+**The API's `_links` payload is the single source of truth for action affordances in the Blazor UI.** The server already evaluated every authorization check and only emitted the links the caller is allowed to follow — the client must trust that contract and render UI affordances directly from it.
+
+#### Canonical pattern
+Blazor components gate mutation buttons (Edit, Delete, Create, etc.) with extension helpers defined in `Explore.Blazor.Client/Helpers/HalResourceExtensions.cs`:
+
+```csharp
+private void CheckEditPermissions()
+{
+    canEdit = organization?.HasHalLink("edit") ?? false;
+}
+
+// In markup:
+@if (canEdit) { <AppButton StartIcon="@Icons.Material.Filled.Edit">Edit</AppButton> }
+```
+
+The helpers (`HasHalLink(this OrganizationDto, string)`, `HasHalLink(this EventListDto, string)`, etc.) read `AdditionalProperties["_links"]` from the NSwag-generated DTO (populated through `[JsonExtensionData]`) and check whether a given link relation is present.
+
+#### Anti-pattern — do not use
+**Never gate mutation UI through client-side role checks** (`RoleHelper.CanManage`, `user.IsInRole("OrgAdmin")`, `ClaimsPrincipal` inspection). These duplicate server-side policy, drift over time, and leak authorization logic into the client. If the server didn't emit an `edit` link, the user is not allowed to edit — period.
+
+#### Permitted exceptions
+Role/claim inspection is acceptable **only** outside action-gating contexts:
+- Navigation menu filtering (`NavMenu.razor` — determines which top-level sections are visible).
+- Eligibility previews for empty-state CTAs (`EventCreationEligibilityService` — does the user belong to any org that could create an event?).
+- Client-side route guards that short-circuit before an API call (e.g. redirecting anonymous users away from `/my/*`).
+
+All three cases guard entire pages or menus, not per-resource actions, and none substitute for the authorization decisions the API already encoded in `_links`.
+
+#### DTO contract requirements
+Every client DTO consumed for affordance gating must:
+1. Expose `[JsonExtensionData] IDictionary<string, object>? AdditionalProperties` — NSwag emits this automatically for DTOs whose server-side HAL wrapper adds `_links` alongside data.
+2. Have a matching `HasHalLink(this TDto, string linkRel)` extension in `HalResourceExtensions.cs`.
+3. **Never** have a corresponding standalone permission flag (e.g. `CanEdit: bool`) on the DTO — permission state must flow exclusively through `_links`.
+
+#### Testing
+HAL link consumption is protected by three test layers:
+- `Event.API.IntegrationTests/Features/Hateoas/HateoasLinkDeserializationTests.cs` — wire-level regression guard that `_links` survive NSwag round-trip.
+- `Event.API.IntegrationTests/Features/Hateoas/OrganizationHateoasAuthTests.cs` — verifies authenticated vs. anonymous requests receive different link sets on embedded items.
+- `Explore.Blazor.Client.Tests/Pages/Organizations/OrganizationDetailsHateoasTests.cs` — bUnit component test confirms Edit button renders iff `_links.edit` is present and the page never calls `IOrganizationMemberService.GetMembersAsync` on load.
+
 ---
 
 ## Specification Pattern (Advanced Query Composition)

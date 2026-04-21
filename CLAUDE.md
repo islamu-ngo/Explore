@@ -43,6 +43,7 @@ When a task touches a topic covered by docs/skills/agents **you MUST open the fi
 9. File‑scoped namespaces for new C# files.
 10. Entities include auditing fields: `CreatedAt`, `CreatedBy`, `UpdatedAt`, `UpdatedBy`, `IsDeleted`.
 11. EF Core named query filters for soft delete: `.HasQueryFilter(name: "SoftDelete", predicate: e => !e.IsDeleted)`.
+12. In the Blazor UI, HAL `_links` is the **exclusive** source of action affordance. Gate mutation buttons with `dto.HasHalLink("edit")` helpers (see `Explore.Blazor.Client/Helpers/HalResourceExtensions.cs`). Never use `RoleHelper.CanManage`, `IsInRole`, or claim inspection for per-resource action gating — that logic belongs on the server. Role/claim checks are permitted only for navigation visibility (`NavMenu`), eligibility previews (`EventCreationEligibilityService`), and pre-API route guards.
 
 **Full details:** [docs/QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md)
 

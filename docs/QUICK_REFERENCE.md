@@ -55,6 +55,18 @@ Governance settings resolution uses a **5-tier cascade**: User → Group → Org
 5. Changing middleware pipeline order in Program.cs without understanding dependencies (e.g., rate limiting after auth).
 6. Adding a new lookup table without matching enum and HasData() seed — both must be synchronized.
 
+## Controller-Authoring Standard (Forward Policy)
+
+Every new controller action MUST have:
+
+1. **Explicit route template** — `[HttpGet("resource/{id:guid}", ...)]` not bare `[HttpGet]`
+2. **Explicit route name** — `Name = RouteNames.Xxx` on every `[Http*]` attribute
+3. **Explicit endpoint class** — `[EndpointClassification(EndpointClass.Public|Authenticated)]` on controller or action
+4. **Explicit response typing** — `[ProducesResponseType<T>]` for success + error responses
+5. **No overloaded semantics** — one action per HTTP verb + route template combination
+
+Enforced by: `ApiContractArchitectureTests`, `EndpointClassificationArchitectureTests`, `ContractInvariantsTests`.
+
 ## API Rate Limiting Quick Reference
 
 | Policy | Key | Limit | Window |
