@@ -1097,4 +1097,30 @@ public partial class EventDetail : ComponentBase
             Logger.LogError(ex, "Error refreshing event after {Label} changes", label);
         }
     }
+
+    // ── UI Formatting Helpers ──
+
+    private string GetWrapperStyle()
+    {
+        return string.IsNullOrEmpty(_eventDetails?.BackgroundImageUri) 
+            ? "" 
+            : $"background-image: url('{_eventDetails.BackgroundImageUri}');";
+    }
+
+    private string GetDateMonth() => _eventDetails?.FirstSessionDate?.ToString("MMM") ?? "";
+    private string GetDateDay() => _eventDetails?.FirstSessionDate?.ToString("dd") ?? "";
+    private string GetDateFull() => _eventDetails?.FirstSessionDate?.ToString("dddd, MMMM d, yyyy") ?? "";
+    
+    private string GetTimeRange()
+    {
+        if (_eventDetails == null) return string.Empty;
+        
+        var start = _eventDetails.FirstSessionDate?.ToString("d") ?? "";
+        if (_eventDetails.LastSessionDate.HasValue && _eventDetails.LastSessionDate.Value != _eventDetails.FirstSessionDate)
+        {
+            var end = _eventDetails.LastSessionDate.Value.ToString("d");
+            return $"{start} - {end}";
+        }
+        return start;
+    }
 }

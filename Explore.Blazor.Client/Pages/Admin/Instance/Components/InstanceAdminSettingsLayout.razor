@@ -77,9 +77,9 @@
             <!-- Main Layout: Sidebar + Content -->
             <MudGrid Spacing="4">
                 <!-- Sidebar Navigation -->
-                <MudItem xs="3" sm="3" md="3">
-                    <MudPaper Elevation="0" Class="settings-sidebar pa-0">
-                        <MudList T="string" Dense="false" DisablePadding="true">
+                <MudItem xs="12" md="3" Class="@(_showMobileMenu ? "d-block" : "d-none d-md-block")">
+                    <MudPaper Elevation="0" Class="settings-sidebar pa-0" Style="background-color: transparent;">
+                        <MudList T="string" Dense="true" DisablePadding="true">
                             @{
                                 string? renderedGroup = null;
                             }
@@ -106,8 +106,13 @@
                 </MudItem>
 
                 <!-- Content Area -->
-                <MudItem xs="9" sm="9" md="9">
-                    <MudPaper Elevation="0" Class="settings-content pa-6">
+                <MudItem xs="12" md="9" Class="@(!_showMobileMenu ? "d-block" : "d-none d-md-block")">
+                    <MudPaper Elevation="0" Class="settings-content pa-6" Style="background-color: transparent;">
+                        <div class="d-md-none mb-4">
+                            <AppButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="BackToMenu">
+                                Settings Menu
+                            </AppButton>
+                        </div>
                         @if (_currentSection == "governance")
                         {
                             <InstanceGovernanceSection Delegation="_delegation" EventPolicy="_eventPolicy" OrganizationPolicy="_orgPolicy" RenderPolicy="_renderPolicy" DeploymentMode="@_deploymentMode" TenantCount="_tenantCount" DeploymentModeChanged="OnDeploymentModeChanged" DisplayMode="@(IsSingleTenantMode ? "general" : "full")" />
@@ -268,6 +273,7 @@
     private bool _canEdit;
     private string? _errorMessage;
     private string _currentSection = "governance";
+    private bool _showMobileMenu = true;
 
     private bool IsSingleTenantMode => string.Equals(_deploymentMode, "SingleTenant", StringComparison.OrdinalIgnoreCase)
                                        || string.IsNullOrWhiteSpace(_deploymentMode);
@@ -521,6 +527,12 @@
     private void SelectSection(string section)
     {
         _currentSection = section;
+        _showMobileMenu = false;
+    }
+    
+    private void BackToMenu()
+    {
+        _showMobileMenu = true;
     }
 
     private async Task RefreshShellExperienceAsync()

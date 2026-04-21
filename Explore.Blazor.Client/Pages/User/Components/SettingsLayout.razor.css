@@ -1,4 +1,5 @@
-/* Settings Layout Styles - Google Account Settings Inspired */
+/* ABOUTME: Scoped CSS for InstanceAdminSettingsLayout matching the SettingsLayout design. */
+/* ABOUTME: Google Account Settings-inspired sidebar navigation with responsive breakpoints. */
 
 .settings-layout {
     background: var(--mud-palette-background);
@@ -19,32 +20,44 @@
     background-color: transparent;
 }
 
-.settings-sidebar :deep(.mud-list) {
+.settings-sidebar ::deep .mud-list {
     padding: 0;
 }
 
-.settings-sidebar :deep(.mud-list-item) {
-    padding: 0.75rem 1rem;
-    border-left: 0.1875rem solid transparent;
+.settings-sidebar ::deep .mud-list-item {
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.25rem;
+    border-radius: 0.375rem;
     transition: all 0.2s ease;
     cursor: pointer;
     color: var(--mud-palette-text-secondary);
 }
 
-.settings-sidebar :deep(.mud-list-item:hover) {
+.settings-sidebar ::deep .mud-list-item:hover {
     background-color: var(--mud-palette-action-default-hover);
     color: var(--mud-palette-text-primary);
 }
 
-.settings-sidebar :deep(.mud-list-item.settings-nav-active) {
-    border-left-color: var(--mud-palette-primary);
+.settings-sidebar ::deep .mud-list-item.settings-nav-active {
     background-color: var(--mud-palette-action-default-hover);
-    color: var(--mud-palette-primary);
-    font-weight: 600;
+    color: var(--mud-palette-text-primary);
+    font-weight: 500;
 }
 
-.settings-sidebar :deep(.mud-list-item-icon) {
+.settings-sidebar ::deep .mud-list-item-icon {
     margin-right: 1rem;
+}
+
+/* Section Separator (Developer label) */
+.settings-nav-separator {
+    padding: 0.75rem 1rem 0.25rem;
+    border-top: 1px solid var(--mud-palette-lines-default);
+    margin-top: 0.25rem;
+}
+
+.settings-nav-separator__label {
+    font-weight: 600;
+    letter-spacing: 0.08em;
 }
 
 /* Content Area */
@@ -54,7 +67,7 @@
 }
 
 /* Section Styles */
-.settings-section {
+.settings-content ::deep .settings-section {
     animation: fadeIn 0.3s ease-in;
 }
 
@@ -69,92 +82,73 @@
     }
 }
 
-.settings-section-header {
+.settings-content ::deep .settings-section-header {
     margin-bottom: 2rem;
 }
 
-.settings-section-header :deep(.mud-typography) {
+.settings-content ::deep .settings-section-header .mud-typography {
     display: block;
 }
 
 /* Form Sections */
-.settings-form-section {
+.settings-content ::deep .settings-form-section {
     margin-bottom: 2rem;
 }
 
-.settings-form-section :deep(.mud-text-subtitle2) {
+.settings-content ::deep .settings-form-section .mud-text-subtitle2 {
     color: var(--mud-palette-text-primary);
     margin-bottom: 1rem;
 }
 
-/* Profile Picture Section */
-.settings-profile-picture {
-    padding: 1.5rem;
-    background-color: var(--mud-palette-surface);
-    border-radius: var(--mud-default-border-radius);
-    border: 1px solid var(--mud-palette-lines-default);
-}
-
-/* Responsive Design - Icon-only compact sidebar on small screens */
-@media (max-width: 59.9375em) {
-    .settings-sidebar :deep(.mud-list-item) {
-        padding: 0.75rem;
-        justify-content: center;
-        border-left-width: 0.125rem;
-    }
-
-    .settings-sidebar :deep(.mud-list-item-text) {
-        display: none;
-    }
-
-    .settings-sidebar :deep(.mud-list-item-icon) {
-        margin-right: 0;
-        min-width: unset;
+/* Responsive Design - Custom mobile spacing */
+@media (max-width: 59.997em) {
+    .settings-content {
+        min-height: auto;
     }
 }
 
 /* Divider Styles */
-.settings-content :deep(.mud-divider) {
+.settings-content ::deep .mud-divider {
     margin: 1.5rem 0;
     opacity: 0.5;
 }
 
 /* Button Styles */
-.settings-content :deep(.mud-button) {
+.settings-content ::deep .mud-button {
     text-transform: none;
     font-weight: 500;
 }
 
 /* Alert Styles */
-.settings-content :deep(.mud-alert) {
+.settings-content ::deep .mud-alert {
     border-radius: var(--mud-default-border-radius);
 }
 
 /* Paper/Card Styles */
-.settings-content :deep(.mud-paper) {
+.settings-content ::deep .mud-paper {
     transition: all 0.2s ease;
 }
 
-.settings-content :deep(.mud-paper:hover) {
+.settings-content ::deep .mud-paper:hover {
     box-shadow: var(--mud-shadow-2);
 }
 
 /* Switch Styles */
-.settings-content :deep(.mud-switch) {
+.settings-content ::deep .mud-switch {
     margin: 0;
 }
 
 /* Text Field Styles */
-.settings-content :deep(.mud-text-field) {
+.settings-content ::deep .mud-text-field {
     margin-bottom: 0;
 }
 
 /* Grid Spacing */
-.settings-content :deep(.mud-grid) {
+.settings-content ::deep .mud-grid {
     margin: -0.75rem;
 }
 
-.settings-content :deep(.mud-grid > .mud-item) {
+.settings-content ::deep .mud-grid > .mud-item {
     padding: 0.75rem;
 }
 

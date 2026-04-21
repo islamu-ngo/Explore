@@ -1,9 +1,140 @@
 /* ABOUTME: Scoped CSS for EventDetail page layout.
    ABOUTME: Handles hero image sizing and responsive adjustments. */
 
-.event-detail__hero-image {
+.event-detail-wrapper {
+    min-height: 100vh;
+    padding-top: var(--isl-space-8);
+    padding-bottom: var(--isl-space-12);
+    /* Luma uses a subtle gradient or solid color, we'll use a CSS variable that can be set inline */
+    background: var(--event-bg-color, var(--mud-palette-background));
+    transition: background 0.3s ease;
+}
+
+.event-detail-container {
+    max-width: 1000px !important;
+    margin: 0 auto;
+}
+
+.event-cover-image {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 16px;
+    object-fit: cover;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+.event-icon-box {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background-color: var(--mud-palette-surface);
+    border: 1px solid var(--isl-color-border, rgba(128,128,128,0.2));
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.event-icon-box--calendar .month {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    line-height: 1;
+    margin-bottom: 2px;
+    color: var(--mud-palette-error);
+}
+
+.event-icon-box--calendar .day {
+    font-size: 1.1rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--mud-palette-text-primary);
+}
+
+.event-icon-box--icon {
+    color: var(--mud-palette-text-secondary);
+}
+
+.event-registration-card {
+    background-color: var(--mud-palette-surface);
+    border: 1px solid var(--isl-color-border, rgba(128,128,128,0.2));
+    border-radius: 16px;
     overflow: hidden;
+}
+
+.event-registration-card__header {
+    background-color: rgba(0,0,0,0.03);
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--isl-color-border, rgba(128,128,128,0.2));
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--mud-palette-text-secondary);
+}
+
+.event-registration-card__body {
+    padding: 20px;
+}
+
+.event-section-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--mud-palette-text-primary);
+}
+
+.event-host-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    border-radius: 8px;
+    transition: background-color 0.2s ease;
+}
+
+.event-host-item:hover {
+    background-color: rgba(128,128,128,0.05);
+}
+
+.event-sidebar-link {
+    display: block;
+    padding: 8px 0;
+    color: var(--mud-palette-text-secondary);
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: color 0.2s ease;
+}
+
+.event-sidebar-link:hover {
+    color: var(--mud-palette-text-primary);
+}
+
+::deep .event-action-menu {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background-color: var(--mud-palette-surface);
+    border-radius: 50%;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.event-badge-container {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.event-description {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--mud-palette-text-primary);
+    white-space: pre-wrap;
+}
+
+/* Dark mode specific overrides using MudBlazor's automatic class if possible, or we can just rely on surface colors */
+@media (prefers-color-scheme: dark) {
+    .event-registration-card__header {
+        background-color: rgba(255,255,255,0.05);
+    }
 }

@@ -25,555 +25,524 @@
         <meta name="twitter:image" content="@GetOgImageUrl()" />
         <link rel="canonical" href="@GetCanonicalUrl()" />
     </HeadContent>
-    <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
 
-        @* ── Back Navigation ── *@
-        <div class="mb-6">
-            <AppButton StartIcon="@Icons.Material.Filled.ArrowBack"
-                       Variant="Variant.Text"
-                       Color="Color.Default"
-                       Href="/events"
-                       Class="px-0">
-                Back to Events
-            </AppButton>
-        </div>
+    <div class="event-detail-wrapper" style="@GetWrapperStyle()">
+        <MudContainer MaxWidth="MaxWidth.Large" Class="event-detail-container">
+            
+            <MudGrid Spacing="8">
+                @* ── Left Column: Image & Organizer Info ── *@
+                <MudItem xs="12" md="5" lg="4">
+                    <div style="position: relative;">
+                        @if (!string.IsNullOrEmpty(_eventDetails.FeaturedImageUri))
+                        {
+                            <img src="@_eventDetails.FeaturedImageUri" alt="@_eventDetails.Title" class="event-cover-image mb-6" />
+                        }
+                        else if (!string.IsNullOrWhiteSpace(_appearance.ImageUri))
+                        {
+                            <img src="@_appearance.ImageUri" alt="@_eventDetails.Title" class="event-cover-image mb-6" />
+                        }
+                        else
+                        {
+                            <div class="event-cover-image mb-6 d-flex align-center justify-center" style="background: linear-gradient(135deg, @GetEventColor(), #333);">
+                                <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Large" Color="Color.Surface" Style="font-size: 5rem; opacity: 0.2;" />
+                            </div>
+                        }
 
-        @* ── Cancelled Event Banner ── *@
-        @if (IsCancelledEvent())
-        {
-            <MudAlert Severity="Severity.Error"
-                      Variant="Variant.Filled"
-                      Dense="false"
-                      Icon="@Icons.Material.Filled.Cancel"
-                      Class="mb-6">
-                This event has been cancelled. Registration is no longer available.
-            </MudAlert>
-        }
+                        @* Admin controls — 3-dot action menu *@
+                        @if ((_canEdit || _canDelete) && !_isCheckingAuth)
+                        {
+                            <div class="event-action-menu">
+                                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
+                                         AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                                    @if (_canEdit)
+                                    {
+                                        <MudMenuItem Icon="@Icons.Material.Filled.Edit"
+                                                     Href="@($"/events/{EventId}/edit")">
+                                            Edit
+                                        </MudMenuItem>
+                                    }
+                                    @if (_canDelete)
+                                    {
+                                        <MudMenuItem Icon="@Icons.Material.Filled.Delete"
+                                                     IconColor="Color.Error"
+                                                     OnClick="OpenDeleteDialog">
+                                            Delete
+                                        </MudMenuItem>
+                                    }
+                                </MudMenu>
+                            </div>
+                        }
+                    </div>
 
-        @* ── Hero Section: Image Left / Title Right ── *@
-        <MudGrid Spacing="6" Class="mb-8">
-            <MudItem xs="12" md="6">
-                <div class="event-detail__hero-image rounded-xl overflow-hidden" style="background-color: @GetEventColor(); aspect-ratio: 3/4; max-height: 480px;">
-                    @if (!string.IsNullOrEmpty(_eventDetails.FeaturedImageUri))
-                    {
-                        <MudImage Src="@_eventDetails.FeaturedImageUri"
-                                  ObjectFit="ObjectFit.Cover"
-                                  Style="width: 100%; height: 100%; object-fit: cover; display: block;" />
-                    }
-                    else if (!string.IsNullOrWhiteSpace(_appearance.ImageUri))
-                    {
-                        <MudImage Src="@_appearance.ImageUri"
-                                  ObjectFit="ObjectFit.Cover"
-                                  Style="width: 100%; height: 100%; object-fit: cover; display: block;" />
-                    }
-                    else
-                    {
-                        <div class="d-flex align-center justify-center h-100" style="background: linear-gradient(135deg, @GetEventColor(), #333);">
-                            <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Large" Color="Color.Surface" Style="font-size: 5rem; opacity: 0.2;" />
+                    @* Hosted By Section *@
+                    <div class="mb-6">
+                        <MudText Typo="Typo.subtitle2" Class="mb-3" Color="Color.Secondary" Style="font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px;">
+                            Hosted By
+                        </MudText>
+                        
+                        @{
+                            var organizerUrl = GetOrganizerProfileUrl();
+                            var organizerContainerClass = $"event-host-item{(organizerUrl != null ? " cursor-pointer" : "")}";
+                        }
+                        <div class="@organizerContainerClass"
+                             @onclick="@(() => NavigateToOrganizer())"
+                             tabindex="@(organizerUrl != null ? 0 : -1)"
+                             role="@(organizerUrl != null ? "link" : null)"
+                             aria-label="@(organizerUrl != null ? $"View profile of {GetOrganizerName()}" : null)"
+                             @onkeydown="@HandleOrganizerKeyDown">
+                            <MudAvatar Size="Size.Medium" Color="Color.Primary" Variant="Variant.Outlined">
+                                @if (!string.IsNullOrEmpty(GetOrganizerProfilePicture()))
+                                {
+                                    <MudImage Src="@GetOrganizerProfilePicture()" />
+                                }
+                                else
+                                {
+                                    @GetOrganizerName().FirstOrDefault()
+                                }
+                            </MudAvatar>
+                            <div>
+                                <MudText Typo="Typo.body2" Style="font-weight: 700;">@GetOrganizerName()</MudText>
+                            </div>
                         </div>
-                    }
-                </div>
-            </MudItem>
+                    </div>
 
-            <MudItem xs="12" md="6">
-                <div class="d-flex flex-column justify-center h-100">
-                    @* Status chips *@
-                    <div class="d-flex gap-2 flex-wrap mb-3">
-                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Style="font-weight: 700;">
+                    <MudDivider Class="my-4" />
+
+                    @* Links Section *@
+                    <div class="d-flex flex-column gap-2 mb-8">
+                        <a href="javascript:void(0)" class="event-sidebar-link d-flex align-center gap-2" @onclick="ShareEventAsync">
+                            <MudIcon Icon="@Icons.Material.Outlined.Share" Size="Size.Small" />
+                            <span>Share Event</span>
+                        </a>
+                        @if (_primarySession is not null)
+                        {
+                            <a href="javascript:void(0)" class="event-sidebar-link d-flex align-center gap-2" @onclick="AddToGoogleCalendarAsync">
+                                <MudIcon Icon="@Icons.Material.Outlined.CalendarMonth" Size="Size.Small" />
+                                <span>Add to Google Calendar</span>
+                            </a>
+                            <a href="javascript:void(0)" class="event-sidebar-link d-flex align-center gap-2" @onclick="DownloadIcsFileAsync">
+                                <MudIcon Icon="@Icons.Material.Outlined.Download" Size="Size.Small" />
+                                <span>Download .ics</span>
+                            </a>
+                        }
+                        @if (!string.IsNullOrEmpty(_eventDetails.ExternalRegistrationUrl))
+                        {
+                            <a href="@_eventDetails.ExternalRegistrationUrl" target="_blank" class="event-sidebar-link d-flex align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Outlined.OpenInNew" Size="Size.Small" />
+                                <span>External Registration</span>
+                            </a>
+                        }
+                    </div>
+
+                </MudItem>
+
+                @* ── Right Column: Event Details & Registration ── *@
+                <MudItem xs="12" md="7" lg="8">
+                    
+                    @* Back / Breadcrumb (Optional, Luma doesn't have it but it's good for navigation) *@
+                    <div class="mb-4">
+                        <AppButton StartIcon="@Icons.Material.Filled.ArrowBack"
+                                   Variant="Variant.Text"
+                                   Color="Color.Default"
+                                   Href="/events"
+                                   Size="Size.Small"
+                                   Class="px-0"
+                                   Style="color: var(--mud-palette-text-secondary);">
+                            Back to Events
+                        </AppButton>
+                    </div>
+
+                    @* Cancelled Alert *@
+                    @if (IsCancelledEvent())
+                    {
+                        <MudAlert Severity="Severity.Error"
+                                  Variant="Variant.Filled"
+                                  Dense="false"
+                                  Icon="@Icons.Material.Filled.Cancel"
+                                  Class="mb-6 rounded-lg">
+                            This event has been cancelled. Registration is no longer available.
+                        </MudAlert>
+                    }
+
+                    @* Title & Badges *@
+                    <div class="event-badge-container">
+                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled" Style="font-weight: 600;">
                             @(_eventDetails.EventTypeFullName ?? "Event")
                         </MudChip>
                         @if (!string.IsNullOrEmpty(_eventDetails.EventStatusFullName))
                         {
-                            <MudChip T="string" Size="Size.Small" Color="GetStatusChipColor()" Variant="Variant.Filled">
+                            <MudChip T="string" Size="Size.Small" Color="GetStatusChipColor()" Variant="Variant.Outlined" Style="background-color: var(--mud-palette-surface); border-color: transparent; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                                 @_eventDetails.EventStatusFullName
                             </MudChip>
                         }
                         @if (!string.IsNullOrEmpty(_eventDetails.EventFormatFullName))
                         {
-                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Style="background-color: var(--mud-palette-surface); border-color: transparent; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                                 @_eventDetails.EventFormatFullName
                             </MudChip>
                         }
                         @if (!string.IsNullOrEmpty(_eventDetails.VisibilityTypeFullName))
                         {
-                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info">
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info" Style="background-color: var(--mud-palette-surface); border-color: transparent; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                                 @_eventDetails.VisibilityTypeFullName
                             </MudChip>
                         }
                     </div>
 
-                    @* Date badge *@
-                    <MudText Typo="Typo.subtitle1" Color="Color.Error" Style="font-weight: 800; text-transform: uppercase;" Class="mb-1">
-                        @(_primarySession?.StartTime.HasValue == true ? _primarySession.StartTime.Value.ToString("MMM dd, dddd") : "Date TBD")
-                    </MudText>
-
-                    @* Title *@
-                    <MudText Typo="Typo.h3" HtmlTag="h1" Style="font-weight: 900; line-height: 1.2;" Class="mb-2">
+                    <MudText Typo="Typo.h2" HtmlTag="h1" Style="font-weight: 800; line-height: 1.1; letter-spacing: -0.02em;" Class="mb-3">
                         @_eventDetails.Title
                     </MudText>
 
                     @if (!string.IsNullOrEmpty(_eventDetails.Subtitle))
                     {
-                        <MudText Typo="Typo.h6" Color="Color.Secondary" Style="font-weight: 400;" Class="mb-3">
+                        <MudText Typo="Typo.h5" Color="Color.Secondary" Style="font-weight: 400; line-height: 1.4;" Class="mb-8">
                             @_eventDetails.Subtitle
                         </MudText>
                     }
-
-                    @* Organizer *@
-                    @{
-                        var organizerUrl = GetOrganizerProfileUrl();
-                        var organizerContainerClass = $"d-flex align-center gap-3 mt-4{(organizerUrl != null ? " cursor-pointer" : "")}";
-                        var organizerNameStyle = organizerUrl != null ? "font-weight: 700; text-decoration: underline dotted;" : "font-weight: 700;";
+                    else
+                    {
+                        <div class="mb-8"></div>
                     }
-                    <div class="@organizerContainerClass"
-                         @onclick="@(() => NavigateToOrganizer())"
-                         tabindex="@(organizerUrl != null ? 0 : -1)"
-                         role="@(organizerUrl != null ? "link" : null)"
-                         aria-label="@(organizerUrl != null ? $"View profile of {GetOrganizerName()}" : null)"
-                         @onkeydown="@HandleOrganizerKeyDown">
-                        <MudAvatar Size="Size.Medium" Color="Color.Primary" Variant="Variant.Outlined">
-                            @if (!string.IsNullOrEmpty(GetOrganizerProfilePicture()))
+
+                    @* Date & Time Block *@
+                    <div class="d-flex align-center gap-4 mb-6">
+                        <div class="event-icon-box event-icon-box--calendar">
+                            <span class="month">@GetDateMonth()</span>
+                            <span class="day">@GetDateDay()</span>
+                        </div>
+                        <div>
+                            <MudText Typo="Typo.subtitle1" Style="font-weight: 700; line-height: 1.2;">@GetDateFull()</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@GetTimeRange()</MudText>
+                        </div>
+                    </div>
+
+                    @* Location Block *@
+                    <div class="d-flex align-center gap-4 mb-10">
+                        <div class="event-icon-box">
+                            <MudIcon Icon="@(_eventDetails.EventFormatMasterCode == "Digital" ? Icons.Material.Filled.Videocam : Icons.Material.Filled.LocationOn)" Class="event-icon-box--icon" />
+                        </div>
+                        <div>
+                            <MudText Typo="Typo.subtitle1" Style="font-weight: 700; line-height: 1.2;">
+                                @GetLocationDisplay()
+                            </MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                @(_eventDetails.EventFormatMasterCode == "Digital" ? "Online Event" : "Register to See Full Address")
+                            </MudText>
+                        </div>
+                    </div>
+
+                    @* Registration Card *@
+                    <div class="event-registration-card mb-12">
+                        <div class="event-registration-card__header">
+                            Registration
+                        </div>
+                        <div class="event-registration-card__body">
+                            @if (IsCancelledEvent())
                             {
-                                <MudImage Src="@GetOrganizerProfilePicture()" />
+                                <div class="d-flex align-center gap-4">
+                                    <MudIcon Icon="@Icons.Material.Filled.EventBusy" Color="Color.Error" Size="Size.Large" />
+                                    <div>
+                                        <MudText Typo="Typo.subtitle1" Style="font-weight: 700;">Event Cancelled</MudText>
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">This event is no longer accepting registrations.</MudText>
+                                    </div>
+                                </div>
+                            }
+                            else if (_eventDetails.EventStatusMasterCode == "COMPLETED")
+                            {
+                                <div class="d-flex align-center gap-4">
+                                    <MudIcon Icon="@Icons.Material.Filled.History" Color="Color.Default" Size="Size.Large" />
+                                    <div>
+                                        <MudText Typo="Typo.subtitle1" Style="font-weight: 700;">Past Event</MudText>
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">This event has already ended.</MudText>
+                                    </div>
+                                </div>
                             }
                             else
                             {
-                                @GetOrganizerName().FirstOrDefault()
-                            }
-                        </MudAvatar>
-                        <div>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">Hosted by</MudText>
-                            <MudText Typo="Typo.body1" Style="@organizerNameStyle">@GetOrganizerName()</MudText>
-                        </div>
-                    </div>
+                                <div class="d-flex flex-column flex-sm-row justify-space-between align-sm-center gap-4 mb-4">
+                                    <div>
+                                        @if (_eventDetails.Price.HasValue && _eventDetails.Price > 0)
+                                        {
+                                            <MudText Typo="Typo.h5" Style="font-weight: 800;">
+                                                @($"{_eventDetails.CurrencyCode ?? "€"}{_eventDetails.Price:F2}")
+                                            </MudText>
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">per person</MudText>
+                                        }
+                                        else
+                                        {
+                                            <MudText Typo="Typo.body1" Style="font-weight: 600;">Welcome! To join the event, please register below.</MudText>
+                                            <MudText Typo="Typo.body2" Color="Color.Success" Style="font-weight: 700;">Free Registration</MudText>
+                                        }
+                                    </div>
+                                    
+                                    <AppButton Color="GetButtonColor()"
+                                               Size="Size.Large"
+                                               Class="py-2 px-8 rounded-lg font-weight-bold"
+                                               Style="min-width: 160px;"
+                                               OnClick="OpenRegistrationDialog"
+                                               Disabled="IsButtonDisabled()"
+                                               Elevation="0"
+                                               StartIcon="@(_isUserRegistered ? Icons.Material.Filled.CheckCircle : null)">
+                                        @GetButtonText()
+                                    </AppButton>
+                                </div>
 
-                    @* Admin controls — 3-dot action menu *@
-                    @if ((_canEdit || _canDelete) && !_isCheckingAuth)
-                    {
-                        <div class="d-flex mt-4">
-                            <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true"
-                                     AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
-                                     Variant="Variant.Outlined">
-                                @if (_canEdit)
+                                @if (_isUserRegistered)
                                 {
-                                    <MudMenuItem Icon="@Icons.Material.Filled.Edit"
-                                                 Href="@($"/events/{EventId}/edit")">
-                                        Edit
-                                    </MudMenuItem>
+                                    <div class="d-flex align-center justify-space-between mt-4 pt-4 border-t-1" style="border-top: 1px solid var(--isl-color-border, rgba(128,128,128,0.2));">
+                                        <MudText Typo="Typo.body2" Color="Color.Success" Style="font-weight: 600;">You are going to this event!</MudText>
+                                        <MudLink OnClick="CancelRegistrationAsync" Typo="Typo.caption" Color="Color.Error" Underline="Underline.Hover" Style="cursor: pointer;">
+                                            Cancel registration
+                                        </MudLink>
+                                    </div>
                                 }
-                                @if (_canDelete)
+                            }
+                        </div>
+                    </div>
+
+                    @* About Section *@
+                    <section class="mb-12">
+                        <h3 class="event-section-title">About Event</h3>
+                        
+                        <div class="event-description">
+                            @_eventDetails.Description
+                        </div>
+
+                        @* Tags & Categories *@
+                        <div class="d-flex flex-wrap gap-2 mt-6">
+                            @if (_islamicAspect != null)
+                            {
+                                <MudChip T="string" Icon="@Icons.Material.Filled.Mosque" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined" Style="background-color: var(--mud-palette-surface); border-color: transparent; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">Islamic Event</MudChip>
+                            }
+                            @if (_techAspect != null)
+                            {
+                                <MudChip T="string" Icon="@Icons.Material.Filled.Code" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined" Style="background-color: var(--mud-palette-surface); border-color: transparent; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">Tech Event</MudChip>
+                            }
+                            @if (_eventDetails.Tags is { Count: > 0 })
+                            {
+                                @foreach (var tag in _eventDetails.Tags)
                                 {
-                                    <MudMenuItem Icon="@Icons.Material.Filled.Delete"
-                                                 IconColor="Color.Error"
-                                                 OnClick="OpenDeleteDialog">
-                                        Delete
-                                    </MudMenuItem>
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" Style="background-color: var(--mud-palette-surface); border-color: transparent; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                                        @tag.FullName
+                                    </MudChip>
                                 }
-                            </MudMenu>
-                        </div>
-                    }
-                </div>
-            </MudItem>
-        </MudGrid>
-
-        <MudDivider Class="mb-8" />
-
-        @* ── Registration & Price Section ── *@
-        <MudPaper Elevation="0" Outlined="true" Class="rounded-xl pa-6 mb-8">
-            <MudGrid Spacing="4">
-                <MudItem xs="12" sm="4" Class="d-flex align-center">
-                    @if (_eventDetails.Price.HasValue && _eventDetails.Price > 0)
-                    {
-                        <div>
-                            <MudText Typo="Typo.h4" Style="font-weight: 800;">
-                                @($"{_eventDetails.CurrencyCode ?? "€"}{_eventDetails.Price:F2}")
-                            </MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">per person</MudText>
-                        </div>
-                    }
-                    else
-                    {
-                        <div>
-                            <MudText Typo="Typo.h4" Style="font-weight: 800;" Color="Color.Success">Free</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">no charge</MudText>
-                        </div>
-                    }
-                </MudItem>
-                <MudItem xs="12" sm="8" Class="d-flex align-center gap-4 flex-wrap">
-                    <AppButton Color="GetButtonColor()"
-                               Size="Size.Large"
-                               Class="py-3 px-8 rounded-lg font-weight-bold"
-                               OnClick="OpenRegistrationDialog"
-                               Disabled="IsButtonDisabled()"
-                               Elevation="0"
-                               StartIcon="@(_isUserRegistered ? Icons.Material.Filled.CheckCircle : null)">
-                        @GetButtonText()
-                    </AppButton>
-                    @if (_isUserRegistered)
-                    {
-                        <div>
-                            <MudText Typo="Typo.body2" Color="Color.Success">You are going to this event!</MudText>
-                            <MudLink OnClick="CancelRegistrationAsync" Typo="Typo.caption" Color="Color.Error" Underline="Underline.Always">
-                                Cancel registration
-                            </MudLink>
-                        </div>
-                    }
-                    @if (!string.IsNullOrEmpty(_eventDetails.ExternalRegistrationUrl))
-                    {
-                        <AppButton Variant="Variant.Outlined"
-                                   Href="@_eventDetails.ExternalRegistrationUrl"
-                                   Target="_blank"
-                                   StartIcon="@Icons.Material.Outlined.OpenInNew">
-                            External Registration
-                        </AppButton>
-                    }
-                </MudItem>
-            </MudGrid>
-        </MudPaper>
-
-        @* ── Event Details Grid (Date, Location, Audience, Views) ── *@
-        <MudGrid Spacing="4" Class="mb-8">
-            <MudItem xs="12" sm="6" md="3">
-                <MudPaper Elevation="0" Outlined="true" Class="pa-4 rounded-lg h-100">
-                    <div class="d-flex gap-3 align-center mb-2">
-                        <MudIcon Icon="@Icons.Material.Outlined.CalendarToday" Color="Color.Primary" />
-                        <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">Date & Time</MudText>
-                    </div>
-                    <MudText Typo="Typo.body2" Color="Color.Secondary">@GetDateDisplay()</MudText>
-                </MudPaper>
-            </MudItem>
-            <MudItem xs="12" sm="6" md="3">
-                <MudPaper Elevation="0" Outlined="true" Class="pa-4 rounded-lg h-100">
-                    <div class="d-flex gap-3 align-center mb-2">
-                        <MudIcon Icon="@Icons.Material.Outlined.LocationOn" Color="Color.Primary" />
-                        <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">Location</MudText>
-                    </div>
-                    <MudText Typo="Typo.body2" Color="Color.Secondary">@GetFullLocation()</MudText>
-                    @if (_eventDetails.EventFormatId == 2)
-                    {
-                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text" Class="mt-1 pa-0">Online</MudChip>
-                    }
-                </MudPaper>
-            </MudItem>
-            <MudItem xs="12" sm="6" md="3">
-                <MudPaper Elevation="0" Outlined="true" Class="pa-4 rounded-lg h-100">
-                    <div class="d-flex gap-3 align-center mb-2">
-                        <MudIcon Icon="@Icons.Material.Outlined.People" Color="Color.Primary" />
-                        <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">Audience</MudText>
-                    </div>
-                    <MudText Typo="Typo.body2" Color="Color.Secondary">
-                        @(_eventDetails.AudienceGenderFullName ?? "All") · @(_eventDetails.AudienceAgeFullName ?? "All Ages")
-                    </MudText>
-                </MudPaper>
-            </MudItem>
-            <MudItem xs="12" sm="6" md="3">
-                <MudPaper Elevation="0" Outlined="true" Class="pa-4 rounded-lg h-100">
-                    <div class="d-flex gap-3 align-center mb-2">
-                        <MudIcon Icon="@Icons.Material.Outlined.Visibility" Color="Color.Primary" />
-                        <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">Stats</MudText>
-                    </div>
-                    <MudText Typo="Typo.body2" Color="Color.Secondary">
-                        @(_eventDetails.TotalViews?.ToString("N0") ?? "0") views · @(_eventDetails.SessionCount ?? 0) session(s)
-                    </MudText>
-                </MudPaper>
-            </MudItem>
-        </MudGrid>
-
-        @* ── About Section ── *@
-        <section class="mb-8">
-            <MudText Typo="Typo.h5" Style="font-weight: 800;" Class="mb-4">About this event</MudText>
-
-            @* Tags & Category chips *@
-            <div class="d-flex flex-wrap gap-2 mb-6">
-                @if (_islamicAspect != null)
-                {
-                    <MudChip T="string" Icon="@Icons.Material.Filled.Mosque" Size="Size.Small" Color="Color.Success" Variant="Variant.Text">Islamic Event</MudChip>
-                }
-                @if (_techAspect != null)
-                {
-                    <MudChip T="string" Icon="@Icons.Material.Filled.Code" Size="Size.Small" Color="Color.Info" Variant="Variant.Text">Tech Event</MudChip>
-                }
-                @if (_eventDetails.Tags is { Count: > 0 })
-                {
-                    @foreach (var tag in _eventDetails.Tags)
-                    {
-                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary">
-                            @tag.FullName
-                        </MudChip>
-                    }
-                }
-                @if (_canEdit)
-                {
-                    <AppIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
-                                   OnClick="@OpenDetailTagManagement"
-                                   aria-label="Manage tags" />
-                }
-                @if (_eventDetails.Categories is { Count: > 0 })
-                {
-                    @foreach (var cat in _eventDetails.Categories)
-                    {
-                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary">
-                            @cat.FullName
-                        </MudChip>
-                    }
-                }
-                @if (_canEdit)
-                {
-                    <AppIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
-                                   OnClick="@OpenDetailCategoryManagement"
-                                   aria-label="Manage categories" />
-                }
-            </div>
-
-            <MudText Typo="Typo.body1" Style="white-space: pre-wrap; line-height: 1.8; color: var(--mud-palette-text-primary);">
-                @_eventDetails.Description
-            </MudText>
-        </section>
-
-        @* ── Characteristics (Islamic & Tech Aspects) ── *@
-        @if (_islamicAspect != null || _techAspect != null || _canEdit)
-        {
-            <section class="mb-8">
-                <div class="d-flex justify-space-between align-center mb-4">
-                    <MudText Typo="Typo.h5" Style="font-weight: 800;">Characteristics</MudText>
-                    @if (_canEdit && (_islamicAspect == null || _techAspect == null))
-                    {
-                        <MudMenu Icon="@Icons.Material.Filled.Add" Variant="Variant.Text" Size="Size.Small" Color="Color.Primary" Dense="true" Label="Add Details">
-                            @if (_islamicAspect == null)
-                            {
-                                <MudMenuItem OnClick="OpenAddIslamicAspectDialog">Add Islamic Info</MudMenuItem>
                             }
-                            @if (_techAspect == null)
+                            @if (_canEdit)
                             {
-                                <MudMenuItem OnClick="OpenAddTechAspectDialog">Add Tech Info</MudMenuItem>
+                                <AppIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
+                                               OnClick="@OpenDetailTagManagement"
+                                               aria-label="Manage tags" />
                             }
-                        </MudMenu>
-                    }
-                </div>
+                            @if (_eventDetails.Categories is { Count: > 0 })
+                            {
+                                @foreach (var cat in _eventDetails.Categories)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary" Style="background-color: var(--mud-palette-surface); border-color: transparent; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                                        @cat.FullName
+                                    </MudChip>
+                                }
+                            }
+                            @if (_canEdit)
+                            {
+                                <AppIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
+                                               OnClick="@OpenDetailCategoryManagement"
+                                               aria-label="Manage categories" />
+                            }
+                        </div>
+                    </section>
 
-                <MudGrid Spacing="4">
-                    @if (_islamicAspect != null)
-                    {
-                        <MudItem xs="12" md="@(_techAspect != null ? 6 : 12)">
-                            <EventIslamicAspectCard Aspect="_islamicAspect"
-                                                    EventId="EventId"
-                                                    ShowActions="_canEdit"
-                                                    OnEdit="OpenEditIslamicAspectDialog"
-                                                    OnDelete="ConfirmDeleteIslamicAspect" />
-                        </MudItem>
-                    }
-                    @if (_techAspect != null)
-                    {
-                        <MudItem xs="12" md="@(_islamicAspect != null ? 6 : 12)">
-                            <EventTechAspectCard Aspect="_techAspect"
-                                                 EventId="EventId"
-                                                 ShowActions="_canEdit"
-                                                 OnEdit="OpenEditTechAspectDialog"
-                                                 OnDelete="ConfirmDeleteTechAspect" />
-                        </MudItem>
-                    }
-                </MudGrid>
-            </section>
-        }
-
-        @* ── Sessions / Agenda ── *@
-        @if (_eventAgendaItems != null && _eventAgendaItems.Count > 0 && _eventDays != null && _eventDays.Count > 0)
-        {
-            <section class="mb-8">
-                <MudText Typo="Typo.h5" Style="font-weight: 800;" Class="mb-4">Agenda</MudText>
-                <AgendaMillerColumns EventId="EventId"
-                                     Days="@(_eventDays?.ToList())"
-                                     AgendaItems="@(_eventAgendaItems?.ToList())"
-                                     CanManage="_canEdit"
-                                     OnDataChanged="LoadEventAgendaAsync" />
-            </section>
-        }
-        else if (_eventSessions != null && _eventSessions.Count > 0)
-        {
-            <section class="mb-8">
-                <MudText Typo="Typo.h5" Style="font-weight: 800;" Class="mb-4">
-                    @(_eventSessions.Count == 1 ? "When & Where" : "Agenda")
-                </MudText>
-
-                @if (_eventSessions.Count == 1)
-                {
-                    @* Single session: show as event-level details (hide session abstraction) *@
-                    var session = _eventSessions.First();
-                    <MudPaper Elevation="0" Outlined="true" Class="pa-5 rounded-xl">
-                        @* Format badge *@
-                        @if (!string.IsNullOrEmpty(_eventDetails?.EventFormatFullName))
-                        {
-                            <div class="mb-3">
-                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
-                                         Color="@(_eventDetails.EventFormatMasterCode == "Digital" ? Color.Info : _eventDetails.EventFormatMasterCode == "Hybrid" ? Color.Tertiary : Color.Default)"
-                                         Icon="@(_eventDetails.EventFormatMasterCode == "Digital" ? Icons.Material.Filled.Videocam : _eventDetails.EventFormatMasterCode == "Hybrid" ? Icons.Material.Filled.Devices : Icons.Material.Filled.LocationOn)">
-                                    @_eventDetails.EventFormatFullName
-                                </MudChip>
-                            </div>
-                        }
+                    @* Details & Properties *@
+                    <section class="mb-12">
+                        <div class="d-flex justify-space-between align-center mb-4">
+                            <h3 class="event-section-title mb-0">Details</h3>
+                            @if (_canEdit)
+                            {
+                                <MudMenu Icon="@Icons.Material.Filled.Edit" Variant="Variant.Text" Size="Size.Small" Color="Color.Primary" Dense="true" Label="Edit Details">
+                                    <MudMenuItem OnClick="OpenEditIslamicAspectDialog">Edit Islamic Properties</MudMenuItem>
+                                    <MudMenuItem OnClick="OpenEditTechAspectDialog">Edit Tech Properties</MudMenuItem>
+                                </MudMenu>
+                            }
+                        </div>
                         <MudGrid Spacing="4">
                             <MudItem xs="12" sm="6">
-                                @if (!string.IsNullOrEmpty(session.Title))
-                                {
-                                    <MudText Typo="Typo.h6" Style="font-weight: 700;" Class="mb-3">@session.Title</MudText>
-                                }
-                                <MudStack Spacing="2">
-                                    <div class="d-flex gap-3 align-center">
-                                        <MudIcon Icon="@Icons.Material.Outlined.Schedule" Color="Color.Primary" Size="Size.Small" />
-                                        <MudText Typo="Typo.body2">
-                                            @(session.StartTime?.ToString("dddd, MMM dd yyyy · HH:mm") ?? "TBD")
-                                            @if (session.EndTime != null)
-                                            {
-                                                @($" — {session.EndTime?.ToString("HH:mm")}")
-                                            }
+                                <div class="d-flex align-center gap-3">
+                                    <MudIcon Icon="@Icons.Material.Outlined.People" Color="Color.Secondary" />
+                                    <div>
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">Audience</MudText>
+                                        <MudText Typo="Typo.body1" Style="font-weight: 600;">
+                                            @(_eventDetails.AudienceGenderFullName ?? "All") · @(_eventDetails.AudienceAgeFullName ?? "All Ages")
                                         </MudText>
                                     </div>
-                                    @if (!string.IsNullOrEmpty(session.LocationFullName))
-                                    {
-                                        <div class="d-flex gap-3 align-center">
-                                            <MudIcon Icon="@Icons.Material.Outlined.LocationOn" Color="Color.Primary" Size="Size.Small" />
-                                            <MudText Typo="Typo.body2">@session.LocationFullName</MudText>
-                                        </div>
-                                    }
-                                    @if (!string.IsNullOrEmpty(_eventDetails?.EventUrl))
-                                    {
-                                        <div class="d-flex gap-3 align-center">
-                                            <MudIcon Icon="@Icons.Material.Outlined.Videocam" Color="Color.Primary" Size="Size.Small" />
-                                            <MudLink Href="@_eventDetails.EventUrl" Target="_blank" Typo="Typo.body2">
-                                                Join online
-                                            </MudLink>
-                                        </div>
-                                    }
-                                    @if (!string.IsNullOrEmpty(session.RegistrationModeFullName))
-                                    {
-                                        <div class="d-flex gap-3 align-center">
-                                            <MudIcon Icon="@Icons.Material.Outlined.HowToReg" Color="Color.Primary" Size="Size.Small" />
-                                            <MudText Typo="Typo.body2">@session.RegistrationModeFullName</MudText>
-                                        </div>
-                                    }
-                                    @{
-                                        var primaryLanguage = _eventDetails?.IslamicAspect?.PrimaryLanguageName;
-                                    }
-                                    @if (!string.IsNullOrEmpty(primaryLanguage))
-                                    {
-                                        <div class="d-flex gap-3 align-center">
-                                            <MudIcon Icon="@Icons.Material.Outlined.Translate" Color="Color.Primary" Size="Size.Small" />
-                                            <MudText Typo="Typo.body2">@primaryLanguage</MudText>
-                                        </div>
-                                    }
-                                </MudStack>
+                                </div>
                             </MudItem>
+                            
+                            @if (!string.IsNullOrEmpty(_eventDetails.MadhabFullName) || (_islamicAspect != null && !string.IsNullOrEmpty(_islamicAspect.MadhabName)))
+                            {
+                                <MudItem xs="12" sm="6">
+                                    <div class="d-flex align-center gap-3">
+                                        <MudIcon Icon="@Icons.Material.Outlined.MenuBook" Color="Color.Secondary" />
+                                        <div>
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">Madhab</MudText>
+                                            <MudText Typo="Typo.body1" Style="font-weight: 600;">@(!string.IsNullOrEmpty(_eventDetails.MadhabFullName) ? _eventDetails.MadhabFullName : _islamicAspect?.MadhabName)</MudText>
+                                        </div>
+                                    </div>
+                                </MudItem>
+                            }
+
+                            @if (_islamicAspect != null)
+                            {
+                                @if (_islamicAspect.ReferencePrayer != null)
+                                {
+                                    <MudItem xs="12" sm="6">
+                                        <div class="d-flex align-center gap-3">
+                                            <MudIcon Icon="@Icons.Material.Outlined.AccessTime" Color="Color.Secondary" />
+                                            <div>
+                                                <MudText Typo="Typo.body2" Color="Color.Secondary">Reference Prayer</MudText>
+                                                <MudText Typo="Typo.body1" Style="font-weight: 600;">@_islamicAspect.ReferencePrayer.ToString() @(_islamicAspect.PrayerTimeOffset.HasValue ? $"({_islamicAspect.PrayerTimeOffset}m)" : "")</MudText>
+                                            </div>
+                                        </div>
+                                    </MudItem>
+                                }
+                                @if (!string.IsNullOrEmpty(_islamicAspect.PrimaryLanguageName))
+                                {
+                                    <MudItem xs="12" sm="6">
+                                        <div class="d-flex align-center gap-3">
+                                            <MudIcon Icon="@Icons.Material.Outlined.Translate" Color="Color.Secondary" />
+                                            <div>
+                                                <MudText Typo="Typo.body2" Color="Color.Secondary">Language</MudText>
+                                                <MudText Typo="Typo.body1" Style="font-weight: 600;">@_islamicAspect.PrimaryLanguageName</MudText>
+                                            </div>
+                                        </div>
+                                    </MudItem>
+                                }
+                            }
+
+                            @if (_techAspect != null)
+                            {
+                                @if (!string.IsNullOrEmpty(_techAspect.SkillLevelName))
+                                {
+                                    <MudItem xs="12" sm="6">
+                                        <div class="d-flex align-center gap-3">
+                                            <MudIcon Icon="@Icons.Material.Outlined.School" Color="Color.Secondary" />
+                                            <div>
+                                                <MudText Typo="Typo.body2" Color="Color.Secondary">Skill Level</MudText>
+                                                <MudText Typo="Typo.body1" Style="font-weight: 600;">@_techAspect.SkillLevelName</MudText>
+                                            </div>
+                                        </div>
+                                    </MudItem>
+                                }
+                                @if (!string.IsNullOrEmpty(_techAspect.TechStackTags))
+                                {
+                                    <MudItem xs="12" sm="6">
+                                        <div class="d-flex align-center gap-3">
+                                            <MudIcon Icon="@Icons.Material.Outlined.Code" Color="Color.Secondary" />
+                                            <div>
+                                                <MudText Typo="Typo.body2" Color="Color.Secondary">Tech Stack</MudText>
+                                                <MudText Typo="Typo.body1" Style="font-weight: 600;">@_techAspect.TechStackTags</MudText>
+                                            </div>
+                                        </div>
+                                    </MudItem>
+                                }
+                                @if (!string.IsNullOrEmpty(_techAspect.GithubRepoUrl))
+                                {
+                                    <MudItem xs="12" sm="6">
+                                        <div class="d-flex align-center gap-3">
+                                            <MudIcon Icon="@Icons.Material.Outlined.Link" Color="Color.Secondary" />
+                                            <div>
+                                                <MudText Typo="Typo.body2" Color="Color.Secondary">Repository</MudText>
+                                                <MudText Typo="Typo.body1" Style="font-weight: 600;">
+                                                    <a href="@_techAspect.GithubRepoUrl" target="_blank" style="color: inherit; text-decoration: underline;">View on GitHub</a>
+                                                </MudText>
+                                            </div>
+                                        </div>
+                                    </MudItem>
+                                }
+                                @if (_techAspect.RequiresLaptop == true)
+                                {
+                                    <MudItem xs="12" sm="6">
+                                        <div class="d-flex align-center gap-3">
+                                            <MudIcon Icon="@Icons.Material.Outlined.Laptop" Color="Color.Secondary" />
+                                            <div>
+                                                <MudText Typo="Typo.body2" Color="Color.Secondary">Requirements</MudText>
+                                                <MudText Typo="Typo.body1" Style="font-weight: 600;">Laptop Required</MudText>
+                                            </div>
+                                        </div>
+                                    </MudItem>
+                                }
+                            }
+
                             <MudItem xs="12" sm="6">
-                                <MudStack Spacing="2">
-                                    @if (session.MaxAudienceAttendees > 0)
-                                    {
-                                        <div class="d-flex gap-3 align-center">
-                                            <MudIcon Icon="@Icons.Material.Outlined.People" Color="Color.Primary" Size="Size.Small" />
-                                            <MudText Typo="Typo.body2">
-                                                @(session.CurrentAudienceAttendees ?? 0) / @session.MaxAudienceAttendees attendees
-                                            </MudText>
-                                        </div>
-                                        <MudProgressLinear Color="Color.Primary" Rounded="true" Size="Size.Small"
-                                                           Value="@(session.MaxAudienceAttendees > 0 ? (double)(session.CurrentAudienceAttendees ?? 0) / (double)session.MaxAudienceAttendees.Value * 100.0 : 0.0)" />
-                                    }
-                                    @if (session.Price > 0)
-                                    {
-                                        <div class="d-flex gap-3 align-center">
-                                            <MudIcon Icon="@Icons.Material.Outlined.Payments" Color="Color.Primary" Size="Size.Small" />
-                                            <MudText Typo="Typo.body2" Style="font-weight: 600;">
-                                                @($"{session.CurrencyCode ?? "€"}{session.Price:F2}")
-                                            </MudText>
-                                        </div>
-                                    }
-                                </MudStack>
+                                <div class="d-flex align-center gap-3">
+                                    <MudIcon Icon="@Icons.Material.Outlined.Visibility" Color="Color.Secondary" />
+                                    <div>
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">Stats</MudText>
+                                        <MudText Typo="Typo.body1" Style="font-weight: 600;">
+                                            @(_eventDetails.TotalViews?.ToString("N0") ?? "0") views · @(_eventDetails.SessionCount ?? 0) session(s)
+                                        </MudText>
+                                    </div>
+                                </div>
                             </MudItem>
                         </MudGrid>
-                    </MudPaper>
+                    </section>
 
-                    @* Agenda items (optional, expandable) *@
-                    @if (_agendaItems != null && _agendaItems.Count > 0)
+                    @* Agenda / Sessions *@
+                    @if (_eventAgendaItems != null && _eventAgendaItems.Count > 0 && _eventDays != null && _eventDays.Count > 0)
                     {
-                        <MudPaper Elevation="0" Outlined="true" Class="pa-4 rounded-xl mt-3">
-                            <MudText Typo="Typo.subtitle1" Style="font-weight: 700;" Class="mb-3">
-                                <MudIcon Icon="@Icons.Material.Outlined.ViewAgenda" Class="mr-2" Size="Size.Small" />
-                                Agenda
-                            </MudText>
-                            <MudTimeline TimelinePosition="TimelinePosition.Start" Class="event-detail__agenda-timeline">
-                                @foreach (var item in _agendaItems.OrderBy(a => a.StartTime))
-                                {
-                                    <MudTimelineItem Color="Color.Primary" Size="Size.Small">
-                                        <ItemContent>
-                                            <MudText Typo="Typo.body2" Style="font-weight: 600;">@item.Title</MudText>
-                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                                @(item.StartTime?.ToString("HH:mm") ?? "")@(item.EndTime != null ? $" — {item.EndTime?.ToString("HH:mm")}" : "")
-                                                @if (!string.IsNullOrEmpty(item.LocationFullName))
-                                                {
-                                                    @($" · {item.LocationFullName}")
-                                                }
-                                            </MudText>
-                                        </ItemContent>
-                                    </MudTimelineItem>
-                                }
-                            </MudTimeline>
-                        </MudPaper>
+                        <section class="mb-12">
+                            <h3 class="event-section-title">Agenda</h3>
+                            <AgendaMillerColumns EventId="EventId"
+                                                 Days="@(_eventDays?.ToList())"
+                                                 AgendaItems="@(_eventAgendaItems?.ToList())"
+                                                 CanManage="_canEdit"
+                                                 OnDataChanged="LoadEventAgendaAsync" />
+                        </section>
                     }
-                }
-                else
-                {
-                    @* Multiple sessions: use existing session manager *@
-                    <EventSessionManager EventId="EventId" ShowRegisterButton="false" />
-                }
-            </section>
-        }
+                    else if (_eventSessions != null && _eventSessions.Count > 0)
+                    {
+                        <section class="mb-12">
+                            <h3 class="event-section-title">
+                                @(_eventSessions.Count == 1 ? "When & Where" : "Sessions")
+                            </h3>
 
-        @* ── Madhab (if present from event-level data) ── *@
-        @if (!string.IsNullOrEmpty(_eventDetails.MadhabFullName))
-        {
-            <section class="mb-8">
-                <MudPaper Elevation="0" Outlined="true" Class="pa-4 rounded-lg">
-                    <div class="d-flex gap-3 align-center">
-                        <MudIcon Icon="@Icons.Material.Outlined.MenuBook" Color="Color.Primary" />
-                        <div>
-                            <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">Madhab</MudText>
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">@_eventDetails.MadhabFullName</MudText>
-                        </div>
-                    </div>
-                </MudPaper>
-            </section>
-        }
+                            @if (_eventSessions.Count == 1)
+                            {
+                                @* Single session view is already integrated into the layout above mostly, but we can show agenda items here *@
+                                @if (_agendaItems != null && _agendaItems.Count > 0)
+                                {
+                                    <MudPaper Elevation="0" Outlined="true" Class="pa-6 rounded-xl mt-4" Style="background-color: var(--mud-palette-surface);">
+                                        <MudTimeline TimelinePosition="TimelinePosition.Start" Class="event-detail__agenda-timeline">
+                                            @foreach (var item in _agendaItems.OrderBy(a => a.StartTime))
+                                            {
+                                                <MudTimelineItem Color="Color.Primary" Size="Size.Small">
+                                                    <ItemContent>
+                                                        <MudText Typo="Typo.body1" Style="font-weight: 700;">@item.Title</MudText>
+                                                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+                                                            @(item.StartTime?.ToString("HH:mm") ?? "")@(item.EndTime != null ? $" — {item.EndTime?.ToString("HH:mm")}" : "")
+                                                            @if (!string.IsNullOrEmpty(item.LocationFullName))
+                                                            {
+                                                                @($" · {item.LocationFullName}")
+                                                            }
+                                                        </MudText>
+                                                    </ItemContent>
+                                                </MudTimelineItem>
+                                            }
+                                        </MudTimeline>
+                                    </MudPaper>
+                                }
+                            }
+                            else
+                            {
+                                @* Multiple sessions: use existing session manager *@
+                                <EventSessionManager EventId="EventId" ShowRegisterButton="false" />
+                            }
+                        </section>
+                    }
 
-        @* ── Footer Actions ── *@
-        <div class="d-flex justify-center gap-3 mb-8">
-            <AppButton StartIcon="@Icons.Material.Outlined.Share"
-                       Variant="Variant.Outlined"
-                       Color="Color.Default"
-                       Size="Size.Small"
-                       OnClick="@ShareEventAsync">
-                Share
-            </AppButton>
+                </MudItem>
+            </MudGrid>
 
-            @if (_primarySession is not null)
-            {
-                <MudMenu Icon="@Icons.Material.Outlined.CalendarMonth"
-                         Variant="Variant.Outlined"
-                         Color="Color.Default"
-                         Size="Size.Small"
-                         Label="Add to Calendar"
-                         AnchorOrigin="Origin.BottomCenter"
-                         TransformOrigin="Origin.TopCenter">
-                    <MudMenuItem OnClick="@AddToGoogleCalendarAsync"
-                                 Icon="@Icons.Material.Outlined.Event">
-                        Google Calendar
-                    </MudMenuItem>
-                    <MudMenuItem OnClick="@DownloadIcsFileAsync"
-                                 Icon="@Icons.Material.Outlined.Download">
-                        Download .ics
-                    </MudMenuItem>
-                </MudMenu>
-            }
-        </div>
-
-    </MudContainer>
+        </MudContainer>
+    </div>
 
     @* ── Tag/Category Management Popup ── *@
     <TagCategoryManagerPopup
@@ -586,51 +555,48 @@
 else if (_isLoading)
 {
     @* ── Skeleton Loading State ── *@
-    <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
-        <MudSkeleton Width="120px" Height="36px" Class="mb-6" />
-        <MudGrid Spacing="6" Class="mb-8">
-            <MudItem xs="12" md="6">
-                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="300px" Class="rounded-xl" />
+    <MudContainer MaxWidth="MaxWidth.Large" Class="py-8 mt-8">
+        <MudGrid Spacing="8">
+            <MudItem xs="12" md="5" lg="4">
+                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="300px" Class="rounded-xl mb-6" />
+                <MudSkeleton Width="100px" Height="20px" Class="mb-3" />
+                <div class="d-flex align-center gap-3 mb-6">
+                    <MudSkeleton SkeletonType="SkeletonType.Circle" Width="40px" Height="40px" />
+                    <MudSkeleton Width="150px" Height="24px" />
+                </div>
+                <MudSkeleton Width="120px" Height="20px" Class="mb-2" />
+                <MudSkeleton Width="140px" Height="20px" Class="mb-2" />
             </MudItem>
-            <MudItem xs="12" md="6">
-                <MudStack Spacing="2" Class="mt-4">
-                    <div class="d-flex gap-2">
-                        <MudSkeleton Width="60px" Height="24px" />
-                        <MudSkeleton Width="80px" Height="24px" />
+            <MudItem xs="12" md="7" lg="8">
+                <div class="d-flex gap-2 mb-4">
+                    <MudSkeleton Width="80px" Height="24px" />
+                    <MudSkeleton Width="100px" Height="24px" />
+                </div>
+                <MudSkeleton Width="80%" Height="48px" Class="mb-6" />
+                <div class="d-flex gap-4 mb-8">
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="48px" Height="48px" Class="rounded-lg" />
+                    <div>
+                        <MudSkeleton Width="150px" Height="24px" Class="mb-1" />
+                        <MudSkeleton Width="100px" Height="16px" />
                     </div>
-                    <MudSkeleton Width="200px" Height="20px" />
-                    <MudSkeleton Width="100%" Height="40px" />
-                    <MudSkeleton Width="80%" Height="24px" />
-                    <div class="d-flex gap-3 align-center mt-4">
-                        <MudSkeleton SkeletonType="SkeletonType.Circle" Width="40px" Height="40px" />
-                        <div>
-                            <MudSkeleton Width="60px" Height="12px" Class="mb-1" />
-                            <MudSkeleton Width="120px" Height="16px" />
-                        </div>
-                    </div>
-                </MudStack>
+                </div>
+                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="140px" Class="rounded-xl mb-8" />
+                <MudSkeleton Width="120px" Height="28px" Class="mb-4" />
+                <MudSkeleton Width="100%" Height="20px" Class="mb-2" />
+                <MudSkeleton Width="95%" Height="20px" Class="mb-2" />
+                <MudSkeleton Width="90%" Height="20px" />
             </MudItem>
         </MudGrid>
-        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="80px" Class="rounded-xl mb-8" />
-        <MudGrid Spacing="4" Class="mb-8">
-            @for (var i = 0; i < 4; i++)
-            {
-                <MudItem xs="12" sm="6" md="3">
-                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="100px" Class="rounded-lg" />
-                </MudItem>
-            }
-        </MudGrid>
-        <MudSkeleton Width="200px" Height="28px" Class="mb-4" />
-        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="120px" Class="mb-2" />
-        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="80px" />
     </MudContainer>
 }
 else
 {
-    <MudContainer MaxWidth="MaxWidth.Medium" Class="py-16 text-center">
-        <MudIcon Icon="@Icons.Material.Outlined.EventBusy" Size="Size.Large" Color="Color.Secondary" Style="font-size: 4rem;" Class="mb-4" />
-        <MudText Typo="Typo.h4" Style="font-weight: 700;" Class="mb-2">Event not found</MudText>
-        <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-6">The event you are looking for might have been removed or is unavailable.</MudText>
-        <AppButton Href="/events" Size="Size.Large">Browse Events</AppButton>
-    </MudContainer>
+    <div class="d-flex align-center justify-center" style="min-height: 80vh;">
+        <MudContainer MaxWidth="MaxWidth.Medium" Class="text-center">
+            <MudIcon Icon="@Icons.Material.Outlined.EventBusy" Size="Size.Large" Color="Color.Secondary" Style="font-size: 5rem;" Class="mb-6" />
+            <MudText Typo="Typo.h3" Style="font-weight: 800;" Class="mb-4">Event not found</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-8" Style="font-size: 1.1rem;">The event you are looking for might have been removed or is unavailable.</MudText>
+            <AppButton Href="/events" Size="Size.Large" Color="Color.Primary" Variant="Variant.Filled" Class="px-8 py-3 rounded-lg font-weight-bold">Browse Events</AppButton>
+        </MudContainer>
+    </div>
 }

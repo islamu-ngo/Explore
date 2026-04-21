@@ -51,9 +51,9 @@
             }
 
             <MudGrid Spacing="4">
-                <MudItem xs="3" sm="3" md="3">
-                    <MudPaper Elevation="0" Class="settings-sidebar pa-0">
-                        <MudList T="string" Dense="false" DisablePadding="true">
+                <MudItem xs="12" md="3" Class="@(_showMobileMenu ? "d-block" : "d-none d-md-block")">
+                    <MudPaper Elevation="0" Class="settings-sidebar pa-0" Style="background-color: transparent;">
+                        <MudList T="string" Dense="true" DisablePadding="true">
                             <MudListItem Icon="@Icons.Material.Filled.Tune"
                                          Text="Profile & Branding"
                                          Class="@GetNavItemClass("profile")"
@@ -70,8 +70,13 @@
                     </MudPaper>
                 </MudItem>
 
-                <MudItem xs="9" sm="9" md="9">
-                    <MudPaper Elevation="0" Class="settings-content pa-6">
+                <MudItem xs="12" md="9" Class="@(!_showMobileMenu ? "d-block" : "d-none d-md-block")">
+                    <MudPaper Elevation="0" Class="settings-content pa-6" Style="background-color: transparent;">
+                        <div class="d-md-none mb-4">
+                            <AppButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="BackToMenu">
+                                Settings Menu
+                            </AppButton>
+                        </div>
                         @if (_currentSection == "profile")
                         {
                             <GroupProfileSection Model="_model"
@@ -105,6 +110,7 @@
     private bool _isSaving;
     private string? _errorMessage;
     private string _currentSection = "profile";
+    private bool _showMobileMenu = true;
 
     protected override async Task OnInitializedAsync()
     {
@@ -187,6 +193,12 @@
     private void SelectSection(string section)
     {
         _currentSection = section;
+        _showMobileMenu = false;
+    }
+
+    private void BackToMenu()
+    {
+        _showMobileMenu = true;
     }
 
     private string GetNavItemClass(string section)
