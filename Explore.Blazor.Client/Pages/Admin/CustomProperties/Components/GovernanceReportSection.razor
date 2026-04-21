@@ -1,0 +1,154 @@
+@* ABOUTME: Governance report surfacing promotion recommendations for Layer 3 definitions. *@
+@* ABOUTME: Operators review active-instance counts and act on Atlassian-style promotion guidance. *@
+
+@using Explore.Blazor.Client.Contracts.Services.CustomProperties
+@using Explore.Blazor.Client.Models
+@using Explore.Blazor.Client.Models.CustomProperties
+@using Explore.Domain.Enums
+@using MudBlazor
+@inject ICustomPropertyAdminService AdminService
+
+<div class="governance-report">
+    <div class="governance-report__toolbar mb-4">
+        <MudStack Row="true" Spacing="3" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
+            <MudSelect T="PromotionRecommendation?"
+                       @bind-Value="_recommendationFilter"
+                       @bind-Value:after="ReloadAsync"
+                       Label="Recommendation"
+                       Clearable="true"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       Dense="true"
+                       Style="min-width: 260px;">
+                <MudSelectItem T="PromotionRecommendation?" Value="null">All</MudSelectItem>
+                <MudSelectItem T="PromotionRecommendation?" Value="PromotionRecommendation.ConsiderProjectionFirst">Projection first</MudSelectItem>
+                <MudSelectItem T="PromotionRecommendation?" Value="PromotionRecommendation.ConsiderLayer2Promotion">Promote to Layer 2</MudSelectItem>
+                <MudSelectItem T="PromotionRecommendation?" Value="PromotionRecommendation.ConsiderLayer1Promotion">Promote to Layer 1</MudSelectItem>
+            </MudSelect>
+
+            <MudSpacer />
+
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                           OnClick="ReloadAsync"
+                           aria-label="Reload governance report"
+                           Disabled="_isLoading" />
+        </MudStack>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3">@_errorMessage</MudAlert>
+    }
+
+    @if (_isLoading)
+    {
+        <MudStack AlignItems="AlignItems.Center" Class="py-8">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-4">Generating governance report…</MudText>
+        </MudStack>
+    }
+    else if (_rows.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Class="mt-2">
+            No Layer 3 definitions match the current filter. Nothing to promote.
+        </MudAlert>
+    }
+    else
+    {
+        <MudTable Items="_rows" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm">
+            <HeaderContent>
+                <MudTh>Scope</MudTh>
+                <MudTh>Namespace / Key</MudTh>
+                <MudTh>Display Name</MudTh>
+                <MudTh>Type</MudTh>
+                <MudTh>Exposure</MudTh>
+                <MudTh>Active</MudTh>
+                <MudTh>Last Used</MudTh>
+                <MudTh>Recommendation</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Scope">@context.EntityScope</MudTd>
+                <MudTd DataLabel="Key">
+                    <MudText Typo="Typo.body2">@context.Namespace</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@context.Key</MudText>
+                </MudTd>
+                <MudTd DataLabel="Display">@context.DisplayName</MudTd>
+                <MudTd DataLabel="Type">@context.PropertyType</MudTd>
+                <MudTd DataLabel="Exposure">
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Variant="Variant.Filled"
+                             Color="@GovernanceTooltips.ExposureColor(context.ExposureLevel)">
+                        @context.ExposureLevel
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Active">@context.ActiveInstanceCount</MudTd>
+                <MudTd DataLabel="LastUsed">@(context.LastUsedAt?.ToString("yyyy-MM-dd") ?? "—")</MudTd>
+                <MudTd DataLabel="Recommendation">
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Color="@RecommendationColor(context.Recommendation)"
+                             Variant="Variant.Filled">
+                        @RecommendationLabel(context.Recommendation)
+                    </MudChip>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
+            @_rows.Count of @_totalCount definitions shown.
+        </MudText>
+    }
+</div>
+
+@code {
+    private bool _isLoading;
+    private string? _errorMessage;
+    private PromotionRecommendation? _recommendationFilter;
+    private List<CustomPropertyGovernanceRowModel> _rows = new();
+    private int _totalCount;
+
+    protected override Task OnInitializedAsync() => ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        try
+        {
+            var page = await AdminService.GetGovernanceReportAsync(
+                tenantId: null,
+                scope: null,
+                recommendation: _recommendationFilter,
+                pageNumber: 1,
+                pageSize: 200);
+            _rows = page.Items.OrderByDescending(r => r.ActiveInstanceCount).ToList();
+            _totalCount = page.TotalCount;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load governance report: {ex.Message}";
+            _rows = new List<CustomPropertyGovernanceRowModel>();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private static string RecommendationLabel(PromotionRecommendation r) => r switch
+    {
+        PromotionRecommendation.ConsiderProjectionFirst => "Consider projection-first",
+        PromotionRecommendation.ConsiderLayer2Promotion => "Consider Layer 2",
+        PromotionRecommendation.ConsiderLayer1Promotion => "Consider Layer 1",
+        _ => "No action"
+    };
+
+    private static Color RecommendationColor(PromotionRecommendation r) => r switch
+    {
+        PromotionRecommendation.ConsiderProjectionFirst => Color.Info,
+        PromotionRecommendation.ConsiderLayer2Promotion => Color.Warning,
+        PromotionRecommendation.ConsiderLayer1Promotion => Color.Error,
+        _ => Color.Default
+    };
+}

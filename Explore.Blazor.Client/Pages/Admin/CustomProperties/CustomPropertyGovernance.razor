@@ -1,0 +1,42 @@
+@* ABOUTME: Tenant-scoped custom-property governance workbench combining exposure flags, promotion report and projection health. *@
+@* ABOUTME: Route /admin/tenant/custom-properties. Requires tenant-admin claim. Pure shell that composes three section components. *@
+
+@page "/admin/tenant/custom-properties"
+@using Explore.Blazor.Client.Pages.Admin.CustomProperties.Components
+@using Microsoft.AspNetCore.Authorization
+@using MudBlazor
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Custom Property Governance</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-8 custom-property-governance">
+    <div class="custom-property-governance__header mb-6">
+        <MudText Typo="Typo.h4" HtmlTag="h1" Style="font-weight: 800;">Custom Property Governance</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">
+            Manage exposure, searchability, and analytics flags for tenant-scoped custom-property definitions.
+            Monitor projection health and review promotion recommendations for definitions that have outgrown Layer 3.
+        </MudText>
+        <MudLink Href="/docs/CUSTOM_PROPERTIES.md" Target="_blank" Class="mt-2 d-inline-flex align-center"
+                 aria-label="Open custom properties documentation in new tab">
+            <MudIcon Icon="@Icons.Material.Filled.MenuBook" Size="Size.Small" Class="mr-1" />
+            <MudText Typo="Typo.body2">Documentation</MudText>
+        </MudLink>
+    </div>
+
+    <MudTabs Elevation="0"
+             Rounded="true"
+             ApplyEffectsToContainer="true"
+             TabPanelsClass="pa-4"
+             PanelClass="custom-property-governance__panel">
+        <MudTabPanel Text="Exposure Flags" Icon="@Icons.Material.Filled.Visibility">
+            <ExposureGovernanceSection />
+        </MudTabPanel>
+        <MudTabPanel Text="Governance Report" Icon="@Icons.Material.Filled.Analytics">
+            <GovernanceReportSection />
+        </MudTabPanel>
+        <MudTabPanel Text="Projection Status" Icon="@Icons.Material.Filled.MonitorHeart">
+            <ProjectionStatusSection />
+        </MudTabPanel>
+    </MudTabs>
+</MudContainer>

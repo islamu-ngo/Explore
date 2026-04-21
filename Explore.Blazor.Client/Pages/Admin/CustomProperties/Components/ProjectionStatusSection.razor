@@ -1,0 +1,236 @@
+@* ABOUTME: Projection health and operations panel for event and session custom-property projections. *@
+@* ABOUTME: Exposes rebuild + drain controls and surfaces outstanding dirty scopes. *@
+
+@using Explore.Blazor.Client.Contracts.Services.CustomProperties
+@using Explore.Blazor.Client.Models.CustomProperties
+@using Explore.Blazor.Client.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@using MudBlazor
+@inject ICustomPropertyAdminService AdminService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<div class="projection-status">
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3" ShowCloseIcon="true" CloseIconClicked="() => _errorMessage = null">
+            @_errorMessage
+        </MudAlert>
+    }
+
+    <MudGrid Spacing="3">
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="0" Class="pa-4 rounded-lg border-solid border-1 mud-border-lines-default">
+                <MudText Typo="Typo.h6" Class="mb-2">Event Projection</MudText>
+                @RenderStatusBody(_eventStatus.FirstOrDefault())
+                <MudStack Row="true" Spacing="2" Class="mt-3">
+                    <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                               StartIcon="@Icons.Material.Filled.Cached"
+                               OnClick="() => RebuildAsync(true)"
+                               Disabled="_isRebuildingEvent">Rebuild</MudButton>
+                    <MudButton Color="Color.Warning" Variant="Variant.Outlined"
+                               StartIcon="@Icons.Material.Filled.WaterDrop"
+                               OnClick="DrainAsync"
+                               Disabled="_isDraining">Drain dirty scopes</MudButton>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="0" Class="pa-4 rounded-lg border-solid border-1 mud-border-lines-default">
+                <MudText Typo="Typo.h6" Class="mb-2">Session Projection</MudText>
+                @RenderStatusBody(_sessionStatus.FirstOrDefault())
+                <MudStack Row="true" Spacing="2" Class="mt-3">
+                    <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                               StartIcon="@Icons.Material.Filled.Cached"
+                               OnClick="() => RebuildAsync(false)"
+                               Disabled="_isRebuildingSession">Rebuild</MudButton>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <div class="projection-status__dirty mt-6">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+            <MudText Typo="Typo.h6">Dirty Scopes</MudText>
+            <MudSpacer />
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                           OnClick="ReloadDirtyScopesAsync"
+                           Disabled="_isLoadingDirty"
+                           aria-label="Reload dirty scopes" />
+        </MudStack>
+
+        @if (_isLoadingDirty)
+        {
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Small" />
+        }
+        else if (_dirtyScopes.Count == 0)
+        {
+            <MudAlert Severity="Severity.Success" Dense="true">No pending dirty scopes.</MudAlert>
+        }
+        else
+        {
+            <MudTable Items="_dirtyScopes" Dense="true" Hover="true">
+                <HeaderContent>
+                    <MudTh>Projection</MudTh>
+                    <MudTh>Scope Type</MudTh>
+                    <MudTh>Scope Id</MudTh>
+                    <MudTh>Reason</MudTh>
+                    <MudTh>Created</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.ProjectionName</MudTd>
+                    <MudTd>@context.ScopeType</MudTd>
+                    <MudTd>@context.ScopeId</MudTd>
+                    <MudTd>@context.Reason</MudTd>
+                    <MudTd>@FormatDateOrDash(context.CreatedAt)</MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthTask { get; set; }
+
+    private bool _isLoadingDirty;
+    private bool _isRebuildingEvent;
+    private bool _isRebuildingSession;
+    private bool _isDraining;
+    private string? _errorMessage;
+
+    private IReadOnlyList<ProjectionStatusModel> _eventStatus = Array.Empty<ProjectionStatusModel>();
+    private IReadOnlyList<ProjectionStatusModel> _sessionStatus = Array.Empty<ProjectionStatusModel>();
+    private List<ProjectionDirtyScopeModel> _dirtyScopes = new();
+    private Guid? _tenantId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthTask is not null)
+        {
+            var state = await AuthTask;
+            var tidClaim = state.User?.FindFirst("tenant_id")?.Value ?? state.User?.FindFirst("tid")?.Value;
+            if (Guid.TryParse(tidClaim, out var tid))
+                _tenantId = tid;
+        }
+        await Task.WhenAll(ReloadEventStatusAsync(), ReloadSessionStatusAsync(), ReloadDirtyScopesAsync());
+    }
+
+    private async Task ReloadEventStatusAsync()
+    {
+        try { _eventStatus = await AdminService.GetEventProjectionStatusAsync(_tenantId); }
+        catch (Exception ex) { _errorMessage = $"Failed to load event projection status: {ex.Message}"; }
+    }
+
+    private async Task ReloadSessionStatusAsync()
+    {
+        try { _sessionStatus = await AdminService.GetSessionProjectionStatusAsync(_tenantId); }
+        catch (Exception ex) { _errorMessage = $"Failed to load session projection status: {ex.Message}"; }
+    }
+
+    private async Task ReloadDirtyScopesAsync()
+    {
+        _isLoadingDirty = true;
+        try
+        {
+            var page = await AdminService.GetDirtyScopesAsync(_tenantId, null, 1, 100);
+            _dirtyScopes = page.Items.ToList();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load dirty scopes: {ex.Message}";
+            _dirtyScopes = new List<ProjectionDirtyScopeModel>();
+        }
+        finally { _isLoadingDirty = false; }
+    }
+
+    private async Task RebuildAsync(bool isEvent)
+    {
+        if (_tenantId is null)
+        {
+            Snackbar.Add("Tenant context unavailable.", Severity.Warning);
+            return;
+        }
+
+        var confirm = await DialogService.ShowMessageBoxAsync(new MessageBoxOptions
+        {
+            Title = $"Rebuild {(isEvent ? "event" : "session")} projection",
+            Message = "This will replay the projection from source entities. Continue?",
+            YesText = "Rebuild",
+            CancelText = "Cancel"
+        }, DialogOptionsFactory.Confirmation());
+        if (confirm != true) return;
+
+        if (isEvent) _isRebuildingEvent = true; else _isRebuildingSession = true;
+        try
+        {
+            var response = isEvent
+                ? await AdminService.RebuildEventProjectionAsync(_tenantId.Value)
+                : await AdminService.RebuildSessionProjectionAsync(_tenantId.Value);
+            if (response is null || !response.Success)
+            {
+                _errorMessage = response?.Message ?? "Rebuild failed.";
+                Snackbar.Add(_errorMessage, Severity.Error);
+                return;
+            }
+            Snackbar.Add("Rebuild complete.", Severity.Success);
+            if (isEvent) await ReloadEventStatusAsync(); else await ReloadSessionStatusAsync();
+            await ReloadDirtyScopesAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Rebuild failed: {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        finally
+        {
+            if (isEvent) _isRebuildingEvent = false; else _isRebuildingSession = false;
+        }
+    }
+
+    private async Task DrainAsync()
+    {
+        if (_tenantId is null)
+        {
+            Snackbar.Add("Tenant context unavailable.", Severity.Warning);
+            return;
+        }
+        _isDraining = true;
+        try
+        {
+            var response = await AdminService.DrainDirtyScopesAsync(_tenantId.Value, null);
+            if (response is null || !response.Success)
+            {
+                _errorMessage = response?.Message ?? "Drain failed.";
+                Snackbar.Add(_errorMessage, Severity.Error);
+                return;
+            }
+            Snackbar.Add($"Drained {response.Id?.DrainedCount ?? 0} dirty scopes.", Severity.Success);
+            await ReloadDirtyScopesAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Drain failed: {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        finally { _isDraining = false; }
+    }
+
+    private static string FormatDateOrDash(DateTimeOffset? dt) => dt.HasValue ? dt.Value.ToString("yyyy-MM-dd HH:mm") : "—";
+
+    private RenderFragment RenderStatusBody(ProjectionStatusModel? status) => builder =>
+    {
+        if (status is null)
+        {
+            builder.AddMarkupContent(0, "<div style=\"color:var(--mud-palette-text-secondary)\">No status available.</div>");
+        }
+        else
+        {
+            builder.AddMarkupContent(0, $"<div><strong>Version:</strong> {status.ProjectionVersion}</div>");
+            builder.AddMarkupContent(1, $"<div><strong>Rows processed:</strong> {status.RowsProcessed}</div>");
+            builder.AddMarkupContent(2, $"<div><strong>Rows failed:</strong> {status.RowsFailed}</div>");
+            builder.AddMarkupContent(3, $"<div><strong>Last rebuild:</strong> {FormatDateOrDash(status.LastRebuildCompletedAt)}</div>");
+            if (!string.IsNullOrWhiteSpace(status.LastErrorMessage))
+                builder.AddMarkupContent(4, $"<div style=\"color:var(--mud-palette-error)\"><strong>Last error:</strong> {System.Net.WebUtility.HtmlEncode(status.LastErrorMessage)}</div>");
+        }
+    };
+}

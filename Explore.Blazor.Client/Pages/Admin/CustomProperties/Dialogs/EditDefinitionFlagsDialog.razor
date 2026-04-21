@@ -1,0 +1,123 @@
+@* ABOUTME: Dialog for editing governance flags on one or many custom-property definitions. *@
+@* ABOUTME: Emits a DefinitionFlagUpdateModel which the parent fans out to the admin service. *@
+
+@using Explore.Blazor.Client.Models.CustomProperties
+@using Explore.Blazor.Client.Pages.Admin.CustomProperties.Components
+@using Explore.Domain.Enums
+@using MudBlazor
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Tune" Class="mr-3 mb-n1" />
+            @(IsBulkMode ? "Bulk edit governance flags" : "Edit governance flags")
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (Definitions is null || Definitions.Count == 0)
+        {
+            <MudAlert Severity="Severity.Warning">No definitions supplied.</MudAlert>
+        }
+        else
+        {
+            @if (IsBulkMode)
+            {
+                <MudAlert Severity="Severity.Info" Dense="true" Class="mb-4">
+                    Applying flags to <strong>@Definitions.Count</strong> definitions. All selected flags will be overwritten.
+                </MudAlert>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Class="mb-4">
+                    <strong>@Definitions[0].DisplayName</strong>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Inline="true" Class="ml-2">
+                        @Definitions[0].Namespace / @Definitions[0].Key
+                    </MudText>
+                </MudText>
+            }
+
+            <MudStack Spacing="3">
+                <div>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-1">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Exposure Level</MudText>
+                        <MudTooltip Text="@GovernanceTooltips.ExposureLevel" Placement="Placement.Top">
+                            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Info" />
+                        </MudTooltip>
+                    </MudStack>
+                    <MudSelect T="ExposureLevel" @bind-Value="_update.ExposureLevel" Variant="Variant.Outlined" Dense="true" Margin="Margin.Dense">
+                        <MudSelectItem Value="ExposureLevel.Internal">Internal (admins only)</MudSelectItem>
+                        <MudSelectItem Value="ExposureLevel.OrganizerOnly">Organizer only</MudSelectItem>
+                        <MudSelectItem Value="ExposureLevel.TenantAdminOnly">Tenant admin only</MudSelectItem>
+                        <MudSelectItem Value="ExposureLevel.Public">Public</MudSelectItem>
+                    </MudSelect>
+                </div>
+
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudSwitch T="bool" @bind-Value="_update.IsSearchable" Color="Color.Primary" Label="Searchable" />
+                    <MudTooltip Text="@GovernanceTooltips.Searchable" Placement="Placement.Top">
+                        <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Info" />
+                    </MudTooltip>
+                </MudStack>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudSwitch T="bool" @bind-Value="_update.IsFilterable" Color="Color.Primary" Label="Filterable" />
+                    <MudTooltip Text="@GovernanceTooltips.Filterable" Placement="Placement.Top">
+                        <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Info" />
+                    </MudTooltip>
+                </MudStack>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudSwitch T="bool" @bind-Value="_update.IsExportable" Color="Color.Primary" Label="Exportable" />
+                    <MudTooltip Text="@GovernanceTooltips.Exportable" Placement="Placement.Top">
+                        <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Info" />
+                    </MudTooltip>
+                </MudStack>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudSwitch T="bool" @bind-Value="_update.IsModerationRelevant" Color="Color.Primary" Label="Moderation relevant" />
+                    <MudTooltip Text="@GovernanceTooltips.Moderation" Placement="Placement.Top">
+                        <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Info" />
+                    </MudTooltip>
+                </MudStack>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudSwitch T="bool" @bind-Value="_update.IsAnalyticsRelevant" Color="Color.Primary" Label="Analytics relevant" />
+                    <MudTooltip Text="@GovernanceTooltips.Analytics" Placement="Placement.Top">
+                        <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Info" />
+                    </MudTooltip>
+                </MudStack>
+            </MudStack>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="@(Definitions is null || Definitions.Count == 0)">
+            @(IsBulkMode ? "Apply to all" : "Save")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IDialogReference? DialogReference { get; set; }
+
+    [Parameter, EditorRequired] public IReadOnlyList<CustomPropertyDefinitionListModel> Definitions { get; set; } = Array.Empty<CustomPropertyDefinitionListModel>();
+    [Parameter] public bool IsBulkMode { get; set; }
+
+    private DefinitionFlagUpdateModel _update = new();
+
+    protected override void OnInitialized()
+    {
+        if (Definitions is null || Definitions.Count == 0)
+            return;
+        var seed = Definitions[0];
+        _update = new DefinitionFlagUpdateModel
+        {
+            DefinitionId = IsBulkMode ? Guid.Empty : seed.Id,
+            ExposureLevel = seed.ExposureLevel,
+            IsSearchable = seed.IsSearchable,
+            IsFilterable = seed.IsFilterable,
+            IsExportable = seed.IsExportable,
+            IsModerationRelevant = seed.IsModerationRelevant,
+            IsAnalyticsRelevant = seed.IsAnalyticsRelevant
+        };
+    }
+
+    private void Submit() => DialogReference?.Close(DialogResult.Ok(_update));
+    private void Cancel() => DialogReference?.Close(DialogResult.Cancel());
+}

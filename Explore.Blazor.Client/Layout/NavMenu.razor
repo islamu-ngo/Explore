@@ -273,6 +273,10 @@
                                             <MudIcon Icon="@Icons.Material.Filled.Domain" Size="Size.Small" />
                                             @(_isSingleTenantMode ? "Administration" : "Tenant Administration")
                                         </a>
+                                        <a href="/admin/tenant/custom-properties" class="navbar__dropdown-item" @onclick="CloseDropdown">
+                                            <MudIcon Icon="@Icons.Material.Filled.Tune" Size="Size.Small" />
+                                            Custom Property Governance
+                                        </a>
                                     }
 
                                     @foreach (var orgId in GetAdminOrganizationIds(context.User))
