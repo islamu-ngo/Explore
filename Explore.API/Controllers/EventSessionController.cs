@@ -4,6 +4,7 @@
 using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.Hateoas;
+using Explore.API.Models;
 using Explore.Application.DTOs.EventSession;
 using Explore.Application.Features.EventSessions.Requests.Commands;
 using Explore.Application.Features.EventSessions.Requests.Queries;
@@ -50,18 +51,22 @@ public class EventSessionController : ControllerBase
     [EndpointSummary("Get all Event Sessions")]
     [EndpointDescription("Get a paginated list of all event sessions. " +
         "Default page size is 20, max is 100. " +
+        "Supports custom-property projection filters and text search gated behind the " +
+        "tenant feature flag 'custom_properties.projection_discovery_enabled'. " +
         "Response includes HATEOAS navigation links. " +
         "Send 'Prefer: return=minimal' header to strip links.")]
     [ProducesResponseType(typeof(HalCollectionResource<EventSessionListDto>), StatusCodes.Status200OK)]
     [OutputCache(PolicyName = "ListData")]
     public async Task<ActionResult<HalCollectionResource<EventSessionListDto>>> GetAll(
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
+        [FromQuery] EventSessionFilterRequest filter,
+        CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(new GetEventSessionListRequest
         {
-            PageNumber = pageNumber,
-            PageSize = pageSize
+            PageNumber = filter.PageNumber,
+            PageSize = filter.PageSize,
+            CustomPropertyFilters = filter.CustomPropertyFilters,
+            CustomPropertySearchTerm = filter.CustomPropertySearchTerm
         }, cancellationToken);
 
         var halResource = await _resourceAssembler.ToCollectionResource(

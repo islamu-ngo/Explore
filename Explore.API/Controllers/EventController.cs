@@ -59,6 +59,8 @@ public class EventController : ExploreControllerBase
         "Supports module-conditional aspect filters: Islamic (genderMode, quranRecitation, referencePrayer, islamicLanguage) " +
         "and Tech (skillLevel, codingCompetition, hackathon, requiresLaptop, techStack). " +
         "Aspect filters are silently ignored when the corresponding module is not enabled for the tenant. " +
+        "Supports custom-property projection filters and text search gated behind the tenant feature flag " +
+        "'custom_properties.projection_discovery_enabled' — silently ignored when disabled. " +
         "Supports sorting by date, title, views, or createdAt. " +
         "Response includes HATEOAS navigation links (first, prev, next, last). " +
         "Send 'Prefer: return=minimal' header to strip links.")]
@@ -105,7 +107,9 @@ public class EventController : ExploreControllerBase
             TechStackTag = filter.TechStackTag,
             HasTechAspect = filter.HasTechAspect,
             SortBy = filter.SortBy,
-            SortDescending = filter.SortDescending
+            SortDescending = filter.SortDescending,
+            CustomPropertyFilters = filter.CustomPropertyFilters,
+            CustomPropertySearchTerm = filter.CustomPropertySearchTerm
         }, cancellationToken);
 
         var halResource = await _resourceAssembler.ToCollectionResource(

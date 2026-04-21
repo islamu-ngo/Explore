@@ -1,5 +1,7 @@
-// ABOUTME: Query-bindable model for EventController.GetAll — collapses 42 individual parameters into a single [FromQuery] target.
+// ABOUTME: Query-bindable model for EventController.GetAll — collapses 40+ individual parameters into a single [FromQuery] target.
 // ABOUTME: Transport concern only; mapped to GetEventListRequest (MediatR) in the controller.
+
+using Explore.Application.DTOs.CustomPropertyProjection;
 
 namespace Explore.API.Models;
 
@@ -45,4 +47,13 @@ public sealed class EventFilterRequest
 
     public string? SortBy { get; set; }
     public bool SortDescending { get; set; } = true;
+
+    /// <summary>
+    /// Indexed query-string binding, e.g.
+    /// <c>?CustomPropertyFilters[0].Namespace=tenant&amp;CustomPropertyFilters[0].Key=region&amp;CustomPropertyFilters[0].Operator=Equals&amp;CustomPropertyFilters[0].Value=west</c>.
+    /// Silently ignored when tenant flag <c>custom_properties.projection_discovery_enabled</c> is off.
+    /// </summary>
+    public List<CustomPropertyFilterCriterion>? CustomPropertyFilters { get; set; }
+
+    public string? CustomPropertySearchTerm { get; set; }
 }
