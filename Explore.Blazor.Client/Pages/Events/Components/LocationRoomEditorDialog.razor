@@ -1,0 +1,205 @@
+@* ABOUTME: Dialog for creating/editing a LocationRoom. Fields: name, capacity, description, sort order. *@
+@* ABOUTME: Used by LocationRoomManager for both create and edit flows. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services.Events
+
+@inject ILocationRoomService RoomService
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.MeetingRoom" />
+            <MudText Typo="Typo.h6">@(IsNew ? "Add Room" : "Edit Room")</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        @if (_isLoadingDetail)
+        {
+            <div class="d-flex justify-center pa-4">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+            </div>
+        }
+        else
+        {
+            <MudForm @ref="_form" @bind-IsValid="_isValid">
+                <MudStack Spacing="3">
+                    <AppTextField T="string"
+                                  @bind-Value="_name"
+                                  Label="Room Name"
+                                  Placeholder="e.g. Main Hall, Room A, Workshop Space"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="Room name is required"
+                                  FullWidth="true" />
+
+                    <AppTextField T="string"
+                                  @bind-Value="_slug"
+                                  Label="Slug"
+                                  Placeholder="auto-generated if blank"
+                                  Variant="Variant.Outlined"
+                                  FullWidth="true" />
+
+                    <MudNumericField T="int"
+                                     @bind-Value="_capacity"
+                                     Label="Capacity"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense"
+                                     Min="0"
+                                     Placeholder="0 = unlimited" />
+
+                    <AppTextField T="string"
+                                  @bind-Value="_description"
+                                  Label="Description"
+                                  Placeholder="Optional room description"
+                                  Variant="Variant.Outlined"
+                                  Lines="2"
+                                  FullWidth="true" />
+
+                    <MudNumericField T="int"
+                                     @bind-Value="_sortOrder"
+                                     Label="Sort Order"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense"
+                                     Min="1" />
+                </MudStack>
+            </MudForm>
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">@_errorMessage</MudAlert>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <AppButton Variant="Variant.Text" OnClick="Cancel">Cancel</AppButton>
+        <AppButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="Save"
+                   Disabled="@(_isSaving || !_isValid)">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @(IsNew ? "Add" : "Save")
+        </AppButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public Guid LocationId { get; set; }
+    [Parameter] public Guid? RoomId { get; set; }
+    [Parameter] public bool IsNew { get; set; } = true;
+    [Parameter] public int InitialSortOrder { get; set; } = 1;
+
+    private MudForm? _form;
+    private bool _isValid;
+    private bool _isSaving;
+    private bool _isLoadingDetail;
+    private string _errorMessage = string.Empty;
+
+    // Form fields
+    private string _name = string.Empty;
+    private string _slug = string.Empty;
+    private string _description = string.Empty;
+    private int _capacity;
+    private int _sortOrder = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _sortOrder = InitialSortOrder;
+
+        if (!IsNew && RoomId.HasValue)
+        {
+            _isLoadingDetail = true;
+            var room = await RoomService.GetRoomByIdAsync(RoomId.Value);
+            if (room != null)
+            {
+                _name = room.Name;
+                _slug = room.Slug;
+                _description = room.Description;
+                _capacity = room.Capacity ?? 0;
+                _sortOrder = room.SortOrder;
+            }
+            _isLoadingDetail = false;
+        }
+    }
+
+    private async Task Save()
+    {
+        if (_form != null)
+        {
+            await _form.Validate();
+            if (!_isValid) return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_name))
+        {
+            _errorMessage = "Room name is required.";
+            return;
+        }
+
+        _isSaving = true;
+        _errorMessage = string.Empty;
+
+        try
+        {
+            if (IsNew)
+            {
+                var dto = new CreateLocationRoomDto
+                {
+                    LocationId = LocationId,
+                    Name = _name.Trim(),
+                    Slug = string.IsNullOrWhiteSpace(_slug) ? null : _slug.Trim(),
+                    Description = string.IsNullOrWhiteSpace(_description) ? null : _description,
+                    Capacity = _capacity,
+                    SortOrder = _sortOrder
+                };
+
+                var result = await RoomService.CreateRoomAsync(dto);
+                if (result?.Success == true)
+                {
+                    MudDialog.Close(DialogResult.Ok(result.Id));
+                }
+                else
+                {
+                    _errorMessage = result?.Message ?? "Failed to create room.";
+                }
+            }
+            else if (RoomId.HasValue)
+            {
+                var dto = new UpdateLocationRoomDto
+                {
+                    Name = _name.Trim(),
+                    Slug = string.IsNullOrWhiteSpace(_slug) ? null : _slug.Trim(),
+                    Description = string.IsNullOrWhiteSpace(_description) ? null : _description,
+                    Capacity = _capacity,
+                    SortOrder = _sortOrder
+                };
+
+                var result = await RoomService.UpdateRoomAsync(RoomId.Value, dto);
+                if (result?.Success == true)
+                {
+                    MudDialog.Close(DialogResult.Ok(result.Id));
+                }
+                else
+                {
+                    _errorMessage = result?.Message ?? "Failed to update room.";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

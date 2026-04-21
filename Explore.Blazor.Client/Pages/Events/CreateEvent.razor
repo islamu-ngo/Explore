@@ -441,6 +441,116 @@
                         Add Session
                     </AppButton>
 
+                    @* --- Scheduling: Days, Rooms & Agenda (local state, sent with create request) --- *@
+                    <MudExpansionPanels Class="mb-4" Elevation="0">
+                        <MudExpansionPanel Text="Scheduling (Days, Rooms & Agenda)" MaxHeight="2000"
+                                           Class="rounded-lg border-solid border-1 mud-border-lines-default">
+                            @* Days *@
+                            <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">Event Days</MudText>
+                            @if (_inlineDays.Any())
+                            {
+                                <div class="d-flex flex-column gap-2 mb-2">
+                                    @foreach (var day in _inlineDays)
+                                    {
+                                        <MudPaper Class="pa-2 d-flex align-center justify-space-between" Elevation="0" Outlined="true">
+                                            <div>
+                                                <MudText Typo="Typo.body2">@day.LocalDate.ToString("ddd, MMM d yyyy")</MudText>
+                                                @if (!string.IsNullOrEmpty(day.Label))
+                                                {
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@day.Label</MudText>
+                                                }
+                                            </div>
+                                            <AppIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                                           OnClick="@(() => _inlineDays.Remove(day))" />
+                                        </MudPaper>
+                                    }
+                                </div>
+                            }
+                            <div class="d-flex gap-2 mb-3">
+                                <MudDatePicker @bind-Date="_newDayDate" Label="Day date" Margin="Margin.Dense" Variant="Variant.Outlined" Class="flex-grow-1" />
+                                <AppTextField T="string" @bind-Value="_newDayLabel" Label="Label (optional)" Margin="Margin.Dense" Variant="Variant.Outlined" />
+                                <AppButton Variant="Variant.Outlined" Size="Size.Small" OnClick="AddInlineDay"
+                                           Disabled="@(!_newDayDate.HasValue)">Add Day</AppButton>
+                            </div>
+
+                            @* Rooms (only when a location is selected) *@
+                            @if (sessions.Count > 0 && sessions[0].LocationId.HasValue)
+                            {
+                                <MudDivider Class="my-3" />
+                                <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">Rooms</MudText>
+                                @if (_inlineRooms.Any())
+                                {
+                                    <div class="d-flex flex-wrap gap-2 mb-2">
+                                        @foreach (var room in _inlineRooms)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                                                     OnClose="@(() => _inlineRooms.Remove(room))">
+                                                @room.Name @(room.Capacity.HasValue ? $"({room.Capacity})" : "")
+                                            </MudChip>
+                                        }
+                                    </div>
+                                }
+                                <div class="d-flex gap-2 mb-3">
+                                    <AppTextField T="string" @bind-Value="_newRoomName" Label="Room name" Margin="Margin.Dense" Variant="Variant.Outlined" Class="flex-grow-1" />
+                                    <MudNumericField T="int?" @bind-Value="_newRoomCapacity" Label="Capacity" Margin="Margin.Dense" Variant="Variant.Outlined" Min="0" Style="max-width: 100px;" />
+                                    <AppButton Variant="Variant.Outlined" Size="Size.Small" OnClick="AddInlineRoom"
+                                               Disabled="@(string.IsNullOrWhiteSpace(_newRoomName))">Add Room</AppButton>
+                                </div>
+                            }
+
+                            @* Agenda Items *@
+                            @if (_inlineDays.Any())
+                            {
+                                <MudDivider Class="my-3" />
+                                <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">Agenda Items</MudText>
+                                @if (_inlineAgendaItems.Any())
+                                {
+                                    <div class="d-flex flex-column gap-2 mb-2">
+                                        @foreach (var item in _inlineAgendaItems)
+                                        {
+                                            <MudPaper Class="pa-2 d-flex align-center justify-space-between" Elevation="0" Outlined="true">
+                                                <div>
+                                                    <MudText Typo="Typo.body2">@item.Title</MudText>
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                        @item.StartTime.ToString("HH:mm") - @item.EndTime.ToString("HH:mm")
+                                                    </MudText>
+                                                </div>
+                                                <AppIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                                               OnClick="@(() => _inlineAgendaItems.Remove(item))" />
+                                            </MudPaper>
+                                        }
+                                    </div>
+                                }
+                                <div class="d-flex flex-column gap-2 mb-3">
+                                    <AppTextField T="string" @bind-Value="_newAgendaTitle" Label="Title" Margin="Margin.Dense" Variant="Variant.Outlined" FullWidth="true" />
+                                    <div class="d-flex gap-2">
+                                        <MudSelect T="DateOnly?" @bind-Value="_newAgendaDayDate" Label="Day" Margin="Margin.Dense" Variant="Variant.Outlined" Class="flex-grow-1">
+                                            @foreach (var day in _inlineDays)
+                                            {
+                                                <MudSelectItem T="DateOnly?" Value="@((DateOnly?)day.LocalDate)">@day.LocalDate.ToString("ddd, MMM d")</MudSelectItem>
+                                            }
+                                        </MudSelect>
+                                        <MudTimePicker @bind-Time="_newAgendaStartTime" Label="Start" Margin="Margin.Dense" Variant="Variant.Outlined" />
+                                        <MudTimePicker @bind-Time="_newAgendaEndTime" Label="End" Margin="Margin.Dense" Variant="Variant.Outlined" />
+                                    </div>
+                                    @if (_inlineRooms.Any())
+                                    {
+                                        <MudSelect T="int?" @bind-Value="_newAgendaRoomIndex" Label="Room (optional)" Margin="Margin.Dense" Variant="Variant.Outlined" Clearable="true">
+                                            @for (int ri = 0; ri < _inlineRooms.Count; ri++)
+                                            {
+                                                <MudSelectItem T="int?" Value="@((int?)ri)">@_inlineRooms[ri].Name</MudSelectItem>
+                                            }
+                                        </MudSelect>
+                                    }
+                                    <AppButton Variant="Variant.Outlined" Size="Size.Small" OnClick="AddInlineAgendaItem"
+                                               Disabled="@(string.IsNullOrWhiteSpace(_newAgendaTitle) || !_newAgendaDayDate.HasValue || !_newAgendaStartTime.HasValue || !_newAgendaEndTime.HasValue)">
+                                        Add Agenda Item
+                                    </AppButton>
+                                </div>
+                            }
+                        </MudExpansionPanel>
+                    </MudExpansionPanels>
+
                     @* --- Event Options (Luma-style rows) --- *@
                     <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">Event Options</MudText>
                     <div class="create-event__options">
@@ -521,6 +631,28 @@
                                     }
                                 </MudSelect>
                             </div>
+                        </div>
+
+                        @* Registration Policy *@
+                        <div class="create-event__option-row">
+                            <div class="d-flex align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Policy" Size="Size.Small" Color="Color.Secondary" />
+                                <MudText Typo="Typo.body2">Registration Policy</MudText>
+                            </div>
+                            <MudSelect T="int?" @bind-Value="createDto.RegistrationPolicyId"
+                                       Variant="Variant.Text" Margin="Margin.Dense"
+                                       AnchorOrigin="Origin.BottomCenter"
+                                       Class="create-event__option-select"
+                                       Placeholder="Default (Open)">
+                                <MudSelectItem T="int?" Value="@((int?)null)">Default (Open)</MudSelectItem>
+                                @if (registrationPolicies != null)
+                                {
+                                    @foreach (var policy in registrationPolicies)
+                                    {
+                                        <MudSelectItem T="int?" Value="@((int?)policy.Id)">@policy.FullName</MudSelectItem>
+                                    }
+                                }
+                            </MudSelect>
                         </div>
 
                         @* Categories *@

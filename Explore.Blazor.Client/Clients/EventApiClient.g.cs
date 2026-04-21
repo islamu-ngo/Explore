@@ -42114,6 +42114,15 @@ namespace Explore.Blazor.Client.Clients
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? RegistrationPolicyId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("days")]
+        public System.Collections.Generic.ICollection<InlineEventDayDto>? Days { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("rooms")]
+        public System.Collections.Generic.ICollection<InlineLocationRoomDto>? Rooms { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("agendaItems")]
+        public System.Collections.Generic.ICollection<InlineEventAgendaItemDto>? AgendaItems { get; set; } = default!;
+
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
         [System.Text.Json.Serialization.JsonExtensionData]
@@ -48198,6 +48207,122 @@ namespace Explore.Blazor.Client.Clients
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class InlineEventAgendaItemDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("title")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Title { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("description")]
+        public string? Description { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("startTime")]
+        public System.DateTimeOffset? StartTime { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("endTime")]
+        public System.DateTimeOffset? EndTime { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("roomId")]
+        public System.Guid? RoomId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("kindId")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? KindId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sortOrder")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SortOrder { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class InlineEventDayDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("localDate")]
+        [System.Text.Json.Serialization.JsonConverter(typeof(DateFormatConverter))]
+        public System.DateTimeOffset? LocalDate { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("label")]
+        public string? Label { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("description")]
+        public string? Description { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("bannerText")]
+        public string? BannerText { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("bannerImageId")]
+        public System.Guid? BannerImageId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("isPublished")]
+        public bool? IsPublished { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sortOrder")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SortOrder { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("allowsDayScopeRegistration")]
+        public bool? AllowsDayScopeRegistration { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class InlineLocationRoomDto
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("locationId")]
+        public System.Guid? LocationId { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("name")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Name { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("slug")]
+        public string? Slug { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("description")]
+        public string? Description { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("capacity")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Capacity { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("sortOrder")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SortOrder { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class InstanceOnboardingStatusDto
     {
 
@@ -49026,6 +49151,9 @@ namespace Explore.Blazor.Client.Clients
 
         [System.Text.Json.Serialization.JsonPropertyName("id")]
         public System.Guid? Id { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("tenantId")]
+        public System.Guid? TenantId { get; set; } = default!;
 
         [System.Text.Json.Serialization.JsonPropertyName("fullName")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]

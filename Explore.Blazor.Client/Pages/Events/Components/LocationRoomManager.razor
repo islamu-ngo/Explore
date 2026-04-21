@@ -1,0 +1,176 @@
+@* ABOUTME: Manages LocationRoom list for a location - displays rooms with add/edit/delete. *@
+@* ABOUTME: Embedded in event management pages to configure rooms for venue scheduling. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services.Events
+
+@inject ILocationRoomService RoomService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<div class="location-room-manager">
+    <div class="d-flex align-center justify-space-between mb-2">
+        <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Rooms</MudText>
+        <AppButton StartIcon="@Icons.Material.Filled.Add"
+                   Variant="Variant.Text"
+                   Size="Size.Small"
+                   Color="Color.Primary"
+                   OnClick="OpenCreateDialog"
+                   Disabled="@(!CanManage || LocationId == Guid.Empty)">
+            Add Room
+        </AppButton>
+    </div>
+
+    @if (LocationId == Guid.Empty)
+    {
+        <MudText Typo="Typo.caption" Color="Color.Secondary">Select a location first to manage rooms.</MudText>
+    }
+    else if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-2" />
+    }
+    else if (_rooms.Count == 0)
+    {
+        <MudText Typo="Typo.caption" Color="Color.Secondary">No rooms configured for this location.</MudText>
+    }
+    else
+    {
+        <div class="d-flex flex-wrap gap-2">
+            @foreach (var room in _rooms.OrderBy(r => r.SortOrder))
+            {
+                <MudChip T="string"
+                         Size="Size.Small"
+                         Variant="Variant.Outlined"
+                         Color="Color.Primary"
+                         OnClose="@(CanManage ? () => DeleteRoom(room) : null)"
+                         OnClick="@(() => { if (CanManage) OpenEditDialog(room); })">
+                    @room.Name
+                    @if (room.Capacity > 0)
+                    {
+                        <span class="ml-1 mud-text-secondary">(@room.Capacity)</span>
+                    }
+                </MudChip>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid LocationId { get; set; }
+    [Parameter] public bool CanManage { get; set; } = true;
+    [Parameter] public EventCallback<List<LocationRoomListDto>> OnRoomsChanged { get; set; }
+
+    private List<LocationRoomListDto> _rooms = new();
+    private bool _isLoading;
+    private Guid _previousLocationId;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (LocationId != Guid.Empty && LocationId != _previousLocationId)
+        {
+            _previousLocationId = LocationId;
+            await LoadRooms();
+        }
+        else if (LocationId == Guid.Empty)
+        {
+            _rooms.Clear();
+            _previousLocationId = Guid.Empty;
+        }
+    }
+
+    public async Task LoadRooms()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await RoomService.GetRoomsByLocationAsync(LocationId);
+            _rooms = result?.ToList() ?? new List<LocationRoomListDto>();
+            await OnRoomsChanged.InvokeAsync(_rooms);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var nextSortOrder = _rooms.Count > 0 ? _rooms.Max(r => r.SortOrder) + 1 : 1;
+        var parameters = new DialogParameters<LocationRoomEditorDialog>
+        {
+            { x => x.LocationId, LocationId },
+            { x => x.IsNew, true },
+            { x => x.InitialSortOrder, nextSortOrder }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            CloseOnEscapeKey = true
+        };
+
+        var dialog = await DialogService.ShowAsync<LocationRoomEditorDialog>("Add Room", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await LoadRooms();
+            Snackbar.Add("Room added successfully", Severity.Success);
+        }
+    }
+
+    private async Task OpenEditDialog(LocationRoomListDto room)
+    {
+        var parameters = new DialogParameters<LocationRoomEditorDialog>
+        {
+            { x => x.LocationId, LocationId },
+            { x => x.IsNew, false },
+            { x => x.RoomId, room.Id },
+            { x => x.InitialSortOrder, room.SortOrder }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            CloseOnEscapeKey = true
+        };
+
+        var dialog = await DialogService.ShowAsync<LocationRoomEditorDialog>("Edit Room", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await LoadRooms();
+            Snackbar.Add("Room updated successfully", Severity.Success);
+        }
+    }
+
+    private async Task DeleteRoom(LocationRoomListDto room)
+    {
+        var confirm = await DialogService.ShowMessageBoxAsync(
+            "Delete Room",
+            $"Are you sure you want to delete room \"{room.Name}\"?",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (confirm == true)
+        {
+            var success = await RoomService.DeleteRoomAsync(room.Id);
+            if (success)
+            {
+                await LoadRooms();
+                Snackbar.Add("Room deleted", Severity.Info);
+            }
+            else
+            {
+                Snackbar.Add("Failed to delete room", Severity.Error);
+            }
+        }
+    }
+}

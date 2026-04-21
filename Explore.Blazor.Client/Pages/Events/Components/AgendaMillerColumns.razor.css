@@ -1,0 +1,97 @@
+ABOUTME: Scoped CSS for AgendaMillerColumns with BEM methodology.
+ABOUTME: Three-column responsive layout with selection highlighting and smooth transitions.
+
+.agenda-miller {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--isl-radius-md, 12px);
+    overflow: hidden;
+    background: var(--mud-palette-surface);
+}
+
+.agenda-miller__columns {
+    display: grid;
+    grid-template-columns: 220px 280px 1fr;
+    min-height: 420px;
+    max-height: 600px;
+}
+
+@media (max-width: 959px) {
+    .agenda-miller__columns {
+        grid-template-columns: 1fr;
+        min-height: unset;
+    }
+
+    .agenda-miller__column {
+        border-right: none !important;
+        border-bottom: 1px solid var(--mud-palette-lines-default);
+    }
+
+    .agenda-miller__column:last-child {
+        border-bottom: none;
+    }
+}
+
+.agenda-miller__column {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-right: 1px solid var(--mud-palette-lines-default);
+}
+
+.agenda-miller__column:last-child {
+    border-right: none;
+}
+
+.agenda-miller__column-header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--mud-palette-background-grey);
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+    min-height: 48px;
+}
+
+.agenda-miller__column-body {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.agenda-miller__item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+    transition: background-color 150ms ease;
+}
+
+.agenda-miller__item:hover {
+    background-color: var(--mud-palette-hover);
+}
+
+.agenda-miller__item--selected {
+    background-color: var(--mud-palette-primary-hover);
+    border-left: 3px solid var(--mud-palette-primary);
+    padding-left: 13px;
+}
+
+.agenda-miller__item--selected:hover {
+    background-color: var(--mud-palette-primary-hover);
+}
+
+.agenda-miller__item-time {
+    font-size: 0.75rem;
+    color: var(--mud-palette-text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.agenda-miller__item-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+}

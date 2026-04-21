@@ -1,0 +1,316 @@
+@* ABOUTME: Dialog for creating/editing an EventAgendaItem. Fields: title, time, room, kind, day, sort order. *@
+@* ABOUTME: Used by EventAgendaGrid for both create and edit flows. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services.Events
+@using Explore.Blazor.Client.Contracts.Services.Lookup
+
+@inject IEventAgendaItemService AgendaItemService
+@inject IScheduleItemKindService KindService
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.ViewAgenda" />
+            <MudText Typo="Typo.h6">@(IsNew ? "Add Agenda Item" : "Edit Agenda Item")</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        @if (_isLoadingDetail)
+        {
+            <div class="d-flex justify-center pa-4">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+            </div>
+        }
+        else
+        {
+            <MudForm @ref="_form" @bind-IsValid="_isValid">
+                <MudStack Spacing="3">
+                    <AppTextField T="string"
+                                  @bind-Value="_title"
+                                  Label="Title"
+                                  Placeholder="e.g. Opening Keynote, Workshop: AI Basics"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="Title is required"
+                                  FullWidth="true" />
+
+                    <AppTextField T="string"
+                                  @bind-Value="_description"
+                                  Label="Description"
+                                  Placeholder="Optional description"
+                                  Variant="Variant.Outlined"
+                                  Lines="2"
+                                  FullWidth="true" />
+
+                    @* Day selector (if multi-day event) *@
+                    @if (Days.Count > 0)
+                    {
+                        <MudSelect T="Guid?"
+                                   @bind-Value="_selectedDayId"
+                                   Label="Day"
+                                   Variant="Variant.Outlined"
+                                   Margin="Margin.Dense"
+                                   Clearable="true"
+                                   FullWidth="true">
+                            @foreach (var day in Days.OrderBy(d => d.SortOrder))
+                            {
+                                <MudSelectItem T="Guid?" Value="@((Guid?)day.Id)">
+                                    @(!string.IsNullOrEmpty(day.Label) ? day.Label : day.LocalDate.ToString("MMM d"))
+                                </MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+
+                    @* Time fields *@
+                    <MudGrid Spacing="2">
+                        <MudItem xs="6">
+                            <MudTimePicker @bind-Time="_startTime"
+                                           Label="Start Time"
+                                           Variant="Variant.Outlined"
+                                           Margin="Margin.Dense" />
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudTimePicker @bind-Time="_endTime"
+                                           Label="End Time"
+                                           Variant="Variant.Outlined"
+                                           Margin="Margin.Dense" />
+                        </MudItem>
+                    </MudGrid>
+
+                    @* Room selector *@
+                    @if (Rooms.Count > 0)
+                    {
+                        <MudSelect T="Guid?"
+                                   @bind-Value="_selectedRoomId"
+                                   Label="Room"
+                                   Variant="Variant.Outlined"
+                                   Margin="Margin.Dense"
+                                   Clearable="true"
+                                   FullWidth="true">
+                            @foreach (var room in Rooms.OrderBy(r => r.SortOrder))
+                            {
+                                <MudSelectItem T="Guid?" Value="@((Guid?)room.Id)">
+                                    @room.Name
+                                    @if (room.Capacity > 0)
+                                    {
+                                        <span class="ml-1 mud-text-secondary">(@room.Capacity)</span>
+                                    }
+                                </MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+
+                    @* Kind selector *@
+                    @if (_kinds.Count > 0)
+                    {
+                        <MudSelect T="int?"
+                                   @bind-Value="_selectedKindId"
+                                   Label="Kind"
+                                   Variant="Variant.Outlined"
+                                   Margin="Margin.Dense"
+                                   Clearable="true"
+                                   FullWidth="true">
+                            @foreach (var kind in _kinds)
+                            {
+                                <MudSelectItem T="int?" Value="@((int?)kind.Id)">@kind.FullName</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+
+                    <MudNumericField T="int"
+                                     @bind-Value="_sortOrder"
+                                     Label="Sort Order"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense"
+                                     Min="1" />
+                </MudStack>
+            </MudForm>
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">@_errorMessage</MudAlert>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <AppButton Variant="Variant.Text" OnClick="Cancel">Cancel</AppButton>
+        <AppButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="Save"
+                   Disabled="@(_isSaving || !_isValid)">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @(IsNew ? "Add" : "Save")
+        </AppButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public Guid EventId { get; set; }
+    [Parameter] public Guid? ItemId { get; set; }
+    [Parameter] public bool IsNew { get; set; } = true;
+    [Parameter] public int InitialSortOrder { get; set; } = 1;
+    [Parameter] public List<EventDayListDto> Days { get; set; } = new();
+    [Parameter] public List<LocationRoomListDto> Rooms { get; set; } = new();
+    [Parameter] public Guid? PreselectedDayId { get; set; }
+
+    private MudForm? _form;
+    private bool _isValid;
+    private bool _isSaving;
+    private bool _isLoadingDetail;
+    private string _errorMessage = string.Empty;
+
+    // Form fields
+    private string _title = string.Empty;
+    private string _description = string.Empty;
+    private TimeSpan? _startTime;
+    private TimeSpan? _endTime;
+    private Guid? _selectedDayId;
+    private Guid? _selectedRoomId;
+    private int? _selectedKindId;
+    private int _sortOrder = 1;
+
+    // Lookup data
+    private List<ScheduleItemKindListDto> _kinds = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _sortOrder = InitialSortOrder;
+        _selectedDayId = PreselectedDayId;
+
+        // Load kinds lookup
+        try
+        {
+            var kinds = await KindService.GetScheduleItemKindsAsync();
+            _kinds = kinds?.ToList() ?? new List<ScheduleItemKindListDto>();
+        }
+        catch
+        {
+            // Non-critical: kinds are optional
+        }
+
+        if (!IsNew && ItemId.HasValue)
+        {
+            _isLoadingDetail = true;
+            var item = await AgendaItemService.GetAgendaItemByIdAsync(ItemId.Value);
+            if (item != null)
+            {
+                _title = item.Title;
+                _description = item.Description;
+                _startTime = TimeSpan.FromMinutes(item.LocalStartMinuteOfDay);
+                _endTime = TimeSpan.FromMinutes(item.LocalEndMinuteOfDay);
+                _selectedDayId = item.EventDayId != Guid.Empty ? item.EventDayId : null;
+                _selectedRoomId = item.RoomId != Guid.Empty ? item.RoomId : null;
+                _selectedKindId = item.KindId > 0 ? item.KindId : null;
+                _sortOrder = item.SortOrder;
+            }
+            _isLoadingDetail = false;
+        }
+    }
+
+    private async Task Save()
+    {
+        if (_form != null)
+        {
+            await _form.Validate();
+            if (!_isValid) return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_title))
+        {
+            _errorMessage = "Title is required.";
+            return;
+        }
+
+        _isSaving = true;
+        _errorMessage = string.Empty;
+
+        try
+        {
+            DateOnly? dayDate = null;
+            if (_selectedDayId.HasValue)
+            {
+                var selectedDay = Days.FirstOrDefault(d => d.Id == _selectedDayId.Value);
+                dayDate = selectedDay?.LocalDate;
+            }
+
+            DateTimeOffset? startTime = null;
+            DateTimeOffset? endTime = null;
+
+            if (_startTime.HasValue)
+            {
+                var baseDate = dayDate?.ToDateTime(TimeOnly.MinValue) ?? DateTime.Today;
+                startTime = new DateTimeOffset(baseDate.Add(_startTime.Value), DateTimeOffset.Now.Offset);
+            }
+            if (_endTime.HasValue)
+            {
+                var baseDate = dayDate?.ToDateTime(TimeOnly.MinValue) ?? DateTime.Today;
+                endTime = new DateTimeOffset(baseDate.Add(_endTime.Value), DateTimeOffset.Now.Offset);
+            }
+
+            if (IsNew)
+            {
+                var dto = new CreateEventAgendaItemDto
+                {
+                    EventId = EventId,
+                    Title = _title.Trim(),
+                    Description = string.IsNullOrWhiteSpace(_description) ? null : _description,
+                    StartTime = startTime,
+                    EndTime = endTime,
+                    RoomId = _selectedRoomId,
+                    KindId = _selectedKindId,
+                    SortOrder = _sortOrder
+                };
+
+                var result = await AgendaItemService.CreateAgendaItemAsync(dto);
+                if (result?.Success == true)
+                {
+                    MudDialog.Close(DialogResult.Ok(result.Id));
+                }
+                else
+                {
+                    _errorMessage = result?.Message ?? "Failed to create agenda item.";
+                }
+            }
+            else if (ItemId.HasValue)
+            {
+                var dto = new UpdateEventAgendaItemDto
+                {
+                    Title = _title.Trim(),
+                    Description = string.IsNullOrWhiteSpace(_description) ? null : _description,
+                    StartTime = startTime,
+                    EndTime = endTime,
+                    RoomId = _selectedRoomId,
+                    KindId = _selectedKindId,
+                    SortOrder = _sortOrder
+                };
+
+                var result = await AgendaItemService.UpdateAgendaItemAsync(ItemId.Value, dto);
+                if (result?.Success == true)
+                {
+                    MudDialog.Close(DialogResult.Ok(result.Id));
+                }
+                else
+                {
+                    _errorMessage = result?.Message ?? "Failed to update agenda item.";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

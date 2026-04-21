@@ -1,0 +1,153 @@
+@* ABOUTME: Three-column Miller Column cascade for browsing event agenda. *@
+@* ABOUTME: Shows Days → Items → Detail; supports view and manage modes. *@
+
+@rendermode InteractiveAuto
+@using MudBlazor
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services.Events
+@using Explore.Blazor.Client.Contracts.Services.Lookup
+@using Microsoft.AspNetCore.Components
+
+<div class="agenda-miller">
+    <div class="agenda-miller__columns">
+        @* ── Column 1: Days ── *@
+        <div class="agenda-miller__column agenda-miller__column--days">
+            <div class="agenda-miller__column-header">
+                <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">
+                    <MudIcon Icon="@Icons.Material.Outlined.CalendarToday" Size="Size.Small" Class="mr-1" />
+                    Days
+                </MudText>
+                @if (CanManage)
+                {
+                    <AppIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="OpenAddDayDialog" aria-label="Add day" />
+                }
+            </div>
+            <div class="agenda-miller__column-body">
+                @if (_days is null || _days.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-4">No days scheduled</MudText>
+                }
+                else
+                {
+                    @foreach (var day in _days.OrderBy(d => d.SortOrder).ThenBy(d => d.LocalDate))
+                    {
+                        <div class="agenda-miller__item @(SelectedDay?.Id == day.Id ? "agenda-miller__item--selected" : "")"
+                             @onclick="() => SelectDay(day)"
+                             role="button"
+                             tabindex="0"
+                             aria-selected="@(SelectedDay?.Id == day.Id)">
+                            <MudText Typo="Typo.body2" Style="font-weight: 600;">@(day.Label ?? day.LocalDate.ToString("ddd, MMM d"))</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@day.LocalDate.ToString("MMM d, yyyy")</MudText>
+                            @if (day.IsPublished)
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Color="Color.Success" Class="agenda-miller__item-badge" />
+                            }
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+
+        @* ── Column 2: Agenda Items (for selected day) ── *@
+        <div class="agenda-miller__column agenda-miller__column--items">
+            <div class="agenda-miller__column-header">
+                <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">
+                    <MudIcon Icon="@Icons.Material.Outlined.ViewAgenda" Size="Size.Small" Class="mr-1" />
+                    @(SelectedDay is null ? "Select a day" : (SelectedDay.Label ?? SelectedDay.LocalDate.ToString("ddd")))
+                </MudText>
+                @if (CanManage && SelectedDay is not null)
+                {
+                    <AppIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="OpenAddAgendaItemDialog" aria-label="Add agenda item" />
+                }
+            </div>
+            <div class="agenda-miller__column-body">
+                @if (SelectedDay is null)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-4">Select a day to view agenda</MudText>
+                }
+                else if (_filteredItems is null || _filteredItems.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-4">No items for this day</MudText>
+                }
+                else
+                {
+                    @foreach (var item in _filteredItems.OrderBy(i => i.LocalStartTime))
+                    {
+                        <div class="agenda-miller__item @(SelectedItem?.Id == item.Id ? "agenda-miller__item--selected" : "")"
+                             @onclick="() => SelectItem(item)"
+                             role="button"
+                             tabindex="0"
+                             aria-selected="@(SelectedItem?.Id == item.Id)">
+                            <div class="agenda-miller__item-time">
+                                @item.LocalStartTime.ToString("HH:mm")
+                                @if (item.LocalEndTime != default)
+                                {
+                                    <span>– @item.LocalEndTime.ToString("HH:mm")</span>
+                                }
+                            </div>
+                            <MudText Typo="Typo.body2" Style="font-weight: 600;">@item.Title</MudText>
+                            @if (!string.IsNullOrEmpty(item.KindFullName))
+                            {
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Info" Class="ma-0 pa-0">@item.KindFullName</MudChip>
+                            }
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+
+        @* ── Column 3: Detail (for selected item) ── *@
+        <div class="agenda-miller__column agenda-miller__column--detail">
+            <div class="agenda-miller__column-header">
+                <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">
+                    <MudIcon Icon="@Icons.Material.Outlined.Info" Size="Size.Small" Class="mr-1" />
+                    @(SelectedItem is null ? "Details" : SelectedItem.Title)
+                </MudText>
+                @if (CanManage && SelectedItem is not null)
+                {
+                    <div class="d-flex gap-1">
+                        <AppIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="OpenEditAgendaItemDialog" aria-label="Edit item" />
+                        <AppIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" OnClick="() => ConfirmDeleteItem(SelectedItem)" aria-label="Delete item" Color="Color.Error" />
+                    </div>
+                }
+            </div>
+            <div class="agenda-miller__column-body">
+                @if (SelectedItem is null)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-4">Select an item to view details</MudText>
+                }
+                else
+                {
+                    <MudStack Spacing="3" Class="pa-4">
+                        <MudText Typo="Typo.h6" Style="font-weight: 700;">@SelectedItem.Title</MudText>
+
+                        <div class="d-flex gap-3 align-center">
+                            <MudIcon Icon="@Icons.Material.Outlined.Schedule" Color="Color.Primary" Size="Size.Small" />
+                            <MudText Typo="Typo.body2">
+                                @SelectedItem.LocalStartTime.ToString("HH:mm")@(SelectedItem.LocalEndTime != default ? $" – {SelectedItem.LocalEndTime:HH:mm}" : "")
+                            </MudText>
+                        </div>
+
+                        @if (SelectedItem.LocalStartDate != default)
+                        {
+                            <div class="d-flex gap-3 align-center">
+                                <MudIcon Icon="@Icons.Material.Outlined.CalendarToday" Color="Color.Primary" Size="Size.Small" />
+                                <MudText Typo="Typo.body2">@SelectedItem.LocalStartDate.ToString("dddd, MMMM d, yyyy")</MudText>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(SelectedItem.KindFullName))
+                        {
+                            <div class="d-flex gap-3 align-center">
+                                <MudIcon Icon="@Icons.Material.Outlined.Category" Color="Color.Primary" Size="Size.Small" />
+                                <MudText Typo="Typo.body2">@SelectedItem.KindFullName</MudText>
+                            </div>
+                        }
+                    </MudStack>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+

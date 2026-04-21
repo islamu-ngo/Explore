@@ -1,0 +1,191 @@
+@* ABOUTME: Manages EventDay list for an event - displays days as chips/cards with add/edit/delete. *@
+@* ABOUTME: Embedded in CreateEvent and EditEvent pages for multi-day event scheduling. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services.Events
+
+@inject IEventDayService EventDayService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<div class="event-day-manager">
+    <div class="d-flex align-center justify-space-between mb-2">
+        <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Event Days</MudText>
+        <AppButton StartIcon="@Icons.Material.Filled.Add"
+                   Variant="Variant.Text"
+                   Size="Size.Small"
+                   Color="Color.Primary"
+                   OnClick="OpenCreateDialog"
+                   Disabled="@(!CanManage)">
+            Add Day
+        </AppButton>
+    </div>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-2" />
+    }
+    else if (_days.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text" Class="mb-2">
+            No days configured. Add days to organize your multi-day event.
+        </MudAlert>
+    }
+    else
+    {
+        <MudStack Spacing="2">
+            @foreach (var day in _days.OrderBy(d => d.SortOrder).ThenBy(d => d.LocalDate))
+            {
+                <MudPaper Elevation="0" Class="pa-3 border-solid border-1 mud-border-lines-default rounded-lg">
+                    <div class="d-flex align-center justify-space-between">
+                        <div class="d-flex align-center gap-2">
+                            <MudIcon Icon="@Icons.Material.Filled.CalendarToday"
+                                     Size="Size.Small"
+                                     Color="@(day.IsPublished ? Color.Primary : Color.Default)" />
+                            <div>
+                                <MudText Typo="Typo.body2" Style="font-weight: 600;">
+                                    @(!string.IsNullOrEmpty(day.Label) ? day.Label : $"Day {day.SortOrder}")
+                                </MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    @(day.LocalDate != default ? day.LocalDate.ToString("ddd, MMM d yyyy") : "No date set")
+                                    @if (!day.IsPublished)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                                                 Color="Color.Warning" Class="ml-2">Draft</MudChip>
+                                    }
+                                </MudText>
+                            </div>
+                        </div>
+                        @if (CanManage)
+                        {
+                            <div class="d-flex gap-1">
+                                <AppIconButton Icon="@Icons.Material.Filled.Edit"
+                                               Size="Size.Small"
+                                               OnClick="@(() => OpenEditDialog(day))"
+                                               aria-label="@($"Edit {day.Label}")" />
+                                <AppIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Size="Size.Small"
+                                               Color="Color.Error"
+                                               OnClick="@(() => DeleteDay(day))"
+                                               aria-label="@($"Delete {day.Label}")" />
+                            </div>
+                        }
+                    </div>
+                </MudPaper>
+            }
+        </MudStack>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid EventId { get; set; }
+    [Parameter] public bool CanManage { get; set; } = true;
+    [Parameter] public EventCallback<List<EventDayListDto>> OnDaysChanged { get; set; }
+
+    private List<EventDayListDto> _days = new();
+    private bool _isLoading;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (EventId != Guid.Empty)
+        {
+            await LoadDays();
+        }
+    }
+
+    public async Task LoadDays()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await EventDayService.GetDaysByEventAsync(EventId);
+            _days = result?.ToList() ?? new List<EventDayListDto>();
+            await OnDaysChanged.InvokeAsync(_days);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var nextSortOrder = _days.Count > 0 ? _days.Max(d => d.SortOrder) + 1 : 1;
+        var parameters = new DialogParameters<EventDayEditorDialog>
+        {
+            { x => x.EventId, EventId },
+            { x => x.IsNew, true },
+            { x => x.InitialSortOrder, nextSortOrder }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            CloseOnEscapeKey = true
+        };
+
+        var dialog = await DialogService.ShowAsync<EventDayEditorDialog>("Add Day", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await LoadDays();
+            Snackbar.Add("Day added successfully", Severity.Success);
+        }
+    }
+
+    private async Task OpenEditDialog(EventDayListDto day)
+    {
+        var parameters = new DialogParameters<EventDayEditorDialog>
+        {
+            { x => x.EventId, EventId },
+            { x => x.IsNew, false },
+            { x => x.DayId, day.Id },
+            { x => x.InitialSortOrder, day.SortOrder }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            CloseOnEscapeKey = true
+        };
+
+        var dialog = await DialogService.ShowAsync<EventDayEditorDialog>("Edit Day", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await LoadDays();
+            Snackbar.Add("Day updated successfully", Severity.Success);
+        }
+    }
+
+    private async Task DeleteDay(EventDayListDto day)
+    {
+        var confirm = await DialogService.ShowMessageBoxAsync(
+            "Delete Day",
+            $"Are you sure you want to delete \"{(!string.IsNullOrEmpty(day.Label) ? day.Label : $"Day {day.SortOrder}")}\"? This will also remove all associated agenda items.",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (confirm == true)
+        {
+            var success = await EventDayService.DeleteDayAsync(day.Id);
+            if (success)
+            {
+                await LoadDays();
+                Snackbar.Add("Day deleted", Severity.Info);
+            }
+            else
+            {
+                Snackbar.Add("Failed to delete day", Severity.Error);
+            }
+        }
+    }
+}

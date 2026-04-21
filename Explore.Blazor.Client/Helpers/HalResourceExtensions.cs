@@ -423,6 +423,54 @@ public static class HalResourceExtensions
         };
     }
 
+    // ========== EventDay Extensions ==========
+
+    public static ICollection<EventDayListDto> GetItems(this HalCollectionResourceOfEventDayListDto collection)
+    {
+        if (collection._embedded?.Items == null)
+            return new List<EventDayListDto>();
+
+        return DeserializeItems<EventDayListDto>(collection._embedded.Items);
+    }
+
+    public static EventDayDto ToDto(this HalResourceOfEventDayDto halResource)
+    {
+        var json = JsonSerializer.Serialize(halResource, JsonOptions);
+        return JsonSerializer.Deserialize<EventDayDto>(json, JsonOptions) ?? new EventDayDto();
+    }
+
+    // ========== EventAgendaItem Extensions ==========
+
+    public static ICollection<EventAgendaItemListDto> GetItems(this HalCollectionResourceOfEventAgendaItemListDto collection)
+    {
+        if (collection._embedded?.Items == null)
+            return new List<EventAgendaItemListDto>();
+
+        return DeserializeItems<EventAgendaItemListDto>(collection._embedded.Items);
+    }
+
+    public static EventAgendaItemDto ToDto(this HalResourceOfEventAgendaItemDto halResource)
+    {
+        var json = JsonSerializer.Serialize(halResource, JsonOptions);
+        return JsonSerializer.Deserialize<EventAgendaItemDto>(json, JsonOptions) ?? new EventAgendaItemDto();
+    }
+
+    // ========== LocationRoom Extensions ==========
+
+    public static ICollection<LocationRoomListDto> GetItems(this HalCollectionResourceOfLocationRoomListDto collection)
+    {
+        if (collection._embedded?.Items == null)
+            return new List<LocationRoomListDto>();
+
+        return DeserializeItems<LocationRoomListDto>(collection._embedded.Items);
+    }
+
+    public static LocationRoomDto ToDto(this HalResourceOfLocationRoomDto halResource)
+    {
+        var json = JsonSerializer.Serialize(halResource, JsonOptions);
+        return JsonSerializer.Deserialize<LocationRoomDto>(json, JsonOptions) ?? new LocationRoomDto();
+    }
+
     // ========== Non-HAL Paginated Result Mappers ==========
 
     /// <summary>
@@ -445,42 +493,46 @@ public static class HalResourceExtensions
 
     // ========== HAL Link Helpers ==========
 
-    /// <summary>
-    /// Checks if an EventListDto has a specific HAL link relation in its AdditionalProperties.
-    /// HAL links are preserved in AdditionalProperties["_links"] when deserialized from embedded items.
-    /// </summary>
     public static bool HasHalLink(this EventListDto dto, string linkRel)
-    {
-        if (dto.AdditionalProperties == null ||
-            !dto.AdditionalProperties.TryGetValue("_links", out var linksObj))
-            return false;
+        => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
 
-        if (linksObj is JsonElement linksElement && linksElement.ValueKind == JsonValueKind.Object)
-            return linksElement.TryGetProperty(linkRel, out _);
-
-        return false;
-    }
-
-    /// <summary>
-    /// Checks if an EventListDto has any management links (edit or delete).
-    /// </summary>
     public static bool HasManagementLinks(this EventListDto dto)
         => dto.HasHalLink("edit") || dto.HasHalLink("delete");
 
-    /// <summary>
-    /// Checks if a HalResourceOfEventDto has a specific HAL link relation.
-    /// </summary>
     public static bool HasLink(this HalResourceOfEventDto dto, string linkRel)
         => dto._links?.ContainsKey(linkRel) == true;
 
-    /// <summary>
-    /// Checks if an EventDto has a specific HAL link relation preserved in AdditionalProperties.
-    /// Links flow through from HalResourceOfEventDto.ToDto() via JSON round-trip.
-    /// </summary>
     public static bool HasHalLink(this EventDto dto, string linkRel)
+        => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
+
+    // ========== Organization HAL Link Helpers ==========
+
+    public static bool HasHalLink(this OrganizationDto dto, string linkRel)
+        => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
+
+    public static bool HasHalLink(this OrganizationListDto dto, string linkRel)
+        => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
+
+    public static bool HasManagementLinks(this OrganizationListDto dto)
+        => dto.HasHalLink("edit") || dto.HasHalLink("delete");
+
+    public static bool HasLink(this HalResourceOfOrganizationDto dto, string linkRel)
+        => dto._links?.ContainsKey(linkRel) == true;
+
+    // ========== Group HAL Link Helpers ==========
+
+    public static bool HasLink(this HalResourceOfGroupDto dto, string linkRel)
+        => HasHalLinkInAdditionalProperties(dto.AdditionalProperties, linkRel);
+
+    public static bool HasManagementLinks(this HalResourceOfGroupDto dto)
+        => dto.HasLink("edit") || dto.HasLink("delete");
+
+    // ========== Helper Methods ==========
+
+    private static bool HasHalLinkInAdditionalProperties(IDictionary<string, object>? additionalProperties, string linkRel)
     {
-        if (dto.AdditionalProperties == null ||
-            !dto.AdditionalProperties.TryGetValue("_links", out var linksObj))
+        if (additionalProperties == null ||
+            !additionalProperties.TryGetValue("_links", out var linksObj))
             return false;
 
         if (linksObj is JsonElement linksElement && linksElement.ValueKind == JsonValueKind.Object)
@@ -488,8 +540,6 @@ public static class HalResourceExtensions
 
         return false;
     }
-
-    // ========== Helper Methods ==========
 
     /// <summary>
     /// Deserializes a collection of objects to a strongly-typed collection.

@@ -1,3 +1,5 @@
+// ABOUTME: DTO for creating a new event with optional inline scheduling (days, rooms, agenda items).
+// ABOUTME: Days/rooms/agenda are optional nested collections created in the same transaction after the event.
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -83,4 +85,41 @@ public class CreateEventDto
 
     // Registration policy (lookup FK)
     public int? RegistrationPolicyId { get; set; }
+
+    public List<InlineEventDayDto>? Days { get; set; }
+    public List<InlineLocationRoomDto>? Rooms { get; set; }
+    public List<InlineEventAgendaItemDto>? AgendaItems { get; set; }
+}
+
+public class InlineEventDayDto
+{
+    public DateOnly LocalDate { get; set; }
+    public string? Label { get; set; }
+    public string? Description { get; set; }
+    public string? BannerText { get; set; }
+    public Guid? BannerImageId { get; set; }
+    public bool IsPublished { get; set; }
+    public int SortOrder { get; set; }
+    public bool AllowsDayScopeRegistration { get; set; }
+}
+
+public class InlineLocationRoomDto
+{
+    public Guid LocationId { get; set; }
+    public required string Name { get; set; }
+    public string? Slug { get; set; }
+    public string? Description { get; set; }
+    public int? Capacity { get; set; }
+    public int SortOrder { get; set; }
+}
+
+public class InlineEventAgendaItemDto
+{
+    public required string Title { get; set; }
+    public string? Description { get; set; }
+    public DateTimeOffset StartTime { get; set; }
+    public DateTimeOffset EndTime { get; set; }
+    public Guid? RoomId { get; set; }
+    public int? KindId { get; set; }
+    public int SortOrder { get; set; }
 }

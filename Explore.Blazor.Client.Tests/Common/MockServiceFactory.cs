@@ -253,6 +253,21 @@ public static class MockServiceFactory
         var madhabMock = Substitute.For<IMadhabService>();
         madhabMock.GetMadhabsAsync().Returns(new List<MadhabListDto>());
         services.AddSingleton(madhabMock);
+
+        var registrationPolicyMock = Substitute.For<IEventRegistrationPolicyService>();
+        registrationPolicyMock.GetEventRegistrationPoliciesAsync()
+            .Returns(new List<EventRegistrationPolicyListDto>());
+        services.AddSingleton(registrationPolicyMock);
+
+        var scheduleItemKindMock = Substitute.For<IScheduleItemKindService>();
+        scheduleItemKindMock.GetScheduleItemKindsAsync()
+            .Returns(new List<ScheduleItemKindListDto>());
+        services.AddSingleton(scheduleItemKindMock);
+
+        var registrationScopeMock = Substitute.For<IRegistrationScopeService>();
+        registrationScopeMock.GetRegistrationScopesAsync()
+            .Returns(new List<RegistrationScopeListDto>());
+        services.AddSingleton(registrationScopeMock);
     }
 
     /// <summary>
@@ -287,6 +302,21 @@ public static class MockServiceFactory
         var madhabMock = Substitute.For<IMadhabService>();
         madhabMock.GetMadhabsAsync().Returns(ComponentDataBuilder.MadhabListDto.Generate(itemCount));
         services.AddSingleton(madhabMock);
+
+        var registrationPolicyMock = Substitute.For<IEventRegistrationPolicyService>();
+        registrationPolicyMock.GetEventRegistrationPoliciesAsync()
+            .Returns(new List<EventRegistrationPolicyListDto>());
+        services.AddSingleton(registrationPolicyMock);
+
+        var scheduleItemKindMock = Substitute.For<IScheduleItemKindService>();
+        scheduleItemKindMock.GetScheduleItemKindsAsync()
+            .Returns(new List<ScheduleItemKindListDto>());
+        services.AddSingleton(scheduleItemKindMock);
+
+        var registrationScopeMock = Substitute.For<IRegistrationScopeService>();
+        registrationScopeMock.GetRegistrationScopesAsync()
+            .Returns(new List<RegistrationScopeListDto>());
+        services.AddSingleton(registrationScopeMock);
     }
 
     #endregion
@@ -357,6 +387,21 @@ public static class MockServiceFactory
         services.AddSingleton(CreateTranslationService());
         services.AddSingleton(Substitute.For<IHttpClientFactory>());
         RegisterLookupServiceMocks(services);
+
+        var eventDayMock = Substitute.For<IEventDayService>();
+        eventDayMock.GetDaysByEventAsync(Arg.Any<Guid>())
+            .Returns(new List<EventDayListDto>());
+        services.AddSingleton(eventDayMock);
+
+        var agendaItemMock = Substitute.For<IEventAgendaItemService>();
+        agendaItemMock.GetAgendaItemsByEventAsync(Arg.Any<Guid>())
+            .Returns(new List<EventAgendaItemListDto>());
+        services.AddSingleton(agendaItemMock);
+
+        var locationRoomMock = Substitute.For<ILocationRoomService>();
+        locationRoomMock.GetRoomsByLocationAsync(Arg.Any<Guid>())
+            .Returns(new List<LocationRoomListDto>());
+        services.AddSingleton(locationRoomMock);
     }
 
     #endregion

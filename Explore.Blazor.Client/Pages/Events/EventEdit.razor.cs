@@ -4,6 +4,8 @@
 using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
+using Explore.Blazor.Client.Contracts.Services.Lookup;
+using Explore.Blazor.Client.Contracts.Services.Events;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Pages.Events.Components;
 using Explore.Blazor.Client.Pages.Events.Models;
@@ -13,6 +15,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.Logging;
 using MudBlazor;
+using System.Linq;
 
 namespace Explore.Blazor.Client.Pages.Events;
 
@@ -29,6 +32,10 @@ public partial class EventEdit
     [Inject] protected IDialogService DialogService { get; set; } = null!;
     [Inject] protected ILogger<EventEdit> Logger { get; set; } = null!;
     [Inject] private IAccessibilityFocusService AccessibilityFocusService { get; set; } = default!;
+    [Inject] private IEventRegistrationPolicyService RegistrationPolicyService { get; set; } = default!;
+    [Inject] private IEventDayService EventDayService { get; set; } = default!;
+    [Inject] private IEventAgendaItemService EventAgendaItemService { get; set; } = default!;
+    [Inject] private ILocationRoomService LocationRoomService { get; set; } = default!;
 
     private Guid EventId { get; set; }
 
@@ -49,6 +56,7 @@ public partial class EventEdit
     private ICollection<LocationListDto>? locations;
     private ICollection<RegistrationModeListDto>? registrationModes;
     private ICollection<LanguageListDto>? languages;
+    private ICollection<EventRegistrationPolicyListDto>? registrationPolicies;
     private bool isLoading = true;
     private string errorMessage = string.Empty;
 
@@ -71,6 +79,12 @@ public partial class EventEdit
     private List<SessionEditorModel> sessions = new();
     private readonly SessionEditorWorkflow _sessionWorkflow = new();
     private AppearanceSettings _appearance = new();
+
+    // Scheduling state
+    private List<EventDayListDto> _eventDays = new();
+    private List<LocationRoomListDto> _locationRooms = new();
+    private List<EventAgendaItemListDto> _agendaItems = new();
+    private ToggleView _agendaViewMode = ToggleView.Grid;
 
     // UI toggles
     private bool _showFirstSessionLocation = false;
@@ -113,12 +127,13 @@ public partial class EventEdit
             var locationsTask = LocationService.GetAllLocationsAsync();
             var registrationModesTask = AdminService.GetRegistrationModesAsync();
             var languagesTask = AdminService.GetLanguagesAsync();
+            var registrationPoliciesTask = RegistrationPolicyService.GetEventRegistrationPoliciesAsync();
 
             await Task.WhenAll(
                 eventTypesTask, audienceGendersTask, audienceAgesTask,
                 eventFormatsTask, eventStatusesTask, visibilityTypesTask,
                 madhabsTask, categoriesTask, tagsTask, locationsTask,
-                registrationModesTask, languagesTask);
+                registrationModesTask, languagesTask, registrationPoliciesTask);
 
             eventTypes = await eventTypesTask;
             audienceGenders = await audienceGendersTask;
@@ -132,6 +147,7 @@ public partial class EventEdit
             locations = await locationsTask;
             registrationModes = await registrationModesTask;
             languages = await languagesTask;
+            registrationPolicies = await registrationPoliciesTask;
 
             currentEvent = await EventService.GetEventByIdAsync(EventId);
 
@@ -530,4 +546,35 @@ public partial class EventEdit
 
         StateHasChanged();
     }
+
+    private async Task LoadSchedulingDataAsync()
+    {
+        try
+        {
+            var daysTask = EventDayService.GetDaysByEventAsync(EventId);
+            var itemsTask = EventAgendaItemService.GetAgendaItemsByEventAsync(EventId);
+
+            await Task.WhenAll(daysTask, itemsTask);
+
+            _eventDays = daysTask.Result?.ToList() ?? new();
+            _agendaItems = itemsTask.Result?.ToList() ?? new();
+
+            if (sessions.Count > 0 && sessions[0].LocationId.HasValue)
+            {
+                _locationRooms = (await LocationRoomService.GetRoomsByLocationAsync(sessions[0].LocationId.Value))?.ToList() ?? new();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load scheduling data for event {EventId}", EventId);
+        }
+
+        StateHasChanged();
+    }
+}
+
+public enum ToggleView
+{
+    Grid,
+    Miller
 }

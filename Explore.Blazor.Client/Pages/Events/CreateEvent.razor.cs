@@ -3,6 +3,7 @@
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
+using Explore.Blazor.Client.Contracts.Services.Lookup;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Pages.Events.Components;
 using Explore.Blazor.Client.Pages.Events.Models;
@@ -30,6 +31,7 @@ public partial class CreateEvent
     [Inject] protected IDialogService DialogService { get; set; } = null!;
     [Inject] protected ILogger<CreateEvent> Logger { get; set; } = null!;
     [Inject] private IAccessibilityFocusService AccessibilityFocusService { get; set; } = default!;
+    [Inject] private IEventRegistrationPolicyService RegistrationPolicyService { get; set; } = default!;
 
     // Sentinel Guid values for "Create Organization" / "Create Group" dropdown items
     private static readonly Guid CreateOrgSentinelValue = Guid.Parse("00000000-0000-0000-0000-000000000001");
@@ -63,6 +65,7 @@ public partial class CreateEvent
     private ICollection<LocationListDto>? locations;
     private ICollection<RegistrationModeListDto>? registrationModes;
     private ICollection<LanguageListDto>? languages;
+    private ICollection<EventRegistrationPolicyListDto>? registrationPolicies;
     private bool isLoading = true;
     private bool _dataLoaded = false;
     private int? selectedMadhabId = null;
@@ -89,6 +92,26 @@ public partial class CreateEvent
     private string _bgColor = string.Empty;
     private string _bgEffect = "None";
     private string _bgImageUri = string.Empty;
+
+    // Inline scheduling state (sent with create request)
+    private List<InlineDayModel> _inlineDays = new();
+    private List<InlineRoomModel> _inlineRooms = new();
+    private List<InlineAgendaItemModel> _inlineAgendaItems = new();
+
+    // Day add form
+    private DateTime? _newDayDate;
+    private string? _newDayLabel;
+
+    // Room add form
+    private string? _newRoomName;
+    private int? _newRoomCapacity;
+
+    // Agenda item add form
+    private string? _newAgendaTitle;
+    private DateOnly? _newAgendaDayDate;
+    private TimeSpan? _newAgendaStartTime;
+    private TimeSpan? _newAgendaEndTime;
+    private int? _newAgendaRoomIndex;
 
     // UI toggles
     private bool _showFirstSessionLocation = false;
@@ -442,8 +465,9 @@ public partial class CreateEvent
             var locationsTask = LocationService.GetAllLocationsAsync();
             var registrationModesTask = AdminService.GetRegistrationModesAsync();
             var languagesTask = AdminService.GetLanguagesAsync();
+            var registrationPoliciesTask = RegistrationPolicyService.GetEventRegistrationPoliciesAsync();
 
-            await Task.WhenAll(eventTypesTask, audienceGendersTask, audienceAgesTask, eventFormatsTask, visibilityTypesTask, madhabsTask, categoriesTask, tagsTask, locationsTask, registrationModesTask, languagesTask);
+            await Task.WhenAll(eventTypesTask, audienceGendersTask, audienceAgesTask, eventFormatsTask, visibilityTypesTask, madhabsTask, categoriesTask, tagsTask, locationsTask, registrationModesTask, languagesTask, registrationPoliciesTask);
 
             eventTypes = await eventTypesTask;
             audienceGenders = await audienceGendersTask;
@@ -456,6 +480,7 @@ public partial class CreateEvent
             locations = await locationsTask;
             registrationModes = await registrationModesTask;
             languages = await languagesTask;
+            registrationPolicies = await registrationPoliciesTask;
 
             SetDefaultValues();
             _dataLoaded = true;
@@ -571,6 +596,8 @@ public partial class CreateEvent
             createDto.Timezone = _selectedTimezone.Id;
             createDto.BackgroundColor = string.IsNullOrWhiteSpace(_bgColor) ? null : _bgColor;
             createDto.BackgroundEffect = string.IsNullOrWhiteSpace(_bgEffect) || _bgEffect == "None" ? null : _bgEffect;
+
+            PopulateInlineSchedulingOnDto();
 
             var earliestStart = sessions.Min(s => DateTimeHelper.ConvertLocalToUtc(s.StartTime));
             var latestEnd = sessions.Max(s => DateTimeHelper.ConvertLocalToUtc(s.EndTime));
@@ -727,5 +754,130 @@ public partial class CreateEvent
             selectedCategoryIds = new HashSet<Guid>(newIds);
 
         StateHasChanged();
+    }
+
+    // ========== Inline Scheduling Methods ==========
+
+    private void AddInlineDay()
+    {
+        if (!_newDayDate.HasValue) return;
+
+        var localDate = DateOnly.FromDateTime(_newDayDate.Value);
+        if (_inlineDays.Any(d => d.LocalDate == localDate)) return;
+
+        _inlineDays.Add(new InlineDayModel
+        {
+            LocalDate = localDate,
+            Label = _newDayLabel,
+            SortOrder = _inlineDays.Count
+        });
+
+        _newDayDate = null;
+        _newDayLabel = null;
+    }
+
+    private void AddInlineRoom()
+    {
+        if (string.IsNullOrWhiteSpace(_newRoomName)) return;
+
+        _inlineRooms.Add(new InlineRoomModel
+        {
+            Name = _newRoomName.Trim(),
+            Capacity = _newRoomCapacity,
+            SortOrder = _inlineRooms.Count
+        });
+
+        _newRoomName = null;
+        _newRoomCapacity = null;
+    }
+
+    private void AddInlineAgendaItem()
+    {
+        if (string.IsNullOrWhiteSpace(_newAgendaTitle) || !_newAgendaDayDate.HasValue
+            || !_newAgendaStartTime.HasValue || !_newAgendaEndTime.HasValue) return;
+
+        var dayDate = _newAgendaDayDate.Value;
+        var startDateTime = dayDate.ToDateTime(TimeOnly.FromTimeSpan(_newAgendaStartTime.Value));
+        var endDateTime = dayDate.ToDateTime(TimeOnly.FromTimeSpan(_newAgendaEndTime.Value));
+
+        var startOffset = new DateTimeOffset(startDateTime, _selectedTimezone.GetUtcOffset(startDateTime));
+        var endOffset = new DateTimeOffset(endDateTime, _selectedTimezone.GetUtcOffset(endDateTime));
+
+        _inlineAgendaItems.Add(new InlineAgendaItemModel
+        {
+            Title = _newAgendaTitle.Trim(),
+            StartTime = startOffset,
+            EndTime = endOffset,
+            RoomIndex = _newAgendaRoomIndex,
+            SortOrder = _inlineAgendaItems.Count
+        });
+
+        _newAgendaTitle = null;
+        _newAgendaDayDate = null;
+        _newAgendaStartTime = null;
+        _newAgendaEndTime = null;
+        _newAgendaRoomIndex = null;
+    }
+
+    private void PopulateInlineSchedulingOnDto()
+    {
+        if (_inlineDays.Any())
+        {
+            createDto.Days = _inlineDays.Select(d => new InlineEventDayDto
+            {
+                LocalDate = d.LocalDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc),
+                Label = d.Label,
+                IsPublished = true,
+                SortOrder = d.SortOrder,
+                AllowsDayScopeRegistration = true
+            }).ToList();
+        }
+
+        if (_inlineRooms.Any() && sessions.Count > 0 && sessions[0].LocationId.HasValue)
+        {
+            createDto.Rooms = _inlineRooms.Select(r => new InlineLocationRoomDto
+            {
+                LocationId = sessions[0].LocationId!.Value,
+                Name = r.Name,
+                Capacity = r.Capacity,
+                SortOrder = r.SortOrder
+            }).ToList();
+        }
+
+        if (_inlineAgendaItems.Any())
+        {
+            createDto.AgendaItems = _inlineAgendaItems.Select(a => new InlineEventAgendaItemDto
+            {
+                Title = a.Title,
+                StartTime = a.StartTime,
+                EndTime = a.EndTime,
+                RoomId = null,
+                KindId = null,
+                SortOrder = a.SortOrder
+            }).ToList();
+        }
+    }
+
+    private sealed class InlineDayModel
+    {
+        public DateOnly LocalDate { get; set; }
+        public string? Label { get; set; }
+        public int SortOrder { get; set; }
+    }
+
+    private sealed class InlineRoomModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public int? Capacity { get; set; }
+        public int SortOrder { get; set; }
+    }
+
+    private sealed class InlineAgendaItemModel
+    {
+        public string Title { get; set; } = string.Empty;
+        public DateTimeOffset StartTime { get; set; }
+        public DateTimeOffset EndTime { get; set; }
+        public int? RoomIndex { get; set; }
+        public int SortOrder { get; set; }
     }
 }

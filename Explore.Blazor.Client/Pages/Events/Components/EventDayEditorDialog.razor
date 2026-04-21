@@ -1,0 +1,220 @@
+@* ABOUTME: Dialog for creating/editing an EventDay. Fields: date, label, description, published, sort order. *@
+@* ABOUTME: Used by EventDayManager for both create and edit flows. *@
+
+@using MudBlazor
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Contracts.Services.Events
+
+@inject IEventDayService EventDayService
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.CalendarToday" />
+            <MudText Typo="Typo.h6">@(IsNew ? "Add Day" : "Edit Day")</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        @if (_isLoadingDetail)
+        {
+            <div class="d-flex justify-center pa-4">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+            </div>
+        }
+        else
+        {
+            <MudForm @ref="_form" @bind-IsValid="_isValid">
+                <MudStack Spacing="3">
+                    <AppTextField T="string"
+                                  @bind-Value="_label"
+                                  Label="Label"
+                                  Placeholder="e.g. Day 1, Opening Day, Workshop Day"
+                                  Variant="Variant.Outlined"
+                                  FullWidth="true" />
+
+                    <MudDatePicker @bind-Date="_localDate"
+                                   Label="Date"
+                                   Variant="Variant.Outlined"
+                                   Margin="Margin.Dense"
+                                   Required="true"
+                                   RequiredError="Date is required" />
+
+                    <AppTextField T="string"
+                                  @bind-Value="_description"
+                                  Label="Description"
+                                  Placeholder="Optional description for this day"
+                                  Variant="Variant.Outlined"
+                                  Lines="2"
+                                  FullWidth="true" />
+
+                    <AppTextField T="string"
+                                  @bind-Value="_bannerText"
+                                  Label="Banner Text"
+                                  Placeholder="Optional banner message"
+                                  Variant="Variant.Outlined"
+                                  FullWidth="true" />
+
+                    <MudNumericField T="int"
+                                     @bind-Value="_sortOrder"
+                                     Label="Sort Order"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense"
+                                     Min="1" />
+
+                    <MudSwitch T="bool"
+                               @bind-Value="_isPublished"
+                               Label="Published"
+                               Color="Color.Primary" />
+
+                    <MudSwitch T="bool"
+                               @bind-Value="_allowsDayScopeRegistration"
+                               Label="Allow Day-Scope Registration"
+                               Color="Color.Primary" />
+                </MudStack>
+            </MudForm>
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">@_errorMessage</MudAlert>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <AppButton Variant="Variant.Text" OnClick="Cancel">Cancel</AppButton>
+        <AppButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="Save"
+                   Disabled="@(_isSaving || !_isValid)">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @(IsNew ? "Add" : "Save")
+        </AppButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public Guid EventId { get; set; }
+    [Parameter] public Guid? DayId { get; set; }
+    [Parameter] public bool IsNew { get; set; } = true;
+    [Parameter] public int InitialSortOrder { get; set; } = 1;
+
+    private MudForm? _form;
+    private bool _isValid;
+    private bool _isSaving;
+    private bool _isLoadingDetail;
+    private string _errorMessage = string.Empty;
+
+    // Form fields
+    private string _label = string.Empty;
+    private DateTime? _localDate;
+    private string _description = string.Empty;
+    private string _bannerText = string.Empty;
+    private int _sortOrder = 1;
+    private bool _isPublished = true;
+    private bool _allowsDayScopeRegistration;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _sortOrder = InitialSortOrder;
+
+        if (!IsNew && DayId.HasValue)
+        {
+            _isLoadingDetail = true;
+            var day = await EventDayService.GetDayByIdAsync(DayId.Value);
+            if (day != null)
+            {
+                _label = day.Label;
+                _localDate = day.LocalDate.ToDateTime(TimeOnly.MinValue);
+                _description = day.Description;
+                _bannerText = day.BannerText;
+                _sortOrder = day.SortOrder;
+                _isPublished = day.IsPublished;
+                _allowsDayScopeRegistration = day.AllowsDayScopeRegistration;
+            }
+            _isLoadingDetail = false;
+        }
+    }
+
+    private async Task Save()
+    {
+        if (_form != null)
+        {
+            await _form.Validate();
+            if (!_isValid) return;
+        }
+
+        if (!_localDate.HasValue)
+        {
+            _errorMessage = "Date is required.";
+            return;
+        }
+
+        _isSaving = true;
+        _errorMessage = string.Empty;
+
+        try
+        {
+            if (IsNew)
+            {
+                var dto = new CreateEventDayDto
+                {
+                    EventId = EventId,
+                    LocalDate = _localDate.Value,
+                    Label = string.IsNullOrWhiteSpace(_label) ? null : _label,
+                    Description = string.IsNullOrWhiteSpace(_description) ? null : _description,
+                    BannerText = string.IsNullOrWhiteSpace(_bannerText) ? null : _bannerText,
+                    IsPublished = _isPublished,
+                    SortOrder = _sortOrder,
+                    AllowsDayScopeRegistration = _allowsDayScopeRegistration
+                };
+
+                var result = await EventDayService.CreateDayAsync(dto);
+                if (result?.Success == true)
+                {
+                    MudDialog.Close(DialogResult.Ok(result.Id));
+                }
+                else
+                {
+                    _errorMessage = result?.Message ?? "Failed to create day.";
+                }
+            }
+            else if (DayId.HasValue)
+            {
+                var dto = new UpdateEventDayDto
+                {
+                    LocalDate = _localDate.Value,
+                    Label = string.IsNullOrWhiteSpace(_label) ? null : _label,
+                    Description = string.IsNullOrWhiteSpace(_description) ? null : _description,
+                    BannerText = string.IsNullOrWhiteSpace(_bannerText) ? null : _bannerText,
+                    IsPublished = _isPublished,
+                    SortOrder = _sortOrder,
+                    AllowsDayScopeRegistration = _allowsDayScopeRegistration
+                };
+
+                var result = await EventDayService.UpdateDayAsync(DayId.Value, dto);
+                if (result?.Success == true)
+                {
+                    MudDialog.Close(DialogResult.Ok(result.Id));
+                }
+                else
+                {
+                    _errorMessage = result?.Message ?? "Failed to update day.";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

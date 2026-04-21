@@ -7,6 +7,7 @@ using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.Events;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Helpers;
+using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Pages.Events.Components;
 using Explore.Blazor.Client.Pages.Events.Dialogs;
 using Explore.Blazor.Client.Services;
@@ -33,6 +34,7 @@ public partial class EventDetail : ComponentBase
     [Inject] private Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
     [Inject] private IEventAspectService EventAspectService { get; set; } = default!;
     [Inject] private IEventSessionAgendaItemService AgendaItemService { get; set; } = default!;
+    [Inject] private IEventAgendaItemService EventAgendaItemService { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
     [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
 
@@ -43,6 +45,7 @@ public partial class EventDetail : ComponentBase
     [Inject] protected ILogger<EventDetail> Logger { get; set; } = default!;
     [Inject] private IAccessibilityFocusService AccessibilityFocusService { get; set; } = default!;
     [Inject] private IAccessibilityAnnouncerService AnnouncerService { get; set; } = default!;
+    [Inject] private IEventDayService EventDayService { get; set; } = default!;
 
     private Guid EventId { get; set; }
 
@@ -60,10 +63,13 @@ public partial class EventDetail : ComponentBase
     private bool _isCheckingAuth = true;
     private string? _errorMessage;
 
+    private ICollection<EventDayListDto>? _eventDays;
+
     // Event Aspects
     private EventIslamicAspectDto? _islamicAspect;
     private EventTechAspectDto? _techAspect;
     private ICollection<EventSessionAgendaItemListDto>? _agendaItems;
+    private ICollection<EventAgendaItemListDto>? _eventAgendaItems;
     private AppearanceSettings _appearance = new();
 
     // Tag/Category management
@@ -126,11 +132,15 @@ public partial class EventDetail : ComponentBase
                 // Check registration status and load aspects in parallel
                 var registrationTask = CheckRegistrationStatusAsync();
                 var aspectsTask = LoadEventAspectsAsync();
+                var daysTask = EventDayService.GetDaysByEventAsync(EventId);
+                var eventAgendaTask = EventAgendaItemService.GetAgendaItemsByEventAsync(EventId);
                 var agendaTask = _primarySession?.Id != null && _primarySession.Id != Guid.Empty
                     ? AgendaItemService.GetAgendaItemsBySessionAsync(_primarySession.Id.Value)
                     : Task.FromResult<ICollection<EventSessionAgendaItemListDto>>(new List<EventSessionAgendaItemListDto>());
-                await Task.WhenAll(registrationTask, aspectsTask, agendaTask);
+                await Task.WhenAll(registrationTask, aspectsTask, daysTask, eventAgendaTask, agendaTask);
                 _agendaItems = await agendaTask;
+                _eventDays = await daysTask;
+                _eventAgendaItems = await eventAgendaTask;
             }
         }
         catch (Exception ex)
@@ -233,6 +243,24 @@ public partial class EventDetail : ComponentBase
         {
             Logger.LogError(ex, "Error loading event aspects for event {EventId}", EventId);
         }
+    }
+
+    private async Task LoadEventAgendaAsync()
+    {
+        try
+        {
+            var daysTask = EventDayService.GetDaysByEventAsync(EventId);
+            var itemsTask = EventAgendaItemService.GetAgendaItemsByEventAsync(EventId);
+            await Task.WhenAll(daysTask, itemsTask);
+            _eventDays = await daysTask;
+            _eventAgendaItems = await itemsTask;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error reloading event agenda for event {EventId}", EventId);
+        }
+
+        StateHasChanged();
     }
 
     private async Task CheckRegistrationStatusAsync()
@@ -513,77 +541,33 @@ public partial class EventDetail : ComponentBase
             return;
         }
 
-        // Ensure sessions are loaded
-        if (_eventSessions == null || !_eventSessions.Any())
-        {
-            await AccessibilityFocusService.SaveFocusAsync();
-            await DialogService.ShowMessageBoxAsync(
-                "Registration unavailable",
-                "No sessions are available for this event yet.",
-                yesText: "OK");
-            await AccessibilityFocusService.RestoreFocusAsync();
-            return;
-        }
+        var allowedScopes = RegistrationPolicyHelper.GetAllowedScopes(_eventDetails.RegistrationPolicyId);
 
-        // Case 1: Single Session -> Register directly
-        if (_eventSessions.Count == 1)
+        var needsSessions = allowedScopes.Contains(RegistrationPolicyHelper.ScopeSessionSelection);
+        if (needsSessions && (_eventSessions == null || !_eventSessions.Any()))
         {
-            await AccessibilityFocusService.SaveFocusAsync();
-            await RegisterForSession(_eventSessions.First());
-            await AccessibilityFocusService.RestoreFocusAsync();
-        }
-        // Case 2: Multiple Sessions -> Show Selection Dialog
-        else
-        {
-            await AccessibilityFocusService.SaveFocusAsync();
-            var parameters = new DialogParameters
+            var onlySessionScope = allowedScopes.Count == 1;
+            if (onlySessionScope)
             {
-                { "Sessions", _eventSessions.ToList() }
-            };
-
-            var options = DialogOptionsFactory.Confirmation();
-
-            var dialog = await SessionSelectionDialog.ShowAsync(
-                DialogService,
-                "Select Session",
-                parameters,
-                options);
-
-            var result = await dialog.Result;
-
-            if (result != null && !result.Canceled && result.Data is List<Guid> selectedSessionIds)
-            {
-                // Register for each selected session
-                int successCount = 0;
-                foreach (var sessionId in selectedSessionIds)
-                {
-                    var session = _eventSessions.First(s => s.Id == sessionId);
-                    if (await RegisterForSession(session))
-                    {
-                        successCount++;
-                    }
-                }
-
-                if (successCount > 0)
-                {
-                    // Refresh status to update UI immediately
-                    await CheckRegistrationStatusAsync();
-                }
+                await AccessibilityFocusService.SaveFocusAsync();
+                await DialogService.ShowMessageBoxAsync(
+                    "Registration unavailable",
+                    "No sessions are available for this event yet.",
+                    yesText: "OK");
+                await AccessibilityFocusService.RestoreFocusAsync();
+                return;
             }
-            await AccessibilityFocusService.RestoreFocusAsync();
         }
-    }
 
-    /// <summary>
-    /// Registers the user for a specific session.
-    /// </summary>
-    private async Task<bool> RegisterForSession(EventSessionListDto session)
-    {
+        await AccessibilityFocusService.SaveFocusAsync();
+
         var parameters = new DialogParameters
         {
-            { "EventId", _eventDetails!.Id },
-            { "EventSessionId", session.Id },
-            { "Title", $"Register for {_eventDetails!.Title} - {session.Title}" }
+            { "EventId", _eventDetails.Id },
+            { "Title", $"Register for {_eventDetails.Title}" },
+            { "RegistrationPolicyId", _eventDetails.RegistrationPolicyId },
+            { "Days", _eventDays },
+            { "Sessions", _eventSessions }
         };
 
         var options = DialogOptionsFactory.Medium();
@@ -597,16 +581,10 @@ public partial class EventDetail : ComponentBase
 
         if (result != null && !result.Canceled)
         {
-            Logger.LogInformation("Registration completed for session {SessionId}", session.Id);
-
-            // For single session flow, we update status here too
-            if (_eventSessions != null && _eventSessions.Count == 1)
-            {
-                await CheckRegistrationStatusAsync();
-            }
-            return true;
+            await CheckRegistrationStatusAsync();
         }
-        return false;
+
+        await AccessibilityFocusService.RestoreFocusAsync();
     }
 
     /// <summary>

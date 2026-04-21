@@ -1,6 +1,7 @@
 // ABOUTME: Handler for creating a new event with full validation.
 // ABOUTME: Validates input, resolves actor, maps DTO, persists event + default session via UoW.
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,12 +10,14 @@ using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.Event;
 using Explore.Application.DTOs.Event.Validators;
 using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Application.Services;
 using Explore.Application.Telemetry;
 using Explore.Domain;
+using Explore.Domain.Services.Scheduling;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 
@@ -37,6 +40,10 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
     private readonly IEventTemplateInstantiationService _instantiationService;
     private readonly IOrganizationRepository _organizationRepository;
     private readonly IGroupRepository _groupRepository;
+    private readonly IEventDayRepository _eventDayRepository;
+    private readonly ILocationRoomRepository _locationRoomRepository;
+    private readonly IEventAgendaItemRepository _eventAgendaItemRepository;
+    private readonly IEventScheduleProjectionCalculator _scheduleProjectionCalculator;
     private readonly IUserContext _userContext;
     private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
@@ -60,6 +67,10 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         IEventTemplateInstantiationService instantiationService,
         IOrganizationRepository organizationRepository,
         IGroupRepository groupRepository,
+        IEventDayRepository eventDayRepository,
+        ILocationRoomRepository locationRoomRepository,
+        IEventAgendaItemRepository eventAgendaItemRepository,
+        IEventScheduleProjectionCalculator scheduleProjectionCalculator,
         IUserContext userContext,
         ITenantContext tenantContext,
         IMapper mapper,
@@ -82,6 +93,10 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         _instantiationService = instantiationService;
         _organizationRepository = organizationRepository;
         _groupRepository = groupRepository;
+        _eventDayRepository = eventDayRepository;
+        _locationRoomRepository = locationRoomRepository;
+        _eventAgendaItemRepository = eventAgendaItemRepository;
+        _scheduleProjectionCalculator = scheduleProjectionCalculator;
         _userContext = userContext;
         _tenantContext = tenantContext;
         _mapper = mapper;
@@ -197,6 +212,8 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
                 }
             }
 
+            await CreateInlineSchedulingAsync(request.EventDto, @event, ct);
+
             return @event.Id;
         }, cancellationToken);
 
@@ -209,5 +226,84 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
         await _cache.RemoveAsync("events:list:1:20", cancellationToken);
 
         return response;
+    }
+
+    private async Task CreateInlineSchedulingAsync(CreateEventDto dto, Event @event, CancellationToken ct)
+    {
+        var createdDays = new List<EventDay>();
+
+        if (dto.Days is { Count: > 0 })
+        {
+            foreach (var dayDto in dto.Days)
+            {
+                var day = new EventDay
+                {
+                    EventId = @event.Id,
+                    Event = null!,
+                    TenantId = _tenantContext.TenantId,
+                    Tenant = null!,
+                    LocalDate = dayDto.LocalDate,
+                    Label = dayDto.Label,
+                    Description = dayDto.Description,
+                    BannerText = dayDto.BannerText,
+                    BannerImageId = dayDto.BannerImageId,
+                    IsPublished = dayDto.IsPublished,
+                    SortOrder = dayDto.SortOrder,
+                    AllowsDayScopeRegistration = dayDto.AllowsDayScopeRegistration
+                };
+                day = await _eventDayRepository.Create(day);
+                createdDays.Add(day);
+            }
+        }
+
+        if (dto.Rooms is { Count: > 0 })
+        {
+            foreach (var roomDto in dto.Rooms)
+            {
+                var room = new LocationRoom
+                {
+                    LocationId = roomDto.LocationId,
+                    Location = null!,
+                    TenantId = _tenantContext.TenantId,
+                    Tenant = null!,
+                    Name = roomDto.Name,
+                    Slug = roomDto.Slug,
+                    Description = roomDto.Description,
+                    Capacity = roomDto.Capacity,
+                    SortOrder = roomDto.SortOrder
+                };
+                await _locationRoomRepository.Create(room);
+            }
+        }
+
+        if (dto.AgendaItems is { Count: > 0 })
+        {
+            var timezoneId = @event.EventTimeZoneId ?? @event.Timezone ?? string.Empty;
+
+            foreach (var itemDto in dto.AgendaItems)
+            {
+                var agendaItem = new EventAgendaItem
+                {
+                    EventId = @event.Id,
+                    Event = null!,
+                    TenantId = _tenantContext.TenantId,
+                    Tenant = null!,
+                    Title = itemDto.Title,
+                    Description = itemDto.Description,
+                    RoomId = itemDto.RoomId,
+                    KindId = itemDto.KindId,
+                    SortOrder = itemDto.SortOrder,
+                    StartTime = itemDto.StartTime,
+                    EndTime = itemDto.EndTime
+                };
+
+                agendaItem.Reschedule(itemDto.StartTime, itemDto.EndTime, timezoneId, _scheduleProjectionCalculator);
+
+                var matchingDay = createdDays.Find(d => d.LocalDate == agendaItem.LocalStartDate);
+                agendaItem.EventDayId = matchingDay?.Id;
+
+                await _eventAgendaItemRepository.Create(agendaItem);
+            }
+        }
     }
 }

@@ -1,0 +1,61 @@
+/* ABOUTME: Scoped CSS for EventAgendaGrid component - Google Calendar-style grid layout. */
+/* ABOUTME: Uses CSS Grid with time-axis column and dynamic room columns. */
+
+.event-agenda-grid__container {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--mud-default-borderradius);
+    overflow: hidden;
+}
+
+.event-agenda-grid__time-header,
+.event-agenda-grid__room-header {
+    padding: 8px 12px;
+    background-color: var(--mud-palette-surface);
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+    text-align: center;
+    font-weight: 600;
+}
+
+.event-agenda-grid__time-header {
+    font-size: 0.75rem;
+    color: var(--mud-palette-text-secondary);
+}
+
+.event-agenda-grid__time-slot {
+    padding: 8px 4px;
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+    border-right: 1px solid var(--mud-palette-lines-default);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    min-height: 48px;
+}
+
+.event-agenda-grid__cell {
+    padding: 4px;
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+    border-right: 1px solid var(--mud-palette-lines-default);
+    min-height: 48px;
+    transition: background-color 0.15s ease;
+}
+
+.event-agenda-grid__cell:last-child {
+    border-right: none;
+}
+
+.event-agenda-grid__cell--filled {
+    background-color: color-mix(in srgb, var(--mud-palette-primary) 8%, transparent);
+}
+
+.event-agenda-grid__item {
+    padding: 4px 8px;
+    border-radius: 4px;
+    border-left: 3px solid var(--mud-palette-primary);
+    background-color: var(--mud-palette-surface);
+    cursor: pointer;
+    transition: box-shadow 0.15s ease;
+}
+
+.event-agenda-grid__item:hover {
+    box-shadow: var(--mud-elevation-2);
+}

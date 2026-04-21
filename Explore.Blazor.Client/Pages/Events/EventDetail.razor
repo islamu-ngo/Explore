@@ -377,7 +377,18 @@
         }
 
         @* ── Sessions / Agenda ── *@
-        @if (_eventSessions != null && _eventSessions.Count > 0)
+        @if (_eventAgendaItems != null && _eventAgendaItems.Count > 0 && _eventDays != null && _eventDays.Count > 0)
+        {
+            <section class="mb-8">
+                <MudText Typo="Typo.h5" Style="font-weight: 800;" Class="mb-4">Agenda</MudText>
+                <AgendaMillerColumns EventId="EventId"
+                                     Days="@(_eventDays?.ToList())"
+                                     AgendaItems="@(_eventAgendaItems?.ToList())"
+                                     CanManage="_canEdit"
+                                     OnDataChanged="LoadEventAgendaAsync" />
+            </section>
+        }
+        else if (_eventSessions != null && _eventSessions.Count > 0)
         {
             <section class="mb-8">
                 <MudText Typo="Typo.h5" Style="font-weight: 800;" Class="mb-4">

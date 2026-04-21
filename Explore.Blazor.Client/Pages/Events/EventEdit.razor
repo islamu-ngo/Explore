@@ -314,6 +314,55 @@
                         Add Session
                     </AppButton>
 
+                    @* --- Scheduling: Days, Rooms, Agenda --- *@
+                    <MudExpansionPanels Class="mb-4" Elevation="0">
+                        <MudExpansionPanel MaxHeight="1200"
+                                           Class="rounded-lg border-solid border-1 mud-border-lines-default">
+                            <TitleContent>
+                                <div class="d-flex align-center gap-2 w-100">
+                                    <MudText Typo="Typo.body1" Style="font-weight: 600;">Scheduling (Days, Rooms & Agenda)</MudText>
+                                    <MudSpacer />
+                                    <MudToggleGroup T="ToggleView" @bind-SelectedValue="_agendaViewMode"
+                                                               Size="Size.Small" Color="Color.Primary" Rounded="true"
+                                                               Class="mr-8">
+                                        <MudToggleItem Value="ToggleView.Grid" Icon="@Icons.Material.Outlined.ViewAgenda" />
+                                        <MudToggleItem Value="ToggleView.Miller" Icon="@Icons.Material.Outlined.ViewSidebar" />
+                                    </MudToggleGroup>
+                                </div>
+                            </TitleContent>
+                            <ChildContent>
+                                @if (_agendaViewMode == ToggleView.Grid)
+                                {
+                                    <MudStack Spacing="4">
+                                        <EventDayManager EventId="EventId"
+                                                         CanManage="true"
+                                                         OnDaysChanged="@(days => _eventDays = days)" />
+
+                                        @if (sessions.Count > 0 && sessions[0].LocationId.HasValue)
+                                        {
+                                            <LocationRoomManager LocationId="sessions[0].LocationId.Value"
+                                                                 CanManage="true"
+                                                                 OnRoomsChanged="@(rooms => _locationRooms = rooms)" />
+                                        }
+
+                                        <EventAgendaGrid EventId="EventId"
+                                                         Days="_eventDays"
+                                                         Rooms="_locationRooms"
+                                                         CanManage="true" />
+                                    </MudStack>
+                                }
+                                else
+                                {
+                                    <AgendaMillerColumns EventId="EventId"
+                                                         Days="_eventDays"
+                                                         AgendaItems="_agendaItems"
+                                                         CanManage="true"
+                                                         OnDataChanged="LoadSchedulingDataAsync" />
+                                }
+                            </ChildContent>
+                        </MudExpansionPanel>
+                    </MudExpansionPanels>
+
                     @* --- Event Options (Luma-style rows) --- *@
                     <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">Event Options</MudText>
                     <div class="edit-event__options">
@@ -453,6 +502,28 @@
                                     @foreach (var m in madhabs)
                                     {
                                         <MudSelectItem T="int?" Value="@((int?)m.Id)">@m.FullName</MudSelectItem>
+                                    }
+                                }
+                            </MudSelect>
+                        </div>
+
+                        @* Registration Policy *@
+                        <div class="edit-event__option-row">
+                            <div class="d-flex align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Policy" Size="Size.Small" Color="Color.Secondary" />
+                                <MudText Typo="Typo.body2">Registration Policy</MudText>
+                            </div>
+                            <MudSelect T="int?" @bind-Value="updateDto.RegistrationPolicyId"
+                                       Variant="Variant.Text" Margin="Margin.Dense"
+                                       AnchorOrigin="Origin.BottomCenter"
+                                       Class="edit-event__option-select"
+                                       Placeholder="Default (Open)">
+                                <MudSelectItem T="int?" Value="@((int?)null)">Default (Open)</MudSelectItem>
+                                @if (registrationPolicies != null)
+                                {
+                                    @foreach (var policy in registrationPolicies)
+                                    {
+                                        <MudSelectItem T="int?" Value="@((int?)policy.Id)">@policy.FullName</MudSelectItem>
                                     }
                                 }
                             </MudSelect>

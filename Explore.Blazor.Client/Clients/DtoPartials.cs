@@ -32,3 +32,7 @@ public partial class EventSessionListDto
     [System.Text.Json.Serialization.JsonPropertyName("featuredImageUri")]
     public string? FeaturedImageUri { get; set; }
 }
+
+public partial class CreateEventDto
+{
+}

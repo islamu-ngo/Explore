@@ -48,12 +48,18 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ILanguageService, LanguageService>();
         services.AddScoped<IMadhabService, MadhabService>();
         services.AddScoped<IEventAspectService, EventAspectService>();
+        services.AddScoped<IScheduleItemKindService, ScheduleItemKindService>();
+        services.AddScoped<IRegistrationScopeService, RegistrationScopeService>();
+        services.AddScoped<IEventRegistrationPolicyService, EventRegistrationPolicyService>();
         services.AddScoped<ILookupCacheService, LookupCacheService>();
 
         // Event-specific services
         services.AddScoped<IEventRegistrationService, EventRegistrationService>();
         services.AddScoped<IEventSessionSpeakerService, EventSessionSpeakerService>();
         services.AddScoped<IEventSessionAgendaItemService, EventSessionAgendaItemService>();
+        services.AddScoped<IEventDayService, EventDayService>();
+        services.AddScoped<IEventAgendaItemService, EventAgendaItemService>();
+        services.AddScoped<ILocationRoomService, LocationRoomService>();
         services.AddScoped<IActorService, ActorService>();
         services.AddScoped<IEventCreationEligibilityService, EventCreationEligibilityService>();
         services.AddScoped<IContactShareConsentService, ContactShareConsentService>();

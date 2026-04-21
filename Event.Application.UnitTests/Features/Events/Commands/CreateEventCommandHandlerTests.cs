@@ -10,6 +10,7 @@ using Explore.Application.Features.Events.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Application.Telemetry;
 using Explore.Domain;
+using Explore.Domain.Services.Scheduling;
 using Microsoft.Extensions.Caching.Hybrid;
 using NSubstitute;
 using TUnit.Assertions;
@@ -34,6 +35,10 @@ public class CreateEventCommandHandlerTests
     private readonly IEventCustomPropertyRepository _eventCustomPropertyRepository;
     private readonly IEventTemplateInstantiationService _instantiationService;
     private readonly IEventCustomPropertyProjectionUpdater _projectionUpdater;
+    private readonly IEventDayRepository _eventDayRepository;
+    private readonly ILocationRoomRepository _locationRoomRepository;
+    private readonly IEventAgendaItemRepository _eventAgendaItemRepository;
+    private readonly IEventScheduleProjectionCalculator _scheduleProjectionCalculator;
     private readonly IUserContext _userContext;
     private readonly ITenantContext _tenantContext;
     private readonly IMapper _mapper;
@@ -58,6 +63,10 @@ public class CreateEventCommandHandlerTests
         _eventCustomPropertyRepository = Substitute.For<IEventCustomPropertyRepository>();
         _instantiationService = Substitute.For<IEventTemplateInstantiationService>();
         _projectionUpdater = Substitute.For<IEventCustomPropertyProjectionUpdater>();
+        _eventDayRepository = Substitute.For<IEventDayRepository>();
+        _locationRoomRepository = Substitute.For<ILocationRoomRepository>();
+        _eventAgendaItemRepository = Substitute.For<IEventAgendaItemRepository>();
+        _scheduleProjectionCalculator = Substitute.For<IEventScheduleProjectionCalculator>();
         _userContext = Substitute.For<IUserContext>();
         _tenantContext = Substitute.For<ITenantContext>();
         _mapper = Substitute.For<IMapper>();
@@ -91,6 +100,10 @@ public class CreateEventCommandHandlerTests
             _instantiationService,
             _organizationRepository,
             _groupRepository,
+            _eventDayRepository,
+            _locationRoomRepository,
+            _eventAgendaItemRepository,
+            _scheduleProjectionCalculator,
             _userContext,
             _tenantContext,
             _mapper,

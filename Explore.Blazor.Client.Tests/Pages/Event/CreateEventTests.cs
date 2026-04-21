@@ -60,6 +60,11 @@ public class CreateEventTests : IDisposable
         _ctx.Services.AddSingleton(MockServiceFactory.CreateTranslationService());
         _ctx.Services.AddSingleton(Substitute.For<IHttpClientFactory>());
 
+        var registrationPolicyMock = Substitute.For<IEventRegistrationPolicyService>();
+        registrationPolicyMock.GetEventRegistrationPoliciesAsync()
+            .Returns(new List<EventRegistrationPolicyListDto>());
+        _ctx.Services.AddSingleton(registrationPolicyMock);
+
         // Setup default mock responses
         SetupDefaultMockResponses();
     }

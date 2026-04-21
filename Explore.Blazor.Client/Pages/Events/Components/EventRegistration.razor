@@ -1,3 +1,4 @@
+@using Explore.Blazor.Client.Helpers
 @inject IEventService EventService
 @inject IUserService UserService
 @inject ISnackbar Snackbar
@@ -20,7 +21,7 @@
                         <MudIcon Icon="@Icons.Material.Filled.EventAvailable" Style="color: var(--mud-palette-success);" />
                     </div>
                     <MudText Typo="Typo.h4" Class="success-title">
-                        You're Already Registered! ✅
+                        You're Already Registered!
                     </MudText>
                     <MudText Typo="Typo.body1" Class="success-message">
                         You have already registered for this event.<br />
@@ -38,15 +39,69 @@
         {
             <div class="registration-shell">
                 <MudText Typo="Typo.h5" Class="mb-2">@Title</MudText>
-                <MudText Typo="Typo.body2" Class="mb-6 mud-text-secondary">
-                    Click confirm to register for this event
-                </MudText>
 
                 @if (currentUser != null)
                 {
                     <MudAlert Severity="Severity.Info" Class="mb-4">
                         You will be registered as: <strong>@currentUser.FirstName @currentUser.LastName</strong> (@currentUser.Email)
                     </MudAlert>
+                }
+
+                @if (_allowedScopes.Count > 1)
+                {
+                    <MudText Typo="Typo.body2" Class="mb-2 mud-text-secondary">
+                        How would you like to register?
+                    </MudText>
+                    <MudRadioGroup T="int" @bind-Value="_selectedScopeId" Class="mb-4">
+                        @foreach (var scopeId in _allowedScopes)
+                        {
+                            <MudRadio T="int" Value="@scopeId" Color="Color.Primary" Dense="true">
+                                <MudText Typo="Typo.body1">@RegistrationPolicyHelper.GetScopeLabel(scopeId)</MudText>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                    @RegistrationPolicyHelper.GetScopeDescription(scopeId)
+                                </MudText>
+                            </MudRadio>
+                        }
+                    </MudRadioGroup>
+                }
+                else if (_allowedScopes.Count == 1)
+                {
+                    <MudText Typo="Typo.body2" Class="mb-4 mud-text-secondary">
+                        @RegistrationPolicyHelper.GetScopeDescription(_allowedScopes[0])
+                    </MudText>
+                }
+
+                @if (_selectedScopeId == RegistrationPolicyHelper.ScopeDay && Days != null && Days.Any())
+                {
+                    <MudSelect T="Guid?" @bind-Value="_selectedDayId"
+                               Label="Select a day"
+                               Variant="Variant.Outlined"
+                               AnchorOrigin="Origin.BottomCenter"
+                               Class="mb-4"
+                               Required="true">
+                        @foreach (var day in Days.Where(d => d.IsPublished).OrderBy(d => d.LocalDate))
+                        {
+                            <MudSelectItem T="Guid?" Value="@day.Id">
+                                @day.LocalDate.ToString("ddd, MMM d")@(!string.IsNullOrEmpty(day.Label) ? $" - {day.Label}" : "")
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+
+                @if (_selectedScopeId == RegistrationPolicyHelper.ScopeSessionSelection && Sessions != null && Sessions.Any())
+                {
+                    <MudText Typo="Typo.body2" Class="mb-2">Select sessions:</MudText>
+                    <div class="mb-4" style="max-height: 300px; overflow-y: auto;">
+                        @foreach (var session in Sessions.Where(s => s.Id.HasValue))
+                        {
+                            <MudCheckBox T="bool"
+                                         Value="@_selectedSessionIds.Contains(session.Id!.Value)"
+                                         ValueChanged="@((bool v) => ToggleSession(session.Id!.Value, v))"
+                                         Label="@session.Title"
+                                         Color="Color.Primary"
+                                         Dense="true" />
+                        }
+                    </div>
                 }
 
                 <div class="action-buttons">
@@ -57,7 +112,7 @@
                         Cancel
                     </AppButton>
                     <AppButton OnClick="HandleSubmit"
-                               Disabled="isSubmitting || currentUser == null"
+                               Disabled="@IsSubmitDisabled()"
                                StartIcon="@(isSubmitting ? null : Icons.Material.Filled.CheckCircle)">
                         @if (isSubmitting)
                         {
@@ -80,7 +135,7 @@
                         <MudIcon Icon="@Icons.Material.Filled.CheckCircle" />
                     </div>
                     <MudText Typo="Typo.h4" Class="success-title">
-                        Registration Successful! 🎉
+                        Registration Successful!
                     </MudText>
                     <MudText Typo="Typo.body1" Class="success-message">
                         Thank you for registering@(currentUser != null ? $", {currentUser.FirstName}" : "")! <br />
@@ -110,15 +165,38 @@
     [Parameter]
     public string Title { get; set; } = "Register for Event";
 
+    [Parameter]
+    public int? RegistrationPolicyId { get; set; }
+
+    [Parameter]
+    public ICollection<EventDayListDto>? Days { get; set; }
+
+    [Parameter]
+    public ICollection<EventSessionListDto>? Sessions { get; set; }
+
     private CreateEventRegistrationDto registrationModel = new();
     private UserDto? currentUser;
-    private bool isSubmitting = false;
-    private bool isRegistered = false;
-    private bool isAlreadyRegistered = false;
+    private bool isSubmitting;
+    private bool isRegistered;
+    private bool isAlreadyRegistered;
     private bool isLoading = true;
+
+    private IReadOnlyList<int> _allowedScopes = [];
+    private int _selectedScopeId;
+    private Guid? _selectedDayId;
+    private HashSet<Guid> _selectedSessionIds = [];
 
     protected override async Task OnInitializedAsync()
     {
+        _allowedScopes = RegistrationPolicyHelper.GetAllowedScopes(RegistrationPolicyId);
+        _selectedScopeId = _allowedScopes.Count > 0 ? _allowedScopes[0] : RegistrationPolicyHelper.ScopeSessionSelection;
+
+        if (EventSessionId != Guid.Empty)
+        {
+            _selectedScopeId = RegistrationPolicyHelper.ScopeSessionSelection;
+            _selectedSessionIds.Add(EventSessionId);
+        }
+
         try
         {
             currentUser = await UserService.GetCurrentUserAsync();
@@ -127,8 +205,6 @@
             {
                 registrationModel.EventId = EventId;
                 registrationModel.UserId = currentUser.Id;
-                registrationModel.RegistrationScopeId = 3; // SessionSelection
-                registrationModel.SelectedSessionIds = new List<Guid> { EventSessionId };
             }
         }
         catch (Exception ex)
@@ -139,6 +215,26 @@
         {
             isLoading = false;
         }
+    }
+
+    private void ToggleSession(Guid sessionId, bool selected)
+    {
+        if (selected)
+            _selectedSessionIds.Add(sessionId);
+        else
+            _selectedSessionIds.Remove(sessionId);
+    }
+
+    private bool IsSubmitDisabled()
+    {
+        if (isSubmitting || currentUser == null) return true;
+
+        return _selectedScopeId switch
+        {
+            RegistrationPolicyHelper.ScopeDay => _selectedDayId == null,
+            RegistrationPolicyHelper.ScopeSessionSelection => _selectedSessionIds.Count == 0,
+            _ => false
+        };
     }
 
     private async Task HandleSubmit()
@@ -153,6 +249,24 @@
         {
             Snackbar.Add("Registration is unavailable for this event.", Severity.Error);
             return;
+        }
+
+        registrationModel.RegistrationScopeId = _selectedScopeId;
+
+        switch (_selectedScopeId)
+        {
+            case RegistrationPolicyHelper.ScopeDay:
+                registrationModel.SelectedEventDayId = _selectedDayId;
+                registrationModel.SelectedSessionIds = null;
+                break;
+            case RegistrationPolicyHelper.ScopeSessionSelection:
+                registrationModel.SelectedSessionIds = _selectedSessionIds.ToList();
+                registrationModel.SelectedEventDayId = null;
+                break;
+            default:
+                registrationModel.SelectedSessionIds = null;
+                registrationModel.SelectedEventDayId = null;
+                break;
         }
 
         isSubmitting = true;
