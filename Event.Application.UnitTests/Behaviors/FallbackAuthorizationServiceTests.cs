@@ -407,7 +407,7 @@ public class FallbackAuthorizationServiceTests
 
         var results = await _service.IsAllowedBatchAsync(checks);
 
-        await Assert.That(results).HasCount().EqualTo(4);
+        await Assert.That(results).Count().IsEqualTo(4);
         await Assert.That(results[0]).IsTrue();  // notification: all authenticated
         await Assert.That(results[1]).IsTrue();  // tenant_member: tenant admin
         await Assert.That(results[2]).IsFalse(); // instance_setting: only instance admin

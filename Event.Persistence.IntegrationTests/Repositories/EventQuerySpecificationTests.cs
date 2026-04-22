@@ -43,7 +43,7 @@ public class EventQuerySpecificationTests(PostgreSqlContainerFixture fixture)
         var (items, totalCount) = await repository.GetEventsWithDetailsPaged(1, 10, spec);
 
         await Assert.That(totalCount).IsEqualTo(1);
-        await Assert.That(items).HasCount().EqualTo(1);
+        await Assert.That(items).Count().IsEqualTo(1);
         await Assert.That(items[0].Title).IsEqualTo("Published Event");
     }
 
@@ -67,7 +67,7 @@ public class EventQuerySpecificationTests(PostgreSqlContainerFixture fixture)
         var (items, totalCount) = await repository.GetEventsWithDetailsPaged(1, 10, spec);
 
         await Assert.That(totalCount).IsEqualTo(1);
-        await Assert.That(items).HasCount().EqualTo(1);
+        await Assert.That(items).Count().IsEqualTo(1);
         await Assert.That(items[0].Title).IsEqualTo("Local Event");
     }
 
@@ -161,7 +161,7 @@ public class EventQuerySpecificationTests(PostgreSqlContainerFixture fixture)
         var repository = new EventRepository(context);
         var (items, _) = await repository.GetEventsWithDetailsPaged(1, 10, spec);
 
-        await Assert.That(items).HasCount().EqualTo(3);
+        await Assert.That(items).Count().IsEqualTo(3);
         await Assert.That(items[0].Title).IsEqualTo("Alpha Event");
         await Assert.That(items[1].Title).IsEqualTo("Bravo Event");
         await Assert.That(items[2].Title).IsEqualTo("Charlie Event");
@@ -186,7 +186,7 @@ public class EventQuerySpecificationTests(PostgreSqlContainerFixture fixture)
         var repository = new EventRepository(context);
         var (items, _) = await repository.GetEventsWithDetailsPaged(1, 10, spec);
 
-        await Assert.That(items).HasCount().EqualTo(2);
+        await Assert.That(items).Count().IsEqualTo(2);
         await Assert.That(items[0].Title).IsEqualTo("New Event");
         await Assert.That(items[1].Title).IsEqualTo("Old Event");
     }

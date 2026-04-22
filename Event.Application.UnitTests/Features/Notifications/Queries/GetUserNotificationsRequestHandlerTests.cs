@@ -63,7 +63,7 @@ public class GetUserNotificationsRequestHandlerTests
         var result = await _handler.Handle(request, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Items).HasCount().EqualTo(2);
+        await Assert.That(result.Items).Count().IsEqualTo(2);
         await Assert.That(result.TotalCount).IsEqualTo(2);
         await Assert.That(result.PageNumber).IsEqualTo(1);
     }
@@ -79,7 +79,7 @@ public class GetUserNotificationsRequestHandlerTests
         var result = await _handler.Handle(request, CancellationToken.None);
 
         // Assert
-        await Assert.That(result.Items).HasCount().EqualTo(0);
+        await Assert.That(result.Items).Count().IsEqualTo(0);
         await Assert.That(result.TotalCount).IsEqualTo(0);
     }
 
