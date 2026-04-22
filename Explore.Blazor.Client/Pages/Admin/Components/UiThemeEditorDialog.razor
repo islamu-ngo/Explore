@@ -1,0 +1,356 @@
+@* ABOUTME: Modal dialog for creating or editing a UI theme with 17 light + 17 dark palette color pickers. *@
+@* ABOUTME: Used by UiThemeCatalogSection for both platform-scope and tenant-scope theme catalogs. *@
+
+@using MudBlazor
+@using System.Text.RegularExpressions
+@using Explore.Blazor.Client.Models.Appearance
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="3" Style="min-width: 520px; max-width: 720px;">
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="6">
+                    <MudTextField T="string" @bind-Value="_form.ThemeKey"
+                                  Label="Theme Key"
+                                  Variant="Variant.Outlined"
+                                  HelperText="Lowercase, alphanumeric, hyphens or underscores."
+                                  Disabled="@_isEdit"
+                                  Immediate="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField T="string" @bind-Value="_form.DisplayName"
+                                  Label="Display Name"
+                                  Variant="Variant.Outlined"
+                                  Immediate="true" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField T="string" @bind-Value="_form.Description"
+                                  Label="Description"
+                                  Variant="Variant.Outlined"
+                                  Lines="2" />
+                </MudItem>
+                <MudItem xs="6" sm="3">
+                    <MudNumericField T="int" @bind-Value="_form.SortOrder"
+                                     Label="Sort Order"
+                                     Variant="Variant.Outlined" Min="0" Max="1000" />
+                </MudItem>
+                <MudItem xs="6" sm="3">
+                    <MudSwitch T="bool" @bind-Value="_form.IsActive" Color="Color.Primary">Active</MudSwitch>
+                </MudItem>
+                <MudItem xs="6" sm="3">
+                    <MudSwitch T="bool" @bind-Value="_form.IsDefault" Color="Color.Primary">Default</MudSwitch>
+                </MudItem>
+                @if (!_isEdit)
+                {
+                    <MudItem xs="6" sm="3">
+                        <MudSwitch T="bool" @bind-Value="_form.IsPlatformTheme"
+                                   Color="Color.Primary"
+                                   Disabled="@(!AllowPlatformToggle)">Platform</MudSwitch>
+                    </MudItem>
+                }
+            </MudGrid>
+
+            <MudTabs Elevation="0" Outlined="true" Rounded="true" PanelClass="pa-3">
+                <MudTabPanel Text="Light Palette">
+                    @RenderPaletteEditor(_form.LightPalette, isDark: false)
+                </MudTabPanel>
+                <MudTabPanel Text="Dark Palette">
+                    @RenderPaletteEditor(_form.DarkPalette, isDark: true)
+                </MudTabPanel>
+            </MudTabs>
+
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   OnClick="SaveAsync" Disabled="@_saving">
+            @(_saving ? "Saving..." : _isEdit ? "Update" : "Create")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public UiThemeDetailsModel? Existing { get; set; }
+    [Parameter] public bool IsPlatformCatalog { get; set; }
+    [Parameter] public bool AllowPlatformToggle { get; set; }
+
+    [Inject] private HttpClient Http { get; set; } = null!;
+    [Inject] private ISnackbar Snackbar { get; set; } = null!;
+    [Inject] private ILogger<UiThemeEditorDialog> Logger { get; set; } = null!;
+
+    private ThemeFormModel _form = new();
+    private bool _isEdit;
+    private bool _saving;
+    private string? _error;
+
+    protected override void OnInitialized()
+    {
+        _isEdit = Existing is not null;
+
+        if (Existing is { } e)
+        {
+            _form = new ThemeFormModel
+            {
+                Id = e.Id,
+                ThemeKey = e.ThemeKey,
+                DisplayName = e.DisplayName,
+                Description = e.Description,
+                IsActive = e.IsActive,
+                IsDefault = e.IsDefault,
+                SortOrder = e.SortOrder,
+                IsPlatformTheme = IsPlatformCatalog,
+                RowVersion = e.RowVersion,
+                LightPalette = ClonePalette(e.LightPalette),
+                DarkPalette = ClonePalette(e.DarkPalette)
+            };
+        }
+        else
+        {
+            _form = new ThemeFormModel
+            {
+                IsPlatformTheme = IsPlatformCatalog,
+                IsActive = true,
+                SortOrder = 0,
+                LightPalette = DefaultLightPalette(),
+                DarkPalette = DefaultDarkPalette()
+            };
+        }
+    }
+
+    private RenderFragment RenderPaletteEditor(UiThemePaletteModel palette, bool isDark) => __builder =>
+    {
+        var tokens = new (string Label, Func<string> Get, Action<string> Set)[]
+        {
+            ("Primary", () => palette.Primary, v => palette.Primary = v),
+            ("Secondary", () => palette.Secondary, v => palette.Secondary = v),
+            ("Background", () => palette.Background, v => palette.Background = v),
+            ("Surface", () => palette.Surface, v => palette.Surface = v),
+            ("Appbar Background", () => palette.AppbarBackground, v => palette.AppbarBackground = v),
+            ("Appbar Text", () => palette.AppbarText, v => palette.AppbarText = v),
+            ("Drawer Background", () => palette.DrawerBackground, v => palette.DrawerBackground = v),
+            ("Drawer Text", () => palette.DrawerText, v => palette.DrawerText = v),
+            ("Drawer Icon", () => palette.DrawerIcon, v => palette.DrawerIcon = v),
+            ("Text Primary", () => palette.TextPrimary, v => palette.TextPrimary = v),
+            ("Text Secondary", () => palette.TextSecondary, v => palette.TextSecondary = v),
+            ("Info", () => palette.Info, v => palette.Info = v),
+            ("Success", () => palette.Success, v => palette.Success = v),
+            ("Warning", () => palette.Warning, v => palette.Warning = v),
+            ("Error", () => palette.Error, v => palette.Error = v),
+            ("Lines Default", () => palette.LinesDefault, v => palette.LinesDefault = v),
+            ("Divider", () => palette.Divider, v => palette.Divider = v)
+        };
+
+        __builder.OpenElement(0, "div");
+        __builder.AddAttribute(1, "class", "ui-theme-editor__grid");
+
+        int seq = 2;
+        foreach (var token in tokens)
+        {
+            __builder.OpenComponent<UiThemeColorField>(seq++);
+            __builder.AddAttribute(seq++, "Label", token.Label);
+            __builder.AddAttribute(seq++, "Value", token.Get());
+            __builder.AddAttribute(seq++, "ValueChanged", EventCallback.Factory.Create<string>(this, token.Set));
+            __builder.CloseComponent();
+        }
+
+        __builder.CloseElement();
+    };
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task SaveAsync()
+    {
+        _error = null;
+
+        if (!ValidateForm(out var validationError))
+        {
+            _error = validationError;
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            if (_isEdit)
+            {
+                var updateModel = new UpdateUiThemeModel
+                {
+                    Id = _form.Id,
+                    DisplayName = _form.DisplayName,
+                    Description = _form.Description,
+                    IsActive = _form.IsActive,
+                    IsDefault = _form.IsDefault,
+                    SortOrder = _form.SortOrder,
+                    LightPalette = _form.LightPalette,
+                    DarkPalette = _form.DarkPalette,
+                    RowVersion = _form.RowVersion
+                };
+
+                using var response = await Http.PutAsJsonAsync(
+                    $"/api/admin/ui-themes/{_form.Id}", updateModel);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _error = $"Update failed: {(int)response.StatusCode} {response.ReasonPhrase}";
+                    return;
+                }
+            }
+            else
+            {
+                var createModel = new CreateUiThemeModel
+                {
+                    IsPlatformTheme = _form.IsPlatformTheme,
+                    ThemeKey = _form.ThemeKey,
+                    DisplayName = _form.DisplayName,
+                    Description = _form.Description,
+                    IsActive = _form.IsActive,
+                    IsDefault = _form.IsDefault,
+                    SortOrder = _form.SortOrder,
+                    LightPalette = _form.LightPalette,
+                    DarkPalette = _form.DarkPalette
+                };
+
+                using var response = await Http.PostAsJsonAsync("/api/admin/ui-themes", createModel);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _error = $"Create failed: {(int)response.StatusCode} {response.ReasonPhrase}";
+                    return;
+                }
+            }
+
+            Snackbar.Add(_isEdit ? "Theme updated." : "Theme created.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "UI theme save failed");
+            _error = ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private static readonly Regex ThemeKeyRegex = new("^[a-z0-9]+(?:[-_][a-z0-9]+)*$", RegexOptions.Compiled);
+    private static readonly Regex HexColorRegex = new("^#[0-9A-Fa-f]{6}$", RegexOptions.Compiled);
+    private static readonly Regex RgbaColorRegex = new(@"^rgba\((25[0-5]|2[0-4]\d|1?\d?\d),(25[0-5]|2[0-4]\d|1?\d?\d),(25[0-5]|2[0-4]\d|1?\d?\d),(0|0?\.\d+|1(\.0+)?)\)$", RegexOptions.Compiled);
+
+    private bool ValidateForm(out string? error)
+    {
+        error = null;
+
+        if (!_isEdit)
+        {
+            var key = _form.ThemeKey.Trim().ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(key) || !ThemeKeyRegex.IsMatch(key))
+            {
+                error = "Theme key must be lowercase alphanumeric with hyphens or underscores (e.g. 'aurora-dark').";
+                return false;
+            }
+            _form.ThemeKey = key;
+        }
+
+        if (string.IsNullOrWhiteSpace(_form.DisplayName))
+        {
+            error = "Display name is required.";
+            return false;
+        }
+
+        var hexFields = new[]
+        {
+            _form.LightPalette.Primary, _form.LightPalette.Secondary, _form.LightPalette.Background,
+            _form.LightPalette.Surface, _form.LightPalette.AppbarText, _form.LightPalette.DrawerText,
+            _form.LightPalette.DrawerIcon, _form.LightPalette.TextPrimary, _form.LightPalette.TextSecondary,
+            _form.LightPalette.Info, _form.LightPalette.Success, _form.LightPalette.Warning,
+            _form.LightPalette.Error, _form.LightPalette.LinesDefault,
+            _form.DarkPalette.Primary, _form.DarkPalette.Secondary, _form.DarkPalette.Background,
+            _form.DarkPalette.Surface, _form.DarkPalette.AppbarText, _form.DarkPalette.DrawerText,
+            _form.DarkPalette.DrawerIcon, _form.DarkPalette.TextPrimary, _form.DarkPalette.TextSecondary,
+            _form.DarkPalette.Info, _form.DarkPalette.Success, _form.DarkPalette.Warning,
+            _form.DarkPalette.Error, _form.DarkPalette.LinesDefault
+        };
+
+        if (hexFields.Any(v => string.IsNullOrWhiteSpace(v) || !HexColorRegex.IsMatch(v.Trim())))
+        {
+            error = "All color fields marked hex-only must be valid 6-digit hex values (e.g. #2563EB).";
+            return false;
+        }
+
+        var flexFields = new[]
+        {
+            _form.LightPalette.AppbarBackground, _form.LightPalette.DrawerBackground, _form.LightPalette.Divider,
+            _form.DarkPalette.AppbarBackground, _form.DarkPalette.DrawerBackground, _form.DarkPalette.Divider
+        };
+
+        if (flexFields.Any(v => string.IsNullOrWhiteSpace(v) || !(HexColorRegex.IsMatch(v.Trim()) || RgbaColorRegex.IsMatch(v.Trim()))))
+        {
+            error = "Appbar/Drawer backgrounds and Divider must be valid hex or rgba values.";
+            return false;
+        }
+
+        return true;
+    }
+
+    private static UiThemePaletteModel ClonePalette(UiThemePaletteModel src) => new()
+    {
+        Primary = src.Primary,
+        Secondary = src.Secondary,
+        Background = src.Background,
+        Surface = src.Surface,
+        AppbarBackground = src.AppbarBackground,
+        AppbarText = src.AppbarText,
+        DrawerBackground = src.DrawerBackground,
+        DrawerText = src.DrawerText,
+        DrawerIcon = src.DrawerIcon,
+        TextPrimary = src.TextPrimary,
+        TextSecondary = src.TextSecondary,
+        Info = src.Info,
+        Success = src.Success,
+        Warning = src.Warning,
+        Error = src.Error,
+        LinesDefault = src.LinesDefault,
+        Divider = src.Divider
+    };
+
+    private static UiThemePaletteModel DefaultLightPalette() => new()
+    {
+        Primary = "#2563EB", Secondary = "#64748B", Background = "#F8FAFC", Surface = "#FFFFFF",
+        AppbarBackground = "#FFFFFF", AppbarText = "#0F172A", DrawerBackground = "#FFFFFF",
+        DrawerText = "#0F172A", DrawerIcon = "#475569", TextPrimary = "#0F172A", TextSecondary = "#475569",
+        Info = "#0EA5E9", Success = "#16A34A", Warning = "#F59E0B", Error = "#DC2626",
+        LinesDefault = "#E2E8F0", Divider = "#E2E8F0"
+    };
+
+    private static UiThemePaletteModel DefaultDarkPalette() => new()
+    {
+        Primary = "#60A5FA", Secondary = "#94A3B8", Background = "#0F172A", Surface = "#1E293B",
+        AppbarBackground = "#1E293B", AppbarText = "#F1F5F9", DrawerBackground = "#1E293B",
+        DrawerText = "#F1F5F9", DrawerIcon = "#CBD5E1", TextPrimary = "#F1F5F9", TextSecondary = "#CBD5E1",
+        Info = "#38BDF8", Success = "#22C55E", Warning = "#FBBF24", Error = "#F87171",
+        LinesDefault = "#334155", Divider = "#334155"
+    };
+
+    private sealed class ThemeFormModel
+    {
+        public Guid Id { get; set; }
+        public string ThemeKey { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public bool IsActive { get; set; } = true;
+        public bool IsDefault { get; set; }
+        public int SortOrder { get; set; }
+        public bool IsPlatformTheme { get; set; }
+        public long RowVersion { get; set; }
+        public UiThemePaletteModel LightPalette { get; set; } = new();
+        public UiThemePaletteModel DarkPalette { get; set; } = new();
+    }
+}

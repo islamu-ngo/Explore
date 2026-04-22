@@ -3,7 +3,6 @@
 
 namespace Explore.API.Extensions;
 
-using Explore.Application.Utilities;
 using Explore.Secrets.Extensions;
 
 public static class ConfigurationExtensions
@@ -58,7 +57,9 @@ public static class ConfigurationExtensions
         var authorizationUrl = keycloakAuthority != null
             ? $"{keycloakAuthority}/protocol/openid-connect/auth"
             : null;
-        var cerbosGrpcEndpoint = GrpcEndpointNormalizer.Normalize(config["CERBOS_GRPC_ENDPOINT"]);
+        // Preserve the operator's raw input (bare host:port or full URL). Normalization happens only
+        // at gRPC channel creation time so we don't surface a misleading scheme back to the UI/storage.
+        var cerbosGrpcEndpoint = config["CERBOS_GRPC_ENDPOINT"]?.Trim();
 
         var mappedConfig = new Dictionary<string, string?>();
 

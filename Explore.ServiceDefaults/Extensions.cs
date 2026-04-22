@@ -29,14 +29,15 @@ public static class Extensions
 
         builder.Services.AddServiceDiscovery();
 
-        builder.Services.ConfigureHttpClientDefaults(http =>
-        {
-            // Turn on resilience by default
-            http.AddStandardResilienceHandler();
-
-            // Turn on service discovery by default
-            http.AddServiceDiscovery();
-        });
+        // NOTE: We intentionally do NOT register global resilience/service-discovery handlers via
+        // ConfigureHttpClientDefaults here. Doing so causes Microsoft.Extensions.Http.Resilience
+        // to STACK a second ResilienceHandler on top of any per-client AddStandardResilienceHandler
+        // call, resulting in double timeouts and spurious BrokenCircuitException cascades.
+        //
+        // Evidence: dotnet/extensions issues #4814, #5021, #5695. Official guidance is to scope
+        // resilience per HttpClient (see docs/ARCHITECTURE.md and Explore.Blazor/Extensions/HttpClientExtensions.cs).
+        //
+        // If a consumer wants opt-in global resilience, add it in that project explicitly.
 
         // Uncomment the following to restrict the allowed schemes for service discovery.
         // builder.Services.Configure<ServiceDiscoveryOptions>(options =>

@@ -51,4 +51,8 @@ public class PublicExperienceSettingsDto
     public bool DisallowInteractiveServerOnOnboarding { get; set; } = true;
     public bool IsAiAssistantAvailable { get; set; }
     public FooterConfigDto FooterConfig { get; set; } = new();
+    public Guid? DefaultThemeId { get; set; }
+    public string ThemeMode { get; set; } = "system";
+    public string Direction { get; set; } = "auto";
+    public string Language { get; set; } = "en";
 }

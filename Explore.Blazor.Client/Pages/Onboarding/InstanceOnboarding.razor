@@ -2,6 +2,7 @@
 @using MudBlazor
 @using Microsoft.AspNetCore.Authorization
 @using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Models.Responses
 @layout SetupLayout
 @attribute [Authorize]
 @rendermode InteractiveServer
@@ -26,6 +27,11 @@
         @if (!string.IsNullOrWhiteSpace(_errorMessage))
         {
             <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(_syncWarning))
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-4">@_syncWarning</MudAlert>
         }
 
         @if (_isLoading)
@@ -277,6 +283,7 @@
     private bool _isSaving;
     private string? _errorMessage;
     private bool _setupSecretSynced;
+    private string? _syncWarning;
     private int _activeStep;
     private UserDto? _currentUser;
     private FirstHostSetupChoice _firstHostSetupChoice = FirstHostSetupChoice.None;
@@ -337,35 +344,36 @@
             return;
         }
 
-        var secret = (await JSRuntime.InvokeAsync<string?>("sessionStorage.getItem", "setup-secret"))?.Trim();
-        if (string.IsNullOrWhiteSpace(secret))
+        var bffModule = await GetBffModuleAsync();
+
+        for (var attempt = 0; attempt <= 3; attempt++)
         {
-            return;
+            if (attempt > 0)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(attempt * 2));
+            }
+
+            var syncResult = await bffModule.InvokeAsync<BffMutationResult>("syncSetupSecret", (string?)null);
+            if (syncResult is { Ok: true })
+            {
+                _setupSecretSynced = true;
+                _syncWarning = null;
+                StateHasChanged();
+                return;
+            }
+
+            if (syncResult?.Status is 400 or 410)
+            {
+                var bffClient = CreateBffSelfClient();
+                await bffClient.DeleteAsync("/bff/setup-secret");
+                _errorMessage = "Setup secret expired or is invalid. Please enter the current setup secret again.";
+                StateHasChanged();
+                Navigation.NavigateTo("/setup", forceLoad: true);
+                return;
+            }
         }
 
-        // /bff/setup-secret/sync validates the secret internally — no separate ValidateSecretAsync
-        // call needed, which would otherwise consume an extra rate-limit token before complete.
-        var bffClient = CreateBffSelfClient();
-        var syncResponse = await bffClient.PostAsJsonAsync("/bff/setup-secret/sync", new { Secret = secret });
-        if (syncResponse.IsSuccessStatusCode)
-        {
-            _setupSecretSynced = true;
-            return;
-        }
-
-        // 400 = invalid secret, 410 = setup already completed → clear and redirect
-        if (syncResponse.StatusCode == System.Net.HttpStatusCode.BadRequest ||
-            syncResponse.StatusCode == System.Net.HttpStatusCode.Gone)
-        {
-            await bffClient.DeleteAsync("/bff/setup-secret");
-            await JSRuntime.InvokeVoidAsync("sessionStorage.removeItem", "setup-secret");
-            _errorMessage = "Setup secret expired or is invalid. Please enter the current setup secret again.";
-            StateHasChanged();
-            Navigation.NavigateTo("/setup", forceLoad: true);
-            return;
-        }
-
-        _errorMessage = "Could not sync setup secret for onboarding. Please return to setup and try again.";
+        _syncWarning = "Setup secret sync pending — you can proceed, but saving may require re-entering your setup secret.";
         StateHasChanged();
     }
 
@@ -464,8 +472,20 @@
         _isSaving = false;
         _completeButtonLabel = "Complete Instance Onboarding";
 
+        if (response.StatusCode == 401)
+        {
+            Navigation.NavigateTo("/login", forceLoad: true);
+            return;
+        }
+
         if (response.Success)
         {
+            var refreshed = await InstanceOnboardingService.RefreshAuthSessionAsync();
+            if (!refreshed)
+            {
+                Logger.LogWarning("Instance onboarding completed but BFF auth session refresh failed. Falling back to API-backed admin checks.");
+            }
+
             Snackbar.Add("Instance onboarding completed.", Severity.Success);
             await NavigatePostCompletionAsync();
             return;
@@ -478,8 +498,8 @@
 
     private async Task NavigatePostCompletionAsync()
     {
-        // forceLoad: true triggers a full HTTP request so the BFF's IClaimsTransformation
-        // runs and enriches the cookie principal with freshly-assigned admin claims.
+        // forceLoad: true ensures the first destination request uses the freshly renewed cookie
+        // after the BFF refresh-session endpoint re-issued admin claims.
         if (IsMultiTenantMode)
         {
             Navigation.NavigateTo("/admin/instance/settings", forceLoad: true);
@@ -552,6 +572,14 @@
         var client = HttpClientFactory.CreateClient("BffSelfClient");
         client.BaseAddress = new Uri(Navigation.BaseUri);
         return client;
+    }
+
+    private IJSObjectReference? _bffModule;
+
+    private async Task<IJSObjectReference> GetBffModuleAsync()
+    {
+        _bffModule ??= await JSRuntime.InvokeAsync<IJSObjectReference>("import", "/js/bff.js");
+        return _bffModule;
     }
 
     private string GetTenantModeCardClass(string mode)

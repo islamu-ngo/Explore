@@ -28,13 +28,20 @@ namespace Explore.API.Controllers;
 [EndpointClassification(EndpointClass.Authenticated)]
 public class InstanceSettingsController : ExploreControllerBase
 {
+    private const string SetupSecretHeader = "X-Setup-Secret";
+
     private readonly IMediator _mediator;
     private readonly IAdminContext _adminContext;
+    private readonly ISetupSecretProvider _setupSecretProvider;
 
-    public InstanceSettingsController(IMediator mediator, IAdminContext adminContext)
+    public InstanceSettingsController(
+        IMediator mediator,
+        IAdminContext adminContext,
+        ISetupSecretProvider setupSecretProvider)
     {
         _mediator = mediator;
         _adminContext = adminContext;
+        _setupSecretProvider = setupSecretProvider;
     }
 
     // ── Governance Sub-Resource Endpoints ──────────────────────────────
@@ -46,7 +53,7 @@ public class InstanceSettingsController : ExploreControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<ModuleSettingsDto>> GetModuleSettings(CancellationToken cancellationToken = default)
     {
-        if (!await IsInstanceAdmin(cancellationToken)) return Forbid();
+        if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
         var settings = await _mediator.Send(new GetInstanceGovernanceSettingsQuery(), cancellationToken);
         return Ok(settings.Modules);
     }
@@ -74,7 +81,7 @@ public class InstanceSettingsController : ExploreControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<EventPolicyDto>> GetEventPolicy(CancellationToken cancellationToken = default)
     {
-        if (!await IsInstanceAdmin(cancellationToken)) return Forbid();
+        if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
         var settings = await _mediator.Send(new GetInstanceGovernanceSettingsQuery(), cancellationToken);
         return Ok(settings.EventPolicy);
     }
@@ -102,7 +109,7 @@ public class InstanceSettingsController : ExploreControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<OrganizationPolicyDto>> GetOrganizationPolicy(CancellationToken cancellationToken = default)
     {
-        if (!await IsInstanceAdmin(cancellationToken)) return Forbid();
+        if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
         var settings = await _mediator.Send(new GetInstanceGovernanceSettingsQuery(), cancellationToken);
         return Ok(settings.OrganizationPolicy);
     }
@@ -130,7 +137,7 @@ public class InstanceSettingsController : ExploreControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BrandingSettingsDto>> GetBrandingSettings(CancellationToken cancellationToken = default)
     {
-        if (!await IsInstanceAdmin(cancellationToken)) return Forbid();
+        if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
         var settings = await _mediator.Send(new GetInstanceGovernanceSettingsQuery(), cancellationToken);
         return Ok(settings.Branding);
     }
@@ -158,7 +165,7 @@ public class InstanceSettingsController : ExploreControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<DomainSettingsDto>> GetDomainSettings(CancellationToken cancellationToken = default)
     {
-        if (!await IsInstanceAdmin(cancellationToken)) return Forbid();
+        if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
         var settings = await _mediator.Send(new GetInstanceGovernanceSettingsQuery(), cancellationToken);
         return Ok(settings.Domains);
     }
@@ -186,7 +193,7 @@ public class InstanceSettingsController : ExploreControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<TenantDelegationSettingsDto>> GetTenantDelegationSettings(CancellationToken cancellationToken = default)
     {
-        if (!await IsInstanceAdmin(cancellationToken)) return Forbid();
+        if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
         var settings = await _mediator.Send(new GetInstanceGovernanceSettingsQuery(), cancellationToken);
         return Ok(settings.TenantDelegation);
     }
@@ -214,7 +221,7 @@ public class InstanceSettingsController : ExploreControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<RenderPolicySettingsDto>> GetRenderPolicySettings(CancellationToken cancellationToken = default)
     {
-        if (!await IsInstanceAdmin(cancellationToken)) return Forbid();
+        if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
         var settings = await _mediator.Send(new GetInstanceGovernanceSettingsQuery(), cancellationToken);
         return Ok(settings.RenderPolicy);
     }
@@ -242,7 +249,7 @@ public class InstanceSettingsController : ExploreControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<DeploymentModeDto>> GetDeploymentMode(CancellationToken cancellationToken = default)
     {
-        if (!await IsInstanceAdmin(cancellationToken)) return Forbid();
+        if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
         var settings = await _mediator.Send(new GetInstanceGovernanceSettingsQuery(), cancellationToken);
         return Ok(settings.DeploymentMode);
     }
@@ -302,7 +309,7 @@ public class InstanceSettingsController : ExploreControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<InstanceStorageSettingsDto>> GetStorageSettings(CancellationToken cancellationToken = default)
     {
-        if (!await IsInstanceAdmin(cancellationToken)) return Forbid();
+        if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
         var settings = await _mediator.Send(new GetInstanceStorageSettingsQuery(), cancellationToken);
         return Ok(settings);
     }
@@ -331,7 +338,7 @@ public class InstanceSettingsController : ExploreControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult> TestStorageConnection(CancellationToken cancellationToken = default)
     {
-        if (!await IsInstanceAdmin(cancellationToken)) return Forbid();
+        if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
 
         var storageService = HttpContext.RequestServices.GetRequiredService<Explore.Application.Contracts.Infrastructure.IObjectStorageService>();
         var success = await storageService.TestConnectionAsync(cancellationToken);
@@ -345,7 +352,7 @@ public class InstanceSettingsController : ExploreControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<InstanceSmtpSettingsDto>> GetSmtpSettings(CancellationToken cancellationToken = default)
     {
-        if (!await IsInstanceAdmin(cancellationToken)) return Forbid();
+        if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
         var settings = await _mediator.Send(new GetInstanceSmtpSettingsQuery(), cancellationToken);
         return Ok(settings);
     }
@@ -374,7 +381,7 @@ public class InstanceSettingsController : ExploreControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult> TestSmtpConnection(CancellationToken cancellationToken = default)
     {
-        if (!await IsInstanceAdmin(cancellationToken)) return Forbid();
+        if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
 
         var emailService = HttpContext.RequestServices.GetRequiredService<Explore.Application.Contracts.Infrastructure.IEmailService>();
         var result = await emailService.TestConnectionAsync(cancellationToken);
@@ -393,7 +400,7 @@ public class InstanceSettingsController : ExploreControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<ResolverConfigurationDto>> GetResolverConfiguration(CancellationToken cancellationToken = default)
     {
-        if (!await IsInstanceAdmin(cancellationToken)) return Forbid();
+        if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
         var configuration = await _mediator.Send(new GetResolverConfigurationQuery(), cancellationToken);
         return Ok(configuration);
     }
@@ -421,7 +428,7 @@ public class InstanceSettingsController : ExploreControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<AnalyticsGovernanceSettingsDto>> GetAnalyticsGovernanceSettings(CancellationToken cancellationToken = default)
     {
-        if (!await IsInstanceAdmin(cancellationToken)) return Forbid();
+        if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
         var settings = await _mediator.Send(new GetAnalyticsGovernanceSettingsQuery(), cancellationToken);
         return Ok(settings);
     }
@@ -450,7 +457,7 @@ public class InstanceSettingsController : ExploreControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<FooterGovernanceSettingsDto>> GetFooterGovernanceSettings(CancellationToken cancellationToken = default)
     {
-        if (!await IsInstanceAdmin(cancellationToken)) return Forbid();
+        if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
         var settings = await _mediator.Send(new GetFooterGovernanceSettingsQuery(), cancellationToken);
         return Ok(settings);
     }
@@ -465,7 +472,7 @@ public class InstanceSettingsController : ExploreControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateFooterGovernanceSettings(
         [FromBody] FooterGovernanceSettingsDto settings, CancellationToken cancellationToken = default)
     {
-        if (!await IsInstanceAdmin(cancellationToken)) return Forbid();
+        if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
         var userId = CurrentUserId;
         if (!userId.HasValue) return BadRequest(InvalidIdentityResponse());
 
@@ -480,7 +487,7 @@ public class InstanceSettingsController : ExploreControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<AuthProviderConfigurationDto>> GetAuthProviderConfiguration(CancellationToken cancellationToken = default)
     {
-        if (!await IsInstanceAdmin(cancellationToken)) return Forbid();
+        if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
         var configuration = await _mediator.Send(new GetAuthProviderConfigurationQuery(), cancellationToken);
         return Ok(configuration);
     }
@@ -521,7 +528,7 @@ public class InstanceSettingsController : ExploreControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<AuthorizationProviderConfigurationDto>> GetAuthorizationProviderConfiguration(CancellationToken cancellationToken = default)
     {
-        if (!await IsInstanceAdmin(cancellationToken)) return Forbid();
+        if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
         var configuration = await _mediator.Send(new GetAuthorizationProviderConfigurationQuery(), cancellationToken);
         return Ok(configuration);
     }
@@ -560,9 +567,25 @@ public class InstanceSettingsController : ExploreControllerBase
 
     // ── Helpers ────────────────────────────────────────────────────────
 
-    private async Task<bool> IsInstanceAdmin(CancellationToken cancellationToken)
+    /// <summary>
+    /// Reads instance settings are allowed for real instance administrators OR for any
+    /// authenticated caller presenting a valid setup secret while onboarding is still active.
+    /// This allows the onboarding wizard to pre-populate form fields from existing settings
+    /// before the first instance admin has been assigned.
+    /// </summary>
+    private async Task<bool> IsInstanceAdminOrSetupAuthenticated(CancellationToken cancellationToken)
     {
-        return await _adminContext.IsInstanceAdminAsync(cancellationToken);
+        if (await _adminContext.IsInstanceAdminAsync(cancellationToken))
+            return true;
+
+        if (!_setupSecretProvider.IsSetupModeActive)
+            return false;
+
+        var setupSecret = Request.Headers.TryGetValue(SetupSecretHeader, out var value)
+            ? value.ToString()
+            : null;
+
+        return !string.IsNullOrEmpty(setupSecret) && _setupSecretProvider.ValidateSecret(setupSecret);
     }
 
     private static BaseCommandResponse<Guid> InvalidIdentityResponse() => new()

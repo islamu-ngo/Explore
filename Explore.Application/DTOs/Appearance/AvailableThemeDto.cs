@@ -1,5 +1,5 @@
-// ABOUTME: Lightweight DTO representing a selectable theme returned to runtime and future settings UIs.
-// ABOUTME: Exposes ownership/default metadata without leaking the full palette payload at this query stage.
+// ABOUTME: Runtime DTO representing a selectable theme with full light/dark palettes for immediate MudBlazor rendering.
+// ABOUTME: Returned by the authenticated theme-picker endpoint so the client can preview and apply themes without extra round trips.
 
 namespace Explore.Application.DTOs.Appearance;
 
@@ -12,4 +12,6 @@ public class AvailableThemeDto
     public bool IsDefault { get; set; }
     public bool IsPlatformTheme { get; set; }
     public int SortOrder { get; set; }
+    public required UiThemePaletteDto LightPalette { get; set; }
+    public required UiThemePaletteDto DarkPalette { get; set; }
 }

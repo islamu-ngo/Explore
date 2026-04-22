@@ -266,7 +266,7 @@ public class LinkTableControllerTests
     [Test]
     public async Task OrganizationMember_Delete_WithoutAuth_ShouldReturnUnauthorized()
     {
-        var response = await _fixture.Client.DeleteAsync($"/api/organizationmember/{1}");
+        var response = await _fixture.Client.DeleteAsync($"/api/organizationmember/{Guid.NewGuid()}");
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 

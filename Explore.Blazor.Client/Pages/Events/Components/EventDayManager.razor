@@ -4,6 +4,7 @@
 @using MudBlazor
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Contracts.Services.Events
+@using Explore.Blazor.Client.Services
 
 @inject IEventDayService EventDayService
 @inject IDialogService DialogService
@@ -122,14 +123,7 @@
             { x => x.InitialSortOrder, nextSortOrder }
         };
 
-        var options = new DialogOptions
-        {
-            MaxWidth = MaxWidth.Small,
-            FullWidth = true,
-            CloseOnEscapeKey = true
-        };
-
-        var dialog = await DialogService.ShowAsync<EventDayEditorDialog>("Add Day", parameters, options);
+        var dialog = await DialogService.ShowAsync<EventDayEditorDialog>("Add Day", parameters, DialogOptionsFactory.Small());
         var result = await dialog.Result;
 
         if (result is not null && !result.Canceled)
@@ -149,14 +143,7 @@
             { x => x.InitialSortOrder, day.SortOrder }
         };
 
-        var options = new DialogOptions
-        {
-            MaxWidth = MaxWidth.Small,
-            FullWidth = true,
-            CloseOnEscapeKey = true
-        };
-
-        var dialog = await DialogService.ShowAsync<EventDayEditorDialog>("Edit Day", parameters, options);
+        var dialog = await DialogService.ShowAsync<EventDayEditorDialog>("Edit Day", parameters, DialogOptionsFactory.Small());
         var result = await dialog.Result;
 
         if (result is not null && !result.Canceled)

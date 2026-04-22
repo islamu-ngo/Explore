@@ -5,6 +5,7 @@ using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Domain.Enums;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -17,17 +18,20 @@ public sealed class DeploymentModeProvider : IDeploymentModeProvider
     private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(30);
 
     private readonly IOptionsMonitor<DeploymentSettings> _settings;
+    private readonly IConfiguration _configuration;
     private readonly IDistributedCache _cache;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<DeploymentModeProvider> _logger;
 
     public DeploymentModeProvider(
         IOptionsMonitor<DeploymentSettings> settings,
+        IConfiguration configuration,
         IDistributedCache cache,
         IServiceScopeFactory scopeFactory,
         ILogger<DeploymentModeProvider> logger)
     {
         _settings = settings;
+        _configuration = configuration;
         _cache = cache;
         _scopeFactory = scopeFactory;
         _logger = logger;
@@ -35,7 +39,17 @@ public sealed class DeploymentModeProvider : IDeploymentModeProvider
 
     public async Task<DeploymentMode> GetCurrentModeAsync(CancellationToken ct = default)
     {
-        // Layer 1: static config (env var / appsettings) — highest priority
+        // Layer 1: explicit static config (env var / appsettings) — highest priority.
+        // When the operator/deployment has explicitly set Deployment:Mode, honor it
+        // regardless of DB bootstrap state. This lets tests and controlled deployments
+        // force a mode without depending on InstanceBootstrapState.
+        var explicitMode = _configuration["Deployment:Mode"];
+        if (!string.IsNullOrWhiteSpace(explicitMode)
+            && Enum.TryParse<DeploymentMode>(explicitMode, ignoreCase: true, out var configuredMode))
+        {
+            return configuredMode;
+        }
+
         if (_settings.CurrentValue.IsSingleTenant)
             return DeploymentMode.SingleTenant;
 
@@ -50,8 +64,21 @@ public sealed class DeploymentModeProvider : IDeploymentModeProvider
             .GetRequiredService<IInstanceBootstrapStateRepository>();
         var bootstrap = await repo.GetCurrent();
 
-        var mode = bootstrap?.IsCompleted == true
-            && Enum.TryParse<DeploymentMode>(bootstrap.SelectedDeploymentMode, out var dbMode)
+        // Pre-onboarding (fresh install): InstanceBootstrapState is null or incomplete.
+        // Return SingleTenant so ApiTenantResolutionMiddleware falls back to the default tenant
+        // rather than 404'ing every request (including onboarding page's background calls to
+        // /api/translation, /api/user/sync, etc.). The operator's chosen mode replaces this
+        // once onboarding completes and invalidates the cache.
+        if (bootstrap is null || !bootstrap.IsCompleted)
+        {
+            await TrySetCachedModeAsync(DeploymentMode.SingleTenant, ct);
+            _logger.LogDebug("Deployment mode resolved from DB (pre-onboarding fallback): SingleTenant");
+            return DeploymentMode.SingleTenant;
+        }
+
+        // Post-onboarding: trust the persisted selection. Corrupted enum string falls back to
+        // MultiTenant (safer closed default for a fully bootstrapped instance).
+        var mode = Enum.TryParse<DeploymentMode>(bootstrap.SelectedDeploymentMode, out var dbMode)
             ? dbMode
             : DeploymentMode.MultiTenant;
 

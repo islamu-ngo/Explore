@@ -1,4 +1,13 @@
-﻿namespace Explore.Diagnostic
+﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+
+namespace Explore.Diagnostic
 {
     public static class DiagnosticServiceCollectionExtensions
     {

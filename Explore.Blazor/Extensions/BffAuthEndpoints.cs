@@ -39,6 +39,11 @@ public static class BffAuthEndpoints
             .ValidateAntiforgery()
             .ExcludeFromDescription();
 
+        app.MapPost("/bff/auth/refresh-session", HandleRefreshSessionAsync)
+            .ValidateAntiforgery()
+            .RequireAuthorization()
+            .ExcludeFromDescription();
+
         if (app.Environment.IsDevelopment())
         {
             app.MapGet("/auth/debug", HandleAuthDebugAsync).RequireAuthorization();
@@ -61,6 +66,14 @@ public static class BffAuthEndpoints
         logger.LogInformation(
             "[AuthEndpoints] /auth/challenge hit - Provider: {Provider}, Url: {Url}, ReturnUrl: {ReturnUrl}",
             provider, ctx.Request.GetDisplayUrl(), returnUrl);
+
+        if (await ShouldGateForOnboardingAsync(ctx))
+        {
+            logger.LogInformation(
+                "[AuthEndpoints] Redirecting /auth/challenge to /setup because onboarding is incomplete.");
+            ctx.Response.Redirect("/setup");
+            return;
+        }
 
         // Resolve which auth scheme to challenge
         var schemeName = ResolveProviderScheme(provider);
@@ -127,6 +140,15 @@ public static class BffAuthEndpoints
     {
         var logger = ctx.RequestServices.GetRequiredService<ILoggerFactory>()
             .CreateLogger("AuthEndpoints");
+
+        if (await ShouldGateForOnboardingAsync(ctx))
+        {
+            logger.LogInformation(
+                "[AuthEndpoints] Redirecting /auth/login to /setup because onboarding is incomplete.");
+            ctx.Response.Redirect("/setup");
+            return;
+        }
+
         var returnUrl = Uri.EscapeDataString(GetSafeReturnUrl(ctx, logger));
         var provider = ctx.Request.Query["provider"].ToString();
 
@@ -140,6 +162,34 @@ public static class BffAuthEndpoints
             : $"/auth/challenge?provider={Uri.EscapeDataString(provider)}&returnUrl={returnUrl}";
 
         ctx.Response.Redirect(redirectUrl);
+    }
+
+    private static async Task<bool> ShouldGateForOnboardingAsync(HttpContext ctx)
+    {
+        if (!string.IsNullOrWhiteSpace(ctx.Request.Cookies["setup-secret"]))
+        {
+            return false;
+        }
+
+        var provider = ctx.RequestServices.GetService<IBffOnboardingStatusProvider>();
+        if (provider is null)
+        {
+            return false;
+        }
+
+        try
+        {
+            var status = await provider.GetStatusAsync(ctx.RequestAborted);
+            return status.Known && !status.IsCompleted;
+        }
+        catch (OperationCanceledException) when (ctx.RequestAborted.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static async Task HandleSignoutAsync(HttpContext ctx)
@@ -200,6 +250,40 @@ public static class BffAuthEndpoints
                 Detail = "Logout failed. Please try again later."
             });
         }
+    }
+
+    private static async Task<IResult> HandleRefreshSessionAsync(
+        HttpContext ctx,
+        BffAdminClaimsTransformation adminClaimsTransformation,
+        CancellationToken cancellationToken)
+    {
+        var authResult = await ctx.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        if (!authResult.Succeeded || authResult.Principal is null || authResult.Properties is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        var adminClaimsUpdated = await adminClaimsTransformation.EnrichPrincipalAsync(
+            authResult.Principal,
+            authResult.Properties,
+            forceRefresh: true,
+            cancellationToken: cancellationToken);
+
+        await ctx.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            authResult.Principal,
+            authResult.Properties);
+
+        var tokenService = ctx.RequestServices.GetService<ICircuitAccessTokenService>();
+        var accessToken = authResult.Properties.GetTokenValue("access_token");
+        if (!string.IsNullOrWhiteSpace(accessToken))
+        {
+            tokenService?.SetToken(accessToken);
+        }
+
+        ctx.RequestServices.GetService<IBffOnboardingStatusProvider>()?.Invalidate();
+
+        return Results.Ok(new { refreshed = true, adminClaimsUpdated });
     }
 
     private static IResult HandleAuthStatus(HttpContext ctx)

@@ -1,3 +1,4 @@
+using System.Net.Http;
 using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Hosting;
@@ -18,30 +19,48 @@ public class OpenApiExportService : BackgroundService
     private readonly ILogger<OpenApiExportService> _logger;
     private readonly IHostEnvironment _hostEnvironment;
     private readonly IConfiguration _configuration;
+    private readonly IHostApplicationLifetime _lifetime;
 
     public OpenApiExportService(
         IServiceProvider serviceProvider,
         ILogger<OpenApiExportService> logger,
         IHostEnvironment hostEnvironment,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHostApplicationLifetime lifetime)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
         _hostEnvironment = hostEnvironment;
         _configuration = configuration;
+        _lifetime = lifetime;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // Only export in Development environment
         if (!_hostEnvironment.IsDevelopment())
         {
             _logger.LogInformation("OpenAPI export skipped - not in Development environment");
             return;
         }
 
-        // Wait a bit for the API to fully start
-        await Task.Delay(TimeSpan.FromSeconds(3), stoppingToken);
+        // Wait for Kestrel to finish binding all listeners before fetching from self.
+        using var startCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+        startCts.CancelAfter(TimeSpan.FromSeconds(30));
+        try
+        {
+            var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            using var reg = _lifetime.ApplicationStarted.Register(() => tcs.TrySetResult());
+            await tcs.Task.WaitAsync(startCts.Token);
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Timed out waiting for application startup; skipping OpenAPI export");
+            return;
+        }
 
         try
         {
@@ -57,54 +76,44 @@ public class OpenApiExportService : BackgroundService
     {
         using var scope = _serviceProvider.CreateScope();
 
-        // Get the HttpClient to fetch swagger from our own endpoint
-        var httpClientFactory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
-        var client = httpClientFactory.CreateClient();
-
-        // Get the base URL from configuration or use default
         var baseUrl = _configuration["ASPNETCORE_URLS"]?.Split(';').FirstOrDefault()
                       ?? "https://localhost:7039";
 
-        // Use native OpenAPI endpoint. Swashbuckle has version incompatibility with .NET 10's
-        // Microsoft.OpenApi 2.x library. The native endpoint works, and HalSchemaTransformer
-        // can be enabled once .NET 10 Preview 4+ is available with AddSchemaTransformer API.
         var openApiSchemaUri = $"{baseUrl}/openapi/event-api.json";
 
         _logger.LogInformation("Fetching OpenAPI spec from {Url}", openApiSchemaUri);
 
-        // Retry a few times as the swagger endpoint might not be ready immediately
         const int maxRetries = 5;
         for (int i = 0; i < maxRetries; i++)
         {
             try
             {
-                // Skip SSL validation for localhost
-                var handler = new HttpClientHandler
+                using var handler = new SocketsHttpHandler
                 {
-                    ServerCertificateCustomValidationCallback = (_, _, _, _) => true
+                    PooledConnectionLifetime = TimeSpan.FromMinutes(2),
+                    PooledConnectionIdleTimeout = TimeSpan.FromSeconds(30),
+                    ConnectTimeout = TimeSpan.FromSeconds(5),
+                    SslOptions = { RemoteCertificateValidationCallback = (_, _, _, _) => true }
                 };
-                using var httpClient = new HttpClient(handler);
+                using var httpClient = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(10) };
 
                 var response = await httpClient.GetAsync(openApiSchemaUri, stoppingToken);
                 response.EnsureSuccessStatusCode();
 
                 var swaggerJson = await response.Content.ReadAsStringAsync(stoppingToken);
 
-                // Pretty-print the JSON
                 var jsonDoc = JsonDocument.Parse(swaggerJson);
                 var prettyJson = JsonSerializer.Serialize(jsonDoc, new JsonSerializerOptions
                 {
                     WriteIndented = true
                 });
 
-                // Determine output path - project directory
                 var projectDir = _hostEnvironment.ContentRootPath;
                 var outputPath = Path.Combine(projectDir, "swagger.json");
 
                 await File.WriteAllTextAsync(outputPath, prettyJson, stoppingToken);
 
-                _logger.LogInformation("? OpenAPI spec exported to {Path}", outputPath);
-                _logger.LogInformation("   Blazor.Client can now regenerate the API client");
+                _logger.LogInformation("OpenAPI spec exported to {Path}", outputPath);
 
                 return;
             }

@@ -59,10 +59,10 @@ public static class ServiceRegistrationExtensions
         services.AddScoped<ITenantRouteContextAccessor, TenantRouteContextAccessor>();
         services.AddScoped<CircuitHandler, TenantCircuitHandler>();
 
-        // BFF admin claims transformation — calls the API to resolve admin authority
+        // BFF admin claims enrichment — invoked at cookie/session boundaries, not per request.
         services.AddScoped<BffAdminClaimsTransformation>();
-        services.AddScoped<IClaimsTransformation>(
-            sp => sp.GetRequiredService<BffAdminClaimsTransformation>());
+
+        services.AddSingleton<IBffOnboardingStatusProvider, BffOnboardingStatusProvider>();
 
         // Multi-tenancy configuration
         services.Configure<TenantConfiguration>(

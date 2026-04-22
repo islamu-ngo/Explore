@@ -50,6 +50,7 @@ public interface IInstanceOnboardingService
     Task<InstanceCommandResponseModel> UpdateAuthProviderConfigurationAsAdminAsync(AuthProviderConfigurationModel config);
     Task<bool> IsAuthProviderConfiguredAsync();
     Task RefreshAuthSchemesAsync();
+    Task<bool> RefreshAuthSessionAsync();
 
     // Authorization provider configuration
     Task<AuthorizationProviderConfigurationModel> GetAuthorizationProviderConfigurationAsync();
@@ -313,6 +314,28 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         }
     }
 
+    public async Task<bool> RefreshAuthSessionAsync()
+    {
+        try
+        {
+            using var response = _bffClient is not null
+                ? await _bffClient.PostAsync("/bff/auth/refresh-session")
+                : await _httpClientFactory.CreateClient("BffSelfClient").PostAsync("/bff/auth/refresh-session", null);
+            if (response.IsSuccessStatusCode)
+            {
+                return true;
+            }
+
+            _logger.LogWarning("Failed to refresh auth session. Status: {StatusCode}", (int)response.StatusCode);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to refresh auth session.");
+            return false;
+        }
+    }
+
     // ── Analytics Governance ─────────────────────────────────────────────
 
     public async Task<Models.Analytics.AnalyticsGovernanceSettingsModel> GetAnalyticsGovernanceSettingsAsync() =>
@@ -401,6 +424,7 @@ public class InstanceOnboardingService : IInstanceOnboardingService
                 return new InstanceCommandResponseModel
                 {
                     Success = response.IsSuccessStatusCode,
+                    StatusCode = (int)response.StatusCode,
                     Message = response.IsSuccessStatusCode ? "OK" : $"Failed with status {(int)response.StatusCode}."
                 };
             }
@@ -414,6 +438,7 @@ public class InstanceOnboardingService : IInstanceOnboardingService
                 var model = new InstanceCommandResponseModel
                 {
                     Success = successProp.GetBoolean(),
+                    StatusCode = (int)response.StatusCode,
                     Message = root.TryGetProperty("message", out var msgProp) ? msgProp.GetString() ?? "" : "",
                     Id = root.TryGetProperty("id", out var idProp) && idProp.TryGetGuid(out var id) ? id : Guid.Empty
                 };
@@ -450,6 +475,7 @@ public class InstanceOnboardingService : IInstanceOnboardingService
                 return new InstanceCommandResponseModel
                 {
                     Success = false,
+                    StatusCode = (int)response.StatusCode,
                     Message = titleProp.GetString() ?? "Validation failed.",
                     Errors = errors
                 };
@@ -458,6 +484,7 @@ public class InstanceOnboardingService : IInstanceOnboardingService
             return new InstanceCommandResponseModel
             {
                 Success = response.IsSuccessStatusCode,
+                StatusCode = (int)response.StatusCode,
                 Message = response.IsSuccessStatusCode ? "OK" : $"Failed with status {(int)response.StatusCode}."
             };
         }
@@ -466,6 +493,7 @@ public class InstanceOnboardingService : IInstanceOnboardingService
             return new InstanceCommandResponseModel
             {
                 Success = response.IsSuccessStatusCode,
+                StatusCode = (int)response.StatusCode,
                 Message = response.IsSuccessStatusCode ? "OK" : $"Failed with status {(int)response.StatusCode}."
             };
         }
@@ -592,6 +620,7 @@ public class RenderPolicyModel
 public class InstanceCommandResponseModel
 {
     public bool Success { get; set; }
+    public int StatusCode { get; set; }
     public Guid Id { get; set; }
     public string Message { get; set; } = string.Empty;
     public List<string> Errors { get; set; } = new();

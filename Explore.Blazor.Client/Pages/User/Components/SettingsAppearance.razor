@@ -1,0 +1,263 @@
+@* ABOUTME: User appearance preferences section — theme mode, direction, language, default theme picker. *@
+@* ABOUTME: Persists via IEventApiClient (PUT api/user/appearance); reads theme catalog via /bff/ui-themes. *@
+
+@using System.Net.Http.Json
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Models.Appearance
+@using Explore.Blazor.Client.Services
+@using Explore.Domain.Common.Localization
+@using MudBlazor
+@inject IEventApiClient ApiClient
+@inject IAppearanceThemeService AppearanceThemeService
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+@inject ILogger<SettingsAppearance> Logger
+
+<div class="settings-section settings-appearance">
+    <div class="settings-section-header mb-6">
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Appearance</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Choose how the app looks and behaves for you</MudText>
+    </div>
+
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="mr-2" />
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="d-inline">Loading preferences...</MudText>
+    }
+    else
+    {
+        <MudStack Spacing="6">
+
+            <div class="settings-form-section">
+                <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-2">Theme mode</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                    Match your system, stay bright, or go dark.
+                </MudText>
+                <MudToggleGroup T="string" @bind-Value="_form.ThemeMode" Color="Color.Primary"
+                                Outlined="true" Dense="true" CheckMark="true">
+                    <MudToggleItem Value="@("system")" Text="System" />
+                    <MudToggleItem Value="@("light")" Text="Light" />
+                    <MudToggleItem Value="@("dark")" Text="Dark" />
+                </MudToggleGroup>
+            </div>
+
+            <MudDivider />
+
+            <div class="settings-form-section">
+                <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-2">Text direction</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                    Override layout direction. &ldquo;Auto&rdquo; follows the language.
+                </MudText>
+                <MudToggleGroup T="string" @bind-Value="_form.Direction" Color="Color.Primary"
+                                Outlined="true" Dense="true" CheckMark="true">
+                    <MudToggleItem Value="@("auto")" Text="Auto" />
+                    <MudToggleItem Value="@("ltr")" Text="Left to Right" />
+                    <MudToggleItem Value="@("rtl")" Text="Right to Left" />
+                </MudToggleGroup>
+            </div>
+
+            <MudDivider />
+
+            <div class="settings-form-section">
+                <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-2">Language</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                    Preferred display language for the interface.
+                </MudText>
+                <MudSelect T="string" @bind-Value="_form.Language" Variant="Variant.Outlined" Dense="true"
+                           AnchorOrigin="Origin.BottomCenter">
+                    @foreach (var culture in _cultures)
+                    {
+                        <MudSelectItem T="string" Value="@culture.Code">
+                            @culture.Flag @culture.NativeName (@culture.DisplayName)
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+            </div>
+
+            <MudDivider />
+
+            <div class="settings-form-section">
+                <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Class="mb-2">Theme</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                    Pick a palette. &ldquo;Default&rdquo; follows your tenant's default theme.
+                </MudText>
+
+                @if (_themes.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
+                        No selectable themes are available yet. Tenant administrators can publish themes from the admin panel.
+                    </MudAlert>
+                }
+                else
+                {
+                    <MudGrid Spacing="3">
+                        <MudItem xs="12" sm="6" md="4">
+                            <MudPaper Elevation="0" Class="@GetThemeCardClass(null)" @onclick="() => SelectTheme(null)">
+                                <div class="settings-appearance__theme-swatch">
+                                    <span class="settings-appearance__swatch-chip" style="background:#FFFFFF;"></span>
+                                    <span class="settings-appearance__swatch-chip" style="background:#0F172A;"></span>
+                                </div>
+                                <MudText Typo="Typo.body1" Style="font-weight: 600;">Tenant default</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Follow the tenant's default theme</MudText>
+                            </MudPaper>
+                        </MudItem>
+
+                        @foreach (var theme in _themes)
+                        {
+                            <MudItem xs="12" sm="6" md="4">
+                                <MudPaper Elevation="0" Class="@GetThemeCardClass(theme.Id)" @onclick="() => SelectTheme(theme.Id)">
+                                    <div class="settings-appearance__theme-swatch">
+                                        <span class="settings-appearance__swatch-chip"
+                                              style="@($"background:{theme.LightPalette?.Primary ?? "#CBD5E1"};")"></span>
+                                        <span class="settings-appearance__swatch-chip"
+                                              style="@($"background:{theme.DarkPalette?.Primary ?? "#1E293B"};")"></span>
+                                    </div>
+                                    <MudText Typo="Typo.body1" Style="font-weight: 600;">@theme.DisplayName</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        @(theme.IsDefault == true ? "Tenant default" : theme.ThemeKey)
+                                    </MudText>
+                                </MudPaper>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                }
+            </div>
+
+            <div class="settings-appearance__actions d-flex align-center gap-3 mt-4">
+                <AppButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveAsync"
+                           Disabled="_saving || !IsDirty()" StartIcon="@Icons.Material.Filled.Save">
+                    @(_saving ? "Saving..." : "Save changes")
+                </AppButton>
+                <AppButton Variant="Variant.Text" OnClick="ResetAsync" Disabled="_saving || !IsDirty()">
+                    Discard
+                </AppButton>
+                @if (!IsDirty())
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Success" Class="ml-2">All changes saved.</MudText>
+                }
+            </div>
+        </MudStack>
+    }
+</div>
+
+@code {
+    private bool _loading = true;
+    private bool _saving;
+
+    private PreferenceForm _form = new();
+    private PreferenceForm _serverForm = new();
+
+    private IReadOnlyList<CultureEntry> _cultures = Array.Empty<CultureEntry>();
+    private IReadOnlyList<AvailableThemeModel> _themes = Array.Empty<AvailableThemeModel>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cultures = CultureRegistry.GetAll();
+
+        try
+        {
+            var loadPreferences = LoadPreferencesAsync();
+            var loadThemes = LoadThemesAsync();
+            await Task.WhenAll(loadPreferences, loadThemes);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load appearance settings");
+            Snackbar.Add("Could not load appearance preferences.", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task LoadPreferencesAsync()
+    {
+        var prefs = await ApiClient.GetCurrentUserAppearancePreferencesAsync();
+        _serverForm = new PreferenceForm
+        {
+            ThemeMode = string.IsNullOrWhiteSpace(prefs.ThemeMode) ? "system" : prefs.ThemeMode!,
+            Direction = string.IsNullOrWhiteSpace(prefs.Direction) ? "auto" : prefs.Direction!,
+            Language = string.IsNullOrWhiteSpace(prefs.Language) ? "en" : prefs.Language!,
+            DefaultThemeId = prefs.DefaultThemeId
+        };
+        _form = _serverForm with { };
+    }
+
+    private async Task LoadThemesAsync()
+    {
+        try
+        {
+            var themes = await Http.GetFromJsonAsync<List<AvailableThemeModel>>("/bff/ui-themes");
+            _themes = themes ?? new List<AvailableThemeModel>();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to load available themes; defaulting to empty list.");
+            _themes = Array.Empty<AvailableThemeModel>();
+        }
+    }
+
+    private bool IsDirty() => !_form.Equals(_serverForm);
+
+    private void SelectTheme(Guid? themeId)
+    {
+        _form = _form with { DefaultThemeId = themeId };
+    }
+
+    private string GetThemeCardClass(Guid? themeId)
+    {
+        var active = _form.DefaultThemeId == themeId;
+        return "settings-appearance__theme-card pa-4 rounded-lg border-solid border-1" +
+            (active ? " settings-appearance__theme-card--active" : " mud-border-lines-default");
+    }
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        try
+        {
+            var payload = new UpdateUserAppearancePreferencesDto
+            {
+                ThemeMode = _form.ThemeMode,
+                Direction = _form.Direction,
+                Language = _form.Language,
+                DefaultThemeId = _form.DefaultThemeId
+            };
+
+            var response = await ApiClient.UpdateCurrentUserAppearancePreferencesAsync(payload);
+            if (response is null || response.Success != true)
+            {
+                var errors = response?.Errors is { Count: > 0 } ? string.Join("; ", response.Errors) : "Unknown error.";
+                Snackbar.Add($"Could not save preferences: {errors}", Severity.Error);
+                return;
+            }
+
+            _serverForm = _form with { };
+            Snackbar.Add("Appearance preferences saved.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to save appearance preferences");
+            Snackbar.Add("Could not save preferences.", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private Task ResetAsync()
+    {
+        _form = _serverForm with { };
+        return Task.CompletedTask;
+    }
+
+    private sealed record PreferenceForm
+    {
+        public string ThemeMode { get; set; } = "system";
+        public string Direction { get; set; } = "auto";
+        public string Language { get; set; } = "en";
+        public Guid? DefaultThemeId { get; set; }
+    }
+}

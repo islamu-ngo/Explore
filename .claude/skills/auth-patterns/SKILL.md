@@ -29,7 +29,8 @@ Standard rules for OIDC/JWT + BFF. Keep tokens server-side, enforce endpoint aut
 - **UserId fallback**: `sub` → `nameidentifier` → `sid` (must use this order).
 - **JWT validation**: Validate issuer + audience, and check both `aud` and `azp` (Keycloak authorized party) claims. Multi‑client audiences: `islamu-event-api`, `islamu-event-blazor`. Clock skew tolerance: 5 minutes.
 - **MediatR AuthorizationBehavior**: Resource‑level auth uses `IAuthorizedRequest` interface or `[AuthorizeResource]` attribute. `ISecureRequest` provides dynamic resource context. Denied → `AuthorizationException` → `403 Forbidden` via chained `IExceptionHandler`.
-- **HATEOAS authorization**: Link policies declare `RequiresAuth`, `RequiredRoles`, and `.RequirePermission()`. `HateoasAuthorizationEvaluator` batch‑evaluates permissions. Fail‑closed: on batch failure, permission‑bound links are denied.
+- **HATEOAS authorization**: Implements a high-performance **4-phase pipeline** (Candidate → Normalize → Batch → Materialize). `HateoasAuthorizationEvaluator` deduplicates and batch-evaluates permissions. Fail‑closed: on batch failure, permission‑bound links are denied.
+- **UI Action Gating**: The API's `_links` object is the **single source of truth** for client UI affordances. Clients must render "Edit/Delete" buttons based on link presence, not by local role/claim inspection.
 - **Security headers**: `SecurityHeadersMiddleware` adds `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, CSP, Permissions-Policy to every response. Non-GET responses also get `Cache-Control: no-store`.
 
 ## Resources (Read Before Applying)

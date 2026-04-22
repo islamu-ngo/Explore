@@ -1,0 +1,39 @@
+/* ABOUTME: Scoped CSS for the user Appearance settings section (theme picker swatches). */
+/* ABOUTME: BEM classes under the settings-appearance root; ::deep not required. */
+
+.settings-appearance__theme-card {
+    cursor: pointer;
+    transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+    background-color: var(--mud-palette-surface);
+}
+
+.settings-appearance__theme-card:hover {
+    border-color: var(--mud-palette-primary);
+    transform: translateY(-0.125rem);
+    box-shadow: var(--mud-shadow-1);
+}
+
+.settings-appearance__theme-card--active {
+    border-color: var(--mud-palette-primary) !important;
+    border-width: 0.125rem !important;
+    box-shadow: 0 0 0 0.125rem rgba(37, 99, 235, 0.15);
+}
+
+.settings-appearance__theme-swatch {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.settings-appearance__swatch-chip {
+    display: inline-block;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--mud-palette-lines-default);
+}
+
+.settings-appearance__actions {
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--mud-palette-lines-default);
+}

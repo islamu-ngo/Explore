@@ -2,7 +2,6 @@
 // ABOUTME: Extracts forwarded headers, XSRF token distribution, startup redirect, and access token capture.
 
 using Explore.Application.Contracts.Services;
-using Explore.Blazor.Client.Pages;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Middleware;
 using Explore.Blazor.Services;
@@ -51,6 +50,10 @@ public static class MiddlewareExtensions
 
     /// <summary>
     /// Redirects "/" to "/setup" when onboarding is incomplete, and vice versa.
+    /// Also gates authentication entry points (/login, /auth/login, /auth/challenge) so that
+    /// pre-onboarding users cannot be challenged by an identity provider whose config is not yet
+    /// persisted. Excludes /signin-oidc (OIDC callback), /api/InstanceOnboarding/*, /bff/setup-secret*,
+    /// and /bff/auth/refresh-* so the setup flow and token refresh paths remain functional.
     /// Resolves the startup gate before endpoint routing to avoid ambiguous "/" matches.
     /// </summary>
     public static WebApplication UseStartupRedirectMiddleware(this WebApplication app)
@@ -160,42 +163,93 @@ public static class MiddlewareExtensions
         await next();
     }
 
-    // Gates "/" and "/setup" against onboarding status so the landing page matches the tenant state.
+    private static readonly string[] AuthEntryPaths =
+    [
+        "/login",
+        "/auth/login",
+        "/auth/challenge"
+    ];
+
     private static async Task HandleStartupRedirectAsync(HttpContext ctx, Func<Task> next, ILogger logger)
     {
-        if (HttpMethods.IsGet(ctx.Request.Method) &&
-            (string.Equals(ctx.Request.Path.Value, "/", StringComparison.Ordinal) ||
-             string.Equals(ctx.Request.Path.Value, "/setup", StringComparison.Ordinal)))
+        if (!HttpMethods.IsGet(ctx.Request.Method))
         {
-            var isCompleted = false;
-            try
-            {
-                var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
-                var statusClient = clientFactory.CreateClient("BffClient");
-                var status = await statusClient.GetFromJsonAsync<InstanceOnboardingStatusModel>(
-                    "api/InstanceOnboarding/status");
-                isCompleted = status?.IsCompleted == true;
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex,
-                    "Failed to resolve instance onboarding status for startup redirect.");
-            }
+            await next();
+            return;
+        }
 
-            if (string.Equals(ctx.Request.Path.Value, "/", StringComparison.Ordinal) && !isCompleted)
-            {
-                ctx.Response.Redirect("/setup");
-                return;
-            }
+        var pathValue = ctx.Request.Path.Value ?? string.Empty;
+        var isRoot = string.Equals(pathValue, "/", StringComparison.Ordinal);
+        var isSetup = string.Equals(pathValue, "/setup", StringComparison.Ordinal);
+        var isAuthEntry = IsAuthEntryPath(pathValue);
 
-            if (string.Equals(ctx.Request.Path.Value, "/setup", StringComparison.Ordinal) && isCompleted)
-            {
-                ctx.Response.Redirect("/");
-                return;
-            }
+        if (!isRoot && !isSetup && !isAuthEntry)
+        {
+            await next();
+            return;
+        }
+
+        var status = await ResolveOnboardingStatusAsync(ctx, logger);
+        var isCompleted = status.IsCompleted;
+
+        if (isRoot && !isCompleted)
+        {
+            ctx.Response.Redirect("/setup");
+            return;
+        }
+
+        if (isSetup && isCompleted)
+        {
+            ctx.Response.Redirect("/");
+            return;
+        }
+
+        if (isAuthEntry && !isCompleted && !HasTrustedSetupSecret(ctx))
+        {
+            ctx.Response.Redirect("/setup");
+            return;
         }
 
         await next();
+    }
+
+    private static bool IsAuthEntryPath(string path)
+    {
+        foreach (var entry in AuthEntryPaths)
+        {
+            if (path.StartsWith(entry, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool HasTrustedSetupSecret(HttpContext ctx)
+    {
+        return !string.IsNullOrWhiteSpace(ctx.Request.Cookies["setup-secret"]);
+    }
+
+    private static async Task<BffOnboardingStatus> ResolveOnboardingStatusAsync(
+        HttpContext ctx,
+        ILogger logger)
+    {
+        try
+        {
+            var provider = ctx.RequestServices.GetRequiredService<IBffOnboardingStatusProvider>();
+            return await provider.GetStatusAsync(ctx.RequestAborted);
+        }
+        catch (OperationCanceledException) when (ctx.RequestAborted.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Failed to resolve instance onboarding status for startup redirect.");
+            return BffOnboardingStatus.Unknown;
+        }
     }
 
     // Surfaces the OIDC access token into HttpContext.Items and the per-circuit token service.

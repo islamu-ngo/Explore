@@ -8,6 +8,6 @@
     "Domain": "Active (DDD)",
     "Infra": "Active (EF Core)"
   },
-  "RecentFocus": "API (ModuleController.cs)",
-  "LastUpdate": "2026-04-20 12:38:31"
+  "RecentFocus": "Shared (SetupSecretForwardingHandler.cs)",
+  "LastUpdate": "2026-04-22 17:40:37"
 }

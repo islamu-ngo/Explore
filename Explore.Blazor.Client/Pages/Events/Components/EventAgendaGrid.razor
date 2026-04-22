@@ -4,6 +4,7 @@
 @using MudBlazor
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Contracts.Services.Events
+@using Explore.Blazor.Client.Services
 
 @inject IEventAgendaItemService AgendaItemService
 @inject IDialogService DialogService
@@ -268,14 +269,7 @@
             { x => x.PreselectedDayId, _selectedDayId != Guid.Empty ? _selectedDayId : null }
         };
 
-        var options = new DialogOptions
-        {
-            MaxWidth = MaxWidth.Small,
-            FullWidth = true,
-            CloseOnEscapeKey = true
-        };
-
-        var dialog = await DialogService.ShowAsync<EventAgendaItemEditorDialog>("Add Agenda Item", parameters, options);
+        var dialog = await DialogService.ShowAsync<EventAgendaItemEditorDialog>("Add Agenda Item", parameters, DialogOptionsFactory.Small());
         var result = await dialog.Result;
 
         if (result is not null && !result.Canceled)
@@ -297,14 +291,7 @@
             { x => x.Rooms, Rooms }
         };
 
-        var options = new DialogOptions
-        {
-            MaxWidth = MaxWidth.Small,
-            FullWidth = true,
-            CloseOnEscapeKey = true
-        };
-
-        var dialog = await DialogService.ShowAsync<EventAgendaItemEditorDialog>("Edit Agenda Item", parameters, options);
+        var dialog = await DialogService.ShowAsync<EventAgendaItemEditorDialog>("Edit Agenda Item", parameters, DialogOptionsFactory.Small());
         var result = await dialog.Result;
 
         if (result is not null && !result.Canceled)

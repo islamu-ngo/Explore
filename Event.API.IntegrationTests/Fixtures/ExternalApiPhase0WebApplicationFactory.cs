@@ -302,6 +302,11 @@ public sealed class ExternalApiPhase0WebApplicationFactory : WebApplicationFacto
             // Keep parity with the broader test-host teardown workaround used in legacy fixtures.
             Console.WriteLine($"Ignoring WebApplicationFactory teardown NullReferenceException: {ex.Message}");
         }
+        catch (ObjectDisposedException ex)
+        {
+            // Some providers (like OpenFeature) may already be disposed or in the process of disposing.
+            Console.WriteLine($"Ignoring WebApplicationFactory teardown ObjectDisposedException: {ex.Message}");
+        }
     }
 
     private sealed class TestResolverConfigService : IResolverConfigService

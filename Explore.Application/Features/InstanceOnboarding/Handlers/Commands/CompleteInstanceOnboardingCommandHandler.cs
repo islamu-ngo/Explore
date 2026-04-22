@@ -28,6 +28,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
     private readonly ISetupSecretProvider _setupSecretProvider;
     private readonly IAdminCacheInvalidator _adminCacheInvalidator;
     private readonly IDeploymentModeProvider _deploymentModeProvider;
+    private readonly IJwtAuthorityRefreshNotifier _jwtAuthorityRefreshNotifier;
     private readonly IUnitOfWork _unitOfWork;
 
     public CompleteInstanceOnboardingCommandHandler(
@@ -43,6 +44,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         ISetupSecretProvider setupSecretProvider,
         IAdminCacheInvalidator adminCacheInvalidator,
         IDeploymentModeProvider deploymentModeProvider,
+        IJwtAuthorityRefreshNotifier jwtAuthorityRefreshNotifier,
         IUnitOfWork unitOfWork)
     {
         _instanceBootstrapStateRepository = instanceBootstrapStateRepository;
@@ -57,6 +59,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         _setupSecretProvider = setupSecretProvider;
         _adminCacheInvalidator = adminCacheInvalidator;
         _deploymentModeProvider = deploymentModeProvider;
+        _jwtAuthorityRefreshNotifier = jwtAuthorityRefreshNotifier;
         _unitOfWork = unitOfWork;
     }
 
@@ -150,6 +153,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         // Post-commit side effects
         _adminCacheInvalidator.InvalidateUser(request.UserId);
         await _deploymentModeProvider.InvalidateCacheAsync();
+        await _jwtAuthorityRefreshNotifier.ReloadAsync(cancellationToken);
         _setupSecretProvider.Lock();
 
         response.Success = true;

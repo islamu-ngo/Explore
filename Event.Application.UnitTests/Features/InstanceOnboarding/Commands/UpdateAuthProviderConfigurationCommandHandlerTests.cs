@@ -20,6 +20,7 @@ public class UpdateAuthProviderConfigurationCommandHandlerTests
     private readonly IUserRepository _userRepository;
     private readonly IUserExternalLoginRepository _userExternalLoginRepository;
     private readonly IAuthProviderConfigurationService _configurationService;
+    private readonly IJwtAuthorityRefreshNotifier _jwtAuthorityRefreshNotifier;
     private readonly UpdateAuthProviderConfigurationCommandHandler _handler;
 
     public UpdateAuthProviderConfigurationCommandHandlerTests()
@@ -28,12 +29,14 @@ public class UpdateAuthProviderConfigurationCommandHandlerTests
         _userRepository = Substitute.For<IUserRepository>();
         _userExternalLoginRepository = Substitute.For<IUserExternalLoginRepository>();
         _configurationService = Substitute.For<IAuthProviderConfigurationService>();
+        _jwtAuthorityRefreshNotifier = Substitute.For<IJwtAuthorityRefreshNotifier>();
 
         _handler = new UpdateAuthProviderConfigurationCommandHandler(
             _adminContext,
             _userRepository,
             _userExternalLoginRepository,
-            _configurationService);
+            _configurationService,
+            _jwtAuthorityRefreshNotifier);
     }
 
     [Test]

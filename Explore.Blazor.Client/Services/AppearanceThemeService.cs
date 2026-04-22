@@ -1,18 +1,22 @@
 // ABOUTME: Central runtime service for composing MudBlazor themes and persisting the current appearance mode.
-// ABOUTME: Removes duplicated palette/bootstrap logic from layouts while preserving the existing BFF-backed theme preference flow.
+// ABOUTME: Supports dynamic UiTheme palettes fetched via the BFF with a built-in fallback for anonymous or failure paths.
 
 using System.Net.Http.Json;
+using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Models.Appearance;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Services;
 
 public interface IAppearanceThemeService
 {
-    MudTheme CreateTheme(string appbarHeight);
+    MudTheme CreateTheme(string appbarHeight, AvailableThemeModel? activeTheme = null);
     Task<bool> ResolveInitialDarkModeAsync(bool? serverHint, MudThemeProvider themeProvider);
     Task PersistThemeModeAsync(bool isDarkMode, CancellationToken cancellationToken = default);
     Task<string> ResolveInitialDirectionAsync();
     Task PersistDirectionAsync(string direction, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<AvailableThemeModel>> GetAvailableThemesAsync(CancellationToken cancellationToken = default);
+    Task<AvailableThemeModel?> ResolveActiveThemeAsync(CancellationToken cancellationToken = default);
 }
 
 public sealed class AppearanceThemeService : IAppearanceThemeService
@@ -20,7 +24,7 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
     private readonly HttpClient _httpClient;
     private readonly ILogger<AppearanceThemeService> _logger;
 
-    private static readonly PaletteLight LightPalette = new()
+    private static readonly PaletteLight BuiltInLight = new()
     {
         Primary = "#2563EB",
         Secondary = "#1E293B",
@@ -46,7 +50,7 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
         OverlayLight = "rgba(248,250,252,0.8)"
     };
 
-    private static readonly PaletteDark DarkPalette = new()
+    private static readonly PaletteDark BuiltInDark = new()
     {
         Primary = "#60A5FA",
         Secondary = "#F1F5F9",
@@ -107,12 +111,15 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
         _logger = logger;
     }
 
-    public MudTheme CreateTheme(string appbarHeight)
+    public MudTheme CreateTheme(string appbarHeight, AvailableThemeModel? activeTheme = null)
     {
+        var light = activeTheme?.LightPalette is { } lightDto ? ComposeLight(lightDto) : BuiltInLight;
+        var dark = activeTheme?.DarkPalette is { } darkDto ? ComposeDark(darkDto) : BuiltInDark;
+
         return new MudTheme
         {
-            PaletteLight = LightPalette,
-            PaletteDark = DarkPalette,
+            PaletteLight = light,
+            PaletteDark = dark,
             Typography = Typography,
             LayoutProperties = new LayoutProperties
             {
@@ -131,7 +138,7 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
 
         try
         {
-            var preferences = await _httpClient.GetFromJsonAsync<UserThemePreferenceResponse>("/bff/theme");
+            var preferences = await _httpClient.GetFromJsonAsync<UserAppearancePreferencesDto>("/bff/theme");
             if (preferences?.ThemeMode is "dark")
             {
                 return true;
@@ -160,14 +167,15 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
 
     public async Task PersistThemeModeAsync(bool isDarkMode, CancellationToken cancellationToken = default)
     {
-        var request = new UserThemePreferenceResponse
-        {
-            ThemeMode = isDarkMode ? "dark" : "light"
-        };
+        var themeMode = isDarkMode ? "dark" : "light";
 
         try
         {
-            using var response = await _httpClient.PostAsJsonAsync("/bff/theme", request, cancellationToken);
+            using var response = await _httpClient.PostAsync(
+                $"/bff/theme?theme={Uri.EscapeDataString(themeMode)}",
+                content: null,
+                cancellationToken);
+
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("Theme preference persistence failed with status code {StatusCode}", (int)response.StatusCode);
@@ -183,7 +191,7 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
     {
         try
         {
-            var preferences = await _httpClient.GetFromJsonAsync<UserThemePreferenceResponse>("/bff/theme");
+            var preferences = await _httpClient.GetFromJsonAsync<UserAppearancePreferencesDto>("/bff/theme");
             if (preferences?.Direction is "ltr" or "rtl")
             {
                 return preferences.Direction;
@@ -217,9 +225,104 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
         }
     }
 
-    private sealed class UserThemePreferenceResponse
+    public async Task<IReadOnlyList<AvailableThemeModel>> GetAvailableThemesAsync(CancellationToken cancellationToken = default)
     {
-        public string ThemeMode { get; set; } = "system";
-        public string Direction { get; set; } = "auto";
+        try
+        {
+            var themes = await _httpClient.GetFromJsonAsync<IReadOnlyList<AvailableThemeModel>>("/bff/ui-themes", cancellationToken);
+            return themes ?? Array.Empty<AvailableThemeModel>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error loading available UI themes from the BFF.");
+            return Array.Empty<AvailableThemeModel>();
+        }
     }
+
+    public async Task<AvailableThemeModel?> ResolveActiveThemeAsync(CancellationToken cancellationToken = default)
+    {
+        var themes = await GetAvailableThemesAsync(cancellationToken);
+        if (themes.Count == 0)
+        {
+            return null;
+        }
+
+        Guid? preferredThemeId = null;
+        try
+        {
+            var preferences = await _httpClient.GetFromJsonAsync<UserAppearancePreferencesDto>("/bff/theme", cancellationToken);
+            preferredThemeId = preferences?.DefaultThemeId;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Could not load appearance preferences while resolving active theme.");
+        }
+
+        if (preferredThemeId.HasValue)
+        {
+            var preferred = themes.FirstOrDefault(t => t.Id == preferredThemeId.Value);
+            if (preferred is not null)
+            {
+                return preferred;
+            }
+        }
+
+        return themes.FirstOrDefault(t => t.IsDefault == true) ?? themes[0];
+    }
+
+    private static PaletteLight ComposeLight(UiThemePaletteModel dto) => new()
+    {
+        Primary = dto.Primary,
+        Secondary = dto.Secondary,
+        Black = BuiltInLight.Black,
+        AppbarText = dto.AppbarText,
+        AppbarBackground = dto.AppbarBackground,
+        Background = dto.Background,
+        Surface = dto.Surface,
+        DrawerBackground = dto.DrawerBackground,
+        DrawerText = dto.DrawerText,
+        DrawerIcon = dto.DrawerIcon,
+        GrayLight = BuiltInLight.GrayLight,
+        GrayLighter = BuiltInLight.GrayLighter,
+        TextPrimary = dto.TextPrimary,
+        TextSecondary = dto.TextSecondary,
+        Info = dto.Info,
+        Success = dto.Success,
+        Warning = dto.Warning,
+        Error = dto.Error,
+        LinesDefault = dto.LinesDefault,
+        TableLines = dto.LinesDefault,
+        Divider = dto.Divider,
+        OverlayLight = BuiltInLight.OverlayLight
+    };
+
+    private static PaletteDark ComposeDark(UiThemePaletteModel dto) => new()
+    {
+        Primary = dto.Primary,
+        Secondary = dto.Secondary,
+        Surface = dto.Surface,
+        Background = dto.Background,
+        BackgroundGray = BuiltInDark.BackgroundGray,
+        AppbarText = dto.AppbarText,
+        AppbarBackground = dto.AppbarBackground,
+        DrawerBackground = dto.DrawerBackground,
+        ActionDefault = BuiltInDark.ActionDefault,
+        ActionDisabled = BuiltInDark.ActionDisabled,
+        ActionDisabledBackground = BuiltInDark.ActionDisabledBackground,
+        TextPrimary = dto.TextPrimary,
+        TextSecondary = dto.TextSecondary,
+        TextDisabled = BuiltInDark.TextDisabled,
+        DrawerIcon = dto.DrawerIcon,
+        DrawerText = dto.DrawerText,
+        GrayLight = BuiltInDark.GrayLight,
+        GrayLighter = BuiltInDark.GrayLighter,
+        Info = dto.Info,
+        Success = dto.Success,
+        Warning = dto.Warning,
+        Error = dto.Error,
+        LinesDefault = dto.LinesDefault,
+        TableLines = dto.LinesDefault,
+        Divider = dto.Divider,
+        OverlayLight = BuiltInDark.OverlayLight
+    };
 }

@@ -31,6 +31,10 @@
                                      Text="Notifications" 
                                      Class="@GetNavItemClass("notifications")"
                                      OnClick="@(() => SelectSection("notifications"))" />
+                        <MudListItem Icon="@Icons.Material.Filled.Palette" 
+                                     Text="Appearance" 
+                                     Class="@GetNavItemClass("appearance")"
+                                     OnClick="@(() => SelectSection("appearance"))" />
                         <MudListItem Icon="@Icons.Material.Filled.Key" 
                                      Text="API Keys" 
                                      Class="@GetNavItemClass("api-keys")"
@@ -62,6 +66,10 @@
                     else if (CurrentSection == "notifications")
                     {
                         <SettingsNotifications />
+                    }
+                    else if (CurrentSection == "appearance")
+                    {
+                        <SettingsAppearance />
                     }
                     else if (CurrentSection == "api-keys")
                     {

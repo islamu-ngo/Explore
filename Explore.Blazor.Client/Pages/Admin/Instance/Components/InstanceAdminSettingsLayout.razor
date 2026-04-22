@@ -130,6 +130,10 @@
                         {
                             <InstanceBrandingSection Model="_branding" IsSingleTenant="false" />
                         }
+                        else if (_currentSection == "themes")
+                        {
+                            <Explore.Blazor.Client.Pages.Admin.Components.UiThemeCatalogSection IsPlatformCatalog="true" />
+                        }
                         else if (_currentSection == "auth-providers")
                         {
                             <InstanceAuthProviderSection Model="_authProviderModel" IsSingleTenant="IsSingleTenantMode" />
@@ -492,6 +496,7 @@
                 new("lookups",          Icons.Material.Filled.TableChart,      "Lookup Tables"),
                 new("policies",         Icons.Material.Filled.Policy,          "Policies"),
                 new("appearance",       Icons.Material.Filled.Visibility,      "Appearance"),
+                new("themes",           Icons.Material.Filled.ColorLens,       "Themes"),
                 new("auth-providers",   Icons.Material.Filled.Key,             "Auth Providers"),
                 new("modules",          Icons.Material.Filled.Extension,       "Modules"),
                 new("domain",           Icons.Material.Filled.Language,        "Domain"),
@@ -512,6 +517,7 @@
             new("tenants",          Icons.Material.Filled.DomainAdd,       "Tenants"),
             new("domain",           Icons.Material.Filled.Language,        "Domain"),
             new("branding",         Icons.Material.Filled.Palette,         "Branding"),
+            new("themes",           Icons.Material.Filled.ColorLens,       "Themes"),
             new("auth-providers",   Icons.Material.Filled.Key,             "Auth Providers"),
             new("modules",          Icons.Material.Filled.Extension,       "Modules"),
             new("storage",          Icons.Material.Filled.Cloud,           "Object Storage"),

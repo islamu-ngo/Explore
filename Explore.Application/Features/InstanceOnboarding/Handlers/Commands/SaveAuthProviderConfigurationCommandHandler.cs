@@ -13,13 +13,16 @@ namespace Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 public class SaveAuthProviderConfigurationCommandHandler : IRequestHandler<SaveAuthProviderConfigurationCommand, BaseCommandResponse<Guid>>
 {
     private readonly IAuthProviderConfigurationService _configurationService;
+    private readonly IJwtAuthorityRefreshNotifier _jwtAuthorityRefreshNotifier;
     private readonly ILogger<SaveAuthProviderConfigurationCommandHandler> _logger;
 
     public SaveAuthProviderConfigurationCommandHandler(
         IAuthProviderConfigurationService configurationService,
+        IJwtAuthorityRefreshNotifier jwtAuthorityRefreshNotifier,
         ILogger<SaveAuthProviderConfigurationCommandHandler> logger)
     {
         _configurationService = configurationService;
+        _jwtAuthorityRefreshNotifier = jwtAuthorityRefreshNotifier;
         _logger = logger;
     }
 
@@ -38,6 +41,7 @@ public class SaveAuthProviderConfigurationCommandHandler : IRequestHandler<SaveA
         }
 
         await _configurationService.ApplyConfigurationAsync(request.Configuration);
+        await _jwtAuthorityRefreshNotifier.ReloadAsync(cancellationToken);
 
         _logger.LogInformation(
             "Auth provider configuration saved. Keycloak: {KeycloakEnabled}, ATProto: {AtprotoEnabled}, Google: {GoogleEnabled}",

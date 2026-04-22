@@ -9,6 +9,8 @@ using Explore.Blazor.Client.Services;
 using Explore.Blazor.Services;
 using Microsoft.Extensions.Http.Resilience;
 using Polly;
+using Polly.Retry;
+using Polly.Timeout;
 
 namespace Explore.Blazor.Extensions;
 
@@ -105,19 +107,51 @@ public static class HttpClientExtensions
         .ConfigureDevCertBypass(environment);
     }
 
+    // Interactive BFF->API calls use a lean custom pipeline: no circuit breaker (same-machine
+    // traffic; a shared breaker trips unrelated UI requests after a single slow endpoint), one
+    // retry on safe methods only, short attempt timeout. RemoveAllResilienceHandlers() guards
+    // against accidental global ConfigureHttpClientDefaults stacking (dotnet/extensions #5695).
     private static IHttpClientBuilder AddInteractiveResilience(this IHttpClientBuilder builder)
     {
-        builder.AddStandardResilienceHandler(options =>
+#pragma warning disable EXTEXP0001
+        builder.RemoveAllResilienceHandlers();
+#pragma warning restore EXTEXP0001
+
+        builder.AddResilienceHandler("bff-interactive", pipeline =>
         {
-            options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(15);
-            options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(5);
-            options.Retry.MaxRetryAttempts = 3;
-            options.Retry.Delay = TimeSpan.FromMilliseconds(250);
-            options.Retry.BackoffType = DelayBackoffType.Exponential;
-            options.Retry.DisableForUnsafeHttpMethods();
-            options.CircuitBreaker.MinimumThroughput = 5;
-            options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(30);
-            options.CircuitBreaker.FailureRatio = 0.5;
+            pipeline.AddTimeout(TimeSpan.FromSeconds(12));
+
+            pipeline.AddRetry(new HttpRetryStrategyOptions
+            {
+                MaxRetryAttempts = 1,
+                Delay = TimeSpan.FromMilliseconds(200),
+                BackoffType = DelayBackoffType.Constant,
+                ShouldHandle = args =>
+                {
+                    if (args.Outcome.Result is { } response && IsUnsafeMethod(response.RequestMessage?.Method))
+                    {
+                        return ValueTask.FromResult(false);
+                    }
+
+                    if (args.Outcome.Exception is HttpRequestException or TimeoutRejectedException)
+                    {
+                        return ValueTask.FromResult(true);
+                    }
+
+                    if (args.Outcome.Result is { } result)
+                    {
+                        return ValueTask.FromResult(result.StatusCode
+                            is System.Net.HttpStatusCode.RequestTimeout
+                            or System.Net.HttpStatusCode.BadGateway
+                            or System.Net.HttpStatusCode.ServiceUnavailable
+                            or System.Net.HttpStatusCode.GatewayTimeout);
+                    }
+
+                    return ValueTask.FromResult(false);
+                },
+            });
+
+            pipeline.AddTimeout(TimeSpan.FromSeconds(4));
         });
 
         return builder;
@@ -125,6 +159,10 @@ public static class HttpClientExtensions
 
     private static IHttpClientBuilder AddAdminResilience(this IHttpClientBuilder builder)
     {
+#pragma warning disable EXTEXP0001
+        builder.RemoveAllResilienceHandlers();
+#pragma warning restore EXTEXP0001
+
         builder.AddStandardResilienceHandler(options =>
         {
             options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(30);
@@ -143,6 +181,10 @@ public static class HttpClientExtensions
 
     private static IHttpClientBuilder AddBackgroundResilience(this IHttpClientBuilder builder)
     {
+#pragma warning disable EXTEXP0001
+        builder.RemoveAllResilienceHandlers();
+#pragma warning restore EXTEXP0001
+
         builder.AddStandardResilienceHandler(options =>
         {
             options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(60);
@@ -159,34 +201,91 @@ public static class HttpClientExtensions
         return builder;
     }
 
+    private static bool IsUnsafeMethod(HttpMethod? method)
+    {
+        return method is not null
+            && (method == HttpMethod.Post
+                || method == HttpMethod.Put
+                || method == HttpMethod.Patch
+                || method == HttpMethod.Delete);
+    }
+
     /// <summary>
-    /// In development, bypasses SSL certificate validation for localhost.
-    /// Eliminates the repeated ConfigurePrimaryHttpMessageHandler blocks.
+    /// Configures the primary handler for every BFF → API HttpClient.
+    /// <para>
+    /// Uses <see cref="SocketsHttpHandler"/> with bounded connection pooling to prevent the
+    /// classic HTTP/1.1 stale-connection anti-pattern where Kestrel silently closes idle
+    /// sockets while the BFF pool still considers them alive. The scavenger's zero-byte
+    /// read-ahead then hangs on the half-open socket until the Polly attempt timeout fires.
+    /// </para>
+    /// <para>
+    /// Settings (per Microsoft's official HttpClient guidance):
+    /// <list type="bullet">
+    /// <item><c>PooledConnectionLifetime</c> = 2 min — forces periodic recycle so DNS and
+    /// config changes propagate and connections can't grow permanently stale.</item>
+    /// <item><c>PooledConnectionIdleTimeout</c> = 30 s — drops idle connections well before
+    /// Kestrel's default 130 s keep-alive timeout, avoiding the race entirely.</item>
+    /// <item><c>ConnectTimeout</c> = 10 s — caps the initial TCP+TLS handshake so a dead
+    /// endpoint fails fast instead of consuming the Polly attempt budget.</item>
+    /// <item>HTTP/2 keep-alive pings — detect broken connections proactively when the
+    /// remote is using HTTP/2 (Kestrel auto-negotiates over TLS).</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// In development, also short-circuits SSL cert validation for <c>localhost</c>.
+    /// </para>
     /// </summary>
     private static IHttpClientBuilder ConfigureDevCertBypass(
         this IHttpClientBuilder builder,
         IWebHostEnvironment environment)
     {
-        builder.ConfigurePrimaryHttpMessageHandler(() =>
-        {
-            var handler = new HttpClientHandler
-            {
-                UseCookies = false
-            };
+        builder.ConfigurePrimaryHttpMessageHandler(() => CreatePooledHandler(environment));
 
-            if (environment.IsDevelopment())
-            {
-                handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
-                {
-                    var isLocalhost = message.RequestUri?.Host.Contains("localhost") ?? false;
-                    return isLocalhost || errors == System.Net.Security.SslPolicyErrors.None;
-                };
-            }
-
-            return handler;
-        });
+        // Keep pooled handlers alive for the full PooledConnectionLifetime window so the
+        // handler's internal pool actually gets to reuse connections. Otherwise the factory
+        // would rotate the entire SocketsHttpHandler (and its pool) every 2 minutes by
+        // default, defeating the point of tuning these values.
+        builder.SetHandlerLifetime(TimeSpan.FromMinutes(5));
 
         return builder;
+    }
+
+    private static SocketsHttpHandler CreatePooledHandler(IWebHostEnvironment environment)
+    {
+        var handler = new SocketsHttpHandler
+        {
+            UseCookies = false,
+            PooledConnectionLifetime = TimeSpan.FromMinutes(2),
+            PooledConnectionIdleTimeout = TimeSpan.FromSeconds(30),
+            ConnectTimeout = TimeSpan.FromSeconds(10),
+            KeepAlivePingDelay = TimeSpan.FromSeconds(30),
+            KeepAlivePingTimeout = TimeSpan.FromSeconds(5),
+            KeepAlivePingPolicy = System.Net.Http.HttpKeepAlivePingPolicy.WithActiveRequests,
+        };
+
+        if (environment.IsDevelopment())
+        {
+            handler.SslOptions.RemoteCertificateValidationCallback = (sender, cert, chain, errors) =>
+            {
+                if (errors == System.Net.Security.SslPolicyErrors.None)
+                {
+                    return true;
+                }
+
+                // SocketsHttpHandler does not surface the HttpRequestMessage in the SSL
+                // callback, but the sender is the SslStream whose TargetHost is the request
+                // authority. Trust only localhost in dev.
+                if (sender is System.Net.Security.SslStream { TargetHostName: { } host }
+                    && host.Contains("localhost", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                return false;
+            };
+        }
+
+        return handler;
     }
 
     private static string NormalizeBaseUrl(string url)

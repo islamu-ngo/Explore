@@ -62,10 +62,10 @@ public class InstanceOnboardingController : ExploreControllerBase
         var currentUserId = CurrentUserId;
         if (!currentUserId.HasValue)
         {
-            return BadRequest(new BaseCommandResponse<Guid>
+            return Unauthorized(new BaseCommandResponse<Guid>
             {
                 Success = false,
-                Message = "Invalid user identity."
+                Message = "Session expired. Please sign in again."
             });
         }
 
@@ -150,7 +150,6 @@ public class InstanceOnboardingController : ExploreControllerBase
     [SetupSecretRequired]
     [EndpointClassification(EndpointClass.Admin)]
     [HttpPut("auth-provider-configuration", Name = RouteNames.SaveInstanceOnboardingAuthProviderConfiguration)]
-    [EnableRateLimiting("SetupSecret")]
     [EndpointSummary("Save Auth Provider Configuration (Setup)")]
     [EndpointDescription("Saves auth provider configuration during instance setup. Protected by setup token. At least one provider must be enabled.")]
     [Consumes("application/json")]
@@ -189,7 +188,6 @@ public class InstanceOnboardingController : ExploreControllerBase
     [SetupSecretRequired]
     [EndpointClassification(EndpointClass.Admin)]
     [HttpPut("authz-provider-configuration", Name = RouteNames.SaveInstanceOnboardingAuthorizationProviderConfiguration)]
-    [EnableRateLimiting("SetupSecret")]
     [EndpointSummary("Save Authorization Provider Configuration (Setup)")]
     [EndpointDescription("Saves authorization provider configuration during instance setup. Protected by setup token.")]
     [Consumes("application/json")]
@@ -213,7 +211,6 @@ public class InstanceOnboardingController : ExploreControllerBase
     [SetupSecretRequired]
     [EndpointClassification(EndpointClass.Admin)]
     [HttpPost("authz-provider-configuration/verify", Name = RouteNames.VerifyInstanceOnboardingAuthorizationProviderEndpoint)]
-    [EnableRateLimiting("SetupSecret")]
     [EndpointSummary("Verify Cerbos Authorization Endpoint")]
     [EndpointDescription("Verifies a Cerbos gRPC endpoint by calling its gRPC health service. Protected by setup token.")]
     [Consumes("application/json")]

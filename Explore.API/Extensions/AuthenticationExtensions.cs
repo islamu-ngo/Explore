@@ -1,9 +1,14 @@
 // ABOUTME: Registers multi-auth (JWT Bearer + API Key) authentication and authorization for the API.
 // ABOUTME: Dispatches X-API-Key requests to the ApiKey handler; all others go through Keycloak JWT Bearer.
 
+using System.Net.Http;
+using System.Net.Security;
+using System.Net.Sockets;
 using Explore.API.Authentication;
 using Explore.Application.Constants;
+using Explore.Application.Contracts.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Explore.API.Extensions;
@@ -22,7 +27,15 @@ public static class AuthenticationExtensions
         IConfiguration configuration,
         IWebHostEnvironment environment)
     {
-        var authority = configuration["Keycloak:Authority"];
+        // Dynamic JWT authority: Authority / MetadataAddress / ValidIssuer are applied
+        // by DynamicJwtBearerPostConfigureOptions from env + DB (IAuthProviderConfigurationService).
+        // Handlers call IJwtAuthorityRefreshNotifier.ReloadAsync() after onboarding/save-config
+        // to hot-swap Keycloak metadata without restarting the API.
+        services.AddSingleton<DynamicJwtConfigurationService>();
+        services.AddSingleton<IJwtAuthorityRefreshNotifier>(sp =>
+            sp.GetRequiredService<DynamicJwtConfigurationService>());
+        services.AddSingleton<IPostConfigureOptions<JwtBearerOptions>, DynamicJwtBearerPostConfigureOptions>();
+        services.AddHostedService<JwtAuthorityWarmupHostedService>();
 
         services.AddAuthentication(options =>
             {
@@ -49,9 +62,6 @@ public static class AuthenticationExtensions
                     "true",
                     StringComparison.OrdinalIgnoreCase
                 );
-
-                options.Authority = authority;
-                options.MetadataAddress = configuration["Keycloak:MetadataAddress"];
 
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
@@ -80,7 +90,6 @@ public static class AuthenticationExtensions
                     },
 
                     ValidateIssuer = true,
-                    ValidIssuer = authority,
 
                     ValidateLifetime = true,
                     ClockSkew = TimeSpan.FromMinutes(5),
@@ -90,14 +99,32 @@ public static class AuthenticationExtensions
                     NameClaimType = "preferred_username"
                 };
 
-                if (environment.IsDevelopment())
+                options.BackchannelHttpHandler = new SocketsHttpHandler
                 {
-                    options.BackchannelHttpHandler = new HttpClientHandler
+                    PooledConnectionLifetime = TimeSpan.FromMinutes(2),
+                    PooledConnectionIdleTimeout = TimeSpan.FromSeconds(30),
+                    ConnectTimeout = TimeSpan.FromSeconds(10),
+                    KeepAlivePingDelay = TimeSpan.FromSeconds(30),
+                    KeepAlivePingTimeout = TimeSpan.FromSeconds(5),
+                    KeepAlivePingPolicy = HttpKeepAlivePingPolicy.WithActiveRequests,
+                    SslOptions = environment.IsDevelopment()
+                        ? new SslClientAuthenticationOptions { RemoteCertificateValidationCallback = (_, _, _, _) => true }
+                        : default,
+                    ConnectCallback = async (context, cancellationToken) =>
                     {
-                        ServerCertificateCustomValidationCallback =
-                            HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
-                    };
-                }
+                        var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                        try
+                        {
+                            await socket.ConnectAsync(context.DnsEndPoint, cancellationToken);
+                            return new NetworkStream(socket, ownsSocket: true);
+                        }
+                        catch
+                        {
+                            socket.Dispose();
+                            throw;
+                        }
+                    }
+                };
 
                 // Security: PII-safe logging — only exception messages, never token claims or raw values
                 options.Events = new JwtBearerEvents

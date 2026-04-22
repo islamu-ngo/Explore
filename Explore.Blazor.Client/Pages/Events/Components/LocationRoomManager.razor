@@ -4,6 +4,7 @@
 @using MudBlazor
 @using Explore.Blazor.Client.Clients
 @using Explore.Blazor.Client.Contracts.Services.Events
+@using Explore.Blazor.Client.Services
 
 @inject ILocationRoomService RoomService
 @inject IDialogService DialogService
@@ -107,14 +108,7 @@
             { x => x.InitialSortOrder, nextSortOrder }
         };
 
-        var options = new DialogOptions
-        {
-            MaxWidth = MaxWidth.Small,
-            FullWidth = true,
-            CloseOnEscapeKey = true
-        };
-
-        var dialog = await DialogService.ShowAsync<LocationRoomEditorDialog>("Add Room", parameters, options);
+        var dialog = await DialogService.ShowAsync<LocationRoomEditorDialog>("Add Room", parameters, DialogOptionsFactory.Small());
         var result = await dialog.Result;
 
         if (result is not null && !result.Canceled)
@@ -134,14 +128,7 @@
             { x => x.InitialSortOrder, room.SortOrder }
         };
 
-        var options = new DialogOptions
-        {
-            MaxWidth = MaxWidth.Small,
-            FullWidth = true,
-            CloseOnEscapeKey = true
-        };
-
-        var dialog = await DialogService.ShowAsync<LocationRoomEditorDialog>("Edit Room", parameters, options);
+        var dialog = await DialogService.ShowAsync<LocationRoomEditorDialog>("Edit Room", parameters, DialogOptionsFactory.Small());
         var result = await dialog.Result;
 
         if (result is not null && !result.Canceled)

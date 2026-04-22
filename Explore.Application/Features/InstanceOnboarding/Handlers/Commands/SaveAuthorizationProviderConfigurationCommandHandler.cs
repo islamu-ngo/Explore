@@ -5,7 +5,6 @@ using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.Onboarding.Validators;
 using Explore.Application.Features.InstanceOnboarding.Requests.Commands;
 using Explore.Application.Responses;
-using Explore.Application.Utilities;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -38,7 +37,7 @@ public class SaveAuthorizationProviderConfigurationCommandHandler : IRequestHand
             return response;
         }
 
-        request.Configuration.CerbosGrpcEndpoint = GrpcEndpointNormalizer.Normalize(request.Configuration.CerbosGrpcEndpoint);
+        request.Configuration.CerbosGrpcEndpoint = request.Configuration.CerbosGrpcEndpoint?.Trim() ?? string.Empty;
 
         if (request.Configuration.Provider.Equals("cerbos", StringComparison.OrdinalIgnoreCase))
         {

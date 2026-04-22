@@ -73,7 +73,11 @@ The API uses a Hypermedia as the Engine of Application State (HATEOAS) model, an
 
 -   **Mechanism**: The `HateoasAuthorizationEvaluator` service is used by resource assemblers when building API responses.
 -   **Behavior**: It evaluates the permissions required to execute the action associated with each potential link. If the current user is not authorized, the link is omitted from the response. This prevents the UI from displaying options that the user cannot act upon.
--   **Batching**: To avoid performance issues, it batches permission checks for all links in a response into a single call to the authorization provider.
+-   **Batching & Performance**: To avoid $N+1$ performance issues, the evaluator implements a **4-Phase Capability Planning Pipeline** (Candidate → Normalize → Batch Decision → Materialize).
+-   **Provider Optimizations**:
+    -   **Cerbos**: Uses the official gRPC SDK to send deduplicated checks in a **single batch request** (`CheckResourcesAsync`).
+    -   **Fallback (Local)**: Resolves the user's **Authority Profile** (admin status, tenant membership) **exactly once** per batch to eliminate redundant database/async overhead during individual link evaluation.
+-   **Collection Support**: For "Get All" endpoints, all link definitions for all items in the paginated result are flattened into a single massive batch, ensuring high-scale efficiency.
 
 ## 4. Authorization Providers
 

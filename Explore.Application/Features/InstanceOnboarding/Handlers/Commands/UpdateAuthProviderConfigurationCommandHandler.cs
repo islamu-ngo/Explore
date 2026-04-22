@@ -21,17 +21,20 @@ public class UpdateAuthProviderConfigurationCommandHandler : IRequestHandler<Upd
     private readonly IUserRepository _userRepository;
     private readonly IUserExternalLoginRepository _userExternalLoginRepository;
     private readonly IAuthProviderConfigurationService _configurationService;
+    private readonly IJwtAuthorityRefreshNotifier _jwtAuthorityRefreshNotifier;
 
     public UpdateAuthProviderConfigurationCommandHandler(
         IAdminContext adminContext,
         IUserRepository userRepository,
         IUserExternalLoginRepository userExternalLoginRepository,
-        IAuthProviderConfigurationService configurationService)
+        IAuthProviderConfigurationService configurationService,
+        IJwtAuthorityRefreshNotifier jwtAuthorityRefreshNotifier)
     {
         _adminContext = adminContext;
         _userRepository = userRepository;
         _userExternalLoginRepository = userExternalLoginRepository;
         _configurationService = configurationService;
+        _jwtAuthorityRefreshNotifier = jwtAuthorityRefreshNotifier;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(UpdateAuthProviderConfigurationCommand request, CancellationToken cancellationToken)
@@ -73,6 +76,7 @@ public class UpdateAuthProviderConfigurationCommandHandler : IRequestHandler<Upd
         }
 
         await _configurationService.ApplyConfigurationAsync(request.Configuration);
+        await _jwtAuthorityRefreshNotifier.ReloadAsync(cancellationToken);
 
         response.Success = true;
         response.Message = "Authentication provider configuration updated successfully.";

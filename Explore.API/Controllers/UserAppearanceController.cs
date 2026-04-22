@@ -38,6 +38,17 @@ public class UserAppearanceController : ControllerBase
         return Ok(preferences);
     }
 
+    [HttpGet("themes", Name = Hateoas.RouteNames.GetAvailableThemes)]
+    [EndpointSummary("Get Available Themes For Current Tenant")]
+    [EndpointDescription("Returns the active UI themes available to the current tenant (platform catalog plus tenant-owned themes) with full palettes for immediate rendering.")]
+    [ProducesResponseType(typeof(IReadOnlyList<AvailableThemeDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<IReadOnlyList<AvailableThemeDto>>> GetAvailableThemes(CancellationToken cancellationToken = default)
+    {
+        var themes = await _mediator.Send(new GetAvailableThemesQuery(), cancellationToken);
+        return Ok(themes);
+    }
+
     [HttpPut(Name = Hateoas.RouteNames.UpdateCurrentUserAppearancePreferences)]
     [EndpointSummary("Update Current User Appearance Preferences")]
     [EndpointDescription("Updates the authenticated user's appearance preferences and persists sparse user overrides.")]

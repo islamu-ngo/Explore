@@ -6,6 +6,7 @@ namespace Explore.Application.Features.Appearance.Handlers.Queries;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.DTOs.Appearance;
+using Explore.Application.Features.Appearance.Common;
 using Explore.Application.Features.Appearance.Requests.Queries;
 using MediatR;
 
@@ -36,7 +37,9 @@ public class GetAvailableThemesQueryHandler : IRequestHandler<GetAvailableThemes
                 Description = theme.Description,
                 IsDefault = theme.IsDefault,
                 IsPlatformTheme = !theme.TenantId.HasValue,
-                SortOrder = theme.SortOrder
+                SortOrder = theme.SortOrder,
+                LightPalette = UiThemeMapper.ToPaletteDto(theme.LightPalette),
+                DarkPalette = UiThemeMapper.ToPaletteDto(theme.DarkPalette)
             })
             .ToList();
     }

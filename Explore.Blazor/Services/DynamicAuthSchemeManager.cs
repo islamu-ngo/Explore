@@ -615,15 +615,27 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
     }
 
     /// <summary>
-    /// Creates an HTTP handler that forces IPv4 connections. Self-hosted domains
-    /// (Keycloak, Infisical) may have unreachable AAAA records; .NET's Happy Eyeballs
-    /// tries IPv6 first and hangs before falling back to IPv4.
+    /// Creates an HTTP handler for the OIDC backchannel (Keycloak, Infisical, etc.).
+    /// <para>
+    /// Forces IPv4: self-hosted providers often have unreachable AAAA records; .NET's
+    /// Happy Eyeballs tries IPv6 first and hangs before falling back to IPv4.
+    /// </para>
+    /// <para>
+    /// Uses bounded connection pooling (same policy as
+    /// <see cref="Explore.Blazor.Extensions.HttpClientExtensions"/>) to prevent the
+    /// HTTP/1.1 stale-socket race between our pool and the remote server's idle-timeout.
+    /// </para>
     /// </summary>
     private static SocketsHttpHandler CreateIpv4Handler()
     {
         return new SocketsHttpHandler
         {
             ConnectTimeout = TimeSpan.FromSeconds(10),
+            PooledConnectionLifetime = TimeSpan.FromMinutes(2),
+            PooledConnectionIdleTimeout = TimeSpan.FromSeconds(30),
+            KeepAlivePingDelay = TimeSpan.FromSeconds(30),
+            KeepAlivePingTimeout = TimeSpan.FromSeconds(5),
+            KeepAlivePingPolicy = HttpKeepAlivePingPolicy.WithActiveRequests,
             ConnectCallback = async (context, cancellationToken) =>
             {
                 var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);

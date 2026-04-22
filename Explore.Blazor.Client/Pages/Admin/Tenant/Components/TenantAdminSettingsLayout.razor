@@ -84,6 +84,10 @@
                                          Text="Branding"
                                          Class="@GetNavItemClass("branding")"
                                          OnClick="@(() => SelectSection("branding"))" />
+                            <MudListItem Icon="@Icons.Material.Filled.ColorLens"
+                                         Text="Themes"
+                                         Class="@GetNavItemClass("themes")"
+                                         OnClick="@(() => SelectSection("themes"))" />
                             <MudListItem Icon="@Icons.Material.Filled.Business"
                                          Text="Organizations"
                                          Class="@GetNavItemClass("organizations")"
@@ -159,6 +163,10 @@
                         else if (_currentSection == "branding")
                         {
                             <TenantBrandingSection Model="_model" />
+                        }
+                        else if (_currentSection == "themes")
+                        {
+                            <Explore.Blazor.Client.Pages.Admin.Components.UiThemeCatalogSection IsPlatformCatalog="false" />
                         }
                         else if (_currentSection == "organizations")
                         {

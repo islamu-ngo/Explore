@@ -1,6 +1,66 @@
 # Major Decisions
 
-Last Updated: 2026-04-20 Europe/Brussels
+Last Updated: 2026-04-22 Europe/Brussels
+
+## 2026-04-22 Europe/Brussels - Hierarchical Settings: UI Appearance Architecture
+
+### UiTheme as First-Class Aggregate (Not JSON Settings)
+- Decision: UI themes are stored as a first-class `UiTheme` aggregate with a dedicated `ui_themes` table, palette VO, and admin CRUD surface — not as serialized JSON blobs inside `SystemSetting`/`UserPreference` rows. `AppearanceSettingGroup` stores only `DefaultThemeId` (Guid) as a preference and resolves the palette by querying the `UiTheme` aggregate at render time.
+- Why: Themes are shared, versioned, governance-cascaded, and admin-managed entities. Storing palette JSON inside preference rows would duplicate data per user, prevent sensible admin CRUD, and make tenant-scoped catalog governance impossible. A first-class aggregate supports catalog CRUD, default-theme promotion, tenant vs platform scoping, and cache-friendly `GetDefaultThemeAsync` lookups.
+- Impact: `UiThemeConfiguration` (EF), `UiThemeRepository` with scope-aware queries, `IUiThemeRepository` methods (`ClearDefaultAsync`, `GetOwnedThemesAsync`, `GetAvailableThemesForTenantAsync`, `GetDefaultThemeAsync`, `ThemeKeyExistsAsync`), admin CRUD command/query handlers, and `api/admin/ui-themes` controller. `AppearanceSettingDefinitions.DefaultThemeId` is `SettingType.String` storing the Guid; `AppearanceSettingGroup.DefaultThemeId` is nullable `Guid`.
+- Consequence: Per-user preference storage remains a thin pointer (serialized Guid), consistent with the sparse-override model of hierarchical settings. Palette ownership stays with the aggregate; preferences stay with the user. Invalidation rules simplify: catalog CRUD does NOT invalidate preference resolver cache.
+
+### DefaultThemeId as Soft-Pointer with Fallback Chain (Not FK)
+- Decision: `UserPreference.Value` for `Appearance.DefaultThemeId` stores a serialized Guid string; there is NO database foreign key from `UserPreference` to `UiTheme`. Clients implement a 4-step fallback chain when resolving: (1) by id → (2) tenant default → (3) platform default → (4) hardcoded built-in palette.
+- Why: Themes can be hard-deleted by admins (with the default-theme protection invariant). A strict FK would require cascading preference rewrites on delete or blocking legitimate catalog hygiene. The soft-pointer pattern keeps admin workflows independent of preference sprawl: deleting a theme just makes existing references fall through to the tenant/platform default, which the UI already handles gracefully.
+- Impact: `AppearanceThemeService.ResolveActiveThemeAsync` in the Blazor client implements the chain. No EF migration needed for orphan cleanup. No database-level cascade on theme delete.
+- Consequence: Client-side fallback responsibility is mandatory — any new consumer of `DefaultThemeId` must implement the chain. Documented in `implementation-report.md` as "Dangling-pointer policy".
+
+### BFF Endpoints Perform Lossless Round-Trip (Not Partial PATCH)
+- Decision: `/bff/theme`, `/bff/language`, `/bff/direction` each mutate a single field but always persist the full `UpdateUserAppearancePreferencesDto` to the API. Each endpoint reads current server state first (via `GET api/user/appearance` when authenticated, cookies when anonymous), applies a record `with { X = newValue }` mutation, then PUTs the full record.
+- Why: The prior implementation passed only the field being edited and let the server DTO default-initialize the others — silently overwriting user preferences on every theme/language/direction click. The API contract is a full DTO (not JSON PATCH), so the BFF is the right place to reconstruct the complete record.
+- Impact: `ReadCurrentPreferencesAsync` / `ReadAuthenticatedAsync` / `ReadCookiePreferences` / `PersistAuthenticatedAsync` helpers added to `BffPreferenceEndpoints.cs`. `UserAppearancePreferencesDto` converted from `class` to `record class` to enable `with { }` without cloning boilerplate.
+- Consequence: Cookie mirror is now consistent with API state at all times. No silent preference regressions. Other BFF-mediated partial-update patterns should follow the same read-mutate-write shape.
+
+### Dynamic Client Theme via Post-Auth Rebuild (Not SSR-Gated)
+- Decision: `MudThemeProvider` initializes with the built-in palette at `OnInitialized`; post-authentication, `MainLayout.OnAfterRenderAsync` calls `AppearanceThemeService.ResolveActiveThemeAsync()` and rebuilds the `MudTheme` with the user's resolved `UiTheme` palettes, then triggers `StateHasChanged`.
+- Why: InteractiveAuto renders don't have `HttpContext`; forcing theme data into the SSR path would couple the Blazor server render to API calls it doesn't need for anonymous users. Post-auth rebuild keeps SSR fast, stays within the render-mode constraints, and tolerates failures gracefully — if the API is unreachable, the built-in palette remains.
+- Impact: Two render passes for authenticated users (one built-in, one themed), but only one pass for anonymous users. Blazor server doesn't need any appearance-specific code. `AppearanceThemeService` is the single source of truth for client-side theme resolution.
+- Consequence: A minor visual "pop" possible on first authenticated render if the user's theme diverges significantly from the built-in. Deemed acceptable for v1; future optimization could prefetch the theme server-side during the Blazor server render via BFF or hydrate from a signed cookie.
+
+## 2026-04-21 Europe/Brussels - Onboarding Bugfix: Three Interconnected Failures
+
+### Pre-onboarding = SingleTenant (Not MultiTenant)
+- Decision: `DeploymentModeProvider` returns `SingleTenant` when `InstanceBootstrapState` is null or incomplete, instead of the previous default of `MultiTenant`.
+- Why: On a fresh install, there are no tenants in the database. MultiTenant mode requires tenant resolution (via X-Tenant-Slug, custom domain, or subdomain), but during onboarding none of these exist yet. Serving the default tenant (`PlatformDefaults.DefaultTenantId`) allows all API paths to function during setup. This is the safest closed default.
+- Impact: `ApiTenantResolutionMiddleware` falls back to DefaultTenantId instead of returning 404 "Tenant not resolved". Test fixtures that explicitly set `Deployment:Mode=MultiTenant` in config still work because the new Layer 1 (explicit config) wins over Layer 3 (DB).
+- Consequence: Added `IConfiguration` dependency to `DeploymentModeProvider` constructor for Layer 1.
+
+### Dynamic JWT Authority via IPostConfigureOptions (Not Static Binding)
+- Decision: API JWT bearer authority and JWKS are resolved dynamically at runtime, not statically at startup.
+- Why: After onboarding saves Keycloak configuration to the database, the API must immediately validate JWTs signed by the newly-configured Keycloak realm. Static startup binding cannot know the authority URL until it's persisted. The `IPostConfigureOptions<JwtBearerOptions>` pattern allows injecting a `DynamicJwtConfigurationService`-managed `ConfigurationManager<OpenIdConnectConfiguration>` that reads from env vars at startup and swaps to DB-sourced config after onboarding.
+- Impact: Three onboarding/config handlers call `IJwtAuthorityRefreshNotifier.ReloadAsync()` post-commit, which swaps the JWT ConfigurationManager atomically. The post-configure callback applies to `JwtBearerDefaults.AuthenticationScheme` only.
+- Consequence: New contract `IJwtAuthorityRefreshNotifier` in Application layer. New singleton `DynamicJwtConfigurationService` + `DynamicJwtBearerPostConfigureOptions` in API project. Existing `AuthenticationExtensions.AddApiAuthentication()` no longer sets static Authority/MetadataAddress/ValidIssuer.
+
+### Graceful Token Refresh Failure (Not Silent RejectPrincipal)
+- Decision: On `invalid_grant`/`invalid_token` from Keycloak, the BFF signs the user out and redirects HTML navigations to `/login?session=expired&reason={}` rather than silently rejecting the principal.
+- Why: `context.RejectPrincipal()` leaves a broken auth cookie that causes an infinite loop on every request. Keycloak returns `invalid_grant` when the realm/client was reconfigured mid-session (during onboarding), the refresh token expired/revoked, or there's clock skew. Clearing the cookie and redirecting gives the user a clear re-authentication path.
+- Impact: HTML navigations (GET + Accept: text/html) get redirected. XHR/API requests still get 401 (no redirect). `RefreshResult` struct tracks failure reasons. `RejectAndSignOutAsync` is the new centralized failure handler in `TokenRefreshCookieEvents`.
+- Consequence: User experiences a clear redirect to login with explanatory reason code instead of an unresponsive app.
+
+## 2026-04-21 Europe/Brussels - Onboarding Bugfix: Setup Secret Circuit Context Resolution
+
+### JWT Bearer Token as User Identity Source in Blazor Circuit
+- Decision: When `IHttpContextAccessor.HttpContext` is null (Blazor InteractiveServer circuit), extract userId from the `Authorization: Bearer <token>` header set by `AccessTokenForwardingHandler` rather than introducing a new circuit-specific service.
+- Why: `AccessTokenForwardingHandler` already runs first in the BffClient pipeline and sets the Authorization header from `CircuitAccessTokenService`. The JWT contains `sub`, `ClaimTypes.NameIdentifier`, and `sid` claims — the same fallback chain used by `ClaimHelper.GetUserId`. No new DI registrations or service patterns needed.
+- Impact: `SetupSecretForwardingHandler.ExtractUserIdFromAuthorizationHeader()` parses JWT via `JwtSecurityTokenHandler`, extracts userId claims, falls back to `SetupSecretSessionService.GetForUser(userId)`. This is a private static method with no new dependencies.
+- Consequence: Any future DelegatingHandler that needs userId in circuit context should use the same pattern — parse the Authorization header set by the upstream handler.
+
+### JS Interop for Onboarding Secret Sync (Not sessionStorage)
+- Decision: Replace dead `sessionStorage.getItem("setup-secret")` in `InstanceOnboarding.razor` with `syncSetupSecret(null)` JS interop call via `/js/bff.js`, matching the pattern used by Setup.razor and AuthorizationProviderConfiguration.razor.
+- Why: `sessionStorage['setup-secret']` was never written by any code path — the sync was dead code. The BFF `/bff/setup-secret/sync` endpoint exists specifically to transfer the HTTP-only cookie secret into `SetupSecretSessionService` keyed by authenticated userId. JS interop goes through YARP which correctly forwards cookies. `sessionStorage` would require explicit writes in the login flow that don't exist.
+- Impact: `OnAfterRenderAsync` now calls `bffModule.InvokeAsync<BffMutationResult>("syncSetupSecret", (string?)null)`. Error handling for 400/410 statuses clears the secret and redirects to `/setup`. Tests updated with `SetupBffJsModule()` mock.
+- Consequence: All three onboarding pages (Setup, AuthorizationProviderConfiguration, InstanceOnboarding) now use the same `/js/bff.js` pattern for secret management. No more `sessionStorage` involvement in onboarding flows.
 
 ## 2026-04-16 Europe/Brussels - Blazor Clean Code Refactor: CTO Review Binding Decisions
 

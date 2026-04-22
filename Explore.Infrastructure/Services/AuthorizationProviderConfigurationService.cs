@@ -38,17 +38,20 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
         var providerSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Security.AuthorizationProvider);
         var grpcEndpointSetting = await _systemSettingRepository.GetByKey(GovernanceSettingKeys.Cerbos.GrpcEndpoint);
 
-        var envEndpoint = GrpcEndpointNormalizer.Normalize(_configuration["Cerbos:GrpcEndpoint"]);
-        var detectedFromEnv = !string.IsNullOrWhiteSpace(envEndpoint)
-                              && !envEndpoint.Equals("http://localhost:3593", StringComparison.OrdinalIgnoreCase);
+        // Preserve operator's raw value end-to-end. Detection compares against the local default using
+        // a normalized form, but the value surfaced to UI/storage stays exactly as the operator typed it
+        // in Infisical/env (e.g. `cerbosgrpc.openislamu.org:443`, no auto-prepended scheme).
+        var rawEnvEndpoint = _configuration["Cerbos:GrpcEndpoint"]?.Trim() ?? string.Empty;
+        var detectedFromEnv = !string.IsNullOrWhiteSpace(rawEnvEndpoint)
+                              && !GrpcEndpointNormalizer.Normalize(rawEnvEndpoint)
+                                  .Equals("http://localhost:3593", StringComparison.OrdinalIgnoreCase);
 
         var provider = DeserializeString(providerSetting?.Value, "local");
-        var grpcEndpoint = GrpcEndpointNormalizer.Normalize(DeserializeString(grpcEndpointSetting?.Value, string.Empty));
+        var grpcEndpoint = DeserializeString(grpcEndpointSetting?.Value, string.Empty);
 
-        // If env-detected endpoint exists and no explicit setting saved, use env value
         if (string.IsNullOrWhiteSpace(grpcEndpoint) && detectedFromEnv)
         {
-            grpcEndpoint = envEndpoint;
+            grpcEndpoint = rawEnvEndpoint;
         }
 
         return new AuthorizationProviderConfigurationDto
@@ -61,7 +64,7 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
 
     public async Task ApplyConfigurationAsync(AuthorizationProviderConfigurationDto configuration)
     {
-        var normalizedEndpoint = GrpcEndpointNormalizer.Normalize(configuration.CerbosGrpcEndpoint);
+        var rawEndpoint = configuration.CerbosGrpcEndpoint?.Trim() ?? string.Empty;
 
         await UpsertSettingAsync(
             GovernanceSettingKeys.Security.AuthorizationProvider,
@@ -74,7 +77,7 @@ public class AuthorizationProviderConfigurationService : IAuthorizationProviderC
 
         await UpsertSettingAsync(
             GovernanceSettingKeys.Cerbos.GrpcEndpoint,
-            JsonSerializer.Serialize(configuration.Provider.Equals("cerbos", StringComparison.OrdinalIgnoreCase) ? normalizedEndpoint : string.Empty),
+            JsonSerializer.Serialize(configuration.Provider.Equals("cerbos", StringComparison.OrdinalIgnoreCase) ? rawEndpoint : string.Empty),
             SettingValueType.String,
             true,
             "Security",

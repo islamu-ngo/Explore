@@ -83,7 +83,7 @@ internal static class UiThemeMapper
         Divider = UiThemeInputRules.NormalizeFlexibleColor(palette.Divider)
     };
 
-    private static UiThemePaletteDto ToPaletteDto(UiThemePalette palette) => new()
+    internal static UiThemePaletteDto ToPaletteDto(UiThemePalette palette) => new()
     {
         Primary = palette.Primary,
         Secondary = palette.Secondary,

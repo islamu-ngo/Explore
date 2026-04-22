@@ -200,34 +200,40 @@ Denied requests throw `AuthorizationException` → mapped to `403 Forbidden` by 
 ## HAL / HATEOAS Implementation
 
 ### Architecture
-The HATEOAS system uses a layered architecture:
+The HATEOAS system uses a layered architecture to ensure "Plug-and-Play" compatibility for all consumers:
 
-1. **`ResourceAssemblerBase<TDto, TListDto>`** — Base class for assembling HAL responses. Handles both single-entity and collection assembly with batch authorization evaluation.
-2. **`ILinkPolicy<TDto>`** / **`ICollectionLinkPolicy<TDto>`** — Per-entity link definitions. Each entity has a detail link policy and a collection link policy.
-3. **`LinkDefinition`** — Rich record type with: `Rel`, `RouteName`, `RouteValues`, `Method`, `Title`, `RequiresAuth`, `RequiredRoles`, `Condition`, `PermissionResourceKind`, `PermissionAction`, and more.
-4. **`HateoasAuthorizationEvaluator`** — Batch evaluates link permissions. Static checks (auth, roles, conditions) run first, then remaining links go through `IAuthorizationProvider.IsAllowedBatchAsync()` in a single call. On batch failure, permission-bound links are denied (fail-closed).
-5. **`HateoasLinkGenerator`** — Resolves URLs from named routes using ASP.NET `LinkGenerator`.
+1. **`ResourceAssemblerBase<TDto, TListDto>`** — Base class for assembling HAL responses. Implements the high-performance **4-Phase Capability Planning Pipeline**.
+2. **`ILinkPolicy<TDto>`** / **`ICollectionLinkPolicy<TDto>`** — Per-entity link definitions using the `yield return` pattern.
+3. **`LinkDefinition`** — Metadata for a link, including relation, route, and authorization requirements.
+4. **`HateoasAuthorizationEvaluator`** — The engine that batches and deduplicated permission checks.
+5. **`HateoasLinkGenerator`** — Resolves named routes to absolute URLs.
 6. **`RouteNames`** — 100+ named route constants ensuring type-safe link generation.
+
+### The 4-Phase Capability Planning Pipeline
+To prevent $N+1$ performance issues, link generation follows a strict pipeline:
+1. **Candidate Selection**: Link policies yield all possible link definitions for the resource(s).
+2. **Normalization**: The evaluator extracts `AuthorizationCheck` objects from permission-bearing links.
+3. **Batch Decisioning**: Deduplicated checks are sent to the `IAuthorizationProvider` in a **single batch call**.
+4. **Materialization**: Authorized links are resolved to URLs and embedded into the `_links` object.
+
+### Collection Endpoint Performance ("Get All")
+Collection endpoints use `BuildListResourcesWithBatch` to ensure scalability:
+- All link definitions for **all items** in a paginated result are collected first.
+- These are flattened into one massive batch (potentially hundreds of checks).
+- The evaluator deduplicates identical checks (e.g., if multiple items share the same parent).
+- **One single gRPC call** (Cerbos) or **one single profile resolution** (Local) authorizes the entire list.
 
 ### Content Negotiation
 - Default format: `application/hal+json` with `_links` and `_embedded` sections.
-- `Prefer: return=minimal` (RFC 7240) strips all `_links` from responses for lightweight clients.
+- `Prefer: return=minimal` (RFC 7240) strips all `_links` to save bandwidth for non-UI consumers.
 - `PreferHeaderMiddleware` reads the `Prefer` header and sets a flag consumed by assemblers.
 
 ### Pagination Links
-Collection responses include standard pagination links:
-- `self` — current page
-- `first` — first page
-- `prev` — previous page (omitted on first page)
-- `next` — next page (omitted on last page)
-- `last` — last page
+Collection responses include standard pagination links: `self`, `first`, `prev`, `next`, `last`.
+Link policies use `ResourceDescriptors` to extract resource metadata from DTOs, ensuring authorization is context-aware.
 
-### Authorization-Aware Links
-Links are conditionally included via a 4-phase capability planning pipeline:
-1. **Static checks**: `RequiresAuth`, `RequiredRoles`, `Condition` lambda filter links before any provider call.
-2. **Permission checks**: `PermissionResourceKind` + `PermissionAction` (from `AuthorizationActions` constants) evaluated via `IAuthorizationProvider`. Link policies use `ResourceDescriptors` to extract resource metadata from DTOs.
-3. **Deduplication**: Identical `AuthorizationCheck` records (same resource kind + id + action) collapse before batch evaluation.
-4. **Fail-closed**: If batch authorization fails, all permission-bound links are denied. Non-permission links are unaffected.
+### Fail-Closed Security
+If the batch authorization call fails (e.g., network error to Cerbos), all permission-bound links are **denied** by default. Non-permission links (e.g., `self`) remain unaffected.
 
 ### Blazor Client Consumption Pattern
 

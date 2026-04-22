@@ -1,0 +1,54 @@
+@* ABOUTME: Single color token field: hex text input paired with a MudColorPicker. *@
+@* ABOUTME: Two-way binds via Value + ValueChanged for normalized hex strings. *@
+
+@using MudBlazor
+
+<div class="ui-theme-color-field">
+    <MudTextField T="string"
+                  Label="@Label"
+                  Value="@Value"
+                  ValueChanged="OnTextChanged"
+                  Variant="Variant.Outlined"
+                  Margin="Margin.Dense"
+                  Immediate="true"
+                  Adornment="Adornment.End"
+                  AdornmentIcon="@Icons.Material.Filled.Palette" />
+    <MudColorPicker Value="@_color"
+                    ValueChanged="OnColorChanged"
+                    ColorPickerView="ColorPickerView.Spectrum"
+                    ShowAlpha="false"
+                    DisableToolbar="false"
+                    Variant="Variant.Outlined"
+                    Margin="Margin.Dense"
+                    ThrottleInterval="150" />
+</div>
+
+@code {
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public string Value { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    private MudColor _color = new("#000000");
+
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrWhiteSpace(Value) && Value.StartsWith('#'))
+        {
+            try { _color = new MudColor(Value); }
+            catch { _color = new MudColor("#000000"); }
+        }
+    }
+
+    private async Task OnTextChanged(string value)
+    {
+        await ValueChanged.InvokeAsync(value);
+    }
+
+    private async Task OnColorChanged(MudColor color)
+    {
+        _color = color;
+        var hex = "#" + color.Value.Replace("#", string.Empty).ToUpperInvariant();
+        if (hex.Length == 9) hex = hex[..7];
+        await ValueChanged.InvokeAsync(hex);
+    }
+}

@@ -58,10 +58,21 @@ public static class BffSetupSecretEndpoints
         var validation = await ValidateSetupSecretAsync(ctx, secret, ctx.RequestAborted);
         if (!validation.IsValid)
         {
-            ClearSetupSecret(ctx, sessionService, !env.IsDevelopment());
+            if (IsPermanentValidationFailure(validation.StatusCode))
+            {
+                ClearSetupSecret(ctx, sessionService, !env.IsDevelopment());
+                await ctx.Response.WriteAsJsonAsync(new SetupSecretStatusResponse
+                {
+                    HasPersistedSecret = false,
+                    IsValid = false,
+                    Error = validation.Error
+                });
+                return;
+            }
+
             await ctx.Response.WriteAsJsonAsync(new SetupSecretStatusResponse
             {
-                HasPersistedSecret = false,
+                HasPersistedSecret = true,
                 IsValid = false,
                 Error = validation.Error
             });
@@ -97,7 +108,11 @@ public static class BffSetupSecretEndpoints
         var validation = await ValidateSetupSecretAsync(ctx, secret, ctx.RequestAborted);
         if (!validation.IsValid)
         {
-            ClearSetupSecret(ctx, sessionService, !env.IsDevelopment());
+            if (IsPermanentValidationFailure(validation.StatusCode))
+            {
+                ClearSetupSecret(ctx, sessionService, !env.IsDevelopment());
+            }
+
             ctx.Response.StatusCode = validation.StatusCode;
             await ctx.Response.WriteAsJsonAsync(new ProblemDetails
             {
@@ -144,7 +159,11 @@ public static class BffSetupSecretEndpoints
         var validation = await ValidateSetupSecretAsync(ctx, secret, ctx.RequestAborted);
         if (!validation.IsValid)
         {
-            ClearSetupSecret(ctx, sessionService, !env.IsDevelopment(), userId);
+            if (IsPermanentValidationFailure(validation.StatusCode))
+            {
+                ClearSetupSecret(ctx, sessionService, !env.IsDevelopment(), userId);
+            }
+
             ctx.Response.StatusCode = validation.StatusCode;
             await ctx.Response.WriteAsJsonAsync(new ProblemDetails
             {
@@ -157,6 +176,14 @@ public static class BffSetupSecretEndpoints
 
         PersistSetupSecret(ctx, sessionService, secret, !env.IsDevelopment(), userId);
     }
+
+    // Permanent failures invalidate the persisted secret (user must re-enter):
+    //   - 403 Forbidden: secret is wrong
+    //   - 410 Gone: onboarding already completed, secret no longer applicable
+    // Transient failures (429, 502, 503, connection errors) keep the secret so the
+    // user doesn't need to re-enter it when the API briefly misbehaves.
+    private static bool IsPermanentValidationFailure(int statusCode) =>
+        statusCode is StatusCodes.Status403Forbidden or StatusCodes.Status410Gone;
 
     private static IResult HandleDeleteSetupSecret(HttpContext ctx)
     {

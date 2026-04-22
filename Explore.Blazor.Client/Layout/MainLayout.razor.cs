@@ -1,8 +1,10 @@
 // ABOUTME: Main layout code-behind handling theme initialization, user sync, and accessibility.
 // ABOUTME: Uses MudBlazor theme switching with cookie persistence, and manages focus-on-navigate for screen readers.
 
+using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
+using Explore.Blazor.Client.Models.Appearance;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -25,6 +27,7 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     private bool _hideChrome;
     private bool _showCommunityGuidelinesLink = true;
     private string _brandDisplayName = string.Empty;
+    private AvailableThemeModel? _activeTheme;
 
     [Inject]
     protected IUserService UserService { get; set; } = null!;
@@ -77,19 +80,13 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     {
         base.OnInitialized();
 
-        // Use the cascaded initial theme from cookie if available (for SSR)
         if (InitialTheme.HasValue)
         {
             _isDarkMode = InitialTheme.Value;
         }
 
-        _theme = AppearanceThemeService.CreateTheme(GetAppbarHeight());
-
-        UpdateChromeVisibility();
-        NavigationManager.LocationChanged += OnLocationChanged;
-        SidebarState.OnChange += StateHasChanged;
-        AiAssistantState.OnChange += StateHasChanged;
-        TenantNavLinksState.OnChange += StateHasChanged;
+        _theme = AppearanceThemeService.CreateTheme(GetAppbarHeight(), _activeTheme);
+        StateHasChanged();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -136,7 +133,19 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
                 Logger.LogWarning(ex, "Error loading tenant navigation links for sidebar");
             }
 
-            // If no cookie-based theme was provided, detect system preference via MudBlazor
+            try
+            {
+                var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+                if (authState.User.Identity?.IsAuthenticated == true)
+                {
+                    await LoadActiveThemeAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogDebug(ex, "Could not load active UI theme for the current user.");
+            }
+
             if (!InitialTheme.HasValue)
             {
                 try
@@ -207,9 +216,22 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
         _announcementVisible = isVisible;
         if (_theme is not null)
         {
-            _theme = AppearanceThemeService.CreateTheme(GetAppbarHeight());
+        _theme = AppearanceThemeService.CreateTheme(GetAppbarHeight(), _activeTheme);
             StateHasChanged();
         }
+    }
+
+    private async Task LoadActiveThemeAsync()
+    {
+        var active = await AppearanceThemeService.ResolveActiveThemeAsync();
+        if (active is null)
+        {
+            return;
+        }
+
+        _activeTheme = active;
+        _theme = AppearanceThemeService.CreateTheme(GetAppbarHeight(), _activeTheme);
+        await InvokeAsync(StateHasChanged);
     }
 
     private string GetAppbarHeight()

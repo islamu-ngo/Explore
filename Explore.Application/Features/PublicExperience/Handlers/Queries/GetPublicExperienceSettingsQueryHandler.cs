@@ -114,6 +114,9 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
         var aiSettingGroup = await _hierarchicalSettingsResolver.ResolveGroupAsync<AiAssistantSettingGroup>(
             new SettingContext(TenantId: tenantId), cancellationToken);
 
+        var appearanceSettingGroup = await _hierarchicalSettingsResolver.ResolveGroupAsync<AppearanceSettingGroup>(
+            new SettingContext(TenantId: tenantId), cancellationToken);
+
         return new PublicExperienceSettingsDto
         {
             TenantId = tenantId,
@@ -160,6 +163,10 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
             DisallowInteractiveServerOnOnboarding = governanceSettings.RenderPolicy.DisallowInteractiveServerOnOnboarding,
             IsAiAssistantAvailable = aiSettingGroup.IsAvailable,
             FooterConfig = footerConfig,
+            DefaultThemeId = appearanceSettingGroup.DefaultThemeId,
+            ThemeMode = appearanceSettingGroup.ThemeMode,
+            Direction = appearanceSettingGroup.Direction,
+            Language = appearanceSettingGroup.Language,
         };
     }
 

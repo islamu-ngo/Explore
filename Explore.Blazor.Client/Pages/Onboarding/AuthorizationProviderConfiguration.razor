@@ -217,6 +217,30 @@
             _isLoading = false;
             StateHasChanged();
         }
+
+        // ABOUTME: Auto-verify the Cerbos endpoint when it was detected from environment variables but not yet
+        // verified. Without this, the user sees a pre-filled endpoint without the green Verified chip and must
+        // click Verify Endpoint manually before Save & Continue becomes enabled — pure friction since the value
+        // came from a trusted source (Infisical/env). User report m0202: "i need to click on the test connection
+        // and then it shows green". Skipping when already verified avoids redundant gRPC health checks.
+        if (_model.CerbosDetectedFromEnvironment
+            && !_model.CerbosEndpointVerified
+            && _model.Provider.Equals(CerbosProvider, StringComparison.OrdinalIgnoreCase)
+            && !string.IsNullOrWhiteSpace(_model.CerbosGrpcEndpoint))
+        {
+            try
+            {
+                await VerifyCerbosEndpointAsync();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Auto-verification of detected Cerbos endpoint failed; user can retry manually.");
+            }
+            finally
+            {
+                StateHasChanged();
+            }
+        }
     }
 
     private void SelectProvider(string provider)
@@ -308,19 +332,16 @@
 
         _successMessage = response.Message;
 
-        // Re-fetch onboarding status post-save: principal may have changed (Keycloak refresh, scheme rebuild),
-        // so the cached _isAuthenticated from OnInitializedAsync can be stale. The next step is always
-        // /onboarding/instance — anonymous users must land back there after login, NOT on /setup.
-        var freshStatus = await InstanceOnboardingService.GetStatusAsync();
-        var isAuthenticated = freshStatus?.IsAuthenticated == true;
+        // Save succeeded. Navigate immediately using the auth state captured at page load —
+        // the destination performs a full SSR reload (forceLoad: true) and re-fetches status
+        // server-side, so any stale auth context is corrected there. Avoiding a redundant
+        // BFF→API round-trip here prevents the "stuck on Save" UX reported when the pooled
+        // HttpClient hit a stale connection (see HttpClientExtensions.ConfigureDevCertBypass).
+        var destination = _isAuthenticated
+            ? "/onboarding/instance"
+            : "/login?returnUrl=/onboarding/instance";
 
-        if (isAuthenticated)
-        {
-            Navigation.NavigateTo("/onboarding/instance", forceLoad: true);
-            return;
-        }
-
-        Navigation.NavigateTo("/login?returnUrl=/onboarding/instance", forceLoad: true);
+        Navigation.NavigateTo(destination, forceLoad: true);
     }
 
     private async Task<IJSObjectReference> GetBffModuleAsync()

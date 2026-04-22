@@ -339,6 +339,17 @@ public static class RouteNames
 
     public const string GetCurrentUserAppearancePreferences = "GetCurrentUserAppearancePreferences";
     public const string UpdateCurrentUserAppearancePreferences = "UpdateCurrentUserAppearancePreferences";
+    public const string GetAvailableThemes = "GetAvailableThemes";
+
+    #endregion
+
+    #region UI Theme Admin Routes
+
+    public const string GetUiThemeCatalog = "GetUiThemeCatalog";
+    public const string GetUiThemeDetails = "GetUiThemeDetails";
+    public const string CreateUiTheme = "CreateUiTheme";
+    public const string UpdateUiTheme = "UpdateUiTheme";
+    public const string DeleteUiTheme = "DeleteUiTheme";
 
     #endregion
 

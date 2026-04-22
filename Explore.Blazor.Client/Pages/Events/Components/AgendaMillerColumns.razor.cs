@@ -5,6 +5,7 @@ namespace Explore.Blazor.Client.Pages.Events.Components;
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.Events;
+using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
 using MudBlazor;
@@ -68,8 +69,7 @@ public partial class AgendaMillerColumns
             { d => d.EventId, EventId },
             { d => d.IsNew, true },
         };
-        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await DialogService.ShowAsync<EventDayEditorDialog>("Add Day", parameters, options);
+        var dialog = await DialogService.ShowAsync<EventDayEditorDialog>("Add Day", parameters, DialogOptionsFactory.Small());
         var result = await dialog.Result;
         if (result is { Canceled: false })
         {
@@ -86,8 +86,7 @@ public partial class AgendaMillerColumns
             { d => d.Days, _days },
             { d => d.PreselectedDayId, SelectedDay?.Id },
         };
-        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await DialogService.ShowAsync<EventAgendaItemEditorDialog>("Add Agenda Item", parameters, options);
+        var dialog = await DialogService.ShowAsync<EventAgendaItemEditorDialog>("Add Agenda Item", parameters, DialogOptionsFactory.Small());
         var result = await dialog.Result;
         if (result is { Canceled: false })
         {
@@ -107,8 +106,7 @@ public partial class AgendaMillerColumns
             { d => d.IsNew, false },
             { d => d.Days, _days },
         };
-        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await DialogService.ShowAsync<EventAgendaItemEditorDialog>("Edit Agenda Item", parameters, options);
+        var dialog = await DialogService.ShowAsync<EventAgendaItemEditorDialog>("Edit Agenda Item", parameters, DialogOptionsFactory.Small());
         var result = await dialog.Result;
         if (result is { Canceled: false })
         {

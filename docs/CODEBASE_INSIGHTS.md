@@ -210,17 +210,25 @@ All seed GUIDs use **UUIDv7** format (`018e4e5c-xxxx-7xxx-8xxx-xxxxxxxxxxxx`) fo
 The API implements **HAL (Hypertext Application Language)** for hypermedia with a layered architecture:
 
 ### Core Components
-- `ResourceAssemblerBase<TDto, TListDto>` — Base class for assembling HAL responses. Handles both single-entity and collection assembly with **batch authorization evaluation**.
-- `ILinkPolicy<TDto>` / `ICollectionLinkPolicy<TDto>` — Per-entity link definitions using yield return pattern. Each entity has separate detail and collection link policies.
-- `LinkDefinition` — Rich record type with: `Rel`, `RouteName`, `RouteValues`, `Method`, `Title`, `RequiresAuth`, `RequiredRoles`, `Condition` lambda, and permission metadata (`PermissionResourceKind`, `PermissionAction`, `PermissionResourceId`, `PermissionResourceAttributes`).
-- `HateoasAuthorizationEvaluator` — Performs batch authorization: static checks (auth, roles, conditions) first, then remaining permission-bound links sent to `IAuthorizationProvider.IsAllowedBatchAsync()` in a single call. On failure, permission-bound links are denied (fail-closed).
-- `HateoasLinkGenerator` — Resolves URLs from named routes via ASP.NET Core `LinkGenerator`.
-- `RouteNames` — 100+ named route constants organized by resource type (events, organizations, actors, etc.).
+- `ResourceAssemblerBase<TDto, TListDto>` — Base class for assembling HAL responses. Implements the **4-Phase Capability Planning Pipeline** to ensure authorization never becomes a performance bottleneck.
+- `ILinkPolicy<TDto>` / `ICollectionLinkPolicy<TDto>` — Per-entity link definitions using `yield return`.
+- `LinkDefinition` — Metadata for a link, including relation, route, and authorization requirements.
+- `HateoasAuthorizationEvaluator` — Extracts, deduplicates, and batch-evaluates permissions.
+- `HateoasLinkGenerator` — Resolves named routes to absolute URLs.
 
-### Content Negotiation
-- Default format: `application/hal+json` with `_links` and `_embedded`.
-- `PreferHeaderMiddleware` reads RFC 7240 `Prefer: return=minimal` header and sets a flag consumed by assemblers to strip `_links`.
-- Pagination links: `self`, `first`, `prev`, `next`, `last`.
+### The 4-Phase Pipeline (Capability Planning)
+1. **Candidate Selection**: Link policies generate all possible links based on the DTO state.
+2. **Normalization**: The evaluator extracts `AuthorizationCheck` objects (Resource Kind + ID + Action).
+3. **Batch Decisioning**: Deduplicated checks are sent to the `IAuthorizationProvider` in a **single call**.
+4. **Materialization**: Only authorized links are resolved to URLs.
+
+### Deep Performance Mechanics: Collection Flattening
+The system solves the $N+1$ authorization problem for large lists in `BuildListResourcesWithBatch`:
+- It iterates through all $N$ items in a paginated result.
+- It collects **every** candidate link definition for **every** item.
+- It flattens these into **one single batch** (potentially hundreds of checks).
+- The evaluator deduplicates identical checks (e.g., if many items share the same parent and "view-parent" link).
+- **One single batch call** authorizes the entire list's UI affordances.
 
 ### Authorization-Aware Links
 Links declare requirements via `LinkDefinition`:

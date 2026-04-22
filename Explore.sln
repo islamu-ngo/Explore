@@ -55,6 +55,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Explore.Blazor.IntegrationT
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Explore.Blazor.Client.E2ETests", "Explore.Blazor.Client.E2ETests\Explore.Blazor.Client.E2ETests.csproj", "{BA668B86-2E3A-4671-AB23-CAB6B1521133}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Explore.Diagnostic", "Explore.Diagnostic\Explore.Diagnostic.csproj", "{9377F5D5-BE2B-4047-91BF-0355055459BB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -317,6 +319,18 @@ Global
 		{BA668B86-2E3A-4671-AB23-CAB6B1521133}.Release|x64.Build.0 = Release|Any CPU
 		{BA668B86-2E3A-4671-AB23-CAB6B1521133}.Release|x86.ActiveCfg = Release|Any CPU
 		{BA668B86-2E3A-4671-AB23-CAB6B1521133}.Release|x86.Build.0 = Release|Any CPU
+		{9377F5D5-BE2B-4047-91BF-0355055459BB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9377F5D5-BE2B-4047-91BF-0355055459BB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9377F5D5-BE2B-4047-91BF-0355055459BB}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{9377F5D5-BE2B-4047-91BF-0355055459BB}.Debug|x64.Build.0 = Debug|Any CPU
+		{9377F5D5-BE2B-4047-91BF-0355055459BB}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{9377F5D5-BE2B-4047-91BF-0355055459BB}.Debug|x86.Build.0 = Debug|Any CPU
+		{9377F5D5-BE2B-4047-91BF-0355055459BB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9377F5D5-BE2B-4047-91BF-0355055459BB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9377F5D5-BE2B-4047-91BF-0355055459BB}.Release|x64.ActiveCfg = Release|Any CPU
+		{9377F5D5-BE2B-4047-91BF-0355055459BB}.Release|x64.Build.0 = Release|Any CPU
+		{9377F5D5-BE2B-4047-91BF-0355055459BB}.Release|x86.ActiveCfg = Release|Any CPU
+		{9377F5D5-BE2B-4047-91BF-0355055459BB}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
