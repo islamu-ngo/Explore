@@ -1,6 +1,8 @@
 // ABOUTME: Component tests for InstanceOnboarding wizard completion flow and redirect outcomes.
 // ABOUTME: Verifies single-tenant host choice behavior and multi-tenant admin redirect behavior.
 
+using Bunit.TestDoubles;
+using Explore.Blazor.Client.Models.Responses;
 using Explore.Blazor.Client.Pages.Onboarding;
 
 namespace Explore.Blazor.Client.Tests.Pages.Onboarding;
@@ -11,7 +13,7 @@ public class InstanceOnboardingTests : IDisposable
     private readonly IInstanceOnboardingService _instanceOnboardingService;
     private readonly IUserService _userService;
     private readonly IGroupService _groupService;
-    private readonly FakeNavigationManager _nav;
+    private readonly BunitNavigationManager _nav;
 
     public InstanceOnboardingTests()
     {
@@ -34,7 +36,7 @@ public class InstanceOnboardingTests : IDisposable
         });
         _ctx.Services.AddSingleton(httpClientFactory);
 
-        _nav = _ctx.Services.GetRequiredService<FakeNavigationManager>();
+        _nav = _ctx.Services.GetRequiredService<BunitNavigationManager>();
 
         _userService.SyncUserAsync().Returns(new BaseCommandResponseOfGuid { Success = true });
         _userService.GetCurrentUserAsync().Returns(new UserDto
@@ -56,8 +58,11 @@ public class InstanceOnboardingTests : IDisposable
                 Success = true,
                 Message = "ok"
             });
+        _instanceOnboardingService.RefreshAuthSessionAsync().Returns(true);
 
         _groupService.CreateGroupAsync(Arg.Any<string>(), Arg.Any<string?>()).Returns(true);
+
+        SetupBffJsModule();
     }
 
     public void Dispose()
@@ -178,6 +183,35 @@ public class InstanceOnboardingTests : IDisposable
         });
 
         await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task CompleteOnboarding_RefreshesAuthSession_BeforeRedirect()
+    {
+        // Arrange
+        var cut = RenderForDeploymentMode("MultiTenant");
+
+        // Act
+        ClickButton(cut, "Next");
+        ClickButton(cut, "Next");
+        ClickButton(cut, "Complete Instance Onboarding");
+
+        // Assert
+        await _instanceOnboardingService.Received(1).RefreshAuthSessionAsync();
+        await Task.CompletedTask;
+    }
+
+    private void SetupBffJsModule(bool syncOk = true)
+    {
+        var module = _ctx.JSInterop.SetupModule("/js/bff.js");
+
+        module.Setup<BffMutationResult>("syncSetupSecret", _ => true)
+            .SetResult(new BffMutationResult
+            {
+                Ok = syncOk,
+                Status = syncOk ? 200 : 400,
+                Error = syncOk ? null : "Sync failed."
+            });
     }
 
     private IRenderedComponent<InstanceOnboarding> RenderForDeploymentMode(string deploymentMode)

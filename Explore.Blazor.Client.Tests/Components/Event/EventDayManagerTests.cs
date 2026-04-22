@@ -32,7 +32,7 @@ public class EventDayManagerTests : IDisposable
         new() { Id = Guid.NewGuid(), EventId = TestEventId, LocalDate = TestDate2, Label = "Day 2", IsPublished = false, SortOrder = 2 }
     ];
 
-    private IRenderedComponent<EventDayManagerComponent> RenderComponent(
+    private IRenderedComponent<EventDayManagerComponent> Render(
         List<EventDayListDto>? days = null, bool canManage = true)
     {
         var dayService = Substitute.For<IEventDayService>();
@@ -52,7 +52,7 @@ public class EventDayManagerTests : IDisposable
     [Test]
     public async Task RendersDayLabels_WhenDaysExist()
     {
-        var cut = RenderComponent();
+        var cut = Render();
 
         await Assert.That(cut.Markup).Contains("Day 1");
         await Assert.That(cut.Markup).Contains("Day 2");
@@ -61,7 +61,7 @@ public class EventDayManagerTests : IDisposable
     [Test]
     public async Task RendersEmptyMessage_WhenNoDays()
     {
-        var cut = RenderComponent(days: []);
+        var cut = Render(days: []);
 
         await Assert.That(cut.Markup).Contains("No days configured");
     }
@@ -69,7 +69,7 @@ public class EventDayManagerTests : IDisposable
     [Test]
     public async Task RendersDraftChip_WhenDayNotPublished()
     {
-        var cut = RenderComponent();
+        var cut = Render();
 
         await Assert.That(cut.Markup).Contains("Draft");
     }
@@ -77,7 +77,7 @@ public class EventDayManagerTests : IDisposable
     [Test]
     public async Task RendersAddDayButton_WhenCanManageTrue()
     {
-        var cut = RenderComponent(canManage: true);
+        var cut = Render(canManage: true);
 
         await Assert.That(cut.Markup).Contains("Add Day");
     }
@@ -85,7 +85,7 @@ public class EventDayManagerTests : IDisposable
     [Test]
     public async Task HidesEditDeleteButtons_WhenCanManageFalse()
     {
-        var cut = RenderComponent(canManage: false);
+        var cut = Render(canManage: false);
 
         var editButtons = cut.FindAll("[aria-label*='Edit']");
         var deleteButtons = cut.FindAll("[aria-label*='Delete']");
@@ -95,7 +95,7 @@ public class EventDayManagerTests : IDisposable
     [Test]
     public async Task RendersDateFormatted_WhenDayHasLocalDate()
     {
-        var cut = RenderComponent();
+        var cut = Render();
 
         await Assert.That(cut.Markup).Contains("Jun 15");
         await Assert.That(cut.Markup).Contains("2026");
@@ -108,7 +108,7 @@ public class EventDayManagerTests : IDisposable
         {
             new() { Id = Guid.NewGuid(), EventId = TestEventId, LocalDate = default, Label = "No Date", IsPublished = true, SortOrder = 1 }
         };
-        var cut = RenderComponent(days: days);
+        var cut = Render(days: days);
 
         await Assert.That(cut.Markup).Contains("No date set");
     }
@@ -120,7 +120,7 @@ public class EventDayManagerTests : IDisposable
         {
             new() { Id = Guid.NewGuid(), EventId = TestEventId, LocalDate = TestDate1, Label = null, IsPublished = true, SortOrder = 3 }
         };
-        var cut = RenderComponent(days: days);
+        var cut = Render(days: days);
 
         await Assert.That(cut.Markup).Contains("Day 3");
     }
@@ -128,7 +128,7 @@ public class EventDayManagerTests : IDisposable
     [Test]
     public async Task ShowsEditDeleteButtons_WhenCanManageTrue()
     {
-        var cut = RenderComponent(canManage: true);
+        var cut = Render(canManage: true);
 
         var editButtons = cut.FindAll("[aria-label*='Edit']");
         await Assert.That(editButtons.Count).IsGreaterThan(0);

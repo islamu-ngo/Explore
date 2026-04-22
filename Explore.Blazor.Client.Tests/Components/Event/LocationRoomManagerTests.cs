@@ -30,7 +30,7 @@ public class LocationRoomManagerTests : IDisposable
         new() { Id = Guid.NewGuid(), LocationId = TestLocationId, Name = "Room B", Capacity = 0, SortOrder = 2 }
     ];
 
-    private IRenderedComponent<LocationRoomManagerComponent> RenderComponent(
+    private IRenderedComponent<LocationRoomManagerComponent> Render(
         List<LocationRoomListDto>? rooms = null, bool canManage = true, Guid? locationId = null)
     {
         var locId = locationId ?? TestLocationId;
@@ -51,7 +51,7 @@ public class LocationRoomManagerTests : IDisposable
     [Test]
     public async Task RendersRoomNames_WhenRoomsExist()
     {
-        var cut = RenderComponent();
+        var cut = Render();
 
         await Assert.That(cut.Markup).Contains("Main Hall");
         await Assert.That(cut.Markup).Contains("Room B");
@@ -60,7 +60,7 @@ public class LocationRoomManagerTests : IDisposable
     [Test]
     public async Task RendersCapacity_WhenRoomHasCapacity()
     {
-        var cut = RenderComponent();
+        var cut = Render();
 
         await Assert.That(cut.Markup).Contains("(200)");
     }
@@ -68,7 +68,7 @@ public class LocationRoomManagerTests : IDisposable
     [Test]
     public async Task ShowsSelectLocationMessage_WhenLocationIdEmpty()
     {
-        var cut = RenderComponent(locationId: Guid.Empty);
+        var cut = Render(locationId: Guid.Empty);
 
         await Assert.That(cut.Markup).Contains("Select a location first");
     }
@@ -76,7 +76,7 @@ public class LocationRoomManagerTests : IDisposable
     [Test]
     public async Task RendersNoRoomsMessage_WhenRoomsEmpty()
     {
-        var cut = RenderComponent(rooms: []);
+        var cut = Render(rooms: []);
 
         await Assert.That(cut.Markup).Contains("No rooms configured");
     }
@@ -84,7 +84,7 @@ public class LocationRoomManagerTests : IDisposable
     [Test]
     public async Task RendersAddRoomButton_WhenCanManageAndLocationSet()
     {
-        var cut = RenderComponent(canManage: true);
+        var cut = Render(canManage: true);
 
         await Assert.That(cut.Markup).Contains("Add Room");
     }
@@ -92,7 +92,7 @@ public class LocationRoomManagerTests : IDisposable
     [Test]
     public async Task DisablesAddRoomButton_WhenCanManageFalse()
     {
-        var cut = RenderComponent(canManage: false);
+        var cut = Render(canManage: false);
 
         var addButtons = cut.FindAll("button:has(.mud-icon-root)");
         var disabledButtons = cut.FindAll("button[disabled]");

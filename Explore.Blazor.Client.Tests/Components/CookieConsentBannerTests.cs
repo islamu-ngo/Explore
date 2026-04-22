@@ -22,7 +22,7 @@ public class CookieConsentBannerTests : IDisposable
     [Test]
     public async Task Render_WhenVisible_ShowsBannerMarkup()
     {
-        var cut = _ctx.RenderComponent<CookieConsentBanner>(p => p
+        var cut = _ctx.Render<CookieConsentBanner>(p => p
             .Add(b => b.Visible, true));
 
         var banner = cut.Find(".cookie-consent-banner");
@@ -32,7 +32,7 @@ public class CookieConsentBannerTests : IDisposable
     [Test]
     public async Task Render_WhenNotVisible_RendersEmpty()
     {
-        var cut = _ctx.RenderComponent<CookieConsentBanner>(p => p
+        var cut = _ctx.Render<CookieConsentBanner>(p => p
             .Add(b => b.Visible, false));
 
         await Assert.That(cut.Markup.Trim()).IsEmpty();
@@ -41,7 +41,7 @@ public class CookieConsentBannerTests : IDisposable
     [Test]
     public async Task Render_WhenVisible_ShowsBannerText()
     {
-        var cut = _ctx.RenderComponent<CookieConsentBanner>(p => p
+        var cut = _ctx.Render<CookieConsentBanner>(p => p
             .Add(b => b.Visible, true));
 
         var text = cut.Find(".cookie-consent-banner__text");
@@ -52,17 +52,17 @@ public class CookieConsentBannerTests : IDisposable
     [Test]
     public async Task Render_WhenVisible_HasAcceptAndDeclineButtons()
     {
-        var cut = _ctx.RenderComponent<CookieConsentBanner>(p => p
+        var cut = _ctx.Render<CookieConsentBanner>(p => p
             .Add(b => b.Visible, true));
 
         var buttons = cut.FindAll(".cookie-consent-banner__btn");
-        await Assert.That(buttons).HasCount().EqualTo(2);
+        await Assert.That(buttons).Count().IsEqualTo(2);
     }
 
     [Test]
     public async Task Render_DeclineButtonIsOutlinedForEqualProminence()
     {
-        var cut = _ctx.RenderComponent<CookieConsentBanner>(p => p
+        var cut = _ctx.Render<CookieConsentBanner>(p => p
             .Add(b => b.Visible, true));
 
         // Decline is the first button, uses Outlined variant (MudBlazor renders as mud-button-outlined)
@@ -74,7 +74,7 @@ public class CookieConsentBannerTests : IDisposable
     [Test]
     public async Task Render_AcceptButtonIsSecondForEqualProminence()
     {
-        var cut = _ctx.RenderComponent<CookieConsentBanner>(p => p
+        var cut = _ctx.Render<CookieConsentBanner>(p => p
             .Add(b => b.Visible, true));
 
         var buttons = cut.FindAll(".cookie-consent-banner__btn");
@@ -86,7 +86,7 @@ public class CookieConsentBannerTests : IDisposable
     public async Task AcceptButton_Click_InvokesOnAcceptCallback()
     {
         var accepted = false;
-        var cut = _ctx.RenderComponent<CookieConsentBanner>(p => p
+        var cut = _ctx.Render<CookieConsentBanner>(p => p
             .Add(b => b.Visible, true)
             .Add(b => b.OnAccept, () => { accepted = true; }));
 
@@ -100,7 +100,7 @@ public class CookieConsentBannerTests : IDisposable
     public async Task DeclineButton_Click_InvokesOnDeclineCallback()
     {
         var declined = false;
-        var cut = _ctx.RenderComponent<CookieConsentBanner>(p => p
+        var cut = _ctx.Render<CookieConsentBanner>(p => p
             .Add(b => b.Visible, true)
             .Add(b => b.OnDecline, () => { declined = true; }));
 
@@ -113,20 +113,20 @@ public class CookieConsentBannerTests : IDisposable
     [Test]
     public async Task Render_HasBemStructure()
     {
-        var cut = _ctx.RenderComponent<CookieConsentBanner>(p => p
+        var cut = _ctx.Render<CookieConsentBanner>(p => p
             .Add(b => b.Visible, true));
 
         // Verify BEM class hierarchy exists
-        await Assert.That(cut.FindAll(".cookie-consent-banner")).HasCount().EqualTo(1);
-        await Assert.That(cut.FindAll(".cookie-consent-banner__content")).HasCount().EqualTo(1);
-        await Assert.That(cut.FindAll(".cookie-consent-banner__text")).HasCount().EqualTo(1);
-        await Assert.That(cut.FindAll(".cookie-consent-banner__actions")).HasCount().EqualTo(1);
+        await Assert.That(cut.FindAll(".cookie-consent-banner")).Count().IsEqualTo(1);
+        await Assert.That(cut.FindAll(".cookie-consent-banner__content")).Count().IsEqualTo(1);
+        await Assert.That(cut.FindAll(".cookie-consent-banner__text")).Count().IsEqualTo(1);
+        await Assert.That(cut.FindAll(".cookie-consent-banner__actions")).Count().IsEqualTo(1);
     }
 
     [Test]
     public async Task Render_DefaultVisibility_IsFalse()
     {
-        var cut = _ctx.RenderComponent<CookieConsentBanner>();
+        var cut = _ctx.Render<CookieConsentBanner>();
 
         await Assert.That(cut.Markup.Trim()).IsEmpty();
     }

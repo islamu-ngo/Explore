@@ -27,13 +27,13 @@ namespace Explore.Blazor.Client.Tests.Common;
 /// using var ctx = new BlazorTestContext();
 /// ctx.SetAuthenticatedUser(Guid.NewGuid(), "Test User");
 /// ctx.AddMockService&lt;IEventService&gt;(svc => svc.GetAllEventsAsync().Returns(events));
-/// var cut = ctx.RenderComponent&lt;EventList&gt;();
+/// var cut = ctx.Render&lt;EventList&gt;();
 /// </code>
 /// </para>
 /// </remarks>
-public class BlazorTestContext : Bunit.TestContext
+public class BlazorTestContext : BunitContext
 {
-    private readonly TestAuthorizationContext _authContext;
+    private readonly BunitAuthorizationContext _authContext;
 
     /// <summary>
     /// Creates a new BlazorTestContext with MudBlazor and authentication support pre-configured.
@@ -54,7 +54,7 @@ public class BlazorTestContext : Bunit.TestContext
         });
 
         // Add bUnit's fake authorization (provides CascadingAuthenticationState)
-        _authContext = this.AddTestAuthorization();
+        _authContext = this.AddAuthorization();
 
         // JSInterop runs in strict mode (bUnit default).
         // MudBlazor JS calls are mostly eliminated by service-level mocks above.
@@ -232,12 +232,12 @@ public class BlazorTestContext : Bunit.TestContext
         where TComponent : IComponent
     {
         // Render the component within a MudPopoverProvider wrapper
-        var wrapper = RenderComponent<MudPopoverProvider>();
+        var wrapper = Render<MudPopoverProvider>();
 
         // Now render the actual component
         return parameterBuilder != null
-            ? RenderComponent<TComponent>(parameterBuilder)
-            : RenderComponent<TComponent>();
+            ? Render<TComponent>(parameterBuilder)
+            : Render<TComponent>();
     }
 
     /// <summary>

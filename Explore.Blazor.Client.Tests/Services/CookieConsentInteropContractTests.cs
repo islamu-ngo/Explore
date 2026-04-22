@@ -12,7 +12,7 @@ public class CookieConsentInteropContractTests
     {
         var methods = InterfaceType.GetMethods();
 
-        await Assert.That(methods).HasCount().EqualTo(3);
+        await Assert.That(methods).Count().IsEqualTo(3);
     }
 
     [Test]
@@ -24,7 +24,7 @@ public class CookieConsentInteropContractTests
         await Assert.That(method!.ReturnType).IsEqualTo(typeof(Task<string?>));
 
         var parameters = method.GetParameters();
-        await Assert.That(parameters).HasCount().EqualTo(1);
+        await Assert.That(parameters).Count().IsEqualTo(1);
         await Assert.That(parameters[0].Name).IsEqualTo("consentCookieKey");
         await Assert.That(parameters[0].ParameterType).IsEqualTo(typeof(string));
     }
@@ -38,7 +38,7 @@ public class CookieConsentInteropContractTests
         await Assert.That(method!.ReturnType).IsEqualTo(typeof(Task));
 
         var parameters = method.GetParameters();
-        await Assert.That(parameters).HasCount().EqualTo(3);
+        await Assert.That(parameters).Count().IsEqualTo(3);
         await Assert.That(parameters[0].Name).IsEqualTo("consentCookieKey");
         await Assert.That(parameters[0].ParameterType).IsEqualTo(typeof(string));
         await Assert.That(parameters[1].Name).IsEqualTo("value");
@@ -56,7 +56,7 @@ public class CookieConsentInteropContractTests
         await Assert.That(method!.ReturnType).IsEqualTo(typeof(Task));
 
         var parameters = method.GetParameters();
-        await Assert.That(parameters).HasCount().EqualTo(1);
+        await Assert.That(parameters).Count().IsEqualTo(1);
         await Assert.That(parameters[0].Name).IsEqualTo("consentCookieKey");
         await Assert.That(parameters[0].ParameterType).IsEqualTo(typeof(string));
     }

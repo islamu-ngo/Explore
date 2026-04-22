@@ -272,22 +272,22 @@ public sealed class AuthenticationTestBuilder
     #region Build Methods
 
     /// <summary>
-    /// Build and apply the authentication configuration to a BUnit TestContext.
+    /// Build and apply the authentication configuration to a BUnit BunitContext.
     /// </summary>
     /// <param name="context">BUnit test context</param>
-    /// <returns>TestAuthorizationContext for further manipulation if needed</returns>
-    public TestAuthorizationContext Build(Bunit.TestContext context)
+    /// <returns>BunitAuthorizationContext for further manipulation if needed</returns>
+    public BunitAuthorizationContext Build(BunitContext context)
     {
-        var authContext = context.AddTestAuthorization();
+        var authContext = context.AddAuthorization();
         ApplyTo(authContext);
         return authContext;
     }
 
     /// <summary>
-    /// Apply the authentication configuration to an existing TestAuthorizationContext.
+    /// Apply the authentication configuration to an existing BunitAuthorizationContext.
     /// </summary>
     /// <param name="authContext">Target authorization context</param>
-    public void ApplyTo(TestAuthorizationContext authContext)
+    public void ApplyTo(BunitAuthorizationContext authContext)
     {
         if (_isAuthorizing)
         {

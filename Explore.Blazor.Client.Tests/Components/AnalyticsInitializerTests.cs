@@ -1,6 +1,7 @@
 // ABOUTME: Component tests for AnalyticsInitializer covering bootstrap, consent state machine, and cookie interactions.
 // ABOUTME: Verifies initialization, banner visibility, accept/decline callbacks, footer reopen, and graceful degradation.
 
+using Bunit;
 using Explore.Blazor.Client.Models.Analytics;
 
 namespace Explore.Blazor.Client.Tests.Components;
@@ -97,14 +98,18 @@ public class AnalyticsInitializerTests : IDisposable
         return !string.IsNullOrWhiteSpace(value);
     }
 
-    private IRenderedFragmentBase RenderAnalyticsInitializer()
+    private IRenderedComponent<IComponent> RenderAnalyticsInitializer()
     {
-        var method = typeof(Bunit.TestContext)
+        var method = typeof(BunitContext)
             .GetMethods()
-            .First(x => x.Name == "RenderComponent" && x.IsGenericMethod && x.GetParameters().Length == 1);
+            .First(x => x.Name == "Render" && x.IsGenericMethod && x.GetParameters().Length == 1);
 
-        return (IRenderedFragmentBase)method.MakeGenericMethod(_analyticsInitializerType)
-            .Invoke(_ctx, new object?[] { Array.Empty<ComponentParameter>() })!;
+        var parameters = method.GetParameters();
+        var parameterType = parameters[0].ParameterType;
+        var emptyArray = Array.CreateInstance(parameterType.GetElementType()!, 0);
+
+        return (IRenderedComponent<IComponent>)method.MakeGenericMethod(_analyticsInitializerType)
+            .Invoke(_ctx, new object?[] { emptyArray })!;
     }
 
     [Test]
@@ -202,7 +207,7 @@ public class AnalyticsInitializerTests : IDisposable
         var analyticsInterop = Substitute.For<IAnalyticsInterop>();
         _ctx.Services.AddSingleton(settingsService);
         _ctx.Services.AddSingleton(analyticsInterop);
-        var navigationManager = _ctx.Services.GetRequiredService<FakeNavigationManager>();
+        var navigationManager = _ctx.Services.GetRequiredService<BunitNavigationManager>();
 
         var cut = RenderAnalyticsInitializer();
         await Task.Yield();
@@ -283,7 +288,7 @@ public class AnalyticsInitializerTests : IDisposable
         _ctx.Services.AddSingleton(settingsService);
         _ctx.Services.AddSingleton(analyticsInterop);
 
-        var cut = (IRenderedFragment)RenderAnalyticsInitializer();
+        var cut = RenderAnalyticsInitializer();
         await Task.Yield();
 
         cut.WaitForAssertion(() =>
@@ -307,7 +312,7 @@ public class AnalyticsInitializerTests : IDisposable
         _ctx.Services.AddSingleton(settingsService);
         _ctx.Services.AddSingleton(analyticsInterop);
 
-        var cut = (IRenderedFragment)RenderAnalyticsInitializer();
+        var cut = RenderAnalyticsInitializer();
         await Task.Yield();
 
         cut.WaitForAssertion(() =>
@@ -329,7 +334,7 @@ public class AnalyticsInitializerTests : IDisposable
         _ctx.Services.AddSingleton(settingsService);
         _ctx.Services.AddSingleton(analyticsInterop);
 
-        var cut = (IRenderedFragment)RenderAnalyticsInitializer();
+        var cut = RenderAnalyticsInitializer();
         await Task.Yield();
 
         cut.WaitForAssertion(() =>
@@ -356,7 +361,7 @@ public class AnalyticsInitializerTests : IDisposable
         _ctx.Services.AddSingleton(settingsService);
         _ctx.Services.AddSingleton(analyticsInterop);
 
-        var cut = (IRenderedFragment)RenderAnalyticsInitializer();
+        var cut = RenderAnalyticsInitializer();
         await Task.Yield();
 
         cut.WaitForAssertion(() =>
@@ -380,7 +385,7 @@ public class AnalyticsInitializerTests : IDisposable
         _ctx.Services.AddSingleton(settingsService);
         _ctx.Services.AddSingleton(analyticsInterop);
 
-        var cut = (IRenderedFragment)RenderAnalyticsInitializer();
+        var cut = RenderAnalyticsInitializer();
         await Task.Yield();
 
         cut.WaitForAssertion(() =>
@@ -404,7 +409,7 @@ public class AnalyticsInitializerTests : IDisposable
         _ctx.Services.AddSingleton(settingsService);
         _ctx.Services.AddSingleton(analyticsInterop);
 
-        var cut = (IRenderedFragment)RenderAnalyticsInitializer();
+        var cut = RenderAnalyticsInitializer();
         await Task.Yield();
 
         cut.WaitForAssertion(() => cut.Find(".cookie-consent-banner"));
@@ -434,7 +439,7 @@ public class AnalyticsInitializerTests : IDisposable
         _ctx.Services.AddSingleton(settingsService);
         _ctx.Services.AddSingleton(analyticsInterop);
 
-        var cut = (IRenderedFragment)RenderAnalyticsInitializer();
+        var cut = RenderAnalyticsInitializer();
         await Task.Yield();
 
         cut.WaitForAssertion(() => cut.Find(".cookie-consent-banner"));
@@ -464,7 +469,7 @@ public class AnalyticsInitializerTests : IDisposable
         _ctx.Services.AddSingleton(settingsService);
         _ctx.Services.AddSingleton(analyticsInterop);
 
-        var cut = (IRenderedFragment)RenderAnalyticsInitializer();
+        var cut = RenderAnalyticsInitializer();
         await Task.Yield();
 
         cut.WaitForAssertion(() =>

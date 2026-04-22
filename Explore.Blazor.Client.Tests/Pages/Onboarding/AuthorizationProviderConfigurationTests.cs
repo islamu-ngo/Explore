@@ -1,6 +1,7 @@
 // ABOUTME: Component tests for the authorization-provider onboarding page browser-fetch flow.
 // ABOUTME: Verifies Cerbos auto-detection, endpoint verification, and local save navigation use bff.js.
 
+using Bunit.TestDoubles;
 using Explore.Blazor.Client.Pages.Onboarding;
 
 namespace Explore.Blazor.Client.Tests.Pages.Onboarding;
@@ -9,7 +10,7 @@ public class AuthorizationProviderConfigurationTests : IDisposable
 {
     private readonly BlazorTestContext _ctx;
     private readonly IInstanceOnboardingService _instanceOnboardingService;
-    private readonly FakeNavigationManager _nav;
+    private readonly BunitNavigationManager _nav;
 
     public AuthorizationProviderConfigurationTests()
     {
@@ -17,7 +18,7 @@ public class AuthorizationProviderConfigurationTests : IDisposable
         _instanceOnboardingService = Substitute.For<IInstanceOnboardingService>();
         _ctx.Services.AddSingleton(_instanceOnboardingService);
         _ctx.Services.AddSingleton(Substitute.For<ILogger<AuthorizationProviderConfiguration>>());
-        _nav = _ctx.Services.GetRequiredService<FakeNavigationManager>();
+        _nav = _ctx.Services.GetRequiredService<BunitNavigationManager>();
     }
 
     public void Dispose()
@@ -169,7 +170,7 @@ public class AuthorizationProviderConfigurationTests : IDisposable
 
         cut.WaitForAssertion(() =>
         {
-            if (!_nav.Uri.EndsWith("/login?returnUrl=/setup", StringComparison.OrdinalIgnoreCase))
+            if (!_nav.Uri.EndsWith("/login?returnUrl=/onboarding/instance", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException($"Expected redirect to setup login, got '{_nav.Uri}'.");
             }

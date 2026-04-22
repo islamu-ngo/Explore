@@ -69,7 +69,7 @@ public class EventFilterBarTests : IDisposable
         cut.Instance.SelectedEventTypeIds = new HashSet<int> { 2 };
 
         // Re-render so the "Clear All" button appears (conditional on activeCount > 0)
-        cut.SetParametersAndRender(p => p.Add(x => x.OnSearchRequested, callback));
+        cut.Render(p => p.Add(x => x.OnSearchRequested, callback));
 
         // Act — click the Clear All button inside the active-summary section
         var clearButton = cut.Find(".filter-bar__active-summary button");

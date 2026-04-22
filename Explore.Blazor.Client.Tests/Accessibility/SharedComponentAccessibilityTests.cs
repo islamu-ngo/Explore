@@ -115,7 +115,7 @@ public class SharedComponentAccessibilityTests : IDisposable
         _ctx.Services.AddSingleton(imageService);
 
         // Act
-        var cut = _ctx.RenderComponent<S3Image>(p =>
+        var cut = _ctx.Render<S3Image>(p =>
             p.Add(x => x.ImageUrl, "https://example.com/image.jpg"));
 
         // Assert — default alt should be empty string (decorative image per WCAG)
@@ -130,7 +130,7 @@ public class SharedComponentAccessibilityTests : IDisposable
         _ctx.Services.AddSingleton(imageService);
 
         // Act
-        var cut = _ctx.RenderComponent<S3Image>(p =>
+        var cut = _ctx.Render<S3Image>(p =>
             p.Add(x => x.ImageUrl, "https://example.com/photo.jpg")
              .Add(x => x.Alt, "Community gathering at sunset"));
 
@@ -146,7 +146,7 @@ public class SharedComponentAccessibilityTests : IDisposable
         _ctx.Services.AddSingleton(imageService);
 
         // Act — render with no image data
-        var cut = _ctx.RenderComponent<S3Image>();
+        var cut = _ctx.Render<S3Image>();
 
         // Assert — placeholder should be visible (not an img with missing alt)
         await Assert.That(cut.Markup).DoesNotContain("<img");

@@ -12,7 +12,7 @@ public class StartupGateTests : IDisposable
 {
     private readonly BlazorTestContext _ctx;
     private readonly IInstanceOnboardingService _instanceOnboardingService;
-    private readonly FakeNavigationManager _nav;
+    private readonly BunitNavigationManager _nav;
 
     public StartupGateTests()
     {
@@ -22,7 +22,7 @@ public class StartupGateTests : IDisposable
         _ctx.Services.AddSingleton(_instanceOnboardingService);
         _ctx.Services.AddSingleton(Substitute.For<ILogger<StartupGate>>());
 
-        _nav = _ctx.Services.GetRequiredService<FakeNavigationManager>();
+        _nav = _ctx.Services.GetRequiredService<BunitNavigationManager>();
     }
 
     public void Dispose()

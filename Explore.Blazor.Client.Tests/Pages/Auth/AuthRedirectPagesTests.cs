@@ -44,11 +44,11 @@ public class AuthRedirectPagesTests : IDisposable
     public async Task LoginRedirect_NavigatesToAuthChallenge_WhenNoQueryString()
     {
         // Arrange
-        var nav = _ctx.Services.GetRequiredService<FakeNavigationManager>();
+        var nav = _ctx.Services.GetRequiredService<BunitNavigationManager>();
         nav.NavigateTo("/login");
 
         // Act
-        var cut = _ctx.RenderComponent<DynamicComponent>(parameters =>
+        var cut = _ctx.Render<DynamicComponent>(parameters =>
             parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
 
         // Assert
@@ -67,11 +67,11 @@ public class AuthRedirectPagesTests : IDisposable
     public async Task LoginRedirect_ForwardsQueryString_ToAuthChallenge()
     {
         // Arrange
-        var nav = _ctx.Services.GetRequiredService<FakeNavigationManager>();
+        var nav = _ctx.Services.GetRequiredService<BunitNavigationManager>();
         nav.NavigateTo("/login?returnUrl=%2Fadmin%2Ftenant%2Fsettings");
 
         // Act
-        var cut = _ctx.RenderComponent<DynamicComponent>(parameters =>
+        var cut = _ctx.Render<DynamicComponent>(parameters =>
             parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
 
         // Assert
@@ -100,11 +100,11 @@ public class AuthRedirectPagesTests : IDisposable
             }
         });
 
-        var nav = _ctx.Services.GetRequiredService<FakeNavigationManager>();
+        var nav = _ctx.Services.GetRequiredService<BunitNavigationManager>();
         nav.NavigateTo("/login?returnUrl=%2Fevents");
 
         // Act
-        var cut = _ctx.RenderComponent<DynamicComponent>(parameters =>
+        var cut = _ctx.Render<DynamicComponent>(parameters =>
             parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
 
         // Assert
@@ -127,11 +127,11 @@ public class AuthRedirectPagesTests : IDisposable
             }
         });
 
-        var nav = _ctx.Services.GetRequiredService<FakeNavigationManager>();
+        var nav = _ctx.Services.GetRequiredService<BunitNavigationManager>();
         nav.NavigateTo("/login?provider=google&returnUrl=%2Fsetup");
 
         // Act
-        var cut = _ctx.RenderComponent<DynamicComponent>(parameters =>
+        var cut = _ctx.Render<DynamicComponent>(parameters =>
             parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
 
         // Assert
@@ -152,11 +152,11 @@ public class AuthRedirectPagesTests : IDisposable
         // Arrange — single provider + forced provider + challengeError=1
         // This scenario occurs when OIDC callback fails (OnRemoteFailure).
         // The login page must NOT auto-redirect back to the same provider, or it loops.
-        var nav = _ctx.Services.GetRequiredService<FakeNavigationManager>();
+        var nav = _ctx.Services.GetRequiredService<BunitNavigationManager>();
         nav.NavigateTo("/login?returnUrl=%2Fsetup&challengeError=1&provider=keycloak");
 
         // Act
-        var cut = _ctx.RenderComponent<DynamicComponent>(parameters =>
+        var cut = _ctx.Render<DynamicComponent>(parameters =>
             parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
 
         // Assert — page stays on /login, shows error message, does NOT redirect
@@ -177,11 +177,11 @@ public class AuthRedirectPagesTests : IDisposable
             }
         });
 
-        var nav = _ctx.Services.GetRequiredService<FakeNavigationManager>();
+        var nav = _ctx.Services.GetRequiredService<BunitNavigationManager>();
         nav.NavigateTo("/login?returnUrl=%2Fdashboard&login_hint=user.bsky.social");
 
         // Act
-        var cut = _ctx.RenderComponent<DynamicComponent>(parameters =>
+        var cut = _ctx.Render<DynamicComponent>(parameters =>
             parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
 
         // Assert
@@ -208,11 +208,11 @@ public class AuthRedirectPagesTests : IDisposable
             }
         });
 
-        var nav = _ctx.Services.GetRequiredService<FakeNavigationManager>();
+        var nav = _ctx.Services.GetRequiredService<BunitNavigationManager>();
         nav.NavigateTo("/login?returnUrl=%2Fdashboard");
 
         // Act
-        var cut = _ctx.RenderComponent<DynamicComponent>(parameters =>
+        var cut = _ctx.Render<DynamicComponent>(parameters =>
             parameters.Add(x => x.Type, GetPageComponentType("LoginRedirect")));
 
         // Assert
@@ -225,11 +225,11 @@ public class AuthRedirectPagesTests : IDisposable
     public async Task LogoutRedirect_NavigatesToAuthSignout_WhenNoQueryString()
     {
         // Arrange
-        var nav = _ctx.Services.GetRequiredService<FakeNavigationManager>();
+        var nav = _ctx.Services.GetRequiredService<BunitNavigationManager>();
         nav.NavigateTo("/logout");
 
         // Act
-        _ctx.RenderComponent<DynamicComponent>(parameters =>
+        _ctx.Render<DynamicComponent>(parameters =>
             parameters.Add(x => x.Type, GetPageComponentType("LogoutRedirect")));
 
         // Assert
@@ -240,11 +240,11 @@ public class AuthRedirectPagesTests : IDisposable
     public async Task LogoutRedirect_ForwardsQueryString_ToAuthSignout()
     {
         // Arrange
-        var nav = _ctx.Services.GetRequiredService<FakeNavigationManager>();
+        var nav = _ctx.Services.GetRequiredService<BunitNavigationManager>();
         nav.NavigateTo("/logout?returnUrl=%2F");
 
         // Act
-        _ctx.RenderComponent<DynamicComponent>(parameters =>
+        _ctx.Render<DynamicComponent>(parameters =>
             parameters.Add(x => x.Type, GetPageComponentType("LogoutRedirect")));
 
         // Assert

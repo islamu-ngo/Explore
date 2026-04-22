@@ -102,7 +102,7 @@ public class SetupTests : IDisposable
         SetupBffJsModule(hasPersistedSecret: false, isValid: false, error: "Invalid setup secret.");
 
         // Act
-        var cut = _ctx.RenderComponent<DynamicComponent>(parameters =>
+        var cut = _ctx.Render<DynamicComponent>(parameters =>
             parameters.Add(x => x.Type, GetPageComponentType("Setup")));
 
         // Assert
@@ -127,7 +127,7 @@ public class SetupTests : IDisposable
         SetupBffJsModule(hasPersistedSecret: true, isValid: true);
 
         // Act
-        var cut = _ctx.RenderComponent<DynamicComponent>(parameters =>
+        var cut = _ctx.Render<DynamicComponent>(parameters =>
             parameters.Add(x => x.Type, GetPageComponentType("Setup")));
 
         // Assert
@@ -152,7 +152,7 @@ public class SetupTests : IDisposable
         SetupBffJsModule(hasPersistedSecret: true, isValid: true);
 
         // Act
-        var cut = _ctx.RenderComponent<DynamicComponent>(parameters =>
+        var cut = _ctx.Render<DynamicComponent>(parameters =>
             parameters.Add(x => x.Type, GetPageComponentType("Setup")));
 
         // Assert
@@ -187,11 +187,11 @@ public class SetupTests : IDisposable
         });
         SetupBffJsModule(hasPersistedSecret: true, isValid: true);
 
-        var nav = _ctx.Services.GetRequiredService<Bunit.TestDoubles.FakeNavigationManager>();
+        var nav = _ctx.Services.GetRequiredService<Bunit.TestDoubles.BunitNavigationManager>();
         nav.NavigateTo("/setup");
 
         // Act
-        var cut = _ctx.RenderComponent<DynamicComponent>(parameters =>
+        var cut = _ctx.Render<DynamicComponent>(parameters =>
             parameters.Add(x => x.Type, GetPageComponentType("Setup")));
 
         cut.WaitForAssertion(() =>
@@ -226,7 +226,7 @@ public class SetupTests : IDisposable
         SetupBffJsModule();
 
         // Act
-        var cut = _ctx.RenderComponent<DynamicComponent>(parameters =>
+        var cut = _ctx.Render<DynamicComponent>(parameters =>
             parameters.Add(x => x.Type, GetPageComponentType("Setup")));
 
         // Assert
@@ -250,10 +250,10 @@ public class SetupTests : IDisposable
         });
         SetupBffJsModule();
 
-        var nav = _ctx.Services.GetRequiredService<Bunit.TestDoubles.FakeNavigationManager>();
+        var nav = _ctx.Services.GetRequiredService<Bunit.TestDoubles.BunitNavigationManager>();
 
         // Act
-        var cut = _ctx.RenderComponent<DynamicComponent>(parameters =>
+        var cut = _ctx.Render<DynamicComponent>(parameters =>
             parameters.Add(x => x.Type, GetPageComponentType("Setup")));
 
         // Assert

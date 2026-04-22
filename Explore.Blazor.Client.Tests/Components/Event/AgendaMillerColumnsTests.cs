@@ -56,7 +56,7 @@ public class AgendaMillerColumnsTests : IDisposable
         }
     ];
 
-    private IRenderedComponent<AgendaMillerColumnsComponent> RenderComponent(
+    private IRenderedComponent<AgendaMillerColumnsComponent> Render(
         List<EventDayListDto>? days = null, List<EventAgendaItemListDto>? items = null, bool canManage = false)
     {
         var testDays = days ?? CreateTestDays();
@@ -76,7 +76,7 @@ public class AgendaMillerColumnsTests : IDisposable
     [Test]
     public async Task RendersDaysColumn_WithDayLabels()
     {
-        var cut = RenderComponent();
+        var cut = Render();
 
         await Assert.That(cut.Markup).Contains("Day 1");
         await Assert.That(cut.Markup).Contains("Day 2");
@@ -85,7 +85,7 @@ public class AgendaMillerColumnsTests : IDisposable
     [Test]
     public async Task RendersNoDaysMessage_WhenDaysEmpty()
     {
-        var cut = RenderComponent(days: [], items: []);
+        var cut = Render(days: [], items: []);
 
         await Assert.That(cut.Markup).Contains("No days scheduled");
     }
@@ -93,7 +93,7 @@ public class AgendaMillerColumnsTests : IDisposable
     [Test]
     public async Task RendersSelectDayPrompt_WhenNoDaySelected()
     {
-        var cut = RenderComponent();
+        var cut = Render();
 
         await Assert.That(cut.Markup).Contains("Select a day to view agenda");
     }
@@ -106,7 +106,7 @@ public class AgendaMillerColumnsTests : IDisposable
             Id = Guid.NewGuid(), EventId = TestEventId, LocalDate = new DateOnly(2026, 6, 20),
             Label = "Empty Day", IsPublished = true, SortOrder = 0
         };
-        var cut = RenderComponent(days: [day], items: []);
+        var cut = Render(days: [day], items: []);
 
         var dayItems = cut.FindAll(".agenda-miller__column--days .agenda-miller__item");
         if (dayItems.Count > 0)
@@ -120,7 +120,7 @@ public class AgendaMillerColumnsTests : IDisposable
     [Test]
     public async Task RendersSelectItemPrompt_WhenNoItemSelected()
     {
-        var cut = RenderComponent();
+        var cut = Render();
 
         await Assert.That(cut.Markup).Contains("Select an item to view details");
     }
@@ -128,7 +128,7 @@ public class AgendaMillerColumnsTests : IDisposable
     [Test]
     public async Task DoesNotRenderManageButtons_WhenCanManageFalse()
     {
-        var cut = RenderComponent(canManage: false);
+        var cut = Render(canManage: false);
 
         var addButtons = cut.FindAll("[aria-label='Add day']");
         await Assert.That(addButtons.Count).IsEqualTo(0);
@@ -137,7 +137,7 @@ public class AgendaMillerColumnsTests : IDisposable
     [Test]
     public async Task RendersManageButtons_WhenCanManageTrue()
     {
-        var cut = RenderComponent(canManage: true);
+        var cut = Render(canManage: true);
 
         var addButtons = cut.FindAll("[aria-label='Add day']");
         await Assert.That(addButtons.Count).IsGreaterThan(0);
@@ -151,7 +151,7 @@ public class AgendaMillerColumnsTests : IDisposable
             Id = Guid.NewGuid(), EventId = TestEventId, LocalDate = TestDate1,
             Label = null, IsPublished = true, SortOrder = 0
         };
-        var cut = RenderComponent(days: [day], items: []);
+        var cut = Render(days: [day], items: []);
 
         await Assert.That(cut.Markup).Contains(TestDate1.ToString("ddd, MMM d"));
     }
@@ -159,7 +159,7 @@ public class AgendaMillerColumnsTests : IDisposable
     [Test]
     public async Task RendersPublishedBadge_WhenDayIsPublished()
     {
-        var cut = RenderComponent();
+        var cut = Render();
 
         await Assert.That(cut.Markup).Contains("agenda-miller__item-badge");
     }
@@ -169,7 +169,7 @@ public class AgendaMillerColumnsTests : IDisposable
     {
         var days = CreateTestDays();
         var items = CreateTestItems(days);
-        var cut = RenderComponent(days: days, items: items);
+        var cut = Render(days: days, items: items);
 
         var dayElements = cut.FindAll(".agenda-miller__column--days .agenda-miller__item");
         if (dayElements.Count > 0)
@@ -186,7 +186,7 @@ public class AgendaMillerColumnsTests : IDisposable
     {
         var days = CreateTestDays();
         var items = CreateTestItems(days);
-        var cut = RenderComponent(days: days, items: items);
+        var cut = Render(days: days, items: items);
 
         var dayElements = cut.FindAll(".agenda-miller__column--days .agenda-miller__item");
         if (dayElements.Count > 1)
@@ -205,7 +205,7 @@ public class AgendaMillerColumnsTests : IDisposable
     {
         var days = CreateTestDays();
         var items = CreateTestItems(days);
-        var cut = RenderComponent(days: days, items: items);
+        var cut = Render(days: days, items: items);
 
         var dayElements = cut.FindAll(".agenda-miller__column--days .agenda-miller__item");
         if (dayElements.Count > 0)
@@ -222,7 +222,7 @@ public class AgendaMillerColumnsTests : IDisposable
     {
         var days = CreateTestDays();
         var items = CreateTestItems(days);
-        var cut = RenderComponent(days: days, items: items);
+        var cut = Render(days: days, items: items);
 
         var dayElements = cut.FindAll(".agenda-miller__column--days .agenda-miller__item");
         if (dayElements.Count > 0)

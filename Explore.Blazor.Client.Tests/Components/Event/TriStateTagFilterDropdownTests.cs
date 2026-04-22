@@ -67,8 +67,8 @@ public class TriStateTagFilterDropdownTests : IDisposable
 
     private IRenderedComponent<TriStateTagFilterDropdownComponent> RenderDropdown(List<TagTypeWithTagsDto>? groups = null)
     {
-        _ctx.RenderComponent<MudPopoverProvider>();
-        return _ctx.RenderComponent<TriStateTagFilterDropdownComponent>(p => p
+        _ctx.Render<MudPopoverProvider>();
+        return _ctx.Render<TriStateTagFilterDropdownComponent>(p => p
             .Add(x => x.TagGroups, groups ?? GetMockTagGroups()));
     }
 

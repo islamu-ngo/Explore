@@ -54,7 +54,7 @@ public class MainLayoutTests : IDisposable
 
     private IRenderedComponent<MainLayout> RenderLayout()
     {
-        return _ctx.RenderComponent<MainLayout>(p =>
+        return _ctx.Render<MainLayout>(p =>
             p.Add(l => l.Body, (RenderFragment)(b => b.AddContent(0, "Test body content"))));
     }
 

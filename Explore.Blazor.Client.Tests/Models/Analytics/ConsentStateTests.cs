@@ -12,7 +12,7 @@ public class ConsentStateTests
     {
         var values = Enum.GetValues<ConsentState>();
 
-        await Assert.That(values).HasCount().EqualTo(7);
+        await Assert.That(values).Count().IsEqualTo(7);
     }
 
     [Test]

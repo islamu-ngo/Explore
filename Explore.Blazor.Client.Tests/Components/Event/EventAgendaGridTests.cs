@@ -60,7 +60,7 @@ public class EventAgendaGridTests : IDisposable
         new() { Id = Guid.NewGuid(), LocationId = Guid.NewGuid(), Name = "Room B", Capacity = 50, SortOrder = 1 }
     ];
 
-    private IRenderedComponent<EventAgendaGridComponent> RenderComponent(
+    private IRenderedComponent<EventAgendaGridComponent> Render(
         List<EventDayListDto>? days = null, List<EventAgendaItemListDto>? items = null,
         List<LocationRoomListDto>? rooms = null, bool canManage = true)
     {
@@ -87,7 +87,7 @@ public class EventAgendaGridTests : IDisposable
     [Test]
     public async Task RendersEmptyMessage_WhenNoItems()
     {
-        var cut = RenderComponent(items: []);
+        var cut = Render(items: []);
 
         await Assert.That(cut.Markup).Contains("No agenda items");
     }
@@ -95,7 +95,7 @@ public class EventAgendaGridTests : IDisposable
     [Test]
     public async Task RendersAddItemButton_WhenCanManageTrue()
     {
-        var cut = RenderComponent(canManage: true);
+        var cut = Render(canManage: true);
 
         await Assert.That(cut.Markup).Contains("Add Item");
     }
@@ -103,7 +103,7 @@ public class EventAgendaGridTests : IDisposable
     [Test]
     public async Task ShowsDayChipSelector_WhenMultipleDays()
     {
-        var cut = RenderComponent();
+        var cut = Render();
 
         await Assert.That(cut.Markup).Contains("All Days");
     }
@@ -115,7 +115,7 @@ public class EventAgendaGridTests : IDisposable
         {
             new() { Id = Guid.NewGuid(), EventId = TestEventId, LocalDate = TestDate1, Label = "Day 1", IsPublished = true, SortOrder = 0 }
         };
-        var cut = RenderComponent(days: singleDay);
+        var cut = Render(days: singleDay);
 
         await Assert.That(cut.Markup).DoesNotContain("All Days");
     }
@@ -123,7 +123,7 @@ public class EventAgendaGridTests : IDisposable
     [Test]
     public async Task RendersGridMode_WhenRoomsExist()
     {
-        var cut = RenderComponent(rooms: CreateTestRooms());
+        var cut = Render(rooms: CreateTestRooms());
 
         await Assert.That(cut.Markup).Contains("event-agenda-grid__container");
     }
@@ -131,7 +131,7 @@ public class EventAgendaGridTests : IDisposable
     [Test]
     public async Task RendersListMode_WhenNoRooms()
     {
-        var cut = RenderComponent(rooms: []);
+        var cut = Render(rooms: []);
 
         await Assert.That(cut.Markup).Contains("Opening Keynote");
         await Assert.That(cut.Markup).DoesNotContain("event-agenda-grid__container");
@@ -140,7 +140,7 @@ public class EventAgendaGridTests : IDisposable
     [Test]
     public async Task RendersRoomHeaders_WhenRoomsExist()
     {
-        var cut = RenderComponent(rooms: CreateTestRooms());
+        var cut = Render(rooms: CreateTestRooms());
 
         await Assert.That(cut.Markup).Contains("Main Hall");
         await Assert.That(cut.Markup).Contains("Room B");
@@ -149,7 +149,7 @@ public class EventAgendaGridTests : IDisposable
     [Test]
     public async Task RendersItemTitle_InListMode()
     {
-        var cut = RenderComponent(rooms: []);
+        var cut = Render(rooms: []);
 
         await Assert.That(cut.Markup).Contains("Opening Keynote");
         await Assert.That(cut.Markup).Contains("Workshop");
@@ -158,7 +158,7 @@ public class EventAgendaGridTests : IDisposable
     [Test]
     public async Task RendersKindName_InListMode()
     {
-        var cut = RenderComponent(rooms: []);
+        var cut = Render(rooms: []);
 
         await Assert.That(cut.Markup).Contains("Keynote");
     }
@@ -166,7 +166,7 @@ public class EventAgendaGridTests : IDisposable
     [Test]
     public async Task HidesEditDeleteButtons_WhenCanManageFalse()
     {
-        var cut = RenderComponent(canManage: false, rooms: []);
+        var cut = Render(canManage: false, rooms: []);
 
         var editButtons = cut.FindAll("[aria-label*='Edit']");
         var deleteButtons = cut.FindAll("[aria-label*='Delete']");

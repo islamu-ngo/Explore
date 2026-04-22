@@ -183,6 +183,49 @@ public class InstanceOnboardingServiceTests
 
     #endregion
 
+    #region RefreshAuthSessionAsync
+
+    [Test]
+    public async Task RefreshAuthSessionAsync_ReturnsTrue_WhenEndpointSucceeds()
+    {
+        // Arrange
+        SetupBffSelfClient(new HttpResponseMessage(HttpStatusCode.OK));
+
+        // Act
+        var result = await _service.RefreshAuthSessionAsync();
+
+        // Assert
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task RefreshAuthSessionAsync_ReturnsFalse_WhenEndpointFails()
+    {
+        // Arrange
+        SetupBffSelfClient(new HttpResponseMessage(HttpStatusCode.Unauthorized));
+
+        // Act
+        var result = await _service.RefreshAuthSessionAsync();
+
+        // Assert
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task RefreshAuthSessionAsync_ReturnsFalse_WhenEndpointThrows()
+    {
+        // Arrange
+        SetupBffSelfClient(_ => throw new HttpRequestException("refresh failed"));
+
+        // Act
+        var result = await _service.RefreshAuthSessionAsync();
+
+        // Assert
+        await Assert.That(result).IsFalse();
+    }
+
+    #endregion
+
     #region ValidateSecretAsync
 
     [Test]
@@ -294,6 +337,20 @@ public class InstanceOnboardingServiceTests
         var httpHandler = new MockHttpMessageHandler(handler);
         var client = new HttpClient(httpHandler) { BaseAddress = new Uri("https://test.local") };
         _httpClientFactory.CreateClient("BffClient").Returns(client);
+    }
+
+    private void SetupBffSelfClient(HttpResponseMessage response)
+    {
+        var handler = new MockHttpMessageHandler(response);
+        var client = new HttpClient(handler) { BaseAddress = new Uri("https://test.local") };
+        _httpClientFactory.CreateClient("BffSelfClient").Returns(client);
+    }
+
+    private void SetupBffSelfClient(Func<HttpRequestMessage, Task<HttpResponseMessage>> handler)
+    {
+        var httpHandler = new MockHttpMessageHandler(handler);
+        var client = new HttpClient(httpHandler) { BaseAddress = new Uri("https://test.local") };
+        _httpClientFactory.CreateClient("BffSelfClient").Returns(client);
     }
 
     private class MockHttpMessageHandler : HttpMessageHandler

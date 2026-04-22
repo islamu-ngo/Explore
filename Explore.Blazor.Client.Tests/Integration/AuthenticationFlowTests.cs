@@ -430,7 +430,7 @@ public class AuthenticationFlowTests
     {
         // Arrange & Act
         using var ctx = CreateContext();
-        var authContext = ctx.AddTestAuthorization();
+        var authContext = ctx.AddAuthorization();
         authContext.SetAuthorized("Policy User");
         authContext.SetPolicies(
             AuthenticationTestConstants.CreateEventPolicy,
@@ -457,7 +457,7 @@ public class AuthenticationFlowTests
         var subValue = Guid.NewGuid().ToString();
         var nameIdValue = Guid.NewGuid().ToString();
 
-        var authContext = ctx.AddTestAuthorization();
+        var authContext = ctx.AddAuthorization();
         authContext.SetAuthorized("Test User");
         authContext.SetClaims(
             new Claim("sub", subValue),
@@ -481,7 +481,7 @@ public class AuthenticationFlowTests
         using var ctx = CreateContext();
         var nameIdValue = Guid.NewGuid().ToString();
 
-        var authContext = ctx.AddTestAuthorization();
+        var authContext = ctx.AddAuthorization();
         authContext.SetAuthorized("Test User");
         authContext.SetClaims(
             new Claim(ClaimTypes.NameIdentifier, nameIdValue)

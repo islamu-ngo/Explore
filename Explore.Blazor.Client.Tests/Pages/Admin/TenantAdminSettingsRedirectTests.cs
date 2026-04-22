@@ -9,7 +9,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
 {
     private readonly BlazorTestContext _ctx;
     private readonly IInstanceOnboardingService _onboardingService;
-    private readonly FakeNavigationManager _nav;
+    private readonly BunitNavigationManager _nav;
 
     public TenantAdminSettingsRedirectTests()
     {
@@ -20,7 +20,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
         _onboardingService = _ctx.AddMockService<IInstanceOnboardingService>();
         _ctx.AddMockService<ITenantOnboardingService>();
 
-        _nav = _ctx.Services.GetRequiredService<FakeNavigationManager>();
+        _nav = _ctx.Services.GetRequiredService<BunitNavigationManager>();
         _nav.NavigateTo("/admin/tenant/settings");
     }
 
@@ -36,7 +36,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
             .GetTypes()
             .First(type => type.Name == "TenantAdminSettings" && typeof(IComponent).IsAssignableFrom(type));
 
-        var cut = _ctx.RenderComponent<DynamicComponent>(p =>
+        var cut = _ctx.Render<DynamicComponent>(p =>
             p.Add(x => x.Type, componentType));
 
         cut.WaitForAssertion(() =>
@@ -58,7 +58,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
             .GetTypes()
             .First(type => type.Name == "TenantAdminSettings" && typeof(IComponent).IsAssignableFrom(type));
 
-        _ctx.RenderComponent<DynamicComponent>(p =>
+        _ctx.Render<DynamicComponent>(p =>
             p.Add(x => x.Type, componentType));
 
         await Assert.That(_nav.Uri).EndsWith("/admin/tenant/settings");
@@ -74,7 +74,7 @@ public class TenantAdminSettingsRedirectTests : IDisposable
             .GetTypes()
             .First(type => type.Name == "TenantAdminSettings" && typeof(IComponent).IsAssignableFrom(type));
 
-        var cut = _ctx.RenderComponent<DynamicComponent>(p =>
+        var cut = _ctx.Render<DynamicComponent>(p =>
             p.Add(x => x.Type, componentType));
 
         cut.WaitForAssertion(() =>

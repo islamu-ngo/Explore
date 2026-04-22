@@ -14,7 +14,7 @@ public class AnalyticsInteropContractTests
     {
         var methods = InterfaceType.GetMethods();
 
-        await Assert.That(methods).HasCount().EqualTo(6);
+        await Assert.That(methods).Count().IsEqualTo(6);
     }
 
     [Test]
@@ -26,7 +26,7 @@ public class AnalyticsInteropContractTests
         await Assert.That(method!.ReturnType).IsEqualTo(typeof(Task));
 
         var parameters = method.GetParameters();
-        await Assert.That(parameters).HasCount().EqualTo(8);
+        await Assert.That(parameters).Count().IsEqualTo(8);
         await Assert.That(parameters[0].ParameterType).IsEqualTo(typeof(string));    // analyticsProvider
         await Assert.That(parameters[1].ParameterType).IsEqualTo(typeof(bool));      // analyticsEnabled
         await Assert.That(parameters[2].ParameterType).IsEqualTo(typeof(string));    // analyticsConsentMode
@@ -45,7 +45,7 @@ public class AnalyticsInteropContractTests
         await Assert.That(method!.ReturnType).IsEqualTo(typeof(Task));
 
         var parameters = method.GetParameters();
-        await Assert.That(parameters).HasCount().EqualTo(2);
+        await Assert.That(parameters).Count().IsEqualTo(2);
         await Assert.That(parameters[0].Name).IsEqualTo("eventName");
         await Assert.That(parameters[0].ParameterType).IsEqualTo(typeof(string));
         await Assert.That(parameters[1].Name).IsEqualTo("properties");
@@ -60,7 +60,7 @@ public class AnalyticsInteropContractTests
         await Assert.That(method!.ReturnType).IsEqualTo(typeof(Task));
 
         var parameters = method.GetParameters();
-        await Assert.That(parameters).HasCount().EqualTo(2);
+        await Assert.That(parameters).Count().IsEqualTo(2);
         await Assert.That(parameters[0].Name).IsEqualTo("distinctId");
         await Assert.That(parameters[0].ParameterType).IsEqualTo(typeof(string));
     }
@@ -74,7 +74,7 @@ public class AnalyticsInteropContractTests
         await Assert.That(method!.ReturnType).IsEqualTo(typeof(Task));
 
         var parameters = method.GetParameters();
-        await Assert.That(parameters).HasCount().EqualTo(2);
+        await Assert.That(parameters).Count().IsEqualTo(2);
         await Assert.That(parameters[0].Name).IsEqualTo("pagePath");
         await Assert.That(parameters[0].ParameterType).IsEqualTo(typeof(string));
     }
@@ -86,7 +86,7 @@ public class AnalyticsInteropContractTests
 
         await Assert.That(method).IsNotNull();
         await Assert.That(method!.ReturnType).IsEqualTo(typeof(Task));
-        await Assert.That(method.GetParameters()).HasCount().EqualTo(0);
+        await Assert.That(method.GetParameters()).Count().IsEqualTo(0);
     }
 
     [Test]
@@ -96,7 +96,7 @@ public class AnalyticsInteropContractTests
 
         await Assert.That(method).IsNotNull();
         await Assert.That(method!.ReturnType).IsEqualTo(typeof(Task));
-        await Assert.That(method.GetParameters()).HasCount().EqualTo(0);
+        await Assert.That(method.GetParameters()).Count().IsEqualTo(0);
     }
 
     [Test]
