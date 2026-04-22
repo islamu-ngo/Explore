@@ -40,7 +40,7 @@ public class AuthorizationBehaviorTests
             .Returns(true);
 
         // Act
-        var result = await behavior.Handle(command, () => Task.FromResult(expectedResponse), CancellationToken.None);
+        var result = await behavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
 
         // Assert
         await Assert.That(result.Success).IsTrue();
@@ -62,7 +62,7 @@ public class AuthorizationBehaviorTests
 
         // Act & Assert
         await Assert.ThrowsAsync<AuthorizationException>(async () =>
-            await behavior.Handle(command, () => Task.FromResult(new BaseCommandResponse<Guid>()), CancellationToken.None));
+            await behavior.Handle(command, _ => Task.FromResult(new BaseCommandResponse<Guid>()), CancellationToken.None));
     }
 
     [Test]
@@ -82,7 +82,7 @@ public class AuthorizationBehaviorTests
             .Returns(true);
 
         // Act
-        var result = await attrBehavior.Handle(command, () => Task.FromResult(expectedResponse), CancellationToken.None);
+        var result = await attrBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
 
         // Assert
         await Assert.That(result.Success).IsTrue();
@@ -105,7 +105,7 @@ public class AuthorizationBehaviorTests
 
         // Act & Assert
         await Assert.ThrowsAsync<AuthorizationException>(async () =>
-            await attrBehavior.Handle(command, () => Task.FromResult(new BaseCommandResponse<Guid>()), CancellationToken.None));
+            await attrBehavior.Handle(command, _ => Task.FromResult(new BaseCommandResponse<Guid>()), CancellationToken.None));
     }
 
     [Test]
@@ -119,7 +119,7 @@ public class AuthorizationBehaviorTests
         var expectedResponse = new BaseCommandResponse<Guid> { Success = true };
 
         // Act
-        var result = await plainBehavior.Handle(command, () => Task.FromResult(expectedResponse), CancellationToken.None);
+        var result = await plainBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
 
         // Assert
         await Assert.That(result.Success).IsTrue();
@@ -146,7 +146,7 @@ public class AuthorizationBehaviorTests
             .Returns(true);
 
         // Act
-        var result = await secureBehavior.Handle(command, () => Task.FromResult(expectedResponse), CancellationToken.None);
+        var result = await secureBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
 
         // Assert
         await Assert.That(result.Success).IsTrue();
@@ -175,7 +175,7 @@ public class AuthorizationBehaviorTests
 
         // Act & Assert
         await Assert.ThrowsAsync<AuthorizationException>(async () =>
-            await secureBehavior.Handle(command, () => Task.FromResult(new BaseCommandResponse<Guid>()), CancellationToken.None));
+            await secureBehavior.Handle(command, _ => Task.FromResult(new BaseCommandResponse<Guid>()), CancellationToken.None));
     }
 
     [Test]
@@ -195,7 +195,7 @@ public class AuthorizationBehaviorTests
             .Returns(true);
 
         // Act
-        var result = await secureBehavior.Handle(command, () => Task.FromResult(expectedResponse), CancellationToken.None);
+        var result = await secureBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
 
         // Assert
         await Assert.That(result.Success).IsTrue();
@@ -224,7 +224,8 @@ public class AuthorizationBehaviorTests
             .Returns(true);
 
         // Act
-        var result = await secureBehavior.Handle(command, () => Task.FromResult(expectedResponse), CancellationToken.None);
+        var result = await secureBehavior.Handle(command, _ => Task.FromResult(expectedResponse), CancellationToken.None);
+
 
         // Assert
         await Assert.That(result.Success).IsTrue();

@@ -22,7 +22,7 @@ public class PerformanceBehavior<TRequest, TResponse> : IPipelineBehavior<TReque
     public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
     {
         _timer.Restart();
-        var response = await next();
+        var response = await next(cancellationToken);
         _timer.Stop();
 
         var elapsedMs = _timer.ElapsedMilliseconds;

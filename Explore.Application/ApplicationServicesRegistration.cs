@@ -17,8 +17,8 @@ public static class ApplicationServicesRegistration
 {
     public static IServiceCollection ConfigureApplicationServices(this IServiceCollection services)
     {
-        services.AddAutoMapper(Assembly.GetExecutingAssembly());
-        services.AddMediatR(typeof(ApplicationServicesRegistration).Assembly);
+        services.AddAutoMapper(cfg => cfg.AddMaps(Assembly.GetExecutingAssembly()));
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(ApplicationServicesRegistration).Assembly));
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(PerformanceBehavior<,>));
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
 

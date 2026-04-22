@@ -53,7 +53,7 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
                 typeof(TRequest).Name,
                 cancellationToken);
 
-            return await next();
+            return await next(cancellationToken);
         }
 #pragma warning restore CS0618
 
@@ -80,11 +80,11 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
                 typeof(TRequest).Name,
                 cancellationToken);
 
-            return await next();
+            return await next(cancellationToken);
         }
 
         // No authorization requirements — pass through
-        return await next();
+        return await next(cancellationToken);
     }
 
     private async Task EnforceAuthorizationAsync(

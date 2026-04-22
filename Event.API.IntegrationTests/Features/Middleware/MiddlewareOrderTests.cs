@@ -141,6 +141,9 @@ public class MiddlewareOrderTests
         public Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default)
             => throw exception;
 
+        public Task Send<TRequest>(TRequest request, CancellationToken cancellationToken = default) where TRequest : IRequest
+            => throw exception;
+
         public Task<object?> Send(object request, CancellationToken cancellationToken = default)
             => throw exception;
 

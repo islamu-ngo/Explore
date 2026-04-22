@@ -21,7 +21,7 @@ public class MediatRPipelineBenchmarks
             NullLogger<PerformanceBehavior<MockRequest, int>>.Instance);
 
         _request = new MockRequest { Value = 42 };
-        _next = static () => Task.FromResult(42);
+        _next = static _ => Task.FromResult(42);
         _directHandler = static request => Task.FromResult(request.Value);
     }
 
