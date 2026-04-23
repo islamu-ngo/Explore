@@ -1,8 +1,8 @@
 {
   "realm": "ISLAMU",
   "enabled": true,
-  "displayName": "ISLAMU Event",
-  "displayNameHtml": "<strong>ISLAMU</strong> Event",
+  "displayName": "ISLAMU",
+  "displayNameHtml": "<strong>ISLAMU</strong>",
   "sslRequired": "none",
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
@@ -266,12 +266,7 @@
       "serviceAccountsEnabled": false,
       "implicitFlowEnabled": false,
       "protocol": "openid-connect",
-      "defaultClientScopes": [
-        "openid",
-        "profile",
-        "email",
-        "web-origins"
-      ]
+      "defaultClientScopes": ["openid", "profile", "email", "web-origins"]
     }
   ]
 }

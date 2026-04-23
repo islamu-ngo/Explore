@@ -288,6 +288,11 @@ public static class BffAuthEndpoints
                 statusCode: StatusCodes.Status409Conflict);
         }
 
+        // Invalidate onboarding status cache BEFORE enriching principal so that
+        // EnrichPrincipalAsync fetches fresh status (e.g. "completed" after onboarding)
+        // instead of serving a stale "not completed" entry from the cache.
+        ctx.RequestServices.GetService<IBffOnboardingStatusProvider>()?.Invalidate();
+
         var adminClaimsUpdated = await adminClaimsTransformation.EnrichPrincipalAsync(
             authResult.Principal,
             authResult.Properties,
@@ -304,8 +309,6 @@ public static class BffAuthEndpoints
         {
             tokenService?.SetToken(accessToken);
         }
-
-        ctx.RequestServices.GetService<IBffOnboardingStatusProvider>()?.Invalidate();
 
         logger.LogInformation(
             "[AuthEndpoints] Refresh session confirmed usable bearer token | User={UserId} TokenSummary={TokenSummary} AdminClaimsUpdated={AdminClaimsUpdated}",
