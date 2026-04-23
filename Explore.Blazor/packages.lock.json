@@ -588,7 +588,7 @@
           "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.7, )",
           "Microsoft.AspNetCore.Components.WebAssembly.Authentication": "[10.0.7, )",
           "Microsoft.DotNet.HotReload.WebAssembly.Browser": "[10.0.201, )",
-          "MudBlazor": "[9.3.0, )"
+          "MudBlazor": "[9.4.0, )"
         }
       },
       "explore.domain": {
@@ -842,9 +842,9 @@
       },
       "MudBlazor": {
         "type": "CentralTransitive",
-        "requested": "[9.3.0, )",
-        "resolved": "9.3.0",
-        "contentHash": "7EMI5HRvi7SNh1e80RWoS4yXb71BmJbqyx/ccP5T21q3ceLx5AP+SSIfTzqI5Iv6CbcJQQYLp1uwWtvohIeZrA=="
+        "requested": "[9.4.0, )",
+        "resolved": "9.4.0",
+        "contentHash": "p6BF8zmt4c/yi/hD9hP7yPioUK5loOnif19gwIEANq6I46407QnSu0HTW1NuALC5seRKcWb2pBP5LwC8aBE2Mg=="
       },
       "Npgsql": {
         "type": "CentralTransitive",
