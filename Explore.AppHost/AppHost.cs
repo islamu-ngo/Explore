@@ -34,9 +34,9 @@ var exploreAPI = builder.AddProject<Projects.Explore_API>("explore-api")
     .WaitFor(cache);
 
 // Explore Blazor - loads its own secrets via AddInfisicalCompatibility()
-// Only pass the API URL since that's orchestration-specific (localhost during development)
+// Service discovery (via WithReference) automatically resolves the API URL at runtime.
+// Do NOT hardcode ExploreAPI__BaseUrl here — Aspire assigns dynamic ports.
 var exploreBlazor = builder.AddProject<Projects.Explore_Blazor>("explore-blazor")
-    .WithEnvironment("ExploreAPI__BaseUrl", "https://localhost:7039/")
     .WithReference(migrations)
     .WaitForCompletion(migrations)
     .WithReference(exploreAPI)

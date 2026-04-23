@@ -73,7 +73,7 @@ public class ExternalApiKeyIntegrationTests
 
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
-        var body = await response.Content.ReadFromJsonAsync<ExternalApiKeyListDto>();
+        var body = await response.Content.ReadFromJsonAsync<ExternalApiKeyListDto>(TestJsonOptions.Default);
         await Assert.That(body).IsNotNull();
         await Assert.That(body!.Id).IsEqualTo(apiKeyId);
         await Assert.That(body.Name).IsEqualTo("Reader Bot");

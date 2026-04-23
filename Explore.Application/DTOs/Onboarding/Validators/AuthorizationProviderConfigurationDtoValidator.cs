@@ -1,8 +1,8 @@
 // ABOUTME: FluentValidation validator for authorization provider configuration during instance setup.
 // ABOUTME: Enforces valid provider selection and required Cerbos gRPC endpoint when Cerbos is chosen.
 
-using FluentValidation;
 using Explore.Application.Utilities;
+using FluentValidation;
 
 namespace Explore.Application.DTOs.Onboarding.Validators;
 

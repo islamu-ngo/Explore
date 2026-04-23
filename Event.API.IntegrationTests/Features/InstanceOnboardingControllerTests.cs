@@ -3,6 +3,9 @@
 
 using System.Net;
 using System.Net.Http.Json;
+using System.Security.Claims;
+using System.Text;
+using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.Application.DTOs.Instance;
 using Explore.Application.DTOs.Onboarding;
@@ -11,8 +14,11 @@ using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using Explore.Persistence;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Event.Api.IntegrationTests.Features;
 
@@ -58,9 +64,73 @@ public class InstanceOnboardingControllerTests
 
         await Assert.That(getResponse.StatusCode).IsEqualTo(HttpStatusCode.OK);
 
-        var deploymentMode = await getResponse.Content.ReadFromJsonAsync<DeploymentModeDto>();
+        var deploymentMode = await getResponse.Content.ReadFromJsonAsync<DeploymentModeDto>(TestJsonOptions.Default);
         await Assert.That(deploymentMode).IsNotNull();
         await Assert.That(deploymentMode!.Mode).IsEqualTo(DeploymentMode.SingleTenant);
+    }
+
+    [Test]
+    public async Task Complete_WithSidOnlyPrincipalAndExternalLogin_ShouldResolveCurrentUserIdWithoutClaimsTransformation()
+    {
+        using var factory = CreateFactoryWithSetupSecretWithoutClaimsTransformation();
+        using var client = factory.CreateClient();
+
+        var internalUserId = Guid.NewGuid();
+        const string providerId = "keycloak-external-subject";
+
+        await EnsureUserExistsAsync(factory, internalUserId);
+        await EnsureUserExternalLoginAsync(factory, internalUserId, "keycloak", providerId);
+
+        using var request = CreateCustomAuthRequest(
+            HttpMethod.Post,
+            $"{BaseUrl}/complete",
+            CreateValidOnboardingRequest(),
+            includeSetupSecret: true,
+            new(ClaimTypes.Name, "Sid Only User"),
+            new("sid", providerId),
+            new("idp", "keycloak"),
+            new("email", $"{internalUserId:N}@integration.test"));
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+    }
+
+    [Test]
+    public async Task Complete_WithSidOnlyPrincipal_ShouldPersistSidAsAuthProviderId()
+    {
+        using var factory = CreateFactoryWithSetupSecret();
+        using var client = factory.CreateClient();
+
+        var internalUserId = Guid.NewGuid();
+        const string providerId = "keycloak-sid-only-subject";
+        var email = $"{internalUserId:N}@integration.test";
+
+        using var request = CreateCustomAuthRequest(
+            HttpMethod.Post,
+            $"{BaseUrl}/complete",
+            CreateValidOnboardingRequest(),
+            includeSetupSecret: true,
+            new(ClaimTypes.Name, "Sid Only User"),
+            new("internal_user_id", internalUserId.ToString()),
+            new("sid", providerId),
+            new("idp", "keycloak"),
+            new("email", email));
+
+        var response = await client.SendAsync(request);
+
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+
+        using var scope = factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+        var createdUser = await dbContext.Users.SingleAsync(x => x.Id == internalUserId);
+        var externalLogin = await dbContext.UserExternalLogins.SingleAsync(x => x.UserId == internalUserId);
+
+        await Assert.That(createdUser.AuthProvider).IsEqualTo("keycloak");
+        await Assert.That(createdUser.AuthProviderId).IsEqualTo(providerId);
+        await Assert.That(createdUser.Pii.Email).IsEqualTo(email);
+        await Assert.That(externalLogin.Provider).IsEqualTo("keycloak");
+        await Assert.That(externalLogin.ProviderKey).IsEqualTo(providerId);
     }
 
     [Test]
@@ -561,6 +631,12 @@ public class InstanceOnboardingControllerTests
         return new AuthenticatedWebApplicationFactory();
     }
 
+    private static AuthenticatedWebApplicationFactory CreateFactoryWithSetupSecretWithoutClaimsTransformation()
+    {
+        Environment.SetEnvironmentVariable("SETUP_SECRET", SetupSecret);
+        return new PassthroughClaimsTransformationFactory();
+    }
+
     private static HttpRequestMessage CreateInstanceAdminRequest(HttpMethod method, string url, Guid userId, object? body, bool includeSetupSecret)
     {
         var request = new HttpRequestMessage(method, url);
@@ -577,6 +653,34 @@ public class InstanceOnboardingControllerTests
         }
 
         return request;
+    }
+
+    private static HttpRequestMessage CreateCustomAuthRequest(
+        HttpMethod method,
+        string url,
+        object? body,
+        bool includeSetupSecret,
+        params TestAuthHandler.TestClaimDto[] claims)
+    {
+        var request = new HttpRequestMessage(method, url);
+        request.Headers.Add(TestAuthHandler.AuthHeaderName, EncodeClaims(claims));
+
+        if (includeSetupSecret)
+        {
+            request.Headers.Add("X-Setup-Secret", SetupSecret);
+        }
+
+        if (body is not null)
+        {
+            request.Content = JsonContent.Create(body);
+        }
+
+        return request;
+    }
+
+    private static string EncodeClaims(params TestAuthHandler.TestClaimDto[] claims)
+    {
+        return Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(claims)));
     }
 
     private static CompleteInstanceOnboardingRequest CreateValidOnboardingRequest()
@@ -621,5 +725,27 @@ public class InstanceOnboardingControllerTests
     private sealed class AuthProviderConfiguredResponse
     {
         public bool Configured { get; set; }
+    }
+
+    private sealed class PassthroughClaimsTransformationFactory : AuthenticatedWebApplicationFactory
+    {
+        protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
+        {
+            base.ConfigureWebHost(builder);
+
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IClaimsTransformation>();
+                services.AddSingleton<IClaimsTransformation, PassthroughClaimsTransformation>();
+            });
+        }
+    }
+
+    private sealed class PassthroughClaimsTransformation : IClaimsTransformation
+    {
+        public Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal)
+        {
+            return Task.FromResult(principal);
+        }
     }
 }

@@ -468,12 +468,48 @@
             InstanceName = string.IsNullOrWhiteSpace(_instanceName) ? null : _instanceName.Trim()
         };
 
+        // Proactively refresh the BFF auth session so the access token forwarded to the API is fresh.
+        // The setup form can sit open for minutes while the user reads guidance, and Keycloak access
+        // tokens have short lifetimes (often 1-5 min). Without this, the API's [Authorize] rejects
+        // the Complete command with 401, and we'd have to redirect the user back through /login,
+        // losing their form data. See docs/SECURITY.md on token forwarding.
+        var preRefreshed = await InstanceOnboardingService.RefreshAuthSessionAsync();
+        if (!preRefreshed)
+        {
+            Logger.LogWarning("Pre-complete auth session refresh failed. Aborting Complete and redirecting to login.");
+            _isSaving = false;
+            _completeButtonLabel = "Complete Instance Onboarding";
+            _errorMessage = "Your session expired. Please sign in again to complete setup.";
+            Navigation.NavigateTo("/login", forceLoad: true);
+            return;
+        }
+
         var response = await InstanceOnboardingService.CompleteAsync(completion);
+
+        // Retry once on 401: the refresh may not have landed before the request left the circuit,
+        // or the token just rotated. A second refresh + retry eliminates the common transient case
+        // without forcing the user back through /login and losing their onboarding choices.
+        if (response.StatusCode == 401)
+        {
+            Logger.LogInformation("Complete returned 401 after pre-refresh. Retrying once with forced refresh.");
+            var retryRefreshed = await InstanceOnboardingService.RefreshAuthSessionAsync();
+            if (retryRefreshed)
+            {
+                response = await InstanceOnboardingService.CompleteAsync(completion);
+            }
+            else
+            {
+                Logger.LogWarning("Retry auth session refresh failed after Complete returned 401.");
+            }
+        }
+
         _isSaving = false;
         _completeButtonLabel = "Complete Instance Onboarding";
 
         if (response.StatusCode == 401)
         {
+            // Session truly dead (refresh token rotated out by Keycloak). Only now redirect to login.
+            _errorMessage = "Your session expired. Please sign in again to complete setup.";
             Navigation.NavigateTo("/login", forceLoad: true);
             return;
         }

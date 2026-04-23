@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace Explore.Blazor.IntegrationTests.Handlers;
 
@@ -19,7 +21,9 @@ public class AccessTokenForwardingHandlerTests
         var httpContextAccessor = new HttpContextAccessor { HttpContext = httpContext };
 
         var innerHandler = new CapturingHandler();
-        var handler = new AccessTokenForwardingHandler(httpContextAccessor, NullLogger<AccessTokenForwardingHandler>.Instance)
+        var circuitTokenService = Substitute.For<ICircuitAccessTokenService>();
+        var circuitUserContext = Substitute.For<ICircuitUserContext>();
+        var handler = new AccessTokenForwardingHandler(httpContextAccessor, circuitTokenService, circuitUserContext, NullLogger<AccessTokenForwardingHandler>.Instance)
         {
             InnerHandler = innerHandler
         };
@@ -42,7 +46,9 @@ public class AccessTokenForwardingHandlerTests
         var httpContextAccessor = new HttpContextAccessor { HttpContext = httpContext };
 
         var innerHandler = new CapturingHandler();
-        var handler = new AccessTokenForwardingHandler(httpContextAccessor, NullLogger<AccessTokenForwardingHandler>.Instance)
+        var circuitTokenService = Substitute.For<ICircuitAccessTokenService>();
+        var circuitUserContext = Substitute.For<ICircuitUserContext>();
+        var handler = new AccessTokenForwardingHandler(httpContextAccessor, circuitTokenService, circuitUserContext, NullLogger<AccessTokenForwardingHandler>.Instance)
         {
             InnerHandler = innerHandler
         };
@@ -63,7 +69,9 @@ public class AccessTokenForwardingHandlerTests
         var httpContextAccessor = new HttpContextAccessor { HttpContext = httpContext };
 
         var innerHandler = new CapturingHandler();
-        var handler = new AccessTokenForwardingHandler(httpContextAccessor, NullLogger<AccessTokenForwardingHandler>.Instance)
+        var circuitTokenService = Substitute.For<ICircuitAccessTokenService>();
+        var circuitUserContext = Substitute.For<ICircuitUserContext>();
+        var handler = new AccessTokenForwardingHandler(httpContextAccessor, circuitTokenService, circuitUserContext, NullLogger<AccessTokenForwardingHandler>.Instance)
         {
             InnerHandler = innerHandler
         };
@@ -76,6 +84,57 @@ public class AccessTokenForwardingHandlerTests
         await Assert.That(innerHandler.CapturedRequest).IsNotNull();
         await Assert.That(innerHandler.CapturedRequest!.Headers.Authorization).IsNotNull();
         await Assert.That(innerHandler.CapturedRequest.Headers.Authorization!.Parameter).IsEqualTo("preset-token");
+    }
+
+    [Test]
+    public async Task SendAsync_WithinCircuitActivityScope_UsesCircuitUserContextTokenStore()
+    {
+        var userId = Guid.NewGuid().ToString();
+        var token = CreateUnsignedJwt(userId);
+        var httpContextAccessor = new HttpContextAccessor();
+
+        var tokenStoreService = new CircuitAccessTokenService(
+            httpContextAccessor,
+            NullLogger<CircuitAccessTokenService>.Instance);
+        tokenStoreService.SetToken(token);
+
+        var circuitUserContext = new CircuitUserContext();
+        circuitUserContext.SetUserId(userId);
+
+        var innerHandler = new CapturingHandler();
+
+        using (circuitUserContext.BeginActivityScope())
+        {
+            var handler = new AccessTokenForwardingHandler(
+                httpContextAccessor,
+                Substitute.For<ICircuitAccessTokenService>(),
+                new CircuitUserContext(),
+                NullLogger<AccessTokenForwardingHandler>.Instance)
+            {
+                InnerHandler = innerHandler
+            };
+
+            using var invoker = new HttpMessageInvoker(handler);
+            using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com/protected");
+            _ = await invoker.SendAsync(request, CancellationToken.None);
+        }
+
+        await Assert.That(innerHandler.CapturedRequest).IsNotNull();
+        await Assert.That(innerHandler.CapturedRequest!.Headers.Authorization).IsNotNull();
+        await Assert.That(innerHandler.CapturedRequest.Headers.Authorization!.Scheme).IsEqualTo("Bearer");
+        await Assert.That(innerHandler.CapturedRequest.Headers.Authorization.Parameter).IsEqualTo(token);
+    }
+
+    private static string CreateUnsignedJwt(string userId)
+    {
+        var jwt = new JwtSecurityToken(
+            claims:
+            [
+                new Claim("sub", userId)
+            ],
+            expires: DateTime.UtcNow.AddMinutes(30));
+
+        return new JwtSecurityTokenHandler().WriteToken(jwt);
     }
 
     private static HttpContext CreateHttpContext(string userId, string? token)

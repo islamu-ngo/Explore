@@ -32,8 +32,13 @@ public class SchedulingConstraintTests
 
         var day1 = new EventDay
         {
-            EventId = @event.Id, Event = @event, LocalDate = new DateOnly(2026, 7, 1),
-            Label = "First Day", SortOrder = 1, TenantId = tenant.Id, Tenant = tenant
+            EventId = @event.Id,
+            Event = @event,
+            LocalDate = new DateOnly(2026, 7, 1),
+            Label = "First Day",
+            SortOrder = 1,
+            TenantId = tenant.Id,
+            Tenant = tenant
         };
         context.EventDays.Add(day1);
         await context.SaveChangesAsync();
@@ -41,8 +46,13 @@ public class SchedulingConstraintTests
         using var context2 = _fixture.CreateDbContext();
         var day2 = new EventDay
         {
-            EventId = @event.Id, Event = null!, LocalDate = new DateOnly(2026, 7, 1),
-            Label = "Duplicate Date", SortOrder = 2, TenantId = tenant.Id, Tenant = null!
+            EventId = @event.Id,
+            Event = null!,
+            LocalDate = new DateOnly(2026, 7, 1),
+            Label = "Duplicate Date",
+            SortOrder = 2,
+            TenantId = tenant.Id,
+            Tenant = null!
         };
         context2.EventDays.Add(day2);
 
@@ -56,14 +66,23 @@ public class SchedulingConstraintTests
         var (tenant, @event) = await SetupEventAsync(context);
         var event2 = new Explore.Domain.Event
         {
-            Id = Guid.NewGuid(), Title = "Second Event",
-            EventTypeId = 1, AudienceGenderId = 1, AudienceAgeId = 1,
-            ActorId = @event.ActorId, Actor = null!,
-            TenantId = tenant.Id, Tenant = null!,
-            VisibilityTypeId = 1, VisibilityType = null!,
-            EventStatusId = 1, EventStatus = null!,
-            EventFormatId = 1, EventFormat = null!,
-            TotalViews = 0, IsRegistrationRequired = false
+            Id = Guid.NewGuid(),
+            Title = "Second Event",
+            EventTypeId = 1,
+            AudienceGenderId = 1,
+            AudienceAgeId = 1,
+            ActorId = @event.ActorId,
+            Actor = null!,
+            TenantId = tenant.Id,
+            Tenant = null!,
+            VisibilityTypeId = 1,
+            VisibilityType = null!,
+            EventStatusId = 1,
+            EventStatus = null!,
+            EventFormatId = 1,
+            EventFormat = null!,
+            TotalViews = 0,
+            IsRegistrationRequired = false
         };
         context.Events.Add(event2);
         await context.SaveChangesAsync();
@@ -72,15 +91,25 @@ public class SchedulingConstraintTests
 
         var day1 = new EventDay
         {
-            EventId = @event.Id, Event = @event, LocalDate = new DateOnly(2026, 7, 1),
-            Label = "Event 1 Day", SortOrder = 1, TenantId = tenant.Id, Tenant = tenant
+            EventId = @event.Id,
+            Event = @event,
+            LocalDate = new DateOnly(2026, 7, 1),
+            Label = "Event 1 Day",
+            SortOrder = 1,
+            TenantId = tenant.Id,
+            Tenant = tenant
         };
         await repository.Create(day1);
 
         var day2 = new EventDay
         {
-            EventId = event2.Id, Event = event2, LocalDate = new DateOnly(2026, 7, 1),
-            Label = "Event 2 Day", SortOrder = 1, TenantId = tenant.Id, Tenant = tenant
+            EventId = event2.Id,
+            Event = event2,
+            LocalDate = new DateOnly(2026, 7, 1),
+            Label = "Event 2 Day",
+            SortOrder = 1,
+            TenantId = tenant.Id,
+            Tenant = tenant
         };
 
         var result = await repository.Create(day2);
@@ -95,8 +124,13 @@ public class SchedulingConstraintTests
 
         var room1 = new LocationRoom
         {
-            LocationId = location.Id, Location = null!, Name = "Main Hall",
-            Capacity = 200, SortOrder = 1, TenantId = tenant.Id, Tenant = null!
+            LocationId = location.Id,
+            Location = null!,
+            Name = "Main Hall",
+            Capacity = 200,
+            SortOrder = 1,
+            TenantId = tenant.Id,
+            Tenant = null!
         };
         context.LocationRooms.Add(room1);
         await context.SaveChangesAsync();
@@ -104,8 +138,13 @@ public class SchedulingConstraintTests
         using var context2 = _fixture.CreateDbContext();
         var room2 = new LocationRoom
         {
-            LocationId = location.Id, Location = null!, Name = "Main Hall",
-            Capacity = 100, SortOrder = 2, TenantId = tenant.Id, Tenant = null!
+            LocationId = location.Id,
+            Location = null!,
+            Name = "Main Hall",
+            Capacity = 100,
+            SortOrder = 2,
+            TenantId = tenant.Id,
+            Tenant = null!
         };
         context2.LocationRooms.Add(room2);
 
@@ -120,8 +159,13 @@ public class SchedulingConstraintTests
 
         var room = new LocationRoom
         {
-            LocationId = location.Id, Location = null!, Name = "Bad Room",
-            Capacity = -5, SortOrder = 1, TenantId = tenant.Id, Tenant = null!
+            LocationId = location.Id,
+            Location = null!,
+            Name = "Bad Room",
+            Capacity = -5,
+            SortOrder = 1,
+            TenantId = tenant.Id,
+            Tenant = null!
         };
         context.LocationRooms.Add(room);
 
@@ -137,8 +181,13 @@ public class SchedulingConstraintTests
 
         var room = new LocationRoom
         {
-            LocationId = location.Id, Location = location, Name = "Open Space",
-            Capacity = null, SortOrder = 1, TenantId = tenant.Id, Tenant = tenant
+            LocationId = location.Id,
+            Location = location,
+            Name = "Open Space",
+            Capacity = null,
+            SortOrder = 1,
+            TenantId = tenant.Id,
+            Tenant = tenant
         };
 
         var result = await repository.Create(room);
@@ -153,10 +202,14 @@ public class SchedulingConstraintTests
 
         var item = new EventAgendaItem
         {
-            EventId = @event.Id, Event = null!, Title = "Bad Item",
+            EventId = @event.Id,
+            Event = null!,
+            Title = "Bad Item",
             StartTime = new DateTimeOffset(2026, 7, 1, 10, 0, 0, TimeSpan.Zero),
             EndTime = new DateTimeOffset(2026, 7, 1, 9, 0, 0, TimeSpan.Zero),
-            SortOrder = 1, TenantId = tenant.Id, Tenant = null!
+            SortOrder = 1,
+            TenantId = tenant.Id,
+            Tenant = null!
         };
         context.EventAgendaItems.Add(item);
 
@@ -173,10 +226,14 @@ public class SchedulingConstraintTests
 
         var item = new EventAgendaItem
         {
-            EventId = @event.Id, Event = @event, Title = "Valid Item",
+            EventId = @event.Id,
+            Event = @event,
+            Title = "Valid Item",
             StartTime = new DateTimeOffset(2026, 7, 1, 9, 0, 0, TimeSpan.Zero),
             EndTime = new DateTimeOffset(2026, 7, 1, 10, 0, 0, TimeSpan.Zero),
-            SortOrder = 1, TenantId = tenant.Id, Tenant = tenant
+            SortOrder = 1,
+            TenantId = tenant.Id,
+            Tenant = tenant
         };
         item.ReprojectLocalTimes("UTC", calculator);
 
@@ -203,8 +260,10 @@ public class SchedulingConstraintTests
         var actor = new Actor
         {
             Pii = new ActorPii { DisplayName = "Constraint Actor" },
-            ActorTypeId = 1, ActorType = null!,
-            TenantId = tenant.Id, Tenant = null!,
+            ActorTypeId = 1,
+            ActorType = null!,
+            TenantId = tenant.Id,
+            Tenant = null!,
             UserId = user.Id
         };
         context.Actors.Add(actor);
@@ -212,14 +271,23 @@ public class SchedulingConstraintTests
 
         var @event = new Explore.Domain.Event
         {
-            Id = Guid.NewGuid(), Title = "Constraint Test Event",
-            EventTypeId = 1, AudienceGenderId = 1, AudienceAgeId = 1,
-            ActorId = actor.Id, Actor = null!,
-            TenantId = tenant.Id, Tenant = null!,
-            VisibilityTypeId = 1, VisibilityType = null!,
-            EventStatusId = 1, EventStatus = null!,
-            EventFormatId = 1, EventFormat = null!,
-            TotalViews = 0, IsRegistrationRequired = false
+            Id = Guid.NewGuid(),
+            Title = "Constraint Test Event",
+            EventTypeId = 1,
+            AudienceGenderId = 1,
+            AudienceAgeId = 1,
+            ActorId = actor.Id,
+            Actor = null!,
+            TenantId = tenant.Id,
+            Tenant = null!,
+            VisibilityTypeId = 1,
+            VisibilityType = null!,
+            EventStatusId = 1,
+            EventStatus = null!,
+            EventFormatId = 1,
+            EventFormat = null!,
+            TotalViews = 0,
+            IsRegistrationRequired = false
         };
         context.Events.Add(@event);
         await context.SaveChangesAsync();

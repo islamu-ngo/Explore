@@ -289,7 +289,7 @@ public class BlazorClientArchitectureTests
                             if (next.Length == 0) continue;
                             if (next.StartsWith("//", StringComparison.Ordinal)) continue;
                             if (next.StartsWith("/*", StringComparison.Ordinal)) continue;
-                            if (next.StartsWith("[", StringComparison.Ordinal)) continue;
+                            if (next.StartsWith('[')) continue;
 
                             var nextMatch = Regex.Match(next, @"^(?:public|private|protected|internal|required|static|readonly|\s)+\s*(?<type>[A-Za-z_][A-Za-z0-9_<>.,]*)\s+[A-Za-z_][A-Za-z0-9_]*\s*(?:\{|;|=)");
                             if (nextMatch.Success) injectedType = nextMatch.Groups["type"].Value.Trim();

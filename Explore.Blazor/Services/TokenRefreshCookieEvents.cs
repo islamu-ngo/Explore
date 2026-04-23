@@ -68,8 +68,13 @@ public sealed class TokenRefreshCookieEvents : CookieAuthenticationEvents
         var refreshToken = context.Properties.GetTokenValue("refresh_token");
         if (string.IsNullOrEmpty(refreshToken))
         {
-            _logger.LogWarning("[TokenRefresh] Access token expired but no refresh_token available — signing out");
-            await RejectAndSignOutAsync(context, reason: "no_refresh_token");
+            _logger.LogWarning(
+                "[TokenRefresh] Access token expired but no refresh_token available. " +
+                "Token will be forwarded as-is; API may reject it with 401. " +
+                "To fix: ensure Keycloak client is confidential (has client secret) or enable refresh tokens for public clients.");
+            // Graceful degradation: do NOT sign out. Let the request proceed with the expired token.
+            // The API will 401 if the token is truly expired, and the client can redirect to re-auth.
+            // This preserves the pre-TokenRefreshCookieEvents behavior where the cookie remained valid.
             return;
         }
 
@@ -188,14 +193,25 @@ public sealed class TokenRefreshCookieEvents : CookieAuthenticationEvents
             var handler = new JwtSecurityTokenHandler();
             if (!handler.CanReadToken(accessToken))
             {
+                _logger.LogWarning("[TokenRefresh] Cannot read access token JWT — treating as expired");
                 return true;
             }
 
             var jwt = handler.ReadJwtToken(accessToken);
-            return jwt.ValidTo <= DateTime.UtcNow.Add(RefreshBuffer);
+            var validTo = jwt.ValidTo;
+            var now = DateTime.UtcNow;
+            var threshold = now.Add(RefreshBuffer);
+            var isExpired = validTo <= threshold;
+
+            _logger.LogDebug(
+                "[TokenRefresh] Token expiry check: ValidTo={ValidTo:o}, Now={Now:o}, Threshold={Threshold:o}, IsExpired={IsExpired}",
+                validTo, now, threshold, isExpired);
+
+            return isExpired;
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "[TokenRefresh] Failed to parse access token JWT — treating as expired");
             return true;
         }
     }

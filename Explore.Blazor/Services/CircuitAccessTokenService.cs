@@ -3,6 +3,7 @@
 
 using System.Collections.Concurrent;
 using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using Explore.Application.Contracts.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
@@ -100,7 +101,27 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
         _logger = logger;
     }
 
-    public string? AccessToken => _localToken ?? GetStoredToken();
+    public string? AccessToken
+    {
+        get
+        {
+            var storedToken = GetStoredToken();
+
+            if (!string.IsNullOrEmpty(storedToken))
+            {
+                if (!string.IsNullOrEmpty(_localToken) && !string.Equals(_localToken, storedToken, StringComparison.Ordinal))
+                {
+                    _logger.LogInformation(
+                        "[CircuitAccessTokenService] Shared token store is overriding a stale circuit-local token for user {UserId}",
+                        _userId ?? GetUserIdFromHttpContext() ?? "(unknown)");
+                }
+
+                return storedToken;
+            }
+
+            return _localToken;
+        }
+    }
 
     public void SetToken(string? token)
     {
@@ -144,9 +165,9 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
             if (handler.CanReadToken(token))
             {
                 var jwtToken = handler.ReadJwtToken(token);
-                var sub = jwtToken.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
-                logger.LogDebug("[CircuitAccessTokenService] Extracted userId from JWT: {UserId}", sub ?? "(null)");
-                return sub;
+                var userId = TryResolveUserId(jwtToken.Claims);
+                logger.LogDebug("[CircuitAccessTokenService] Extracted userId from JWT: {UserId}", userId ?? "(null)");
+                return userId;
             }
         }
         catch (Exception ex)
@@ -158,9 +179,7 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
 
     private string? GetUserIdFromHttpContext()
     {
-        var user = _httpContextAccessor.HttpContext?.User;
-        var userId = user?.FindFirst("sub")?.Value
-            ?? user?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var userId = TryResolveUserId(_httpContextAccessor.HttpContext?.User);
         _logger.LogDebug("[CircuitAccessTokenService] GetUserIdFromHttpContext: {UserId}", userId ?? "(null)");
         return userId;
     }
@@ -177,6 +196,18 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
             }
         }
         return null;
+    }
+
+    private static string? TryResolveUserId(ClaimsPrincipal? user)
+    {
+        return user is null ? null : TryResolveUserId(user.Claims);
+    }
+
+    private static string? TryResolveUserId(IEnumerable<Claim> claims)
+    {
+        return claims.FirstOrDefault(c => c.Type == "sub")?.Value
+            ?? claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value
+            ?? claims.FirstOrDefault(c => c.Type == "sid")?.Value;
     }
 
     /// <summary>
@@ -224,13 +255,19 @@ public class CircuitAccessTokenService : ICircuitAccessTokenService
 public class AccessTokenForwardingHandler : DelegatingHandler
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ICircuitAccessTokenService _circuitAccessTokenService;
+    private readonly ICircuitUserContext _circuitUserContext;
     private readonly ILogger<AccessTokenForwardingHandler> _logger;
 
     public AccessTokenForwardingHandler(
         IHttpContextAccessor httpContextAccessor,
+        ICircuitAccessTokenService circuitAccessTokenService,
+        ICircuitUserContext circuitUserContext,
         ILogger<AccessTokenForwardingHandler> logger)
     {
         _httpContextAccessor = httpContextAccessor;
+        _circuitAccessTokenService = circuitAccessTokenService;
+        _circuitUserContext = circuitUserContext;
         _logger = logger;
     }
 
@@ -271,8 +308,7 @@ public class AccessTokenForwardingHandler : DelegatingHandler
         // Strategy 2: Try to get token from shared store by current user ID
         if (string.IsNullOrEmpty(token))
         {
-            var userId = httpContext?.User?.FindFirst("sub")?.Value
-                ?? httpContext?.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var userId = TryResolveUserId(httpContext?.User);
 
             if (!string.IsNullOrEmpty(userId))
             {
@@ -288,11 +324,48 @@ public class AccessTokenForwardingHandler : DelegatingHandler
             }
         }
 
+        // Strategy 3: Fall back to the scoped ICircuitAccessTokenService which retains the circuit's user
+        // identity even when HttpContext is unavailable (e.g., Blazor Server click events dispatched via
+        // SignalR where IHttpContextAccessor.HttpContext is null).
+        if (string.IsNullOrEmpty(token))
+        {
+            token = _circuitAccessTokenService.AccessToken;
+            if (!string.IsNullOrEmpty(token))
+            {
+                source = "CircuitAccessTokenService";
+                _logger.LogDebug(
+                    "[AccessTokenForwardingHandler] Got token from CircuitAccessTokenService scoped instance (length: {Len}, user: {UserId})",
+                    token.Length,
+                    _circuitUserContext.UserId ?? TryResolveUserId(httpContext?.User) ?? "(unknown)");
+            }
+        }
+
+        // Strategy 4: Use AsyncLocal-backed ICircuitUserContext to get the userId and look up
+        // the token in the static store. This works across DI scope boundaries where HttpContext
+        // is null but the Blazor circuit async context still flows.
+        if (string.IsNullOrEmpty(token))
+        {
+            var userId = _circuitUserContext.UserId;
+            if (!string.IsNullOrEmpty(userId))
+            {
+                token = CircuitAccessTokenService.GetTokenForUser(userId, _logger);
+                if (!string.IsNullOrEmpty(token))
+                {
+                    source = "CircuitUserContext";
+                    _logger.LogDebug("[AccessTokenForwardingHandler] Got token from static store via CircuitUserContext (length: {Len})", token.Length);
+                }
+            }
+        }
+
         // Add Authorization header if we have a token
         if (!string.IsNullOrEmpty(token) && !request.Headers.Contains("Authorization"))
         {
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-            _logger.LogDebug("[AccessTokenForwardingHandler] Added Bearer token from {Source} to {Path}", source, request.RequestUri?.PathAndQuery);
+            _logger.LogInformation(
+                "[AccessTokenForwardingHandler] Added Bearer token from {Source} to {Path} | TokenSummary={TokenSummary}",
+                source,
+                request.RequestUri?.PathAndQuery,
+                DescribeToken(token));
         }
         else if (!string.IsNullOrEmpty(token))
         {
@@ -325,5 +398,36 @@ public class AccessTokenForwardingHandler : DelegatingHandler
             || pathAndQuery.Contains("/api/InstanceOnboarding/authz-provider-configuration", StringComparison.OrdinalIgnoreCase)
             || pathAndQuery.Contains("/api/InstanceOnboarding/auth-provider-configured", StringComparison.OrdinalIgnoreCase)
             || pathAndQuery.Contains("/api/translation", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string? TryResolveUserId(ClaimsPrincipal? user)
+    {
+        return user?.FindFirst("sub")?.Value
+            ?? user?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? user?.FindFirst("sid")?.Value;
+    }
+
+    private static string DescribeToken(string token)
+    {
+        try
+        {
+            var handler = new JwtSecurityTokenHandler();
+            if (!handler.CanReadToken(token))
+            {
+                return "unreadable_jwt";
+            }
+
+            var jwt = handler.ReadJwtToken(token);
+            var userId = jwt.Claims.FirstOrDefault(c => c.Type == "sub")?.Value
+                ?? jwt.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value
+                ?? jwt.Claims.FirstOrDefault(c => c.Type == "sid")?.Value
+                ?? "(none)";
+
+            return $"sub={userId};validTo={jwt.ValidTo:O}";
+        }
+        catch
+        {
+            return "jwt_parse_failed";
+        }
     }
 }

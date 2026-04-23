@@ -59,9 +59,16 @@ public class InstanceOnboardingController : ExploreControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Complete([FromBody] CompleteInstanceOnboardingRequest settings, CancellationToken cancellationToken = default)
     {
-        var currentUserId = CurrentUserId;
+        var currentUserId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!currentUserId.HasValue)
         {
+            _logger.LogWarning(
+                "Instance onboarding complete rejected because CurrentUserId was null | Authenticated={IsAuthenticated} InternalUserId={InternalUserId} Sub={Sub} NameIdentifier={NameIdentifier} Sid={Sid}",
+                User.Identity?.IsAuthenticated ?? false,
+                User.FindFirst("internal_user_id")?.Value,
+                User.FindFirst("sub")?.Value,
+                User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
+                User.FindFirst("sid")?.Value);
             return Unauthorized(new BaseCommandResponse<Guid>
             {
                 Success = false,
@@ -69,23 +76,24 @@ public class InstanceOnboardingController : ExploreControllerBase
             });
         }
 
+        var providerSubject = ResolveProviderSubject() ?? currentUserId.Value.ToString();
+        var authProvider = ResolveAuthProvider();
+        var email = User.FindFirst("email")?.Value
+            ?? User.FindFirst(ClaimTypes.Email)?.Value;
         var command = new CompleteInstanceOnboardingCommand
         {
             UserId = currentUserId.Value,
             Settings = settings,
-            Email = User.FindFirst("email")?.Value
-                ?? User.FindFirst(ClaimTypes.Email)?.Value,
+            Email = email,
             FirstName = User.FindFirst("given_name")?.Value
                 ?? User.FindFirst(ClaimTypes.GivenName)?.Value,
             LastName = User.FindFirst("family_name")?.Value
                 ?? User.FindFirst(ClaimTypes.Surname)?.Value,
             Username = User.FindFirst("preferred_username")?.Value
                 ?? User.FindFirst(ClaimTypes.Name)?.Value,
-            AuthProvider = User.FindFirst("idp")?.Value
-                ?? User.Identity?.AuthenticationType,
-            AuthProviderId = User.FindFirst("sub")?.Value
-                ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
-            EmailVerified = bool.TryParse(User.FindFirst("email_verified")?.Value, out var ev) ? ev : null
+            AuthProvider = authProvider,
+            AuthProviderId = ResolveProviderId(providerSubject, authProvider),
+            EmailVerified = ResolveEmailVerified(authProvider, email ?? string.Empty)
         };
 
         var response = await _mediator.Send(command, cancellationToken);

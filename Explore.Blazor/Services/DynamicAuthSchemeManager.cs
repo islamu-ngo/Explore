@@ -553,9 +553,10 @@ public class DynamicAuthSchemeManager : IDynamicAuthSchemeManager, IDisposable
                     .CreateLogger("AuthEndpoints");
                 logger.LogInformation(
                     "[OIDC-DIAG] Token response received (idToken={HasIdToken}, accessToken={HasAccessToken}, " +
-                    "error={Error}, errorDescription={ErrorDescription})",
+                    "refreshToken={HasRefreshToken}, error={Error}, errorDescription={ErrorDescription})",
                     !string.IsNullOrEmpty(context.TokenEndpointResponse?.IdToken),
                     !string.IsNullOrEmpty(context.TokenEndpointResponse?.AccessToken),
+                    !string.IsNullOrEmpty(context.TokenEndpointResponse?.RefreshToken),
                     context.TokenEndpointResponse?.Error,
                     context.TokenEndpointResponse?.ErrorDescription);
                 return Task.CompletedTask;

@@ -10,7 +10,6 @@ using Explore.Application.DTOs.User;
 using Explore.Application.Features.Users.Requests.Commands;
 using Explore.Application.Features.Users.Requests.Queries;
 using Explore.Application.Responses;
-using Explore.Domain.Constants;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -21,7 +20,7 @@ namespace Explore.API.Controllers;
 [Route("api/[controller]")]
 [ApiController]
 [EndpointClassification(EndpointClass.Authenticated)]
-public class UserController : ControllerBase
+public class UserController : ExploreControllerBase
 {
     private readonly IMediator _mediator;
 
@@ -71,9 +70,9 @@ public class UserController : ControllerBase
                        ?? User.FindFirst(ClaimTypes.Name)?.Value
                        ?? string.Empty;
 
-        var provider = ResolveAuthProvider(User);
-        var providerId = ResolveProviderId(User, providerSubject);
-        var emailVerified = ResolveEmailVerified(User, provider, email);
+        var provider = ResolveAuthProvider();
+        var providerId = ResolveProviderId(providerSubject, provider);
+        var emailVerified = ResolveEmailVerified(provider, email);
 
         var userIdGuid = Guid.TryParse(providerSubject, out var parsedGuid)
             ? parsedGuid
@@ -100,67 +99,6 @@ public class UserController : ControllerBase
         }
 
         return Ok(response);
-    }
-
-    private static string ResolveAuthProvider(ClaimsPrincipal user)
-    {
-        var explicitProvider = user.FindFirst("idp")?.Value;
-        if (!string.IsNullOrWhiteSpace(explicitProvider))
-        {
-            var normalized = explicitProvider.Trim().ToLowerInvariant();
-            if (normalized.Contains("google", StringComparison.Ordinal))
-            {
-                return AuthSchemeNames.Google.ToLowerInvariant();
-            }
-
-            if (normalized.Contains("atproto", StringComparison.Ordinal))
-            {
-                return AuthSchemeNames.Atproto.ToLowerInvariant();
-            }
-
-            if (normalized.Contains("keycloak", StringComparison.Ordinal))
-            {
-                return AuthSchemeNames.Keycloak.ToLowerInvariant();
-            }
-        }
-
-        var issuer = user.FindFirst("iss")?.Value ?? string.Empty;
-        if (issuer.Contains("accounts.google.com", StringComparison.OrdinalIgnoreCase))
-        {
-            return AuthSchemeNames.Google.ToLowerInvariant();
-        }
-
-        var subject = user.FindFirst("sub")?.Value ?? string.Empty;
-        if (subject.StartsWith("did:", StringComparison.OrdinalIgnoreCase) ||
-            issuer.Contains("atproto", StringComparison.OrdinalIgnoreCase))
-        {
-            return AuthSchemeNames.Atproto.ToLowerInvariant();
-        }
-
-        return AuthSchemeNames.Keycloak.ToLowerInvariant();
-    }
-
-    private static string ResolveProviderId(ClaimsPrincipal user, string providerSubject)
-    {
-        return user.FindFirst("did")?.Value
-               ?? user.FindFirst("atproto_did")?.Value
-               ?? providerSubject;
-    }
-
-    private static bool ResolveEmailVerified(ClaimsPrincipal user, string provider, string email)
-    {
-        var emailVerifiedClaim = user.FindFirst("email_verified")?.Value;
-        if (bool.TryParse(emailVerifiedClaim, out var emailVerified))
-        {
-            return emailVerified;
-        }
-
-        return provider switch
-        {
-            "keycloak" => true,
-            "google" => true,
-            _ => !string.IsNullOrWhiteSpace(email)
-        };
     }
 
     [HttpGet(Name = RouteNames.GetCurrentUser)]
@@ -269,35 +207,6 @@ public class UserController : ControllerBase
 
     private async Task<Guid?> ResolveCurrentUserIdAsync(CancellationToken cancellationToken)
     {
-        var providerSubject = User.FindFirst("sub")?.Value
-                             ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                             ?? User.FindFirst("sid")?.Value;
-
-        if (string.IsNullOrWhiteSpace(providerSubject))
-        {
-            return null;
-        }
-
-        if (Guid.TryParse(providerSubject, out var guidUserId))
-        {
-            return guidUserId;
-        }
-
-        var provider = ResolveAuthProvider(User);
-        var providerId = ResolveProviderId(User, providerSubject);
-        var email = User.FindFirst("email")?.Value
-                    ?? User.FindFirst(ClaimTypes.Email)?.Value
-                    ?? string.Empty;
-        var emailVerified = ResolveEmailVerified(User, provider, email);
-
-        var resolveQuery = new ResolveCurrentUserIdByIdentityRequest
-        {
-            Provider = provider,
-            ProviderId = providerId,
-            Email = email,
-            EmailVerified = emailVerified
-        };
-
-        return await _mediator.Send(resolveQuery, cancellationToken);
+        return await base.ResolveCurrentUserIdAsync(_mediator, cancellationToken);
     }
 }

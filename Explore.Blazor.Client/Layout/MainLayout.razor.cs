@@ -216,7 +216,7 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
         _announcementVisible = isVisible;
         if (_theme is not null)
         {
-        _theme = AppearanceThemeService.CreateTheme(GetAppbarHeight(), _activeTheme);
+            _theme = AppearanceThemeService.CreateTheme(GetAppbarHeight(), _activeTheme);
             StateHasChanged();
         }
     }

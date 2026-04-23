@@ -25,12 +25,12 @@ public static class HttpClientExtensions
         IConfiguration configuration,
         IWebHostEnvironment environment)
     {
-        var apiBaseUrl = NormalizeBaseUrl(
-            configuration["ExploreApi:BaseUrl"] ?? "https://localhost:7039/");
+        var apiBaseUrl = ResolveApiBaseUrl(configuration);
 
         services.AddTransient<AccessTokenForwardingHandler>();
         services.AddTransient<TenantHeaderForwardingHandler>();
         services.AddTransient<SetupSecretForwardingHandler>();
+        services.AddTransient<BffCookieForwardingHandler>();
 
         // Named "BffClient" — used by raw HTTP services (InstanceOnboarding, TenantOnboarding, etc.)
         services.AddApiClient("BffClient", apiBaseUrl, environment)
@@ -39,6 +39,7 @@ public static class HttpClientExtensions
         // Named "BffSelfClient" — used by InteractiveServer components calling BFF endpoints on this server.
         // No BaseAddress here; components set it from NavigationManager.BaseUri at runtime.
         services.AddHttpClient("BffSelfClient")
+            .AddHttpMessageHandler<BffCookieForwardingHandler>()
             .ConfigureDevCertBypass(environment);
 
         // Named "S3Upload" — used by ImageStorageService for presigned URL uploads
@@ -286,6 +287,32 @@ public static class HttpClientExtensions
         }
 
         return handler;
+    }
+
+    private static string ResolveApiBaseUrl(IConfiguration configuration)
+    {
+        // 1. Explicit configuration (overrides everything — for standalone dev, Docker, prod)
+        var explicitUrl = configuration["ExploreApi:BaseUrl"];
+        if (!string.IsNullOrWhiteSpace(explicitUrl))
+        {
+            return NormalizeBaseUrl(explicitUrl);
+        }
+
+        // 2. Aspire service discovery env vars (injected by .WithReference in AppHost)
+        var aspireHttps = configuration["services__explore-api__https__0"];
+        if (!string.IsNullOrWhiteSpace(aspireHttps))
+        {
+            return NormalizeBaseUrl(aspireHttps);
+        }
+
+        var aspireHttp = configuration["services__explore-api__http__0"];
+        if (!string.IsNullOrWhiteSpace(aspireHttp))
+        {
+            return NormalizeBaseUrl(aspireHttp);
+        }
+
+        // 3. Fallback for standalone development (matches API launchSettings default)
+        return "https://localhost:7039/";
     }
 
     private static string NormalizeBaseUrl(string url)

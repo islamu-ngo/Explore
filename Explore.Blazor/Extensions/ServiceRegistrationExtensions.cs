@@ -50,6 +50,8 @@ public static class ServiceRegistrationExtensions
         services.AddScoped<IAnalyticsInterop, ServerAnalyticsInterop>();
         services.AddScoped<ICookieConsentInterop, ServerCookieConsentInterop>();
         services.AddScoped<Explore.Blazor.Client.Services.CookieConsentStateService>();
+        services.AddScoped<ICircuitUserContext, CircuitUserContext>();
+        services.AddScoped<IBffAuthCookieStore, BffAuthCookieStore>();
         services.AddScoped<ICircuitAccessTokenService, CircuitAccessTokenService>();
         services.AddSingleton<SetupSecretSessionService>();
         services.AddSingleton<ISetupSecretSessionService>(sp => sp.GetRequiredService<SetupSecretSessionService>());
@@ -58,6 +60,7 @@ public static class ServiceRegistrationExtensions
         services.AddScoped<IResolverConfigService, ResolverConfigService>();
         services.AddScoped<ITenantRouteContextAccessor, TenantRouteContextAccessor>();
         services.AddScoped<CircuitHandler, TenantCircuitHandler>();
+        services.AddScoped<CircuitHandler, TokenCircuitHandler>();
 
         // BFF admin claims enrichment — invoked at cookie/session boundaries, not per request.
         services.AddScoped<BffAdminClaimsTransformation>();

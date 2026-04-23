@@ -1,3 +1,4 @@
+using System.Threading.Channels;
 using Explore.Domain.Constants;
 using Explore.Persistence;
 using Microsoft.AspNetCore.Hosting;
@@ -7,7 +8,6 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using System.Threading.Channels;
 
 namespace Event.Api.IntegrationTests.Fixtures;
 

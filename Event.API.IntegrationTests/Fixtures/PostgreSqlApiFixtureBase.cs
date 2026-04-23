@@ -4,8 +4,8 @@
 using Explore.Persistence;
 using Explore.Persistence.Seed;
 using Microsoft.AspNetCore.OutputCaching;
-using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.DependencyInjection;
 using Testcontainers.PostgreSql;
 using TUnit.Core.Interfaces;

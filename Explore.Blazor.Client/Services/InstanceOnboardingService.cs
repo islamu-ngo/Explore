@@ -4,6 +4,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using Explore.Blazor.Client.Services.Http;
+using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 
 namespace Explore.Blazor.Client.Services;
@@ -72,17 +73,20 @@ public class InstanceOnboardingService : IInstanceOnboardingService
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IJSRuntime _jsRuntime;
     private readonly ILogger<InstanceOnboardingService> _logger;
+    private readonly NavigationManager _navigation;
     private readonly BffClient? _bffClient;
 
     public InstanceOnboardingService(
         IHttpClientFactory httpClientFactory,
         IJSRuntime jsRuntime,
         ILogger<InstanceOnboardingService> logger,
+        NavigationManager navigation,
         BffClient? bffClient = null)
     {
         _httpClientFactory = httpClientFactory;
         _jsRuntime = jsRuntime;
         _logger = logger;
+        _navigation = navigation;
         _bffClient = bffClient;
     }
 
@@ -302,7 +306,7 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         {
             using var response = _bffClient is not null
                 ? await _bffClient.PostAsync("/bff/auth/refresh-schemes")
-                : await _httpClientFactory.CreateClient("BffSelfClient").PostAsync("/bff/auth/refresh-schemes", null);
+                : await CreateBffSelfClient().PostAsync("/bff/auth/refresh-schemes", null);
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("Failed to refresh auth schemes. Status: {StatusCode}", (int)response.StatusCode);
@@ -320,13 +324,17 @@ public class InstanceOnboardingService : IInstanceOnboardingService
         {
             using var response = _bffClient is not null
                 ? await _bffClient.PostAsync("/bff/auth/refresh-session")
-                : await _httpClientFactory.CreateClient("BffSelfClient").PostAsync("/bff/auth/refresh-session", null);
+                : await CreateBffSelfClient().PostAsync("/bff/auth/refresh-session/internal", null);
             if (response.IsSuccessStatusCode)
             {
                 return true;
             }
 
-            _logger.LogWarning("Failed to refresh auth session. Status: {StatusCode}", (int)response.StatusCode);
+            var responseBody = await response.Content.ReadAsStringAsync();
+            _logger.LogWarning(
+                "Failed to refresh auth session. Status: {StatusCode} Body: {ResponseBody}",
+                (int)response.StatusCode,
+                string.IsNullOrWhiteSpace(responseBody) ? "<empty>" : responseBody);
             return false;
         }
         catch (Exception ex)
@@ -334,6 +342,15 @@ public class InstanceOnboardingService : IInstanceOnboardingService
             _logger.LogError(ex, "Failed to refresh auth session.");
             return false;
         }
+    }
+
+    // "BffSelfClient" intentionally has no registered BaseAddress (see Explore.Blazor/Extensions/HttpClientExtensions.cs).
+    // Server-side callers must supply it from NavigationManager.BaseUri so relative /bff/* URIs resolve to this instance.
+    private HttpClient CreateBffSelfClient()
+    {
+        var client = _httpClientFactory.CreateClient("BffSelfClient");
+        client.BaseAddress = new Uri(_navigation.BaseUri);
+        return client;
     }
 
     // ── Analytics Governance ─────────────────────────────────────────────

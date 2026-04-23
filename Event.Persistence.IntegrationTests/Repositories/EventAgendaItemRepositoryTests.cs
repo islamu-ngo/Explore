@@ -68,28 +68,40 @@ public class EventAgendaItemRepositoryTests
 
         var item1 = new EventAgendaItem
         {
-            EventId = @event.Id, Event = @event, Title = "Third",
+            EventId = @event.Id,
+            Event = @event,
+            Title = "Third",
             StartTime = new DateTimeOffset(2026, 7, 1, 11, 0, 0, TimeSpan.Zero),
             EndTime = new DateTimeOffset(2026, 7, 1, 11, 30, 0, TimeSpan.Zero),
-            SortOrder = 3, TenantId = tenant.Id, Tenant = tenant
+            SortOrder = 3,
+            TenantId = tenant.Id,
+            Tenant = tenant
         };
         item1.ReprojectLocalTimes("UTC", calculator);
 
         var item2 = new EventAgendaItem
         {
-            EventId = @event.Id, Event = @event, Title = "First",
+            EventId = @event.Id,
+            Event = @event,
+            Title = "First",
             StartTime = new DateTimeOffset(2026, 7, 1, 9, 0, 0, TimeSpan.Zero),
             EndTime = new DateTimeOffset(2026, 7, 1, 9, 30, 0, TimeSpan.Zero),
-            SortOrder = 1, TenantId = tenant.Id, Tenant = tenant
+            SortOrder = 1,
+            TenantId = tenant.Id,
+            Tenant = tenant
         };
         item2.ReprojectLocalTimes("UTC", calculator);
 
         var item3 = new EventAgendaItem
         {
-            EventId = @event.Id, Event = @event, Title = "Second",
+            EventId = @event.Id,
+            Event = @event,
+            Title = "Second",
             StartTime = new DateTimeOffset(2026, 7, 1, 10, 0, 0, TimeSpan.Zero),
             EndTime = new DateTimeOffset(2026, 7, 1, 10, 30, 0, TimeSpan.Zero),
-            SortOrder = 2, TenantId = tenant.Id, Tenant = tenant
+            SortOrder = 2,
+            TenantId = tenant.Id,
+            Tenant = tenant
         };
         item3.ReprojectLocalTimes("UTC", calculator);
 

@@ -23,11 +23,7 @@ public static class YarpProxyExtensions
         IConfiguration configuration,
         IWebHostEnvironment environment)
     {
-        var apiBaseUrl = configuration["ExploreApi:BaseUrl"] ?? "https://localhost:7039/";
-        if (!apiBaseUrl.EndsWith('/'))
-        {
-            apiBaseUrl += "/";
-        }
+        var apiBaseUrl = ResolveApiBaseUrl(configuration);
 
         var routes = new[]
         {
@@ -72,6 +68,29 @@ public static class YarpProxyExtensions
             });
 
         return services;
+    }
+
+    private static string ResolveApiBaseUrl(IConfiguration configuration)
+    {
+        var explicitUrl = configuration["ExploreApi:BaseUrl"];
+        if (!string.IsNullOrWhiteSpace(explicitUrl))
+        {
+            return explicitUrl.EndsWith('/') ? explicitUrl : explicitUrl + "/";
+        }
+
+        var aspireHttps = configuration["services__explore-api__https__0"];
+        if (!string.IsNullOrWhiteSpace(aspireHttps))
+        {
+            return aspireHttps.EndsWith('/') ? aspireHttps : aspireHttps + "/";
+        }
+
+        var aspireHttp = configuration["services__explore-api__http__0"];
+        if (!string.IsNullOrWhiteSpace(aspireHttp))
+        {
+            return aspireHttp.EndsWith('/') ? aspireHttp : aspireHttp + "/";
+        }
+
+        return "https://localhost:7039/";
     }
 
     private static async Task ForwardBearerTokenAsync(RequestTransformContext context)

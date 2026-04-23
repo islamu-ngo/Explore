@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 
 namespace Explore.Blazor.Client.Tests.Services;
@@ -10,6 +11,7 @@ public class InstanceOnboardingServiceTests
     private readonly System.Net.Http.IHttpClientFactory _httpClientFactory;
     private readonly IJSRuntime _jsRuntime;
     private readonly ILogger<InstanceOnboardingService> _logger;
+    private readonly NavigationManager _navigation;
     private readonly InstanceOnboardingService _service;
 
     public InstanceOnboardingServiceTests()
@@ -17,7 +19,13 @@ public class InstanceOnboardingServiceTests
         _httpClientFactory = Substitute.For<System.Net.Http.IHttpClientFactory>();
         _jsRuntime = new NullJsRuntime();
         _logger = Substitute.For<ILogger<InstanceOnboardingService>>();
-        _service = new InstanceOnboardingService(_httpClientFactory, _jsRuntime, _logger);
+        _navigation = new TestNavigationManager("https://localhost/");
+        _service = new InstanceOnboardingService(_httpClientFactory, _jsRuntime, _logger, _navigation);
+    }
+
+    private sealed class TestNavigationManager : NavigationManager
+    {
+        public TestNavigationManager(string baseUri) => Initialize(baseUri, baseUri);
     }
 
     #region GetStatusAsync
@@ -222,6 +230,26 @@ public class InstanceOnboardingServiceTests
 
         // Assert
         await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task RefreshAuthSessionAsync_UsesInternalEndpoint_ForServerSideSelfCall()
+    {
+        // Arrange
+        Uri? requestUri = null;
+        SetupBffSelfClient(request =>
+        {
+            requestUri = request.RequestUri;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+        });
+
+        // Act
+        var result = await _service.RefreshAuthSessionAsync();
+
+        // Assert
+        await Assert.That(result).IsTrue();
+        await Assert.That(requestUri).IsNotNull();
+        await Assert.That(requestUri!.AbsolutePath).IsEqualTo("/bff/auth/refresh-session/internal");
     }
 
     #endregion

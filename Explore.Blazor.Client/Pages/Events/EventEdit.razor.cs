@@ -1,11 +1,12 @@
 // ABOUTME: Code-behind for the Luma-inspired Edit Event page.
 // ABOUTME: Loads existing event data, pre-fills the form, handles session management, image upload, and event update.
 
+using System.Linq;
 using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
-using Explore.Blazor.Client.Contracts.Services.Lookup;
 using Explore.Blazor.Client.Contracts.Services.Events;
+using Explore.Blazor.Client.Contracts.Services.Lookup;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Pages.Events.Components;
 using Explore.Blazor.Client.Pages.Events.Models;
@@ -15,7 +16,6 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.Logging;
 using MudBlazor;
-using System.Linq;
 
 namespace Explore.Blazor.Client.Pages.Events;
 

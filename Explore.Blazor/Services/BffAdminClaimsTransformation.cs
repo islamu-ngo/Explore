@@ -145,7 +145,7 @@ public sealed class BffAdminClaimsTransformation
                 return null;
             }
 
-            var authority = await response.Content.ReadFromJsonAsync<BffAdminAuthorityResponse>();
+            var authority = await response.Content.ReadFromJsonAsync<BffAdminAuthorityResponse>(cancellationToken: cancellationToken);
             return authority;
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)

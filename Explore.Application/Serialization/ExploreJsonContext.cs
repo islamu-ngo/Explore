@@ -55,7 +55,8 @@ namespace Explore.Application.Serialization;
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-    WriteIndented = false)]
+    WriteIndented = false,
+    Converters = [typeof(JsonStringEnumConverter)])]
 [JsonSerializable(typeof(ActorDto))]
 [JsonSerializable(typeof(ActorKeyStoreDto))]
 [JsonSerializable(typeof(ActorKeyStoreListDto))]
@@ -131,6 +132,7 @@ namespace Explore.Application.Serialization;
 [JsonSerializable(typeof(IndexedDidDto))]
 [JsonSerializable(typeof(IndexedDidListDto))]
 [JsonSerializable(typeof(CompleteInstanceOnboardingRequest))]
+[JsonSerializable(typeof(Explore.Application.DTOs.Instance.DeploymentModeDto))]
 [JsonSerializable(typeof(InstanceOnboardingStatusDto))]
 [JsonSerializable(typeof(LanguageDto))]
 [JsonSerializable(typeof(LanguageListDto))]

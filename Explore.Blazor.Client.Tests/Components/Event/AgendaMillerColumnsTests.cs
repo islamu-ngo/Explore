@@ -103,8 +103,12 @@ public class AgendaMillerColumnsTests : IDisposable
     {
         var day = new EventDayListDto
         {
-            Id = Guid.NewGuid(), EventId = TestEventId, LocalDate = new DateOnly(2026, 6, 20),
-            Label = "Empty Day", IsPublished = true, SortOrder = 0
+            Id = Guid.NewGuid(),
+            EventId = TestEventId,
+            LocalDate = new DateOnly(2026, 6, 20),
+            Label = "Empty Day",
+            IsPublished = true,
+            SortOrder = 0
         };
         var cut = Render(days: [day], items: []);
 
@@ -148,8 +152,12 @@ public class AgendaMillerColumnsTests : IDisposable
     {
         var day = new EventDayListDto
         {
-            Id = Guid.NewGuid(), EventId = TestEventId, LocalDate = TestDate1,
-            Label = null, IsPublished = true, SortOrder = 0
+            Id = Guid.NewGuid(),
+            EventId = TestEventId,
+            LocalDate = TestDate1,
+            Label = null,
+            IsPublished = true,
+            SortOrder = 0
         };
         var cut = Render(days: [day], items: []);
 

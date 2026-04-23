@@ -1,6 +1,7 @@
 // ABOUTME: Logs structured metadata for every HTTP request (method, path, status, duration, user, tenant).
 // ABOUTME: Designed for observability; never logs sensitive data such as headers or bodies.
 
+using System.Security.Claims;
 using System.Diagnostics;
 using Explore.Application.Constants;
 using Explore.Application.Contracts.Services;
@@ -36,19 +37,24 @@ public sealed class RequestLoggingMiddleware
             var elapsed = Stopwatch.GetElapsedTime(startTimestamp);
 
             var userId = context.User?.FindFirst("sub")?.Value
-                ?? context.User?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
+                ?? context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? context.User?.FindFirst("sid")?.Value;
 
             var tenantId = tenantContextAccessor.TenantId?.ToString();
             var tenantSlug = context.Request.Headers[TenantHeaderNames.TenantSlug].FirstOrDefault();
             var correlationId = context.Items["CorrelationId"] as string;
+            var authHeaderPresent = context.Request.Headers.ContainsKey("Authorization");
+            var isAuthenticated = context.User?.Identity?.IsAuthenticated ?? false;
 
             _logger.LogInformation(
-                "HTTP {Method} {Path} responded {StatusCode} in {ElapsedMs:0.00}ms | User={UserId} Tenant={TenantId} TenantSlug={TenantSlug} CorrelationId={CorrelationId}",
+                "HTTP {Method} {Path} responded {StatusCode} in {ElapsedMs:0.00}ms | User={UserId} Authenticated={IsAuthenticated} AuthHeaderPresent={AuthHeaderPresent} Tenant={TenantId} TenantSlug={TenantSlug} CorrelationId={CorrelationId}",
                 context.Request.Method,
                 context.Request.Path.Value,
                 context.Response.StatusCode,
                 elapsed.TotalMilliseconds,
                 userId ?? "-",
+                isAuthenticated,
+                authHeaderPresent,
                 tenantId ?? "-",
                 tenantSlug ?? "-",
                 correlationId ?? "-");

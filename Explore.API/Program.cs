@@ -127,6 +127,10 @@ builder.Services.AddControllers()
             Explore.Application.Serialization.ExploreJsonContext.Default);
         options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
         options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+        // Serialize all enums as strings by default — matches client DTO expectations
+        // (e.g. DeploymentModeDto.Mode) and industry best practice for public APIs.
+        options.JsonSerializerOptions.Converters.Add(
+            new System.Text.Json.Serialization.JsonStringEnumConverter());
     });
 
 builder.Services.AddApiExceptionHandling();

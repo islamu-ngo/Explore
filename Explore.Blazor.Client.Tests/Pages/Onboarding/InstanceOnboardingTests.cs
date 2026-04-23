@@ -197,7 +197,12 @@ public class InstanceOnboardingTests : IDisposable
         ClickButton(cut, "Complete Instance Onboarding");
 
         // Assert
-        await _instanceOnboardingService.Received(1).RefreshAuthSessionAsync();
+        // RefreshAuthSessionAsync is now called twice during the Complete flow:
+        // (1) proactively before the POST to guarantee a fresh access token survives the
+        //     long form-fill window (Keycloak access tokens are short-lived), and
+        // (2) after successful Complete to pick up the newly assigned instance-admin claims.
+        // Both calls are load-bearing; see InstanceOnboarding.razor CompleteOnboardingAsync.
+        await _instanceOnboardingService.Received(2).RefreshAuthSessionAsync();
         await Task.CompletedTask;
     }
 

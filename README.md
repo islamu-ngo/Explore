@@ -325,6 +325,13 @@ To disclose any security issues, please email us at [contact@openislamu.org][con
 
 ## Contributors
 
+### Core Maintainer
+
+|                                                                                                                                                                            Amir Akrari                                                                                                                                                                             |
+| :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
+|                                                                                                                                         <img src="https://github.com/amirakrari.png" width="200px" alt="Amir Akrari" />                                                                                                                                          |
+| <a href="https://github.com/amirakrari"><img src="https://api.iconify.design/devicon:github.svg" width="25px"></a> <a href="https://bsky.app/profile/amirakrari.bsky.social"><img src="https://api.iconify.design/simple-icons:bluesky.svg" width="25px"></a> |
+
 I am deeply grateful to all our amazing contributors.
 
 [![Contributors Image][contributors-image]][contributors-link]

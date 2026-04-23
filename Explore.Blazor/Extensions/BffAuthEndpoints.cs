@@ -1,6 +1,8 @@
 // ABOUTME: Auth-related BFF endpoints: challenge, login, signout, status, providers, debug, refresh-schemes.
 // ABOUTME: Includes multi-provider resolution, provider readiness checks, and OIDC metadata validation.
 
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Explore.Blazor.Constants;
@@ -41,6 +43,12 @@ public static class BffAuthEndpoints
 
         app.MapPost("/bff/auth/refresh-session", HandleRefreshSessionAsync)
             .ValidateAntiforgery()
+            .RequireAuthorization()
+            .ExcludeFromDescription();
+
+        // InteractiveServer self-calls cannot reliably satisfy browser antiforgery semantics,
+        // so the server-side onboarding flow uses this authenticated internal variant instead.
+        app.MapPost("/bff/auth/refresh-session/internal", HandleRefreshSessionAsync)
             .RequireAuthorization()
             .ExcludeFromDescription();
 
@@ -257,10 +265,27 @@ public static class BffAuthEndpoints
         BffAdminClaimsTransformation adminClaimsTransformation,
         CancellationToken cancellationToken)
     {
+        var logger = ctx.RequestServices.GetRequiredService<ILoggerFactory>()
+            .CreateLogger("AuthEndpoints");
+
         var authResult = await ctx.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         if (!authResult.Succeeded || authResult.Principal is null || authResult.Properties is null)
         {
+            logger.LogWarning("[AuthEndpoints] Refresh session failed because cookie authentication did not succeed");
             return Results.Unauthorized();
+        }
+
+        var accessToken = authResult.Properties.GetTokenValue("access_token");
+        var tokenAssessment = AssessAccessToken(accessToken);
+        if (!tokenAssessment.IsUsable)
+        {
+            logger.LogWarning(
+                "[AuthEndpoints] Refresh session produced no API-usable bearer token | Reason={Reason} User={UserId}",
+                tokenAssessment.Reason,
+                ResolveUserId(authResult.Principal));
+            return Results.Json(
+                new { refreshed = false, reason = tokenAssessment.Reason },
+                statusCode: StatusCodes.Status409Conflict);
         }
 
         var adminClaimsUpdated = await adminClaimsTransformation.EnrichPrincipalAsync(
@@ -275,7 +300,6 @@ public static class BffAuthEndpoints
             authResult.Properties);
 
         var tokenService = ctx.RequestServices.GetService<ICircuitAccessTokenService>();
-        var accessToken = authResult.Properties.GetTokenValue("access_token");
         if (!string.IsNullOrWhiteSpace(accessToken))
         {
             tokenService?.SetToken(accessToken);
@@ -283,7 +307,86 @@ public static class BffAuthEndpoints
 
         ctx.RequestServices.GetService<IBffOnboardingStatusProvider>()?.Invalidate();
 
-        return Results.Ok(new { refreshed = true, adminClaimsUpdated });
+        logger.LogInformation(
+            "[AuthEndpoints] Refresh session confirmed usable bearer token | User={UserId} TokenSummary={TokenSummary} AdminClaimsUpdated={AdminClaimsUpdated}",
+            ResolveUserId(authResult.Principal),
+            DescribeToken(accessToken),
+            adminClaimsUpdated);
+
+        return Results.Ok(new { refreshed = true, adminClaimsUpdated, token = tokenAssessment.Reason });
+    }
+
+    private static (bool IsUsable, string Reason) AssessAccessToken(string? accessToken)
+    {
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            return (false, "missing_access_token");
+        }
+
+        try
+        {
+            var handler = new JwtSecurityTokenHandler();
+            if (!handler.CanReadToken(accessToken))
+            {
+                return (false, "unreadable_access_token");
+            }
+
+            var token = handler.ReadJwtToken(accessToken);
+            var validToUtc = token.ValidTo;
+            if (validToUtc <= DateTime.UtcNow.AddSeconds(30))
+            {
+                return (false, $"expired_access_token:{validToUtc:o}");
+            }
+
+            return (true, $"valid_until:{validToUtc:o}");
+        }
+        catch (Exception)
+        {
+            return (false, "access_token_parse_failed");
+        }
+    }
+
+    private static string DescribeToken(string? accessToken)
+    {
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            return "missing";
+        }
+
+        try
+        {
+            var handler = new JwtSecurityTokenHandler();
+            if (!handler.CanReadToken(accessToken))
+            {
+                return "unreadable_jwt";
+            }
+
+            var token = handler.ReadJwtToken(accessToken);
+            var userId = ResolveUserId(token.Claims) ?? "unknown";
+            var issuer = string.IsNullOrWhiteSpace(token.Issuer) ? "unknown" : token.Issuer;
+            var audience = token.Audiences.FirstOrDefault()
+                ?? token.Claims.FirstOrDefault(c => c.Type == "azp")?.Value
+                ?? "unknown";
+            return $"user={userId};validTo={token.ValidTo:o};iss={issuer};aud={audience}";
+        }
+        catch (Exception)
+        {
+            return "jwt_parse_failed";
+        }
+    }
+
+    private static string? ResolveUserId(ClaimsPrincipal? principal) => ResolveUserId(principal?.Claims);
+
+    private static string? ResolveUserId(IEnumerable<Claim>? claims)
+    {
+        if (claims is null)
+        {
+            return null;
+        }
+
+        return claims.FirstOrDefault(c => c.Type == "sub")?.Value
+            ?? claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value
+            ?? claims.FirstOrDefault(c => c.Type == "sid")?.Value;
     }
 
     private static IResult HandleAuthStatus(HttpContext ctx)
