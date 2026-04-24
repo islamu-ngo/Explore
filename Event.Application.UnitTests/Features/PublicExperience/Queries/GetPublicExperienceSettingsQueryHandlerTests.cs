@@ -62,6 +62,9 @@ public class GetPublicExperienceSettingsQueryHandlerTests
         _hierarchicalSettingsResolver.ResolveGroupAsync<AiAssistantSettingGroup>(
             Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
             .Returns(new AiAssistantSettingGroup());
+        _hierarchicalSettingsResolver.ResolveGroupAsync<AppearanceSettingGroup>(
+            Arg.Any<SettingContext>(), Arg.Any<CancellationToken>())
+            .Returns(new AppearanceSettingGroup());
         _mapper = Substitute.For<IMapper>();
         _mapper.Map<List<global::Explore.Application.DTOs.Footer.FooterLinkGroupDto>>(Arg.Any<object>())
             .Returns([]);

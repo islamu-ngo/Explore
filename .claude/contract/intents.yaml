@@ -1,0 +1,572 @@
+# ABOUTME: Canonical intent catalog for the Contribution Contract.
+# ABOUTME: Each entry is a machine-readable answer to the 8 contract questions for one category of change.
+#
+# Schema: see ./schema.json (enforced by AgentContextIntentManifestTests in Event.Architecture.Tests)
+# Usage: see ./README.md
+#
+# When adding a new intent:
+#   1. Use kebab-case for `id`.
+#   2. Validate locally: dotnet test --project Event.Architecture.Tests --filter AgentContextIntentManifestTests
+#   3. Add at least one matching benchmark to .claude/benchmarks/cold-start-tasks.yaml.
+
+version: 1
+
+intents:
+  - id: add-get-endpoint
+    title: "Add a new GET endpoint to the public API"
+    category: api
+    triggers:
+      - "add a new GET endpoint"
+      - "expose a new read endpoint"
+      - "new query endpoint"
+      - "read API for"
+      - "fetch endpoint for"
+    must_read_docs:
+      - docs/API.md
+      - docs/QUICK_REFERENCE.md
+      - docs/GOVERNANCE.md
+      - docs/CODEBASE_INSIGHTS.md
+    load_skills:
+      - cqrs-mediatr-guidelines
+      - clean-architecture-rules
+    load_rules:
+      - .claude/rules/api-controllers.md
+      - .claude/rules/application-layer.md
+      - .claude/rules/api-hateoas.md
+    paths_in_scope:
+      - "Explore.API/Controllers/**/*.cs"
+      - "Explore.API/Hateoas/**/*.cs"
+      - "Explore.Application/Features/**/Queries/**/*.cs"
+      - "Explore.Application/Features/**/DTOs/**/*.cs"
+      - "Explore.Persistence/Repositories/**/*.cs"
+    paths_forbidden:
+      - "Explore.Domain/**/*.cs"
+      - "Explore.Persistence/Migrations/**/*.cs"
+      - "cerbos/**"
+    minimum_tests:
+      - Event.API.IntegrationTests
+      - Event.Application.UnitTests
+      - Event.Architecture.Tests
+    docs_to_update:
+      - docs/API_CHANGELOG.md
+    pr_checklist:
+      - "Route template is explicit: [HttpGet(\"resource/{id:guid}\", Name = RouteNames.X)]"
+      - "RouteNames.X constant declared and matched"
+      - "[EndpointClassification(EndpointClass.Public)] or Authenticated applied"
+      - "[ProducesResponseType<T>] for success + error responses"
+      - "[AllowAnonymous] applied (GET endpoints default to anonymous)"
+      - "Handler returns entity via repository; DTO mapping in handler (not repo)"
+      - "Output cache policy applied (LookupData / ListData / DetailData) if appropriate"
+      - "HAL link policy updated if response is a resource"
+    forbidden_without_approval:
+      - "Removing or renaming an existing endpoint"
+      - "Changing response schema of an existing route"
+      - "Disabling rate limiting or authentication on a protected route"
+    related_agents:
+      - clean-code-architect
+      - code-architecture-reviewer
+      - codebase-verifier
+    related_intents:
+      - add-write-endpoint
+      - add-hal-link
+      - add-cqrs-handler
+      - openapi-contract-change
+    verification_commands:
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+
+  - id: add-write-endpoint
+    title: "Add a new POST/PUT/PATCH/DELETE endpoint to the public API"
+    category: api
+    triggers:
+      - "add a new POST endpoint"
+      - "add a create endpoint"
+      - "add an update endpoint"
+      - "add a delete endpoint"
+      - "new mutation endpoint"
+      - "write API for"
+    must_read_docs:
+      - docs/API.md
+      - docs/QUICK_REFERENCE.md
+      - docs/GOVERNANCE.md
+      - docs/SECURITY.md
+      - docs/AUTHORIZATION.md
+      - docs/AUTHORIZATION_PATTERNS.md
+    load_skills:
+      - cqrs-mediatr-guidelines
+      - clean-architecture-rules
+      - auth-patterns
+    load_rules:
+      - .claude/rules/api-controllers.md
+      - .claude/rules/application-layer.md
+      - .claude/rules/api-hateoas.md
+    paths_in_scope:
+      - "Explore.API/Controllers/**/*.cs"
+      - "Explore.API/Hateoas/**/*.cs"
+      - "Explore.Application/Features/**/Commands/**/*.cs"
+      - "Explore.Application/Features/**/DTOs/**/*.cs"
+      - "Explore.Persistence/Repositories/**/*.cs"
+    paths_forbidden:
+      - "Explore.Domain/**/*.cs"
+      - "Explore.Persistence/Migrations/**/*.cs"
+    minimum_tests:
+      - Event.API.IntegrationTests
+      - Event.Application.UnitTests
+      - Event.Architecture.Tests
+    docs_to_update:
+      - docs/API_CHANGELOG.md
+    pr_checklist:
+      - "Explicit route template + RouteNames constant"
+      - "[Authorize] applied (write endpoints are never anonymous by default)"
+      - "Rate limiter policy applied: [EnableRateLimiting(\"write\")]"
+      - "Handler returns BaseCommandResponse<Guid> (or BaseCommandResponse<TId>)"
+      - "Validator manually instantiated inside handler (no IValidator<T> DI)"
+      - "Idempotency considered: command carries request id where applicable"
+      - "[ProducesResponseType] for 200/201/400/401/403/404/409"
+      - "HAL link policy updated to expose/hide this affordance"
+    forbidden_without_approval:
+      - "Removing [Authorize] from a write endpoint"
+      - "Disabling rate limiter on a write endpoint"
+      - "Breaking change to request/response contract of an existing endpoint"
+    related_agents:
+      - clean-code-architect
+      - code-architecture-reviewer
+      - auth-route-tester
+    related_intents:
+      - add-get-endpoint
+      - add-cqrs-handler
+      - add-hal-link
+      - openapi-contract-change
+      - cerbos-policy-change
+    verification_commands:
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+
+  - id: add-hal-link
+    title: "Add or modify a HAL link/affordance on an existing resource"
+    category: api
+    triggers:
+      - "add a HAL link"
+      - "expose edit affordance"
+      - "add hateoas link"
+      - "show delete button"
+      - "HAL affordance"
+      - "_links on"
+    must_read_docs:
+      - docs/API.md
+      - docs/CODEBASE_INSIGHTS.md
+      - docs/AUTHORIZATION_PATTERNS.md
+    load_skills:
+      - clean-architecture-rules
+    load_rules:
+      - .claude/rules/api-hateoas.md
+      - .claude/rules/api-controllers.md
+    paths_in_scope:
+      - "Explore.API/Hateoas/**/*.cs"
+      - "Explore.API/Controllers/**/*.cs"
+      - "Explore.Blazor.Client/Helpers/HalResourceExtensions.cs"
+      - "Explore.Blazor.Client/**/*.razor"
+    paths_forbidden:
+      - "Explore.Domain/**/*.cs"
+      - "Explore.Persistence/Migrations/**/*.cs"
+    minimum_tests:
+      - Event.API.IntegrationTests
+      - Explore.Blazor.Client.Tests
+      - Event.Architecture.Tests
+    docs_to_update: []
+    pr_checklist:
+      - "Separate detail and collection policies per entity (do not reuse)"
+      - "yield return pattern used for each link"
+      - "Link's name matches a [HttpGet/Post/Put/Delete(Name = RouteNames.X)] on the controller"
+      - "Authorization check encoded in the policy (policy is the single source of truth for affordance visibility)"
+      - "Blazor UI consumes dto.HasHalLink(\"name\") — not RoleHelper/IsInRole/claims for gating"
+    forbidden_without_approval:
+      - "Gating a UI button by role/claim instead of HAL link presence"
+      - "Emitting a link the user is not authorized to invoke"
+    related_agents:
+      - code-architecture-reviewer
+      - blazor-component-architect
+    related_intents:
+      - add-get-endpoint
+      - add-write-endpoint
+      - blazor-component-affordance
+    verification_commands:
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet"
+
+  - id: add-cqrs-handler
+    title: "Add a new Command or Query handler in the Application layer"
+    category: application
+    triggers:
+      - "add a new handler"
+      - "new CQRS handler"
+      - "new command handler"
+      - "new query handler"
+      - "add MediatR"
+    must_read_docs:
+      - docs/ARCHITECTURE.md
+      - docs/GOVERNANCE.md
+      - docs/QUICK_REFERENCE.md
+    load_skills:
+      - cqrs-mediatr-guidelines
+      - clean-architecture-rules
+      - dotnet-efcore-guidelines
+    load_rules:
+      - .claude/rules/application-layer.md
+    paths_in_scope:
+      - "Explore.Application/Features/**/*.cs"
+      - "Explore.Persistence/Repositories/**/*.cs"
+    paths_forbidden:
+      - "Explore.Domain/**/*.cs"
+      - "Explore.API/**/*.cs"
+      - "Explore.Persistence/Migrations/**/*.cs"
+    minimum_tests:
+      - Event.Application.UnitTests
+      - Event.Architecture.Tests
+      - Event.Persistence.IntegrationTests
+    docs_to_update: []
+    pr_checklist:
+      - "Command returns BaseCommandResponse<Guid> (or BaseCommandResponse<TId>)"
+      - "Query returns DTO shaped for the consumer"
+      - "Validator manually instantiated inside the handler (no IValidator<T> DI)"
+      - "Repository returns entity; DTO mapping happens in handler via AutoMapper profile or constructor"
+      - "No business defaults set in domain entity; defaults live in handler or EF config"
+      - "Pipeline behaviors respected (validation, logging, caching, idempotency)"
+    forbidden_without_approval:
+      - "Returning DTOs from repositories"
+      - "Skipping validation"
+      - "Cross-feature coupling (handler reaching into another feature's internals)"
+    related_agents:
+      - clean-code-architect
+      - code-architecture-reviewer
+    related_intents:
+      - add-get-endpoint
+      - add-write-endpoint
+      - update-repository-query
+    verification_commands:
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+
+  - id: add-ef-migration
+    title: "Add or modify an Entity Framework Core migration"
+    category: persistence
+    triggers:
+      - "add an EF migration"
+      - "create a migration"
+      - "schema change"
+      - "add column"
+      - "add table"
+      - "alter database"
+    must_read_docs:
+      - docs/QUICK_REFERENCE.md
+      - docs/CODEBASE_INSIGHTS.md
+      - docs/GOVERNANCE.md
+      - schemas/islamu-event.md
+    load_skills:
+      - dotnet-efcore-guidelines
+      - clean-architecture-rules
+    load_rules:
+      - .claude/rules/efcore-migrations.md
+      - .claude/rules/efcore-persistence.md
+      - .claude/rules/domain.md
+    paths_in_scope:
+      - "Explore.Persistence/Migrations/**/*.cs"
+      - "Explore.Persistence/Configurations/**/*.cs"
+      - "Explore.Persistence/ExploreDbContext.cs"
+      - "Explore.Domain/**/*.cs"
+    paths_forbidden: []
+    minimum_tests:
+      - Event.Persistence.IntegrationTests
+      - Event.Architecture.Tests
+    docs_to_update:
+      - schemas/islamu-event.md
+    pr_checklist:
+      - "Migration is idempotent and reversible (Down method provided and audited)"
+      - "Soft-delete filter preserved: .HasQueryFilter(name: \"SoftDelete\", predicate: e => !e.IsDeleted)"
+      - "Auditing fields present on auditable entities: CreatedAt, CreatedBy, UpdatedAt, UpdatedBy, IsDeleted"
+      - "Primary key uses Guid (UUIDv7) for aggregate roots; int for lookup tables; long only for size/cursor"
+      - "HasData seed synchronized with enum values where a lookup dual-track exists"
+      - "Navigation properties remain readonly; writes go through repositories"
+    forbidden_without_approval:
+      - "Destructive Down() that silently loses data"
+      - "PostgreSQL-specific SQL without provider guard or migration comment"
+      - "Bypassing named query filters"
+    related_agents:
+      - code-architecture-reviewer
+      - codebase-verifier
+    related_intents:
+      - add-cqrs-handler
+      - update-repository-query
+    verification_commands:
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+
+  - id: update-repository-query
+    title: "Modify an existing repository query or specification"
+    category: persistence
+    triggers:
+      - "update repository query"
+      - "change specification"
+      - "optimize query"
+      - "fix N+1"
+      - "add filter to query"
+    must_read_docs:
+      - docs/CODEBASE_INSIGHTS.md
+      - docs/ARCHITECTURE.md
+      - docs/QUICK_REFERENCE.md
+    load_skills:
+      - dotnet-efcore-guidelines
+      - clean-architecture-rules
+    load_rules:
+      - .claude/rules/efcore-persistence.md
+      - .claude/rules/application-layer.md
+    paths_in_scope:
+      - "Explore.Persistence/Repositories/**/*.cs"
+      - "Explore.Application/Features/**/*.cs"
+      - "Explore.Application/Contracts/**/*.cs"
+    paths_forbidden:
+      - "Explore.Domain/**/*.cs"
+      - "Explore.Persistence/Migrations/**/*.cs"
+    minimum_tests:
+      - Event.Persistence.IntegrationTests
+      - Event.Application.UnitTests
+      - Event.Architecture.Tests
+    docs_to_update: []
+    pr_checklist:
+      - "Repository returns entity (IQueryable or IEnumerable of entity), not DTO"
+      - "Tenant isolation query filter preserved (not bypassed via IgnoreQueryFilters)"
+      - "Soft-delete filter preserved unless explicit inclusion is justified"
+      - "EventQuerySpecification mutations create new instances (immutable builder pattern)"
+      - "AsNoTracking() for read-only paths; tracked only when mutating"
+      - "Navigation loading is explicit (.Include / .ThenInclude or projection); no hidden lazy loading"
+    forbidden_without_approval:
+      - "IgnoreQueryFilters() without a test proving safety"
+      - "Replacing specification builder with ad-hoc LINQ that contradicts the existing pattern"
+    related_agents:
+      - clean-code-architect
+      - code-architecture-reviewer
+    related_intents:
+      - add-cqrs-handler
+      - add-ef-migration
+    verification_commands:
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet"
+
+  - id: blazor-component-affordance
+    title: "Toggle a Blazor component's mutation affordance (Edit/Delete button visibility)"
+    category: blazor
+    triggers:
+      - "show edit button when"
+      - "hide delete button"
+      - "gate blazor button"
+      - "blazor affordance"
+      - "show/hide UI action"
+      - "HAL-driven button"
+    must_read_docs:
+      - docs/BLAZOR.md
+      - docs/QUICK_REFERENCE.md
+      - docs/CODEBASE_INSIGHTS.md
+    load_skills:
+      - blazor-ui-conventions
+      - blazor-bff-patterns
+      - blazor-css-isolation
+    load_rules:
+      - .claude/rules/blazor-client.md
+    paths_in_scope:
+      - "Explore.Blazor.Client/**/*.razor"
+      - "Explore.Blazor.Client/**/*.razor.cs"
+      - "Explore.Blazor.Client/**/*.razor.css"
+      - "Explore.Blazor.Client/Helpers/HalResourceExtensions.cs"
+    paths_forbidden:
+      - "Explore.API/**/*.cs"
+      - "Explore.Application/**/*.cs"
+      - "Explore.Domain/**/*.cs"
+    minimum_tests:
+      - Explore.Blazor.Client.Tests
+      - Event.Architecture.Tests
+    docs_to_update: []
+    pr_checklist:
+      - "Button visibility gated by dto.HasHalLink(\"edit\") / dto.HasHalLink(\"delete\") helpers"
+      - "NO use of RoleHelper.CanManage, IsInRole, or claim inspection for per-resource gating"
+      - "Role/claim inspection permitted ONLY for NavMenu visibility or pre-API route guards"
+      - "MudBlazor v9 component usage (no v7/v8 APIs)"
+      - "CSS isolation (*.razor.css) with BEM naming; no bare global styles"
+    forbidden_without_approval:
+      - "Introducing ad-hoc role checks for per-resource actions"
+      - "Bypassing HAL link gating for performance shortcuts"
+    related_agents:
+      - blazor-component-architect
+      - frontend-error-fixer
+    related_intents:
+      - add-hal-link
+    verification_commands:
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+
+  - id: bff-auth-bug
+    title: "Debug and fix a BFF (Explore.Blazor) authentication or cookie/token bug"
+    category: auth
+    triggers:
+      - "auth not working"
+      - "401 in blazor"
+      - "cookie not sent"
+      - "token not forwarded"
+      - "BFF auth bug"
+      - "YARP proxy auth"
+      - "keycloak redirect loop"
+    must_read_docs:
+      - docs/SECURITY.md
+      - docs/BLAZOR.md
+      - docs/CODEBASE_INSIGHTS.md
+      - docs/AUTHORIZATION.md
+    load_skills:
+      - auth-patterns
+      - blazor-bff-patterns
+    load_rules:
+      - .claude/rules/blazor-server.md
+    paths_in_scope:
+      - "Explore.Blazor/**/*.cs"
+      - "Explore.Blazor/Program.cs"
+    paths_forbidden:
+      - "Explore.Domain/**/*.cs"
+      - "Explore.Persistence/Migrations/**/*.cs"
+    minimum_tests:
+      - Explore.Blazor.IntegrationTests
+      - Event.Architecture.Tests
+    docs_to_update: []
+    pr_checklist:
+      - "UserId extraction fallback order preserved: sub → nameidentifier → sid"
+      - "Token forwarding via YARP transform is intact (no silent drop)"
+      - "Cookie auth policy unchanged unless explicitly intended"
+      - "No token leaked to the browser (BFF-only pattern preserved)"
+    forbidden_without_approval:
+      - "Disabling HTTPS or cookie SameSite protections"
+      - "Storing tokens client-side"
+      - "Changing OIDC scopes without updating Keycloak + docs/SECURITY.md"
+    related_agents:
+      - auth-route-debugger
+      - auth-route-tester
+    related_intents:
+      - cerbos-policy-change
+    verification_commands:
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet"
+
+  - id: cerbos-policy-change
+    title: "Change Cerbos authorization policies"
+    category: authorization
+    triggers:
+      - "cerbos policy"
+      - "update permission"
+      - "change policy"
+      - "authorization rule"
+      - "derived role"
+    must_read_docs:
+      - docs/SECURITY.md
+      - docs/AUTHORIZATION.md
+      - docs/AUTHORIZATION_PATTERNS.md
+    load_skills:
+      - auth-patterns
+    load_rules: []
+    paths_in_scope:
+      - "cerbos/**"
+      - "Explore.API/**/*.cs"
+      - "Explore.Application/**/*.cs"
+    paths_forbidden:
+      - "Explore.Domain/**/*.cs"
+      - "Explore.Persistence/Migrations/**/*.cs"
+    minimum_tests:
+      - Event.API.IntegrationTests
+      - Event.Architecture.Tests
+    docs_to_update:
+      - docs/AUTHORIZATION.md
+      - docs/AUTHORIZATION_PATTERNS.md
+    pr_checklist:
+      - "Cerbos policy-check workflow (.github/workflows/cerbos-policy-check.yml) passes"
+      - "Derived roles cover every actor path"
+      - "AuthorizationParityTests passes (parity between Cerbos and attribute-based gates)"
+      - "No silent widening of permissions"
+      - "HAL link policies updated to match permission change"
+    forbidden_without_approval:
+      - "Widening permissions without explicit user approval"
+      - "Removing a policy without a replacement"
+      - "Disabling Cerbos in production profile"
+    related_agents:
+      - auth-route-tester
+      - code-architecture-reviewer
+    related_intents:
+      - add-write-endpoint
+      - add-hal-link
+      - bff-auth-bug
+    verification_commands:
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+
+  - id: openapi-contract-change
+    title: "Change the public API contract (new operation, schema change, versioning)"
+    category: api
+    triggers:
+      - "api contract change"
+      - "openapi change"
+      - "breaking api change"
+      - "bump api version"
+      - "new api operation"
+    must_read_docs:
+      - docs/API.md
+      - docs/API_CHANGELOG.md
+      - docs/GOVERNANCE.md
+      - docs/QUICK_REFERENCE.md
+    load_skills:
+      - cqrs-mediatr-guidelines
+      - clean-architecture-rules
+    load_rules:
+      - .claude/rules/api-controllers.md
+      - .claude/rules/application-layer.md
+      - .claude/rules/api-hateoas.md
+    paths_in_scope:
+      - "Explore.API/Controllers/**/*.cs"
+      - "Explore.API/Hateoas/**/*.cs"
+      - "Explore.Application/**/*.cs"
+      - "docs/API_CHANGELOG.md"
+    paths_forbidden:
+      - "Explore.Domain/**/*.cs"
+      - "Explore.Persistence/Migrations/**/*.cs"
+    minimum_tests:
+      - Event.API.IntegrationTests
+      - Event.Application.UnitTests
+      - Event.Architecture.Tests
+    docs_to_update:
+      - docs/API_CHANGELOG.md
+      - docs/API.md
+    pr_checklist:
+      - "Explicit route, route name, endpoint classification, ProducesResponseType — enforced by ApiContractArchitectureTests"
+      - "Operation IDs follow naming convention (NSwag consumer contract)"
+      - "Banned operation names avoided"
+      - "docs/API_CHANGELOG.md entry added (semver-aligned)"
+      - "If breaking: bump MAJOR and provide migration note"
+      - "NSwag client regenerated for Blazor.Client if consumer-affected"
+    forbidden_without_approval:
+      - "Breaking change without explicit user approval"
+      - "Removing an operation still advertised in a HAL link"
+      - "Changing operation IDs that external consumers depend on"
+    related_agents:
+      - clean-code-architect
+      - code-architecture-reviewer
+      - documentation-architect
+    related_intents:
+      - add-get-endpoint
+      - add-write-endpoint
+      - add-hal-link
+    verification_commands:
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"

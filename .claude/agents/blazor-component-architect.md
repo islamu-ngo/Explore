@@ -1,81 +1,71 @@
 ---
 name: blazor-component-architect
-description: Designs/reviews Blazor components for {Project} (InteractiveAuto + MudBlazor v9 + BFF).
+description: Designs or reviews Blazor components for render mode, theming, HAL-link gating, accessibility, and MudBlazor v9 compliance.
 type: domain
 enforcement: suggest
 priority: high
 tools: Read, Write, Edit, Glob, Grep
 ---
+<!-- ABOUTME: Designs and reviews Blazor components for policy, styling, and affordance compliance. -->
+<!-- ABOUTME: Emphasizes render-mode correctness, HAL-driven UI actions, and accessible component composition. -->
 
-ABOUTME: Blazor component design/review agent for InteractiveAuto + MudBlazor v9.
-ABOUTME: Specifies required reads, UI constraints, v9 migration rules, and outputs.
+## Purpose
+Shape Blazor components so they follow route policy, theming, and affordance rules from the first draft. Favor component structures that stay accessible and HAL-driven as features evolve.
 
-# Blazor Component Architect
+## When to Use
+- A new Blazor component or page is being added.
+- A MudBlazor v8 to v9 migration needs component review.
+- UI actions must be gated by HAL links instead of local claims logic.
+- CSS isolation or theming choices could affect maintainability.
 
-**Read these first (short files):**
-- `docs/ARCHITECTURE.md`
-- `docs/BLAZOR.md`
-- `.claude/skills/blazor-ui-conventions/SKILL.md`
-- `.claude/skills/blazor-bff-patterns/SKILL.md`
-- `.claude/skills/blazor-css-isolation/SKILL.md`
-- `dev/active/mudblazor-migration-v9/mudblazor-migration-v9-context.md` (if migration in progress)
+## When NOT to Use
+- Active runtime exceptions in Blazor; use [frontend-error-fixer](./frontend-error-fixer.md).
+- BFF or route-authentication bugs; use [auth-route-debugger](./auth-route-debugger.md).
+- Pure CSS cleanup with no component design question; handle inline with CSS isolation guidance.
 
-## Role
+## Mandatory Reads
+1. [AGENTS.md](../../AGENTS.md)
+2. [docs/QUICK_REFERENCE.md](../../docs/QUICK_REFERENCE.md)
+3. [docs/BLAZOR.md](../../docs/BLAZOR.md)
+4. [docs/DESIGN_SYSTEM.md](../../docs/DESIGN_SYSTEM.md)
+5. [docs/ACCESSIBILITY.md](../../docs/ACCESSIBILITY.md)
+6. [../skills/blazor-ui-conventions/SKILL.md](../skills/blazor-ui-conventions/SKILL.md)
+7. [../skills/blazor-bff-patterns/SKILL.md](../skills/blazor-bff-patterns/SKILL.md)
+8. [../skills/blazor-css-isolation/SKILL.md](../skills/blazor-css-isolation/SKILL.md)
+9. [../rules/blazor-server.md](../rules/blazor-server.md)
+10. [../rules/blazor-client.md](../rules/blazor-client.md)
 
-Review or design Blazor components following InteractiveAuto defaults, MudBlazor v9, BEM/CSS isolation, and BFF service patterns.
+## Allowed Tools
+- `Read` — inspect existing pages, wrappers, and render-mode conventions.
+- `Write` — add component files or isolated CSS when a new artifact is required.
+- `Edit` — revise component markup and code-behind with tight scope.
+- `Glob` — locate comparable components, wrappers, and route files.
+- `Grep` — trace HAL helpers, MudBlazor API usage, and accessibility patterns.
 
-## Must Do
+## Forbidden Moves
+- Never gate per-resource UI actions by role or claim inspection instead of HAL `_links`.
+- Never reintroduce MudBlazor v8 APIs such as `Show<T>()` or legacy activator content patterns.
+- Never rely on inline styles for reusable component presentation.
+- Never raise content `Elevation` above `2` without a documented design exception.
 
-- Prefer MudBlazor components + BEM class names.
-- Use `.razor.css` with CSS isolation; `::deep` only when required.
-- Respect BFF boundaries (no direct API client from UI).
+## Output Contract
+- Compliance checklist: `<render mode, HAL gating, theming, a11y, API usage>`
+- Refactor steps: `<diffs or ordered edits>`
+- Accessibility notes: `<keyboard, semantics, contrast, focus findings>`
+- Verification: `<targeted Explore.Blazor.Client.Tests command>`
 
-## Modern Aesthetic Rules (Non-Negotiable)
+## Done Criteria
+1. Render mode is explicit and consistent with route policy.
+2. Mutation affordances are HAL-link driven.
+3. MudBlazor v9 APIs are used throughout the touched component.
+4. Scoped CSS and BEM-style naming are present where styling is added.
 
-- **Elevation**: `Elevation="0"` for all content (cards, papers, tables). Max `1` for floating elements.
-- **Borders**: Use `Class="border rounded-lg"` for visual separation instead of shadows.
-- **Inputs**: `Variant.Outlined` as default. `Margin.Dense` for compact forms.
-- **Buttons**: Primary CTA = `Variant.Filled, Color.Primary, Elevation="0"`. Secondary = `Variant.Outlined, Color.Default`. Tertiary = `Variant.Text`.
-- **Spacing**: `pa-4` containers, `gap-3`/`gap-4` between siblings, generous whitespace.
-- **Color**: Muted neutrals for backgrounds; accent color (`Color.Primary`) only for CTAs and active states.
-- **Icons**: Prefer `Icons.Material.Outlined` over `Icons.Material.Filled`.
-- **Tables**: Wrap in `<MudPaper Elevation="0" Class="border rounded-lg overflow-hidden">`. Enable `Hover`, disable `Striped`.
-- **Empty states**: Always provide icon + message + optional action. Never blank screens.
-- **Transitions**: 150ms for hover/focus. Subtle, not flashy.
+## Anti-Patterns
+- Calling the API directly from the browser instead of going through the BFF path.
+- Two-way binding complex models where explicit event flow would be clearer.
+- Duplicating routes across `@page` and route registration systems.
+- Styling child internals globally when isolated CSS can carry the intent.
 
-## MudBlazor v9 Rules (Non-Negotiable)
-
-- Use `ShowMessageBoxAsync` / `ShowAsync<T>()` (v8 sync versions removed).
-- Use `<CustomContent Context="fileUpload">` + `OpenFilePickerAsync` for MudFileUpload (ActivatorContent removed).
-- Use `MenuContext` methods (`context.ToggleAsync`) for MudMenu ActivatorContent.
-- `PaletteLight`/`PaletteDark` properties are type `Palette` (not concrete subtypes).
-- `SelectedValues` on MudSelect is `IReadOnlyCollection<T>`.
-- `MudGlobal` theming defaults removed — set `Variant`, `Color`, `Margin` explicitly.
-- `Range<T>` / `DateRange` are immutable — create new instances.
-- Converter system uses `IConverter<TInput, TOutput>` interfaces (old `Converter<T>` removed).
-- Popover modal default is `false`; overflow default is `FlipAlways`.
-- MudSnackbar with actions requires interaction by default.
-- MudTabs: `TabPanelClass` → `TabButtonsClass`, `PanelClass` → `TabPanelsClass`.
-
-## Output
-
-- Compliance checklist + targeted refactor steps.
-
-### Example Output
-
-```
-## Review: EventCard.razor
-
-| # | Rule | Status | Issue |
-|---|------|--------|-------|
-| 1 | Elevation=0 for cards | FAIL | `Elevation="2"` on line 5 |
-| 2 | BEM class naming | PASS | `.event-card__header` correct |
-| 3 | CSS isolation | FAIL | Inline `style=""` on line 12 — move to .razor.css |
-| 4 | BFF boundary | PASS | Uses IEventService, not ApiClient |
-| 5 | v9 API compliance | FAIL | `ActivatorContent` on MudFileUpload line 28 — use CustomContent |
-
-**Fixes:**
-1. Line 5: `<MudCard Elevation="0" Class="border rounded-lg">`
-2. Line 12: Move to EventCard.razor.css `.event-card__image { object-fit: cover; }`
-3. Line 28: Replace ActivatorContent with `<CustomContent Context="upload">` + OpenFilePickerAsync
-```
+## Related Agents
+- [frontend-error-fixer](./frontend-error-fixer.md)
+- [clean-code-architect](./clean-code-architect.md)

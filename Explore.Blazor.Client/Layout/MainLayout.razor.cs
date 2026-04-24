@@ -4,7 +4,7 @@
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
-using Explore.Blazor.Client.Models.Appearance;
+
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -27,7 +27,7 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     private bool _hideChrome;
     private bool _showCommunityGuidelinesLink = true;
     private string _brandDisplayName = string.Empty;
-    private AvailableThemeModel? _activeTheme;
+    private AvailableThemeDto? _activeTheme;
 
     [Inject]
     protected IUserService UserService { get; set; } = null!;

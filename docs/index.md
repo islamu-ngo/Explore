@@ -23,6 +23,19 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 - [NAMING_CONVENTIONS.md](NAMING_CONVENTIONS.md) - naming rules for entities, CQRS, services, tests.
 - [TEMPLATE_GLOSSARY.md](TEMPLATE_GLOSSARY.md) - placeholder syntax used in generic templates.
 - [CONTRIBUTING.md](CONTRIBUTING.md) - contribution workflow and validation steps.
+- [DOCUMENTATION_STYLE_GUIDE.md](DOCUMENTATION_STYLE_GUIDE.md) - documentation writing rules.
+- [BLAZOR_DEV_WORKFLOW.md](BLAZOR_DEV_WORKFLOW.md) - stop → build → run → wait → inspect loop for Blazor visual verification.
+
+## AI Agent Contribution Context
+- [../AGENTS.md](../AGENTS.md) - tool-neutral entrypoint, Contribution Contract, rule authority, cold-start flow.
+- [../CLAUDE.md](../CLAUDE.md) - Claude Code-specific bootloader.
+- [../.claude/contract/README.md](../.claude/contract/README.md) - Contribution Contract (eight questions every change must answer).
+- [../.claude/contract/intents.yaml](../.claude/contract/intents.yaml) - intent → context map (paths, rules, skills, tests, docs).
+- [../.claude/rules/README.md](../.claude/rules/README.md) - path-scoped rule files auto-loaded by editing scope.
+- [../.claude/skills/_SKILL_SCHEMA.md](../.claude/skills/_SKILL_SCHEMA.md) - schema every migrated `SKILL.md` follows.
+- [../.claude/agents/_AGENT_SCHEMA.md](../.claude/agents/_AGENT_SCHEMA.md) - schema every subagent file follows.
+- [../.claude/benchmarks/README.md](../.claude/benchmarks/README.md) - cold-start agent benchmark scenarios.
+- [../dev/_journal/README.md](../dev/_journal/README.md) - durable findings log + promotion rules.
 
 ## Runtime And Operations
 - [CONFIGURATION.md](CONFIGURATION.md) - environment/config settings and secret providers.

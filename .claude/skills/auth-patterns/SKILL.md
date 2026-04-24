@@ -1,46 +1,86 @@
 ---
 name: auth-patterns
-description: Guidelines for authentication and authorization patterns covering OIDC, JWT, and BFF security in .NET Clean Architecture projects.
-type: domain
+description: Apply project authentication and authorization rules for BFF token handling, JWT validation, claim extraction, and handler-level access checks.
+type: pattern
 enforcement: suggest
 priority: critical
 ---
-
-ABOUTME: Authentication/authorization rules and claim extraction.
-ABOUTME: Read referenced resources before applying.
-
-# Authentication & Authorization Patterns
-
-> **Project-Agnostic Authentication & Authorization Guide**
->
-> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../docs/TEMPLATE_GLOSSARY.md).
+<!-- ABOUTME: Authentication and authorization rules for BFF cookies, JWT validation, Keycloak claims, endpoint protection, and HAL-based UI affordances. -->
+<!-- ABOUTME: Keeps tokens out of the browser, preserves claim extraction order, and aligns API, handler, and client authorization behavior. -->
 
 ## Purpose
-Standard rules for OIDC/JWT + BFF. Keep tokens server-side, enforce endpoint auth, normalize claim extraction.
+Use this skill for browser-to-BFF-to-API authentication flow, endpoint protection defaults, claim extraction, and resource authorization behavior. It keeps security logic consistent across controllers, handlers, and HAL-driven clients.
 
-## When This Skill Activates
-- Keywords: auth, jwt, oidc, keycloak, authorize, claim
-- File patterns: `*Controller.cs`, `*Program.cs`
+## When to Load
+- Keywords: auth, JWT, OIDC, Keycloak, authorize, claim, audience, authorized party, cookie forwarding.
+- File patterns: `*Controller.cs`, `*Program.cs`, `**/Authorization/**/*.cs`, `Explore.API/**/*.cs`, `Explore.Blazor/**/*.cs`.
+- Intent IDs: `add-write-endpoint`, `add-get-endpoint`, `add-hal-link`, `blazor-component-affordance`.
 
-## Non‑Inferable Rules (Must Follow)
-- **BFF boundary**: Browser never sees tokens; BFF stores tokens in HttpOnly cookies and forwards Bearer to API.
-- **Endpoint auth**: `GET` = `[AllowAnonymous]`, write = `[Authorize]`, admin = `[Authorize(Roles = "Admin")]`.
-- **Ownership**: Resource ownership checks live in handlers (not controllers).
-- **UserId fallback**: `sub` → `nameidentifier` → `sid` (must use this order).
-- **JWT validation**: Validate issuer + audience, and check both `aud` and `azp` (Keycloak authorized party) claims. Multi‑client audiences: `islamu-event-api`, `islamu-event-blazor`. Clock skew tolerance: 5 minutes.
-- **MediatR AuthorizationBehavior**: Resource‑level auth uses `IAuthorizedRequest` interface or `[AuthorizeResource]` attribute. `ISecureRequest` provides dynamic resource context. Denied → `AuthorizationException` → `403 Forbidden` via chained `IExceptionHandler`.
-- **HATEOAS authorization**: Implements a high-performance **4-phase pipeline** (Candidate → Normalize → Batch → Materialize). `HateoasAuthorizationEvaluator` deduplicates and batch-evaluates permissions. Fail‑closed: on batch failure, permission‑bound links are denied.
-- **UI Action Gating**: The API's `_links` object is the **single source of truth** for client UI affordances. Clients must render "Edit/Delete" buttons based on link presence, not by local role/claim inspection.
-- **Security headers**: `SecurityHeadersMiddleware` adds `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, CSP, Permissions-Policy to every response. Non-GET responses also get `Cache-Control: no-store`.
+## When NOT to Load
+- Not for pure Blazor rendering, theming, or dialog issues; use [../blazor-ui-conventions/SKILL.md](../blazor-ui-conventions/SKILL.md).
+- Not for non-auth CQRS structure work where access rules are unchanged; use [../cqrs-mediatr-guidelines/SKILL.md](../cqrs-mediatr-guidelines/SKILL.md).
 
-## Resources (Read Before Applying)
-- [user-id-extraction.md](resources/user-id-extraction.md) — fallback extraction pattern
-- [api-jwt-validation.md](resources/api-jwt-validation.md) — JWT validation + middleware order
+## Must-Read Docs
+- [../../../docs/SECURITY.md](../../../docs/SECURITY.md)
+- [../../../docs/API.md](../../../docs/API.md)
+- [../../../docs/AUTHORIZATION.md](../../../docs/AUTHORIZATION.md)
+- [../../../docs/QUICK_REFERENCE.md](../../../docs/QUICK_REFERENCE.md)
+
+## Top 5 Invariants
+1. The browser never sees tokens because the BFF stores them in HttpOnly cookies and forwards a `Bearer` token to the API.
+2. User ID extraction follows `sub` then `nameidentifier` then `sid`, and a missing user identifier yields `401 Unauthorized`.
+3. JWT validation checks both `aud` and `azp` with a five-minute clock skew, and authorized audiences include `islamu-event-api` and `islamu-event-blazor`.
+4. Endpoint defaults are `GET` with `[AllowAnonymous]`, writes with `[Authorize]`, and admin operations with `[Authorize(Roles = "Admin")]`, while ownership checks stay in handlers through `IAuthorizedRequest`, `[AuthorizeResource]`, or `ISecureRequest`.
+5. HATEOAS authorization follows the Candidate, Normalize, Batch, and Materialize pipeline and fails closed, making `_links` the only client-side source of truth for action gating.
+
+## Top 5 Anti-Patterns
+1. Storing tokens in `localStorage` or `sessionStorage` bypasses the BFF boundary and weakens browser-side security.
+2. Gating UI actions with role or claim inspection instead of HAL `_links` drifts from the server authorization contract.
+3. Logging raw JWTs leaks secrets into traces, logs, and support artifacts.
+4. Disabling the `Tenant` query filter during runtime request handling creates cross-tenant authorization and data-isolation bugs.
+5. Validating only `aud` or only `azp` allows unauthorized clients to present otherwise valid tokens.
+
+## Minimal Examples
+```csharp
+public static class ClaimsPrincipalExtensions
+{
+    public static string GetRequiredUserId(this ClaimsPrincipal user)
+    {
+        string? userId = user.FindFirstValue("sub")
+            ?? user.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? user.FindFirstValue("sid");
+
+        return string.IsNullOrWhiteSpace(userId)
+            ? throw new UnauthorizedAccessException("Missing user id claim.")
+            : userId;
+    }
+}
+```
+
+```csharp
+public sealed record UpdateEventCommand(Guid EventId, string Title)
+    : IAuthorizedRequest<BaseCommandResponse<Guid>>;
+
+public sealed class UpdateEventHandler(IEventRepository repository)
+{
+    public async Task<BaseCommandResponse<Guid>> Handle(
+        UpdateEventCommand request,
+        CancellationToken cancellationToken)
+    {
+        Event entity = await repository.GetRequiredAsync(request.EventId, cancellationToken);
+        entity.Rename(request.Title);
+        await repository.UpdateAsync(entity, cancellationToken);
+        return new BaseCommandResponse<Guid>(entity.Id, true, "Updated");
+    }
+}
+```
+
+## Verification Hooks
+- `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet --filter FullyQualifiedName~Event.Architecture.Tests.AuthorizationParityTests`
+- `dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet`
+- `dotnet build --configuration Release --verbosity quiet`
 
 ## Related Skills
-- `clean-architecture-rules`
-- `blazor-bff-patterns`
-
-## Related Documentation
-- [`docs/API.md`](../../../docs/API.md) — Full middleware pipeline, rate limiting, HATEOAS authorization
-- [`docs/SECURITY.md`](../../../docs/SECURITY.md) — Security headers, CORS, JWT config
+- [../clean-architecture-rules/SKILL.md](../clean-architecture-rules/SKILL.md)
+- [../cqrs-mediatr-guidelines/SKILL.md](../cqrs-mediatr-guidelines/SKILL.md)
+- [../blazor-bff-patterns/SKILL.md](../blazor-bff-patterns/SKILL.md)

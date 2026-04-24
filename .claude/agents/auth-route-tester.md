@@ -1,36 +1,65 @@
 ---
 name: auth-route-tester
-description: Tests authenticated API endpoints for auth/authz regressions.
+description: Runs and extends protected-endpoint integration tests when auth, rate limiting, timeout, or conditional request behavior must be verified.
 type: diagnostic
 enforcement: suggest
 priority: high
 tools: Bash, Read, Write
 ---
+<!-- ABOUTME: Exercises protected-route test coverage for authentication, authorization, and related HTTP policies. -->
+<!-- ABOUTME: Adds or updates integration tests without changing the application code under test. -->
 
-ABOUTME: Testing agent for authenticated API endpoints and auth regressions.
-ABOUTME: Defines required reads, test matrix rules, and outputs.
+## Purpose
+Harden protected-route coverage in integration tests so auth and authz regressions are caught before merge. Focus on endpoint behavior, headers, and policy outcomes rather than production code changes.
 
-# Auth Route Tester
+## When to Use
+- A new protected endpoint is added.
+- Middleware or pipeline changes could affect protected routes.
+- JWT or OIDC configuration changes need regression coverage.
+- Rate limiting, timeout, or conditional request behavior needs auth-aware tests.
 
-**Read these first (short files):**
-- `docs/SECURITY.md`
-- `docs/API.md`
-- `.claude/skills/auth-patterns/SKILL.md` (+ referenced resources)
-- `.claude/skills/cqrs-mediatr-guidelines/SKILL.md`
+## When NOT to Use
+- Architecture compliance review work; use [code-architecture-reviewer](./code-architecture-reviewer.md).
+- UI affordance gating in Blazor components; use [blazor-component-architect](./blazor-component-architect.md).
+- Root-cause diagnosis for existing 401 or 403 bugs; use [auth-route-debugger](./auth-route-debugger.md).
 
-## Role
+## Mandatory Reads
+1. [AGENTS.md](../../AGENTS.md)
+2. [docs/QUICK_REFERENCE.md](../../docs/QUICK_REFERENCE.md)
+3. [docs/SECURITY.md](../../docs/SECURITY.md)
+4. [docs/API.md](../../docs/API.md)
+5. [../skills/auth-patterns/SKILL.md](../skills/auth-patterns/SKILL.md)
+6. [../rules/tests.md](../rules/tests.md)
 
-Run a minimal, repeatable auth test matrix (public GETs, protected writes, invalid token, role/ownership checks). Use environment variables for secrets.
+## Allowed Tools
+- `Bash` — run Release test commands with explicit `--project` usage.
+- `Read` — inspect existing fixtures, endpoint contracts, and assertion patterns.
+- `Write` — add or replace integration test files or test bodies as needed.
 
-## Must Do
+## Forbidden Moves
+- Never modify the source project being tested.
+- Never use solution-level `dotnet test`.
+- Never omit the `--project` flag from verification commands.
+- Never keep generated TRX output as tracked repository content.
 
-- Use the user-id fallback pattern when inspecting claims.
-- Record expected HTTP status per endpoint (401/403/200).
-- Test rate limiting: verify 429 responses with Retry-After header for exceeded limits.
-- Test `Prefer: return=minimal` header strips HATEOAS `_links` from responses.
-- Test ETag/conditional requests: verify 304 Not Modified with matching `If-None-Match`.
-- Test timeout behavior: Lookup (10s), Default (30s), Complex (60s) policies.
+## Output Contract
+- Matrix: `<endpoint × expected status and headers>`
+- Evidence: `<relevant test output excerpts>`
+- New tests added: `<file paths>`
+- Verification: `<exact commands used>`
 
-## Output
+## Done Criteria
+1. Anonymous GET, unauthorized write, and forbidden write scenarios are covered where applicable.
+2. A rate-limit case asserts `429` plus `Retry-After` behavior.
+3. Release-mode test execution passes for the targeted project.
+4. No `Explore.*` production source files are changed.
 
-- A concise PASS/FAIL table with reproduction commands.
+## Anti-Patterns
+- Asserting only status codes while ignoring `WWW-Authenticate` or caching headers.
+- Writing happy-path tests without negative authorization paths.
+- Hardcoding tokens instead of using the project test fixture setup.
+- Adding broad tests that do not identify which policy actually failed.
+
+## Related Agents
+- [auth-route-debugger](./auth-route-debugger.md)
+- [codebase-verifier](./codebase-verifier.md)

@@ -1,55 +1,87 @@
 ---
 name: blazor-ui-conventions
-description: Comprehensive UI conventions for Blazor applications. Covers MudBlazor usage, BEM methodology, theming, component structure, state management, and render modes.
-type: ui
+description: Apply Blazor and MudBlazor v9 conventions for render modes, dialogs, HAL-driven actions, theming, and component communication.
+type: pattern
 enforcement: suggest
 priority: high
 ---
-
-ABOUTME: Blazor UI rules (MudBlazor, render modes, routing, state).
-ABOUTME: Read referenced resources before applying.
-
-# Blazor UI Conventions & MudBlazor Guidelines
-
-> **Project-Agnostic Blazor UI Patterns**
->
-> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../docs/TEMPLATE_GLOSSARY.md).
+<!-- ABOUTME: Blazor UI conventions for Razor components, MudBlazor v9 usage, render modes, HAL-driven affordances, and shared design-system wrappers. -->
+<!-- ABOUTME: Keeps Explore.Blazor and Explore.Blazor.Client aligned with InteractiveAuto, wrapper components, immutable state flows, and BFF-safe UI behavior. -->
 
 ## Purpose
-Lean rules for Blazor + MudBlazor + render modes + routing.
+Use this skill when editing Razor components, Blazor client code, dialogs, render-mode interactions, or shared UI wrappers. It keeps the client aligned with MudBlazor v9, HAL affordances, and the design-token system.
 
-## When This Skill Activates
-- Keywords: blazor, razor, mudblazor, render mode, dialog, state, theme
-- File patterns: `**/*.razor`, `**/*.razor.cs`, `**/*.Client/**/*.cs`
+## When to Load
+- Keywords: Blazor, Razor, MudBlazor, render mode, dialog, state, theme, wrapper component, HAL link.
+- File patterns: `**/*.razor`, `**/*.razor.cs`, `Explore.Blazor.Client/**/*.cs`, `Explore.Blazor/**/*.cs`.
+- Intent IDs: `blazor-component-affordance`, `add-hal-link`.
 
-## MudBlazor Version
-- **Current: MudBlazor v9** (.NET 8/9/10 compatible). See `resources/v9-migration.md` for the breaking-change reference.
+## When NOT to Load
+- Not for Blazor authentication or BFF transport issues; use [../blazor-bff-patterns/SKILL.md](../blazor-bff-patterns/SKILL.md) and [../auth-patterns/SKILL.md](../auth-patterns/SKILL.md).
+- Not for CSS-only edits where component structure and render-mode rules are unchanged; use [../blazor-css-isolation/SKILL.md](../blazor-css-isolation/SKILL.md).
 
-## Aesthetic Direction
-- **Neo-minimal**: clean surfaces, generous whitespace, soft rounded corners (`12px`), subtle shadows (`Elevation 0-1`), purposeful color.
-- Inspired by modern design systems: flat components, outlined inputs, muted neutrals, accent color only for CTAs.
-- See `theming.md` for the full `MudTheme` config and `mudblazor-usage.md` for per-component defaults.
+## Must-Read Docs
+- [../../../docs/BLAZOR.md](../../../docs/BLAZOR.md)
+- [../../../docs/ARCHITECTURE.md](../../../docs/ARCHITECTURE.md)
+- [../../../docs/DESIGN_SYSTEM.md](../../../docs/DESIGN_SYSTEM.md)
+- [../../../docs/ACCESSIBILITY.md](../../../docs/ACCESSIBILITY.md)
 
-## Non‑Inferable Rules (Must Follow)
-- Default render mode: **InteractiveAuto** (use InteractiveServer only for server‑only needs).
-- Avoid `HttpContext` in InteractiveAuto/WASM.
-- Use MudBlazor components over raw HTML.
-- BEM class naming for custom CSS (see blazor-css-isolation).
-- **Hierarchical Settings**: UI settings and governance follow a 5‑tier cascade (User → Group → Organization → Tenant → Instance). Use `HierarchicalSettingsResolver` for batch resolution with lock support.
-- Use `[Parameter]` + `EventCallback` for child → parent; `ParameterState<T>` only for custom MudBlazor base components.
-- Blazouter routes/guards defined centrally when used.
+## Top 5 Invariants
+1. The default render mode is `InteractiveAuto`, so `HttpContext` must not be used in InteractiveAuto or WASM execution paths.
+2. MudBlazor v9 APIs are required, including `ShowAsync<T>()`, `ShowMessageBoxAsync`, `CloseAsync`, `<CustomContent>` for `MudFileUpload`, unified `Palette`, and `IConverter<TInput,TOutput>`.
+3. HAL `_links` is the single source of truth for action affordances, so edit or delete buttons are gated by link presence rather than role or claim inspection.
+4. Child-to-parent communication uses `[Parameter]` and `EventCallback`, and immutable `Range<T>` or `DateRange` values are replaced rather than mutated.
+5. Theming flows through the three-tier token system and shared wrappers in `Explore.Blazor.Client/Components/Common/` instead of ad hoc component styling.
 
-## Resources (Read Before Applying)
-- [mudblazor-usage.md](resources/mudblazor-usage.md)
-- [component-design.md](resources/component-design.md)
-- [state-management.md](resources/state-management.md)
-- [render-modes.md](resources/render-modes.md)
-- [blazouter-routing.md](resources/blazouter-routing.md)
-- [bem-methodology.md](resources/bem-methodology.md)
-- [theming.md](resources/theming.md)
-- [common-patterns.md](resources/common-patterns.md)
+## Top 5 Anti-Patterns
+1. Using `HttpContext` in InteractiveAuto or WASM code paths causes runtime failures when the component executes outside the server request pipeline.
+2. Gating UI action buttons with roles or claims instead of HAL `_links` drifts from the API authorization contract.
+3. Using removed MudBlazor v8 APIs such as `Show<T>()`, `ShowMessageBox`, or `<ActivatorContent>` in file uploads causes v9 migration breakage.
+4. Calling the API directly from Blazor components instead of going through the BFF bypasses the security and tenancy boundary.
+5. Using heavy shadows or `Elevation > 2` for ordinary content cards fights the project visual system and makes wrappers inconsistent.
 
-## Related Documentation
-- [`docs/ARCHITECTURE.md`](../../../docs/ARCHITECTURE.md)
-- [`blazor-bff-patterns`](../blazor-bff-patterns/SKILL.md)
-- [`auth-patterns`](../auth-patterns/SKILL.md)
+## Minimal Examples
+```csharp
+@if (EventDto.HasHalLink("edit"))
+{
+    <AppButton Variant="Variant.Filled" OnClick="OpenEditDialogAsync">
+        Edit
+    </AppButton>
+}
+
+@code {
+    [Parameter] public EventListItemDto EventDto { get; set; } = default!;
+
+    private Task OpenEditDialogAsync() => Task.CompletedTask;
+}
+```
+
+```csharp
+public sealed class EventActions(IDialogService dialogService)
+{
+    public async Task OpenAsync(Guid eventId)
+    {
+        var parameters = new DialogParameters<EditEventDialog>
+        {
+            { x => x.EventId, eventId }
+        };
+
+        IDialogReference dialog = await dialogService.ShowAsync<EditEventDialog>(
+            "Edit event",
+            parameters);
+
+        await dialog.Result;
+    }
+}
+```
+
+## Verification Hooks
+- `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet --filter FullyQualifiedName~Event.Architecture.Tests.BlazorClientArchitectureTests`
+- `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`
+- `dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet`
+
+## Related Skills
+- [../blazor-bff-patterns/SKILL.md](../blazor-bff-patterns/SKILL.md)
+- [../blazor-css-isolation/SKILL.md](../blazor-css-isolation/SKILL.md)
+- [../design-system/SKILL.md](../design-system/SKILL.md)
+- [../auth-patterns/SKILL.md](../auth-patterns/SKILL.md)

@@ -1,0 +1,57 @@
+# ABOUTME: Validates the AI-context contract on PRs that touch agent, skill, rule, contract, or doc files.
+# ABOUTME: Runs AgentContext*Tests from Event.Architecture.Tests to block drift, dead links, schema violations, and duplication.
+
+name: agent-context
+
+on:
+  pull_request:
+    paths:
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - ".github/copilot-instructions.md"
+      - ".claude/**"
+      - "docs/**"
+      - "dev/_journal/README.md"
+      - "dev/_journal/FINDING_TEMPLATE.md"
+      - "dev/_journal/PROMOTION_RULES.md"
+      - "Event.Architecture.Tests/AgentContext*.cs"
+      - "Event.Architecture.Tests/ContextSystemHelpers.cs"
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - ".github/copilot-instructions.md"
+      - ".claude/**"
+      - "docs/**"
+      - "dev/_journal/README.md"
+      - "dev/_journal/FINDING_TEMPLATE.md"
+      - "dev/_journal/PROMOTION_RULES.md"
+
+jobs:
+  agent-context:
+    name: Validate AI-Context Contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore Event.Architecture.Tests/Event.Architecture.Tests.csproj
+
+      - name: Build
+        run: dotnet build Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --no-restore --verbosity quiet
+
+      # TUnit runs as an executable; we run only this project.
+      # Non-context tests in this project are expected to pass as well; if any unrelated failure blocks the PR,
+      # fix those in a dedicated change rather than relaxing this gate.
+      - name: Run Event.Architecture.Tests
+        run: dotnet test Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --no-build --verbosity quiet

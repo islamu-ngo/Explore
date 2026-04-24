@@ -2,8 +2,7 @@
 @* ABOUTME: Lists themes with palette previews and exposes Create, Edit, Delete actions via UiThemeEditorDialog. *@
 
 @using MudBlazor
-@using System.Net.Http.Json
-@using Explore.Blazor.Client.Models.Appearance
+@using Explore.Blazor.Client.Clients
 
 <div class="settings-section ui-theme-catalog">
     <div class="settings-section-header">
@@ -61,13 +60,13 @@
                                         @theme.DisplayName
                                     </MudText>
                                     <MudStack Row="true" Spacing="1">
-                                        @if (theme.IsDefault)
+                                        @if (theme.IsDefault == true)
                                         {
                                             <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">
                                                 Default
                                             </MudChip>
                                         }
-                                        @if (!theme.IsActive)
+                                        @if (theme.IsActive != true)
                                         {
                                             <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">
                                                 Inactive
@@ -78,29 +77,19 @@
                                 <MudText Typo="Typo.caption" Color="Color.Secondary">
                                     @(theme.ThemeKey)
                                 </MudText>
-                                <div class="ui-theme-catalog__swatches">
-                                    <span class="ui-theme-catalog__chip"
-                                          style="@($"background: {theme.LightPalette.Primary};")"
-                                          title="Light primary"></span>
-                                    <span class="ui-theme-catalog__chip"
-                                          style="@($"background: {theme.LightPalette.Surface}; border-color: {theme.LightPalette.LinesDefault};")"
-                                          title="Light surface"></span>
-                                    <span class="ui-theme-catalog__chip"
-                                          style="@($"background: {theme.DarkPalette.Primary};")"
-                                          title="Dark primary"></span>
-                                    <span class="ui-theme-catalog__chip"
-                                          style="@($"background: {theme.DarkPalette.Surface}; border-color: {theme.DarkPalette.LinesDefault};")"
-                                          title="Dark surface"></span>
-                                </div>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    Sort: @(theme.SortOrder ?? 0)
+                                </MudText>
                                 <MudStack Row="true" Spacing="1" Justify="Justify.FlexEnd">
                                     <MudIconButton Icon="@Icons.Material.Filled.Edit"
                                                    Size="Size.Small"
-                                                   OnClick="@(() => OpenEditDialogAsync(theme.Id))" />
+                                                   OnClick="@(() => OpenEditDialogAsync(theme.Id ?? Guid.Empty))"
+                                                   Disabled="@(theme.Id is null)" />
                                     <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                                    Size="Size.Small"
                                                    Color="Color.Error"
                                                    OnClick="@(() => DeleteAsync(theme))"
-                                                   Disabled="@(theme.IsDefault)" />
+                                                   Disabled="@(theme.IsDefault == true || theme.Id is null)" />
                                 </MudStack>
                             </MudStack>
                         </MudPaper>
@@ -114,12 +103,12 @@
 @code {
     [Parameter, EditorRequired] public bool IsPlatformCatalog { get; set; }
 
-    [Inject] private HttpClient Http { get; set; } = null!;
+    [Inject] private IEventApiClient ApiClient { get; set; } = null!;
     [Inject] private IDialogService DialogService { get; set; } = null!;
     [Inject] private ISnackbar Snackbar { get; set; } = null!;
     [Inject] private ILogger<UiThemeCatalogSection> Logger { get; set; } = null!;
 
-    private List<UiThemeListItemModel>? _themes;
+    private List<UiThemeListItemDto>? _themes;
     private bool _loading = true;
     private bool _activeOnly;
 
@@ -133,15 +122,14 @@
         _loading = true;
         try
         {
-            var url = $"/api/admin/ui-themes?IsPlatformCatalog={IsPlatformCatalog.ToString().ToLowerInvariant()}&ActiveOnly={_activeOnly.ToString().ToLowerInvariant()}";
-            var themes = await Http.GetFromJsonAsync<List<UiThemeListItemModel>>(url);
-            _themes = themes ?? new List<UiThemeListItemModel>();
+            var themes = await ApiClient.GetUiThemeCatalogAsync(IsPlatformCatalog, _activeOnly);
+            _themes = themes?.ToList() ?? new List<UiThemeListItemDto>();
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to load UI theme catalog");
             Snackbar.Add($"Could not load themes: {ex.Message}", Severity.Error);
-            _themes = new List<UiThemeListItemModel>();
+            _themes = new List<UiThemeListItemDto>();
         }
         finally
         {
@@ -172,9 +160,10 @@
 
     private async Task OpenEditDialogAsync(Guid id)
     {
+        if (id == Guid.Empty) return;
         try
         {
-            var details = await Http.GetFromJsonAsync<UiThemeDetailsModel>($"/api/admin/ui-themes/{id}");
+            var details = await ApiClient.GetUiThemeDetailsAsync(id);
             if (details is null)
             {
                 Snackbar.Add("Theme could not be loaded.", Severity.Warning);
@@ -206,9 +195,9 @@
         }
     }
 
-    private async Task DeleteAsync(UiThemeListItemModel theme)
+    private async Task DeleteAsync(UiThemeListItemDto theme)
     {
-        var id = theme.Id;
+        var id = theme.Id ?? Guid.Empty;
         if (id == Guid.Empty) return;
 
         var confirm = await DialogService.ShowMessageBoxAsync(
@@ -221,17 +210,14 @@
 
         try
         {
-            using var response = await Http.DeleteAsync($"/api/admin/ui-themes/{id}");
-            if (response.IsSuccessStatusCode)
-            {
-                Snackbar.Add("Theme deleted.", Severity.Success);
-                await ReloadAsync();
-            }
-            else
-            {
-                var body = await response.Content.ReadAsStringAsync();
-                Snackbar.Add($"Delete failed ({(int)response.StatusCode}): {body}", Severity.Error);
-            }
+            await ApiClient.DeleteUiThemeAsync(id);
+            Snackbar.Add("Theme deleted.", Severity.Success);
+            await ReloadAsync();
+        }
+        catch (ApiException ex)
+        {
+            Logger.LogError(ex, "Failed to delete theme {ThemeId}", id);
+            Snackbar.Add($"Delete failed ({ex.StatusCode}): {ex.Message}", Severity.Error);
         }
         catch (Exception ex)
         {

@@ -3,20 +3,19 @@
 
 using System.Net.Http.Json;
 using Explore.Blazor.Client.Clients;
-using Explore.Blazor.Client.Models.Appearance;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Services;
 
 public interface IAppearanceThemeService
 {
-    MudTheme CreateTheme(string appbarHeight, AvailableThemeModel? activeTheme = null);
+    MudTheme CreateTheme(string appbarHeight, AvailableThemeDto? activeTheme = null);
     Task<bool> ResolveInitialDarkModeAsync(bool? serverHint, MudThemeProvider themeProvider);
     Task PersistThemeModeAsync(bool isDarkMode, CancellationToken cancellationToken = default);
     Task<string> ResolveInitialDirectionAsync();
     Task PersistDirectionAsync(string direction, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<AvailableThemeModel>> GetAvailableThemesAsync(CancellationToken cancellationToken = default);
-    Task<AvailableThemeModel?> ResolveActiveThemeAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<AvailableThemeDto>> GetAvailableThemesAsync(CancellationToken cancellationToken = default);
+    Task<AvailableThemeDto?> ResolveActiveThemeAsync(CancellationToken cancellationToken = default);
 }
 
 public sealed class AppearanceThemeService : IAppearanceThemeService
@@ -111,7 +110,7 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
         _logger = logger;
     }
 
-    public MudTheme CreateTheme(string appbarHeight, AvailableThemeModel? activeTheme = null)
+    public MudTheme CreateTheme(string appbarHeight, AvailableThemeDto? activeTheme = null)
     {
         var light = activeTheme?.LightPalette is { } lightDto ? ComposeLight(lightDto) : BuiltInLight;
         var dark = activeTheme?.DarkPalette is { } darkDto ? ComposeDark(darkDto) : BuiltInDark;
@@ -225,21 +224,21 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
         }
     }
 
-    public async Task<IReadOnlyList<AvailableThemeModel>> GetAvailableThemesAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<AvailableThemeDto>> GetAvailableThemesAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            var themes = await _httpClient.GetFromJsonAsync<IReadOnlyList<AvailableThemeModel>>("/bff/ui-themes", cancellationToken);
-            return themes ?? Array.Empty<AvailableThemeModel>();
+            var themes = await _httpClient.GetFromJsonAsync<IReadOnlyList<AvailableThemeDto>>("/bff/ui-themes", cancellationToken);
+            return themes ?? Array.Empty<AvailableThemeDto>();
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Error loading available UI themes from the BFF.");
-            return Array.Empty<AvailableThemeModel>();
+            return Array.Empty<AvailableThemeDto>();
         }
     }
 
-    public async Task<AvailableThemeModel?> ResolveActiveThemeAsync(CancellationToken cancellationToken = default)
+    public async Task<AvailableThemeDto?> ResolveActiveThemeAsync(CancellationToken cancellationToken = default)
     {
         var themes = await GetAvailableThemesAsync(cancellationToken);
         if (themes.Count == 0)
@@ -270,59 +269,59 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
         return themes.FirstOrDefault(t => t.IsDefault == true) ?? themes[0];
     }
 
-    private static PaletteLight ComposeLight(UiThemePaletteModel dto) => new()
+    private static PaletteLight ComposeLight(UiThemePaletteDto dto) => new()
     {
-        Primary = dto.Primary,
-        Secondary = dto.Secondary,
+        Primary = dto.Primary ?? BuiltInLight.Primary.ToString(),
+        Secondary = dto.Secondary ?? BuiltInLight.Secondary.ToString(),
         Black = BuiltInLight.Black,
-        AppbarText = dto.AppbarText,
-        AppbarBackground = dto.AppbarBackground,
-        Background = dto.Background,
-        Surface = dto.Surface,
-        DrawerBackground = dto.DrawerBackground,
-        DrawerText = dto.DrawerText,
-        DrawerIcon = dto.DrawerIcon,
+        AppbarText = dto.AppbarText ?? BuiltInLight.AppbarText.ToString(),
+        AppbarBackground = dto.AppbarBackground ?? BuiltInLight.AppbarBackground.ToString(),
+        Background = dto.Background ?? BuiltInLight.Background.ToString(),
+        Surface = dto.Surface ?? BuiltInLight.Surface.ToString(),
+        DrawerBackground = dto.DrawerBackground ?? BuiltInLight.DrawerBackground.ToString(),
+        DrawerText = dto.DrawerText ?? BuiltInLight.DrawerText.ToString(),
+        DrawerIcon = dto.DrawerIcon ?? BuiltInLight.DrawerIcon.ToString(),
         GrayLight = BuiltInLight.GrayLight,
         GrayLighter = BuiltInLight.GrayLighter,
-        TextPrimary = dto.TextPrimary,
-        TextSecondary = dto.TextSecondary,
-        Info = dto.Info,
-        Success = dto.Success,
-        Warning = dto.Warning,
-        Error = dto.Error,
-        LinesDefault = dto.LinesDefault,
-        TableLines = dto.LinesDefault,
-        Divider = dto.Divider,
+        TextPrimary = dto.TextPrimary ?? BuiltInLight.TextPrimary.ToString(),
+        TextSecondary = dto.TextSecondary ?? BuiltInLight.TextSecondary.ToString(),
+        Info = dto.Info ?? BuiltInLight.Info.ToString(),
+        Success = dto.Success ?? BuiltInLight.Success.ToString(),
+        Warning = dto.Warning ?? BuiltInLight.Warning.ToString(),
+        Error = dto.Error ?? BuiltInLight.Error.ToString(),
+        LinesDefault = dto.LinesDefault ?? BuiltInLight.LinesDefault.ToString(),
+        TableLines = dto.LinesDefault ?? BuiltInLight.TableLines.ToString(),
+        Divider = dto.Divider ?? BuiltInLight.Divider.ToString(),
         OverlayLight = BuiltInLight.OverlayLight
     };
 
-    private static PaletteDark ComposeDark(UiThemePaletteModel dto) => new()
+    private static PaletteDark ComposeDark(UiThemePaletteDto dto) => new()
     {
-        Primary = dto.Primary,
-        Secondary = dto.Secondary,
-        Surface = dto.Surface,
-        Background = dto.Background,
+        Primary = dto.Primary ?? BuiltInDark.Primary.ToString(),
+        Secondary = dto.Secondary ?? BuiltInDark.Secondary.ToString(),
+        Surface = dto.Surface ?? BuiltInDark.Surface.ToString(),
+        Background = dto.Background ?? BuiltInDark.Background.ToString(),
         BackgroundGray = BuiltInDark.BackgroundGray,
-        AppbarText = dto.AppbarText,
-        AppbarBackground = dto.AppbarBackground,
-        DrawerBackground = dto.DrawerBackground,
+        AppbarText = dto.AppbarText ?? BuiltInDark.AppbarText.ToString(),
+        AppbarBackground = dto.AppbarBackground ?? BuiltInDark.AppbarBackground.ToString(),
+        DrawerBackground = dto.DrawerBackground ?? BuiltInDark.DrawerBackground.ToString(),
         ActionDefault = BuiltInDark.ActionDefault,
         ActionDisabled = BuiltInDark.ActionDisabled,
         ActionDisabledBackground = BuiltInDark.ActionDisabledBackground,
-        TextPrimary = dto.TextPrimary,
-        TextSecondary = dto.TextSecondary,
+        TextPrimary = dto.TextPrimary ?? BuiltInDark.TextPrimary.ToString(),
+        TextSecondary = dto.TextSecondary ?? BuiltInDark.TextSecondary.ToString(),
         TextDisabled = BuiltInDark.TextDisabled,
-        DrawerIcon = dto.DrawerIcon,
-        DrawerText = dto.DrawerText,
+        DrawerIcon = dto.DrawerIcon ?? BuiltInDark.DrawerIcon.ToString(),
+        DrawerText = dto.DrawerText ?? BuiltInDark.DrawerText.ToString(),
         GrayLight = BuiltInDark.GrayLight,
         GrayLighter = BuiltInDark.GrayLighter,
-        Info = dto.Info,
-        Success = dto.Success,
-        Warning = dto.Warning,
-        Error = dto.Error,
-        LinesDefault = dto.LinesDefault,
-        TableLines = dto.LinesDefault,
-        Divider = dto.Divider,
+        Info = dto.Info ?? BuiltInDark.Info.ToString(),
+        Success = dto.Success ?? BuiltInDark.Success.ToString(),
+        Warning = dto.Warning ?? BuiltInDark.Warning.ToString(),
+        Error = dto.Error ?? BuiltInDark.Error.ToString(),
+        LinesDefault = dto.LinesDefault ?? BuiltInDark.LinesDefault.ToString(),
+        TableLines = dto.LinesDefault ?? BuiltInDark.TableLines.ToString(),
+        Divider = dto.Divider ?? BuiltInDark.Divider.ToString(),
         OverlayLight = BuiltInDark.OverlayLight
     };
 }

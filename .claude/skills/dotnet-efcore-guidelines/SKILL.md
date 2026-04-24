@@ -1,47 +1,79 @@
 ---
 name: dotnet-efcore-guidelines
-description: Entity Framework Core best practices for Clean Architecture projects. Covers DbContext, entity configurations, repository pattern, migrations, and PostgreSQL-specific features.
-type: domain
+description: Apply project EF Core conventions for repositories, DbContext setup, query filters, migrations, and seeded lookup data.
+type: pattern
 enforcement: suggest
 priority: high
 ---
-
-ABOUTME: EF Core rules aligned with Clean Architecture.
-ABOUTME: Read referenced resources before applying.
-
-# .NET + Entity Framework Core Guidelines
-
-> **Project-Agnostic EF Core Patterns**
->
-> Placeholders use `{Placeholder}` syntax - see [docs/TEMPLATE_GLOSSARY.md](../../../docs/TEMPLATE_GLOSSARY.md).
+<!-- ABOUTME: EF Core guidance for Explore.Persistence repositories, DbContext configuration, migrations, query filters, and PostgreSQL-aligned data access. -->
+<!-- ABOUTME: Keeps persistence entity-first, tenant-safe, soft-delete-aware, and consistent with lookup seeding and migration discipline. -->
 
 ## Purpose
-EF Core conventions aligned with Clean Architecture + PostgreSQL.
+Use this skill when changing repositories, `ExploreDbContext`, EF configurations, migrations, or PostgreSQL-specific persistence behavior. It keeps runtime tenant isolation and data-shaping rules aligned with Application-layer expectations.
 
-## When This Skill Activates
-- Keywords: ef core, dbcontext, repository, migration, postgres
-- File patterns: `**/Persistence/**/*.cs`, `**/*DbContext.cs`, `**/Configurations/**/*.cs`
+## When to Load
+- Keywords: EF Core, DbContext, repository, migration, PostgreSQL, query filter, configuration, seed data.
+- File patterns: `Explore.Persistence/**/*.cs`, `**/*DbContext.cs`, `**/Configurations/**/*.cs`, `Explore.Persistence/Migrations/**/*.cs`.
+- Intent IDs: `add-ef-migration`, `update-repository-query`, `add-cqrs-handler`.
 
-## Non‑Inferable Rules (Must Follow)
-- Repositories return **entities**, not DTOs.
-- Default values **not** in domain entities (use handlers or EF config).
-- Lookup IDs use `int`, main entities use `Guid`.
-- Link table nav props are **readonly**; writes via repository.
-- EF Core **named query filters** for soft delete (`SoftDelete`) and tenancy (`Tenant`). Prefer the project query-filter extensions or `IgnoreQueryFilters([QueryFilterNames.SoftDelete])` to include deleted rows while keeping tenant isolation intact.
-- **Pooled DbContext factory**: `ExploreDbContext` uses pooling. Scoped services (`TenantContext`, `CurrentUserService`) are set via **property injection** after creation — not constructor injection. Both can be `null` during migrations/seeding.
-- **Snake case naming**: PostgreSQL convention. Configured via Npgsql naming conventions.
-- **Specification Pattern**: Complex queries use `IQuerySpecification<T>`. Repository applies specification filters to `IQueryable<T>`.
-- **Npgsql resilience**: Retry 3 attempts with 5s delay, 30s command timeout, split query behavior.
+## When NOT to Load
+- Not for Application-layer CQRS structure and handler design; use [../cqrs-mediatr-guidelines/SKILL.md](../cqrs-mediatr-guidelines/SKILL.md).
+- Not for pure Domain entity design or dependency-boundary questions; use [../clean-architecture-rules/SKILL.md](../clean-architecture-rules/SKILL.md).
 
-## Resources (Read Before Applying)
-- [dbcontext-patterns.md](resources/dbcontext-patterns.md)
-- [entity-configuration.md](resources/entity-configuration.md)
-- [repository-pattern.md](resources/repository-pattern.md)
-- [querying-patterns.md](resources/querying-patterns.md)
-- [migrations.md](resources/migrations.md)
-- [named-query-filters.md](resources/named-query-filters.md)
+## Must-Read Docs
+- [../../../docs/ARCHITECTURE.md](../../../docs/ARCHITECTURE.md)
+- [../../../docs/DOMAIN.md](../../../docs/DOMAIN.md)
+- [../../../docs/QUICK_REFERENCE.md](../../../docs/QUICK_REFERENCE.md)
 
-## Related Documentation
-- [`docs/DOMAIN.md`](../../../docs/DOMAIN.md)
-- [`docs/ARCHITECTURE.md`](../../../docs/ARCHITECTURE.md)
-- [`clean-architecture-rules`](../clean-architecture-rules/SKILL.md)
+## Top 5 Invariants
+1. Repositories return entities rather than DTOs, and read-only paths should prefer `AsNoTracking()`.
+2. Named `SoftDelete` and `Tenant` query filters belong in `OnModelCreating`, and deleted-row inclusion should prefer `IgnoreQueryFilters([QueryFilterNames.SoftDelete])` so tenant isolation stays active.
+3. The pooled DbContext factory sets scoped services such as `TenantContext` and `CurrentUserService` through property injection, and both can be `null` during migrations or seeding.
+4. Applied migrations are never edited or removed, and corrective migrations should stay small, focused, and PascalCase verb-noun named.
+5. Lookup tables are seeded through `HasData()` in `IEntityTypeConfiguration<T>`, with enum, configuration, migration, and resulting SQL kept in sync.
+
+## Top 5 Anti-Patterns
+1. A repository returns a DTO, which leaks mapping into Persistence and weakens Application ownership.
+2. Domain entities carry default values for persistence behavior, which hides business intent that belongs in handlers or EF configuration.
+3. Runtime request paths disable the `Tenant` filter, which introduces tenant-isolation bugs that are hard to detect.
+4. A large unfocused migration mixes unrelated schema changes, which makes review, rollback, and diagnosis harder.
+5. A repository returns `IQueryable`, which exposes EF internals to higher layers and erodes architectural boundaries.
+
+## Minimal Examples
+```csharp
+public sealed class EventStatusConfiguration : IEntityTypeConfiguration<EventStatus>
+{
+    public void Configure(EntityTypeBuilder<EventStatus> builder)
+    {
+        builder.HasQueryFilter("SoftDelete", x => !x.IsDeleted);
+        builder.HasQueryFilter("Tenant", x => x.TenantId == TenantContext.CurrentTenantId);
+
+        builder.HasData(
+            new EventStatus { Id = 1, Name = "Draft" },
+            new EventStatus { Id = 2, Name = "Published" });
+    }
+}
+```
+
+```csharp
+public sealed class EventRepository(ExploreDbContext dbContext) : IEventRepository
+{
+    public async Task<IReadOnlyList<Event>> ListAsync(
+        IQuerySpecification<Event> specification,
+        CancellationToken cancellationToken)
+    {
+        IQueryable<Event> query = dbContext.Events.AsNoTracking();
+        query = specification.Apply(query);
+        return await query.ToListAsync(cancellationToken);
+    }
+}
+```
+
+## Verification Hooks
+- `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet --filter FullyQualifiedName~Event.Architecture.Tests.CleanArchitectureTests`
+- `dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet`
+- `dotnet build --configuration Release --verbosity quiet`
+
+## Related Skills
+- [../clean-architecture-rules/SKILL.md](../clean-architecture-rules/SKILL.md)
+- [../cqrs-mediatr-guidelines/SKILL.md](../cqrs-mediatr-guidelines/SKILL.md)

@@ -1,0 +1,270 @@
+# ABOUTME: Eight cold-start benchmark scenarios validating the ISLAMU Event AI-native contribution system.
+# ABOUTME: Each scenario is a self-contained task a fresh AI agent should be able to complete using only AGENTS.md + the context system.
+# Schema: see README.md §3. Validated by Event.Architecture.Tests.AgentContextIntentManifestTests.
+# Version: 1 (synthetic). Target: replace each with real issue-based scenario within 4–6 weeks.
+
+version: 1
+last_updated: "2026-04-24"
+owner: "context-system-maintainers"
+
+scenarios:
+  - id: add-get-endpoint
+    intent_id: add-get-endpoint
+    summary: |
+      Expose a new read-only listing endpoint with pagination, output cache, and HAL self-link.
+    prompt: |
+      Add a `GET /api/v1/resources/summaries` endpoint that returns a paginated list of
+      `ResourceSummaryDto` items. The endpoint must be publicly readable (no auth),
+      participate in output caching (ListData policy), emit HAL links (`self`, `next`, `prev`),
+      and use a named route `RouteNames.ResourceSummariesList`.
+    expected_must_reads:
+      - "AGENTS.md"
+      - "docs/QUICK_REFERENCE.md"
+      - "docs/API.md"
+      - ".claude/rules/api-controllers.md"
+      - ".claude/rules/api-hateoas.md"
+      - ".claude/skills/cqrs-mediatr-guidelines/SKILL.md"
+    expected_paths_in_scope:
+      - "Explore.API/Controllers/**/*.cs"
+      - "Explore.API/Hateoas/**/*.cs"
+      - "Explore.Application/Features/**/Queries/**/*.cs"
+      - "Explore.Application/Features/**/DTOs/**/*.cs"
+    expected_verification_commands:
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+    acceptance_criteria:
+      - "Controller action uses explicit `[HttpGet(\"resources/summaries\", Name = RouteNames.ResourceSummariesList)]`."
+      - "Controller action has `[AllowAnonymous]` attribute."
+      - "Controller action has `[OutputCache(PolicyName = \"ListData\")]`."
+      - "Query handler returns `PaginatedResult<ResourceSummaryDto>`."
+      - "Repository returns entities; DTO mapping happens in handler."
+      - "A new `ResourceSummariesLinkPolicy` emits `self`, `next`, `prev` via `yield return`."
+      - "`ApiContractArchitectureTests` passes."
+    notes: |
+      This scenario exercises the full read-path contract: routing, auth, caching, HATEOAS.
+      Expected agent classification: add-get-endpoint (not add-write-endpoint).
+
+  - id: add-hal-link
+    intent_id: add-hal-link
+    summary: |
+      Extend an existing link policy to emit a conditional `cancel` affordance.
+    prompt: |
+      Extend `EventDetailLinkPolicy` so that when an event's status is `Published` and the
+      current user is authorized via the `events:cancel` permission, a `cancel` HAL link is
+      returned. The link target must be `POST /api/v1/events/{id}/cancel` by route name.
+      Do not modify controllers or handlers.
+    expected_must_reads:
+      - "AGENTS.md"
+      - "docs/QUICK_REFERENCE.md"
+      - "docs/API.md"
+      - ".claude/rules/api-hateoas.md"
+      - ".claude/skills/auth-patterns/SKILL.md"
+    expected_paths_in_scope:
+      - "Explore.API/Hateoas/**/*.cs"
+    expected_paths_forbidden:
+      - "Explore.API/Controllers/**"
+      - "Explore.Application/**"
+      - "Explore.Persistence/**"
+    expected_verification_commands:
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet"
+    acceptance_criteria:
+      - "`EventDetailLinkPolicy` adds a `yield return` for `cancel` when status is Published and permission granted."
+      - "Link uses route name, not string URL."
+      - "Authorization evaluation uses the HATEOAS 4-phase pipeline; fail-closed on denial."
+      - "Integration test asserts the `cancel` link is present for authorized users and absent for anonymous/unauthorized callers."
+    notes: |
+      Agent must NOT add a controller — the cancel endpoint already exists. Common failure:
+      touching handlers to derive 'status' instead of using the DTO already assembled.
+
+  - id: add-cqrs-handler
+    intent_id: add-cqrs-handler
+    summary: |
+      Add a new CQRS command + handler + validator with manual instantiation.
+    prompt: |
+      Add a `ArchiveResourceCommand` that archives a resource by Guid. The handler must
+      validate manually (no DI for validators), call the repository to load the entity,
+      mark it archived, commit via `IUnitOfWork.ExecuteInTransactionAsync`, and return
+      `BaseCommandResponse<Guid>`. On validation failure, populate the response's `Errors`.
+    expected_must_reads:
+      - "AGENTS.md"
+      - "docs/QUICK_REFERENCE.md"
+      - "docs/ARCHITECTURE.md"
+      - ".claude/rules/application-layer.md"
+      - ".claude/skills/cqrs-mediatr-guidelines/SKILL.md"
+      - ".claude/skills/clean-architecture-rules/SKILL.md"
+    expected_paths_in_scope:
+      - "Explore.Application/Features/**/Commands/**/*.cs"
+      - "Explore.Application/Features/**/DTOs/**/*.cs"
+    expected_paths_forbidden:
+      - "Explore.Domain/**"
+      - "Explore.Persistence/Migrations/**"
+    expected_verification_commands:
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+    acceptance_criteria:
+      - "`ArchiveResourceCommand` is a record/class wrapping a DTO (not loose properties)."
+      - "`ArchiveResourceCommandValidator : AbstractValidator<...>` exists and is instantiated with `new` inside the handler."
+      - "Handler returns `BaseCommandResponse<Guid>`."
+      - "Handler uses `IUnitOfWork.ExecuteInTransactionAsync` for the write."
+      - "Handler maps entity to DTO (does not return the entity)."
+      - "`CqrsPatternTests` passes."
+
+  - id: add-ef-migration
+    intent_id: add-ef-migration
+    summary: |
+      Create a new table with UUIDv7 PK, auditing fields, and SoftDelete query filter.
+    prompt: |
+      Add a new entity `Announcement` with fields: `Id (Guid)`, `Title (string, 200)`,
+      `Body (string)`, `PublishedAt (DateTimeOffset)`, `TenantId (Guid)`, plus the standard
+      auditing fields. Configure `SoftDelete` and `Tenant` query filters. Generate a
+      migration named `AddAnnouncementTable`.
+    expected_must_reads:
+      - "AGENTS.md"
+      - "docs/QUICK_REFERENCE.md"
+      - "docs/DOMAIN.md"
+      - ".claude/rules/domain.md"
+      - ".claude/rules/efcore-persistence.md"
+      - ".claude/rules/efcore-migrations.md"
+      - ".claude/skills/dotnet-efcore-guidelines/SKILL.md"
+    expected_paths_in_scope:
+      - "Explore.Domain/**/*.cs"
+      - "Explore.Persistence/Configurations/**/*.cs"
+      - "Explore.Persistence/Migrations/**/*.cs"
+      - "Explore.Persistence/ExploreDbContext.cs"
+    expected_verification_commands:
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+    acceptance_criteria:
+      - "Entity has no default values in the domain class (no `= DateTimeOffset.UtcNow` etc.)."
+      - "Entity configuration uses `uuidv7()` as the PK default."
+      - "Entity configuration registers `SoftDelete` named query filter."
+      - "Entity configuration registers `Tenant` named query filter."
+      - "Migration name is `AddAnnouncementTable` (PascalCase verb-noun)."
+      - "No existing migrations edited or removed."
+
+  - id: update-repository-query
+    intent_id: update-repository-query
+    summary: |
+      Add a new filter to `EventQuerySpecification` preserving tenant isolation and AsNoTracking.
+    prompt: |
+      Add a `WithCategorySlug(string slug)` method to `EventQuerySpecification`. The method
+      must return a new `EventQuerySpecification` instance (immutable fluent builder).
+      Update the event-list query handler to pass the slug through from the request.
+    expected_must_reads:
+      - "AGENTS.md"
+      - "docs/QUICK_REFERENCE.md"
+      - "docs/ARCHITECTURE.md"
+      - ".claude/rules/efcore-persistence.md"
+      - ".claude/skills/cqrs-mediatr-guidelines/SKILL.md"
+      - ".claude/skills/dotnet-efcore-guidelines/SKILL.md"
+    expected_paths_in_scope:
+      - "Explore.Application/Features/**/*.cs"
+      - "Explore.Persistence/Repositories/**/*.cs"
+      - "Explore.Persistence/Specifications/**/*.cs"
+    expected_verification_commands:
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet"
+    acceptance_criteria:
+      - "`WithCategorySlug` returns a NEW specification instance (immutability preserved)."
+      - "Specification is composed into the handler via `.With*()` chain."
+      - "Repository uses `AsNoTracking()` on the read path."
+      - "Tenant query filter is NOT disabled anywhere in the new path."
+      - "Unit test for the specification composition passes."
+
+  - id: blazor-component-affordance
+    intent_id: blazor-component-affordance
+    summary: |
+      Gate a MudBlazor v9 Edit button by HAL `_links` presence, not role inspection.
+    prompt: |
+      In the event detail Blazor page, render an "Edit" MudButton only when the event DTO's
+      `_links` contains an `edit` entry. The button opens a MudDialog via `DialogService.ShowAsync<EditEventDialog>`.
+      Do NOT gate by role, claim, or `RoleHelper.CanManage`.
+    expected_must_reads:
+      - "AGENTS.md"
+      - "docs/QUICK_REFERENCE.md"
+      - "docs/BLAZOR.md"
+      - ".claude/rules/blazor-client.md"
+      - ".claude/skills/blazor-ui-conventions/SKILL.md"
+      - ".claude/skills/auth-patterns/SKILL.md"
+    expected_paths_in_scope:
+      - "Explore.Blazor.Client/**/*.razor"
+      - "Explore.Blazor.Client/**/*.razor.cs"
+      - "Explore.Blazor.Client/**/*.razor.css"
+    expected_paths_forbidden:
+      - "Explore.Application/**"
+      - "Explore.Persistence/**"
+      - "Explore.API/**"
+    expected_verification_commands:
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+    acceptance_criteria:
+      - "Button rendering is guarded by `@if (Event.HasHalLink(\"edit\"))` or equivalent helper."
+      - "No reference to `IsInRole`, `User.Claims`, or `RoleHelper.CanManage` in the component."
+      - "Dialog invocation uses v9 `ShowAsync<T>()` (not `Show<T>()`)."
+      - "Component uses BEM-scoped CSS in the matching `.razor.css` file."
+
+  - id: bff-auth-bug
+    intent_id: bff-auth-bug
+    summary: |
+      Fix a UserId fallback failure returning 401 on a valid Keycloak token.
+    prompt: |
+      The BFF is returning 401 for valid Keycloak-authenticated users. The token includes
+      `nameidentifier` but not `sub`. Diagnose and fix so the UserId extraction
+      falls through `sub` → `nameidentifier` → `sid` in that exact order.
+    expected_must_reads:
+      - "AGENTS.md"
+      - "docs/QUICK_REFERENCE.md"
+      - "docs/SECURITY.md"
+      - "docs/AUTHORIZATION.md"
+      - ".claude/rules/blazor-server.md"
+      - ".claude/skills/auth-patterns/SKILL.md"
+      - ".claude/skills/blazor-bff-patterns/SKILL.md"
+    expected_paths_in_scope:
+      - "Explore.Blazor/**/*.cs"
+      - "Explore.API/**/*.cs"
+    expected_verification_commands:
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet"
+    acceptance_criteria:
+      - "UserId extraction uses the exact fallback chain `sub` → `nameidentifier` → `sid`."
+      - "Missing UserId still returns 401 (not silently succeeds)."
+      - "Tokens remain server-side (no token stored in browser)."
+      - "Integration test asserts 200 on token with only `nameidentifier` claim."
+      - "No raw JWT is logged in any diagnostic output."
+
+  - id: cerbos-policy-change
+    intent_id: cerbos-policy-change
+    summary: |
+      Add a new Cerbos resource policy and verify AuthorizationParityTests passes.
+    prompt: |
+      Add a new Cerbos resource policy for `announcement` with actions `read`, `create`,
+      `update`, `delete`. `read` is public. `create`/`update`/`delete` require role
+      `AnnouncementManager`. Ensure `cerbos-policy-check` workflow passes and that
+      `AuthorizationParityTests` reflects the new resource.
+    expected_must_reads:
+      - "AGENTS.md"
+      - "docs/QUICK_REFERENCE.md"
+      - "docs/SECURITY.md"
+      - "docs/AUTHORIZATION.md"
+      - ".claude/skills/auth-patterns/SKILL.md"
+    expected_paths_in_scope:
+      - "cerbos/**/*.yaml"
+      - "Event.Architecture.Tests/**/*AuthorizationParityTests*.cs"
+    expected_verification_commands:
+      - "dotnet build --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet"
+      - "dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet"
+    acceptance_criteria:
+      - "New Cerbos resource policy YAML validates against Cerbos schema."
+      - "`read` is allowed for anonymous callers."
+      - "`create`/`update`/`delete` require role `AnnouncementManager`."
+      - "`AuthorizationParityTests` lists the new resource."
+      - "No existing policies weakened."

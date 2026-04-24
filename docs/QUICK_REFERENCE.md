@@ -96,3 +96,20 @@ All disabled in `Testing` environment.
 | `Default` | 30 seconds |
 | `Lookup` | 10 seconds |
 | `Complex` | 60 seconds |
+
+## Correct vs Wrong (Top 10 Violations)
+
+| # | Rule | Correct | Wrong |
+|---|---|---|---|
+| 1 | Repository return type | `Task<Event?> GetByIdAsync(Guid id)` returning the aggregate | `Task<EventDto?> GetByIdAsync(Guid id)` (leaks mapping into the repo) |
+| 2 | Validator lifetime | `var validator = new CreateEventValidator(); var result = await validator.ValidateAsync(cmd, ct);` | Constructor-injected `IValidator<T>` (DI-bound) |
+| 3 | ID types | `public int CountryId` (lookup), `public Guid Id` (aggregate), `public long Size` (bytes/cursor) | `public long CountryId` for a lookup FK |
+| 4 | GET auth attribute | `[HttpGet("events", Name = RouteNames.ListEvents)] [AllowAnonymous]` | `[HttpGet]` with no explicit route template or name |
+| 5 | User ID extraction | Helper that falls back `sub` → `nameidentifier` → `sid` (exact order) | `User.FindFirst(ClaimTypes.NameIdentifier)?.Value` alone |
+| 6 | UI action gating | `@if (dto.HasHalLink("edit")) { <AppButton /> }` driven by API `_links` | `@if (authState.User.IsInRole("Admin"))` (local claim check) |
+| 7 | Tenant filter override | `ctx.Events.IgnoreQueryFilters([QueryFilterNames.SoftDelete])` (named filter only) | `ctx.Events.IgnoreQueryFilters()` (drops Tenant filter — security bug) |
+| 8 | Specification builder | `var spec = new EventQuerySpecification().WithTitle(x).WithDate(y);` returns new instances | `spec.Title = x; spec.Date = y;` (mutates existing instance) |
+| 9 | Command response | `Task<BaseCommandResponse<Guid>> Handle(CreateEventCommand cmd, CancellationToken ct)` | `Task<EventDto> Handle(CreateEventCommand cmd)` (missing wrapper + no CT) |
+| 10 | HAL link policy | `yield return new LinkDefinition("edit", Url.Link(RouteNames.EditEvent, new { id })!, HttpMethods.Put);` | `links.Add(new LinkDefinition(...))` (list mutation instead of `yield return`) |
+
+These are enforced by `Event.Architecture.Tests` and the `.claude/rules/` path-scoped rule files — see [`.claude/rules/README.md`](../.claude/rules/README.md).
