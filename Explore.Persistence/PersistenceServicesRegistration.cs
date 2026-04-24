@@ -248,6 +248,7 @@ public static class PersistenceServicesRegistration
 
         // Configuration Audit Repositories
         services.AddScoped<IConfigurationChangeLogRepository, ConfigurationChangeLogRepository>();
+        services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 
         // Governance Policy Resolver (deterministic hierarchy walk: Instance → Tenant → Organization)
         services.AddScoped<IPolicyResolver, Services.PolicyResolver>();
