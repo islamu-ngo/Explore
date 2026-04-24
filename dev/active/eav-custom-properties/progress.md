@@ -22,7 +22,7 @@
 | **E Explicit Sync** | Phase 1a App (event) | ✅ 2026-04-24 | `bg_db54b281` / tests pass |
 | E | Phase 1b App (session) | ✅ 2026-04-24 | Same delegation, mirror code |
 | E | Phase 2 API Layer | ✅ 2026-04-24 | Controllers + HATEOAS policies on disk |
-| E | Phase 3 Blazor UI | ⚠️ PARTIAL | Pages compile; HAL gating deferred — see Gap 1 |
+| E | Phase 3 Blazor UI | ✅ 2026-04-24 | HAL gating applied + bUnit tests passing |
 | E | Phase 4 Integration Tests | ⏳ PENDING | `bg_debe3b3b` failed — retry needed |
 | **F Aggregate+Lexicon** | Phase 1 View Entity+SQL | ✅ 2026-04-24 | `bg_b434afda` |
 | F | Phase 2 DTOs+CQRS | ✅ 2026-04-24 | `bg_6d710714` retry / 59+ new tests |
@@ -59,12 +59,8 @@
 
 ## Known Gaps / Follow-ups
 
-### Gap 1 — Blazor HAL gating deferred (E Phase 3)
-- `EventTemplateSyncPage.razor` + session mirror currently gate Apply on `_diff is not null` with `TODO(hal)` comment.
-- Proper resolution options:
-  - **(A)** Wire API controllers to emit `HalResource<TemplateDiffDto>` via the existing `EventTemplateSyncLinkPolicy` + `EventTemplateSyncResource`, so the page can check a real link rel.
-  - **(B)** Convert `TemplateDiffDto` record to a class with `[JsonExtensionData] IDictionary<string, object>?` and add a targeted `HasHalLink` extension for it.
-- Preferred: Option A — policy and resource classes already exist on disk, just unused.
+### Gap 1 — Blazor HAL gating deferred (E Phase 3) ✅ CLOSED 2026-04-24
+- Resolved via Option A: API controllers now emit `HalResource<TemplateDiffDto>`, and Blazor pages gate the Apply button via `HasHalLink("sync-apply")`.
 
 ### Gap 2 — Cerbos substrate expansion side effects ✅ CLOSED 2026-04-24
 - The E API delegate expanded the Cerbos authorization substrate (`MachineScopeMapping`, `IMachinePrincipalAccessor`, `CerbosPrincipalBuilder`, `FallbackAuthorizationService`) beyond the `template_admin` policy it was tasked with.
@@ -76,18 +72,17 @@
 - Docker unavailable locally → cannot run `Event.Persistence.IntegrationTests` / `Event.API.IntegrationTests` in this environment; must retry via background agent with Docker.
 - Scope to cover: 9 scenarios × event + session sync (18 sync cases) + 5 aggregate-view scenarios (correctness, exposure ceilings, module gating, tenant isolation) = 23 minimum cases.
 
-### Gap 4 — Placeholder Blazor test stubs
-- `EventTemplateSyncPageTests.cs` + session mirror each contain a single `Page_TypeExists` TUnit assertion as a compile-green placeholder.
-- Full bUnit coverage is deferred with `TODO(templatesync-tests)` tag, unblocked once Gap 1 is resolved (real HAL link rel to assert against).
+### Gap 4 — Placeholder Blazor test stubs ✅ CLOSED 2026-04-24
+- Implemented full bUnit coverage (6 scenarios each) for both sync pages, asserting HAL link presence/absence, slug confirmation, and 409 conflict banners.
 
 ---
 
 ## Remaining Work Queue (priority-ordered)
 
 1. **Retry Integration tests delegation** — highest value remaining, covers Gap 3.
-2. Fix HAL wiring (Gap 1) — one controller/resource edit; unblocks Gap 4.
+2. Fix HAL wiring (Gap 1) — ✅ closed (API controllers emit HAL diffs).
 3. Cerbos test fixtures (Gap 2) — ✅ closed via `BlazorTestContext` machine-principal stub.
-4. Expand Blazor sync page bUnit coverage (Gap 4) — once Gap 1 landed.
+4. Expand Blazor sync page bUnit coverage (Gap 4) — ✅ closed (6 bUnit tests per page).
 5. Cleanup Phase 7 — remove stale `MetadataJson` / JSONB references.
 6. Cleanup Phase 9.x — Blazor definition governance + template mgmt UIs.
 7. Cleanup Phase 11 + 10.0 — architecture tests for Layer 2 vs Layer 3 discovery; API roundtrip tests.
