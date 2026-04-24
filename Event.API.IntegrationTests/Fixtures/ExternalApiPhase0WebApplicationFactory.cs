@@ -381,7 +381,7 @@ public sealed class ExternalApiPhase0WebApplicationFactory : WebApplicationFacto
 
         public string Secret { get; init; } = string.Empty;
 
-        public Guid TenantId { get; init; }
+        public Guid? TenantId { get; init; }
 
         public ExternalApiKeyOwnerType OwnerType { get; init; } = ExternalApiKeyOwnerType.User;
 
