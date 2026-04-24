@@ -183,6 +183,8 @@ public partial class ExploreDbContext
 
     // ===== Contact Share Consents =====
     public DbSet<EventContactShareConsent> EventContactShareConsents { get; set; }
+    public DbSet<EventContactShareExport> EventContactShareExports { get; set; }
+    public DbSet<EventContactShareExportItem> EventContactShareExportItems { get; set; }
 
     // ===== Idempotency =====
     public DbSet<IdempotencyRecord> IdempotencyRecords { get; set; }
