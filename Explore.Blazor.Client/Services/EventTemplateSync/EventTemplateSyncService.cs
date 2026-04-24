@@ -17,11 +17,10 @@ public sealed class EventTemplateSyncService : IEventTemplateSyncService
         _httpClient = httpClient;
     }
 
-    public async Task<BaseCommandResponse<TemplateDiffDto>> GetDiffAsync(Guid eventId, int templateVersion, CancellationToken cancellationToken = default)
+    public async Task<TemplateDiffDto?> GetDiffAsync(Guid eventId, int templateVersion, CancellationToken cancellationToken = default)
     {
-        var response = await _httpClient.GetFromJsonAsync<BaseCommandResponse<TemplateDiffDto>>(
+        return await _httpClient.GetFromJsonAsync<TemplateDiffDto>(
             $"api/events/{eventId}/template-sync/diff?templateVersion={templateVersion}", cancellationToken);
-        return response ?? throw new InvalidOperationException("Failed to read diff response.");
     }
 
     public async Task<BaseCommandResponse<TemplateSyncOutcomeDto>> ApplySyncAsync(Guid eventId, EventTemplateSyncApplyRequest request, CancellationToken cancellationToken = default)

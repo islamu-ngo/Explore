@@ -9,7 +9,7 @@ namespace Explore.Blazor.Client.Services.EventSessionTemplateSync;
 
 public interface IEventSessionTemplateSyncService
 {
-    Task<BaseCommandResponse<TemplateDiffDto>> GetDiffAsync(Guid sessionId, int templateVersion, CancellationToken cancellationToken = default);
+    Task<TemplateDiffDto?> GetDiffAsync(Guid sessionId, int templateVersion, CancellationToken cancellationToken = default);
     Task<BaseCommandResponse<TemplateSyncOutcomeDto>> ApplySyncAsync(Guid sessionId, EventSessionTemplateSyncApplyRequest request, CancellationToken cancellationToken = default);
     Task<PaginatedResult<EventSessionTemplateSyncHistoryItemDto>> GetHistoryAsync(Guid sessionId, int page = 1, int pageSize = 20, CancellationToken cancellationToken = default);
 }

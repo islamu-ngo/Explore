@@ -20,8 +20,7 @@
 <div class="template-sync-page">
     <div class="template-sync-page__header d-flex justify-space-between align-center mb-4">
         <MudText Typo="Typo.h5">Template Sync</MudText>
-        @* TODO(hal): Gate on HAL `sync-apply` link once the API attaches _links via EventTemplateSyncLinkPolicy/EventTemplateSyncResource. Until the controller emits HAL, the server-side `template_admin` policy already enforces affordance (a successful diff fetch proves authorization). *@
-        @if (_diff is not null && TotalSelected > 0)
+        @if (_diff?.Links?.ContainsKey("sync-apply") == true && TotalSelected > 0)
         {
             <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="OpenApplyDialogAsync" Class="template-sync-page__apply-button" aria-label="Apply Sync Plan">
                 Apply Sync (@TotalSelected changes)
@@ -101,8 +100,7 @@
         _hasStaleError = false;
         try
         {
-            var response = await TemplateSyncService.GetDiffAsync(EventId, TemplateVersion ?? 0);
-            _diff = response.Id; // BaseCommandResponse TKey slot carries the payload; see TODO(hal) in markup for proper HAL link wrapping.
+            _diff = await TemplateSyncService.GetDiffAsync(EventId, TemplateVersion ?? 0);
             _selectedChanges.Clear();
         }
         catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Conflict)

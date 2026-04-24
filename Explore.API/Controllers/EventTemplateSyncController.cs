@@ -5,11 +5,14 @@ using Asp.Versioning;
 using Explore.API.Attributes;
 using Explore.API.Extensions;
 using Explore.API.Hateoas;
+using Explore.API.Hateoas.Resources;
 using Explore.API.Models;
+using Explore.Application.Contracts.Hateoas;
 using Explore.Application.DTOs.EventTemplateSync;
 using Explore.Application.Features.EventTemplateSync.Commands.ApplyEventTemplateSync;
 using Explore.Application.Features.EventTemplateSync.Queries.GetEventTemplateDiff;
 using Explore.Application.Features.EventTemplateSync.Queries.GetEventTemplateSyncHistory;
+using Explore.Application.Hateoas;
 using Explore.Application.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -27,23 +30,30 @@ namespace Explore.API.Controllers;
 public sealed class EventTemplateSyncController : ExploreControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IHateoasLinkGenerator _linkGenerator;
+    private readonly ILinkPolicy<EventTemplateSyncResource> _syncLinkPolicy;
 
-    public EventTemplateSyncController(IMediator mediator)
+    public EventTemplateSyncController(
+        IMediator mediator,
+        IHateoasLinkGenerator linkGenerator,
+        ILinkPolicy<EventTemplateSyncResource> syncLinkPolicy)
     {
         _mediator = mediator;
+        _linkGenerator = linkGenerator;
+        _syncLinkPolicy = syncLinkPolicy;
     }
 
     /// <summary>
     /// Compute the event-template diff for a requested target template version.
     /// </summary>
     [HttpGet("{eventId:guid}/template-sync/diff", Name = RouteNames.GetEventTemplateSyncDiff)]
-    [ProducesResponseType(typeof(TemplateDiffDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(HalResource<TemplateDiffDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<BaseCommandResponse<TemplateDiffDto>>> GetDiff(
+    public async Task<ActionResult<HalResource<TemplateDiffDto>>> GetDiff(
         Guid eventId,
         [FromQuery(Name = "templateVersion")] int templateVersion,
         CancellationToken cancellationToken = default)
@@ -52,7 +62,28 @@ public sealed class EventTemplateSyncController : ExploreControllerBase
             new GetEventTemplateDiffQuery(eventId, templateVersion),
             cancellationToken);
 
-        return Ok(response);
+        var diff = response.Id;
+        var hasChanges =
+            diff.AddedDefinitions.Count > 0 ||
+            diff.ModifiedDefinitions.Count > 0 ||
+            diff.RetiredDefinitions.Count > 0 ||
+            diff.AddedOptions.Count > 0 ||
+            diff.ModifiedOptions.Count > 0 ||
+            diff.RetiredOptions.Count > 0;
+
+        var resource = new EventTemplateSyncResource(eventId, diff.TargetTemplateVersion, hasChanges);
+        var halResource = new HalResource<TemplateDiffDto>(diff);
+
+        foreach (var linkDef in _syncLinkPolicy.GetLinks(resource, User))
+        {
+            var halLink = _linkGenerator.GenerateLink(linkDef, HttpContext);
+            if (halLink is not null)
+            {
+                halResource.WithLink(linkDef.Rel, halLink);
+            }
+        }
+
+        return Ok(halResource);
     }
 
     /// <summary>
