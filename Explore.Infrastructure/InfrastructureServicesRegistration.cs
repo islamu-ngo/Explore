@@ -68,6 +68,10 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<IAdminContext>(sp => sp.GetRequiredService<AdminContext>());
         services.AddScoped<IAdminCacheInvalidator>(sp => sp.GetRequiredService<AdminContext>());
 
+        // Machine principal accessor: reads API-key-derived principal context from the current HttpContext.
+        // Required so authorization providers (Cerbos + fallback) treat external API-key callers consistently with human users.
+        services.AddScoped<IMachinePrincipalAccessor, MachinePrincipalAccessor>();
+
         // Claims transformation: enriches ClaimsPrincipal with DB-resolved admin authority.
         // Claims are serialized to Blazor WASM via AddAuthenticationStateSerialization.
         services.AddTransient<IClaimsTransformation, AdminClaimsTransformation>();

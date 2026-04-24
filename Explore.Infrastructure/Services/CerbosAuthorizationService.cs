@@ -30,6 +30,7 @@ public class CerbosAuthorizationService : IAuthorizationProvider
     private readonly ICerbosClient _client;
     private readonly CerbosPrincipalBuilder _principalBuilder;
     private readonly IAdminContext _adminContext;
+    private readonly IMachinePrincipalAccessor _machinePrincipalAccessor;
     private readonly IHierarchicalSettingsResolver _resolver;
     private readonly ITenantContext _tenantContext;
     private readonly ICerbosClientFactory _clientFactory;
@@ -40,6 +41,7 @@ public class CerbosAuthorizationService : IAuthorizationProvider
         ICerbosClient client,
         CerbosPrincipalBuilder principalBuilder,
         IAdminContext adminContext,
+        IMachinePrincipalAccessor machinePrincipalAccessor,
         IHierarchicalSettingsResolver resolver,
         ITenantContext tenantContext,
         ICerbosClientFactory clientFactory,
@@ -49,6 +51,7 @@ public class CerbosAuthorizationService : IAuthorizationProvider
         _client = client;
         _principalBuilder = principalBuilder;
         _adminContext = adminContext;
+        _machinePrincipalAccessor = machinePrincipalAccessor;
         _resolver = resolver;
         _tenantContext = tenantContext;
         _clientFactory = clientFactory;
@@ -139,15 +142,17 @@ public class CerbosAuthorizationService : IAuthorizationProvider
         CancellationToken cancellationToken)
     {
         var userId = _adminContext.UserId;
-        if (userId == null)
+        var machineContext = _machinePrincipalAccessor.Current;
+
+        if (userId is null && machineContext is null)
         {
-            _logger.LogWarning("Cerbos auth denied: no user id in admin context");
+            _logger.LogWarning("Cerbos auth denied: no user id and no machine principal in admin context");
             return DenyAll(checks.Count);
         }
 
         var requestId = RequestId.Generate();
         var correlationId = Activity.Current?.Id ?? string.Empty;
-        var principal = await _principalBuilder.BuildSdkPrincipalAsync(userId.Value, cancellationToken);
+        var principal = await _principalBuilder.BuildPrincipalAsync(userId, cancellationToken);
         var resourceEntries = BuildResourceEntries(checks);
 
         _logger.LogDebug(

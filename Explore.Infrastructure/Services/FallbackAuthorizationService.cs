@@ -17,6 +17,7 @@ namespace Explore.Infrastructure.Services;
 public partial class FallbackAuthorizationService : IAuthorizationProvider
 {
     private readonly IAdminContext _adminContext;
+    private readonly IMachinePrincipalAccessor _machinePrincipalAccessor;
     private readonly IHierarchicalSettingsResolver _resolver;
     private readonly ITenantContext _tenantContext;
     private readonly ILogger<FallbackAuthorizationService> _logger;
@@ -52,11 +53,13 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
 
     public FallbackAuthorizationService(
         IAdminContext adminContext,
+        IMachinePrincipalAccessor machinePrincipalAccessor,
         IHierarchicalSettingsResolver resolver,
         ITenantContext tenantContext,
         ILogger<FallbackAuthorizationService> logger)
     {
         _adminContext = adminContext;
+        _machinePrincipalAccessor = machinePrincipalAccessor;
         _resolver = resolver;
         _tenantContext = tenantContext;
         _logger = logger;
@@ -69,7 +72,14 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
         IDictionary<string, object>? resourceAttributes = null,
         CancellationToken cancellationToken = default)
     {
-        // Instance admins can do everything
+        if (_machinePrincipalAccessor.IsMachineCaller)
+        {
+            bool machineDecision = await EvaluateMachineCallerAccessAsync(
+                resourceKind, resourceId, action, resourceAttributes, cancellationToken);
+            LogDecision(machineDecision ? "allow" : "deny", "machine_caller", resourceKind, resourceId, action);
+            return machineDecision;
+        }
+
         if (await _adminContext.IsInstanceAdminAsync(cancellationToken))
         {
             LogDecision("allow", "instance_admin", resourceKind, resourceId, action);
