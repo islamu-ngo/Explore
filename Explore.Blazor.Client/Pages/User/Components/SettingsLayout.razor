@@ -1,5 +1,6 @@
 @using MudBlazor
 @using Microsoft.AspNetCore.Components
+@inject NavigationManager Navigation
 
 <div class="settings-layout">
     <MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
@@ -31,6 +32,10 @@
                                      Text="Notifications" 
                                      Class="@GetNavItemClass("notifications")"
                                      OnClick="@(() => SelectSection("notifications"))" />
+                        <MudListItem Icon="@Icons.Material.Filled.Link" 
+                                     Text="Connected Apps" 
+                                     Class="@GetNavItemClass("connected-apps")"
+                                     OnClick="@(() => SelectSection("connected-apps"))" />
                         <MudListItem Icon="@Icons.Material.Filled.Palette" 
                                      Text="Appearance" 
                                      Class="@GetNavItemClass("appearance")"
@@ -67,6 +72,10 @@
                     {
                         <SettingsNotifications />
                     }
+                    else if (CurrentSection == "connected-apps")
+                    {
+                        <SettingsConnectedApps />
+                    }
                     else if (CurrentSection == "appearance")
                     {
                         <SettingsAppearance />
@@ -82,8 +91,55 @@
 </div>
 
 @code {
+    private static readonly string[] AllowedSections =
+    {
+        "personal", "security", "privacy", "notifications",
+        "connected-apps", "appearance", "api-keys"
+    };
+
     private string CurrentSection { get; set; } = "personal";
     private bool _showMobileMenu = true;
+
+    protected override void OnInitialized()
+    {
+        // Respect ?section= query parameter for deep links (e.g., from EventRegistration)
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var section = ParseSectionFromQuery(uri.Query);
+        if (section is not null && Array.IndexOf(AllowedSections, section) >= 0)
+        {
+            CurrentSection = section;
+            _showMobileMenu = false;
+        }
+    }
+
+    private static string? ParseSectionFromQuery(string query)
+    {
+        if (string.IsNullOrEmpty(query))
+        {
+            return null;
+        }
+
+        var trimmed = query.StartsWith('?') ? query[1..] : query;
+        foreach (var pair in trimmed.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var eq = pair.IndexOf('=');
+            if (eq <= 0)
+            {
+                continue;
+            }
+
+            var key = Uri.UnescapeDataString(pair[..eq]);
+            if (!string.Equals(key, "section", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var value = Uri.UnescapeDataString(pair[(eq + 1)..]);
+            return string.IsNullOrWhiteSpace(value) ? null : value;
+        }
+
+        return null;
+    }
 
     private void SelectSection(string section)
     {

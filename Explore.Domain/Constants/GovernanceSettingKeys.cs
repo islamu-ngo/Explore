@@ -224,6 +224,7 @@ public static class GovernanceSettingKeys
         public const string LockStorage = "governance.lock_tenant_storage";
         public const string LockAnalytics = "governance.lock_tenant_analytics";
         public const string LockAiAssistant = "governance.lock_tenant_ai_assistant";
+        public const string LockMessaging = "governance.lock_tenant_messaging";
     }
 
     public static class Policies
@@ -281,5 +282,22 @@ public static class GovernanceSettingKeys
         public const string LockTenantSocialLinks = "footer.lock_tenant_social_links";
         public const string LockTenantDescription = "footer.lock_tenant_description";
         public const string LockTenantCopyright = "footer.lock_tenant_copyright";
+    }
+
+    public static class Messaging
+    {
+        public const string Provider = "messaging.provider";
+        public const string Enabled = "messaging.enabled";
+        public const string HostName = "messaging.host_name";
+        public const string Port = "messaging.port";
+        public const string UserName = "messaging.user_name";
+        public const string Password = "messaging.password";
+        public const string VirtualHost = "messaging.virtual_host";
+        public const string MaxInboundMessageBodySize = "messaging.max_inbound_message_body_size";
+        public const string CircuitBreakerFailureThreshold = "messaging.circuit_breaker_failure_threshold";
+        public const string CircuitBreakerBreakDurationSeconds = "messaging.circuit_breaker_break_duration_seconds";
+        public const string RetryAttempts = "messaging.retry_attempts";
+        public const string EnableOpenTelemetry = "messaging.enable_open_telemetry";
+        public const string EnableCompression = "messaging.enable_compression";
     }
 }
