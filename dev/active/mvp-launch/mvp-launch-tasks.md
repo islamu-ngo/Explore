@@ -1,9 +1,9 @@
 ABOUTME: Checklist for all MVP launch work packages with acceptance criteria and release gates.
-ABOUTME: Organized by tier for incremental delivery. Revised 2026-03-29 with architect review feedback.
+ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24 with codebase audit findings (25 WPs, 7 gates).
 
 # MVP Launch — Task Checklist
 
-> **Last Updated:** 2026-03-29 (architect review incorporated)
+> **Last Updated:** 2026-04-24 (25 WPs, 7 gates, 6 tiers)
 
 ---
 
@@ -24,18 +24,45 @@ ABOUTME: Organized by tier for incremental delivery. Revised 2026-03-29 with arc
 
 ### Gate C — Registration Truthfulness
 - [ ] User registers successfully
-- [ ] UI shows accurate message
-- [ ] Outbox row created atomically
-- [ ] Processor dispatches message
+- [ ] UI shows accurate message (no false promises)
+- [ ] Outbox row created atomically with registration
+- [ ] Background processor dispatches the message
 - [ ] Email sent or gracefully retried
-- [ ] No duplicate email on outbox replay
+- [ ] No duplicate email on outbox replay (idempotent handler)
+- [ ] Email contains working one-click unsubscribe link (RFC 8058 compliant)
 
 ### Gate D — Public Event Completion Loop
 - [ ] Event detail loads anonymously
 - [ ] User can share event
-- [ ] User can download .ics calendar
+- [ ] User can download .ics calendar file
 - [ ] User can view registrations after registering
 - [ ] Draft hidden from anonymous; Archived returns 404
+- [ ] Capacity-full sessions show clear waitlist state; over-registration prevented
+- [ ] Users cannot double-register for the same session
+
+### Gate E — Legal & Compliance (NEW)
+- [ ] Privacy Policy, Terms of Service, Community Guidelines reachable from footer + direct routes
+- [ ] Cookie consent banner functional (Accept/Decline; preference persisted 180 days)
+- [ ] All transactional emails include working one-click unsubscribe (RFC 8058)
+- [ ] User-preference-based email opt-outs respected at dispatch
+- [ ] Accessibility statement and License pages reachable (or explicitly waived)
+
+### Gate F — SEO & Discoverability (NEW)
+- [ ] `/sitemap.xml` returns valid sitemap covering all Published events + static pages
+- [ ] `/robots.txt` returns valid directives (allow prod, disallow dev)
+- [ ] EventDetail renders valid JSON-LD `schema.org/Event`
+- [ ] OrganizationProfile renders valid JSON-LD `schema.org/Organization`
+- [ ] OG tags present on Home, Landing, EventDetail, OrganizationProfile, OrganizationDetail
+- [ ] Canonical URLs present on all public pages
+- [ ] Branded error pages (404, 403, 500) replace generic Error.razor
+
+### Gate G — Security Audit Trail (NEW)
+- [ ] Setup-secret endpoint rate-limited (5 attempts / 60s / IP)
+- [ ] PII reads write audit log entry (who accessed whose PII, with correlation ID)
+- [ ] Admin/instance/tenant setting changes write audit log entries
+- [ ] Authorization denial events logged with principal + resource + action
+- [ ] BFF responses carry CSP header
+- [ ] Audit log queries restricted: instance admin = full; tenant admin = their tenant; users = own actions
 
 ---
 
@@ -198,8 +225,9 @@ ABOUTME: Organized by tier for incremental delivery. Revised 2026-03-29 with arc
 - [ ] Create `Explore.Infrastructure/Mail/Templates/RegistrationConfirmedEmailBuilder.cs`
 - [ ] ABOUTME header, file-scoped namespace
 - [ ] String interpolation (no template engine for MVP)
-- [ ] Inputs: event name, date/time, location, organizer, event URL, calendar URL
+- [ ] Inputs: event name, date/time, location, organizer, event URL, calendar URL, **unsubscribe URL**
 - [ ] Output: HTML email body
+- [ ] Unsubscribe slot: template renders URL in body footer
 - [ ] Unit test for builder
 - Acceptance: Clean HTML rendered from event data
 
@@ -240,20 +268,24 @@ ABOUTME: Organized by tier for incremental delivery. Revised 2026-03-29 with arc
 - [ ] Create `Explore.Infrastructure/Outbox/Handlers/RegistrationConfirmedOutboxHandler.cs`
 - [ ] `EventType = "RegistrationConfirmed"`
 - [ ] **Idempotency:** check if email already sent for this registration before dispatching
+- [ ] **Consent check (WP-14 dependency):** query `UserNotificationPreferencesRepository.GetAsync(userId, "registration-confirmations")` — skip + log if opted-out
 - [ ] Deserialize reference payload → fetch fresh data from repos → build email → send via `IEmailService`
+- [ ] Inject unsubscribe URL from WP-14 token service
+- [ ] Set SMTP headers: `List-Unsubscribe`, `List-Unsubscribe-Post: List-Unsubscribe=One-Click`
 - [ ] Structured logging: `RegistrationId`, `EventId`, `UserId`, `TenantId`, `OutboxMessageId`
 - [ ] Unit test with mocked repos and IEmailService
-- Acceptance: Email sent; no duplicates on replay
+- Acceptance: Email sent; no duplicates on replay; unsubscribe respected
 
 #### WP-3.6: Observability
 - [ ] Counter: `outbox.messages.processed` with `{event_type, outcome, tenant_id}`
 - [ ] Counter: `outbox.messages.failed` with `{event_type, tenant_id}`
+- [ ] Counter: `outbox.messages.skipped_opt_out` with `{event_type, category, tenant_id}`
 - [ ] Dead-letter visibility via `GetFailedEntries`
 - Acceptance: Operators can monitor outbox health
 
 #### WP-3.7: Restore Email Promise + Integration Test
 - [ ] Restore line 87: "You will receive a confirmation email shortly."
-- [ ] Integration test: register → outbox message created → handler processes → email sent
+- [ ] Integration test: register → outbox message created → handler processes → email sent → unsubscribe link valid
 - [ ] Run all tests
 - Acceptance: Gate C fully passes
 
@@ -265,6 +297,7 @@ ABOUTME: Organized by tier for incremental delivery. Revised 2026-03-29 with arc
 - [ ] Phase 3.1: Remove `CheckEditPermissions()`, delete `currentUserRole`, use `HasHalLink("edit")`
 - [ ] Phase 3.2: Verify `_links` preservation in service
 - [ ] **Grep for `RoleHelper.CanManage` in adjacent pages** — fix any cousins
+- [ ] **Legacy HAL removal (WP-19.7 overlap):** ensure all link policies call `RequirePermission("resource", "action")` explicitly
 - [ ] Phase 4.3: bUnit tests for OrganizationDetails HATEOAS consumption
 - [ ] Run all tests — no regressions
 - Acceptance: No RoleHelper for action gating; HAL links are source of truth
@@ -287,51 +320,503 @@ ABOUTME: Organized by tier for incremental delivery. Revised 2026-03-29 with arc
 
 ---
 
-## Tier 3 — Polish (Before Public Announcement)
+## Tier 2B — Launch-Blocking Polish (NEW, 2026-04-24)
 
-### WP-10: User Onboarding — Gap Analysis ⏳ NOT STARTED (1 day)
+### WP-14: Email Unsubscribe & GDPR Compliance ⏳ NOT STARTED (1.5 days)
 
-> **EXISTS:** Admin onboarding (instance + tenant). User-level may be missing.
+> **CRITICAL:** Must land BEFORE WP-3 ships any email. GDPR + CAN-SPAM violation without it.
 
-- [ ] Audit existing onboarding for completeness
-- [ ] Decision: if admin onboarding satisfies need → close fast
-- [ ] If gap: lightweight first-login detection + welcome modal
-- [ ] Do NOT invent big first-run system late in MVP
-- Acceptance: Guided path exists or gap documented as post-MVP
+#### WP-14.0: Reconcile Existing Track
+- [ ] Read `dev/active/organizer-email-consent/` — merge any existing scope
+- [ ] Confirm no duplicated effort with existing notification preference work
+- Acceptance: No scope overlap
 
-### WP-11: Targeted Test Coverage ⏳ NOT STARTED
-- [ ] Registration flow (approval, waitlist, capacity)
-- [ ] Visibility rules (Draft hidden, Archived 404)
-- [ ] HATEOAS action gating (OrganizationDetails)
-- [ ] Calendar endpoint (.ics valid, 404 non-public)
-- [ ] Session persistence regression (DataProtection)
-- Acceptance: Critical paths guarded; no test sprawl
+#### WP-14.1: Notification Preferences Schema
+- [ ] Check if `UserNotificationPreferences` already exists — reuse if present
+- [ ] Required preference categories: `registration-confirmations` (opt-in), `organizer-announcements` (opt-in)
+- [ ] Future categories (schema only): `event-reminders`, `event-updates`
+- [ ] Table columns: `UserId` (FK), `Category` (string), `IsEnabled` (bool), `UpdatedAt`, `UpdatedBy`
+- [ ] EF migration if new table
+- Acceptance: Preference table exists with required categories
 
-### WP-12: Production Docker & External API Key ⏳ NOT STARTED
-- [ ] `docker-compose.prod.yml` with pre-built images
-- [ ] Starter `prometheus.yml` scrape config
-- [ ] **Disable external API key endpoints** — config flag or remove from routing
-- Acceptance: API key surface not exposed; prod deploy path exists
+#### WP-14.2: Unsubscribe Token Service
+- [ ] Create `Explore.Infrastructure/Mail/Unsubscribe/UnsubscribeTokenService.cs`
+- [ ] Use `ITimeLimitedDataProtector` (180-day token lifetime, reuses WP-1.2 DataProtection keys)
+- [ ] Token payload: `{ userId, category, tenantId, issuedAt }`
+- [ ] Timing-safe validation; invalid/expired → treat as "already unsubscribed"
+- [ ] Unit test: token round-trip, expiration, tamper detection
+- Acceptance: Tokens encrypt/decrypt correctly; tampered tokens fail safely
 
-### WP-13: Cleanup ⏳ NOT STARTED
-- [ ] Verify Price/CurrencyCode not in any UI form
-- [ ] Final docs update
-- Acceptance: No misleading features visible
+#### WP-14.3: Unsubscribe Endpoint (GET + POST)
+- [ ] Create `Explore.API/Controllers/EmailUnsubscribeController.cs`
+- [ ] `GET /api/email/unsubscribe?token=...` → `[AllowAnonymous]` + rate-limited (`global` policy)
+- [ ] Returns branded confirmation page with CTA to re-subscribe or manage preferences
+- [ ] `POST /api/email/unsubscribe?token=...` → RFC 8058 `List-Unsubscribe=One-Click` compliance
+- [ ] Updates `UserNotificationPreferences` for (userId, category)
+- [ ] Writes audit log entry (`PreferenceChange`, actor=system, delegated=token-subject)
+- Acceptance: Both GET and POST unsubscribe work; preference updated
+
+#### WP-14.4: Email Header Injection
+- [ ] Update `RegistrationConfirmedEmailBuilder` to accept injected unsubscribe URL
+- [ ] Set SMTP headers: `List-Unsubscribe: <url>, <mailto:...>` + `List-Unsubscribe-Post: List-Unsubscribe=One-Click`
+- [ ] Render same URL in visible email footer
+- Acceptance: Email contains valid List-Unsubscribe headers
+
+#### WP-14.5: Dispatch-Time Consent Check
+- [ ] In `RegistrationConfirmedOutboxHandler` (WP-3.5): query preferences before sending
+- [ ] Skip + log if user opted-out of "registration-confirmations"
+- [ ] Emit `outbox.messages.skipped_opt_out` counter
+- Acceptance: Opted-out users don't receive emails
+
+#### WP-14.6: Tests
+- [ ] Unit: token round-trip, expiration, tamper detection
+- [ ] Integration: end-to-end unsubscribe via GET + POST
+- [ ] Integration: handler skips dispatch when user opted-out
+- Acceptance: All tests pass
+
+**Acceptance:** Gate C + Gate E "unsubscribe works" pass.
+
+### WP-15: Branded Error Pages ⏳ NOT STARTED (1 day)
+
+#### WP-15.1: 404 Not Found
+- [ ] Create `Explore.Blazor.Client/Pages/Errors/NotFound.razor` with `@page "/errors/404"`
+- [ ] Branded layout: logo, "Page Not Found", search bar, CTAs ("Return Home", "Browse Events")
+- [ ] `<PageTitle>Not Found — {TenantName}</PageTitle>` and `<meta name="robots" content="noindex">`
+- Acceptance: Direct URL to `/nonexistent` shows branded 404
+
+#### WP-15.2: 403 Unauthorized
+- [ ] Create `Explore.Blazor.Client/Pages/Errors/Unauthorized.razor` with `@page "/errors/403"`
+- [ ] CTAs: "Request Access" (if applicable), "Return Home"
+- Acceptance: Auth failure shows branded 403
+
+#### WP-15.3: 500 Server Error
+- [ ] Create `Explore.Blazor.Client/Pages/Errors/ServerError.razor` with `@page "/errors/500"`
+- [ ] Enhance existing `Explore.Blazor/Components/Pages/Error.razor` for branded content
+- [ ] Display correlation ID for support; hide stack traces in production
+- [ ] CTAs: "Return Home", "Contact Support" (prefilled with correlation ID)
+- Acceptance: Server error shows branded 500 with correlation ID
+
+#### WP-15.4: Status Code Pages Middleware
+- [ ] In `Explore.Blazor/Program.cs`: `app.UseStatusCodePagesWithReExecute("/errors/{0}")`
+- [ ] Verify works with Blazor Server interactive routes
+- [ ] Add catch-all route in `Routes.razor` if needed
+- Acceptance: All HTTP errors redirect to branded pages
+
+#### WP-15.5: Tests
+- [ ] bUnit: each error page renders with correct copy + CTA
+- [ ] Integration: `/nonexistent` returns branded 404 page
+- [ ] Integration: unauthenticated `[Authorize]` endpoint returns branded 403
+- Acceptance: Tests pass
+
+**Acceptance:** Gate F "branded error pages" passes.
+
+### WP-16: SEO Foundation ⏳ NOT STARTED (1 day)
+
+#### WP-16.1: Sitemap Controller
+- [ ] Create `Explore.API/Controllers/SitemapController.cs`
+- [ ] `GET /sitemap.xml` → `[AllowAnonymous]`, `Content-Type: application/xml`
+- [ ] Output: static pages + all Published events (respect tenant visibility + soft-delete filter)
+- [ ] Per-URL: `<loc>`, `<lastmod>`, `<changefreq>`, `<priority>`
+- [ ] Tenant-aware: canonical host from current tenant's domain/subdomain
+- [ ] Output-cache 30 minutes
+- Acceptance: `/sitemap.xml` returns valid XML
+
+#### WP-16.2: Robots.txt
+- [ ] Create `Explore.Blazor/wwwroot/robots.txt` (static) OR dynamic controller
+- [ ] Prod: `User-agent: * / Allow: / / Sitemap: https://{host}/sitemap.xml`
+- [ ] Dev: `Disallow: /`
+- Acceptance: `/robots.txt` returns correct content per environment
+
+#### WP-16.3: Canonical URLs on Public Pages
+- [ ] Add `<link rel="canonical">` to: Home, LandingForNonUsers, LandingForUsers, OrganizationProfile, OrganizationDetails, EventList
+- [ ] Centralize canonical URL helper if not already shared
+- Acceptance: Canonical URLs on all public pages
+
+#### WP-16.4: Tests
+- [ ] Integration: `/sitemap.xml` returns valid XML with published events
+- [ ] Integration: Draft/Archived events absent from sitemap
+- [ ] Integration: tenant A sitemap doesn't leak tenant B events
+- [ ] Integration: `/robots.txt` returns expected content
+- Acceptance: Tests pass
+
+**Acceptance:** Gate F "sitemap + robots.txt" passes.
 
 ---
 
-## Sprint Order (Recommended)
+## Tier 3 — Must-Have Before Public Announcement
 
-| Sprint | Days | Work Packages | Gate |
-|--------|------|---------------|------|
-| 1 | 1-2 | WP-1 (all infra fixes) | Gate A + B smoke |
-| 2 | 3-5 | WP-6 (iCal) + WP-7 (share verify) + WP-4 (enhance) + WP-5 (post-reg UX) | Gate D partial |
-| 3 | 6-9 | WP-3 (email) + WP-8 (HATEOAS) | Gate C + D full |
-| 4 | 10-12 | WP-2 + WP-9 + WP-10/11/12/13 | All gates |
+### WP-17: Capacity Enforcement & Basic Waitlist ⏳ NOT STARTED (1.5 days)
+
+#### WP-17.1: Capacity Check in Registration Handler
+- [ ] Open `CreateEventRegistrationCommandHandler.cs`
+- [ ] For each session: query `CurrentAudienceAttendees` vs `MaxAudienceAttendees`
+- [ ] Use atomic SQL `UPDATE ... WHERE CurrentAudienceAttendees < MaxAudienceAttendees RETURNING ...`
+- [ ] On conflict (0 rows returned) → that child session = `Waitlisted`
+- [ ] Parent intent = `Waitlisted` if any child is waitlisted
+- [ ] Unit test: handler creates waitlisted entry when at capacity
+- Acceptance: Over-registration prevented; auto-waitlist works
+
+#### WP-17.2: Atomic Attendee Count Update
+- [ ] On successful `Approved` child registration: increment `CurrentAudienceAttendees` in same transaction
+- [ ] On cancellation (DELETE): decrement count
+- [ ] Integration test: count matches actual registration count
+- Acceptance: Attendee count stays accurate
+
+#### WP-17.3: Duplicate Registration Prevention
+- [ ] Add unique index on `EventRegistration(UserId, EventSessionId)` where `IsDeleted=false`
+- [ ] Handler short-circuits if duplicate (return existing intent id — idempotent)
+- [ ] Migration required
+- Acceptance: No double-registration possible
+
+#### WP-17.4: UI Feedback
+- [ ] `EventRegistration.razor`: if any session full → "Join Waitlist" button instead of "Register"
+- [ ] Post-registration: if `ApprovalStatus=Waitlisted` → waitlist copy, not confirmation copy
+- [ ] `MyRegistrations.razor`: verify waitlist badge renders
+- Acceptance: User sees clear waitlist state
+
+#### WP-17.5: Tests
+- [ ] Unit: handler rejects over-capacity, creates waitlisted entry
+- [ ] Integration: concurrent POSTs do not exceed capacity (10 parallel requests)
+- [ ] Integration: duplicate registration returns existing intent
+- [ ] Integration: cancellation decrements count
+- Acceptance: Tests pass
+
+**Acceptance:** Gate D "capacity + waitlist + no double-register" passes.
+
+### WP-18: External Dependency Health Checks ⏳ NOT STARTED (1 day)
+
+#### WP-18.1: Redis Health Check
+- [ ] Add `.AddRedis(connectionString, tags: ["ready"])` if Redis configured (skip when not configured)
+- [ ] `Degraded` (not `Unhealthy`) when Redis unreachable + in-memory fallback active
+- Acceptance: Redis health reported in `/health`
+
+#### WP-18.2: Keycloak OIDC Discovery Health Check
+- [ ] Custom health check: HEAD `{authority}/.well-known/openid-configuration` with 5s timeout
+- [ ] Tagged `ready`
+- Acceptance: Keycloak health reported in `/health`
+
+#### WP-18.3: SMTP Health Check
+- [ ] Reuse `SmtpEmailService.TestConnectionAsync()` with 10s timeout
+- [ ] Tagged `ready`; `Degraded` on failure (email is async via outbox)
+- Acceptance: SMTP health reported in `/health`
+
+#### WP-18.4: Cerbos Health Check (Conditional)
+- [ ] If `CerbosSettings.Enabled == true`: gRPC health check against Cerbos endpoint
+- [ ] Tagged `ready`; failure mode aligned with existing fallback
+- Acceptance: Cerbos health reported when enabled
+
+#### WP-18.5: Operator Docs
+- [ ] Update troubleshooting docs with health-check interpretation table
+- [ ] Document: `/health` 200 Degraded vs 503 Unhealthy; SLO per dependency
+- Acceptance: Docs updated
+
+#### WP-18.6: Tests
+- [ ] Integration: `/health` returns 200 Healthy with all deps up
+- [ ] Integration: `/health` returns 200 Degraded when Redis unreachable (NOT 503)
+- [ ] Integration: `/alive` returns 200 regardless of external deps
+- Acceptance: Tests pass
+
+**Acceptance:** Gate A "all deps observable via /health" passes.
+
+### WP-19: Security Audit Trail Hardening ⏳ NOT STARTED (1.5 days)
+
+#### WP-19.1: Rate-Limit Setup-Secret Validation
+- [ ] Apply existing `setup_secret` policy to `validate-secret` endpoint and any `X-Setup-Secret` endpoints
+- [ ] After 3 consecutive failures: emit warning log with `ip`, `user-agent`, `correlation-id`
+- Acceptance: 429 after 5 attempts from same IP
+
+#### WP-19.2: PII Access Audit
+- [ ] Wrap `UserPiiRepository` and `ActorPiiRepository` read methods with audit logging
+- [ ] For every read: write to `AuditLog` with `EntityType`, `EntityId`, `Action="Read"`, `ActorId`, `Timestamp`, `CorrelationId`, `Purpose`
+- [ ] Self-reads: log with `IsSelfAccess=true` to filter noise
+- Acceptance: PII reads create audit entries
+
+#### WP-19.3: Admin Action Audit
+- [ ] Create `AuditLoggingBehavior<TRequest, TResponse>` (MediatR pipeline behavior)
+- [ ] Apply to commands under: InstanceSettings, TenantSettings, Roles, InstanceOnboarding, TenantOnboarding
+- [ ] Log: entity type, old vs new (JSON diff), actor, timestamp, correlation ID
+- Acceptance: Setting changes create audit entries
+
+#### WP-19.4: Authorization Denial Audit
+- [ ] In `FallbackAuthorizationService.IsAllowedAsync`: on `Deny`, write audit entry with principal + resource + action
+- [ ] Do NOT log allowed decisions (volume prohibitive; use metrics counter)
+- Acceptance: Authz denials logged
+
+#### WP-19.5: BFF CSP Header
+- [ ] Create `Explore.Blazor/Middleware/BffCspMiddleware.cs`
+- [ ] CSP: `default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'`
+- [ ] Register before `UseStaticFiles`; scoped to non-API Blazor responses
+- Acceptance: BFF HTML responses carry CSP header
+
+#### WP-19.6: Audit Log Access Control
+- [ ] New permission: `audit_log:read` (tenant-scoped) + `audit_log:read_all` (instance-scoped)
+- [ ] Instance admin: IgnoreQueryFilters for Tenant filter (preserve SoftDelete)
+- [ ] Tenant admin: default filter (their tenant only)
+- [ ] Regular users: `/api/users/me/audit-log` scoped by actor claim
+- Acceptance: Access control enforced
+
+#### WP-19.7: Remove Obsolete HAL Legacy Fallback
+- [ ] Ensure all 36 link policies call `RequirePermission("resource", "action")` explicitly
+- [ ] Delete `[Obsolete] MapMethodToAction()` method and callsites
+- [ ] Architecture test: `AllLinkPoliciesHaveExplicitPermissionActions`
+- Acceptance: Legacy fallback deleted; architecture test passes
+
+#### WP-19.8: Tests
+- [ ] Integration: setup-secret returns 429 after 5 attempts
+- [ ] Integration: PII read writes audit entry
+- [ ] Integration: setting change writes audit entry with old vs new
+- [ ] Integration: authz denial writes audit entry
+- [ ] Integration: BFF response carries CSP header
+- [ ] Integration: tenant admin cannot query other tenant's audit logs
+- [ ] Architecture: all link policies have explicit action set
+- Acceptance: Tests pass
+
+**Acceptance:** Gate G passes fully.
+
+### WP-20: Public Page SEO & OG Polish ⏳ NOT STARTED (1 day)
+
+#### WP-20.1: JSON-LD Event Schema
+- [ ] `EventDetail.razor`: render `<script type="application/ld+json">` with `schema.org/Event`
+- [ ] Required: `@type`, `name`, `startDate`, `endDate`, `eventStatus`, `eventAttendanceMode`
+- [ ] `location`: `Place` / `VirtualLocation` / both (hybrid)
+- [ ] `organizer`: `Organization` or `Person`
+- [ ] `offers`: include only if `Price > 0`
+- [ ] `image`: featured image URL (absolute)
+- Acceptance: Valid JSON-LD on EventDetail
+
+#### WP-20.2: JSON-LD Organization Schema
+- [ ] `OrganizationProfile.razor`: `schema.org/Organization`
+- [ ] Fields: `name`, `url`, `logo`, `description`, `sameAs` (social links)
+- Acceptance: Valid JSON-LD on OrganizationProfile
+
+#### WP-20.3: JSON-LD Breadcrumb Schema
+- [ ] Detail pages: `schema.org/BreadcrumbList` (Home → List → Detail)
+- Acceptance: Breadcrumb structured data on detail pages
+
+#### WP-20.4: OG/Twitter Meta Tags
+- [ ] Add to: Home, LandingForNonUsers, LandingForUsers, OrganizationProfile, OrganizationDetails
+- [ ] Pattern: `og:title`, `og:description`, `og:type`, `og:url`, `og:image`, `og:site_name`, `twitter:card`, etc.
+- [ ] Tenant-aware: brand name + logo from `PublicExperienceService`
+- Acceptance: OG tags present on all public pages
+
+#### WP-20.5: Tests
+- [ ] Integration: scrape EventDetail → validate JSON-LD
+- [ ] Integration: assert OG tags on Home, EventDetail, OrganizationProfile
+- Acceptance: Tests pass
+
+**Acceptance:** Gate F "JSON-LD + OG tags everywhere" passes.
+
+---
+
+## Tier 4 — Test Coverage & Polish
+
+### WP-21: E2E Critical-Flow Tests ⏳ NOT STARTED (2 days)
+
+#### WP-21.1: Registration End-to-End
+- [ ] Create `Explore.Blazor.Client.E2ETests/CriticalFlows/RegistrationFlowTests.cs`
+- [ ] Playwright: login → browse → open event → register → confirmation → My Registrations
+- [ ] Uses `AppHostFixture` + `PostgreSqlContainerFixture`
+- [ ] Validates Gates C + D end-to-end
+- Acceptance: Registration E2E green
+
+#### WP-21.2: Multi-Tenancy Isolation
+- [ ] Two tenant contexts; tenant A creates event → tenant B cannot see it
+- [ ] Validates query filters + middleware isolation
+- Acceptance: Tenant isolation E2E green
+
+#### WP-21.3: Authorization Enforcement
+- [ ] User without edit permission → no Edit button → direct API mutation returns 403
+- Acceptance: Authz enforcement E2E green
+
+#### WP-21.4: BFF Token-Forwarding Chain
+- [ ] Login → BFF → YARP → API JWT + tenant header → HAL links → Blazor renders
+- Acceptance: Token chain E2E green
+
+**Acceptance:** All 4 flows green in CI (3 consecutive runs, no flakiness).
+
+### WP-22: Snapshot Tests for HATEOAS Contracts ⏳ NOT STARTED (1 day)
+
+#### WP-22.1: Add Snapshot Library
+- [ ] Install `Verify.TUnit` (or `Verify.Xunit`) in `Event.API.IntegrationTests`
+- [ ] Configure snapshot directory: `tests/snapshots/`
+- Acceptance: Library installed and configured
+
+#### WP-22.2: Snapshot EventDto Responses
+- [ ] Anonymous GET event detail → snapshot
+- [ ] Authenticated GET event detail → snapshot (more links)
+- [ ] Organizer GET event detail → snapshot (edit/delete links)
+- [ ] List response (first 5) → snapshot
+- Acceptance: Baseline event snapshots committed
+
+#### WP-22.3: Snapshot OrganizationDto, UserDto, EventRegistrationDto
+- [ ] Public GET + authenticated GET for each
+- Acceptance: Baseline DTO snapshots committed
+
+#### WP-22.4: Snapshot ProblemDetails
+- [ ] 400, 401, 403, 404, 500 → snapshots (RFC 7807 shape)
+- Acceptance: Error contract snapshots committed
+
+#### WP-22.5: PR Policy
+- [ ] Document snapshot-review policy in testing docs
+- Acceptance: Policy documented
+
+**Acceptance:** Baseline snapshots committed; CI confirms stability.
+
+### WP-11: Targeted Test Coverage ⏳ NOT STARTED (rolling)
+
+> Focus on high-value tests only. Avoid coverage ambition trap.
+
+- [ ] Registration flow unit tests (approval policy, waitlist, capacity from WP-17)
+- [ ] Visibility rules (Draft hidden, Archived 404) — API integration tests
+- [ ] HATEOAS action gating (OrganizationDetails) — bUnit
+- [ ] Calendar endpoint (valid .ics, 404 non-public, UTC normalization)
+- [ ] Session persistence regression (DataProtection key ring)
+- [ ] Unsubscribe flow end-to-end (WP-14)
+- [ ] Rate limit enforcement on setup-secret (WP-19.1)
+- [ ] Handler coverage target: ≥70% (from current ~39%)
+- Acceptance: Critical paths guarded; handler coverage ≥70%
+
+---
+
+## Tier 5 — Final Polish
+
+### WP-23: Accessibility Polish ⏳ NOT STARTED (1 day)
+
+#### WP-23.1: Breadcrumbs
+- [ ] Add `MudBreadcrumbs` to EventDetail, OrganizationDetails, OrganizationProfile, UserProfile, MyRegistrations
+- [ ] Pair with JSON-LD BreadcrumbList from WP-20.3
+- Acceptance: Breadcrumbs on key pages
+
+#### WP-23.2: ARIA Landmarks
+- [ ] `<main>` → `aria-label="Main content"`
+- [ ] `<nav>` → `aria-label="Primary navigation"`
+- [ ] `<aside>` → `aria-label="Sidebar"`
+- [ ] Apply in `MainLayout.razor` and `SetupLayout.razor`
+- Acceptance: Landmarks present
+
+#### WP-23.3: Focus Management
+- [ ] Create `FocusOnNavigate` component
+- [ ] Set focus to page `<h1>` after SPA navigation
+- Acceptance: Focus moves on route change
+
+#### WP-23.4: Form Validation ARIA
+- [ ] Audit: CreateEvent, EditEvent, CreateOrganization
+- [ ] Ensure validation messages have `aria-describedby` linking to inputs
+- Acceptance: Forms accessible
+
+#### WP-23.5: Lighthouse Audit
+- [ ] Run Lighthouse a11y on: Home, EventList, EventDetail, CreateEvent, MyRegistrations, OrganizationDetails
+- [ ] Fix findings < 90
+- Acceptance: Key pages score ≥90 Lighthouse a11y
+
+### WP-24: PWA Manifest Only ⏳ NOT STARTED (0.5 day)
+
+> Per D14: manifest only; no service worker, no offline for MVP.
+
+#### WP-24.1: Manifest
+- [ ] Create `Explore.Blazor/wwwroot/manifest.json` or controller endpoint
+- [ ] Fields: `name`, `short_name`, `description`, `start_url=/`, `display=standalone`, `background_color`, `theme_color`, `icons` (192/256/384/512)
+- [ ] Link from `App.razor`: `<link rel="manifest" href="/manifest.json">`
+- [ ] Add `<meta name="theme-color" content="...">` matching brand primary
+- Acceptance: Lighthouse shows "Manifest: yes"
+
+#### WP-24.2: Tenant Awareness
+- [ ] Per-tenant brand-aware manifest via controller endpoint (reads `PublicExperienceSettings`)
+- [ ] Cache 5 minutes; vary by tenant + host
+- Acceptance: Per-tenant manifest works
+
+### WP-25: Placeholder & TODO Cleanup ⏳ NOT STARTED (0.5 day)
+
+#### WP-25.1: Replace Placeholder Images
+- [ ] `MyRegistrations.razor`: swap `placehold.co` with real event image or branded fallback
+- [ ] `LandingPageForNonUsers.razor`: verify `landing_image_nonuser.png` exists in `wwwroot/image/`
+- Acceptance: No external placeholder URLs in production
+
+#### WP-25.2: Resolve Critical TODOs
+- [ ] Sweep `EventList.razor`, `EventEdit.razor`, `CreateEvent.razor` for TODO/FIXME
+- [ ] Fix (≤30 min each) OR file GitHub issue + link from comment
+- Acceptance: No unresolved TODOs without tickets
+
+#### WP-25.3: Price/CurrencyCode Audit
+- [ ] Ensure `Price` / `CurrencyCode` NOT in UI create/edit forms
+- [ ] Document decision (keep in domain for post-MVP or remove) in journal
+- Acceptance: Decision documented; no misleading UI
+
+#### WP-25.4: Final Docs Pass
+- [ ] Update README quickstart (Redis optionality)
+- [ ] Ensure API docs reflect new endpoints (sitemap, calendar, unsubscribe)
+- Acceptance: Docs current
+
+---
+
+## Tier 6 — Pre-Existing Deferred Items
+
+### WP-10: User Onboarding — Gap Analysis ⏳ NOT STARTED (1 day)
+
+> **PARTIALLY EXISTS:** Admin onboarding covers instance/tenant. User-level may be missing.
+
+- [ ] Audit existing onboarding completeness
+- [ ] If admin satisfies need → close fast
+- [ ] If gap → lightweight first-login detection + welcome modal
+- Acceptance: Guided path exists or gap documented as post-MVP
+
+### WP-12: Production Docker & External API Key ⏳ NOT STARTED (1 day)
+
+#### WP-12.1: docker-compose.prod.yml Override
+- [ ] Pre-built image references
+- [ ] Starter `prometheus.yml` scrape config
+- [ ] Redis profile honors D8 (optional but recommended)
+- Acceptance: `docker compose -f docker-compose.prod.yml up` works
+
+#### WP-12.2: Disable External API Key Endpoints
+- [ ] Add config flag `ExternalApiKeys:Enabled=false` (default) or remove from routing
+- Acceptance: External API key surface not exposed
+
+### WP-13: Cleanup ⏳ NOT STARTED (covered by WP-25)
+
+> WP-13 scope absorbed into WP-25. Retained as checklist anchor only.
+
+- [ ] Verify Price/CurrencyCode not in any UI form (checked in WP-25.3)
+- [ ] Final docs update (checked in WP-25.4)
+
+---
+
+## Sprint Order (Extended, 8 Sprints / 18 Days)
+
+| Sprint | Days | Work Packages | Gate Target |
+|--------|------|---------------|-------------|
+| 1 | 1-2 | WP-1 (all infra fixes) | Gate A + B |
+| 2 | 3-4 | WP-14 (Unsubscribe) + WP-15 (Error pages) + WP-16 (Sitemap/Robots) | Gate E partial + Gate F partial |
+| 3 | 5-7 | WP-17 (Capacity) + WP-18 (Health checks) + WP-19 (Security audit) | Gate G + Gate D partial |
+| 4 | 8-10 | WP-3 (Email) + WP-6 (iCal) + WP-7 (Share) + WP-4 (MyReg) + WP-5 (Post-Reg UX) | Gate C + Gate D full |
+| 5 | 11-12 | WP-20 (SEO/OG) + WP-24 (PWA manifest) + WP-8 (HATEOAS + legacy removal) | Gate F complete |
+| 6 | 13-14 | WP-2 (Navbar Ph7) + WP-9 (Draft/Publish) + WP-12 (Prod Docker + ExtAPIKey disable) | — |
+| 7 | 15-16 | WP-21 (E2E tests) + WP-22 (Snapshots) + WP-11 (test gap sweep) | — |
+| 8 | 17-18 | WP-23 (A11y) + WP-25 (Placeholders) + WP-10 (Onboarding decision) + final gate sign-off | All gates green |
+
+### If Schedule Compresses
+- **Tier 4** (WP-21/22) can slip to Week 4 if Tier 1-3 held quality bar
+- **Tier 5** (WP-23/24) can slip to post-MVP if gates A-G are otherwise green
+- **Never slip:** Tier 2B (WP-14/15/16) or Tier 3 (WP-17/18/19) — gate-critical
+
+---
+
+## NSwag Regeneration Checklist
+
+Apply whenever API surface changes (WP-3, WP-6, WP-14, WP-16):
+
+1. Update API (controllers, DTOs, handlers)
+2. Run API → export OpenAPI → `swagger.json` refreshed
+3. `dotnet build Explore.Blazor.Client` → `EventApiClient.g.cs` regenerated
+4. Fix consuming code broken by contract changes
+5. `dotnet test --project Explore.Blazor.Client.Tests`
+
+---
 
 ## Quick Resume
 
 1. Read `mvp-launch-context.md` for key decisions
 2. Check this file for current progress
 3. Start with WP-1.4 (broken promise) → then WP-1.1/1.2/1.3 → smoke test Gates A+B
-4. Follow NSwag checklist (in plan) after any API changes
+4. Sprint order: WP-1 → WP-14/15/16 → WP-17/18/19 → WP-3/6/7/4/5 → WP-20/24/8 → WP-2/9/12 → WP-21/22/11 → WP-23/25/10
+5. Follow NSwag checklist after any API changes

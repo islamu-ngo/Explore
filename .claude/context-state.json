@@ -8,6 +8,6 @@
     "Domain": "Active (DDD)",
     "Infra": "Active (EF Core)"
   },
-  "RecentFocus": "Unknown (MAJOR_DECISIONS.md)",
-  "LastUpdate": "2026-04-24 09:36:25"
+  "RecentFocus": "API (EventSessionTemplateSyncController.cs)",
+  "LastUpdate": "2026-04-24 21:19:11"
 }
