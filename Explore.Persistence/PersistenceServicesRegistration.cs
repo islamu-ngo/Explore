@@ -190,6 +190,7 @@ public static class PersistenceServicesRegistration
         // Custom Property Projection Query Repositories
         services.AddScoped<IEventCustomPropertyProjectionRepository, EventCustomPropertyProjectionRepository>();
         services.AddScoped<IEventSessionCustomPropertyProjectionRepository, EventSessionCustomPropertyProjectionRepository>();
+        services.AddScoped<IEventAggregateViewRepository, EventAggregateViewRepository>();
         services.AddScoped<ICustomPropertyGovernanceRepository, CustomPropertyGovernanceRepository>();
 
         // Event Aspect Repositories

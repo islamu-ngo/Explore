@@ -1,0 +1,104 @@
+// ABOUTME: Persistence repository for querying the EventWithSessions keyless view and its supporting facet metadata.
+// ABOUTME: Keeps aggregate filtering, pagination, and definition enrichment close to the DbContext while returning entities only.
+
+using Explore.Application.Contracts.Persistence;
+using Explore.Application.DTOs.EventAggregateView;
+using Explore.Domain;
+using Explore.Domain.Views;
+using Microsoft.EntityFrameworkCore;
+
+namespace Explore.Persistence.Repositories;
+
+public sealed class EventAggregateViewRepository : IEventAggregateViewRepository
+{
+    private readonly ExploreDbContext _dbContext;
+
+    public EventAggregateViewRepository(ExploreDbContext dbContext)
+    {
+        _dbContext = dbContext;
+    }
+
+    public async Task<EventWithSessionsView?> GetByEventIdAsync(Guid eventId, CancellationToken cancellationToken)
+    {
+        return await _dbContext.EventsWithSessions
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.EventId == eventId, cancellationToken);
+    }
+
+    public async Task<(List<EventWithSessionsView> Items, int TotalCount)> GetPagedAsync(
+        AggregateViewFilterDto filter,
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        var query = ApplyFilters(_dbContext.EventsWithSessions.AsNoTracking(), filter ?? new AggregateViewFilterDto());
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query
+            .OrderBy(x => x.StartAt)
+            .ThenBy(x => x.Title)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
+    public async Task<List<EventCustomPropertyDefinition>> GetEventDefinitionsByEventIdsAsync(
+        IReadOnlyCollection<Guid> eventIds,
+        CancellationToken cancellationToken)
+    {
+        if (eventIds.Count == 0)
+            return [];
+
+        return await _dbContext.EventCustomPropertyDefinitions
+            .AsNoTracking()
+            .Where(x => eventIds.Contains(x.EventId))
+            .OrderBy(x => x.SortOrder)
+            .ThenBy(x => x.DisplayName)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<List<EventSessionCustomPropertyDefinition>> GetSessionDefinitionsForEventAsync(
+        Guid eventId,
+        CancellationToken cancellationToken)
+    {
+        return await _dbContext.EventSessionCustomPropertyDefinitions
+            .AsNoTracking()
+            .Where(x => x.EventSession != null && x.EventSession.EventId == eventId)
+            .OrderBy(x => x.SortOrder)
+            .ThenBy(x => x.DisplayName)
+            .ToListAsync(cancellationToken);
+    }
+
+    private static IQueryable<EventWithSessionsView> ApplyFilters(
+        IQueryable<EventWithSessionsView> query,
+        AggregateViewFilterDto filter)
+    {
+        if (!string.IsNullOrWhiteSpace(filter.Title))
+        {
+            var title = $"%{filter.Title.Trim()}%";
+            query = query.Where(x => EF.Functions.ILike(x.Title, title));
+        }
+
+        if (filter.StartAtFrom.HasValue)
+            query = query.Where(x => x.StartAt >= filter.StartAtFrom.Value);
+
+        if (filter.StartAtTo.HasValue)
+            query = query.Where(x => x.StartAt <= filter.StartAtTo.Value);
+
+        if (!string.IsNullOrWhiteSpace(filter.Status))
+        {
+            var status = filter.Status.Trim();
+            query = query.Where(x => EF.Functions.ILike(x.Status, status));
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.Visibility))
+        {
+            var visibility = filter.Visibility.Trim();
+            query = query.Where(x => EF.Functions.ILike(x.Visibility, visibility));
+        }
+
+        return query;
+    }
+}

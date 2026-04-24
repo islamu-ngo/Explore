@@ -3,6 +3,7 @@
 
 using Explore.Domain;
 using Explore.Domain.Modules;
+using Explore.Domain.Views;
 using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 using StorageObject = Explore.Domain.StorageObject;
@@ -131,6 +132,9 @@ public partial class ExploreDbContext
             .HasQueryFilter(QueryFilterNames.SoftDelete, e => !e.IsDeleted);
 
         modelBuilder.Entity<EventCustomPropertyProjection>()
+            .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
+
+        modelBuilder.Entity<EventWithSessionsView>()
             .HasQueryFilter(QueryFilterNames.Tenant, e => TenantContext == null || e.TenantId == (TenantContext != null ? TenantContext.TenantId : Guid.Empty));
 
         modelBuilder.Entity<CustomPropertyProjectionStatus>()

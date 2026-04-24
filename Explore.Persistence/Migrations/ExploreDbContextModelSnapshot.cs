@@ -2482,6 +2482,127 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("event_custom_property_projections", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.Views.EventWithSessionsView", b =>
+                {
+                    b.Property<string>("AggregatedSessionIslamicThemes")
+                        .HasColumnType("text")
+                        .HasColumnName("aggregated_session_islamic_themes");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<string>("DifficultyLevel")
+                        .HasColumnType("text")
+                        .HasColumnName("difficulty_level");
+
+                    b.Property<DateTimeOffset?>("EndAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("end_at");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<string>("EventCustomPropertyFacets")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("event_custom_property_facets");
+
+                    b.Property<string>("EventSessionCustomPropertyFacets")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("event_session_custom_property_facets");
+
+                    b.Property<DateTimeOffset?>("FirstSessionStartAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("first_session_start_at");
+
+                    b.Property<bool>("HasInPersonSessions")
+                        .HasColumnType("boolean")
+                        .HasColumnName("has_in_person_sessions");
+
+                    b.Property<bool>("HasVirtualSessions")
+                        .HasColumnType("boolean")
+                        .HasColumnName("has_virtual_sessions");
+
+                    b.Property<string>("IslamicTheme")
+                        .HasColumnType("text")
+                        .HasColumnName("islamic_theme");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<bool?>("IsRamadan")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_ramadan");
+
+                    b.Property<DateTimeOffset?>("LastSessionEndAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_session_end_at");
+
+                    b.Property<string>("Madhab")
+                        .HasColumnType("text")
+                        .HasColumnName("madhab");
+
+                    b.Property<bool?>("PrayerAware")
+                        .HasColumnType("boolean")
+                        .HasColumnName("prayer_aware");
+
+                    b.Property<int>("SessionCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("session_count");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("slug");
+
+                    b.Property<DateTimeOffset>("StartAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("start_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("TargetAudience")
+                        .HasColumnType("text")
+                        .HasColumnName("target_audience");
+
+                    b.Property<string>("TechStack")
+                        .HasColumnType("text")
+                        .HasColumnName("tech_stack");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("title");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("Visibility")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("visibility");
+
+                    b.HasNoKey();
+
+                    b.ToView("vw_event_with_sessions", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.EventCustomPropertyValue", b =>
                 {
                     b.Property<Guid>("Id")

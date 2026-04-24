@@ -5,6 +5,7 @@ using Explore.Domain;
 using Explore.Domain.Federation;
 using Explore.Domain.Modules;
 using Explore.Domain.Secrets;
+using Explore.Domain.Views;
 using Microsoft.EntityFrameworkCore;
 using StorageObject = Explore.Domain.StorageObject;
 
@@ -76,6 +77,7 @@ public partial class ExploreDbContext
     public DbSet<EventCustomPropertyOption> EventCustomPropertyOptions { get; set; }
     public DbSet<EventCustomPropertyValue> EventCustomPropertyValues { get; set; }
     public DbSet<EventCustomPropertyProjection> EventCustomPropertyProjections { get; set; }
+    public DbSet<EventWithSessionsView> EventsWithSessions => Set<EventWithSessionsView>();
     public DbSet<CustomPropertyProjectionStatus> CustomPropertyProjectionStatuses { get; set; }
     public DbSet<CustomPropertyProjectionDirtyScope> CustomPropertyProjectionDirtyScopes { get; set; }
 
