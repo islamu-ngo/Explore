@@ -583,6 +583,7 @@
           "Blazored.FluentValidation": "[2.2.0, )",
           "Blazouter": "[1.0.13, )",
           "Blazouter.WebAssembly": "[1.0.13, )",
+          "DiffPlex": "[1.9.0, )",
           "Explore.Domain": "[1.0.0, )",
           "FluentValidation": "[11.9.1, )",
           "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.7, )",
@@ -594,6 +595,7 @@
       "explore.domain": {
         "type": "Project",
         "dependencies": {
+          "Microsoft.EntityFrameworkCore": "[10.0.7, )",
           "Microsoft.Extensions.Compliance.Abstractions": "[9.9.0, )"
         }
       },
@@ -691,6 +693,12 @@
           "Grpc.Net.Client": "2.76.0",
           "Polly": "8.6.6"
         }
+      },
+      "DiffPlex": {
+        "type": "CentralTransitive",
+        "requested": "[1.9.0, )",
+        "resolved": "1.9.0",
+        "contentHash": "Z4IDEH6iOb6d+Y2QUjsbq1Fp5I/kwZzNdr/evBTbCGq+ShAjE4baLm7lX1tfjV2p34QI3V9kctCQziFuuKqeCA=="
       },
       "EFCore.NamingConventions": {
         "type": "CentralTransitive",

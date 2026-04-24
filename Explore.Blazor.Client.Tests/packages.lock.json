@@ -171,6 +171,16 @@
         "resolved": "10.0.201",
         "contentHash": "4EAMH3CqtVwVm7Sx4DnNtZj/J0b+A1YGcTnCL6prhQ8ZHlwbVtZ3RmSyJdi85mSnLl+u94aVr8fElRGkjZkKmw=="
       },
+      "Microsoft.EntityFrameworkCore.Abstractions": {
+        "type": "Transitive",
+        "resolved": "10.0.7",
+        "contentHash": "TuxExnfIS/bSq3z2CbH0LwZH1oyj9iHhSGneU4fpxl3ikjZGZdSae9gcfnImV1rufH8f/ab1NnHwyL2BLyeZOg=="
+      },
+      "Microsoft.EntityFrameworkCore.Analyzers": {
+        "type": "Transitive",
+        "resolved": "10.0.7",
+        "contentHash": "eZnMyiJzo249Ejg5CaFScvJS0u7neQfS9DXknAHTO6FHVMM99gO0byNXHGZmA/BOkZ13ngeVziQLHTMOtgescg=="
+      },
       "Microsoft.Extensions.AmbientMetadata.Application": {
         "type": "Transitive",
         "resolved": "10.1.0",
@@ -464,6 +474,7 @@
           "Blazored.FluentValidation": "[2.2.0, )",
           "Blazouter": "[1.0.13, )",
           "Blazouter.WebAssembly": "[1.0.13, )",
+          "DiffPlex": "[1.9.0, )",
           "Explore.Domain": "[1.0.0, )",
           "FluentValidation": "[11.9.1, )",
           "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.7, )",
@@ -475,6 +486,7 @@
       "explore.domain": {
         "type": "Project",
         "dependencies": {
+          "Microsoft.EntityFrameworkCore": "[10.0.7, )",
           "Microsoft.Extensions.Compliance.Abstractions": "[9.9.0, )"
         }
       },
@@ -545,6 +557,12 @@
           "Polly": "8.6.6"
         }
       },
+      "DiffPlex": {
+        "type": "CentralTransitive",
+        "requested": "[1.9.0, )",
+        "resolved": "1.9.0",
+        "contentHash": "Z4IDEH6iOb6d+Y2QUjsbq1Fp5I/kwZzNdr/evBTbCGq+ShAjE4baLm7lX1tfjV2p34QI3V9kctCQziFuuKqeCA=="
+      },
       "EntityFramework": {
         "type": "CentralTransitive",
         "requested": "[6.5.1, )",
@@ -605,6 +623,16 @@
         "requested": "[10.0.7, )",
         "resolved": "10.0.7",
         "contentHash": "lsMCW7OvNpgtUCDCcuoJvDwoKG6RZxuAdJ9nWfhzSSqlv5CemHFuGKwVO9kOtAk7YE6ITcQrjIG8RhSAQRT2MA=="
+      },
+      "Microsoft.EntityFrameworkCore": {
+        "type": "CentralTransitive",
+        "requested": "[10.0.7, )",
+        "resolved": "10.0.7",
+        "contentHash": "G6yclVO5/csPzzsymV0SemY2NDqE31CP5M3jprF5IuO9wJsh4aUOfYD8HCLuDmM1D1CfReegVic48O2r79d46Q==",
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore.Abstractions": "10.0.7",
+          "Microsoft.EntityFrameworkCore.Analyzers": "10.0.7"
+        }
       },
       "Microsoft.Extensions.Caching.Hybrid": {
         "type": "CentralTransitive",
