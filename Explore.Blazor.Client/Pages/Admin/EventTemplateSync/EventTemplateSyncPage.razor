@@ -151,6 +151,11 @@
                 Snackbar.Add("Template sync applied successfully.", Severity.Success);
                 await LoadDiffAsync();
             }
+            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Conflict)
+            {
+                _hasStaleError = true;
+                StateHasChanged();
+            }
             catch (Exception)
             {
                 Snackbar.Add("Failed to apply sync.", Severity.Error);
