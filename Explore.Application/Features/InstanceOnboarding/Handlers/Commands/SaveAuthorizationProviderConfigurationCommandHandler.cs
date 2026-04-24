@@ -38,6 +38,12 @@ public class SaveAuthorizationProviderConfigurationCommandHandler : IRequestHand
         }
 
         request.Configuration.CerbosGrpcEndpoint = request.Configuration.CerbosGrpcEndpoint?.Trim() ?? string.Empty;
+        if (request.Configuration.Provider.Equals("cerbos", StringComparison.OrdinalIgnoreCase)
+            && !string.IsNullOrWhiteSpace(request.Configuration.CerbosGrpcEndpoint)
+            && !request.Configuration.CerbosGrpcEndpoint.Contains("://", StringComparison.Ordinal))
+        {
+            request.Configuration.CerbosGrpcEndpoint = $"https://{request.Configuration.CerbosGrpcEndpoint}";
+        }
 
         if (request.Configuration.Provider.Equals("cerbos", StringComparison.OrdinalIgnoreCase))
         {
