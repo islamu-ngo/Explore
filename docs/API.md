@@ -63,6 +63,14 @@ Three-reader non-URL versioning — clients may use any of the following; all th
 3. Every endpoint has named routes (via `RouteNames` constants) for HATEOAS link generation.
 4. Endpoints include `[ProducesResponseType]` and XML doc summaries for OpenAPI quality.
 
+### Template Sync Endpoints
+
+- Event sync routes live under `/api/events/{eventId:guid}/template-sync/{diff|apply|history}`.
+- Event-session sync routes live under `/api/event-sessions/{sessionId:guid}/template-sync/{diff|apply|history}`.
+- `diff` returns the operator-visible template delta for a requested target version.
+- `apply` accepts an explicit sync plan plus `BaseProvenanceVersion` and uses the `Complex` timeout policy.
+- Stale-base and concurrent-update conflicts return `409 Conflict` with ProblemDetails types `/problems/stale_sync_base` and `/problems/concurrent_update`.
+
 ---
 
 ## Rate Limiting (5 Tiers)
@@ -194,6 +202,45 @@ Non-GET responses additionally receive:
 3. `ISecureRequest` — provides dynamic resource context for permission evaluation.
 
 Denied requests throw `AuthorizationException` → mapped to `403 Forbidden` by exception handler.
+
+### External API Keys (Direct Callers)
+
+Non-interactive callers authenticate with long-lived `X-API-Key` credentials in the form `{keyId}.{secret}`. The endpoint contract is otherwise identical to JWT callers — only the credential presentation and principal shape differ.
+
+**Owner Types** (enum values stored alongside each key):
+
+| Value | Owner | Tenant Binding | Effective Authority |
+|---|---|---|---|
+| `1` | `User` | Required | Key inherits the owner user's memberships (tenant/org/group admin claims) |
+| `2` | `Organization` | Required | Acts as organization admin for the owning org within the bound tenant |
+| `3` | `Group` | Required | Acts as group admin for the owning group within the bound tenant |
+| `4` | `Tenant` | Required | Acts as tenant admin for the bound tenant |
+| `5` | `InstanceAdmin` | **Nullable** | Cross-tenant operator; bypasses tenant isolation |
+
+**Scope Model** (`ExternalApiKeyScopes`): `events:read`, `events:write`, `organizations:read`, `organizations:write`, `groups:read`, `groups:write`, `users:read`, `users:write`, `lookups:read`, `registrations:write`, `api-keys:manage`, `admin:tenant`, `admin:instance`. Effective permissions are the intersection of (a) the scopes on the key and (b) the owner's authority ceiling (`ExternalApiKeyScopeCeiling`). Keys cannot hold scopes above their owner type.
+
+**Authentication Flow**:
+1. `ApiKeyAuthenticationHandler` parses the `X-API-Key` header, splits `{keyId}.{secret}`.
+2. Repository lookup via `IgnoreTenantFilter` (auth path only) returns the stored key.
+3. Secret is HMAC-SHA256 verified in constant time against `SecretHash`.
+4. `ApiTenantPostAuthenticationMiddleware` asserts the API-key `TenantId` matches the resolved request tenant (skipped for `InstanceAdmin` keys where `TenantId` is null).
+5. Principal is materialized with claims `explore:api-key:id`, `explore:tenant:id` (absent for InstanceAdmin), `explore:api-key:owner:type`, `explore:api-key:owner:id`, and repeated `explore:api-key:scope` claims.
+6. `TouchUsageMetadata` updates `LastUsedAt`/`LastUsedIp` (5-minute throttle per key).
+
+**Machine Principal Authorization**: `IMachinePrincipalAccessor` exposes the current `ApiKeyPrincipalContext` to both authorization providers. `CerbosPrincipalBuilder.BuildMachinePrincipalAsync` emits a Cerbos principal with `is_machine=true`, `api_key_id`, `owner_type`, `owner_id`, `scopes`, and synthesized `isInstanceAdmin`/`tenantMemberships`/`orgMemberships` attributes derived from owner type. `FallbackAuthorizationService` applies `MachineScopeMapping.ScopesPermit` as a fast-reject gate before dispatching to owner-type-specific authority checks — so machine principals evaluate consistently against both local and Cerbos-backed authorization.
+
+**Management Endpoints** (`/api/ExternalApiKey`):
+
+| Verb | Route | Purpose | Response |
+|---|---|---|---|
+| `GET` | `/api/ExternalApiKey` | List keys visible to the caller | HAL collection |
+| `GET` | `/api/ExternalApiKey/{id}` | Key detail (metadata only, no secret) | HAL resource |
+| `POST` | `/api/ExternalApiKey` | Create key — secret revealed **once** in response | HAL resource + secret field |
+| `PUT` | `/api/ExternalApiKey/{id}` | Update policy (scopes, expiry, quotas) | HAL resource |
+| `DELETE` | `/api/ExternalApiKey/{id}` | Revoke key (soft delete, status=Revoked) | `204 No Content` |
+| `GET` | `/api/ExternalApiKey/usage-report` | Tenant admins see their tenant; instance admins see platform-wide | Aggregated report |
+
+Create/revoke/update emit business metrics (`created`, `revoked`, `policy_updated`) tagged with `tenant_id` and `owner_type`.
 
 ---
 

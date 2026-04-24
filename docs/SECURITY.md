@@ -245,6 +245,53 @@ Five CORS policies are configured in `Program.cs`:
 | `ExternalWebsitePolicy` | Configurable | `GET`, `OPTIONS` only | No | External read-only |
 | `DevPolicy` | All origins | All | Yes | Development only |
 
+## External API Keys
+
+Non-interactive callers (direct API consumers, integrations, automation) authenticate with long-lived `X-API-Key` credentials instead of JWT bearer tokens. The security model is designed so credential material and principal authority are strictly separated.
+
+### Credential / Principal Separation
+
+- **Credential material** is a `{keyId}.{secret}` pair. The `keyId` is a stable, indexable identifier; the `secret` is a high-entropy random value that is *never* stored in plaintext.
+- **Principal authority** is derived from the key row (`OwnerType`, `OwnerId`, `TenantId`, `Scopes`), **not** from the credential itself. Rotating a secret does not change authority. Revoking or reissuing a key does not change the owner identity.
+- The credential is a lookup-and-verify token. The principal is reconstructed from the stored row on every request.
+
+### Hashing
+
+- Secrets are stored as HMAC-SHA256 hashes in `ExternalApiKey.SecretHash`. The full plaintext is never persisted.
+- Verification uses `CryptographicOperations.FixedTimeEquals` to prevent timing oracles.
+- The HMAC key is an instance-wide server-side secret; compromise of the database alone is not sufficient to forge valid credentials.
+
+### Rotation
+
+- Rotation issues a **new** key record and leaves the old key in a `PendingRotation` state so callers can migrate without downtime. Only one active key per caller identity is required; concurrent active/pending pairs are permitted.
+- Secret values are returned **once only**, at creation or rotation time, in the HTTP response body. The secret is then discarded server-side and cannot be re-derived.
+- Clients that lose a secret must rotate — the platform cannot recover it.
+
+### Raw Key Logging Prohibited
+
+- The `X-API-Key` header value must never appear in logs, traces, or metrics.
+- `ILogger` calls inside `ApiKeyAuthenticationHandler` log only `keyId` and outcome — the secret segment is discarded after parsing.
+- Business metrics (`external_api_key.authentication_attempts`) tag `key_id` and outcome but never the credential.
+- Correlation IDs and request logs redact the `Authorization`/`X-API-Key` headers before emission.
+
+### Tenant Isolation
+
+- API key rows are tenant-scoped (`TenantId` FK) except for `InstanceAdmin` keys (nullable). Every non-auth query applies the `Tenant` query filter.
+- Auth lookups are the **only** code path permitted to bypass the tenant filter — narrowly scoped to `GetByKeyIdForAuthentication` via `IgnoreTenantFilter`.
+- `ApiTenantPostAuthenticationMiddleware` enforces that the API-key `TenantId` matches the resolved request tenant. Mismatches return `404 Not Found` (not `401` — to avoid leaking tenant existence).
+
+### Scope Model
+
+- Each key holds an explicit `Scopes` set (e.g., `events:read`, `admin:tenant`, `admin:instance`).
+- Scopes are bounded by the owner type (`ExternalApiKeyScopeCeiling`): a `User`-owned key cannot hold `admin:tenant`, a `Tenant`-owned key cannot hold `admin:instance`. Attempts to create or update a key with out-of-ceiling scopes are rejected at validator level.
+- Authorization evaluators apply scope gates before any owner-authority check (see `MachineScopeMapping.ScopesPermit`). A key with `events:read` alone cannot perform mutations regardless of owner authority.
+
+### Machine Principal
+
+- `IMachinePrincipalAccessor` exposes the parsed `ApiKeyPrincipalContext` to both authorization providers for a uniform decision path.
+- Cerbos principals synthesize `isInstanceAdmin`/`tenantMemberships`/`orgMemberships` from owner type; the local `FallbackAuthorizationService` applies symmetric logic so both backends emit identical decisions for identical calls.
+- A machine principal never receives admin-enrichment claims (`is_system_admin`, `is_tenant_admin`, etc.) — those are reserved for interactive user flows. All authority derives from owner type + scopes.
+
 ## HATEOAS Authorization
 
 The HATEOAS link generation system is authorization-aware:

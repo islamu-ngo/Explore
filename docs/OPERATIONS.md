@@ -175,6 +175,52 @@ Instance bootstrap uses `ISetupSecretProvider`:
 - if setup mode is active and no env secret exists, API auto-generates a setup secret and logs it at startup;
 - onboarding endpoints in BFF (`/bff/setup-secret*`) validate and synchronize secret state.
 
+## External API Key Operations
+
+External API keys are long-lived credentials for non-interactive callers. Operational guarantees differ from interactive JWT flows in three places: rate-limit partitioning, quota enforcement, and usage-metadata freshness.
+
+### Rate-Limit Partitioning
+
+- When an API-key principal is present on `HttpContext.User`, the `global` and `authenticated` rate-limit policies partition on `api-key:{keyId}` instead of remote IP or user ID.
+- Partitioning guarantees that one key's burst does not starve other keys sharing the same egress IP.
+- Per-key limits use the same token-bucket configuration as `authenticated` (200 requests / 60s sliding). Per-key write limits match `write` (30 requests / 60s fixed).
+- Anonymous and JWT callers retain their existing partition keys (IP and user ID respectively); no behavior change for those paths.
+
+### Clustered Deployment Semantics
+
+Three persistence tiers behave differently in multi-node deployments:
+
+| Tier | Storage | Cluster Behavior | Mitigation |
+|---|---|---|---|
+| Rate limits | In-process `PartitionedRateLimiter` | **Node-local** — N nodes give N× the advertised limit | Deploy a Redis-backed limiter or an ingress-tier limit when strict global enforcement is required |
+| Quota credits | PostgreSQL `ExternalApiKeyQuota` table | **Cluster-safe** — atomic `INSERT ... ON CONFLICT` + `UPDATE ... WHERE credits_used + amount <= limit` with row-level lock | No action required |
+| Usage metadata | In-memory write-through to `LastUsedAt` / `LastUsedIp` | **Eventually consistent** — 5-minute in-memory throttle per key; races between nodes are acceptable | No action required; metadata is informational, not security-critical |
+
+### Revocation Semantics
+
+- Revocation sets `ExternalApiKeyStatusId` to `Revoked`. The change takes effect on the **next** authentication attempt — in-flight requests already past the auth handler complete normally.
+- Cache invalidation for the key row is immediate (HybridCache `RemoveAsync`); no stale reads beyond the auth handler's first lookup.
+- Revoked keys emit `external_api_key.revoked` business metrics tagged with `tenant_id` and `owner_type`.
+
+### Usage Reporting
+
+- Tenant admins call `GET /api/ExternalApiKey/usage-report?from=&to=` and receive a report scoped to their tenant.
+- Instance admins call the same endpoint and receive a platform-wide report — optionally narrowed via `tenantId` query parameter.
+- Reports are aggregated from request counts + last-used timestamps; no raw request logs are surfaced (privacy boundary).
+
+### Observability
+
+Six business metric counters (all tagged with `tenant_id`, `owner_type`):
+
+- `external_api_key.created`
+- `external_api_key.revoked`
+- `external_api_key.policy_updated`
+- `external_api_key.rotated`
+- `external_api_key.authentication_attempts` (+ `outcome` tag: `success` / `invalid` / `inactive` / `expired` / `tenant_mismatch` / `empty_header`)
+- `external_api_key.throttled`
+
+Structured logs on the auth handler include `key_id` and outcome only — never the secret segment.
+
 ## Analytics Operational Contract
 
 Analytics is optional infrastructure. Provider failures must never block normal product flows.

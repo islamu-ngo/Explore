@@ -243,6 +243,55 @@ When tenant and instance policies conflict:
 
 ---
 
+## Machine Principal Authorities (External API Keys)
+
+Non-interactive callers authenticate with long-lived API keys. Each key is bound to an **owner type** that determines the authority ceiling. The ceiling cannot be escalated by granting broader scopes — scopes merely refine the ceiling.
+
+### Owner Type → Authority Mapping
+
+| Owner Type | Tenant Binding | Equivalent Interactive Role | Cross-Tenant? |
+|---|---|---|---|
+| `User` (1) | Required | The owner user's actual memberships (tenant/org/group admin claims) | No — follows owner's memberships |
+| `Organization` (2) | Required | Organization admin for the owning org | No |
+| `Group` (3) | Required | Group admin for the owning group | No |
+| `Tenant` (4) | Required | Tenant admin for the bound tenant | No |
+| `InstanceAdmin` (5) | **Null** | Instance admin | **Yes** — bypasses tenant isolation |
+
+### Scope Ceilings
+
+Scopes declare intent; owner type declares reachable authority. Effective permission = scope ∩ ceiling.
+
+| Owner Type | Ceiling Scopes |
+|---|---|
+| `User` | `events:*`, `users:*`, `lookups:read`, `registrations:write`, `api-keys:manage` |
+| `Organization` | User scopes + `organizations:*` |
+| `Group` | User scopes + `groups:*` |
+| `Tenant` | All of the above + `admin:tenant` |
+| `InstanceAdmin` | All scopes including `admin:instance` |
+
+A `User`-owned key cannot be granted `admin:tenant` even by a system administrator — the validator refuses the request. To extend authority, the correct path is to create a new key at a higher owner type.
+
+### InstanceAdmin Boundary
+
+`InstanceAdmin` keys are the only keys with `TenantId = NULL`. They are meant for platform operator use:
+
+- Cross-tenant reporting and usage analytics
+- Instance-level configuration (`InstanceSetting`, `AtprotoRecord`, `IndexedDid`, `PlatformNamespace`)
+- Bulk tenant operations
+
+InstanceAdmin keys **cannot** be created through the tenant-admin UI. They are provisioned through the instance-admin settings surface, subject to the same audit logging as interactive instance admin role assignments.
+
+### Authority Resolution in Code
+
+`IMachinePrincipalAccessor.Current` exposes the parsed `ApiKeyPrincipalContext` to both authorization providers:
+
+- `CerbosPrincipalBuilder.BuildMachinePrincipalAsync` synthesizes a Cerbos principal with `is_machine=true`, `api_key_id`, `owner_type`, `scopes`, plus authority attributes (`isInstanceAdmin`, `tenantMemberships`, `orgMemberships`) derived from owner type.
+- `FallbackAuthorizationService.EvaluateMachineCallerAccessAsync` applies the same rules directly (scope gate first, then owner-type-specific authority check).
+
+Both backends produce identical decisions for identical inputs, so the platform can run in Cerbos-enabled or Cerbos-disabled deployments without behavior divergence.
+
+---
+
 ## Related Documentation
 
 - **[MULTI_TENANCY.md](MULTI_TENANCY.md)** - Tenant isolation model

@@ -250,6 +250,38 @@ Hard-limit quota definitions for Layer 3 custom properties (Rule 16). Each has a
 | `event_list.card.show_price` | bool | `true` | Show price in cards |
 | `event_list.card.show_tags` | bool | `true` | Show tags in cards |
 
+## External API Key Defaults
+
+Non-interactive callers use long-lived `{keyId}.{secret}` credentials. Per-key policy defaults are applied at create time by `ExternalApiKeyQuotaDefaults` and `ExternalApiKeyScopeCeiling`.
+
+### Quota Defaults by Owner Type
+
+| Owner Type | Default Period | Default Request Limit | Rationale |
+|---|---|---|---|
+| `User` (`1`) | `Daily` | `1,000` | Per-user automation, usually tied to a single developer |
+| `Organization` (`2`) | `Monthly` | `10,000` | Team-scale automations and integrations |
+| `Group` (`3`) | `Monthly` | `5,000` | Smaller scope than an org but shared by multiple members |
+| `Tenant` (`4`) | `Monthly` | `50,000` | Tenant-wide admin automation |
+| `InstanceAdmin` (`5`) | `None` | unlimited | Platform operator usage, rate-limited only by node-local policies |
+
+All defaults are overridable per key via `PUT /api/ExternalApiKey/{id}`.
+
+### Scope Ceilings by Owner Type
+
+- `User`: `events:read`, `events:write`, `users:read`, `users:write`, `lookups:read`, `registrations:write`, `api-keys:manage`
+- `Organization`: User scopes plus `organizations:read`, `organizations:write`
+- `Group`: User scopes plus `groups:read`, `groups:write`
+- `Tenant`: All of the above plus `admin:tenant`
+- `InstanceAdmin`: All scopes including `admin:instance`
+
+Validators (`CreateExternalApiKeyDtoValidator`, `UpdateExternalApiKeyPolicyDtoValidator`) reject requests containing scopes above the owner ceiling.
+
+### Forwarded Headers Interaction
+
+External API keys are often presented by callers behind reverse proxies. The `ForwardedHeadersTrust` settings (see above) determine which proxies are trusted to forward `X-Forwarded-For`/`X-Forwarded-Host`. When an API-key caller comes through a trusted proxy, the rate-limit partition key remains `api-key:{keyId}` — the forwarded IP is used only for `LastUsedIp` telemetry and logging.
+
+When `TrustLoopbackProxy=true` (Aspire-style local development), loopback proxies are trusted for forwarded headers but untrusted proxies still have their `X-Forwarded-*` headers dropped before middleware sees them.
+
 ## Related
 
 - [MULTI_TENANCY.md](MULTI_TENANCY.md)
