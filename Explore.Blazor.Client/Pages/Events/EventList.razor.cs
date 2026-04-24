@@ -1063,7 +1063,9 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         {
             ["EventId"] = evt.Id!.Value,
             ["EventSessionId"] = primarySession.Id,
-            ["Title"] = $"Register for {evt.Title}"
+            ["Title"] = $"Register for {evt.Title}",
+            ["RecipientActorId"] = evt.ActorId,
+            ["PublisherOrganizationName"] = evt.ActorDisplayName
         };
         var options = DialogOptionsFactory.Medium();
         await AccessibilityFocusService.SaveFocusAsync();

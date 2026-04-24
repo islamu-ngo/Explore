@@ -1,7 +1,10 @@
 @using Explore.Blazor.Client.Helpers
+@using Explore.Blazor.Client.Contracts.Services
 @inject IEventService EventService
 @inject IUserService UserService
+@inject IContactShareConsentService ConsentService
 @inject ISnackbar Snackbar
+@inject NavigationManager Navigation
 <MudDialog Class="registration-dialog">
     <DialogContent>
         @if (isLoading)
@@ -104,6 +107,44 @@
                     </div>
                 }
 
+                @if (RecipientActorId.HasValue && RecipientActorId.Value != Guid.Empty)
+                {
+                    <MudDivider Class="my-4" />
+                    <div class="registration__consent">
+                        @if (_hasExistingConsent)
+                        {
+                            <MudAlert Severity="Severity.Info"
+                                      Icon="@Icons.Material.Filled.CheckCircle"
+                                      Dense="true"
+                                      Class="mb-2">
+                                <MudText Typo="Typo.body2">
+                                    You're already sharing your email address with this organizer.
+                                </MudText>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary d-block mt-1">
+                                    You can manage this at any time from
+                                    <MudLink Href="/settings?section=connected-apps" Underline="Underline.Always">
+                                        Connected Apps
+                                    </MudLink>.
+                                </MudText>
+                            </MudAlert>
+                        }
+                        else
+                        {
+                            <MudCheckBox T="bool"
+                                         @bind-Value="_shareEmailWithOrganizer"
+                                         Color="Color.Primary"
+                                         Dense="true"
+                                         Label="@BuildConsentLabel()" />
+                            <MudText Typo="Typo.caption" Class="mud-text-secondary d-block registration__consent-hint">
+                                Optional. You can withdraw this consent anytime from
+                                <MudLink Href="/settings?section=connected-apps" Underline="Underline.Always" Typo="Typo.caption">
+                                    Connected Apps
+                                </MudLink>.
+                            </MudText>
+                        }
+                    </div>
+                }
+
                 <div class="action-buttons">
                     <AppButton Variant="Variant.Text"
                                Color="Color.Default"
@@ -174,6 +215,21 @@
     [Parameter]
     public ICollection<EventSessionListDto>? Sessions { get; set; }
 
+    /// <summary>
+    /// The publisher organization's actor id, used to detect and gate the
+    /// "share my email with the organizer" consent affordance. When null,
+    /// the consent section is not rendered.
+    /// </summary>
+    [Parameter]
+    public Guid? RecipientActorId { get; set; }
+
+    /// <summary>
+    /// The publisher organization's display name, used to render the
+    /// consent checkbox label. When null or empty, "the organizer" is used.
+    /// </summary>
+    [Parameter]
+    public string? PublisherOrganizationName { get; set; }
+
     private CreateEventRegistrationDto registrationModel = new();
     private UserDto? currentUser;
     private bool isSubmitting;
@@ -185,6 +241,9 @@
     private int _selectedScopeId;
     private Guid? _selectedDayId;
     private HashSet<Guid> _selectedSessionIds = [];
+
+    private bool _shareEmailWithOrganizer;
+    private bool _hasExistingConsent;
 
     protected override async Task OnInitializedAsync()
     {
@@ -206,6 +265,21 @@
                 registrationModel.EventId = EventId;
                 registrationModel.UserId = currentUser.Id;
             }
+
+            if (RecipientActorId.HasValue && RecipientActorId.Value != Guid.Empty)
+            {
+                try
+                {
+                    _hasExistingConsent = await ConsentService.CheckConsentForOrganizerAsync(
+                        RecipientActorId.Value,
+                        CancellationToken.None);
+                }
+                catch
+                {
+                    // Non-fatal: fall through and treat as no existing consent.
+                    _hasExistingConsent = false;
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -215,6 +289,15 @@
         {
             isLoading = false;
         }
+    }
+
+    private string BuildConsentLabel()
+    {
+        var orgName = string.IsNullOrWhiteSpace(PublisherOrganizationName)
+            ? "the organizer"
+            : PublisherOrganizationName;
+
+        return $"Share my email address with {orgName} so they can contact me about future events and related updates.";
     }
 
     private void ToggleSession(Guid sessionId, bool selected)
@@ -267,6 +350,22 @@
                 registrationModel.SelectedSessionIds = null;
                 registrationModel.SelectedEventDayId = null;
                 break;
+        }
+
+        // Populate consent snapshot only when the user explicitly opted in
+        // for this registration. Existing-consent cases never set this flag
+        // so the server does not re-record the consent.
+        if (_shareEmailWithOrganizer && !_hasExistingConsent)
+        {
+            registrationModel.ShareEmailWithOrganizer = true;
+            registrationModel.ConsentTextAcknowledged = BuildConsentLabel();
+            registrationModel.ConsentUiVersion = "v1";
+        }
+        else
+        {
+            registrationModel.ShareEmailWithOrganizer = false;
+            registrationModel.ConsentTextAcknowledged = null;
+            registrationModel.ConsentUiVersion = null;
         }
 
         isSubmitting = true;

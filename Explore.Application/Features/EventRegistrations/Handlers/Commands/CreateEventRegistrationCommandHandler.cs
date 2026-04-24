@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventRegistration;
 using Explore.Application.DTOs.EventRegistration.Validators;
 using Explore.Application.Features.EventRegistrations.Requests.Commands;
@@ -16,6 +17,7 @@ using Explore.Application.Telemetry;
 using Explore.Domain;
 using Explore.Domain.Enums;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace Explore.Application.Features.EventRegistrations.Handlers.Commands;
 
@@ -29,6 +31,8 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
     private readonly IApprovalStatusRepository _approvalStatusRepository;
     private readonly ITenantContext _tenantContext;
     private readonly BusinessMetrics _metrics;
+    private readonly IContactShareConsentService _consentService;
+    private readonly ILogger<CreateEventRegistrationCommandHandler> _logger;
 
     public CreateEventRegistrationCommandHandler(
         IEventRegistrationIntentRepository intentRepository,
@@ -38,7 +42,9 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         IEventSessionRepository eventSessionRepository,
         IApprovalStatusRepository approvalStatusRepository,
         ITenantContext tenantContext,
-        BusinessMetrics metrics)
+        BusinessMetrics metrics,
+        IContactShareConsentService consentService,
+        ILogger<CreateEventRegistrationCommandHandler> logger)
     {
         _intentRepository = intentRepository;
         _eventRepository = eventRepository;
@@ -48,6 +54,8 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
         _approvalStatusRepository = approvalStatusRepository;
         _tenantContext = tenantContext;
         _metrics = metrics;
+        _consentService = consentService;
+        _logger = logger;
     }
 
     public async Task<BaseCommandResponse<Guid>> Handle(CreateEventRegistrationCommand request, CancellationToken cancellationToken)
@@ -138,6 +146,28 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
             .ToList();
 
         var created = await _intentRepository.CreateWithChildrenAsync(intent, childRows, cancellationToken);
+
+        if (dto.ShareEmailWithOrganizer)
+        {
+            try
+            {
+                await _consentService.ProcessRegistrationConsent(
+                    tenantId,
+                    dto.UserId,
+                    dto.EventId,
+                    created.Id,
+                    dto.ShareEmailWithOrganizer,
+                    dto.ConsentTextAcknowledged,
+                    dto.ConsentUiVersion);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Failed to process contact share consent for registration {RegistrationId}; registration itself succeeded.",
+                    created.Id);
+            }
+        }
 
         response.Success = true;
         response.Id = created.Id;

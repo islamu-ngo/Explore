@@ -567,7 +567,9 @@ public partial class EventDetail : ComponentBase
             { "Title", $"Register for {_eventDetails.Title}" },
             { "RegistrationPolicyId", _eventDetails.RegistrationPolicyId },
             { "Days", _eventDays },
-            { "Sessions", _eventSessions }
+            { "Sessions", _eventSessions },
+            { "RecipientActorId", _eventDetails.ActorId },
+            { "PublisherOrganizationName", _eventDetails.ActorDisplayName }
         };
 
         var options = DialogOptionsFactory.Medium();

@@ -43030,6 +43030,15 @@ namespace Explore.Blazor.Client.Clients
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? ApprovalStatusId { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("shareEmailWithOrganizer")]
+        public bool? ShareEmailWithOrganizer { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("consentTextAcknowledged")]
+        public string? ConsentTextAcknowledged { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("consentUiVersion")]
+        public string? ConsentUiVersion { get; set; } = default!;
+
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 
         [System.Text.Json.Serialization.JsonExtensionData]

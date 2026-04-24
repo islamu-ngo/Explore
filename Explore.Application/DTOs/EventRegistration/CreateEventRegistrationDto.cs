@@ -31,4 +31,23 @@ public class CreateEventRegistrationDto
     public IReadOnlyList<Guid> SelectedSessionIds { get; set; } = Array.Empty<Guid>();
 
     public int? ApprovalStatusId { get; set; }
+
+    /// <summary>
+    /// When true, a contact-share consent is recorded granting the event's publishing organisation
+    /// permission to contact the user about future events. Requires an approved publisher organisation;
+    /// silently skipped otherwise.
+    /// </summary>
+    public bool ShareEmailWithOrganizer { get; set; }
+
+    /// <summary>
+    /// Snapshot of the consent text presented to the user in the UI at the moment of agreement.
+    /// Optional - when null the application service supplies a default text that names the organisation.
+    /// </summary>
+    public string? ConsentTextAcknowledged { get; set; }
+
+    /// <summary>
+    /// Version identifier of the consent UI variant shown to the user (for audit trail).
+    /// Optional - defaults to <see cref="Explore.Domain.Constants.ConsentUiVersions.V1"/>.
+    /// </summary>
+    public string? ConsentUiVersion { get; set; }
 }
