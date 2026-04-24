@@ -123,6 +123,232 @@ public class AdminContextTests
     }
 
     [Test]
+    public async Task IsGroupAdminAsync_WhenMembershipHasGroupAdminRole_ReturnsTrue()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+
+        var platformUserRoleRepository = Substitute.For<IPlatformUserRoleRepository>();
+        var bootstrapRepository = Substitute.For<IInstanceBootstrapStateRepository>();
+        var tenantMemberRepository = Substitute.For<ITenantMemberRepository>();
+        var organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
+        var groupMemberRepository = Substitute.For<IGroupMemberRepository>();
+
+        groupMemberRepository.GetByGroupAndUser(groupId, userId).Returns(new GroupMember
+        {
+            Id = Guid.NewGuid(),
+            GroupId = groupId,
+            Group = null!,
+            UserId = userId,
+            User = null!,
+            RoleId = (int)RoleEnum.GroupAdmin,
+            Role = null!,
+            TenantId = Guid.NewGuid(),
+            Tenant = null!
+        });
+
+        var sut = CreateSutWithGroupMembers(
+            CreateHttpContextAccessor(userId),
+            platformUserRoleRepository,
+            bootstrapRepository,
+            tenantMemberRepository,
+            organizationMemberRepository,
+            groupMemberRepository);
+
+        // Act
+        var result = await sut.IsGroupAdminAsync(groupId, CancellationToken.None);
+
+        // Assert
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task IsGroupAdminAsync_WhenMembershipHasNonAdminRole_ReturnsFalse()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+
+        var platformUserRoleRepository = Substitute.For<IPlatformUserRoleRepository>();
+        var bootstrapRepository = Substitute.For<IInstanceBootstrapStateRepository>();
+        var tenantMemberRepository = Substitute.For<ITenantMemberRepository>();
+        var organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
+        var groupMemberRepository = Substitute.For<IGroupMemberRepository>();
+
+        groupMemberRepository.GetByGroupAndUser(groupId, userId).Returns(new GroupMember
+        {
+            Id = Guid.NewGuid(),
+            GroupId = groupId,
+            Group = null!,
+            UserId = userId,
+            User = null!,
+            RoleId = (int)RoleEnum.GroupMember,
+            Role = null!,
+            TenantId = Guid.NewGuid(),
+            Tenant = null!
+        });
+
+        var sut = CreateSutWithGroupMembers(
+            CreateHttpContextAccessor(userId),
+            platformUserRoleRepository,
+            bootstrapRepository,
+            tenantMemberRepository,
+            organizationMemberRepository,
+            groupMemberRepository);
+
+        // Act
+        var result = await sut.IsGroupAdminAsync(groupId, CancellationToken.None);
+
+        // Assert
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task IsGroupAdminAsync_WhenNoMembership_ReturnsFalse()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+
+        var platformUserRoleRepository = Substitute.For<IPlatformUserRoleRepository>();
+        var bootstrapRepository = Substitute.For<IInstanceBootstrapStateRepository>();
+        var tenantMemberRepository = Substitute.For<ITenantMemberRepository>();
+        var organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
+        var groupMemberRepository = Substitute.For<IGroupMemberRepository>();
+
+        groupMemberRepository.GetByGroupAndUser(groupId, userId).Returns((GroupMember?)null);
+
+        var sut = CreateSutWithGroupMembers(
+            CreateHttpContextAccessor(userId),
+            platformUserRoleRepository,
+            bootstrapRepository,
+            tenantMemberRepository,
+            organizationMemberRepository,
+            groupMemberRepository);
+
+        // Act
+        var result = await sut.IsGroupAdminAsync(groupId, CancellationToken.None);
+
+        // Assert
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task IsGroupAdminAsync_WithNoAuthenticatedUser_ReturnsFalse()
+    {
+        // Arrange
+        var groupId = Guid.NewGuid();
+
+        var platformUserRoleRepository = Substitute.For<IPlatformUserRoleRepository>();
+        var bootstrapRepository = Substitute.For<IInstanceBootstrapStateRepository>();
+        var tenantMemberRepository = Substitute.For<ITenantMemberRepository>();
+        var organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
+        var groupMemberRepository = Substitute.For<IGroupMemberRepository>();
+
+        var httpContextAccessor = Substitute.For<IHttpContextAccessor>();
+        httpContextAccessor.HttpContext.Returns(new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity()) });
+
+        var sut = CreateSutWithGroupMembers(
+            httpContextAccessor,
+            platformUserRoleRepository,
+            bootstrapRepository,
+            tenantMemberRepository,
+            organizationMemberRepository,
+            groupMemberRepository);
+
+        // Act
+        var result = await sut.IsGroupAdminAsync(groupId, CancellationToken.None);
+
+        // Assert
+        await Assert.That(result).IsFalse();
+        await groupMemberRepository.DidNotReceive().GetByGroupAndUser(Arg.Any<Guid>(), Arg.Any<Guid>());
+    }
+
+    [Test]
+    public async Task GetAdminGroupIdsAsync_ForUserId_FiltersNonAdminMemberships()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var adminGroupId = Guid.NewGuid();
+        var memberGroupId = Guid.NewGuid();
+
+        var tenantId = Guid.NewGuid();
+        var memberships = new List<GroupMember>
+        {
+            new()
+            {
+                Id = Guid.NewGuid(),
+                GroupId = adminGroupId,
+                Group = null!,
+                UserId = userId,
+                User = null!,
+                RoleId = (int)RoleEnum.GroupAdmin,
+                Role = null!,
+                TenantId = tenantId,
+                Tenant = null!
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                GroupId = memberGroupId,
+                Group = null!,
+                UserId = userId,
+                User = null!,
+                RoleId = (int)RoleEnum.GroupMember,
+                Role = null!,
+                TenantId = tenantId,
+                Tenant = null!
+            }
+        };
+
+        var platformUserRoleRepository = Substitute.For<IPlatformUserRoleRepository>();
+        var bootstrapRepository = Substitute.For<IInstanceBootstrapStateRepository>();
+        var tenantMemberRepository = Substitute.For<ITenantMemberRepository>();
+        var organizationMemberRepository = Substitute.For<IOrganizationMemberRepository>();
+        var groupMemberRepository = Substitute.For<IGroupMemberRepository>();
+        groupMemberRepository.GetMembershipsByUser(userId).Returns(memberships);
+
+        var sut = CreateSutWithGroupMembers(
+            CreateHttpContextAccessor(userId),
+            platformUserRoleRepository,
+            bootstrapRepository,
+            tenantMemberRepository,
+            organizationMemberRepository,
+            groupMemberRepository);
+
+        // Act
+        var result = await sut.GetAdminGroupIdsAsync(userId, CancellationToken.None);
+
+        // Assert
+        await Assert.That(result.Count).IsEqualTo(1);
+        await Assert.That(result).Contains(adminGroupId);
+        await Assert.That(result).DoesNotContain(memberGroupId);
+    }
+
+    private static AdminContext CreateSutWithGroupMembers(
+        IHttpContextAccessor httpContextAccessor,
+        IPlatformUserRoleRepository platformUserRoleRepository,
+        IInstanceBootstrapStateRepository instanceBootstrapStateRepository,
+        ITenantMemberRepository tenantMemberRepository,
+        IOrganizationMemberRepository organizationMemberRepository,
+        IGroupMemberRepository groupMemberRepository)
+    {
+        var cache = new MemoryCache(new MemoryCacheOptions());
+        var logger = Substitute.For<ILogger<AdminContext>>();
+
+        return new AdminContext(
+            httpContextAccessor,
+            platformUserRoleRepository,
+            instanceBootstrapStateRepository,
+            tenantMemberRepository,
+            organizationMemberRepository,
+            groupMemberRepository,
+            cache,
+            logger);
+    }
+
+    [Test]
     public async Task GetAdminTenantIdsAsync_FiltersOutNonAdminMemberships()
     {
         // Arrange

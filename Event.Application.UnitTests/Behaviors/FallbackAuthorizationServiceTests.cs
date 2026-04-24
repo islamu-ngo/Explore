@@ -13,6 +13,7 @@ namespace Event.Application.UnitTests.Behaviors;
 public class FallbackAuthorizationServiceTests
 {
     private readonly IAdminContext _adminContext;
+    private readonly IMachinePrincipalAccessor _machinePrincipalAccessor;
     private readonly IHierarchicalSettingsResolver _settingsResolver;
     private readonly ITenantContext _tenantContext;
     private readonly ILogger<FallbackAuthorizationService> _logger;
@@ -24,13 +25,16 @@ public class FallbackAuthorizationServiceTests
     public FallbackAuthorizationServiceTests()
     {
         _adminContext = Substitute.For<IAdminContext>();
+        _machinePrincipalAccessor = Substitute.For<IMachinePrincipalAccessor>();
         _settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
         _tenantContext = Substitute.For<ITenantContext>();
         _logger = Substitute.For<ILogger<FallbackAuthorizationService>>();
 
         _tenantContext.TenantId.Returns(TestTenantId);
+        _machinePrincipalAccessor.IsMachineCaller.Returns(false);
+        _machinePrincipalAccessor.Current.Returns((Explore.Application.Authentication.ApiKeyPrincipalContext?)null);
 
-        _service = new FallbackAuthorizationService(_adminContext, _settingsResolver, _tenantContext, _logger);
+        _service = new FallbackAuthorizationService(_adminContext, _machinePrincipalAccessor, _settingsResolver, _tenantContext, _logger);
     }
 
     // === Instance Admin Tests ===

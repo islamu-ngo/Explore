@@ -20,6 +20,7 @@ namespace Event.Application.UnitTests.Behaviors;
 public class CerbosAuthorizationServiceTests
 {
     private readonly IAdminContext _adminContext;
+    private readonly IMachinePrincipalAccessor _machinePrincipalAccessor;
     private readonly IHierarchicalSettingsResolver _settingsResolver;
     private readonly ITenantContext _tenantContext;
     private readonly ILogger<CerbosAuthorizationService> _logger;
@@ -29,11 +30,15 @@ public class CerbosAuthorizationServiceTests
     public CerbosAuthorizationServiceTests()
     {
         _adminContext = Substitute.For<IAdminContext>();
+        _machinePrincipalAccessor = Substitute.For<IMachinePrincipalAccessor>();
         _settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
         _tenantContext = Substitute.For<ITenantContext>();
         _logger = Substitute.For<ILogger<CerbosAuthorizationService>>();
         _cerbosClient = Substitute.For<ICerbosClient>();
         _clientFactory = Substitute.For<ICerbosClientFactory>();
+
+        _machinePrincipalAccessor.IsMachineCaller.Returns(false);
+        _machinePrincipalAccessor.Current.Returns((Explore.Application.Authentication.ApiKeyPrincipalContext?)null);
     }
 
     [Test]
@@ -185,8 +190,9 @@ public class CerbosAuthorizationServiceTests
     {
         return new CerbosAuthorizationService(
             _cerbosClient,
-            new CerbosPrincipalBuilder(_adminContext),
+            new CerbosPrincipalBuilder(_adminContext, _machinePrincipalAccessor),
             _adminContext,
+            _machinePrincipalAccessor,
             _settingsResolver,
             _tenantContext,
             _clientFactory,
