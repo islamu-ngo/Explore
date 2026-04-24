@@ -32,6 +32,9 @@ public static class RouteNames
     public const string GetEventSessions = "GetEventSessions";
     public const string GetEventCategories = "GetEventCategories";
     public const string GetEventTags = "GetEventTags";
+    public const string GetEventTemplateSyncDiff = "GetEventTemplateSyncDiff";
+    public const string ApplyEventTemplateSync = "ApplyEventTemplateSync";
+    public const string GetEventTemplateSyncHistory = "GetEventTemplateSyncHistory";
 
     // Event Aspect Routes
     public const string GetEventIslamicAspect = "GetEventIslamicAspect";
@@ -53,6 +56,9 @@ public static class RouteNames
     public const string GetEventSessionSpeakers = "GetEventSessionSpeakers";
     public const string GetEventSessionAgendaItems = "GetEventSessionAgendaItems";
     public const string GetEventRegistrations = "GetEventRegistrations";
+    public const string GetEventSessionTemplateSyncDiff = "GetEventSessionTemplateSyncDiff";
+    public const string ApplyEventSessionTemplateSync = "ApplyEventSessionTemplateSync";
+    public const string GetEventSessionTemplateSyncHistory = "GetEventSessionTemplateSyncHistory";
 
     #endregion
 

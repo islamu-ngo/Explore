@@ -1,0 +1,25 @@
+/* ABOUTME: Scoped CSS for the diff row component */
+.template-sync-row {
+    margin-bottom: 8px;
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--radius-md, 12px);
+}
+::deep .mud-expand-panel-header {
+    padding: 8px 16px;
+}
+.template-sync-row__content {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.template-sync-row__diff {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.diff-container {
+    background-color: var(--mud-palette-background-grey);
+    padding: 8px;
+    border-radius: 4px;
+}

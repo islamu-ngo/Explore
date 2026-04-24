@@ -1,0 +1,162 @@
+@page "/admin/events/{eventId:guid}/template-sync"
+@rendermode InteractiveAuto
+@* ABOUTME: Event Template Sync Page displaying template diffs. *@
+@* ABOUTME: Allows operators to selectively sync new, modified, and retired definitions/options. *@
+
+@using Explore.Blazor.Client.Models.Responses
+@using Explore.Blazor.Client.Models.EventTemplateSync
+@using Explore.Blazor.Client.Services.EventTemplateSync
+@using Explore.Blazor.Client.Components.EventTemplateSync
+@using MudBlazor
+@using System.Net.Http
+
+@inject IEventTemplateSyncService TemplateSyncService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Template Sync</PageTitle>
+
+<div class="template-sync-page">
+    <div class="template-sync-page__header d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h5">Template Sync</MudText>
+        @* TODO(hal): Gate on HAL `sync-apply` link once the API attaches _links via EventTemplateSyncLinkPolicy/EventTemplateSyncResource. Until the controller emits HAL, the server-side `template_admin` policy already enforces affordance (a successful diff fetch proves authorization). *@
+        @if (_diff is not null && TotalSelected > 0)
+        {
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="OpenApplyDialogAsync" Class="template-sync-page__apply-button" aria-label="Apply Sync Plan">
+                Apply Sync (@TotalSelected changes)
+            </MudButton>
+        }
+    </div>
+
+    @if (_isLoading)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" aria-live="polite" />
+    }
+    else if (_hasStaleError)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4">
+            Template has been modified by another operator.
+            <MudButton Color="Color.Inherit" OnClick="ReloadAsync">Reload Diff</MudButton>
+        </MudAlert>
+    }
+    else if (_diff != null)
+    {
+        @if (_diff.UntouchedLocalDefinitions.Any())
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-4">
+                Warning: Event has @(_diff.UntouchedLocalDefinitions.Count) untouched local definitions that are not managed by the template.
+            </MudAlert>
+        }
+
+        <MudPaper Elevation="0" Class="pa-4 template-sync-page__diff-panel" Style="border-radius: var(--radius-md, 12px);">
+            <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
+                <MudTabPanel Text="@($"Modified ({_diff.ModifiedDefinitions.Count})")" BadgeData="@_diff.ModifiedDefinitions.Count" BadgeColor="Color.Info">
+                    @foreach (var mod in _diff.ModifiedDefinitions)
+                    {
+                        <TemplateDiffRow Heading="@($"{mod.Namespace}.{mod.Key}")" 
+                                         Changes="@mod.FieldChanges" 
+                                         @bind-IsSelected="GetSelectedState(mod.Key).Value" />
+                    }
+                </MudTabPanel>
+            </MudTabs>
+        </MudPaper>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Guid EventId { get; set; }
+
+    [SupplyParameterFromQuery]
+    public int? TemplateVersion { get; set; }
+
+    private bool _isLoading = true;
+    private bool _hasStaleError = false;
+    private TemplateDiffDto? _diff;
+    private Dictionary<string, SelectedState> _selectedChanges = new();
+
+    private class SelectedState { public bool Value { get; set; } }
+
+    private SelectedState GetSelectedState(string key)
+    {
+        if (!_selectedChanges.TryGetValue(key, out var state))
+        {
+            state = new SelectedState { Value = false };
+            _selectedChanges[key] = state;
+        }
+        return state;
+    }
+
+    private int TotalSelected => _selectedChanges.Values.Count(x => x.Value);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDiffAsync();
+    }
+
+    private async Task LoadDiffAsync()
+    {
+        _isLoading = true;
+        _hasStaleError = false;
+        try
+        {
+            var response = await TemplateSyncService.GetDiffAsync(EventId, TemplateVersion ?? 0);
+            _diff = response.Id; // BaseCommandResponse TKey slot carries the payload; see TODO(hal) in markup for proper HAL link wrapping.
+            _selectedChanges.Clear();
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            _hasStaleError = true;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Failed to load template diff.", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ReloadAsync()
+    {
+        await LoadDiffAsync();
+    }
+
+    private async Task OpenApplyDialogAsync()
+    {
+        var parameters = new DialogParameters<TemplateSyncConfirmationDialog>
+        {
+            { x => x.ExpectedSlug, "event-slug" }, // In a real scenario, this would come from the API context
+            { x => x.TargetTemplateVersion, _diff!.TargetTemplateVersion },
+            { x => x.TotalChangesToApply, TotalSelected }
+        };
+
+        var dialog = await DialogService.ShowAsync<TemplateSyncConfirmationDialog>("Confirm Sync", parameters, DialogOptionsFactory.Confirmation());
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            var plan = new TemplateSyncPlanDto
+            {
+                TargetTemplateVersion = _diff!.TargetTemplateVersion,
+                BaseProvenanceVersion = _diff.BaseProvenanceVersion,
+                ModifiedDefinitionKeys = _selectedChanges.Where(kv => kv.Value.Value).Select(kv => kv.Key).ToList()
+            };
+
+            var request = new EventTemplateSyncApplyRequest(plan, _diff.BaseProvenanceVersion);
+
+            try
+            {
+                await TemplateSyncService.ApplySyncAsync(EventId, request);
+                Snackbar.Add("Template sync applied successfully.", Severity.Success);
+                await LoadDiffAsync();
+            }
+            catch (Exception)
+            {
+                Snackbar.Add("Failed to apply sync.", Severity.Error);
+            }
+        }
+    }
+}

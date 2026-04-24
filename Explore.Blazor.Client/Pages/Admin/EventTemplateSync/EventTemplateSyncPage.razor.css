@@ -1,0 +1,11 @@
+/* ABOUTME: BEM CSS for the Event Template Sync page */
+
+.template-sync-page {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.template-sync-page__diff-panel {
+    background-color: var(--mud-palette-background-grey);
+}

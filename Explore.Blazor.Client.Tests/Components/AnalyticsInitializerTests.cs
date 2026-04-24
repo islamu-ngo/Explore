@@ -102,7 +102,10 @@ public class AnalyticsInitializerTests : IDisposable
     {
         var method = typeof(BunitContext)
             .GetMethods()
-            .First(x => x.Name == "Render" && x.IsGenericMethod && x.GetParameters().Length == 1);
+            .Single(x => x.Name == "Render"
+                && x.IsGenericMethod
+                && x.GetParameters().Length == 1
+                && x.GetParameters()[0].ParameterType.IsArray);
 
         var parameters = method.GetParameters();
         var parameterType = parameters[0].ParameterType;

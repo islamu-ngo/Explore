@@ -4,6 +4,7 @@ using Explore.API.Hateoas;
 using Explore.API.Hateoas.Assemblers;
 using Explore.API.Hateoas.Policies;
 using Explore.Application.Contracts.Hateoas;  // For ILinkPolicy, ICollectionLinkPolicy
+using Explore.API.Hateoas.Resources;
 using Explore.Application.DTOs.Actor;
 using Explore.Application.DTOs.AtprotoRecord;
 using Explore.Application.DTOs.Category;
@@ -61,6 +62,10 @@ public static class HateoasAssemblerRegistration
         services.AddScoped<ILinkPolicy<EventSessionDto>, EventSessionDetailLinkPolicy>();
         services.AddScoped<ICollectionLinkPolicy<EventSessionListDto>, EventSessionCollectionLinkPolicy>();
         services.AddScoped<IResourceAssembler<EventSessionDto, EventSessionListDto>, EventSessionResourceAssembler>();
+
+        // Template Sync helper resources
+        services.AddScoped<ILinkPolicy<EventTemplateSyncResource>, EventTemplateSyncLinkPolicy>();
+        services.AddScoped<ILinkPolicy<EventSessionTemplateSyncResource>, EventSessionTemplateSyncLinkPolicy>();
 
         // Actor
         services.AddScoped<ILinkPolicy<ActorDto>, ActorDetailLinkPolicy>();

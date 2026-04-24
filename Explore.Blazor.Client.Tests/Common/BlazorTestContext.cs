@@ -1,3 +1,8 @@
+// ABOUTME: Shared bUnit test context for Blazor client tests with MudBlazor, auth, and common DI defaults.
+// ABOUTME: Centralizes JS interop stubs and test-only service registrations so component tests stay deterministic.
+
+using Explore.Application.Authentication;
+using Explore.Application.Contracts.Identity;
 using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Services;
@@ -67,7 +72,19 @@ public class BlazorTestContext : BunitContext
         AddLocalizationMocks();
         Services.AddSingleton(Substitute.For<IHttpClientFactory>());
         AddAccessibilityMocks();
+        AddAuthorizationSubstrateMocks();
         Services.AddScoped(_ => Substitute.For<ILanguagePreferenceService>());
+    }
+
+    public new void Dispose()
+    {
+        if (Services is IAsyncDisposable asyncDisposable)
+        {
+            asyncDisposable.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            return;
+        }
+
+        base.Dispose();
     }
 
     // ── Opt-in domain mock groups ──
@@ -96,6 +113,17 @@ public class BlazorTestContext : BunitContext
     {
         Services.AddScoped(_ => Substitute.For<IAccessibilityFocusService>());
         Services.AddScoped(_ => Substitute.For<IAccessibilityAnnouncerService>());
+    }
+
+    /// <summary>
+    /// Add authorization substrate defaults so expanded auth DI paths do not fail closed in UI tests.
+    /// </summary>
+    public void AddAuthorizationSubstrateMocks()
+    {
+        var machinePrincipalAccessor = Substitute.For<IMachinePrincipalAccessor>();
+        machinePrincipalAccessor.Current.Returns((ApiKeyPrincipalContext?)null);
+        machinePrincipalAccessor.IsMachineCaller.Returns(false);
+        Services.AddScoped(_ => machinePrincipalAccessor);
     }
 
     /// <summary>
@@ -192,8 +220,8 @@ public class BlazorTestContext : BunitContext
         // and DotNetObjectReference arguments that vary per component instance.
 
         // MudInput<T> directly calls IJSRuntime for blur event management
-        JSInterop.SetupVoid("mudElementRef.addOnBlurEvent", _ => true);
-        JSInterop.SetupVoid("mudElementRef.removeOnBlurEvent", _ => true);
+        JSInterop.SetupVoid("mudElementRef.addOnBlurEvent", _ => true).SetVoidResult();
+        JSInterop.SetupVoid("mudElementRef.removeOnBlurEvent", _ => true).SetVoidResult();
 
         // MudComponentBase and related components call getBoundingClientRect directly.
         // This is a typed return call (InvokeAsync<BoundingClientRect>), not void.
@@ -201,23 +229,23 @@ public class BlazorTestContext : BunitContext
             .SetResult(new BoundingClientRect());
 
         // MudHotkey registers keyboard shortcuts directly through IJSRuntime
-        JSInterop.SetupVoid("mudHotkeyListener.registerOrUpdateHotkey", _ => true);
-        JSInterop.SetupVoid("mudHotkeyListener.unregisterHotkey", _ => true);
+        JSInterop.SetupVoid("mudHotkeyListener.registerOrUpdateHotkey", _ => true).SetVoidResult();
+        JSInterop.SetupVoid("mudHotkeyListener.unregisterHotkey", _ => true).SetVoidResult();
 
         // MudThemeProvider calls watchDarkMode during OnAfterRenderAsync when rendered directly
         // (e.g., in MainLayout tests that include the full layout tree).
-        JSInterop.SetupVoid("mudThemeProvider.watchDarkMode", _ => true);
+        JSInterop.SetupVoid("mudThemeProvider.watchDarkMode", _ => true).SetVoidResult();
 
         // MudOverlay/PointerEventsNoneService calls these during dispose (e.g., on navigation).
         // IPointerEventsNoneService is internal in MudBlazor v9 — cannot mock at DI level.
-        JSInterop.SetupVoid("mudPointerEventsNone.addListener", _ => true);
-        JSInterop.SetupVoid("mudPointerEventsNone.cancelListener", _ => true);
+        JSInterop.SetupVoid("mudPointerEventsNone.addListener", _ => true).SetVoidResult();
+        JSInterop.SetupVoid("mudPointerEventsNone.cancelListener", _ => true).SetVoidResult();
 
         // Browser storage APIs used by ProtectedBrowserStorage or component dependencies.
         // Returns empty string by default — individual tests can override with specific setups.
         JSInterop.Setup<string>("sessionStorage.getItem", _ => true).SetResult("");
-        JSInterop.SetupVoid("sessionStorage.setItem", _ => true);
-        JSInterop.SetupVoid("sessionStorage.removeItem", _ => true);
+        JSInterop.SetupVoid("sessionStorage.setItem", _ => true).SetVoidResult();
+        JSInterop.SetupVoid("sessionStorage.removeItem", _ => true).SetVoidResult();
     }
 
     /// <summary>

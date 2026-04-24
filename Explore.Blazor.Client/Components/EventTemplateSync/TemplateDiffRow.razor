@@ -1,0 +1,43 @@
+@* ABOUTME: Renders a single field diff row with a checkbox for selection. *@
+@* ABOUTME: Reusable across definitions and options for the sync UI. *@
+@using DiffPlex.DiffBuilder
+@using DiffPlex.DiffBuilder.Model
+@using MudBlazor
+
+<MudExpansionPanel Class="template-sync-row" Text="@Heading" @bind-IsExpanded="_isExpanded">
+    <div class="template-sync-row__content">
+        <MudCheckBox T="bool" Value="@IsSelected" ValueChanged="OnSelectionChanged" Label="Include in sync" Color="Color.Primary" />
+        
+        <div class="template-sync-row__diff">
+            @foreach (var change in Changes)
+            {
+                <div class="template-sync-row__diff-item">
+                    <MudText Typo="Typo.subtitle2">@change.FieldName</MudText>
+                    <div class="diff-container d-flex">
+                        <div class="diff-pane old-pane">
+                            <MudText Typo="Typo.caption" Color="Color.Error">Old: @change.OldValue</MudText>
+                        </div>
+                        <div class="diff-pane new-pane ml-4">
+                            <MudText Typo="Typo.caption" Color="Color.Success">New: @change.NewValue</MudText>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</MudExpansionPanel>
+
+@code {
+    [Parameter, EditorRequired] public string Heading { get; set; } = string.Empty;
+    [Parameter] public bool IsSelected { get; set; }
+    [Parameter] public EventCallback<bool> IsSelectedChanged { get; set; }
+    [Parameter, EditorRequired] public IEnumerable<Explore.Blazor.Client.Models.EventTemplateSync.FieldChangeDto> Changes { get; set; } = Array.Empty<Explore.Blazor.Client.Models.EventTemplateSync.FieldChangeDto>();
+
+    private bool _isExpanded;
+
+    private async Task OnSelectionChanged(bool value)
+    {
+        IsSelected = value;
+        await IsSelectedChanged.InvokeAsync(value);
+    }
+}

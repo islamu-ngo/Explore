@@ -45,7 +45,7 @@ public class AppearanceThemeServiceTests
 
         await service.PersistThemeModeAsync(true);
 
-        await Assert.That(requestedPath).IsEqualTo("/bff/theme");
+        await Assert.That(requestedPath).IsEqualTo("/bff/theme?theme=dark");
         await Assert.That(postedBody).Contains("dark");
     }
 

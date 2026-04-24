@@ -54,6 +54,12 @@ public static class HttpClientExtensions
         services.AddTypedApiClient<IEventApiClient, EventApiClient>(apiBaseUrl, environment)
             .AddInteractiveResilience();
 
+        services.AddTypedApiClient<Explore.Blazor.Client.Services.EventTemplateSync.IEventTemplateSyncService, Explore.Blazor.Client.Services.EventTemplateSync.EventTemplateSyncService>(apiBaseUrl, environment)
+            .AddInteractiveResilience();
+            
+        services.AddTypedApiClient<Explore.Blazor.Client.Services.EventSessionTemplateSync.IEventSessionTemplateSyncService, Explore.Blazor.Client.Services.EventSessionTemplateSync.EventSessionTemplateSyncService>(apiBaseUrl, environment)
+            .AddInteractiveResilience();
+
         // Typed services that need direct API access during InteractiveServer rendering
         services.AddTypedApiClient<ITenantNavigationService, TenantNavigationService>(apiBaseUrl, environment)
             .AddInteractiveResilience();

@@ -67,9 +67,18 @@ internal sealed class GlobalExceptionHandler(
 
         httpContext.Response.StatusCode = statusCode;
 
-        var typeUri = ProblemTypeUris.TryGetValue(statusCode, out var uri)
-            ? uri
-            : $"https://tools.ietf.org/html/rfc9110#status.{statusCode}";
+        var typeUri = exception is ConcurrencyConflictException concurrencyConflictExceptionForType
+            ? concurrencyConflictExceptionForType.Code switch
+            {
+                ConcurrencyConflictException.StaleSyncBase => "/problems/stale_sync_base",
+                ConcurrencyConflictException.ConcurrentUpdate => "/problems/concurrent_update",
+                _ => ProblemTypeUris.TryGetValue(statusCode, out var concurrencyUri)
+                    ? concurrencyUri
+                    : $"https://tools.ietf.org/html/rfc9110#status.{statusCode}"
+            }
+            : ProblemTypeUris.TryGetValue(statusCode, out var uri)
+                ? uri
+                : $"https://tools.ietf.org/html/rfc9110#status.{statusCode}";
 
         var problemDetails = new ProblemDetails
         {

@@ -87,6 +87,27 @@ public class EventSessionTemplateRepository : GenericRepository<EventSessionTemp
             .FirstOrDefaultAsync();
     }
 
+    public async Task<EventSessionTemplate?> GetPublishedSessionTemplateVersion(
+        Guid eventTemplateId,
+        string sessionTemplateKey,
+        int version,
+        CancellationToken cancellationToken)
+    {
+        return await _dbContext.EventSessionTemplates
+            .AsNoTrackingWithIdentityResolution()
+            .AsSplitQuery()
+            .Where(x => x.EventTemplateId == eventTemplateId
+                && x.SessionTemplateKey == sessionTemplateKey
+                && x.Version == version
+                && x.IsPublished
+                && x.IsActive)
+            .Include(x => x.Definitions.OrderBy(d => d.SortOrder))
+                .ThenInclude(d => d.DefaultOption)
+            .Include(x => x.Definitions.OrderBy(d => d.SortOrder))
+                .ThenInclude(d => d.Options.OrderBy(o => o.SortOrder))
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<EventSessionTemplate> CreateWithDefinitions(
         EventSessionTemplate sessionTemplate,
         IReadOnlyCollection<SessionTemplateDefinitionWithOptions> definitionsWithOptions,

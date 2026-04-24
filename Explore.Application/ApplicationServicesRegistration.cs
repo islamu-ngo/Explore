@@ -41,6 +41,10 @@ public static class ApplicationServicesRegistration
         services.AddScoped<IEventActorResolver, EventActorResolver>();
         services.AddScoped<IEventTemplateInstantiationService, EventTemplateInstantiationService>();
         services.AddScoped<IEventSessionTemplateInstantiationService, EventSessionTemplateInstantiationService>();
+        services.AddScoped<IEventTemplateDiffService, EventTemplateDiffService>();
+        services.AddScoped<IEventTemplateSyncService, EventTemplateSyncService>();
+        services.AddScoped<IEventSessionTemplateDiffService, EventSessionTemplateDiffService>();
+        services.AddScoped<IEventSessionTemplateSyncService, EventSessionTemplateSyncService>();
         services.AddScoped<IPermissionRegistryService, PermissionRegistryService>();
         services.AddScoped<IContactShareConsentService, ContactShareConsentService>();
 

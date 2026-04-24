@@ -91,6 +91,27 @@ public class EventTemplateRepository : GenericRepository<EventTemplate, Guid>, I
             .FirstOrDefaultAsync();
     }
 
+    public async Task<EventTemplate?> GetPublishedTemplateVersion(
+        Guid tenantId,
+        string templateKey,
+        int version,
+        CancellationToken cancellationToken)
+    {
+        return await _dbContext.EventTemplates
+            .AsNoTrackingWithIdentityResolution()
+            .AsSplitQuery()
+            .Where(x => x.TenantId == tenantId
+                && x.TemplateKey == templateKey
+                && x.Version == version
+                && x.IsPublished
+                && x.IsActive)
+            .Include(x => x.Definitions.OrderBy(d => d.SortOrder))
+                .ThenInclude(d => d.DefaultOption)
+            .Include(x => x.Definitions.OrderBy(d => d.SortOrder))
+                .ThenInclude(d => d.Options.OrderBy(o => o.SortOrder))
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<EventTemplate> CreateWithDefinitions(
         EventTemplate template,
         IReadOnlyCollection<TemplateDefinitionWithOptions> definitionsWithOptions,

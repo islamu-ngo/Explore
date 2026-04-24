@@ -18,6 +18,7 @@ public interface IEventTemplateRepository : IGenericRepository<EventTemplate, Gu
 
     Task<bool> ExistsTemplateKey(Guid tenantId, string templateKey, int version, Guid? excludeTemplateId = null);
     Task<EventTemplate?> GetLatestPublishedTemplate(Guid tenantId, string templateKey);
+    Task<EventTemplate?> GetPublishedTemplateVersion(Guid tenantId, string templateKey, int version, CancellationToken cancellationToken);
 
     Task<EventTemplate> CreateWithDefinitions(
         EventTemplate template,

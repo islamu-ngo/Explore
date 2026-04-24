@@ -63,6 +63,20 @@ builder.Services.AddHttpClient<IEventApiClient, EventApiClient>(client =>
 .AddHttpMessageHandler<BrowserCredentialsMessageHandler>()
 .AddHttpMessageHandler<BffUnauthorizedHandler>();
 
+builder.Services.AddHttpClient<Explore.Blazor.Client.Services.EventTemplateSync.IEventTemplateSyncService, Explore.Blazor.Client.Services.EventTemplateSync.EventTemplateSyncService>(client =>
+{
+    client.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress);
+})
+.AddHttpMessageHandler<BrowserCredentialsMessageHandler>()
+.AddHttpMessageHandler<BffUnauthorizedHandler>();
+
+builder.Services.AddHttpClient<Explore.Blazor.Client.Services.EventSessionTemplateSync.IEventSessionTemplateSyncService, Explore.Blazor.Client.Services.EventSessionTemplateSync.EventSessionTemplateSyncService>(client =>
+{
+    client.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress);
+})
+.AddHttpMessageHandler<BrowserCredentialsMessageHandler>()
+.AddHttpMessageHandler<BffUnauthorizedHandler>();
+
 // Register TenantConfiguration for single-tenant mode (default)
 // In WASM, configuration section may not be available, so defaults from TenantConfiguration class are used
 builder.Services.Configure<TenantConfiguration>(

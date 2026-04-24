@@ -17,6 +17,7 @@ public interface IEventSessionTemplateRepository : IGenericRepository<EventSessi
 
     Task<bool> ExistsSessionTemplateKey(Guid eventTemplateId, string sessionTemplateKey, int version, Guid? excludeSessionTemplateId = null);
     Task<EventSessionTemplate?> GetLatestPublishedSessionTemplate(Guid eventTemplateId, string sessionTemplateKey);
+    Task<EventSessionTemplate?> GetPublishedSessionTemplateVersion(Guid eventTemplateId, string sessionTemplateKey, int version, CancellationToken cancellationToken);
 
     Task<EventSessionTemplate> CreateWithDefinitions(
         EventSessionTemplate sessionTemplate,

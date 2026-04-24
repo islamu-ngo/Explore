@@ -1,0 +1,60 @@
+@* ABOUTME: Confirmation dialog for template sync that forces operator to type the event/session slug. *@
+@* ABOUTME: Ensures explicit consent before applying destructive or wide-ranging changes. *@
+
+@using MudBlazor
+
+<MudDialog DefaultFocus="DefaultFocus.FirstChild">
+    <DialogContent>
+        <MudText Typo="Typo.body1" Class="mb-4">
+            You are about to apply <strong>@TotalChangesToApply</strong> changes from template version <strong>@TargetTemplateVersion</strong>.
+        </MudText>
+        <MudText Typo="Typo.body2" Class="mb-6">
+            To confirm this sync operation, please type the exact slug <strong>@ExpectedSlug</strong> below:
+        </MudText>
+        
+        <MudTextField @bind-Value="_typedSlug" 
+                      Label="Type slug to confirm" 
+                      Variant="Variant.Outlined" 
+                      FullWidth="true" 
+                      Immediate="true"
+                      aria-label="Confirmation slug input" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" aria-label="Cancel sync">Cancel</MudButton>
+        <MudButton Color="Color.Primary" 
+                   Variant="Variant.Filled" 
+                   Disabled="@(!IsConfirmed)" 
+                   OnClick="Submit"
+                   aria-label="Confirm and apply sync">
+            Apply Sync
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public string ExpectedSlug { get; set; } = string.Empty;
+
+    [Parameter]
+    public int TargetTemplateVersion { get; set; }
+
+    [Parameter]
+    public int TotalChangesToApply { get; set; }
+
+    private string _typedSlug = string.Empty;
+
+    private bool IsConfirmed => string.Equals(_typedSlug, ExpectedSlug, StringComparison.Ordinal);
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        if (IsConfirmed)
+        {
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+    }
+}
