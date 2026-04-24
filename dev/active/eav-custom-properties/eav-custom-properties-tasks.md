@@ -3,7 +3,41 @@ ABOUTME: Reflects extension-layer boundaries, namespaced machine keys, projectio
 
 # EAV Custom Properties - Task Checklist
 
-**Last Updated: 2026-04-21 (D1 + D2 + D3 complete — Milestone D green end-to-end; Phase 9.7 + 9.9 governance UI shipped)**
+**Last Updated: 2026-04-24 (Session 2 — Milestones E + F implementation complete; 4 Gaps + Cleanup Phases tracked in `progress.md`)**
+
+---
+
+## Session 2 Delivery Summary (2026-04-24)
+
+**Milestone E — Explicit Sync Workflows** ✅ CODE COMPLETE (Gap 1 + Gap 4 deferred)
+- E Phase 1 App Layer (diff + sync services, CQRS, validators) — `bg_db54b281` ✅
+- E Phase 2 API Layer (controllers, HATEOAS policies, RouteNames) — `bg_528b91a2` ✅
+- E Phase 3 Blazor UI (pages + dialog + panels + service classes + DiffPlex) — `bg_fa738248` ⚠️ orchestrator-patched after 2× infra failure
+- E Phase 4 Integration Tests — `bg_40ad9ae4` ⏳ running
+
+**Milestone F — Aggregate View + Lexicon Docs** ✅ COMPLETE
+- F Phase 1 View entity + EF config + SQL migration (`vw_event_with_sessions`) — `bg_b434afda` ✅
+- F Phase 2 DTOs + CQRS queries + handlers + tests — `bg_6d710714` ✅
+- F Phase 3 Integration Tests — `bg_40ad9ae4` ⏳ running
+- F Phase 4 `docs/LEXICONS.md` canonical NSID hierarchy — `bg_0907d67e` ✅
+
+**Verification gates**
+- `dotnet build --configuration Release`: ✅ 0 errors, 1559 pre-existing warnings
+- `dotnet test Event.Application.UnitTests`: ✅ **943 / 943 pass** (+103 over 840 baseline)
+- `dotnet test Explore.Blazor.Client.Tests`: ⚠️ 779 pass / 25 fail / 1 skip (Gap 2 — Cerbos substrate expansion broke existing mocks)
+- `dotnet test Event.Persistence.IntegrationTests`: ⏸ deferred to CI (no Docker locally)
+
+**Gap tracker** (full detail in `progress.md`)
+- Gap 1: Blazor sync pages temporarily gate on `_diff is not null` instead of HAL link — requires API controller to emit `HalResource<TemplateDiffDto>`
+- Gap 2: 25 pre-existing Blazor tests fail with 403 — test fixtures need `IMachinePrincipalAccessor` stub
+- Gap 3: Integration tests running (`bg_40ad9ae4`) — CI Docker required for actual execution
+- Gap 4: Blazor sync-page bUnit coverage limited to placeholder — expand after Gap 1
+
+**Remaining cleanup tasks** (tracked as TODOs below)
+- Phase 7: Remove stale `MetadataJson` / JSONB coupling refs
+- Phase 9.x (cleanup): Blazor definition governance UI polish
+- Phase 11 + 10.0: Architecture + API roundtrip tests
+- Phase 8.5.13: Prometheus metrics for projection
 
 ---
 

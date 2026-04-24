@@ -19,6 +19,7 @@ Key behavior in current code:
 - Actor appearance fields (BackgroundColor, BackgroundEffect, BannerColor, BannerPictureId, BackgroundImageId) on actor update endpoints.
 - OutboxProcessor background service for reliable event dispatching with retry and dead-letter.
 - Analytics relay rate limit policy (`AnalyticsRelay`) for `POST /api/a/t`.
+- Event and event-session template sync endpoints for diff/apply/history workflows, including 409 ProblemDetails types `/problems/stale_sync_base` and `/problems/concurrent_update`.
 
 ## Historical Baseline (`v0.1.0`)
 

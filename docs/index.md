@@ -57,6 +57,7 @@ ABOUTME: Prioritizes non-inferable rules and operational docs over generated or 
 ## Extensibility And Federation
 - [EXTENSIBILITY.md](EXTENSIBILITY.md) - modular extension strategy.
 - [MODULAR_EVENTS.md](MODULAR_EVENTS.md) - event aspect composition model.
+- [LEXICONS.md](LEXICONS.md) - ATProto-compatible NSID lexicon hierarchy and evolution.
 - [FEDERATION.md](FEDERATION.md) - current federation implementation status vs roadmap.
 
 ## Reference And Change History
