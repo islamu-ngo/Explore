@@ -65,6 +65,12 @@ public class Event : ITenantEntity, IAuditableEntity, ISoftDeletable, IConcurren
     public DateOnly? LastSessionDate { get; set; }
     public string? Timezone { get; set; }
 
+    public Guid? SourceTemplateId { get; set; }
+    public string? SourceTemplateKey { get; set; }
+    public int? SourceTemplateVersion { get; set; }
+    public DateTimeOffset? InstantiatedFromTemplateAt { get; set; }
+    public DateTimeOffset? LastSyncedFromTemplateAt { get; set; }
+
     // Temporal fields (UTC-based, computed from sessions)
     public DateTimeOffset? FirstSessionStartUtc { get; set; }
     public DateTimeOffset? LastSessionStartUtc { get; set; }

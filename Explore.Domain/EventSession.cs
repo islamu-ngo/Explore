@@ -61,6 +61,12 @@ public class EventSession : ITenantEntity, IAuditableEntity, ISoftDeletable, ICo
 
     public string? Description { get; set; }
 
+    public Guid? SourceTemplateId { get; set; }
+    public string? SourceTemplateKey { get; set; }
+    public int? SourceTemplateVersion { get; set; }
+    public DateTimeOffset? InstantiatedFromTemplateAt { get; set; }
+    public DateTimeOffset? LastSyncedFromTemplateAt { get; set; }
+
     // Audit fields
     public DateTime CreatedAt { get; set; }
     public Guid? CreatedBy { get; set; }
