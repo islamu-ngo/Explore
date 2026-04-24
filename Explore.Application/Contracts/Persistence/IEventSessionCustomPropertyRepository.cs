@@ -16,6 +16,7 @@ public interface IEventSessionCustomPropertyRepository : IGenericRepository<Even
         int pageSize);
 
     Task<List<EventSessionCustomPropertyDefinition>> GetAllDefinitionsForSession(Guid eventSessionId);
+    Task<List<EventSessionCustomPropertyDefinition>> GetTrackedDefinitionsForSession(Guid eventSessionId, CancellationToken cancellationToken);
 
     Task<bool> ExistsDefinitionKey(Guid eventSessionId, string namespaceValue, string key, Guid? excludeDefinitionId = null);
 
@@ -36,6 +37,8 @@ public interface IEventSessionCustomPropertyRepository : IGenericRepository<Even
     Task<List<EventSessionCustomPropertyValue>> GetValuesForSession(Guid eventSessionId);
     Task<List<EventSessionCustomPropertyValue>> GetValuesForDefinition(Guid definitionId);
     Task<EventSessionCustomPropertyValue> SetValue(EventSessionCustomPropertyValue value, CancellationToken cancellationToken);
+    Task<EventSessionCustomPropertyOption> CreateOption(EventSessionCustomPropertyOption option, CancellationToken cancellationToken);
+    Task UpdateOption(EventSessionCustomPropertyOption option, CancellationToken cancellationToken);
 
     Task SetMultiValues(
         Guid definitionId,

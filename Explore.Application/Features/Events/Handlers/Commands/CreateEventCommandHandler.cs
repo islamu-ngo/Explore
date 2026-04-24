@@ -189,6 +189,13 @@ public class CreateEventCommandHandler : IRequestHandler<CreateEventCommand, Bas
                 var template = await _eventTemplateRepository.GetTemplateWithDetails(request.EventDto.TemplateId.Value);
                 if (template is { IsPublished: true, IsActive: true })
                 {
+                    @event.SourceTemplateId = template.Id;
+                    @event.SourceTemplateKey = template.TemplateKey;
+                    @event.SourceTemplateVersion = template.Version;
+                    @event.InstantiatedFromTemplateAt = DateTimeOffset.UtcNow;
+                    @event.LastSyncedFromTemplateAt = DateTimeOffset.UtcNow;
+                    await _eventRepository.Update(@event);
+
                     var instantiationResult = _instantiationService.InstantiateFromTemplate(
                         @event.Id, _tenantContext.TenantId, template, currentUserId.ToString());
 

@@ -70,6 +70,17 @@ public class EventCustomPropertyRepository : GenericRepository<EventCustomProper
             .ToListAsync();
     }
 
+    public async Task<List<EventCustomPropertyDefinition>> GetTrackedDefinitionsForEvent(Guid eventId, CancellationToken cancellationToken)
+    {
+        return await _dbContext.EventCustomPropertyDefinitions
+            .Where(x => x.EventId == eventId)
+            .Include(x => x.Options.OrderBy(o => o.SortOrder))
+            .Include(x => x.Values.OrderBy(v => v.Ordinal))
+            .OrderBy(x => x.SortOrder)
+            .ThenBy(x => x.DisplayName)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<bool> ExistsDefinitionKey(Guid eventId, string namespaceValue, string key, Guid? excludeDefinitionId = null)
     {
         return await _dbContext.EventCustomPropertyDefinitions
@@ -199,6 +210,19 @@ public class EventCustomPropertyRepository : GenericRepository<EventCustomProper
         await _dbContext.EventCustomPropertyValues.AddAsync(value, cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
         return value;
+    }
+
+    public async Task<EventCustomPropertyOption> CreateOption(EventCustomPropertyOption option, CancellationToken cancellationToken)
+    {
+        await _dbContext.EventCustomPropertyOptions.AddAsync(option, cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return option;
+    }
+
+    public async Task UpdateOption(EventCustomPropertyOption option, CancellationToken cancellationToken)
+    {
+        _dbContext.Entry(option).State = EntityState.Modified;
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public async Task SetMultiValues(

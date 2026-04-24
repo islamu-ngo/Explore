@@ -139,6 +139,13 @@ public class CreateEventSessionCommandHandler : IRequestHandler<CreateEventSessi
 
             if (sessionTemplate is { IsPublished: true, IsActive: true })
             {
+                eventSession.SourceTemplateId = sessionTemplate.Id;
+                eventSession.SourceTemplateKey = sessionTemplate.SessionTemplateKey;
+                eventSession.SourceTemplateVersion = sessionTemplate.Version;
+                eventSession.InstantiatedFromTemplateAt = DateTimeOffset.UtcNow;
+                eventSession.LastSyncedFromTemplateAt = DateTimeOffset.UtcNow;
+                await _eventSessionRepository.Update(eventSession);
+
                 var instantiationResult = _instantiationService.InstantiateFromSessionTemplate(
                     eventSession.Id,
                     parentEvent.TenantId,

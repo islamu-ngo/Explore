@@ -70,6 +70,17 @@ public class EventSessionCustomPropertyRepository : GenericRepository<EventSessi
             .ToListAsync();
     }
 
+    public async Task<List<EventSessionCustomPropertyDefinition>> GetTrackedDefinitionsForSession(Guid eventSessionId, CancellationToken cancellationToken)
+    {
+        return await _dbContext.EventSessionCustomPropertyDefinitions
+            .Where(x => x.EventSessionId == eventSessionId)
+            .Include(x => x.Options.OrderBy(o => o.SortOrder))
+            .Include(x => x.Values.OrderBy(v => v.Ordinal))
+            .OrderBy(x => x.SortOrder)
+            .ThenBy(x => x.DisplayName)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<bool> ExistsDefinitionKey(Guid eventSessionId, string namespaceValue, string key, Guid? excludeDefinitionId = null)
     {
         return await _dbContext.EventSessionCustomPropertyDefinitions
@@ -199,6 +210,19 @@ public class EventSessionCustomPropertyRepository : GenericRepository<EventSessi
         await _dbContext.EventSessionCustomPropertyValues.AddAsync(value, cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
         return value;
+    }
+
+    public async Task<EventSessionCustomPropertyOption> CreateOption(EventSessionCustomPropertyOption option, CancellationToken cancellationToken)
+    {
+        await _dbContext.EventSessionCustomPropertyOptions.AddAsync(option, cancellationToken);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return option;
+    }
+
+    public async Task UpdateOption(EventSessionCustomPropertyOption option, CancellationToken cancellationToken)
+    {
+        _dbContext.Entry(option).State = EntityState.Modified;
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public async Task SetMultiValues(

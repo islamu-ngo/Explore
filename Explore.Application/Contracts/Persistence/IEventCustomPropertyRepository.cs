@@ -16,6 +16,7 @@ public interface IEventCustomPropertyRepository : IGenericRepository<EventCustom
         int pageSize);
 
     Task<List<EventCustomPropertyDefinition>> GetAllDefinitionsForEvent(Guid eventId);
+    Task<List<EventCustomPropertyDefinition>> GetTrackedDefinitionsForEvent(Guid eventId, CancellationToken cancellationToken);
 
     Task<bool> ExistsDefinitionKey(Guid eventId, string namespaceValue, string key, Guid? excludeDefinitionId = null);
 
@@ -36,6 +37,8 @@ public interface IEventCustomPropertyRepository : IGenericRepository<EventCustom
     Task<List<EventCustomPropertyValue>> GetValuesForEvent(Guid eventId);
     Task<List<EventCustomPropertyValue>> GetValuesForDefinition(Guid definitionId);
     Task<EventCustomPropertyValue> SetValue(EventCustomPropertyValue value, CancellationToken cancellationToken);
+    Task<EventCustomPropertyOption> CreateOption(EventCustomPropertyOption option, CancellationToken cancellationToken);
+    Task UpdateOption(EventCustomPropertyOption option, CancellationToken cancellationToken);
 
     Task SetMultiValues(
         Guid definitionId,
