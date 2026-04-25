@@ -51,7 +51,7 @@ public class GetTenantOnboardingStatusQueryHandler : IRequestHandler<GetTenantOn
             ProgressPercentage = CalculateProgressPercentage(currentStep, totalSteps)
         };
 
-        if (!_currentUserService.IsAuthenticated || !_currentUserService.UserId.HasValue)
+        if (!_currentUserService.IsAuthenticated)
         {
             return response;
         }

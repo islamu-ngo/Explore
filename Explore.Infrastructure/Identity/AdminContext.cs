@@ -9,6 +9,7 @@ using Explore.Domain.Enums;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using Explore.Application.Contracts.Services;
 
 namespace Explore.Infrastructure.Identity;
 
@@ -26,7 +27,10 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
     private readonly ITenantMemberRepository _tenantAdminRepo;
     private readonly IOrganizationMemberRepository _orgMemberRepo;
     private readonly IGroupMemberRepository _groupMemberRepo;
+    private readonly IUserExternalLoginRepository _userExternalLoginRepository;
+    private readonly IUserRepository _userRepository;
     private readonly IMemoryCache _cache;
+    private readonly IDeploymentModeProvider _deploymentModeProvider;
     private readonly ILogger<AdminContext> _logger;
 
     private static readonly TimeSpan CacheExpiration = TimeSpan.FromMinutes(5);
@@ -39,7 +43,10 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         ITenantMemberRepository tenantAdminRepo,
         IOrganizationMemberRepository orgMemberRepo,
         IGroupMemberRepository groupMemberRepo,
+        IUserExternalLoginRepository userExternalLoginRepository,
+        IUserRepository userRepository,
         IMemoryCache cache,
+        IDeploymentModeProvider deploymentModeProvider,
         ILogger<AdminContext> logger)
     {
         _httpContextAccessor = httpContextAccessor;
@@ -48,7 +55,10 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         _tenantAdminRepo = tenantAdminRepo;
         _orgMemberRepo = orgMemberRepo;
         _groupMemberRepo = groupMemberRepo;
+        _userExternalLoginRepository = userExternalLoginRepository;
+        _userRepository = userRepository;
         _cache = cache;
+        _deploymentModeProvider = deploymentModeProvider;
         _logger = logger;
     }
 
@@ -69,10 +79,49 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         }
     }
 
-    public Task<bool> IsInstanceAdminAsync(CancellationToken cancellationToken = default)
+    public async Task<bool> IsInstanceAdminAsync(CancellationToken cancellationToken = default)
     {
-        var uid = UserId;
-        return uid == null ? Task.FromResult(false) : IsInstanceAdminAsync(uid.Value, cancellationToken);
+        var uid = await ResolveUserIdAsync(cancellationToken);
+        return uid == null ? false : await IsInstanceAdminAsync(uid.Value, cancellationToken);
+    }
+
+    public async Task<Guid?> ResolveUserIdAsync(CancellationToken cancellationToken = default)
+    {
+        var user = _httpContextAccessor.HttpContext?.User;
+        if (user?.Identity?.IsAuthenticated != true)
+            return null;
+
+        var sub = user.FindFirst(InternalUserIdClaimType)?.Value
+            ?? user.FindFirst("sub")?.Value
+            ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? user.FindFirst("sid")?.Value;
+
+        if (string.IsNullOrWhiteSpace(sub))
+            return null;
+
+        if (Guid.TryParse(sub, out var guidUserId))
+            return guidUserId;
+
+        // If sub is not a GUID, try to resolve from database (external login)
+        // Cache this resolution for the request duration
+        var cacheKey = $"{CacheKeyPrefix}ResolvedId_{sub}";
+        return await _cache.GetOrCreateAsync(cacheKey, async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
+            
+            var provider = user.FindFirst("idp")?.Value ?? "keycloak";
+            var externalLogin = await _userExternalLoginRepository.GetByProviderAndKey(provider.ToLowerInvariant(), sub);
+            if (externalLogin != null) return externalLogin.UserId;
+
+            var email = user.FindFirst("email")?.Value ?? user.FindFirst(ClaimTypes.Email)?.Value;
+            if (!string.IsNullOrWhiteSpace(email))
+            {
+                var dbUser = await _userRepository.GetUserByEmail(email.Trim().ToLowerInvariant());
+                return dbUser?.Id;
+            }
+
+            return null;
+        });
     }
 
     public async Task<bool> IsInstanceAdminAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -96,7 +145,7 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
 
             if (isRoleAdmin)
             {
-                _logger.LogDebug("AdminContext: User {UserId} IsInstanceAdmin=true (platform.admin role)", userId);
+                _logger.LogInformation("AdminContext: User {UserId} IsInstanceAdmin=true (platform.admin role detected in database)", userId);
                 return true;
             }
 
@@ -112,10 +161,14 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
                 isBootstrapAdmin = await _tenantAdminRepo.IsTenantAdmin(PlatformDefaults.DefaultTenantId, userId);
             }
 
-            _logger.LogDebug(
-                "AdminContext: User {UserId} IsInstanceAdmin={IsAdmin} (bootstrap fallback)",
-                userId,
-                isBootstrapAdmin);
+            if (isBootstrapAdmin)
+            {
+                _logger.LogInformation("AdminContext: User {UserId} IsInstanceAdmin=true (bootstrap owner fallback)", userId);
+            }
+            else
+            {
+                _logger.LogWarning("AdminContext: User {UserId} IsInstanceAdmin=false (no platform role or bootstrap ownership found)", userId);
+            }
 
             return isBootstrapAdmin;
         });
@@ -123,15 +176,33 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
 
     public async Task<bool> IsTenantAdminAsync(Guid tenantId, CancellationToken cancellationToken = default)
     {
-        var uid = UserId;
+        var uid = await ResolveUserIdAsync(cancellationToken);
         if (uid == null)
             return false;
+
+        // Optimized check: Instance admins are automatically tenant admins for the default tenant in single-tenant mode
+        // This prevents access issues during the onboarding transition or in simple deployments.
+        if (tenantId == PlatformDefaults.DefaultTenantId && await IsInstanceAdminAsync(uid.Value, cancellationToken))
+        {
+            return true;
+        }
 
         var cacheKey = $"{CacheKeyPrefix}Tenant_{uid}_{tenantId}";
         return await _cache.GetOrCreateAsync(cacheKey, async entry =>
         {
             entry.SlidingExpiration = CacheExpiration;
-            return await _tenantAdminRepo.IsTenantAdmin(tenantId, uid.Value);
+            var isAdmin = await _tenantAdminRepo.IsTenantAdmin(tenantId, uid.Value);
+            
+            if (isAdmin)
+            {
+                _logger.LogInformation("AdminContext: User {UserId} IsTenantAdmin=true for Tenant {TenantId}", uid, tenantId);
+            }
+            else
+            {
+                _logger.LogDebug("AdminContext: User {UserId} IsTenantAdmin=false for Tenant {TenantId}", uid, tenantId);
+            }
+            
+            return isAdmin;
         });
     }
 
@@ -150,12 +221,12 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         });
     }
 
-    public Task<IReadOnlyList<Guid>> GetAdminTenantIdsAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Guid>> GetAdminTenantIdsAsync(CancellationToken cancellationToken = default)
     {
-        var uid = UserId;
+        var uid = await ResolveUserIdAsync(cancellationToken);
         return uid == null
-            ? Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>())
-            : GetAdminTenantIdsAsync(uid.Value, cancellationToken);
+            ? (IReadOnlyList<Guid>)Array.Empty<Guid>()
+            : await GetAdminTenantIdsAsync(uid.Value, cancellationToken);
     }
 
     public async Task<IReadOnlyList<Guid>> GetAdminTenantIdsAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -169,19 +240,26 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
                 .Where(a => a.RoleId == (int)RoleEnum.TenantAdmin)
                 .Select(a => a.TenantId)
                 .Distinct()
-                .ToList()
-                .AsReadOnly();
+                .ToList();
 
-            return (IReadOnlyList<Guid>)adminTenantIds;
+            // Single-Tenant optimization: Instance admins are automatically tenant admins for the default tenant.
+            if (!adminTenantIds.Contains(PlatformDefaults.DefaultTenantId) && 
+                await _deploymentModeProvider.IsSingleTenantAsync(cancellationToken) && 
+                await IsInstanceAdminAsync(userId, cancellationToken))
+            {
+                adminTenantIds.Add(PlatformDefaults.DefaultTenantId);
+            }
+
+            return (IReadOnlyList<Guid>)adminTenantIds.AsReadOnly();
         }) ?? Array.Empty<Guid>();
     }
 
-    public Task<IReadOnlyList<Guid>> GetAdminOrganizationIdsAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Guid>> GetAdminOrganizationIdsAsync(CancellationToken cancellationToken = default)
     {
-        var uid = UserId;
+        var uid = await ResolveUserIdAsync(cancellationToken);
         return uid == null
-            ? Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>())
-            : GetAdminOrganizationIdsAsync(uid.Value, cancellationToken);
+            ? (IReadOnlyList<Guid>)Array.Empty<Guid>()
+            : await GetAdminOrganizationIdsAsync(uid.Value, cancellationToken);
     }
 
     public async Task<IReadOnlyList<Guid>> GetAdminOrganizationIdsAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -204,7 +282,7 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
 
     public async Task<bool> IsGroupAdminAsync(Guid groupId, CancellationToken cancellationToken = default)
     {
-        var uid = UserId;
+        var uid = await ResolveUserIdAsync(cancellationToken);
         if (uid == null)
             return false;
 
@@ -217,12 +295,12 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         });
     }
 
-    public Task<IReadOnlyList<Guid>> GetAdminGroupIdsAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Guid>> GetAdminGroupIdsAsync(CancellationToken cancellationToken = default)
     {
-        var uid = UserId;
+        var uid = await ResolveUserIdAsync(cancellationToken);
         return uid == null
-            ? Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>())
-            : GetAdminGroupIdsAsync(uid.Value, cancellationToken);
+            ? (IReadOnlyList<Guid>)Array.Empty<Guid>()
+            : await GetAdminGroupIdsAsync(uid.Value, cancellationToken);
     }
 
     public async Task<IReadOnlyList<Guid>> GetAdminGroupIdsAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -260,10 +338,11 @@ public class AdminContext : IAdminContext, IAdminCacheInvalidator
         _cache.Remove($"{CacheKeyPrefix}TenantIds_{userId}");
         _cache.Remove($"{CacheKeyPrefix}OrgIds_{userId}");
         _cache.Remove($"{CacheKeyPrefix}GroupIds_{userId}");
-        _logger.LogDebug("AdminContext: Invalidated cache for user {UserId}", userId);
-        // Note: Tenant_{userId}_{tenantId}, Org_{userId}_{orgId}, and Group_{userId}_{groupId}
-        // entries are not evicted here because we don't track which combinations are cached.
-        // They will expire naturally via the 5-minute sliding window.
+
+        // For single-tenant mode, we can proactively clear the default tenant admin cache
+        _cache.Remove($"{CacheKeyPrefix}Tenant_{userId}_{PlatformDefaults.DefaultTenantId}");
+
+        _logger.LogInformation("AdminContext: Invalidated authority cache for user {UserId}", userId);
     }
 
     /// <inheritdoc />

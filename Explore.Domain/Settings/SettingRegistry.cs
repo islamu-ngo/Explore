@@ -42,6 +42,7 @@ public static class SettingRegistry
         all.AddRange(NotificationSettingDefinitions.All);
         all.AddRange(CustomPropertyQuotaSettingDefinitions.All);
         all.AddRange(LocalizationSettingDefinitions.All);
+        all.AddRange(MessagingSettingDefinitions.All);
 
         DefinitionsByKey = all.ToFrozenDictionary(d => d.Key);
         ByCategory = all

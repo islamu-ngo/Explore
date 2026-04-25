@@ -55,12 +55,12 @@ public class GetInstanceOnboardingStatusQueryHandler : IRequestHandler<GetInstan
             InstanceStartedAt = _setupSecretProvider.InstanceStartedAt
         };
 
-        if (!_currentUserService.IsAuthenticated || !_currentUserService.UserId.HasValue)
+        if (!_currentUserService.IsAuthenticated)
         {
             return response;
         }
 
-        response.IsCurrentUserInstanceAdmin = await _adminContext.IsInstanceAdminAsync(_currentUserService.UserId.Value, cancellationToken);
+        response.IsCurrentUserInstanceAdmin = await _adminContext.IsInstanceAdminAsync(cancellationToken);
         return response;
     }
 

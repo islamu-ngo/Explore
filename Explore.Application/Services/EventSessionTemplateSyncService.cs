@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventSessionTemplateSync;
+using Explore.Application.DTOs.EventSessionTemplateSync.Validators;
 using Explore.Application.Exceptions;
 using Explore.Domain;
 using Explore.Domain.Constants;

@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventSessionTemplateSync;
+using Explore.Application.DTOs.EventSessionTemplateSync.Validators;
 using Explore.Application.Exceptions;
 using Explore.Application.Responses;
 using Explore.Domain;

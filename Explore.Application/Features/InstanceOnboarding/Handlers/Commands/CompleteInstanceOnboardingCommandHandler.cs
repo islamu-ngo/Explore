@@ -11,6 +11,7 @@ using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace Explore.Application.Features.InstanceOnboarding.Handlers.Commands;
 
@@ -29,6 +30,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
     private readonly IAdminCacheInvalidator _adminCacheInvalidator;
     private readonly IDeploymentModeProvider _deploymentModeProvider;
     private readonly IJwtAuthorityRefreshNotifier _jwtAuthorityRefreshNotifier;
+    private readonly ILogger<CompleteInstanceOnboardingCommandHandler> _logger;
     private readonly IUnitOfWork _unitOfWork;
 
     public CompleteInstanceOnboardingCommandHandler(
@@ -45,6 +47,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         IAdminCacheInvalidator adminCacheInvalidator,
         IDeploymentModeProvider deploymentModeProvider,
         IJwtAuthorityRefreshNotifier jwtAuthorityRefreshNotifier,
+        ILogger<CompleteInstanceOnboardingCommandHandler> logger,
         IUnitOfWork unitOfWork)
     {
         _instanceBootstrapStateRepository = instanceBootstrapStateRepository;
@@ -60,6 +63,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         _adminCacheInvalidator = adminCacheInvalidator;
         _deploymentModeProvider = deploymentModeProvider;
         _jwtAuthorityRefreshNotifier = jwtAuthorityRefreshNotifier;
+        _logger = logger;
         _unitOfWork = unitOfWork;
     }
 
@@ -121,10 +125,12 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
             }
 
             await EnsurePlatformAdministratorRoleAsync(request.UserId);
+            _logger.LogInformation("Onboarding: Assigned Platform Admin role to user {UserId}", request.UserId);
 
             if (isSingleTenant && defaultTenantId.HasValue)
             {
                 await EnsureDefaultTenantAdministratorAsync(defaultTenantId.Value, request.UserId);
+                _logger.LogInformation("Onboarding: Assigned Tenant Admin role for default tenant {TenantId} to user {UserId}", defaultTenantId, request.UserId);
             }
 
             var selectedMode = deploymentMode.ToString();
@@ -272,22 +278,30 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
             FullName = PlatformDefaults.DefaultTenantName,
             Slug = PlatformDefaults.DefaultTenantSlug,
             TenantStatusId = (int)TenantStatusEnum.Active,
-            TenantStatus = new TenantStatus
-            {
-                Id = (int)TenantStatusEnum.Active,
-                MasterCode = "ACTIVE",
-                FullName = "Active",
-                IsActiveState = true
-            }
+            TenantStatus = null!
         });
     }
 
     private async Task EnsurePlatformAdministratorRoleAsync(Guid userId)
     {
-        var platformAdminRole = await _roleRepository.GetByMasterCodeAsync("platform.admin")
-            ?? await _roleRepository.GetByIdAsync((int)RoleEnum.Admin);
+        // Resolve the platform admin role using the canonical master code used by the repository.
+        var platformAdminRole = await _roleRepository.GetByMasterCodeAsync("platform.admin");
+        
+        // Fallback to ID if master code search fails (unlikely given seeds, but for robustness)
+        if (platformAdminRole == null)
+        {
+            platformAdminRole = await _roleRepository.GetByIdAsync((int)RoleEnum.Admin);
+        }
 
-        if (platformAdminRole == null || platformAdminRole.Scope != RoleScopeEnum.Platform) return;
+        if (platformAdminRole == null)
+        {
+            throw new InvalidOperationException("Critical system error: Platform Admin role not found in database.");
+        }
+
+        if (platformAdminRole.Scope != RoleScopeEnum.Platform)
+        {
+            throw new InvalidOperationException($"Critical system error: Role '{platformAdminRole.MasterCode}' has incorrect scope {platformAdminRole.Scope}. Expected Platform.");
+        }
 
         var existing = await _platformUserRoleRepository.GetByUserAndRole(userId, platformAdminRole.Id);
         if (existing != null) return;
@@ -363,10 +377,19 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
     private async Task EnsureDefaultTenantAdministratorAsync(Guid tenantId, Guid userId)
     {
         var tenantMember = await _tenantMemberRepository.GetByTenantAndUser(tenantId, userId);
-        var tenantAdminRole = await _roleRepository.GetByMasterCodeAsync("tenant.admin")
-            ?? await _roleRepository.GetByIdAsync((int)RoleEnum.TenantAdmin);
+        
+        // Resolve the tenant admin role using the canonical master code.
+        var tenantAdminRole = await _roleRepository.GetByMasterCodeAsync("tenant.admin");
+        
+        if (tenantAdminRole == null)
+        {
+            tenantAdminRole = await _roleRepository.GetByIdAsync((int)RoleEnum.TenantAdmin);
+        }
 
-        if (tenantAdminRole == null) return;
+        if (tenantAdminRole == null)
+        {
+            throw new InvalidOperationException("Critical system error: Tenant Admin role not found in database.");
+        }
 
         if (tenantMember == null)
         {
@@ -385,6 +408,7 @@ public class CompleteInstanceOnboardingCommandHandler : IRequestHandler<Complete
         }
 
         if (tenantMember.RoleId == tenantAdminRole.Id) return;
+        
         tenantMember.RoleId = tenantAdminRole.Id;
         await _tenantMemberRepository.Update(tenantMember);
     }

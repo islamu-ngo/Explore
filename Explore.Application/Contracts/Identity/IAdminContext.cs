@@ -15,6 +15,14 @@ public interface IAdminContext
     /// Gets the current authenticated user's ID.
     /// </summary>
     Guid? UserId { get; }
+    
+    /// <summary>
+    /// Resolves the current user's internal ID.
+    /// If the token has a GUID sub/internal_user_id, it returns that.
+    /// Otherwise, it performs a database lookup via external login or email.
+    /// Result is cached for the duration of the request.
+    /// </summary>
+    Task<Guid?> ResolveUserIdAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets whether the current user is an Instance Administrator.

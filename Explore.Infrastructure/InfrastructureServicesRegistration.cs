@@ -13,7 +13,7 @@ using Explore.Infrastructure.Identity;
 using Explore.Infrastructure.Localization;
 using Explore.Infrastructure.Localization.Resilience;
 using Explore.Infrastructure.Mail;
-using Explore.Infrastructure.Outbox;
+using Explore.Infrastructure.Messaging;
 using Explore.Infrastructure.Services;
 using Explore.Infrastructure.Services.Federation;
 using Explore.Infrastructure.Storage;
@@ -184,9 +184,18 @@ public static class InfrastructureServicesRegistration
         services.AddScoped<ITranslationResolver>(sp => sp.GetRequiredService<TranslationResolver>());
         services.AddScoped<IBundleFileWriter, BundleFileWriter>();
 
+        // Messaging providers (runtime-switchable via GovernanceSettings "messaging.provider")
+        // All concrete providers are always registered; RuntimeMessagingProvider delegates at runtime.
+        // Config resolved per-tenant from cascading settings engine (Instance admin → Tenant admin)
+        services.AddSingleton<RabbitMqMessagingProvider>();
+        services.AddScoped<NullMessagingProvider>();
+        services.AddScoped<IMessagingConfigResolver, MessagingConfigResolver>();
+        services.AddScoped<RuntimeMessagingProvider>();
+        services.AddScoped<IMessagingProvider>(sp => sp.GetRequiredService<RuntimeMessagingProvider>());
+
         // Generic Outbox Processor settings and dispatcher
         services.Configure<OutboxProcessorSettings>(configuration.GetSection(OutboxProcessorSettings.SectionName));
-        services.AddScoped<IOutboxMessageDispatcher, LoggingOutboxMessageDispatcher>();
+        services.AddScoped<IOutboxMessageDispatcher, MqContractOutboxMessageDispatcher>();
 
         // PDS Synchronization services
         services.Configure<PdsSyncSettings>(configuration.GetSection(PdsSyncSettings.SectionName));

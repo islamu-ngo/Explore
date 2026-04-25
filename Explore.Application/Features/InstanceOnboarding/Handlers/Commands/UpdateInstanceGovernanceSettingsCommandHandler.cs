@@ -156,13 +156,7 @@ public class UpdateInstanceGovernanceSettingsCommandHandler : IRequestHandler<Up
             FullName = PlatformDefaults.DefaultTenantName,
             Slug = PlatformDefaults.DefaultTenantSlug,
             TenantStatusId = (int)TenantStatusEnum.Active,
-            TenantStatus = new TenantStatus
-            {
-                Id = (int)TenantStatusEnum.Active,
-                MasterCode = "ACTIVE",
-                FullName = "Active",
-                IsActiveState = true
-            }
+            TenantStatus = null!
         });
     }
 

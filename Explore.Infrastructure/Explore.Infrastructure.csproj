@@ -21,6 +21,9 @@
     <PackageReference Include="AWSSDK.S3" />
     <PackageReference Include="Cerbos.Sdk" />
     <PackageReference Include="MailKit" />
+    <PackageReference Include="MQContract" />
+    <PackageReference Include="MQContract.InMemory" />
+    <PackageReference Include="MQContract.RabbitMQ" />
     <PackageReference Include="Polly" />
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" />
     <PackageReference Include="Microsoft.Extensions.Http" />

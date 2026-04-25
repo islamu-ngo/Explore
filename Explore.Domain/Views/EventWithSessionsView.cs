@@ -2,11 +2,9 @@
 // ABOUTME: Combines Layer 1 core fields, Layer 2 aspect summaries, and Layer 3 projection facets into one read-only shape.
 
 using Explore.Domain.Interfaces;
-using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Domain.Views;
 
-[Keyless]
 public sealed class EventWithSessionsView : ITenantEntity
 {
     public Guid EventId { get; set; }
