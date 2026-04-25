@@ -1,0 +1,202 @@
+@* ABOUTME: List page for Custom Property Definitions. *@
+@* ABOUTME: Provides a grid view with filtering, pagination, and create/delete actions. *@
+
+@page "/admin/tenant/custom-property-definitions"
+@using Explore.Blazor.Client.Contracts.Services.CustomProperties
+@using Explore.Blazor.Client.Models.CustomProperties
+@using Explore.Blazor.Client.Pages.Admin.CustomProperties.Components
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Services
+@using Explore.Domain.Enums
+@using Microsoft.AspNetCore.Authorization
+@using MudBlazor
+
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@inject ICustomPropertyDefinitionService CustomPropertyService
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Custom Property Definitions</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-8 cp-def-list">
+    <div class="cp-def-list__header mb-6 d-flex justify-space-between align-center">
+        <div>
+            <MudText Typo="Typo.h4" HtmlTag="h1" Style="font-weight: 800;">Custom Property Definitions</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">
+                Manage definitions that apply across your tenant.
+            </MudText>
+        </div>
+        
+        <MudButton Variant="Variant.Filled" 
+                   Color="Color.Primary" 
+                   StartIcon="@Icons.Material.Filled.Add" 
+                   OnClick="OpenCreateDialogAsync"
+                   aria-label="Create Custom Property Definition">
+            Create Definition
+        </MudButton>
+    </div>
+
+    <MudCard Elevation="0" Class="cp-def-list__card pa-4 mb-4">
+        <MudSelect T="EntityTypeName" Label="Filter by Entity Type" Value="@_entityTypeFilter" ValueChanged="OnEntityTypeChanged" Variant="Variant.Outlined" Margin="Margin.Dense" Class="cp-def-list__filter">
+            <MudSelectItem Value="EntityTypeName.Event">Event</MudSelectItem>
+            <MudSelectItem Value="EntityTypeName.Organization">Organization</MudSelectItem>
+            <MudSelectItem Value="EntityTypeName.Group">Group</MudSelectItem>
+        </MudSelect>
+    </MudCard>
+
+    <MudDataGrid @ref="_dataGrid" 
+                 T="CustomPropertyDefinitionListModel" 
+                 ServerData="ServerReloadAsync"
+                 RowClick="OnRowClick" 
+                 Elevation="0" 
+                 Class="cp-def-list__grid"
+                 Hover="true" 
+                 Dense="true">
+        <Columns>
+            <PropertyColumn Property="x => x.DisplayName" Title="Name" />
+            <PropertyColumn Property="x => x.Namespace" Title="Namespace" />
+            <PropertyColumn Property="x => x.Key" Title="Key" />
+            <PropertyColumn Property="x => x.PropertyType" Title="Type" />
+            <PropertyColumn Property="x => x.EntityTypeName" Title="Entity" />
+            <PropertyColumn Property="x => x.ExposureLevel" Title="Exposure" />
+            <TemplateColumn Title="Status">
+                <CellTemplate>
+                    @if (context.Item.IsActive)
+                    {
+                        <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Outlined">Active</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Color="Color.Default" Size="Size.Small" Variant="Variant.Outlined">Draft</MudChip>
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Actions">
+                <CellTemplate>
+                    <div class="d-flex" @onclick:stopPropagation="true">
+                        @* HAL Link check for delete (list model doesn't have HAL links directly in requirements, assuming standard API pattern) *@
+                        @* Note: The user prompt says "gated by HAL link delete". List items usually have HAL links if they use HalCollectionResource. *@
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                       Color="Color.Error" 
+                                       Size="Size.Small" 
+                                       OnClick="@(() => DeleteDefinitionAsync(context.Item))"
+                                       aria-label="Delete Definition" />
+                    </div>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <PagerContent>
+            <MudDataGridPager T="CustomPropertyDefinitionListModel" />
+        </PagerContent>
+    </MudDataGrid>
+</MudContainer>
+
+@code {
+    private MudDataGrid<CustomPropertyDefinitionListModel> _dataGrid = default!;
+    private EntityTypeName _entityTypeFilter = EntityTypeName.Event;
+
+    private async Task<GridData<CustomPropertyDefinitionListModel>> ServerReloadAsync(GridState<CustomPropertyDefinitionListModel> state, CancellationToken ct)
+    {
+        // MudDataGrid page uses 0-based index, our API uses 1-based
+        int pageNumber = state.Page + 1;
+        
+        var result = await CustomPropertyService.GetDefinitionsAsync(
+            _entityTypeFilter, 
+            pageNumber, 
+            state.PageSize,
+            ct);
+
+        return new GridData<CustomPropertyDefinitionListModel>
+        {
+            TotalItems = result.TotalCount,
+            Items = result.Items
+        };
+    }
+
+    private async Task OnEntityTypeChanged(EntityTypeName newType)
+    {
+        _entityTypeFilter = newType;
+        await _dataGrid.ReloadServerData();
+    }
+
+    private void OnRowClick(DataGridRowClickEventArgs<CustomPropertyDefinitionListModel> args)
+    {
+        Navigation.NavigateTo($"/admin/tenant/custom-property-definitions/{args.Item.Id}");
+    }
+
+    private async Task OpenCreateDialogAsync()
+    {
+        var options = DialogOptionsFactory.Medium();
+        var dialog = await DialogService.ShowAsync<CustomPropertyDefinitionEditor>("Create Definition", options);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled && result.Data is CustomPropertyDefinitionDetailModel model)
+        {
+            var createDto = new CreateCustomPropertyDefinitionDto
+            {
+                EntityTypeName = (int)model.EntityTypeName,
+                Namespace = model.Namespace,
+                Key = model.Key,
+                DisplayName = model.DisplayName,
+                Description = model.Description,
+                PropertyType = (int)model.PropertyType,
+                IsRequired = model.IsRequired,
+                IsMulti = model.IsMulti,
+                SortOrder = model.SortOrder,
+                ExposureLevel = (int)model.ExposureLevel,
+                MinLength = model.MinLength,
+                MaxLength = model.MaxLength,
+                RegexPattern = model.RegexPattern,
+                MinNumber = (double?)model.MinNumber,
+                MaxNumber = (double?)model.MaxNumber,
+                AllowedUrlSchemes = model.AllowedUrlSchemes,
+                Options = model.Options.Select(o => new CreateCustomPropertyOptionDto
+                {
+                    Namespace = model.Namespace,
+                    Key = o.Key,
+                    DisplayName = o.DisplayName,
+                    Description = o.Description,
+                    Value = o.Value,
+                    IsDefault = o.IsDefault,
+                    IsActive = o.IsActive,
+                    SortOrder = o.SortOrder
+                }).ToList()
+            };
+
+            var response = await CustomPropertyService.CreateDefinitionAsync(createDto);
+            
+            if (response != null)
+            {
+                Snackbar.Add("Definition created successfully", Severity.Success);
+                await _dataGrid.ReloadServerData();
+            }
+        }
+    }
+
+    private async Task DeleteDefinitionAsync(CustomPropertyDefinitionListModel item)
+    {
+        var parameters = new DialogParameters<MudMessageBox>
+        {
+            { x => x.Title, "Delete Definition" },
+            { x => x.Message, $"Are you sure you want to delete {item.DisplayName}?" },
+            { x => x.YesText, "Delete" },
+            { x => x.CancelText, "Cancel" }
+        };
+
+        var dialog = await DialogService.ShowAsync<MudMessageBox>("Delete Definition", parameters);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+            var success = await CustomPropertyService.DeleteDefinitionAsync(item.Id);
+            if (success)
+            {
+                Snackbar.Add("Definition deleted", Severity.Success);
+                await _dataGrid.ReloadServerData();
+            }
+        }
+    }
+}

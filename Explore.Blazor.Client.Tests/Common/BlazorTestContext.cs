@@ -76,15 +76,15 @@ public class BlazorTestContext : BunitContext
         Services.AddScoped(_ => Substitute.For<ILanguagePreferenceService>());
     }
 
-    public new void Dispose()
+    protected override void Dispose(bool disposing)
     {
-        if (Services is IAsyncDisposable asyncDisposable)
+        if (disposing && Services is IAsyncDisposable asyncDisposable)
         {
             asyncDisposable.DisposeAsync().AsTask().GetAwaiter().GetResult();
             return;
         }
 
-        base.Dispose();
+        base.Dispose(disposing);
     }
 
     // ── Opt-in domain mock groups ──
@@ -236,10 +236,11 @@ public class BlazorTestContext : BunitContext
         // (e.g., in MainLayout tests that include the full layout tree).
         JSInterop.SetupVoid("mudThemeProvider.watchDarkMode", _ => true).SetVoidResult();
 
-        // MudOverlay/PointerEventsNoneService calls these during dispose (e.g., on navigation).
+        // MudOverlay/PointerEventsNoneService calls these during its lifecycle and dispose.
         // IPointerEventsNoneService is internal in MudBlazor v9 — cannot mock at DI level.
         JSInterop.SetupVoid("mudPointerEventsNone.addListener", _ => true).SetVoidResult();
         JSInterop.SetupVoid("mudPointerEventsNone.cancelListener", _ => true).SetVoidResult();
+        JSInterop.SetupVoid("mudPointerEventsNone.dispose", _ => true).SetVoidResult();
 
         // Browser storage APIs used by ProtectedBrowserStorage or component dependencies.
         // Returns empty string by default — individual tests can override with specific setups.

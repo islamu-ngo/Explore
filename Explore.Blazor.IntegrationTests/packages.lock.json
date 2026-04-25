@@ -248,6 +248,20 @@
         "resolved": "10.0.7",
         "contentHash": "2UM9EtTmX6yF6Efa6WOO7wmHz2kPksmnzPmMwveuOGJQwbtNg5wKGj7usGLr8Ve3AMhIAc2yqyRXt1xNsed3hg=="
       },
+      "Microsoft.CodeAnalysis.Analyzers": {
+        "type": "Transitive",
+        "resolved": "5.3.0-2.25625.1",
+        "contentHash": "4Yhh2fnu3G+J0J1lDc8WZVgMjgbynSeTfkl5IFJMFrmiIO0sc7Tjx+f3sFVV8Sd35PrIUWfof0RWc3lAMl7Azg=="
+      },
+      "Microsoft.CodeAnalysis.CSharp": {
+        "type": "Transitive",
+        "resolved": "5.3.0",
+        "contentHash": "SQFNGQF4f7UfDXKxMzzGNMr3fjrPDIjLfmRvvVgDCw+dyvEHDaRfHuKA5q0Pr0/JW0Gcw89TxrxrS/MjwBvluQ==",
+        "dependencies": {
+          "Microsoft.CodeAnalysis.Analyzers": "5.3.0-2.25625.1",
+          "Microsoft.CodeAnalysis.Common": "[5.3.0]"
+        }
+      },
       "Microsoft.DiaSymReader": {
         "type": "Transitive",
         "resolved": "2.2.5",
@@ -255,8 +269,8 @@
       },
       "Microsoft.DotNet.HotReload.WebAssembly.Browser": {
         "type": "Transitive",
-        "resolved": "10.0.201",
-        "contentHash": "4EAMH3CqtVwVm7Sx4DnNtZj/J0b+A1YGcTnCL6prhQ8ZHlwbVtZ3RmSyJdi85mSnLl+u94aVr8fElRGkjZkKmw=="
+        "resolved": "10.0.202",
+        "contentHash": "//aZ/qUD7sc2gcUlraZe4yD0jzxRv7uwUMuuDe7Wdlz404vgLpsdt5xD2l44VHjyUuOgH27ulK3MdJgQVjofzA=="
       },
       "Microsoft.EntityFrameworkCore.Abstractions": {
         "type": "Transitive",
@@ -786,6 +800,14 @@
           "System.Threading.RateLimiting": "8.0.0"
         }
       },
+      "RabbitMQ.Client": {
+        "type": "Transitive",
+        "resolved": "7.2.1",
+        "contentHash": "YKXEfg9fVQiTKgZlvIhAfPSFaamEgi8DsQmisCH0IAsU4FYLrtoguDrDj6JtJVGUt40QPnBLRH6fTQcAC4qsOg==",
+        "dependencies": {
+          "System.Threading.RateLimiting": "8.0.0"
+        }
+      },
       "runtime.native.System.Data.SqlClient.sni": {
         "type": "Transitive",
         "resolved": "4.7.0",
@@ -984,6 +1006,7 @@
           "EntityFramework": "[6.5.1, )",
           "Explore.Domain": "[1.0.0, )",
           "FluentValidation.DependencyInjectionExtensions": "[12.0.0, )",
+          "MQContract.Abstractions": "[3.9.2, )",
           "MediatR": "[14.1.0, )",
           "Microsoft.Extensions.Caching.Hybrid": "[10.2.0, )",
           "Microsoft.Extensions.Configuration.Abstractions": "[10.0.7, )",
@@ -1028,7 +1051,7 @@
           "FluentValidation": "[11.9.1, )",
           "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.7, )",
           "Microsoft.AspNetCore.Components.WebAssembly.Authentication": "[10.0.7, )",
-          "Microsoft.DotNet.HotReload.WebAssembly.Browser": "[10.0.201, )",
+          "Microsoft.DotNet.HotReload.WebAssembly.Browser": "[10.0.202, )",
           "Microsoft.Extensions.Http": "[10.0.7, )",
           "MudBlazor": "[9.4.0, )"
         }
@@ -1046,6 +1069,9 @@
           "AWSSDK.S3": "[4.0.16.1, )",
           "Cerbos.Sdk": "[1.9.1, )",
           "Explore.Application": "[1.0.0, )",
+          "MQContract": "[3.9.2, )",
+          "MQContract.InMemory": "[3.9.2, )",
+          "MQContract.RabbitMQ": "[3.9.2, )",
           "MailKit": "[4.15.1, )",
           "Microsoft.Extensions.Http.Resilience": "[10.1.0, )",
           "OpenFeature": "[2.11.1, )",
@@ -1308,6 +1334,15 @@
           "Microsoft.EntityFrameworkCore": "10.0.7"
         }
       },
+      "Microsoft.CodeAnalysis.Common": {
+        "type": "CentralTransitive",
+        "requested": "[5.3.0, )",
+        "resolved": "5.3.0",
+        "contentHash": "uC0qk3jzTQY7i90ehfnCqaOZpBUGJyPMiHJ3c0jOb8yaPBjWzIhVdNxPbeVzI74DB0C+YgBKPLqUkgFZzua5Mg==",
+        "dependencies": {
+          "Microsoft.CodeAnalysis.Analyzers": "5.3.0-2.25625.1"
+        }
+      },
       "Microsoft.EntityFrameworkCore": {
         "type": "CentralTransitive",
         "requested": "[10.0.7, )",
@@ -1502,6 +1537,48 @@
         "requested": "[1.23.0, )",
         "resolved": "1.23.0",
         "contentHash": "2wDnb4umupJZ/1ikgWozFVpggH1mlHQFc0odXVv2ZagL3RYwXgW9zmC15fiqIBzmaC0vLZUnLGwDY+p8ZR7Syw=="
+      },
+      "MQContract": {
+        "type": "CentralTransitive",
+        "requested": "[3.9.2, )",
+        "resolved": "3.9.2",
+        "contentHash": "iOcKPXITSfv84MViWsAMES8PMDiz5OQbhza4zXuNEuqq/h+un0AmAM802zO91DclfKYRWKYLLWc0O7rOeW/9Eg==",
+        "dependencies": {
+          "MQContract.Abstractions": "3.9.2",
+          "Microsoft.CodeAnalysis.CSharp": "5.3.0",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "[8.0.2, 11.0.0)",
+          "Microsoft.Extensions.Logging": "[8.0.1, 11.0.0)",
+          "Microsoft.Extensions.Logging.Abstractions": "[8.0.3, 11.0.0)",
+          "Polly": "[8.6.6, 9.0.0)"
+        }
+      },
+      "MQContract.Abstractions": {
+        "type": "CentralTransitive",
+        "requested": "[3.9.2, )",
+        "resolved": "3.9.2",
+        "contentHash": "nU4b9OE/SijFg+t66Xtz1yMAHqHqEOE3JVx1CF6DS1758JMUQYRVmXxsn+w9Ltd6vK3DDoUDMzhl45MZVp2gwA==",
+        "dependencies": {
+          "Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions": "[8.0.25, 11.0.0)"
+        }
+      },
+      "MQContract.InMemory": {
+        "type": "CentralTransitive",
+        "requested": "[3.9.2, )",
+        "resolved": "3.9.2",
+        "contentHash": "xnbXZccZkFQm4i2w6b5hq42hRyMForeicw2VRsHmLYCsLJfSDEaITlZisPxS71odvUwNiASKRbB4KtGSFBhUtw==",
+        "dependencies": {
+          "MQContract.Abstractions": "3.9.2"
+        }
+      },
+      "MQContract.RabbitMQ": {
+        "type": "CentralTransitive",
+        "requested": "[3.9.2, )",
+        "resolved": "3.9.2",
+        "contentHash": "fmH/zLrpca9a6cVS1KAgHhoHQQQubntv+Z2W26Hr3n4IK9PrzlbVqu5gvrxKGFMxgtHaLLSvdpwP8LiNt1svSQ==",
+        "dependencies": {
+          "MQContract.Abstractions": "3.9.2",
+          "RabbitMQ.Client": "7.2.1"
+        }
       },
       "MudBlazor": {
         "type": "CentralTransitive",

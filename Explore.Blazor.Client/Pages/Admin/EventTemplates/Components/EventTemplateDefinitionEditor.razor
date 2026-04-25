@@ -1,0 +1,190 @@
+@* ABOUTME: Editor for a collection of event template definitions.
+   ABOUTME: Handles adding/removing properties and configuring their metadata. *@
+
+@using Explore.Blazor.Client.Models.EventTemplates
+@using Explore.Domain.Enums
+
+<div class="event-template-definition-editor">
+    @if (!Definitions.Any())
+    {
+        <MudAlert Severity="Severity.Info" Class="mb-4">No definitions added yet. Click 'Add Definition' to start.</MudAlert>
+    }
+    else
+    {
+        <MudExpansionPanels MultiExpansion="true" Class="mb-4">
+            @for (var i = 0; i < Definitions.Count; i++)
+            {
+                var index = i;
+                var def = Definitions[index];
+                
+                <MudExpansionPanel Text="@(string.IsNullOrWhiteSpace(def.DisplayName) ? "New Definition" : $"{def.DisplayName} ({def.Key})")">
+                    <div class="event-template-definition-editor__panel-content">
+                        <div class="event-template-definition-editor__delete-wrapper">
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => RemoveDefinition(index))" Title="Remove definition" />
+                        </div>
+                        
+                        <MudGrid>
+                            <MudItem xs="12" sm="6" md="4">
+                                <MudTextField @bind-Value="def.Key" Label="Key" Required="true" HelperText="Unique key (e.g. 'theme_color')" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="4">
+                                <MudTextField @bind-Value="def.DisplayName" Label="Display Name" Required="true" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="4">
+                                <MudSelect T="PropertyType" @bind-Value="def.PropertyType" Label="Type" Required="true">
+                                    @foreach (PropertyType type in Enum.GetValues(typeof(PropertyType)))
+                                    {
+                                        <MudSelectItem Value="@type">@type.ToString()</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </MudItem>
+                            
+                            <MudItem xs="12" sm="12" md="12">
+                                <MudTextField @bind-Value="def.Description" Label="Description" Lines="2" />
+                            </MudItem>
+                            
+                            <MudItem xs="6" sm="3" md="2">
+                                <MudNumericField @bind-Value="def.SortOrder" Label="Sort Order" />
+                            </MudItem>
+                            <MudItem xs="6" sm="3" md="2">
+                                <MudSelect T="ExposureLevel" @bind-Value="def.ExposureLevel" Label="Exposure">
+                                    @foreach (ExposureLevel level in Enum.GetValues(typeof(ExposureLevel)))
+                                    {
+                                        <MudSelectItem Value="@level">@level.ToString()</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </MudItem>
+                            <MudItem xs="6" sm="3" md="2">
+                                <MudSwitch @bind-Value="def.IsRequired" Label="Required" Color="Color.Primary" />
+                            </MudItem>
+                            <MudItem xs="6" sm="3" md="2">
+                                <MudSwitch @bind-Value="def.IsMulti" Label="Multiple" Color="Color.Info" />
+                            </MudItem>
+                            <MudItem xs="6" sm="3" md="2">
+                                <MudSwitch @bind-Value="def.IsActive" Label="Active" Color="Color.Success" />
+                            </MudItem>
+                            <MudItem xs="6" sm="3" md="2">
+                                <MudSwitch @bind-Value="def.IsSystemOwned" Label="System" Color="Color.Warning" />
+                            </MudItem>
+                        </MudGrid>
+                        
+                        <MudText Typo="Typo.subtitle2" Class="mt-4 mb-2">Flags</MudText>
+                        <MudStack Row="true" Spacing="4" Wrap="Wrap.Wrap">
+                            <MudSwitch @bind-Value="def.IsSearchable" Label="Searchable" Color="Color.Secondary" Size="Size.Small" />
+                            <MudSwitch @bind-Value="def.IsFilterable" Label="Filterable" Color="Color.Secondary" Size="Size.Small" />
+                            <MudSwitch @bind-Value="def.IsExportable" Label="Exportable" Color="Color.Secondary" Size="Size.Small" />
+                            <MudSwitch @bind-Value="def.IsModerationRelevant" Label="Moderation" Color="Color.Secondary" Size="Size.Small" />
+                            <MudSwitch @bind-Value="def.IsAnalyticsRelevant" Label="Analytics" Color="Color.Secondary" Size="Size.Small" />
+                        </MudStack>
+                        
+                        <MudText Typo="Typo.subtitle2" Class="mt-4 mb-2">Validation & Limits</MudText>
+                        <MudGrid>
+                            <MudItem xs="6" sm="3">
+                                <MudNumericField @bind-Value="def.MinLength" Label="Min Length" />
+                            </MudItem>
+                            <MudItem xs="6" sm="3">
+                                <MudNumericField @bind-Value="def.MaxLength" Label="Max Length" />
+                            </MudItem>
+                            <MudItem xs="6" sm="3">
+                                <MudNumericField @bind-Value="def.MinNumber" Label="Min Number" />
+                            </MudItem>
+                            <MudItem xs="6" sm="3">
+                                <MudNumericField @bind-Value="def.MaxNumber" Label="Max Number" />
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="def.RegexPattern" Label="Regex Pattern" />
+                            </MudItem>
+                        </MudGrid>
+                        
+                        @if (def.PropertyType == PropertyType.Option)
+                        {
+                            <MudText Typo="Typo.subtitle2" Class="mt-4 mb-2">Options</MudText>
+                            <div class="event-template-definition-editor__options">
+                                @if (def.Options.Any())
+                                {
+                                    <MudTable Items="@def.Options" Hover="true" Dense="true" Elevation="0" Class="mb-2">
+                                        <HeaderContent>
+                                            <MudTh>Key</MudTh>
+                                            <MudTh>Value</MudTh>
+                                            <MudTh>Display Name</MudTh>
+                                            <MudTh>Actions</MudTh>
+                                        </HeaderContent>
+                                        <RowTemplate Context="opt">
+                                            <MudTd DataLabel="Key">
+                                                <MudTextField @bind-Value="opt.Key" Margin="Margin.Dense" />
+                                            </MudTd>
+                                            <MudTd DataLabel="Value">
+                                                <MudTextField @bind-Value="opt.Value" Margin="Margin.Dense" />
+                                            </MudTd>
+                                            <MudTd DataLabel="Display Name">
+                                                <MudTextField @bind-Value="opt.DisplayName" Margin="Margin.Dense" />
+                                            </MudTd>
+                                            <MudTd DataLabel="Actions">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => RemoveOption(def, opt))" />
+                                            </MudTd>
+                                        </RowTemplate>
+                                    </MudTable>
+                                }
+                                <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => AddOption(def))" Size="Size.Small">
+                                    Add Option
+                                </MudButton>
+                            </div>
+                        }
+                    </div>
+                </MudExpansionPanel>
+            }
+        </MudExpansionPanels>
+    }
+    
+    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="AddDefinition" StartIcon="@Icons.Material.Filled.Add">
+        Add Definition
+    </MudButton>
+</div>
+
+@code {
+    [Parameter]
+    public IList<EventTemplateDefinitionModel> Definitions { get; set; } = new List<EventTemplateDefinitionModel>();
+
+    [Parameter]
+    public EventCallback<IList<EventTemplateDefinitionModel>> OnDefinitionsChanged { get; set; }
+
+    private async Task AddDefinition()
+    {
+        Definitions.Add(new EventTemplateDefinitionModel 
+        { 
+            PropertyType = PropertyType.Text, 
+            IsActive = true,
+            ExposureLevel = ExposureLevel.TenantAdminOnly
+        });
+        await NotifyChangedAsync();
+    }
+
+    private async Task RemoveDefinition(int index)
+    {
+        if (index >= 0 && index < Definitions.Count)
+        {
+            Definitions.RemoveAt(index);
+            await NotifyChangedAsync();
+        }
+    }
+
+    private async Task AddOption(EventTemplateDefinitionModel definition)
+    {
+        definition.Options.Add(new EventTemplateOptionModel { IsActive = true });
+        await NotifyChangedAsync();
+    }
+
+    private async Task RemoveOption(EventTemplateDefinitionModel definition, EventTemplateOptionModel option)
+    {
+        definition.Options.Remove(option);
+        await NotifyChangedAsync();
+    }
+
+    private async Task NotifyChangedAsync()
+    {
+        if (OnDefinitionsChanged.HasDelegate)
+        {
+            await OnDefinitionsChanged.InvokeAsync(Definitions);
+        }
+    }
+}

@@ -1,0 +1,14 @@
+.cp-def-details__card {
+    border: 1px solid var(--isl-color-border);
+    border-radius: 12px;
+}
+
+.cp-def-details__table {
+    border-radius: 12px;
+    border: 1px solid var(--isl-color-border);
+    overflow: hidden;
+}
+
+.cp-def-details__table ::deep .mud-table-root {
+    border-radius: 12px;
+}

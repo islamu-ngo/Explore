@@ -1,0 +1,10 @@
+.cp-def-editor {
+    border-radius: 12px;
+}
+
+.cp-def-editor__validation {
+    padding: var(--isl-space-4);
+    background-color: var(--isl-color-surface-variant);
+    border-radius: 8px;
+    border: 1px solid var(--isl-color-border);
+}

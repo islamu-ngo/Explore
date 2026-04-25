@@ -43,4 +43,7 @@ public sealed class CustomPropertyDefinitionDetailModel
     public DateTimeOffset? MaxDateTime { get; set; }
     public string? AllowedUrlSchemes { get; set; }
     public List<CustomPropertyOptionModel> Options { get; set; } = [];
+
+    [System.Text.Json.Serialization.JsonPropertyName("_links")]
+    public Dictionary<string, object>? Links { get; set; } = new();
 }

@@ -1,0 +1,260 @@
+@* ABOUTME: Detail view for a Custom Property Definition. *@
+@* ABOUTME: Displays configuration and provides edit/delete affordances driven by HAL links. *@
+
+@page "/admin/tenant/custom-property-definitions/{id:guid}"
+@using Explore.Blazor.Client.Contracts.Services.CustomProperties
+@using Explore.Blazor.Client.Models.CustomProperties
+@using Explore.Blazor.Client.Pages.Admin.CustomProperties.Components
+@using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Services
+@using Explore.Domain.Enums
+@using Microsoft.AspNetCore.Authorization
+@using MudBlazor
+
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@inject ICustomPropertyDefinitionService CustomPropertyService
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Custom Property Definition Details</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-8 cp-def-details">
+    <div class="mb-6 d-flex align-center gap-4">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" 
+                       OnClick="GoBack" 
+                       aria-label="Back to List" />
+        <div>
+            <MudText Typo="Typo.h4" HtmlTag="h1" Style="font-weight: 800;">Definition Details</MudText>
+        </div>
+        <MudSpacer />
+        
+        @if (_definition?.Links?.ContainsKey("edit") == true)
+        {
+            <MudButton Variant="Variant.Outlined" 
+                       Color="Color.Primary" 
+                       StartIcon="@Icons.Material.Filled.Edit" 
+                       OnClick="OpenEditDialogAsync"
+                       aria-label="Edit Definition"
+                       Class="mr-2">
+                Edit
+            </MudButton>
+        }
+        
+        @if (_definition?.Links?.ContainsKey("delete") == true)
+        {
+            <MudButton Variant="Variant.Outlined" 
+                       Color="Color.Error" 
+                       StartIcon="@Icons.Material.Filled.Delete" 
+                       OnClick="DeleteDefinitionAsync"
+                       aria-label="Delete Definition">
+                Delete
+            </MudButton>
+        }
+    </div>
+
+    @if (_isLoading)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    }
+    else if (_definition == null)
+    {
+        <MudAlert Severity="Severity.Error">Definition not found.</MudAlert>
+    }
+    else
+    {
+        <MudCard Elevation="0" Class="cp-def-details__card mb-6">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">General Information</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudGrid>
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudTextField Value="@_definition.DisplayName" Label="Display Name" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudTextField Value="@_definition.Namespace" Label="Namespace" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudTextField Value="@_definition.Key" Label="Key" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    </MudItem>
+                    
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudTextField Value="@_definition.EntityTypeName.ToString()" Label="Entity Type" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudTextField Value="@_definition.PropertyType.ToString()" Label="Property Type" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudTextField Value="@_definition.ExposureLevel.ToString()" Label="Exposure Level" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    </MudItem>
+                    
+                    <MudItem xs="12">
+                        <MudTextField Value="@_definition.Description" Label="Description" ReadOnly="true" Variant="Variant.Outlined" Lines="2" Margin="Margin.Dense" />
+                    </MudItem>
+                </MudGrid>
+                
+                <div class="d-flex flex-wrap gap-4 mt-4">
+                    <MudChip T="string" Color="@(_definition.IsRequired ? Color.Primary : Color.Default)">
+                        Required: @(_definition.IsRequired ? "Yes" : "No")
+                    </MudChip>
+                    <MudChip T="string" Color="@(_definition.IsMulti ? Color.Primary : Color.Default)">
+                        Multi-Value: @(_definition.IsMulti ? "Yes" : "No")
+                    </MudChip>
+                    <MudChip T="string" Color="@(_definition.IsActive ? Color.Success : Color.Default)">
+                        Active: @(_definition.IsActive ? "Yes" : "No")
+                    </MudChip>
+                    <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined">
+                        Sort Order: @_definition.SortOrder
+                    </MudChip>
+                </div>
+            </MudCardContent>
+        </MudCard>
+
+        @if (_definition.PropertyType == PropertyType.Option && _definition.Options?.Any() == true)
+        {
+            <MudCard Elevation="0" Class="cp-def-details__card mb-6">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Options</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudTable Items="@_definition.Options" Hover="true" Elevation="0" Dense="true" Class="cp-def-details__table">
+                        <HeaderContent>
+                            <MudTh>Key</MudTh>
+                            <MudTh>Display Name</MudTh>
+                            <MudTh>Value</MudTh>
+                            <MudTh>Sort Order</MudTh>
+                            <MudTh>Default</MudTh>
+                            <MudTh>Active</MudTh>
+                        </HeaderContent>
+                        <RowTemplate Context="opt">
+                            <MudTd DataLabel="Key">@opt.Key</MudTd>
+                            <MudTd DataLabel="Display Name">@opt.DisplayName</MudTd>
+                            <MudTd DataLabel="Value">@opt.Value</MudTd>
+                            <MudTd DataLabel="Sort Order">@opt.SortOrder</MudTd>
+                            <MudTd DataLabel="Default">
+                                @if (opt.IsDefault) { <MudIcon Icon="@Icons.Material.Filled.Check" Color="Color.Primary" Size="Size.Small" /> }
+                            </MudTd>
+                            <MudTd DataLabel="Active">
+                                @if (opt.IsActive) { <MudIcon Icon="@Icons.Material.Filled.Check" Color="Color.Success" Size="Size.Small" /> }
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                </MudCardContent>
+            </MudCard>
+        }
+    }
+</MudContainer>
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private CustomPropertyDefinitionDetailModel? _definition;
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        _definition = await CustomPropertyService.GetDefinitionAsync(Id);
+        _isLoading = false;
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/admin/tenant/custom-property-definitions");
+    }
+
+    private async Task OpenEditDialogAsync()
+    {
+        if (_definition == null) return;
+
+        var parameters = new DialogParameters<CustomPropertyDefinitionEditor>
+        {
+            { x => x.Definition, _definition }
+        };
+        
+        var options = DialogOptionsFactory.Medium();
+        var dialog = await DialogService.ShowAsync<CustomPropertyDefinitionEditor>("Edit Definition", parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled && result.Data is CustomPropertyDefinitionDetailModel model)
+        {
+            var updateDto = new UpdateCustomPropertyDefinitionDto
+            {
+                Namespace = model.Namespace,
+                Key = model.Key,
+                DisplayName = model.DisplayName,
+                Description = model.Description,
+                IsRequired = model.IsRequired,
+                IsMulti = model.IsMulti,
+                IsActive = model.IsActive,
+                SortOrder = model.SortOrder,
+                ExposureLevel = (int)model.ExposureLevel,
+                MinLength = model.MinLength,
+                MaxLength = model.MaxLength,
+                RegexPattern = model.RegexPattern,
+                MinNumber = (double?)model.MinNumber,
+                MaxNumber = (double?)model.MaxNumber,
+                AllowedUrlSchemes = model.AllowedUrlSchemes,
+                Options = model.Options.Select(o => new CreateCustomPropertyOptionDto
+                {
+                    Namespace = model.Namespace,
+                    Key = o.Key,
+                    DisplayName = o.DisplayName,
+                    Description = o.Description,
+                    Value = o.Value,
+                    IsDefault = o.IsDefault,
+                    IsActive = o.IsActive,
+                    SortOrder = o.SortOrder
+                }).ToList()
+            };
+
+            var response = await CustomPropertyService.UpdateDefinitionAsync(Id, updateDto);
+            
+            if (response != null)
+            {
+                Snackbar.Add("Definition updated successfully", Severity.Success);
+                await LoadDataAsync();
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task DeleteDefinitionAsync()
+    {
+        if (_definition == null) return;
+
+        var parameters = new DialogParameters<MudMessageBox>
+        {
+            { x => x.Title, "Delete Definition" },
+            { x => x.Message, $"Are you sure you want to delete {_definition.DisplayName}?" },
+            { x => x.YesText, "Delete" },
+            { x => x.CancelText, "Cancel" }
+        };
+
+        var dialog = await DialogService.ShowAsync<MudMessageBox>("Delete Definition", parameters);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+            var success = await CustomPropertyService.DeleteDefinitionAsync(Id);
+            if (success)
+            {
+                Snackbar.Add("Definition deleted", Severity.Success);
+                GoBack();
+            }
+        }
+    }
+}

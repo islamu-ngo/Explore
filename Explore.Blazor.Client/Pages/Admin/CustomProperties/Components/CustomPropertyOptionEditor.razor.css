@@ -1,0 +1,15 @@
+.cp-opt-editor {
+    border: 1px solid var(--isl-color-border);
+    border-radius: 12px;
+    padding: var(--isl-space-4);
+    background: var(--isl-color-surface);
+}
+
+.cp-opt-editor__table {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.cp-opt-editor__table ::deep .mud-table-root {
+    border-radius: 12px;
+}

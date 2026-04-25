@@ -1,0 +1,14 @@
+/* ABOUTME: Styles for EventTemplateEditor component.
+   ABOUTME: BEM isolation pattern. */
+
+.event-template-editor {
+    /* Main wrapper if needed */
+}
+
+.event-template-editor__field {
+    margin-bottom: 0;
+}
+
+.event-template-editor__switch {
+    margin-top: 1rem;
+}

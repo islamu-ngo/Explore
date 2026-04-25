@@ -105,14 +105,10 @@ public class AnalyticsInitializerTests : IDisposable
             .Single(x => x.Name == "Render"
                 && x.IsGenericMethod
                 && x.GetParameters().Length == 1
-                && x.GetParameters()[0].ParameterType.IsArray);
-
-        var parameters = method.GetParameters();
-        var parameterType = parameters[0].ParameterType;
-        var emptyArray = Array.CreateInstance(parameterType.GetElementType()!, 0);
+                && x.GetParameters()[0].HasDefaultValue);
 
         return (IRenderedComponent<IComponent>)method.MakeGenericMethod(_analyticsInitializerType)
-            .Invoke(_ctx, new object?[] { emptyArray })!;
+            .Invoke(_ctx, new object?[] { null })!;
     }
 
     [Test]

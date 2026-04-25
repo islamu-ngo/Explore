@@ -80,6 +80,12 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     {
         base.OnInitialized();
 
+        NavigationManager.LocationChanged += OnLocationChanged;
+        SidebarState.OnChange += StateHasChanged;
+        AiAssistantState.OnChange += StateHasChanged;
+        TenantNavLinksState.OnChange += StateHasChanged;
+        UpdateChromeVisibility();
+
         if (InitialTheme.HasValue)
         {
             _isDarkMode = InitialTheme.Value;

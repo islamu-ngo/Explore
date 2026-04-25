@@ -1,0 +1,193 @@
+@* ABOUTME: Details view for Event Template.
+   ABOUTME: Shows fields and HAL-gated edit actions. *@
+
+@page "/admin/tenant/event-templates/{Id:guid}"
+@using Explore.Blazor.Client.Contracts.Services.EventTemplates
+@using Explore.Blazor.Client.Models.EventTemplates
+@using Explore.Blazor.Client.Pages.Admin.EventTemplates.Components
+@using Explore.Blazor.Client.Services
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject IEventTemplateService TemplateService
+@inject IDialogService DialogService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<PageTitle>Event Template Details</PageTitle>
+
+@if (_isLoading)
+{
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+}
+else if (_template == null)
+{
+    <MudAlert Severity="Severity.Error">Template not found.</MudAlert>
+    <MudButton Variant="Variant.Text" OnClick="@(() => NavigationManager.NavigateTo("/admin/tenant/event-templates"))">Back to List</MudButton>
+}
+else
+{
+    <div class="event-template-detail">
+        <div class="event-template-detail__header">
+            <div class="event-template-detail__title-section">
+                <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => NavigationManager.NavigateTo("/admin/tenant/event-templates"))" Class="event-template-detail__back-button" />
+                <MudText Typo="Typo.h4" HtmlTag="h1" Class="event-template-detail__title">@_template.DisplayName</MudText>
+                @if (_template.IsPublished)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Success">Published</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Default">Draft</MudChip>
+                }
+                @if (!_template.IsActive)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">Inactive</MudChip>
+                }
+            </div>
+
+            <div class="event-template-detail__actions">
+                @if (_template.Links?.ContainsKey("edit") == true)
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenEditDialogAsync" StartIcon="@Icons.Material.Filled.Edit">
+                        Edit Template
+                    </MudButton>
+                }
+            </div>
+        </div>
+
+        <MudCard Elevation="1" Class="event-template-detail__card">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">General Information</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudGrid>
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Template Key</MudText>
+                        <MudText Typo="Typo.body1">@_template.TemplateKey</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Event Type ID</MudText>
+                        <MudText Typo="Typo.body1">@_template.EventTypeId</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Version</MudText>
+                        <MudText Typo="Typo.body1">@_template.Version</MudText>
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Description</MudText>
+                        <MudText Typo="Typo.body1">@(_template.Description ?? "No description provided")</MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudCardContent>
+        </MudCard>
+
+        <MudCard Elevation="1" Class="event-template-detail__card mt-6">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Definitions (@_template.Definitions.Count)</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                @if (_template.Definitions.Any())
+                {
+                    <MudTable Items="@_template.Definitions" Hover="true" Dense="true" Elevation="0" Class="event-template-detail__table">
+                        <HeaderContent>
+                            <MudTh>Key</MudTh>
+                            <MudTh>Display Name</MudTh>
+                            <MudTh>Type</MudTh>
+                            <MudTh>Required</MudTh>
+                            <MudTh>Multi</MudTh>
+                            <MudTh>Active</MudTh>
+                            <MudTh>Exposure</MudTh>
+                        </HeaderContent>
+                        <RowTemplate Context="def">
+                            <MudTd DataLabel="Key">@def.Key</MudTd>
+                            <MudTd DataLabel="Display Name">@def.DisplayName</MudTd>
+                            <MudTd DataLabel="Type">
+                                <MudChip T="string" Size="Size.Small">@def.PropertyType</MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Required">
+                                @if (def.IsRequired)
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                                }
+                            </MudTd>
+                            <MudTd DataLabel="Multi">
+                                @if (def.IsMulti)
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Info" Size="Size.Small" />
+                                }
+                            </MudTd>
+                            <MudTd DataLabel="Active">
+                                @if (def.IsActive)
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                                }
+                                else
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" Size="Size.Small" />
+                                }
+                            </MudTd>
+                            <MudTd DataLabel="Exposure">@def.ExposureLevel</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">No definitions configured.</MudText>
+                }
+            </MudCardContent>
+        </MudCard>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private bool _isLoading = true;
+    private EventTemplateDetailModel? _template;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTemplateAsync();
+    }
+
+    private async Task LoadTemplateAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _template = await TemplateService.GetTemplateByIdAsync(Id);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Failed to load template details", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task OpenEditDialogAsync()
+    {
+        if (_template == null) return;
+
+        var parameters = new DialogParameters<EventTemplateEditor>
+        {
+            { x => x.Template, _template }
+        };
+
+        var dialog = await DialogService.ShowAsync<EventTemplateEditor>("Edit Event Template", parameters, DialogOptionsFactory.Medium());
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await LoadTemplateAsync();
+            Snackbar.Add("Event template updated successfully", Severity.Success);
+        }
+    }
+}

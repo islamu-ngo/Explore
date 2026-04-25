@@ -1,0 +1,36 @@
+/* ABOUTME: Styles for Event Template details view.
+   ABOUTME: BEM isolation pattern. */
+
+.event-template-detail {
+    display: flex;
+    flex-direction: column;
+}
+
+.event-template-detail__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+
+.event-template-detail__title-section {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.event-template-detail__title {
+    font-weight: 500;
+}
+
+.event-template-detail__back-button {
+    margin-left: -12px;
+}
+
+.event-template-detail__card {
+    width: 100%;
+}
+
+.event-template-detail__table {
+    margin-top: 1rem;
+}

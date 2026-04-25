@@ -5,7 +5,7 @@ namespace Explore.Blazor.Client.Services;
 
 public sealed class SidebarState
 {
-    public bool IsOpen { get; private set; }
+    public bool IsOpen { get; private set; } = true;
     public bool HasSidebar { get; private set; }
     public event Action? OnChange;
 

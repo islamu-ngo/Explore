@@ -1,0 +1,102 @@
+@* ABOUTME: Reusable option editor component for Custom Property Definitions. *@
+@* ABOUTME: Allows adding, editing, reordering, and removing options. *@
+
+@using Explore.Blazor.Client.Models.CustomProperties
+@using MudBlazor
+
+<div class="cp-opt-editor">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h6">Options</MudText>
+        <MudButton Variant="Variant.Outlined" 
+                   StartIcon="@Icons.Material.Filled.Add" 
+                   Color="Color.Primary" 
+                   OnClick="AddOption"
+                   Size="Size.Small">
+            Add Option
+        </MudButton>
+    </div>
+
+    @if (Options == null || !Options.Any())
+    {
+        <MudAlert Severity="Severity.Info" Class="mb-4">No options defined yet. Add an option to get started.</MudAlert>
+    }
+    else
+    {
+        <MudTable Items="@Options" Hover="true" Elevation="0" Class="cp-opt-editor__table" Dense="true" Breakpoint="Breakpoint.Sm">
+            <HeaderContent>
+                <MudTh>Key</MudTh>
+                <MudTh>Display Name</MudTh>
+                <MudTh>Value</MudTh>
+                <MudTh>Sort Order</MudTh>
+                <MudTh>Flags</MudTh>
+                <MudTh Style="width: 50px;"></MudTh>
+            </HeaderContent>
+            <RowTemplate Context="opt">
+                <MudTd DataLabel="Key">
+                    <MudTextField @bind-Value="opt.Key" Required="true" Margin="Margin.Dense" Variant="Variant.Text" aria-label="Option Key" />
+                </MudTd>
+                <MudTd DataLabel="Display Name">
+                    <MudTextField @bind-Value="opt.DisplayName" Required="true" Margin="Margin.Dense" Variant="Variant.Text" aria-label="Option Display Name" />
+                </MudTd>
+                <MudTd DataLabel="Value">
+                    <MudTextField @bind-Value="opt.Value" Required="true" Margin="Margin.Dense" Variant="Variant.Text" aria-label="Option Value" />
+                </MudTd>
+                <MudTd DataLabel="Sort Order">
+                    <MudNumericField @bind-Value="opt.SortOrder" Margin="Margin.Dense" Variant="Variant.Text" HideSpinButtons="true" aria-label="Sort Order" />
+                </MudTd>
+                <MudTd DataLabel="Flags">
+                    <div class="d-flex gap-2">
+                        <MudSwitch @bind-Value="opt.IsDefault" Color="Color.Primary" Size="Size.Small" Label="Default" />
+                        <MudSwitch @bind-Value="opt.IsActive" Color="Color.Success" Size="Size.Small" Label="Active" />
+                    </div>
+                </MudTd>
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                   Color="Color.Error" 
+                                   Size="Size.Small" 
+                                   OnClick="@(() => PromptDeleteOptionAsync(opt))"
+                                   aria-label="Delete Option" />
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public IList<CustomPropertyOptionModel> Options { get; set; } = new List<CustomPropertyOptionModel>();
+
+    [Inject]
+    private IDialogService DialogService { get; set; } = default!;
+
+    private void AddOption()
+    {
+        var newOption = new CustomPropertyOptionModel
+        {
+            Id = Guid.NewGuid(), // Client-side generation for tracking
+            IsActive = true,
+            SortOrder = Options.Count
+        };
+        Options.Add(newOption);
+    }
+
+    private async Task PromptDeleteOptionAsync(CustomPropertyOptionModel option)
+    {
+        var parameters = new DialogParameters<MudMessageBox>
+        {
+            { x => x.Title, "Delete Option" },
+            { x => x.Message, $"Are you sure you want to delete the option '{option.DisplayName ?? option.Key}'?" },
+            { x => x.YesText, "Delete" },
+            { x => x.CancelText, "Cancel" }
+        };
+
+        var dialog = await DialogService.ShowAsync<MudMessageBox>("Delete Option", parameters);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+            Options.Remove(option);
+            StateHasChanged();
+        }
+    }
+}

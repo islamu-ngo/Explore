@@ -19,7 +19,7 @@
 
 <div class="template-sync-page">
     <div class="template-sync-page__header d-flex justify-space-between align-center mb-4">
-        <MudText Typo="Typo.h5">Session Template Sync</MudText>
+        <MudText Typo="Typo.h5" HtmlTag="h1">Session Template Sync</MudText>
         @if (_diff?.Links?.ContainsKey("sync-apply") == true && TotalSelected > 0)
         {
             <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="OpenApplyDialogAsync" Class="template-sync-page__apply-button" aria-label="Apply Sync Plan">
@@ -136,14 +136,14 @@
 
         if (!result.Canceled)
         {
-            var plan = new TemplateSyncPlanDto
+            var plan = new Explore.Blazor.Client.Models.EventSessionTemplateSync.TemplateSyncPlanDto
             {
                 TargetTemplateVersion = _diff!.TargetTemplateVersion,
                 BaseProvenanceVersion = _diff.BaseProvenanceVersion,
                 ModifiedDefinitionKeys = _selectedChanges.Where(kv => kv.Value.Value).Select(kv => kv.Key).ToList()
             };
 
-            var request = new EventSessionTemplateSyncApplyRequest(plan, _diff.BaseProvenanceVersion);
+            var request = new Explore.Blazor.Client.Models.EventSessionTemplateSync.EventSessionTemplateSyncApplyRequest(plan, _diff.BaseProvenanceVersion);
 
             try
             {

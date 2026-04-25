@@ -33,4 +33,7 @@ public sealed class CustomPropertyDefinitionListModel
     public bool IsAnalyticsRelevant { get; set; }
     public bool IsSystemOwned { get; set; }
     public int OptionCount { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("_links")]
+    public Dictionary<string, object>? Links { get; set; } = new();
 }

@@ -3,8 +3,8 @@
 
 using System.Net;
 using Explore.Blazor.Client.Components.EventTemplateSync;
-using Explore.Blazor.Client.Models.EventTemplateSync;
 using Explore.Blazor.Client.Models.EventSessionTemplateSync;
+using EventSessionTemplateSyncApplyRequest = Explore.Blazor.Client.Models.EventSessionTemplateSync.EventSessionTemplateSyncApplyRequest;
 using Explore.Blazor.Client.Pages.Admin.EventSessionTemplateSync;
 using Explore.Blazor.Client.Services.EventSessionTemplateSync;
 using MudBlazor;
@@ -39,7 +39,7 @@ public sealed class EventSessionTemplateSyncPageTests : IDisposable
 
     private IRenderedComponent<EventSessionTemplateSyncPage> RenderPage(Guid sessionId, int? version = null)
     {
-        return _ctx.RenderMudComponent<EventSessionTemplateSyncPage>(p => 
+        return _ctx.RenderMudComponent<EventSessionTemplateSyncPage>(p =>
         {
             p.Add(x => x.SessionId, sessionId);
             if (version.HasValue)
@@ -58,17 +58,17 @@ public sealed class EventSessionTemplateSyncPageTests : IDisposable
             BaseProvenanceVersion: 1,
             AddedDefinitions: Array.Empty<AddedDefinitionDto>(),
             ModifiedDefinitions: [
-                new ModifiedDefinitionDto("Test", "Field", new[] { new FieldChangeDto("Name", "Old", "New", "string") })
+                new ModifiedDefinitionDto("Test", "Field", Guid.Empty, new[] { new FieldChangeDto("Name", "Old", "New", "string") })
             ],
             RetiredDefinitions: Array.Empty<RetiredDefinitionDto>(),
             AddedOptions: Array.Empty<AddedOptionDto>(),
             ModifiedOptions: Array.Empty<ModifiedOptionDto>(),
             RetiredOptions: Array.Empty<RetiredOptionDto>(),
             UntouchedLocalDefinitions: [
-                new UntouchedLocalDefinitionDto("Local", "Item")
+                new UntouchedLocalDefinitionDto("Local", "Item", "Test")
             ])
         {
-            Links = new Dictionary<string, Clients.HalLink>()
+            Links = new Dictionary<string, Explore.Blazor.Client.Models.HalLinkDto>()
         };
 
         _templateSyncService.GetDiffAsync(sessionId, 0).Returns(diff);
@@ -90,7 +90,7 @@ public sealed class EventSessionTemplateSyncPageTests : IDisposable
             BaseProvenanceVersion: 1,
             AddedDefinitions: Array.Empty<AddedDefinitionDto>(),
             ModifiedDefinitions: [
-                new ModifiedDefinitionDto("Test", "Field", new[] { new FieldChangeDto("Name", "Old", "New", "string") })
+                new ModifiedDefinitionDto("Test", "Field", Guid.Empty, new[] { new FieldChangeDto("Name", "Old", "New", "string") })
             ],
             RetiredDefinitions: Array.Empty<RetiredDefinitionDto>(),
             AddedOptions: Array.Empty<AddedOptionDto>(),
@@ -98,7 +98,7 @@ public sealed class EventSessionTemplateSyncPageTests : IDisposable
             RetiredOptions: Array.Empty<RetiredOptionDto>(),
             UntouchedLocalDefinitions: Array.Empty<UntouchedLocalDefinitionDto>())
         {
-            Links = new Dictionary<string, Clients.HalLink>()
+            Links = new Dictionary<string, Explore.Blazor.Client.Models.HalLinkDto>()
         };
 
         _templateSyncService.GetDiffAsync(sessionId, 0).Returns(diff);
@@ -121,7 +121,7 @@ public sealed class EventSessionTemplateSyncPageTests : IDisposable
             BaseProvenanceVersion: 1,
             AddedDefinitions: Array.Empty<AddedDefinitionDto>(),
             ModifiedDefinitions: [
-                new ModifiedDefinitionDto("Test", "Field", new[] { new FieldChangeDto("Name", "Old", "New", "string") })
+                new ModifiedDefinitionDto("Test", "Field", Guid.Empty, new[] { new FieldChangeDto("Name", "Old", "New", "string") })
             ],
             RetiredDefinitions: Array.Empty<RetiredDefinitionDto>(),
             AddedOptions: Array.Empty<AddedOptionDto>(),
@@ -129,9 +129,9 @@ public sealed class EventSessionTemplateSyncPageTests : IDisposable
             RetiredOptions: Array.Empty<RetiredOptionDto>(),
             UntouchedLocalDefinitions: Array.Empty<UntouchedLocalDefinitionDto>())
         {
-            Links = new Dictionary<string, Clients.HalLink>
+            Links = new Dictionary<string, Explore.Blazor.Client.Models.HalLinkDto>
             {
-                ["sync-apply"] = new Clients.HalLink { Href = "/apply" }
+                ["sync-apply"] = new Explore.Blazor.Client.Models.HalLinkDto("/apply")
             }
         };
 
@@ -158,7 +158,7 @@ public sealed class EventSessionTemplateSyncPageTests : IDisposable
             BaseProvenanceVersion: 1,
             AddedDefinitions: Array.Empty<AddedDefinitionDto>(),
             ModifiedDefinitions: [
-                new ModifiedDefinitionDto("Test", "Field", new[] { new FieldChangeDto("Name", "Old", "New", "string") })
+                new ModifiedDefinitionDto("Test", "Field", Guid.Empty, new[] { new FieldChangeDto("Name", "Old", "New", "string") })
             ],
             RetiredDefinitions: Array.Empty<RetiredDefinitionDto>(),
             AddedOptions: Array.Empty<AddedOptionDto>(),
@@ -166,7 +166,7 @@ public sealed class EventSessionTemplateSyncPageTests : IDisposable
             RetiredOptions: Array.Empty<RetiredOptionDto>(),
             UntouchedLocalDefinitions: Array.Empty<UntouchedLocalDefinitionDto>())
         {
-            Links = new Dictionary<string, Clients.HalLink> { ["sync-apply"] = new Clients.HalLink { Href = "/apply" } }
+            Links = new Dictionary<string, Explore.Blazor.Client.Models.HalLinkDto> { ["sync-apply"] = new Explore.Blazor.Client.Models.HalLinkDto("/apply") }
         };
 
         _templateSyncService.GetDiffAsync(sessionId, 0).Returns(diff);
@@ -178,21 +178,21 @@ public sealed class EventSessionTemplateSyncPageTests : IDisposable
 
         var cut = RenderPage(sessionId);
         cut.WaitForState(() => !cut.Markup.Contains("mud-progress-circular"), TimeSpan.FromSeconds(3));
-        
+
         var row = cut.FindComponent<TemplateDiffRow>();
         row.Find("input[type=\"checkbox\"]").Change(true);
         cut.WaitForState(() => cut.Markup.Contains("Apply Sync (1 changes)"));
 
         cut.Find("button.template-sync-page__apply-button").Click();
 
-        await _dialogService.Received(1).ShowAsync<TemplateSyncConfirmationDialog>("Confirm Sync", Arg.Is<DialogParameters>(p => 
+        await _dialogService.Received(1).ShowAsync<TemplateSyncConfirmationDialog>("Confirm Sync", Arg.Is<DialogParameters>(p =>
             p.Get<string>("ExpectedSlug") == "session-slug" &&
             p.Get<int>("TargetTemplateVersion") == 2 &&
             p.Get<int>("TotalChangesToApply") == 1
         ), Arg.Any<DialogOptions>());
-        
-        await _templateSyncService.Received(1).ApplySyncAsync(sessionId, Arg.Is<EventSessionTemplateSyncApplyRequest>(r => 
-            r.Plan.TargetTemplateVersion == 2 && 
+
+        await _templateSyncService.Received(1).ApplySyncAsync(sessionId, Arg.Is<EventSessionTemplateSyncApplyRequest>(r =>
+            r.Plan.TargetTemplateVersion == 2 &&
             r.Plan.BaseProvenanceVersion == 1 &&
             r.Plan.ModifiedDefinitionKeys.Contains("Field")
         ));
@@ -220,7 +220,7 @@ public sealed class EventSessionTemplateSyncPageTests : IDisposable
             BaseProvenanceVersion: 1,
             AddedDefinitions: Array.Empty<AddedDefinitionDto>(),
             ModifiedDefinitions: [
-                new ModifiedDefinitionDto("Test", "Field", new[] { new FieldChangeDto("Name", "Old", "New", "string") })
+                new ModifiedDefinitionDto("Test", "Field", Guid.Empty, new[] { new FieldChangeDto("Name", "Old", "New", "string") })
             ],
             RetiredDefinitions: Array.Empty<RetiredDefinitionDto>(),
             AddedOptions: Array.Empty<AddedOptionDto>(),
@@ -228,7 +228,7 @@ public sealed class EventSessionTemplateSyncPageTests : IDisposable
             RetiredOptions: Array.Empty<RetiredOptionDto>(),
             UntouchedLocalDefinitions: Array.Empty<UntouchedLocalDefinitionDto>())
         {
-            Links = new Dictionary<string, Clients.HalLink> { ["sync-apply"] = new Clients.HalLink { Href = "/apply" } }
+            Links = new Dictionary<string, Explore.Blazor.Client.Models.HalLinkDto> { ["sync-apply"] = new Explore.Blazor.Client.Models.HalLinkDto("/apply") }
         };
 
         _templateSyncService.GetDiffAsync(sessionId, 0).Returns(diff);
@@ -243,7 +243,7 @@ public sealed class EventSessionTemplateSyncPageTests : IDisposable
 
         var cut = RenderPage(sessionId);
         cut.WaitForState(() => !cut.Markup.Contains("mud-progress-circular"), TimeSpan.FromSeconds(3));
-        
+
         var row = cut.FindComponent<TemplateDiffRow>();
         row.Find("input[type=\"checkbox\"]").Change(true);
         cut.WaitForState(() => cut.Markup.Contains("Apply Sync (1 changes)"));

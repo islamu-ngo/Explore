@@ -472,6 +472,39 @@ public static class HalResourceExtensions
         return JsonSerializer.Deserialize<LocationRoomDto>(json, JsonOptions) ?? new LocationRoomDto();
     }
 
+    // ========== EventTemplate Extensions ==========
+
+    public static ICollection<Explore.Blazor.Client.Models.EventTemplates.EventTemplateListModel> GetEventTemplateItems(this HalCollectionResourceOfEventTemplateListDto collection)
+    {
+        if (collection._embedded?.Items == null)
+            return new List<Explore.Blazor.Client.Models.EventTemplates.EventTemplateListModel>();
+
+        return DeserializeItems<Explore.Blazor.Client.Models.EventTemplates.EventTemplateListModel>(collection._embedded.Items);
+    }
+
+    public static PaginatedResult<Explore.Blazor.Client.Models.EventTemplates.EventTemplateListModel> ToEventTemplatePaginatedResult(this HalCollectionResourceOfEventTemplateListDto? collection)
+    {
+        if (collection is null)
+            return PaginatedResult<Explore.Blazor.Client.Models.EventTemplates.EventTemplateListModel>.Empty();
+
+        return new PaginatedResult<Explore.Blazor.Client.Models.EventTemplates.EventTemplateListModel>
+        {
+            Items = collection.GetEventTemplateItems().ToList(),
+            PageNumber = collection.PageNumber ?? 1,
+            PageSize = collection.PageSize ?? 20,
+            TotalCount = collection.TotalCount ?? 0
+        };
+    }
+
+    public static Explore.Blazor.Client.Models.EventTemplates.EventTemplateDetailModel? ToEventTemplateModel(this HalResourceOfEventTemplateDto? halResource)
+    {
+        if (halResource is null)
+            return null;
+
+        var json = JsonSerializer.Serialize(halResource.AdditionalProperties, JsonOptions);
+        return JsonSerializer.Deserialize<Explore.Blazor.Client.Models.EventTemplates.EventTemplateDetailModel>(json, JsonOptions);
+    }
+
     // ========== Custom Property Definition Extensions ==========
 
     public static ICollection<CustomPropertyDefinitionListModel> GetItems(this HalCollectionResourceOfCustomPropertyDefinitionListDto collection)

@@ -32,6 +32,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IOrganizationMemberService, OrganizationMemberService>();
         services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<ICustomPropertyAdminService, CustomPropertyAdminService>();
+        services.AddScoped<ICustomPropertyDefinitionService, CustomPropertyDefinitionService>();
+        services.AddScoped<Explore.Blazor.Client.Contracts.Services.EventTemplates.IEventTemplateService, EventTemplateService>();
         services.AddScoped<ILandingPageService, LandingPageService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IOrganizationReviewService, OrganizationReviewService>();
@@ -74,6 +76,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITenantOnboardingService, TenantOnboardingService>();
         services.AddScoped<IPublicExperienceService, PublicExperienceService>();
         services.AddScoped<IAppearanceThemeService, AppearanceThemeService>();
+        services.AddScoped<IUserAppearancePreferencesService, UserAppearancePreferencesService>();
 
         // Runtime render policy and routing
         services.AddScoped<IRuntimeRenderPolicyService, RuntimeRenderPolicyService>();

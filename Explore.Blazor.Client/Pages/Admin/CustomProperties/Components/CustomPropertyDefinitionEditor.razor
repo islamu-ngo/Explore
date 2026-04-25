@@ -1,0 +1,195 @@
+@* ABOUTME: Reusable dialog editor for creating or updating Custom Property Definitions. *@
+@* ABOUTME: Used by both the list page (create) and details page (update) via MudDialog. *@
+
+@using Explore.Blazor.Client.Models.CustomProperties
+@using Explore.Domain.Enums
+@using MudBlazor
+
+<MudDialog Class="cp-def-editor">
+    <DialogContent>
+        <MudForm @ref="_form" IsValid="@_success" Class="d-flex flex-column gap-4">
+            
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="EntityTypeName" Label="Entity Type" @bind-Value="Model.EntityTypeName" Required="true" Variant="Variant.Outlined">
+                        @foreach (EntityTypeName type in Enum.GetValues(typeof(EntityTypeName)))
+                        {
+                            <MudSelectItem Value="@type">@type.ToString()</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="PropertyType" Label="Property Type" @bind-Value="Model.PropertyType" Required="true" Variant="Variant.Outlined">
+                        @foreach (PropertyType type in Enum.GetValues(typeof(PropertyType)))
+                        {
+                            <MudSelectItem Value="@type">@type.ToString()</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudTextField Label="Namespace" @bind-Value="Model.Namespace" Required="true" Variant="Variant.Outlined" 
+                                  HelperText="e.g. org.event.core" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField Label="Key" @bind-Value="Model.Key" Required="true" Variant="Variant.Outlined" 
+                                  HelperText="e.g. custom_field_1" />
+                </MudItem>
+            </MudGrid>
+
+            <MudTextField Label="Display Name" @bind-Value="Model.DisplayName" Required="true" Variant="Variant.Outlined" />
+            <MudTextField Label="Description" @bind-Value="Model.Description" Lines="3" Variant="Variant.Outlined" />
+
+            <MudGrid>
+                <MudItem xs="12" sm="4">
+                    <MudSwitch @bind-Value="Model.IsRequired" Label="Required" Color="Color.Primary" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudSwitch @bind-Value="Model.IsMulti" Label="Multi-Value" Color="Color.Primary" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudNumericField Label="Sort Order" @bind-Value="Model.SortOrder" Variant="Variant.Outlined" HideSpinButtons="true" />
+                </MudItem>
+            </MudGrid>
+
+            <MudDivider Class="my-4" />
+
+            <div class="cp-def-editor__validation">
+                <MudText Typo="Typo.subtitle2" Class="mb-3">Validation & Defaults</MudText>
+                <MudGrid>
+                    @if (Model.PropertyType == PropertyType.Text)
+                    {
+                        <MudItem xs="12" sm="6">
+                            <MudNumericField Label="Min Length" @bind-Value="Model.MinLength" Variant="Variant.Outlined" HideSpinButtons="true" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudNumericField Label="Max Length" @bind-Value="Model.MaxLength" Variant="Variant.Outlined" HideSpinButtons="true" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField Label="Regex Pattern" @bind-Value="Model.RegexPattern" Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField Label="Default Value" @bind-Value="Model.DefaultTextValue" Variant="Variant.Outlined" />
+                        </MudItem>
+                    }
+                    else if (Model.PropertyType == PropertyType.Number)
+                    {
+                        <MudItem xs="12" sm="6">
+                            <MudNumericField Label="Min Number" @bind-Value="Model.MinNumber" Variant="Variant.Outlined" HideSpinButtons="true" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudNumericField Label="Max Number" @bind-Value="Model.MaxNumber" Variant="Variant.Outlined" HideSpinButtons="true" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudNumericField Label="Default Value" @bind-Value="Model.DefaultNumberValue" Variant="Variant.Outlined" HideSpinButtons="true" />
+                        </MudItem>
+                    }
+                    else if (Model.PropertyType == PropertyType.DateTime)
+                    {
+                        <MudItem xs="12" sm="6">
+                            <MudDatePicker Label="Min Date" @bind-Date="_minDate" Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudDatePicker Label="Max Date" @bind-Date="_maxDate" Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudDatePicker Label="Default Value" @bind-Date="_defaultDate" Variant="Variant.Outlined" />
+                        </MudItem>
+                    }
+                    else if (Model.PropertyType == PropertyType.Url)
+                    {
+                        <MudItem xs="12">
+                            <MudTextField Label="Allowed Schemes (comma separated)" @bind-Value="Model.AllowedUrlSchemes" Variant="Variant.Outlined" HelperText="e.g. http,https" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField Label="Default Value" @bind-Value="Model.DefaultTextValue" Variant="Variant.Outlined" />
+                        </MudItem>
+                    }
+                    else if (Model.PropertyType == PropertyType.Boolean)
+                    {
+                        <MudItem xs="12">
+                            <MudSwitch Label="Default Value" @bind-Value="Model.DefaultBooleanValue" Color="Color.Primary" />
+                        </MudItem>
+                    }
+                </MudGrid>
+            </div>
+
+            @if (Model.PropertyType == PropertyType.Option)
+            {
+                <MudDivider Class="my-4" />
+                <CustomPropertyOptionEditor Options="@Model.Options" />
+            }
+
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" aria-label="Cancel editing">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="@(!_success)" aria-label="Save definition">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance DialogInstance { get; set; } = default!;
+
+    [Parameter]
+    public CustomPropertyDefinitionDetailModel? Definition { get; set; }
+
+    private MudForm _form = default!;
+    private bool _success;
+
+    // We bind to a local copy so we can cancel without polluting original
+    public CustomPropertyDefinitionDetailModel Model { get; set; } = new();
+
+    // Date binding helpers
+    private DateTime? _minDate
+    {
+        get => Model.MinDateTime?.DateTime;
+        set => Model.MinDateTime = value.HasValue ? new DateTimeOffset(value.Value) : null;
+    }
+    
+    private DateTime? _maxDate
+    {
+        get => Model.MaxDateTime?.DateTime;
+        set => Model.MaxDateTime = value.HasValue ? new DateTimeOffset(value.Value) : null;
+    }
+
+    private DateTime? _defaultDate
+    {
+        get => Model.DefaultDateTimeValue?.DateTime;
+        set => Model.DefaultDateTimeValue = value.HasValue ? new DateTimeOffset(value.Value) : null;
+    }
+
+    protected override void OnInitialized()
+    {
+        if (Definition != null)
+        {
+            // Simple clone for the editor
+            var json = System.Text.Json.JsonSerializer.Serialize(Definition);
+            Model = System.Text.Json.JsonSerializer.Deserialize<CustomPropertyDefinitionDetailModel>(json) ?? new();
+        }
+        else
+        {
+            Model = new CustomPropertyDefinitionDetailModel
+            {
+                EntityTypeName = EntityTypeName.Event,
+                PropertyType = PropertyType.Text,
+                IsActive = true,
+                ExposureLevel = ExposureLevel.TenantAdminOnly
+            };
+        }
+    }
+
+    private void Cancel() => DialogInstance.Cancel();
+
+    private async Task Submit()
+    {
+        await _form.Validate();
+        if (_success)
+        {
+            DialogInstance.Close(DialogResult.Ok(Model));
+        }
+    }
+}

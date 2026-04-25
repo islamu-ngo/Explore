@@ -1,0 +1,172 @@
+// ABOUTME: List page for Event Templates.
+// ABOUTME: Demonstrates server-side pagination and HAL-gated actions.
+
+@page "/admin/tenant/event-templates"
+@using Explore.Blazor.Client.Contracts.Services.EventTemplates
+@using Explore.Blazor.Client.Models.EventTemplates
+@using Explore.Blazor.Client.Pages.Admin.EventTemplates.Components
+@using Explore.Blazor.Client.Services
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject IEventTemplateService TemplateService
+@inject IDialogService DialogService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<PageTitle>Event Templates</PageTitle>
+
+<div class="event-template-list">
+    <div class="event-template-list__header">
+        <MudText Typo="Typo.h4" HtmlTag="h1" Class="event-template-list__title">Event Templates</MudText>
+        @if (_canCreate)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OpenCreateDialogAsync" StartIcon="@Icons.Material.Filled.Add">
+                Create Template
+            </MudButton>
+        }
+    </div>
+
+    <MudDataGrid T="EventTemplateListModel" ServerData="ServerReloadAsync" @ref="_grid" Class="event-template-list__grid"
+                 Hover="true" Outlined="true" Dense="true" Striped="true" Elevation="1">
+        <Columns>
+            <PropertyColumn Property="x => x.DisplayName" Title="Name" />
+            <PropertyColumn Property="x => x.TemplateKey" Title="Key" />
+            <TemplateColumn Title="Event Type" Sortable="false">
+                <CellTemplate>
+                    <MudChip T="string" Size="Size.Small" Color="Color.Info">
+                        @context.Item.EventTypeId
+                    </MudChip>
+                </CellTemplate>
+            </TemplateColumn>
+            <PropertyColumn Property="x => x.Version" Title="Ver" />
+            <TemplateColumn Title="Status" Sortable="false">
+                <CellTemplate>
+                    @if (context.Item.IsPublished)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success">Published</MudChip>
+                    }
+                    @if (!context.Item.IsActive)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning">Inactive</MudChip>
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+            <PropertyColumn Property="x => x.DefinitionsCount" Title="Fields" />
+            <PropertyColumn Property="x => x.CreatedAt" Title="Created" Format="g" />
+            <TemplateColumn Title="Actions" Sortable="false">
+                <CellTemplate>
+                    <MudStack Row="true" Spacing="0">
+                        <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Color="Color.Default" 
+                                       OnClick="@(() => NavigateToDetails(context.Item.Id))" Title="View" />
+                        
+                        @if (context.Item.Links?.ContainsKey("edit") == true)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" 
+                                           OnClick="@(() => OpenEditDialogAsync(context.Item.Id))" Title="Edit" />
+                        }
+                        
+                        @if (context.Item.Links?.ContainsKey("delete") == true)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" 
+                                           OnClick="@(() => DeleteTemplateAsync(context.Item))" Title="Delete" />
+                        }
+                    </MudStack>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <PagerContent>
+            <MudDataGridPager T="EventTemplateListModel" />
+        </PagerContent>
+    </MudDataGrid>
+</div>
+
+@code {
+    private MudDataGrid<EventTemplateListModel>? _grid;
+    private bool _canCreate = false; // Set after first load checks collection links
+
+    private async Task<GridData<EventTemplateListModel>> ServerReloadAsync(GridState<EventTemplateListModel> state, System.Threading.CancellationToken cancellationToken)
+    {
+        var pageNumber = state.Page + 1;
+        var result = await TemplateService.GetTemplatesAsync(null, pageNumber, state.PageSize);
+        
+        // Gate global create button based on HAL link
+        _canCreate = result.Items.Any() ? result.Items.First().Links?.ContainsKey("create") == true : true; // Fallback or strict
+
+        return new GridData<EventTemplateListModel>
+        {
+            TotalItems = result.TotalCount,
+            Items = result.Items
+        };
+    }
+
+    private void NavigateToDetails(Guid id)
+    {
+        NavigationManager.NavigateTo($"/admin/tenant/event-templates/{id}");
+    }
+
+    private async Task OpenCreateDialogAsync()
+    {
+        var parameters = new DialogParameters<EventTemplateEditor>
+        {
+            { x => x.Template, null }
+        };
+
+        var dialog = await DialogService.ShowAsync<EventTemplateEditor>("Create Event Template", parameters, DialogOptionsFactory.Medium());
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false } && _grid is not null)
+        {
+            await _grid.ReloadServerData();
+            Snackbar.Add("Event template created successfully", Severity.Success);
+        }
+    }
+
+    private async Task OpenEditDialogAsync(Guid id)
+    {
+        var template = await TemplateService.GetTemplateByIdAsync(id);
+        if (template is null)
+        {
+            Snackbar.Add("Template not found", Severity.Error);
+            return;
+        }
+
+        var parameters = new DialogParameters<EventTemplateEditor>
+        {
+            { x => x.Template, template }
+        };
+
+        var dialog = await DialogService.ShowAsync<EventTemplateEditor>("Edit Event Template", parameters, DialogOptionsFactory.Medium());
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false } && _grid is not null)
+        {
+            await _grid.ReloadServerData();
+            Snackbar.Add("Event template updated successfully", Severity.Success);
+        }
+    }
+
+    private async Task DeleteTemplateAsync(EventTemplateListModel template)
+    {
+        var confirm = await DialogService.ShowMessageBoxAsync(
+            "Delete Template", 
+            $"Are you sure you want to delete the template '{template.DisplayName}'? This cannot be undone.", 
+            yesText: "Delete", cancelText: "Cancel");
+
+        if (confirm == true)
+        {
+            var success = await TemplateService.DeleteTemplateAsync(template.Id);
+            if (success)
+            {
+                Snackbar.Add("Template deleted successfully", Severity.Success);
+                if (_grid is not null)
+                {
+                    await _grid.ReloadServerData();
+                }
+            }
+            else
+            {
+                Snackbar.Add("Failed to delete template", Severity.Error);
+            }
+        }
+    }
+}
