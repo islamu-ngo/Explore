@@ -12,6 +12,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using Explore.Application.Contracts.Services;
 
 namespace Event.Application.UnitTests.Behaviors;
 
@@ -334,7 +335,10 @@ public class AdminContextTests
         IOrganizationMemberRepository organizationMemberRepository,
         IGroupMemberRepository groupMemberRepository)
     {
+        var userExternalLoginRepository = Substitute.For<IUserExternalLoginRepository>();
+        var userRepository = Substitute.For<IUserRepository>();
         var cache = new MemoryCache(new MemoryCacheOptions());
+        var deploymentModeProvider = Substitute.For<IDeploymentModeProvider>();
         var logger = Substitute.For<ILogger<AdminContext>>();
 
         return new AdminContext(
@@ -344,7 +348,10 @@ public class AdminContextTests
             tenantMemberRepository,
             organizationMemberRepository,
             groupMemberRepository,
+            userExternalLoginRepository,
+            userRepository,
             cache,
+            deploymentModeProvider,
             logger);
     }
 
@@ -417,7 +424,10 @@ public class AdminContextTests
         IOrganizationMemberRepository organizationMemberRepository)
     {
         var groupMemberRepository = Substitute.For<IGroupMemberRepository>();
+        var userExternalLoginRepository = Substitute.For<IUserExternalLoginRepository>();
+        var userRepository = Substitute.For<IUserRepository>();
         var cache = new MemoryCache(new MemoryCacheOptions());
+        var deploymentModeProvider = Substitute.For<IDeploymentModeProvider>();
         var logger = Substitute.For<ILogger<AdminContext>>();
 
         return new AdminContext(
@@ -427,7 +437,10 @@ public class AdminContextTests
             tenantMemberRepository,
             organizationMemberRepository,
             groupMemberRepository,
+            userExternalLoginRepository,
+            userRepository,
             cache,
+            deploymentModeProvider,
             logger);
     }
 

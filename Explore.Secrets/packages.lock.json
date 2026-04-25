@@ -165,6 +165,7 @@
           "EntityFramework": "[6.5.1, )",
           "Explore.Domain": "[1.0.0, )",
           "FluentValidation.DependencyInjectionExtensions": "[12.0.0, )",
+          "MQContract.Abstractions": "[3.9.2, )",
           "MediatR": "[14.1.0, )",
           "Microsoft.Extensions.Caching.Hybrid": "[10.2.0, )",
           "OpenFeature": "[2.11.1, )"
@@ -262,6 +263,12 @@
         "dependencies": {
           "Microsoft.IdentityModel.Logging": "8.14.0"
         }
+      },
+      "MQContract.Abstractions": {
+        "type": "CentralTransitive",
+        "requested": "[3.9.2, )",
+        "resolved": "3.9.2",
+        "contentHash": "nU4b9OE/SijFg+t66Xtz1yMAHqHqEOE3JVx1CF6DS1758JMUQYRVmXxsn+w9Ltd6vK3DDoUDMzhl45MZVp2gwA=="
       },
       "OpenFeature": {
         "type": "CentralTransitive",

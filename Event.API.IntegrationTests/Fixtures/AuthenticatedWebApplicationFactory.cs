@@ -4,6 +4,7 @@
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Domain.Constants;
 using Explore.Persistence;
+using Explore.Persistence.Seed;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -13,6 +14,7 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 
 namespace Event.Api.IntegrationTests.Fixtures;
 
@@ -69,6 +71,9 @@ public class AuthenticatedWebApplicationFactory : WebApplicationFactory<Program>
             // Override Redis with in-memory distributed cache for tests
             services.RemoveAll<IDistributedCache>();
             services.AddDistributedMemoryCache();
+
+            // Register background seeder to ensure lookup data (roles, etc.) is available in tests
+            services.AddHostedService<SeedingHostedService>();
         });
 
         // ConfigureTestServices runs AFTER the app's ConfigureServices,
@@ -105,5 +110,24 @@ public class AuthenticatedWebApplicationFactory : WebApplicationFactory<Program>
                 services.AddScoped(_ => AuthorizationProviderOverride);
             }
         });
+    }
+
+    private sealed class SeedingHostedService(IServiceProvider serviceProvider, IHostEnvironment environment) : IHostedService
+    {
+        public async Task StartAsync(CancellationToken cancellationToken)
+        {
+            using var scope = serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+            await DatabaseSeeder.SeedAsync(db, environment, cancellationToken);
+
+            // Refresh the lookup cache to ensure it picks up the seeded data (roles, etc.)
+            var cache = scope.ServiceProvider.GetService<ILookupDataCache>();
+            if (cache != null)
+            {
+                await cache.RefreshAsync(cancellationToken);
+            }
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     }
 }
