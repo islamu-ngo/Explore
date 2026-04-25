@@ -1,127 +1,261 @@
-ABOUTME: Strategic plan to refactor secrets architecture so the database is the pure control plane (metadata + routing) and Infisical/env/inline are isolated data planes with exactly one active source per secret per scope.
-ABOUTME: Eliminates the current Infisical → env → AppSetting fallback chain and replaces it with a registry-driven SecretBinding model, discrete Postgres bootstrap, and a UI contract that never exposes secret values.
+ABOUTME: Enterprise-grade strategic plan for refactoring secrets architecture into a control-plane/data-plane separation model.
+ABOUTME: Single-source-of-truth SecretBinding registry with resolver, resilience patterns, audit trail, versioned rotation, and tenant isolation. Eliminates the Infisical → env → AppSetting fallback chain.
 
-# Plan: Secrets Refactor - Control Plane / Data Plane Separation
+# Plan: Secrets Refactor — Control Plane / Data Plane Separation
 
-Last Updated: 2026-04-18
+Last Updated: 2026-04-24
+Version: 2.0 (Enterprise Revision)
 
 ## Executive Summary
 
-The current secrets implementation (under `Explore.Secrets/`) couples provider lookup, inline DB encryption, and `IConfiguration` overlays into a single global fallback chain (Infisical → env/appsettings → AppSetting). That chain is exactly the ambiguity the user wants removed. Any given secret has no single owner; operators cannot tell what is live; and source precedence is a global runtime setting instead of a per-secret decision.
+The current secrets implementation couples provider lookup, inline DB encryption, and `IConfiguration` overlays into a single global fallback chain (Infisical → env/appsettings → AppSetting). That chain is exactly the ambiguity we must eliminate: any given secret has no single owner, operators cannot tell what is live, and source precedence is a global runtime setting instead of a per-secret decision.
 
-This refactor treats **the database as the control plane** and **Infisical / environment variables / inline-encrypted storage as the data plane**:
+This refactor treats **the database as the control plane** and **Infisical / environment variables / inline-encrypted storage as the data plane**, with enterprise-grade resilience, observability, and tenant isolation:
 
-1. For each secret-backed setting, a `SecretBinding` row in Postgres says WHERE the value comes from (source type + normalized metadata). No binding = inherits from parent scope (or absent).
+1. For each secret-backed setting, a `SecretBinding` row in Postgres declares WHERE the value comes from (source type + normalized metadata). No binding = inherits from parent scope (or absent).
 2. A single `ISecretResolver` dispatches on the binding's source type and fetches from **exactly one** source. There is no fallback chain and no "DB first then Infisical" conflict logic.
-3. The Infisical layout is redesigned to the user's clean, folder-per-concern structure (`api/`, `storage/`, `keycloak/`, `postgresql/`, `smtp/`, `analytics/`, `ai/`).
-4. Postgres boot secrets become **five discrete fields** (`POSTGRESQL_HOST|PORT|DATABASE|USERNAME|PASSWORD`), composed in code via `NpgsqlConnectionStringBuilder`. The legacy `POSTGRESQL_PUBLIC_URL` is deleted.
-5. The UI never renders secret values. It renders **state + metadata**: configured/not configured, which source, source-specific metadata (env+path+key, variable name), last validation result, last updated by/when.
-6. Missing secrets never crash the platform. A minimal deployment (API + Blazor + Postgres) works; every other feature degrades gracefully until its secrets are configured via UI or Infisical.
-7. The onboarding flow reads "what resolves" to auto-select providers (e.g. Keycloak auto-detected when its secrets resolve) and exposes explicit input flows for the three source types (reference Infisical, store inline-encrypted, point at env variable).
+3. Every mutation and resolution is persisted in an immutable audit trail (`SecretBindingAuditEntry`), queryable for compliance and debugging.
+4. Bindings support **versioned rotation** (active/pending/previous) for zero-downtime blue/green credential rotation.
+5. All external source calls (Infisical) are wrapped in **Polly resilience policies** (retry + circuit breaker + timeout).
+6. Caching uses **HybridCache** (L1 memory + L2 distributed) for multi-instance deployment correctness.
+7. Validation produces **structured, categorized results** (not binary pass/fail) for actionable diagnostics.
+8. Health checks expose **per-source granularity** — operators can see that Infisical is degraded while env-var bindings are healthy.
+9. Tenant-scoped bindings are **isolated by EF Core query filter** — no cross-tenant data leakage at the ORM level.
+10. The Infisical layout is redesigned to the clean folder-per-concern structure (`api/`, `storage/`, `keycloak/`, `postgresql/`, `smtp/`, `analytics/`, `ai/`).
+11. Postgres boot secrets become **five discrete fields** composed via `NpgsqlConnectionStringBuilder`. The legacy `POSTGRESQL_PUBLIC_URL` is deleted.
+12. The UI never renders secret values. It renders **state + metadata**: configured/not configured, which source, source-specific metadata, last validation result, last updated by/when.
+13. Missing secrets never crash the platform. A minimal deployment (API + Blazor + Postgres) works; every other feature degrades gracefully until its secrets are configured.
+14. The onboarding flow reads "what resolves" to auto-select providers and exposes explicit input flows for the three source types.
+15. Bindings carry **TTL/lease metadata** for Vault-style dynamic secret expiration tracking.
+16. A **file-based secret source** (`/run/secrets/`) supports Docker/Kubernetes secret mounts.
 
-Oracle review confirmed the direction and added four key adjustments that are incorporated into this plan: (a) **split bootstrap secrets from runtime bindings** (Postgres password cannot live in the same DB it unlocks); (b) use a **central `SecretDefinitionRegistry`** as the policy source-of-truth; (c) use **normalized metadata columns with DB check constraints** instead of polymorphic JSON; (d) **drop `Module` scope and `Inherited` source type from v1** (absence = inheritance; modules use tenant-scoped namespaced keys).
+Oracle review confirmed the direction with four key adjustments: (a) split bootstrap secrets from runtime bindings; (b) use a centralized `SecretDefinitionRegistry` as policy source-of-truth; (c) use normalized metadata columns with DB check constraints instead of polymorphic JSON; (d) drop `Module` scope and `Inherited` source type from v1 (absence = inheritance; modules use tenant-scoped namespaced keys).
 
-Delivery is a six-PR sequence (Foundations → Bootstrap split → Resolver + admin API → Onboarding + auth → Consumer migration → Cleanup + docs). No backward compatibility is preserved; we are in development mode. The destructive EF migration drops `AppSettings` and related infrastructure as part of PR 6.
+Delivery is a six-PR sequence. No backward compatibility is preserved; we are in development mode. The destructive EF migration drops `AppSettings` and related infrastructure as part of PR 6.
+
+---
+
+## Architecture Decision Records (ADRs)
+
+### ADR-001: DB as Control Plane, External Sources as Data Plane
+
+**Context**: Current system has a global fallback chain that makes it impossible to determine which source is authoritative for any given secret.
+
+**Decision**: One `SecretBinding` row per (SettingKey, Scope, ScopeId) tuple declares the single source. The resolver dispatches to that source and only that source. If the source returns null, the resolver returns null — it never tries another source.
+
+**Consequences**: Operators see exactly what is live. No ambiguity. Debugging is deterministic. But: operator must explicitly choose a source at binding time; no "set it and forget it" fallback.
+
+### ADR-002: Normalized Metadata Columns over Polymorphic JSON
+
+**Context**: SecretBinding could store source-specific metadata as polymorphic JSON (`{ "envVar": "SMTP_PASSWORD" }` vs `{ "path": "/smtp/", "key": "SMTP_PASSWORD" }`).
+
+**Decision**: Use separate nullable columns (`InfisicalEnvironment`, `InfisicalPath`, `InfisicalKey`, `EnvironmentVariableName`, `InlineCiphertext`, `InlineCiphertextVersion`) with a CHECK constraint enforcing exactly one metadata group per source type.
+
+**Consequences**: Strong type safety, DB-level integrity, simpler EF mappings, indexable metadata. Trade-off: wider row, but secret bindings number in the hundreds at most.
+
+### ADR-003: Persistent Audit Trail (Not Just Structured Logs)
+
+**Context**: The original plan relied on 1% sampled structured logs for audit. Enterprise compliance (SOC 2, ISO 27001) requires persistent, queryable audit trails.
+
+**Decision**: Introduce `SecretBindingAuditEntry` as a separate entity/table. Every mutation (create, update, delete, validate, source-switch, rotation) writes an immutable row. Read operations are still 1% sampled via the decorator but critical operations are fully persisted.
+
+**Consequences**: Full audit trail for who changed what and when. Slightly higher write volume on binding mutations (negligible for hundreds of bindings). Enables compliance reporting and forensic debugging.
+
+### ADR-004: Versioned Rotation (Blue/Green Secret Rotation)
+
+**Context**: Zero-downtime secret rotation requires that a new credential can be staged alongside the current one, and consumers switch atomically.
+
+**Decision**: Add `Version` (int, monotonically increasing) and `Status` (`Active`/`Pending`/`Previous`) columns to `SecretBinding`. Rotation workflow: (1) create Pending version with new credential, (2) validate, (3) atomically promote Pending→Active and demote Active→Previous, (4) cache invalidation event, (5) after grace period, hard-delete Previous.
+
+**Consequences**: Zero-downtime rotation possible. UI shows version history. Trade-off: adds complexity to the resolver (must resolve Active version only). But the resolver already filters by binding, so `Status=Active` is just an additional filter.
+
+### ADR-005: HybridCache over IMemoryCache
+
+**Context**: `IMemoryCache` is local to a single process instance. In multi-instance deployment (API replicas behind load balancer), cache invalidation on one instance doesn't propagate to others.
+
+**Decision**: Use `HybridCache` (already in the codebase dependency) for per-secret caching. HybridCache provides L1 (in-process memory) + L2 (distributed, Redis/SQL) with automatic tag-based invalidation.
+
+**Consequences**: Multi-instance deployments get correct cache semantics. L1 hit is still nanosecond-fast. L2 hit is millisecond-fast. Trade-off: requires Redis or SQL-based L2 provider in production. For single-instance dev, HybridCache falls back to L1-only gracefully.
+
+### ADR-006: Polly Resilience Policies on External Source Calls
+
+**Context**: Infisical API calls can fail transiently (network errors, rate limits, temporary unavailability). The original plan had no retry or circuit-breaking.
+
+**Decision**: Wrap all `ISecretSource` implementations with Polly policies:
+- **Retry**: 3 retries with exponential backoff (500ms, 1s, 2s) on `HttpRequestException` and `TimeoutException`.
+- **Circuit Breaker**: 5 consecutive failures opens for 30 seconds. Half-open allows one probe; success resets.
+- **Timeout**: 10-second per-call timeout on Infisical calls; 5-second on env-var and inline (should be near-instant).
+
+**Consequences**: Transient Infisical failures are absorbed by retry. Circuit breaker prevents cascading failure. Timeouts prevent hanging resolve calls. All resilience metrics are emitted to OpenTelemetry.
+
+### ADR-007: Structured Validation Results
+
+**Context**: The original `SecretValidationResult` enum (`NotValidated`/`Success`/`Failure`) provides no diagnostic information on failure.
+
+**Decision**: Replace with `SecretValidationResult` enum kept for DB storage (backward-compat with existing column) plus a richer `SecretValidationDetail` record returned by `ISecretSource.ValidateAsync`:
+```csharp
+public sealed record SecretValidationDetail(
+    SecretValidationResult Result,
+    SecretValidationCategory Category,
+    string? DiagnosticMessage);
+```
+Categories: `SourceReachable`, `SourceUnreachable`, `CredentialValid`, `CredentialInvalid`, `BindingMisconfigured`, `InternalError`, `TtlExpired`.
+
+**Consequences**: UI and API can display actionable diagnostics ("Infisical reachable but credential invalid" vs "Infisical unreachable"). Operators debug faster. `DiagnosticMessage` is logged server-side; UI gets the category only (not the message, to avoid info leakage).
+
+### ADR-008: Tenant Isolation via Query Filter
+
+**Context**: `SecretBinding` rows can be Instance-scoped or Tenant-scoped. Without a query filter, a code path that forgets to filter by tenant could read all tenant secrets.
+
+**Decision**: Add a global EF Core query filter on `SecretBinding` that enforces `Scope == SecretScope.Instance || ScopeId == _currentTenantId` when tenant context is available. Admin endpoints explicitly bypass this filter for cross-tenant management.
+
+**Consequences**: Impossible to accidentally query another tenant's secrets at the ORM level. Admin operations that need cross-tenant view use `IgnoreQueryFilters()`. Trade-off: must ensure admin handlers explicitly opt out of the filter.
+
+### ADR-009: Lease/TTL Metadata on Bindings
+
+**Context**: Vault-style dynamic secrets have expiration times. Even for static secrets, operators want to know when credentials were last rotated.
+
+**Decision**: Add `TtlExpiresAt` (DateTime?) and `LastRotatedAt` (DateTime?) nullable columns to `SecretBinding`. `TtlExpiresAt` is set when the binding points to a dynamic/leased secret (future Vault integration). `LastRotatedAt` is set on every source-switch or version promotion.
+
+**Consequences**: UI can show "expires in 4h" for dynamic secrets. Health check degrades when `TtlExpiresAt < DateTime.UtcNow`. Enables future automated rotation workflows.
+
+### ADR-010: File-Based Secret Source for Docker/Kubernetes
+
+**Context**: Docker and Kubernetes mount secrets as files under `/run/secrets/` (Docker) or configurable paths (K8s). The initial plan had no support for this pattern.
+
+**Decision**: Add `SecretSourceType.File` (value `3`) to the enum in Phase 5 with `FileSecretSource` implementation reading from disk. `SecretBinding` gets `FilePath` (string?) normalized column. This is a SHOULD-HAVE, not blocking for v1.
+
+**Consequences**: K8s-native deployments can mount secrets as files without env vars. Trade-off: adds one more source type to the resolver and UI. Phase 5 extends the CHECK constraint.
+
+---
 
 ## Current State Analysis
 
 ### Verified Existing Architecture (the anti-pattern to eliminate)
 
-- `Explore.Secrets/Abstractions/ISecretProvider.cs` defines the single global provider abstraction with `SecretProviderType` enum (`None`, `Infisical`, `Vault`, `AzureKeyVault`, `AwsSecretsManager`). Only `None`, `Infisical`, and `Environment` are implemented today.
-- `Explore.Secrets/Configuration/InfisicalConfigurationSource.cs` + `InfisicalConfigurationProvider.cs` register Infisical values as an `IConfiguration` overlay. Paths are hardcoded in `Explore.API/Extensions/ConfigurationExtensions.cs` as `["/keycloak", "/postgresql", "/api", "/blazor"]` and name conversion is `SCREAMING_SNAKE_CASE ↔ .NET:Colon:Sections`.
-- `Explore.Secrets/Configuration/DbConfigurationSource.cs` + `DbConfigurationProvider.cs` load the `AppSetting` table and decrypt values via `AesEncryptionService` (AES-256-GCM, base64(nonce[12] + tag[16] + ciphertext), `KeyVersion` tracked per row, rotation via `KeyRotationService`).
-- `Explore.Secrets/Services/SecretRefreshService.cs` is a hosted background service that polls Infisical on an interval and updates the provider cache. Exponential backoff driven by `SecretRefreshOptions`.
-- `Explore.API/Extensions/ConfigurationExtensions.cs` (`AddInfisicalCompatibility` + `ApplyCompatibilityMapping`) maps legacy Infisical names (`POSTGRESQL_PUBLIC_URL`, `ISLAMU_EVENT_S3_*`, `KEYCLOAK_PUBLIC_URL`, etc.) to canonical keys (`ConnectionStrings:DefaultConnection`, `Keycloak:*`, `S3Settings:*`). This file plus its Blazor sibling (`Explore.Blazor/Extensions/ConfigurationExtensions.cs`) embodies the legacy naming that will be deleted.
-- Effective resolution precedence today is: **Infisical overlay → `IConfiguration` (env vars + appsettings + user secrets) → `AppSetting` via `DbConfigurationProvider`**. This is global - no per-secret opt-out. This is what the user rejects.
+- `Explore.Secrets/Abstractions/ISecretProvider.cs` defines the single global provider abstraction with `SecretProviderType` enum. Only `None`, `Infisical`, and `Environment` are implemented today.
+- `Explore.Secrets/Configuration/InfisicalConfigurationSource.cs` + `InfisicalConfigurationProvider.cs` register Infisical values as an `IConfiguration` overlay.
+- `Explore.Secrets/Configuration/DbConfigurationSource.cs` + `DbConfigurationProvider.cs` load the `AppSetting` table and decrypt values via `AesEncryptionService` (AES-256-GCM).
+- `Explore.Secrets/Services/SecretRefreshService.cs` is a hosted background service that polls Infisical on an interval and updates the provider cache.
+- `Explore.API/Extensions/ConfigurationExtensions.cs` maps legacy Infisical names to canonical keys (`POSTGRESQL_PUBLIC_URL`, `ISLAMU_EVENT_S3_*`, `KEYCLOAK_PUBLIC_URL`, etc.).
+- Effective resolution precedence today is: **Infisical overlay → `IConfiguration` (env vars + appsettings) → `AppSetting` via `DbConfigurationProvider`**. This is global — no per-secret opt-out. This is what the user rejects.
 
 ### Verified Settings Entities (three tables exist today)
 
-- `Explore.Domain/AppSetting.cs` (PK `ConfigKey`, `EncryptedValue`, `KeyVersion`, `EncryptedAt`, `EncryptedBy`, `IsSensitive`, `Description`, `Category`, `ValueType`). The corresponding EF configuration `Explore.Persistence/Configurations/Entities/AppSettingConfiguration.cs` enforces a CHECK constraint blocking `Database:*`, `Security:MasterKey*`, and `ConnectionStrings:*` keys. The matching repository is `Explore.Persistence/Repositories/AppSettingRepository.cs`.
-- `Explore.Domain/SystemSetting.cs` (governance key/value, JSON serialized). Used for instance-scope governance and today for auth provider secrets (anti-pattern - plain JSON, no app-layer encryption). Repository: `Explore.Persistence/Repositories/SystemSettingRepository.cs`.
-- `Explore.Domain/TenantSetting.cs` (tenant override for governance keys). Repository: `Explore.Persistence/Repositories/TenantSettingRepository.cs`. **Separate** entity: `Explore.Domain/TenantSettings.cs` (plural) is not related to secrets.
-- `Explore.Domain/Constants/InfrastructureSecretSettingKeys.cs` defines the "logical secret key" namespace that currently leaks secret values into `SystemSetting.Value` JSON: `email.smtp_username`, `email.smtp_password`, `s3.access_key_id`, `s3.secret_access_key`, `cerbos.custom_admin_username`, `cerbos.custom_admin_password`, `auth.keycloak_client_secret`, `auth.google_client_secret`.
-- `Explore.Domain/Constants/GovernanceSettingKeys.cs` contains non-secret governance keys (branding, auth feature flags like `auth.keycloak_enabled`, analytics `analytics.*`, events, etc.) - these stay put.
+- `Explore.Domain/AppSetting.cs` (PK `ConfigKey`, `EncryptedValue`, `KeyVersion`, `IsSensitive`, `Category`, `ValueType`). CHECK constraint blocks `Database:*`, `Security:MasterKey*`, `ConnectionStrings:*` keys.
+- `Explore.Domain/SystemSetting.cs` (governance key/value, JSON serialized). Used for instance-scope governance and auth provider secrets (anti-pattern - plain JSON, no encryption).
+- `Explore.Domain/TenantSetting.cs` (tenant override for governance keys). Separate from `TenantSettings` (plural, not related to secrets).
+- `Explore.Domain/Constants/InfrastructureSecretSettingKeys.cs` defines the "logical secret key" namespace that currently leaks secret values into `SystemSetting.Value` JSON.
 
-### Verified Consumers And Their Current Resolution Shapes
+### Verified Consumers
 
-- **SETUP_SECRET** (`Explore.Infrastructure/Services/SetupSecretProvider.cs`): reads `configuration["SETUP_SECRET"]` env var; if missing auto-generates a 32-char crypto token valid for 60 minutes and logs it at API startup. Registered as singleton `ISetupSecretProvider`. Timing-safe compare. **Bootstrap-only** by design - stays outside `SecretBinding`.
-- **STORAGE_S3_\*** (`Explore.Infrastructure/Services/S3ConfigResolver.cs`): reads discrete keys via `IHierarchicalSettingsResolver` falling back to `IConfiguration["S3Settings:*"]`. Scoped, 5-min cache. Null → S3 features disable cleanly.
-- **KEYCLOAK_\*** (`Explore.Blazor/Extensions/AuthenticationExtensions.cs` + `Explore.API/Extensions/AuthenticationExtensions.cs`): reads `Keycloak:Authority`, `Keycloak:MetadataAddress`, `Keycloak:ClientId`, `Keycloak:ClientSecret`, `Keycloak:Realm`, `Keycloak:RequireHttpsMetadata`. Dynamic scheme registration via `Explore.Blazor/Services/DynamicAuthSchemeManager`. Startup-only today; runtime updates must explicitly re-register schemes.
-- **POSTGRESQL** (`Explore.Persistence/PersistenceServicesRegistration.cs` line 31): **single URL string** today (`ConnectionStrings:DefaultConnection`). `AddPooledDbContextFactory<ExploreDbContext>().UseNpgsql(connStr)`. Startup-only. Must be refactored to discrete fields composed via `NpgsqlConnectionStringBuilder`.
-- **SMTP_\*** (`Explore.Infrastructure/Services/SmtpConfigResolver.cs` + `SmtpEmailService.cs`): reads governance keys (`email.smtp_host`, `email.smtp_port`, `email.smtp_security`, `email.smtp_from_address`, `email.smtp_from_name`, etc.) via `IHierarchicalSettingsResolver`; reads secret keys (`email.smtp_username`, `email.smtp_password`) via the same resolver that currently reads `SystemSetting.Value` JSON. Scoped, 5-min cache. Host empty → email disables cleanly.
-- **ANALYTICS_POSTHOG_\*** (`Explore.Infrastructure/Services/AnalyticsConfigResolver.cs` + `PostHogAnalyticsProvider.cs`): reads `analytics.api_key`, `analytics.endpoint_url`, `analytics.provider`, `analytics.is_enabled`, optionally `analytics.personal_api_key`. Per-tenant, scoped. Fire-and-forget false if unavailable.
-- **AI_OPENAI_API_KEY / AI_ANTHROPIC_API_KEY**: **no consumer exists today**. User wants the Infisical folder layout prepared for future work; no refactor of nonexistent code required.
-- **Infisical bootstrap itself**: `Explore.Secrets` reads `Infisical:Url`, `Infisical:ProjectId`, `Infisical:ClientId`, `Infisical:ClientSecret`, `Infisical:Environment`, `Infisical:Paths:0..n` from user secrets or environment. These remain bootstrap-level (they wire up the Infisical client for the resolver).
+- **SETUP_SECRET**: reads `configuration["SETUP_SECRET"]` env var; auto-generates if missing. Bootstrap-only, stays outside `SecretBinding`.
+- **STORAGE_S3_***: reads discrete keys via `IHierarchicalSettingsResolver` falling back to `IConfiguration["S3Settings:*"]`. Scoped, 5-min cache. Null → S3 features disable cleanly.
+- **KEYCLOAK_***: reads Keycloak OIDC settings from configuration. Startup-only today; runtime updates must re-register schemes.
+- **POSTGRESQL**: single URL string today. Must be refactored to discrete fields composed via `NpgsqlConnectionStringBuilder`.
+- **SMTP_***: reads governance keys via `IHierarchicalSettingsResolver`; secret keys (`smtp.username`/`smtp.password`) through same resolver reading `SystemSetting.Value` JSON.
+- **ANALYTICS_POSTHOG_***: reads `analytics.*` keys. Per-tenant, scoped. Fire-and-forget false if unavailable.
+- **AI_OPENAI_API_KEY / AI_ANTHROPIC_API_KEY**: no consumer exists yet. Infisical folder layout prepared for future work.
 
 ### Verified Onboarding Flow
 
-- `Explore.Blazor.Client/Pages/Setup.razor` validates the setup token, persists via BFF JS interop (`persistSetupSecret`), detects providers, routes to `/onboarding/instance` or a provider login.
-- `Explore.Blazor.Client/Pages/Onboarding/StartupGate.razor` is the routing brain (incomplete → setup, otherwise auth/instance/settings or events).
-- `Explore.Blazor.Client/Pages/Onboarding/AuthProviderConfiguration.razor` enables/configures Keycloak (OIDC), ATProto Login, Google SSO. It already exposes a `KeycloakDetectedFromEnvironment` flag that disables the toggle and shows an "Auto-detected" chip; we extend this concept to every secret-backed provider.
-- `Explore.Application/Features/InstanceOnboarding/` hosts `SaveAuthProviderConfigurationCommand`, `CompleteInstanceOnboardingCommand`, `GetAuthProviderConfigurationQuery`, and update commands (all `BaseCommandResponse<Guid>`).
-- `Explore.API/Controllers/InstanceOnboardingController.cs` exposes `GET /api/InstanceOnboarding/status`, `POST /api/InstanceOnboarding/validate-secret`, `POST /api/InstanceOnboarding/complete`, `PUT /api/InstanceOnboarding/auth-provider-configuration`, and the **BFF-internal** `GET /api/InstanceOnboarding/auth-provider-configuration/internal` (latter returns secret values for the BFF; must be removed in favor of resolver-based runtime reads).
-- `Explore.Application/Services/AuthProviderConfigurationService.cs` currently writes secrets into `SystemSetting.Value` as plain JSON strings (anti-pattern). `IsLocked=true` prevents tenant override. Category `"Authentication"`.
-- `Explore.Infrastructure/Services/ModuleService.cs` tracks module enablement (`ModuleDefinition` + `TenantCapability` + `IslamicAspectFilter` + `TechAspectFilter`). Not secret-coupled; no change required.
+- `Explore.Blazor.Client/Pages/Setup.razor` validates setup token, persists via BFF JS interop.
+- `Explore.Blazor.Client/Pages/Onboarding/StartupGate.razor` routes based on completion state.
+- `Explore.Blazor.Client/Pages/Onboarding/AuthProviderConfiguration.razor` enables/configures Keycloak, ATProto, Google SSO. Extends `KeycloakDetectedFromEnvironment` pattern to every secret-backed provider.
+- `Explore.Application/Services/AuthProviderConfigurationService.cs` currently writes secrets into `SystemSetting.Value` as plain JSON (anti-pattern).
 
 ### Verified Tests
 
-- `Explore.Secrets.UnitTests/` covers `SecretProviderFactoryTests`, `SecretRefreshServiceTests`, `AesEncryptionServiceTests`, `KeyRotationServiceTests`, `InfisicalSecretProviderTests`, `EnvironmentSecretProviderTests`, `AuditingSecretProviderDecoratorTests`, `SecretRefreshMetricsTests`, `SecretProviderHealthCheckTests`, `SecretProviderOptionsValidatorTests`. Many of these will be deleted in PR 6.
-- `Event.Application.UnitTests/Infrastructure/` contains `SetupSecretProviderTests`, `SmtpConfigResolverTests`, `S3ConfigResolverTests` - these need rewrites to target the new resolver.
-- `Event.API.IntegrationTests/Features/` contains `SetupSecretFlowTests` and `InstanceOnboardingControllerTests` - extended with SecretBinding CRUD and no-fallback / no-leak tests in PR 3.
+- `Explore.Secrets.UnitTests/` covers current provider implementations. Many will be deleted in Phase 6.
+- `Event.Application.UnitTests/Infrastructure/` covers `SetupSecretProvider`, `SmtpConfigResolver`, `S3ConfigResolver` — need rewrites for the new resolver.
+- `Event.API.IntegrationTests/` covers `SetupSecretFlowTests` and `InstanceOnboardingControllerTests`.
 
 ### Confirmed Gaps
 
-- No `SecretBinding` entity, table, or repository exists.
-- No `SecretDefinitionRegistry` exists; allowed scopes/source types per secret are implicit and scattered across consumer resolvers.
-- No resolver API surfaces per-secret metadata (state, source, last validation) for the UI.
-- No discrete Postgres bootstrap path; today's flow relies on the URL-form connection string.
-- No Data Protection-based inline encryption (today's inline encryption is the legacy `AesEncryptionService` tied to `AppSetting`).
-- No Infisical cache invalidation hook (only polling via `SecretRefreshService`).
-- No validation endpoint that proves a binding actually resolves without exposing the fetched value.
+- No `SecretBinding` entity, table, or repository exists (implemented in Phase 1, committed).
+- No `SecretDefinitionRegistry` exists (implemented in Phase 1, committed).
+- No `ISecretResolver` dispatch contract (Phase 3, written but uncommitted).
+- No persistent audit trail (ADR-003).
+- No versioned rotation support (ADR-004).
+- No resilience policies on external calls (ADR-006).
+- No distributed cache (ADR-005).
+- No structured validation categories (ADR-007).
+- No per-source health granularity.
+- No tenant isolation query filter (ADR-008).
+- No TTL/lease metadata (ADR-009).
+- No file-based source (ADR-010, deferred to Phase 5).
+- No discrete Postgres bootstrap path (implemented in Phase 2, committed).
+- No Data Protection-based inline encryption in the resolver (Phase 3, written but uncommitted).
+
+---
 
 ## Proposed Future State
 
-### 1. `SecretDefinitionRegistry` (policy source-of-truth)
+### 1. `SecretDefinitionRegistry` (Committed — Phase 1)
 
-A code-defined registry in `Explore.Domain/Secrets/SecretDefinitionRegistry.cs` where every secret-backed setting key declares:
+A code-defined registry where every secret-backed setting key declares:
+- `SettingKey` — canonical key (e.g. `smtp.password`, `storage.s3.secret_access_key`)
+- `AllowedScopes` — `{Instance}` or `{Instance, Tenant}`
+- `AllowedSourceTypes` — subset of `{Infisical, InlineEncrypted, EnvironmentVariable}` (bootstrap secrets ban `InlineEncrypted`)
+- `IsBootstrap` — true for Postgres-connection + setup secret
+- `InfisicalDefaults` — `{ Folder, SecretName }` for the clean folder layout
+- `EnvironmentVariableDefault` — canonical env var name
+- `ValidationKind` — drives the `POST /validate` contract
 
-- `SettingKey` - canonical key (e.g. `smtp.password`, `storage.s3.secret_access_key`, `auth.keycloak.client_secret`, `analytics.posthog.api_key`, `ai.openai.api_key`, `ai.anthropic.api_key`).
-- `AllowedScopes` - `{Instance}` or `{Instance, Tenant}` per user.
-- `AllowedSourceTypes` - subset of `{Infisical, InlineEncrypted, EnvironmentVariable}` (Postgres bootstrap secrets ban `InlineEncrypted` by invariant).
-- `IsBootstrap` - true for Postgres-connection + setup secret; they never go through the runtime resolver.
-- `InfisicalDefaults` - `{ Folder, SecretName }` for the user's layout (e.g. `smtp.password` → `{ Folder="smtp", SecretName="SMTP_PASSWORD" }`).
-- `EnvironmentVariableDefault` - canonical env var name for the "point at env var" UI flow default (e.g. `SMTP_PASSWORD`).
-- `ValidationKind` - enum to drive the `POST /validate` contract (e.g. `StringNonEmpty`, `UrlReachable`, `Smtp Handshake`).
+**Enterprise extension (Phase 3)**: Add `RequiresLease` flag (for future Vault dynamic secrets), `RotationPolicy` enum (`Manual`, `AutomaticOnExpiry`, `BlueGreen`), and `DriftValidation` flag (whether to check this binding on startup).
 
-The registry is the **one place** that lists every secret the system knows about. Anything not in the registry is rejected at binding write time.
+### 2. `SecretBinding` Entity (Committed foundation — Phase 1, extended in Phase 3)
 
-### 2. `SecretBinding` entity (DB control plane)
+Committed columns (Phase 1):
+- `Id` (Guid v7), `SettingKey`, `Scope`, `ScopeId`, `SourceType`
+- `InfisicalEnvironment`, `InfisicalPath`, `InfisicalKey`
+- `EnvironmentVariableName`
+- `InlineCiphertext`, `InlineCiphertextVersion`
+- `IsLocked`, `LastValidationResult`, `LastValidationMessage`, `LastValidatedAt`, `LastValidatedBy`
+- `IAuditable` fields
 
-New entity at `Explore.Domain/Secrets/SecretBinding.cs`:
+**Enterprise extensions (Phase 3 migration)**:
+- `Version` (int, default 1) — monotonically increasing per binding key+scope
+- `Status` (`SecretBindingStatus` enum: `Active = 0`, `Pending = 1`, `Previous = 2`) — only one `Active` binding per (SettingKey, Scope, ScopeId)
+- `TtlExpiresAt` (DateTime?) — set for dynamic/leased secrets; null for static
+- `LastRotatedAt` (DateTime?) — set on source-switch and version promotion
+- `LastValidationCategory` (`SecretValidationCategory` enum: `SourceReachable`, `SourceUnreachable`, `CredentialValid`, `CredentialInvalid`, `BindingMisconfigured`, `InternalError`, `TtlExpired`)
+
+Updated CHECK constraints:
+- Original: exactly one metadata group per `SourceType`
+- New: `Status = 'Active'` must be unique per `(SettingKey, Scope, ScopeId)` (via the existing filtered unique indexes)
+- New: `Version > 0`
+- New: for `SourceType = InlineEncrypted`, `TtlExpiresAt` must be null (inline secrets don't expire)
+
+Updated filtered unique indexes:
+- `UNIQUE (SettingKey) WHERE Scope = 'Instance' AND Status = 'Active' AND IsDeleted = false` (was: just `IsDeleted = false`)
+- `UNIQUE (SettingKey, ScopeId) WHERE Scope = 'Tenant' AND Status = 'Active' AND IsDeleted = false`
+
+**Note on `IsDeleted`**: `SecretBinding` is `IAuditableEntity` (NOT `ISoftDeletable`). The previous plan's reference to `IsDeleted` in filtered indexes was incorrect — it applies to other entities that ARE soft-deletable. For `SecretBinding`, the filtered unique indexes simply filter on `Status = 'Active'`.
+
+### 3. `SecretBindingAuditEntry` (New — Phase 3)
+
+Immutable audit entity in `Explore.Domain/Secrets/SecretBindingAuditEntry.cs`:
 
 - `Id` (Guid v7)
-- `SettingKey` (string, max 256) - references an entry in the `SecretDefinitionRegistry`.
-- `Scope` (`SecretScope` enum: `Instance` = 1, `Tenant` = 2).
-- `ScopeId` (`Guid?`) - null for Instance; tenant id for Tenant.
-- `SourceType` (`SecretSourceType` enum: `Infisical` = 1, `InlineEncrypted` = 2, `EnvironmentVariable` = 3). **No `Inherited`.**
-- Normalized metadata columns (Oracle recommendation - not polymorphic JSON):
-  - `InfisicalEnvironment` (string?)
-  - `InfisicalPath` (string?)
-  - `InfisicalKey` (string?)
-  - `EnvironmentVariableName` (string?)
-  - `InlineCiphertext` (string?) - base64, encrypted via `IDataProtectionProvider`.
-  - `InlineCiphertextVersion` (string?) - purpose-string version for key rotation ergonomics.
-- `IsLocked` (bool) - instance binding with `IsLocked=true` prevents tenant override.
-- `LastValidationResult` (`SecretValidationResult` enum: `NotValidated`, `Success`, `Failure`).
-- `LastValidationMessage` (string?, max 512) - generic/phrased to avoid info leakage.
-- `LastValidatedAt` (DateTime?), `LastValidatedBy` (Guid?).
-- `IAuditable` fields: `CreatedAt`, `CreatedBy`, `UpdatedAt`, `UpdatedBy`, `RowVersion`.
-- **Filtered unique index** (Postgres-specific): `(SettingKey, Scope, ScopeId)` filtered on `IsDeleted = false`, with `ScopeId IS NULL` treated as a concrete value via `COALESCE` on a sentinel GUID or a separate partial index for Instance scope (handles Postgres NULL unique semantics - Oracle risk #1).
-- **CHECK constraint** enforcing exactly one metadata group populated per `SourceType`.
+- `BindingId` (Guid) — FK to `SecretBinding`
+- `SettingKey` (string, max 256) — denormalized for queryability
+- `Scope` (`SecretScope` enum)
+- `ScopeId` (Guid?)
+- `Action` (`SecretBindingAuditAction` enum: `Created`, `Updated`, `Deleted`, `Validated`, `SourceSwitched`, `VersionPromoted`, `Rotated`, `CacheInvalidated`)
+- `SourceType` (`SecretSourceType` enum) — source at time of action
+- `Version` (int?) — binding version at time of action
+- `PreviousSourceType` (`SecretSourceType?`) — for source-switch actions
+- `ValidationResult` (`SecretValidationResult?`) — for validated actions
+- `ValidationCategory` (`SecretValidationCategory?`) — for validated actions
+- `DiagnosticMessage` (string?, max 1024) — internal-only, NOT exposed via API
+- `PerformedBy` (Guid?) — user ID from auth context
+- `PerformedAt` (DateTimeOffset) — defaults to `DateTimeOffset.UtcNow`
+- `IpAddress` (string?, max 45) — for API-initiated actions
 
-### 3. `ISecretResolver` (single runtime contract)
+This table is **append-only** — no updates, no deletes (except by DBA for GDPR/compliance retention). EF configuration sets `HasNoKey()` or uses a PK with no update/delete convention.
 
-New contract in `Explore.Application/Contracts/Secrets/ISecretResolver.cs`:
+### 4. `ISecretResolver` (Phase 3 — written but uncommitted, now enhanced)
 
 ```csharp
 public interface ISecretResolver
@@ -131,214 +265,258 @@ public interface ISecretResolver
     Task<SecretBindingDescriptor> DescribeAsync(string settingKey, Guid? tenantId, CancellationToken ct);
     Task<IReadOnlyList<SecretBindingDescriptor>> DescribeAllAsync(Guid? tenantId, CancellationToken ct);
     Task InvalidateAsync(string settingKey, Guid? tenantId, CancellationToken ct);
+    Task<SecretValidationDetail> ValidateAsync(string settingKey, Guid? tenantId, CancellationToken ct);
 }
 ```
 
-- `TryResolveAsync` looks up the winning binding (tenant override → instance → absent), dispatches on `SourceType`, fetches from **exactly one** source, returns `ResolvedSecret(Value, SourceType, Metadata, ResolvedAt)`. **No fallback chain.**
-- `DescribeAsync` returns state + metadata only (never the value): `{ SettingKey, IsConfigured, IsInherited, ResolvedScope, SourceType, PublicMetadata (env/path/key or var name or "stored in platform"), LastValidation, LastValidatedAt, LastValidatedBy }`.
-- `InvalidateAsync` explicit cache eviction hook, prepares for future webhook integration.
+Enhancements over original:
+- `ResolveRequiredAsync` — throws `SecretNotConfiguredException` instead of returning null (for non-optional secrets that MUST resolve)
+- `ValidateAsync` — returns structured `SecretValidationDetail` (not just bool)
+- Cache uses `HybridCache` (not `IMemoryCache`) keyed on `(settingKey, scope, scopeId)` with 5-minute L1 TTL and tag-based invalidation
+- Resolver only considers `Status = Active` bindings; Pending/Previous are invisible to consumers
+- All external source calls wrapped in Polly resilience policies
 
-Implementation: `Explore.Secrets/Services/SecretResolver.cs` wires Infisical (`IInfisicalSecretSource`), env var (`Environment.GetEnvironmentVariable`), and inline (`IDataProtectionProvider.CreateProtector(...).Unprotect`). Per-secret `IMemoryCache` entry with 5-minute TTL keyed on `(settingKey, tenantId, source fingerprint)`.
+### 5. Resilience Pipeline (Phase 3 — new)
 
-### 4. Infisical layout (replaces legacy)
+`Explore.Secrets/Resilience/SecretResiliencePipeline.cs`:
 
-Per user spec - code maps every `SecretDefinitionRegistry` entry to its `(Folder, SecretName)`:
+- **Retry policy**: 3 retries, exponential backoff (500ms, 1s, 2s) on `HttpRequestException`, `TimeoutException`, `InfisicalApiException` (custom). Jitter via `RetryHelper`.
+- **Circuit breaker**: 5 consecutive failures → open for 30 seconds. Half-open allows one probe. Success resets.
+- **Timeout policy**: 10s for Infisical, 5s for env-var/inline (defensive, should be near-instant).
+- **Bulkhead**: max 20 concurrent Infisical calls (prevents thread pool starvation under load).
+- Policies are per-source-type, not global. `EnvironmentSecretSource` and `InlineSecretSource` get timeout-only (no retry needed for local operations).
 
-- `api/SETUP_SECRET` (bootstrap only)
-- `storage/STORAGE_S3_{ENDPOINT, PUBLIC_ENDPOINT, BUCKET_NAME, ACCESS_KEY_ID, SECRET_ACCESS_KEY, REGION}`
-- `keycloak/KEYCLOAK_{REALM, CLIENT_ID, CLIENT_SECRET, ADMIN_USERNAME, ADMIN_PASSWORD, DB_PASSWORD}`
-- `postgresql/POSTGRESQL_{HOST, PORT, DATABASE, USERNAME, PASSWORD}` (bootstrap only)
-- `smtp/SMTP_{HOST, PORT, USERNAME, PASSWORD, FROM_ADDRESS, FROM_NAME}`
-- `analytics/ANALYTICS_POSTHOG_{PUBLIC_KEY, HOST}`
-- `ai/AI_{OPENAI_API_KEY, ANTHROPIC_API_KEY}`
+Configured via `SecretResilienceOptions` bound from `SecretProvider:Resilience` configuration section. All resilience events emit to `SecretResolverMetrics`.
 
-The legacy names (`POSTGRESQL_PUBLIC_URL`, `ISLAMU_EVENT_*`, `EXPLORE_BLAZOR_SERVER_CLIENT_SECRET`, `KEYCLOAK_PUBLIC_URL`/`KEYCLOAK_BASE_URL`) are deleted from config mapping and `docker-compose.yml`.
+### 6. Caching Strategy (Phase 3 — changed from IMemoryCache to HybridCache)
 
-### 5. Bootstrap Secret Loader
+- **L1**: In-process `MemoryCache` (default HybridCache behavior, 5-minute TTL)
+- **L2**: Configured via `AddHybridCache()` (already in codebase). Production uses Redis; development uses in-process only.
+- **Cache key format**: `secret:{settingKey}:{scope}:{scopeId:N}` or `secret:{settingKey}:Instance:-`
+- **Tag-based invalidation**: Each cache entry tagged with `secret-binding:{settingKey}:{scope}:{scopeId}`. `InvalidateAsync` removes by tag (removes all versions for that binding).
+- **Version-aware resolve**: Resolver appends `binding.Version` to cache key component. When a binding's version increments (rotation), the old cache entry naturally expires; the new version gets a new cache key.
+- **No-fallback guarantee**: A binding pointing to Infisical that returns null results in a null cached entry. The resolver NEVER tries another source.
 
-New `Explore.Secrets/Bootstrap/BootstrapSecretLoader.cs` is the **only** path Postgres bootstrap takes:
+### 7. Per-Source Health Granularity (Phase 3 — enhanced)
 
-1. If Infisical bootstrap config is present (`Infisical:ClientId` + `ClientSecret` + `ProjectId`), attempt Infisical `postgresql/POSTGRESQL_*` reads first.
-2. Otherwise fall back to environment variables (`POSTGRESQL_HOST`, etc.) then `appsettings.json` sections.
-3. Compose via `NpgsqlConnectionStringBuilder { Host, Port, Database, Username, Password, SslMode = SslMode.Prefer, TrustServerCertificate = true }.ConnectionString`.
-4. Refuses to start if any of the five fields is missing - logs which fields are missing and which source was attempted.
+`SecretResolverHealthCheck` returns per-source status:
 
-The setup secret follows the same bootstrap pattern: Infisical → env → auto-generate (existing behavior preserved).
+```csharp
+Dictionary<string, HealthStatus> SourceStatuses { get; }
+// e.g. { "EnvironmentVariable": Healthy, "Infisical": Degraded, "InlineEncrypted": Healthy }
+```
 
-### 6. Inline encryption via `IDataProtectionProvider`
+Overall health: `Healthy` if all sources healthy, `Degraded` if any degraded and none unhealthy, `Unhealthy` if any unhealthy.
 
-- Persist keys via `PersistKeysToDbContext<ExploreDbContext>` (EF Core key ring) so the minimal deployment (API + Blazor + Postgres) works without additional infrastructure.
-- Purpose string hierarchy: `("Event.Secrets", "Binding", "v1")` plus scope chain (`Instance` or `Tenant:{id}`).
-- `InlineCiphertextVersion` column captures the purpose version so future rotation is possible.
-- **Disaster recovery note documented**: DP keys in the same DB = protection against app-layer disclosure, not full DB compromise. Backups must include both ciphertext and keys.
+Additional degraded conditions:
+- A binding with `TtlExpiresAt < DateTime.UtcNow` → source marked `\Degraded`
+- A binding with `LastValidationResult = Failure` for more than 1 hour → source marked `Degraded`
 
-### 7. UI Contract
+### 8. Tenant Isolation (Phase 4 — new)
 
-Admin UI (under `Admin/Instance/Secrets` and `Admin/Tenant/Secrets`) lists every secret from `SecretDefinitionRegistry`. Each card shows:
+EF Core global query filter on `SecretBinding`:
 
-- **State**: `Configured` / `Not configured` / `Inherited from instance` (for tenant scope).
-- **Source**: `Infisical` / `Platform DB` / `Environment variable`.
-- **Source-specific metadata**:
-  - Infisical → environment, path, key.
-  - Environment variable → variable name + "found"/"missing" validation.
-  - Platform DB → no additional metadata (never the value).
-- **Last validation result** + timestamp + user.
-- **Last updated at / by**.
+```csharp
+.HasQueryFilter("TenantSecretIsolation", e =>
+    e.Scope == SecretScope.Instance ||
+    e.ScopeId == _currentTenantId);
+```
 
-Input flows per source type (explicit; no auto-migration between sources):
+Admin query handlers explicitly use `.IgnoreQueryFilters()` when listing all bindings across tenants (requires `[Authorize]` + Cerbos `secret_binding:manage_instance`).
 
-- **Reference Infisical**: user enters (or confirms registry default) environment + path + key. App performs `validate-binding` handshake - fetches once, confirms success, discards value.
-- **Store inline-encrypted**: user types the secret once; `IDataProtector.Protect(plaintext)` runs; ciphertext is written to `InlineCiphertext`; the plaintext is discarded. Existing value is never re-displayed after save.
-- **Point at environment variable**: user enters variable name (or confirms registry default). App validates env var is present (but does not read its value into the response).
+### 9. Infisical Layout (unchanged from Phase 1)
 
-Source switching is explicit: switching from Infisical to Inline, for example, invalidates the cache entry and replaces the binding entirely.
+Per user spec — every `SecretDefinitionRegistry` entry maps to its `(Folder, SecretName)`.
 
-### 8. Onboarding integration
+### 10. Bootstrap Secret Loader (Committed — Phase 2)
 
-- `IAuthProviderConfigurationService` is refactored to drive off `SecretBinding`s (`auth.keycloak.client_secret`, `auth.google.client_secret`) instead of writing secrets into `SystemSetting.Value`. The non-secret enable/disable flags (`auth.keycloak_enabled`, etc.) stay in `SystemSetting` as today.
-- New query `GetAvailableSecretsQueryHandler` returns `DescribeAllAsync()` filtered to the keys the onboarding screen cares about (Keycloak, SMTP, S3, PostHog, AI). The UI shows an "Auto-detected" chip per provider whose secrets already resolve (mirroring today's `KeycloakDetectedFromEnvironment` pattern).
-- The `GET /api/InstanceOnboarding/auth-provider-configuration/internal` endpoint that currently returns secret values to the BFF is **removed**. The BFF reads via `ISecretResolver.TryResolveAsync` directly.
+`Explore.Secrets/Bootstrap/BootstrapSecretLoader.cs` is the only path Postgres bootstrap takes. Discrete fields, composed via `NpgsqlConnectionStringBuilder`. **Stays outside `SecretBinding`** — bootstrap secrets unlock the DB containing the bindings.
 
-### 9. Consumer migration
+### 11. Inline Encryption via `IDataProtectionProvider` (unchanged)
 
-All runtime consumers shift to `ISecretResolver.TryResolveAsync(settingKey, tenantId, ct)`:
+- Persist keys via `PersistKeysToDbContext<ExploreDbContext>` (committed in Phase 1).
+- Purpose string hierarchy: `("Event.Secrets", "Binding", "v1")` plus scope chain.
+- `InlineCiphertextVersion` column captures purpose version for future rotation.
+- **Disaster recovery note**: DP keys in the same DB = protection against app-layer disclosure, not full DB compromise. Backups must include both ciphertext and keys.
 
-- `S3ConfigResolver` → resolves `storage.s3.*` bindings.
-- `SmtpConfigResolver` → resolves `smtp.*` bindings (governance host/port/security keys stay in `IHierarchicalSettingsResolver`; only `smtp.username` / `smtp.password` shift to the binding resolver).
-- `AnalyticsConfigResolver` → resolves `analytics.posthog.api_key` / `analytics.posthog.personal_api_key`.
-- `DynamicAuthSchemeManager` → resolves `auth.keycloak.client_secret` and `auth.google.client_secret`. Scheme registration is re-run explicitly when a binding update occurs (via domain event `SecretBindingUpdatedEvent` → `Explore.Application/Notifications/KeycloakSchemeRefreshHandler`).
-- Every consumer preserves its existing graceful-degradation pattern: `TryResolveAsync` returning `null` disables the feature (as today with SmtpEmailService and the analytics provider).
+### 12. Blue/Green Rotation Workflow (Phase 5 — new)
 
-### 10. Deletions (no backward compatibility - dev mode)
+```
+1. Admin creates a new Pending binding version (SourceType + metadata = new credential)
+2. Admin validates the Pending version → sets LastValidationResult/Category
+3. Admin promotes: atomically swaps Pending→Active and Active→Previous
+4. Cache invalidation event fires → all consumers get new credential
+5. After grace period (configurable, default 1 hour), admin deletes Previous
+```
 
-PR 6 deletes:
-- `Explore.Domain/AppSetting.cs` + its EF config + repo + interface.
-- `Explore.Secrets/Configuration/{DbConfigurationSource, DbConfigurationProvider, InfisicalConfigurationSource, InfisicalConfigurationProvider}.cs`.
-- `Explore.Secrets/Services/{AesEncryptionService, KeyRotationService, RotationAwareHttpClientFactory, RotationAwareDbContextFactory, SecretRefreshService}.cs`.
-- `Explore.Secrets/Configuration/{EncryptionOptions, RotationOptions, SecretRefreshOptions}.cs`.
-- `Explore.API/Extensions/ConfigurationExtensions.cs` (`AddInfisicalCompatibility` + `ApplyCompatibilityMapping`).
-- `Explore.Blazor/Extensions/ConfigurationExtensions.cs` (`AddInfisicalBlazorCompatibility`).
-- `Explore.Domain/Constants/InfrastructureSecretSettingKeys.cs` (replaced by `SecretDefinitionRegistry` canonical keys).
-- Legacy tests in `Explore.Secrets.UnitTests/` that target deleted classes.
-- Legacy Infisical name references in `docker-compose.yml` and `appsettings.*.json`.
+The `SecretBinding.Version` + `Status` columns enable this workflow. The resolve path only ever reads `Status = Active` bindings, so Pending credentials are invisible until promotion.
 
-Kept (adapted):
-- `Infisical.Sdk` integration, wrapped in `IInfisicalSecretSource` per-secret contract.
-- `AuditingSecretProviderDecorator` - adapted into `AuditingSecretResolverDecorator` with tightened read-audit strategy.
-- `SecretRefreshMetrics` - adapted to the new resolver (counters + histograms).
-- `SecretProviderHealthCheck` - adapted to the new resolver (Infisical reachability).
-- `ISetupSecretProvider` (bootstrap-only; stays outside `SecretBinding`).
+### 13. Lease/TTL Metadata (Phase 3 — new column)
 
-### 11. Destructive EF Migration
+`SecretBinding.TtlExpiresAt` (DateTime?) — set when the binding points to a dynamic/leased secret (Vault dynamic credentials, Infisical rotating secrets). When `TtlExpiresAt < DateTime.UtcNow`:
+- Health check marks the source as `Degraded`
+- `DescribeAsync` returns `IsExpired: true` in the descriptor
+- UI shows "Expired" badge with timestamp
 
-PR 6 includes a single destructive migration:
-- Drops `AppSettings` table and all indexes.
-- Adds `SecretBindings` table (all columns + indexes + CHECK + filtered unique).
-- Adds `DataProtectionKeys` table (standard `PersistKeysToDbContext<T>` schema).
-- Drops secret-holding `SystemSetting` rows for `InfrastructureSecretSettingKeys.*` (in a seed script, migrate semantics not data).
+This does NOT auto-rotate — it surfaces expiration for manual intervention. Automated rotation is post-1.0.
 
-No data migration. Dev mode.
+### 14. Audit Trail Persistence (Phase 3 — new)
+
+Every write operation on `SecretBinding` persists a `SecretBindingAuditEntry` row via the same MediatR notification handler that does cache invalidation. The audit handler runs synchronously before the command response returns.
+
+Read operations are 1% sampled (configurable via `SecretResolverOptions.AuditSampleRate`, default 0.01) via `AuditingSecretResolverDecorator`. The sample writes to structured logs, NOT to the audit table (to avoid read-path write amplification).
+
+### 15. UI Contract (unchanged)
+
+Admin UI lists every secret from `SecretDefinitionRegistry`. Each card shows state, source, metadata, validation result/category, timestamps, version, and TTL expiry. **Never renders secret values.**
+
+---
 
 ## Implementation Phases
 
-### Phase 1 — Foundations (PR 1)
+### Phase 1 — Foundations (Committed `38ce8098`)
 
-**Goal**: introduce `SecretDefinitionRegistry`, `SecretBinding` entity, schema, repository, and Data Protection plumbing. No consumer cutover, no resolver yet.
+**Goal**: introduce `SecretDefinitionRegistry`, `SecretBinding` entity, schema, repository, and Data Protection plumbing.
 
-**Dependencies**: none.
+**Status**: ✅ COMPLETE. No further changes needed.
 
-### Phase 2 — Bootstrap Split (PR 2)
+### Phase 2 — Bootstrap Split (Committed `fc0b2b5a`)
 
 **Goal**: introduce `BootstrapSecretLoader` for discrete Postgres secrets + setup secret. Remove legacy URL connection string path.
 
-**Dependencies**: PR 1 (no hard coupling - can parallelize if needed).
+**Status**: ✅ COMPLETE. No further changes needed.
 
-### Phase 3 — Resolver + Admin API (PR 3)
+### Phase 3 — Resolver + Admin API + Enterprise (PR 3)
 
-**Goal**: `ISecretResolver` implementation, per-source Infisical/env/inline sources, admin CQRS (`CreateSecretBindingCommand`, `UpdateSecretBindingCommand`, `DeleteSecretBindingCommand`, `ValidateSecretBindingCommand`, `GetSecretBindingsQuery`, `DescribeSecretBindingQuery`), controller with rate limiting + audit.
+**Goal**: `ISecretResolver` implementation with resilience, `HybridCache`, per-source health, structured validation, persistent audit trail, versioned rotation schema, tenant isolation query filter, and admin CQRS/API.
 
 **Dependencies**: PR 1.
 
-### Phase 4 — Onboarding + Auth (PR 4)
+**New over original plan**: ADR-003 (audit trail), ADR-004 (versioned rotation), ADR-005 (HybridCache), ADR-006 (Polly resilience), ADR-007 (structured validation), ADR-008 (tenant query filter), ADR-009 (TTL metadata).
 
-**Goal**: move Keycloak/Google/ATProto secrets from `SystemSetting` JSON onto `SecretBinding`; explicit Keycloak scheme refresh on binding update; remove `/auth-provider-configuration/internal` endpoint.
+**Tasks**:
+
+1. **3.1** EF migration: add `Version`, `Status`, `TtlExpiresAt`, `LastRotatedAt`, `LastValidationCategory` columns to `SecretBindings`; add `SecretBindingAuditEntries` table; update filtered unique indexes to include `Status = Active`.
+2. **3.2** Domain: `SecretBindingAuditEntry` entity + `SecretBindingAuditAction` enum + `SecretValidationCategory` enum + `SecretBindingStatus` enum. Update `SecretBinding` with new columns + factory methods for version promotion.
+3. **3.3** Domain: `SecretBindingUpdatedEvent` (already written, update to include Version and Status).
+4. **3.4** Application contracts: `ResolvedSecret`, `ISecretResolver` (enhanced with `ResolveRequiredAsync` + `ValidateAsync`), `ISecretSource` (enhanced with `ValidateAsync` returning `SecretValidationDetail`), `IInfisicalClientFactory`.
+5. **3.5** Resilience pipeline: `SecretResiliencePipeline` + `SecretResilienceOptions` + Polly integration.
+6. **3.6** Per-source implementations: `EnvironmentSecretSource` (timeout-only), `InlineSecretSource` (timeout-only), `InfisicalSecretSource` (full resilience pipeline) — all wrapped in Polly policies.
+7. **3.7** Core resolver: `SecretResolver` using `HybridCache`, `Status=Active` filter, and version-aware cache keys. `SecretResolverMetrics` with per-source counters.
+8. **3.8** Auditing decorator: `AuditingSecretResolverDecorator` (1% read sampling to logs, all writes/deletes/validations to `SecretBindingAuditEntry` via `IAuditWriter`).
+9. **3.9** Health check: `SecretResolverHealthCheck` with per-source status + TTL-expiry degradation.
+10. **3.10** Tenant isolation: EF query filter on `SecretBinding` + `ITenantContext` injection.
+11. **3.11** Per-source Polly policies configuration + DI registration (`SecretResolutionServiceCollectionExtensions.AddSecretResolution()`).
+12. **3.12** Admin CQRS commands: Create/Update/Delete/Validate (with audit trail writes, version handling on update, source-switch detection).
+13. **3.13** Admin CQRS queries: List/Details/AvailableForOnboarding (with tenant filter bypass for instance admins).
+14. **3.14** Notification handlers: Cache invalidation + audit persistence + Keycloak scheme refresh (stub).
+15. **3.15** Controller: `SecretBindingsController` with `[Authorize]`, Cerbos, rate limiting, HAL links.
+16. **3.16** HATEOAS policy + assembler.
+17. **3.17** Cerbos policy.
+18. **3.18** DI wiring in API + Blazor `Program.cs`.
+19. **3.19** Tests: no-fallback, no-leak, resilience (circuit breaker states), audit trail, version rotation lifecycle, tenant isolation enforcement, per-source health check.
+20. **3.20** Verification: build + all test projects.
+21. **3.21** Commit: single Phase 3 commit.
+
+### Phase 4 — Onboarding + Auth + Tenant Isolation (PR 4)
+
+**Goal**: move Keycloak/Google/ATProto secrets from `SystemSetting` JSON onto `SecretBinding`; explicit Keycloak scheme refresh on binding update; tenant isolation enforcement; remove `/auth-provider-configuration/internal` endpoint; batch resolve endpoint for onboarding.
 
 **Dependencies**: PR 3.
 
-### Phase 5 — Consumer Migration (PR 5)
+**New over original plan**: Batch resolve API for onboarding (check multiple secrets in one call).
 
-**Goal**: refactor `SmtpConfigResolver`, `S3ConfigResolver`, `AnalyticsConfigResolver` to call `ISecretResolver.TryResolveAsync`. Remove `InfrastructureSecretSettingKeys` writes.
+### Phase 5 — Consumer Migration + File Source + Drift Detection (PR 5)
+
+**Goal**: refactor all consumers to `ISecretResolver`; add `FileSecretSource` for Docker/K8s; add configuration drift detection at startup.
 
 **Dependencies**: PR 3.
 
-### Phase 6 — Deletion + Docs (PR 6)
+**New over original plan**: ADR-010 (File-Based Secret Source), startup drift detection (`SecretDefinitionRegistry` vs active bindings reconciliation).
 
-**Goal**: delete legacy configuration providers, refresh/rotation services, AES/key-rotation code, compatibility mappings, obsolete tests. Rewrite `docs/SECRETS.md` + update `docs/CONFIGURATION.md`. Destructive migration.
+### Phase 6 — Deletion + Docs + Key Rotation Procedure (PR 6)
+
+**Goal**: delete legacy configuration providers, refresh/rotation services, AES/key-rotation code, compatibility mappings, obsolete tests. Write Data Protection key rotation procedure. Rewrite docs.
 
 **Dependencies**: PRs 1–5.
 
-## Detailed Tasks
+**New over original plan**: Documented key rotation procedure for `IDataProtectionProvider` (purpose-string version bump workflow + test). Load/performance test scaffolding. Security test scaffolding.
 
-See `secrets-refactor-control-plane-tasks.md` for the full per-task checklist with acceptance criteria, effort, and skill references. High-level effort map:
-
-- Phase 1: ~8 tasks, **M–L** total.
-- Phase 2: ~5 tasks, **M** total.
-- Phase 3: ~12 tasks, **L–XL** total.
-- Phase 4: ~7 tasks, **M–L** total.
-- Phase 5: ~6 tasks, **M** total.
-- Phase 6: ~8 tasks, **M** total.
-
-Total effort: **XL** (roughly 3–5 engineering days for a focused senior working alone; longer under TDD and multi-PR reviews).
+---
 
 ## Risk Assessment And Mitigation Strategies
 
-1. **Postgres NULL unique-index semantics** - a plain `UNIQUE (SettingKey, Scope, ScopeId)` index allows duplicate Instance rows in Postgres because `NULL != NULL`. **Mitigation**: two partial indexes - `UNIQUE (SettingKey) WHERE Scope = 'Instance'` and `UNIQUE (SettingKey, ScopeId) WHERE Scope = 'Tenant' AND IsDeleted = false`. Verified with `Explore.Persistence.IntegrationTests`.
-2. **DP key ring disaster recovery** - if the DB is restored but DP keys are lost (or vice versa), all inline-encrypted secrets are permanently unreadable. **Mitigation**: `docs/SECRETS.md` explicitly documents that `DataProtectionKeys` must be part of every backup; add an integration test that round-trips a ciphertext across a simulated `DbContext` recreation.
-3. **Bootstrap / runtime boundary drift** - a future developer could accidentally allow `postgresql.password` to be stored as `InlineEncrypted` (impossible - it unlocks the DB containing its own ciphertext). **Mitigation**: `SecretDefinitionRegistry` enforces `AllowedSourceTypes` at binding write time; an architecture test in `Event.Architecture.Tests` asserts that no bootstrap-flagged key has `InlineEncrypted` in its `AllowedSourceTypes`.
-4. **Stale cache after source switch** - changing a binding from Infisical to Inline must evict the old cache entry immediately or consumers briefly serve the old source. **Mitigation**: `UpdateSecretBindingCommandHandler` raises `SecretBindingUpdatedEvent`; `SecretResolverCacheInvalidationHandler` calls `InvalidateAsync` synchronously before returning the command response.
-5. **Validation endpoint information leakage** - "Env var missing" vs "Infisical path wrong" can become a discovery oracle. **Mitigation**: generic validation messages (`Binding configured` / `Binding could not resolve`); detailed diagnostics only in server logs gated behind audit; rate-limit `POST /validate` per IP + per user (reuse `write` + `setup_secret` policies).
-6. **Source-type switching UX confusion** - admins may think switching from Inline to Infisical "layers" them. **Mitigation**: UI explicitly shows "Switching source will replace the current binding. Inline-encrypted values are write-only and cannot be recovered after switch." in a confirm dialog. A11y-compliant MudDialog.
-7. **Keycloak scheme refresh timing** - a Keycloak client-secret binding update must explicitly trigger `DynamicAuthSchemeManager.RefreshSchemeAsync`; otherwise the already-built OIDC handler keeps the stale secret. **Mitigation**: `SecretBindingUpdatedEvent` subscription in `KeycloakSchemeRefreshHandler` with tests.
-8. **PostHog analytics silent-fail masking outage** - if analytics bindings are misconfigured, fire-and-forget false returns hide the problem. **Mitigation**: validation state is surfaced on the binding's admin card and emitted as an OpenTelemetry metric; health check degrades the `secrets` tag if validation is `Failure` for more than an hour.
-9. **Setup-secret edge case** - setup secret is bootstrap but its UI needs binding-like state (auto-generated vs env vs Infisical). **Mitigation**: `ISetupSecretProvider` stays outside `SecretBinding`; its state is rendered via a dedicated admin component that reads from the provider's existing `IsAutoGenerated` / `IsTimedOut` / `GetExpiration` contract.
-10. **Per-secret cache TTL drift with Infisical rotation** - Infisical rotated secrets become live only after cache expires (5 min). **Mitigation**: document the TTL in `docs/SECRETS.md`; expose `POST /api/SecretBindings/{key}/refresh-cache` (admin only) for forced eviction until a webhook subscription is added in a later sprint.
+| # | Risk | Severity | Mitigation |
+|---|---|---|---|
+| 1 | Postgres NULL unique-index semantics | High | Two partial indexes for Instance and Tenant scopes, filtered on `Status = Active`. Verified with integration tests. |
+| 2 | DP key ring disaster recovery | High | `docs/SECRETS.md` documents that `DataProtectionKeys` must be in every backup; integration test round-trips ciphertext across simulated DB recreation. |
+| 3 | Bootstrap / runtime boundary drift | High | `SecretDefinitionRegistry` enforces `AllowedSourceTypes` at binding write time; architecture test asserts no bootstrap-flagged key allows `InlineEncrypted`. |
+| 4 | Stale cache after source switch or version promotion | High | `SecretBindingUpdatedEvent` → `InvalidateAsync` synchronously in handler before command response. HybridCache tag-based invalidation handles multi-instance propagation. |
+| 5 | Validation endpoint information leakage | Medium | Generic validation messages for API consumers; detailed diagnostics only in audit trail and server logs. `POST /validate` rate-limited. |
+| 6 | Source-type switching UX confusion | Medium | UI explicit confirmation: "Switching replaces the current binding. Inline-encrypted values are write-only and cannot be recovered." |
+| 7 | Keycloak scheme refresh timing | High | `SecretBindingUpdatedEvent` → `KeycloakSchemeRefreshHandler` with tests covering mid-flight OIDC exchange. |
+| 8 | PostHog analytics silent-fail masking outage | Low | Validation state surfaced on admin card + OpenTelemetry metric; health check degrades if `Failure` > 1 hour. |
+| 9 | Setup-secret edge case | Low | `ISetupSecretProvider` stays outside `SecretBinding`; dedicated admin component reads `IsAutoGenerated`/`IsTimedOut`/`GetExpiration`. |
+| 10 | Per-secret cache TTL drift with Infisical rotation | Medium | Document 5-min cache TTL in `docs/SECRETS.md`. Expose `POST /api/SecretBindings/{key}/refresh-cache` admin endpoint for forced eviction. Infisical webhook support deferred. |
+| 11 | **Circuit breaker blocks all Infisical secrets when one path fails (NEW)** | Medium | Circuit breaker is per-source, not per-binding. If the Infisical service is down, ALL Infisical bindings return null. Mitigation: env-var/inline fallback is explicit (operator switches SourceType), not automatic. Health check surfaces circuit state. |
+| 12 | **HybridCache L2 requires Redis in production (NEW)** | Low | Development mode falls back to L1-only gracefully. Production deployment docs must include Redis configuration. |
+| 13 | **Version rotation atomicity — concurrent promotions (NEW)** | Medium | `Status = Active` partial unique index prevents two Active versions for the same (SettingKey, Scope, ScopeId). Promotion handler uses `UPDATE ... SET Status = 'Active' WHERE ...` in a single transaction with `SET Status = 'Previous' WHERE Status = 'Active'` as the first statement. |
+| 14 | **Audit table growth (NEW)** | Low | Secret bindings number in the hundreds; mutations are operator-driven (not per-request). Estimated <1,000 rows/day even in active rotation scenarios. Add index on `(SettingKey, PerformedAt)` for queryability. |
+| 15 | **Tenant isolation filter bypass in admin endpoints (NEW)** | High | Architecture test asserts every `SecretBindings` query handler that uses `IgnoreQueryFilters()` is decorated with `[Authorize]` + Cerbos `secret_binding:manage_instance`. |
+
+---
 
 ## Success Metrics
 
-- **Zero fallback paths** - automated test asserts that a binding with `SourceType=EnvironmentVariable` never triggers an Infisical call and vice versa.
-- **Zero secret-value leaks in UI/logs** - API-contract test asserts no response from `/api/SecretBindings` or `/validate` contains the ciphertext or the plaintext.
-- **Minimal deployment works** - integration test spins up API + Blazor + Postgres with no Infisical, no S3, no SMTP, no PostHog configured, and every page still loads; email/S3/analytics features report "Not configured" in their UI.
-- **Onboarding auto-detection** - integration test configures Keycloak secrets in env vars, boots onboarding page, asserts the Keycloak card shows the "Auto-detected" chip and the toggle is locked.
-- **Zero `InfrastructureSecretSettingKeys` references** after PR 5 - grep-based architecture test.
-- **Zero `AppSetting`, `DbConfigurationProvider`, `AesEncryptionService`, `KeyRotationService`, `SecretRefreshService` references** after PR 6 - grep-based architecture test.
+- **Zero fallback paths** — automated test asserts that a binding with `SourceType=EnvironmentVariable` never triggers an Infisical call and vice versa.
+- **Zero secret-value leaks in UI/logs** — API-contract test asserts no response from `/api/SecretBindings` or `/validate` contains ciphertext or plaintext.
+- **Minimal deployment works** — integration test: API + Blazor + Postgres with no Infisical, no S3, no SMTP, no PostHog; every page loads; email/S3/analytics report "Not configured".
+- **Onboarding auto-detection** — integration test: Keycloak secrets in env vars → onboarding page shows "Auto-detected" chip.
+- **Zero `InfrastructureSecretSettingKeys` references** after Phase 5 — grep-based architecture test.
+- **Zero legacy secret code** after Phase 6 — architecture test asserts no references to `AppSetting`, `DbConfigurationProvider`, `AesEncryptionService`, `KeyRotationService`, `SecretRefreshService`.
+- **Audit trail completeness (NEW)** — integration test: every create/update/delete/validate/write operation on SecretBindings produces a corresponding `SecretBindingAuditEntry` row with correct action, user, and timestamp.
+- **Resilience verification (NEW)** — unit test: Infisical source returns null after 3 retries + circuit breaker opens after 5 consecutive failures. Unit test: env-var source resolves in <1ms (no resilience overhead).
+- **Tenant isolation (NEW)** — integration test: tenant A cannot see tenant B's secrets via the resolver; instance admin CAN see all secrets via admin endpoint with `IgnoreQueryFilters`.
+- **Version rotation lifecycle (NEW)** — integration test: create Pending → validate → promote → verify Active version changed → cache invalidated → Previous version still accessible for 1-hour grace period.
 - **Lighthouse + bUnit accessibility scores** unchanged on the new admin Secrets page.
+
+---
 
 ## Required Resources And Dependencies
 
-- NuGet: `Microsoft.AspNetCore.DataProtection.EntityFrameworkCore` (if not already transitively present via `Explore.Persistence`).
-- NuGet: existing `Infisical.Sdk` (v3.0.4) - stays.
-- Existing `IMemoryCache` + `HybridCache` - reused.
-- Cerbos policy updates: new resource `secret_binding` in `cerbos/policies/secret_binding.yaml` (instance admin: read/write; tenant admin: read/write tenant-scope only; anonymous: none).
+- NuGet: `Microsoft.AspNetCore.DataProtection.EntityFrameworkCore` (committed Phase 1).
+- NuGet: `Microsoft.Extensions.Caching.Hybrid` (already in codebase).
+- NuGet: `Infisical.Sdk` v3.0.4 (stays).
+- NuGet: `Polly` + `Polly.Extensions.Http` (new — resilience pipeline).
+- Cerbos policy updates: `secret_binding.yaml` resource.
 - EF Core migration tooling.
-- Documentation rewrite of `docs/SECRETS.md`; minor update of `docs/CONFIGURATION.md`, `docs/QUICK_REFERENCE.md`, `docs/TROUBLESHOOTING.md`.
+- Redis (for HybridCache L2 in production; optional for development).
+
+---
 
 ## Effort Estimates
 
 | Phase | Effort | Notes |
 |-------|--------|-------|
-| Phase 1 — Foundations | **L** | Registry + entity + EF config + repo + DP wiring. No consumer cutover. |
-| Phase 2 — Bootstrap split | **M** | Discrete POSTGRESQL_* loader + `NpgsqlConnectionStringBuilder`. |
-| Phase 3 — Resolver + admin API | **XL** | Three source implementations + CQRS + controller + tests. Highest-risk PR. |
-| Phase 4 — Onboarding + auth | **L** | Keycloak scheme-refresh and onboarding UI rework. |
-| Phase 5 — Consumer migration | **M** | Mechanical + tests per consumer. |
-| Phase 6 — Deletion + docs | **M** | Destructive migration + doc rewrite. |
+| Phase 1 — Foundations | ✅ COMPLETE | Committed `38ce8098`. |
+| Phase 2 — Bootstrap split | ✅ COMPLETE | Committed `fc0b2b5a`. |
+| Phase 3 — Resolver + Admin API + Enterprise | **XL** | Resilience, HybridCache, audit trail, versioned rotation schema, tenant isolation, structured validation, per-source health, all CQRS + controller + tests. Highest-risk PR. |
+| Phase 4 — Onboarding + Auth + Tenant Isolation | **L** | Keycloak scheme-refresh, onboarding UI, batch resolve, tenant filter bypass. |
+| Phase 5 — Consumer Migration + File Source + Drift | **L** | Consumer cutover, FileSecretSource, startup drift detection. |
+| Phase 6 — Deletion + Docs + Key Rotation | **M** | Destructive migration, doc rewrite, key rotation procedure. |
 
-## Potential Risks & Unknowns
+---
 
-The **single most likely area to become complex** is **Phase 3's concurrency and cache-invalidation correctness**: a binding update arriving while a resolver is mid-flight must never serve the old source, and the `SecretBindingUpdatedEvent` → `InvalidateAsync` path must be synchronous with the command response. The `Infisical.Sdk` client's internal cache and our per-secret `IMemoryCache` create two cache layers; if the wrong one is not evicted, the stale-cache risk (#4) becomes real in production.
+## Post-1.0 Backlog (Explicitly Deferred)
 
-The **second most likely soft spot** is **Keycloak dynamic scheme refresh** (Phase 4): the existing `DynamicAuthSchemeManager` was built for startup-time registration, and making it gracefully swap a handler's `ClientSecret` without dropping in-flight OIDC exchanges needs careful testing with a real Keycloak container. Expect this to require an extra integration test pass and a follow-up consultation with Oracle if the first implementation trips.
-
-The **third is the filtered unique index semantics** (risk #1): getting the Postgres partial index + EF configuration + `Explore.Persistence.IntegrationTests` aligned requires attention; a wrong index lets two "Instance" rows for the same `SettingKey` coexist undetected.
-
-These are the three places to spend extra review cycles.
+- Infisical webhook integration (cache has `InvalidateAsync` hook; webhook endpoint to be added).
+- `Module`-scoped bindings.
+- `Inherited` as a persisted source type (computed by resolver today).
+- Additional providers (Vault, Azure Key Vault, AWS Secrets Manager).
+- RLS for `SecretBindings` (row-level security in Postgres for defense-in-depth).
+- Automated rotation workflows (manual via UI supported; automated rotation post-1.0).
+- Import/Export API for bulk secret binding management.
+- Dynamic module registration (runtime loading of `SecretDefinition` entries).
+- Load/performance test suite for resolve path (>10K ops/sec target).
+- Security penetration testing of admin API and resolve path.
+- Vault dynamic secrets integration (TTL/lease support is schema-ready but provider not implemented).

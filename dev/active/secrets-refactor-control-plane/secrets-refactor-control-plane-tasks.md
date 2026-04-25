@@ -1,9 +1,9 @@
-ABOUTME: Detailed task checklist for the Secrets Refactor (Control Plane / Data Plane) with acceptance criteria, effort, and skill references.
+ABOUTME: Detailed task checklist for the Secrets Refactor (Control Plane / Data Plane) with enterprise improvements.
 ABOUTME: Six-phase, six-PR plan. Each phase is independently reviewable. Tasks within a phase ordered by dependency.
 
-# Secrets Refactor - Task Checklist
+# Secrets Refactor — Task Checklist
 
-Last Updated: 2026-04-18
+Last Updated: 2026-04-24 (Enterprise Revision v2.0)
 
 Legend: `S` = <2h, `M` = 2-6h, `L` = 6-12h, `XL` = 12h+. Check tasks off as they merge.
 
@@ -27,34 +27,29 @@ Legend: `S` = <2h, `M` = 2-6h, `L` = 6-12h, `XL` = 12h+. Check tasks off as they
 ### 1.2 Create `SecretBinding` entity + enums ✅
 - **Files**: `Explore.Domain/Secrets/{SecretBinding, SecretScope, SecretSourceType, SecretValidationResult}.cs`.
 - **Acceptance Criteria**:
-  - [x] `SecretBinding` implements `IAuditableEntity` + `IRowVersionable` matching repo convention.
+  - [x] `SecretBinding` implements `IAuditableEntity` + `IRowVersionable`.
   - [x] `SecretBinding.Id` is UUIDv7.
   - [x] Navigation properties readonly; writes via repository.
   - [x] Domain event raised on mutation.
   - [x] No default values in entity body.
   - [x] File-scoped namespaces + `ABOUTME:` headers.
 - **Effort**: M
-- **Skills**: `clean-architecture-rules`, `dotnet-efcore-guidelines`
 
 ### 1.3 EF configuration + CHECK + filtered unique indexes ✅
 - **File**: `Explore.Persistence/Configurations/Entities/SecretBindingConfiguration.cs`.
 - **Acceptance Criteria**:
   - [x] Columns with explicit max-length for strings.
-  - [x] Named `HasQueryFilter("SoftDelete", e => !e.IsDeleted)`.
   - [x] CHECK constraint for source-type-exclusive metadata.
   - [x] Two partial unique indexes for Instance and Tenant scopes.
   - [x] Auditable columns conventionally configured.
 - **Effort**: M
-- **Skills**: `dotnet-efcore-guidelines`, `clean-architecture-rules`
 
 ### 1.4 Create `ISecretBindingRepository` + implementation ✅
 - **Files**: `Explore.Application/Contracts/Persistence/ISecretBindingRepository.cs`, `Explore.Persistence/Repositories/SecretBindingRepository.cs`.
 - **Acceptance Criteria**:
   - [x] Methods: `GetAsync`, `ListAsync`, `ListInstanceAsync`, `AddAsync`, `UpdateAsync`, `DeleteAsync`.
   - [x] Returns entities, not DTOs.
-  - [x] Repository does not swallow exceptions.
 - **Effort**: S
-- **Skills**: `clean-architecture-rules`, `dotnet-efcore-guidelines`
 
 ### 1.5 Register Data Protection with EF keyring ✅
 - **Files**: `Explore.Persistence/Extensions/DataProtectionServiceCollectionExtensions.cs`, `Explore.Persistence/PersistenceServicesRegistration.cs`.
@@ -63,34 +58,26 @@ Legend: `S` = <2h, `M` = 2-6h, `L` = 6-12h, `XL` = 12h+. Check tasks off as they
   - [x] `DataProtectionKeys` table in EF migration.
   - [x] Round-trip verified.
 - **Effort**: S
-- **Skills**: `dotnet-efcore-guidelines`, `auth-patterns`
 
 ### 1.6 Registry-enforced domain invariants ✅
 - **File**: `Explore.Domain/Secrets/SecretBinding.cs` factory methods + `Event.Domain.UnitTests/Entities/SecretBindingTests.cs`.
 - **Acceptance Criteria**:
-  - [x] `SecretBinding.Create` throws on unknown key, disallowed scope, disallowed source type, bootstrap+InlineEncrypted.
-  - [x] 17 unit tests cover each failure mode.
+  - [x] 17 unit tests covering each failure mode.
 - **Effort**: M
-- **Skills**: `clean-architecture-rules`
 
 ### 1.7 EF migration for SecretBindings + DataProtectionKeys ✅
-- **File**: `Explore.Persistence/Migrations/20260418154035_AddSecretBindingsAndDataProtectionKeys.cs`.
 - **Acceptance Criteria**:
   - [x] Both tables + filtered unique indexes created.
   - [x] Tests pass.
 - **Effort**: S
-- **Skills**: `dotnet-efcore-guidelines`
 
 ### 1.8 Architecture test ✅
-- **File**: `Event.Architecture.Tests/SecretsArchitectureTests.cs` (part of Phase 1 scope — namespace layer enforcement tested alongside).
 - **Acceptance Criteria**:
   - [x] Architecture tests pass (74 green).
 - **Effort**: S
-- **Skills**: `clean-architecture-rules`
 
 ### 1.9 PR 1 verification ✅
 - **Acceptance Criteria**:
-  - [x] Build passes.
   - [x] Domain unit tests pass (207).
   - [x] Architecture tests pass (74).
   - [x] Application unit tests pass (823).
@@ -103,209 +90,297 @@ Legend: `S` = <2h, `M` = 2-6h, `L` = 6-12h, `XL` = 12h+. Check tasks off as they
 **PR title**: `refactor(secrets): discrete Postgres bootstrap via NpgsqlConnectionStringBuilder`
 
 ### 2.1 `BootstrapSecretLoader` ✅
-- **File**: `Explore.Secrets/Bootstrap/BootstrapSecretLoader.cs` + `BootstrapPostgresCredentials.cs`.
 - **Acceptance Criteria**:
   - [x] Given a registry key marked `IsBootstrap=true`, fetches from Infisical (if bootstrap config present) else environment variable else `IConfiguration` section.
   - [x] Never touches `ISecretResolver` or `SecretBinding`.
-  - [x] Exposes `LoadPostgresConnectionString()` returning `BootstrapPostgresCredentials` with composed NpgsqlConnectionStringBuilder (SslMode=Prefer + TrustServerCertificate=true, DefaultPort=5432).
+  - [x] Exposes `LoadPostgresConnectionString()` returning `BootstrapPostgresCredentials` with composed `NpgsqlConnectionStringBuilder`.
   - [x] Fails with a structured log message listing each missing discrete field and the source attempted.
 - **Effort**: M
-- **Skills**: `dotnet-efcore-guidelines`, `auth-patterns`
 
 ### 2.2 Refactor `PersistenceServicesRegistration` ✅
-- **File**: `Explore.Persistence/PersistenceServicesRegistration.cs` + `Explore.Blazor/Extensions/ServiceRegistrationExtensions.cs`.
 - **Acceptance Criteria**:
   - [x] No longer reads `ConnectionStrings:DefaultConnection`.
   - [x] Calls `BootstrapSecretLoader.LoadPostgresConnectionString()` synchronously.
   - [x] Preserves `AddPooledDbContextFactory<ExploreDbContext>` behavior.
 - **Effort**: S
-- **Skills**: `dotnet-efcore-guidelines`
 
 ### 2.3 Remove `POSTGRESQL_PUBLIC_URL` from config mapping ✅
-- **Files**: `Explore.API/Extensions/ConfigurationExtensions.cs`, `Explore.Blazor/Extensions/ConfigurationExtension.cs`, `Event.MigrationService/Extensions/ConfigurationExtensions.cs`, `Event.MigrationService/Program.cs`.
 - **Acceptance Criteria**:
-  - [x] Deleted `POSTGRESQL_PUBLIC_URL` → `ConnectionStrings:DefaultConnection` mapping from API and Blazor config extensions.
-  - [x] MigrationService now uses `AddDiscretePostgresBootstrap()` via BootstrapSecretLoader.
-  - [x] S3/Keycloak mappings kept temporarily with architectural-invariant comments.
+  - [x] Deleted `POSTGRESQL_PUBLIC_URL` mappings from API, Blazor, and MigrationService config extensions.
+  - [x] S3/Keycloak mappings kept with architectural-invariant comments.
 - **Effort**: S
-- **Skills**: `clean-architecture-rules`
 
 ### 2.4 Update infra files ✅
-- **Files**: `docker-compose.yml`, `Explore.AppHost/AppHost.cs`.
 - **Acceptance Criteria**:
-  - [x] `docker-compose.yml` has `x-postgres-bootstrap-env` anchor with discrete `POSTGRESQL_HOST/PORT/DATABASE/USERNAME/PASSWORD`; removed `POSTGRESQL_PUBLIC_URL`.
-  - [x] `docker-compose.yml` canonicalized `x-secrets-env` to `SecretProvider__Infisical__*` format.
-  - [x] Aspire `AppHost.cs` passes discrete Postgres env vars + updated banner.
+  - [x] `docker-compose.yml` has `x-postgres-bootstrap-env` anchor.
+  - [x] Aspire `AppHost.cs` passes discrete Postgres env vars.
 - **Effort**: S
-- **Skills**: (infra)
 
 ### 2.5 `BootstrapSecretLoaderTests` ✅
-- **File**: `Explore.Secrets.UnitTests/Bootstrap/BootstrapSecretLoaderTests.cs`.
 - **Acceptance Criteria**:
-  - [x] Covers all three source fallbacks in isolation.
-  - [x] Covers missing-field failure modes.
-  - [x] Verifies `SslMode=Prefer` and `Trust Server Certificate=True` in composed connection string.
-  - [x] Verifies DefaultPort=5432 fallback.
-  - [x] Verifies mixed-source labels.
+  - [x] Covers all three source fallbacks, missing-field failures, SslMode/TrustServerCertificate/DefaultPort.
+  - [x] 11 tests.
 - **Effort**: M
-- **Skills**: `dotnet-efcore-guidelines`
 
 ### 2.6 PR 2 verification ✅
 - **Acceptance Criteria**:
-  - [x] Build clean (0 errors, 0 warnings in Release).
-  - [x] All 1,305 tests green (Event.Application.UnitTests 823, Event.Domain.UnitTests 207, Event.Architecture.Tests 74, Explore.Secrets.UnitTests 201).
-  - [x] 0 regressions.
+  - [x] Build clean, all 1,305 tests green, 0 regressions.
 - **Effort**: S
 
 ---
 
-## Phase 3 — Resolver + Admin API (PR 3) 🟡 IN PROGRESS (mid-flight handoff)
+## Phase 3 — Resolver + Admin API + Enterprise (PR 3) 🟡 IN PROGRESS
 
-**PR title**: `refactor(secrets): phase 3 introduce ISecretResolver + admin bindings API`
+**PR title**: `refactor(secrets): phase 3 introduce ISecretResolver + admin bindings API + enterprise patterns`
 
-**⚠️ SESSION HANDOFF STATE (read before continuing):**
-- Runtime pipeline (3.1–3.4) is **WRITTEN TO DISK but NOT COMMITTED**. 14 new files + 1 modified csproj sitting untracked.
-- Build verified clean on `Explore.Secrets` project (0 errors). Solution-wide build + tests NOT yet re-run.
-- Admin surface (3.5–3.12) is **NOT STARTED**.
-- Next session: follow `phase-3-implementation-plan.md` sections 3.7–3.21 AND the numbered 3.5–3.12 items below. (Plan file uses finer sub-task numbering 3.1–3.21; tasks file uses 3.1–3.12 — same work, different granularity.)
-- See `secrets-refactor-control-plane-context.md` → "SESSION PROGRESS" → "IN PROGRESS" for the full file list and entity-reality-check notes.
+**⚠️ SESSION HANDOFF STATE:**
+- Runtime pipeline (3.1–3.6 equivalent) is **WRITTEN TO DISK but NOT COMMITTED**. 14 new files + 1 modified csproj.
+- Build verified clean on `Explore.Secrets` project.
+- Solution-wide build + tests NOT yet re-run.
+- Enterprise additions (audit trail, versioned rotation, resilience, HybridCache, structured validation, per-source health, tenant isolation) are **NOT YET STARTED**.
+- See `phase-3-implementation-plan.md` for the full file-by-file execution blueprint.
 - Single Phase 3 commit at end (no splitting), per user directive.
 
-### 3.1 Per-source abstractions + implementations 🟡 WRITTEN, UNCOMMITTED
-- **Files**: `Explore.Application/Contracts/Secrets/IInfisicalSecretSource.cs`, `Explore.Secrets/Services/{InfisicalSecretSource, EnvironmentSecretSource, InlineSecretSource}.cs`.
+### 3.1 EF migration — enterprise schema extensions 🆕
+- **Files**: `Explore.Persistence/Migrations/{timestamp}_AddSecretBindingEnterpriseColumns.cs`.
 - **Acceptance Criteria**:
-  - [ ] `IInfisicalSecretSource.TryFetchAsync(environment, path, key, ct)` returns plaintext or null.
-  - [ ] Uses `Infisical.Sdk` v3 Universal Auth with bootstrap `Infisical:*` config.
-  - [ ] `EnvironmentSecretSource.TryFetch(variableName)` wraps `Environment.GetEnvironmentVariable`.
-  - [ ] `InlineSecretSource.TryUnprotect(ciphertext, version)` uses `IDataProtectionProvider.CreateProtector(new[] { "Event.Secrets", "Binding", version })`. Catches `CryptographicException` → returns null + metric.
+  - [ ] `SecretBindings` table: add `Version` (int, default 1), `Status` (int enum: Active=0, Pending=1, Previous=2), `TtlExpiresAt` (DateTime?), `LastRotatedAt` (DateTime?), `LastValidationCategory` (int enum).
+  - [ ] `SecretBindingAuditEntries` table: all columns per ADR-003.
+  - [ ] Update filtered unique indexes to include `Status = Active` condition.
+  - [ ] CHECK constraint: `SourceType = InlineEncrypted → TtlExpiresAt IS NULL`.
+  - [ ] CHECK constraint: `Version > 0`.
+  - [ ] Index on `SecretBindingAuditEntries(SettingKey, PerformedAt)`.
 - **Effort**: L
-- **Skills**: `auth-patterns`, `dotnet-efcore-guidelines`
+- **Skills**: `dotnet-efcore-guidelines`
 
-### 3.2 `SecretResolver` service 🟡 WRITTEN, UNCOMMITTED
-- **File**: `Explore.Secrets/Services/SecretResolver.cs`.
+### 3.2 Domain — audit + versioning + validation enums 🆕
+- **Files**: `Explore.Domain/Secrets/SecretBindingAuditEntry.cs`, `Explore.Domain/Secrets/SecretBindingAuditAction.cs`, `Explore.Domain/Secrets/SecretBindingStatus.cs`, `Explore.Domain/Secrets/SecretValidationCategory.cs`.
 - **Acceptance Criteria**:
-  - [ ] Implements `ISecretResolver`.
-  - [ ] `TryResolveAsync(settingKey, tenantId, ct)` looks up `SecretBinding` at (Scope=Tenant, tenantId) first (if `tenantId` provided), falls through to (Scope=Instance, ScopeId=null), else returns null.
-  - [ ] Dispatches on `SourceType` to exactly one source; **does not fall back** to another source on miss.
-  - [ ] Uses `IMemoryCache` with 5-min TTL keyed on `(settingKey, tenantId, bindingUpdatedAt)`.
-  - [ ] Exposes `InvalidateAsync(settingKey, tenantId, ct)` that evicts all cache entries matching the key.
-  - [ ] `DescribeAsync` returns state + metadata (never the value) incl. computed `IsInherited` flag.
+  - [ ] `SecretBindingAuditEntry` is append-only entity (no update/delete convention in EF).
+  - [ ] `SecretBindingAuditAction` enum: `Created`, `Updated`, `Deleted`, `Validated`, `SourceSwitched`, `VersionPromoted`, `Rotated`, `CacheInvalidated`.
+  - [ ] `SecretBindingStatus` enum: `Active = 0`, `Pending = 1`, `Previous = 2`.
+  - [ ] `SecretValidationCategory` enum: `SourceReachable`, `SourceUnreachable`, `CredentialValid`, `CredentialInvalid`, `BindingMisconfigured`, `InternalError`, `TtlExpired`.
+  - [ ] `SecretBinding` factory methods updated: `CreateWithPendingVersion`, `PromoteToActive`, `DemoteToPrevious`, `RecordValidation` updated to accept `SecretValidationCategory`.
+- **Effort**: L
+- **Skills**: `clean-architecture-rules`, `dotnet-efcore-guidelines`
+
+### 3.3 Domain event — update for versioning 🆕
+- **File**: `Explore.Domain/Secrets/Events/SecretBindingUpdatedEvent.cs` (already on disk, needs update).
+- **Acceptance Criteria**:
+  - [ ] Add `int Version` and `SecretBindingStatus Status` to event record.
+  - [ ] Add `SecretBindingAuditAction ChangeAction` property (audit-specific, not just `ChangeKind`).
+- **Effort**: S
+
+### 3.4 Application contracts — enhanced resolver interface 🆕
+- **Files**: Update `Explore.Application/Contracts/Secrets/ISecretResolver.cs`, `ISecretSource.cs`, `ResolvedSecret.cs`; add `SecretValidationDetail.cs`, `SecretBindingDescriptor.cs` (already partially on disk).
+- **Acceptance Criteria**:
+  - [ ] `ISecretResolver` has `ResolveRequiredAsync` (throws `SecretNotConfiguredException` on null).
+  - [ ] `ISecretResolver` has `ValidateAsync` returning `SecretValidationDetail`.
+  - [ ] `ISecretSource.ValidateAsync` returns `SecretValidationDetail` (not just bool).
+  - [ ] `SecretValidationDetail` record includes `Result`, `Category`, `DiagnosticMessage`.
+  - [ ] `ResolvedSecret` includes `Version` and `TtlExpiresAt` fields.
+  - [ ] `SecretNotConfiguredException` custom exception class.
+- **Effort**: M
+- **Skills**: `clean-architecture-rules`
+
+### 3.5 Resilience pipeline — Polly integration 🆕
+- **Files**: `Explore.Secrets/Resilience/SecretResiliencePipeline.cs`, `Explore.Secrets/Resilience/SecretResilienceOptions.cs`.
+- **Acceptance Criteria**:
+  - [ ] Retry policy: 3 retries, exponential backoff (500ms, 1s, 2s) on `HttpRequestException`, `TimeoutException`, custom `InfisicalApiException`.
+  - [ ] Circuit breaker: 5 consecutive failures → open for 30 seconds. Half-open allows one probe. Success resets.
+  - [ ] Timeout: 10s for Infisical, 5s for env-var/inline (defensive).
+  - [ ] Bulkhead: max 20 concurrent Infisical calls.
+  - [ ] All resilience events emit to `SecretResolverMetrics`.
+  - [ ] Options bindable from `SecretProvider:Resilience` config section.
+  - [ ] `EnvironmentSecretSource` and `InlineSecretSource` get timeout-only policy (no retry/circuit-breaker needed for local operations).
+- **Effort**: L
+- **Skills**: `error-tracking`
+
+### 3.6 Per-source implementations — with resilience 🆕
+- **Files**: `Explore.Secrets/Sources/EnvironmentSecretSource.cs` (on disk, update), `InlineSecretSource.cs` (on disk, update), `InfisicalSecretSource.cs` (on disk, update).
+- **Acceptance Criteria**:
+  - [ ] `InfisicalSecretSource` calls are wrapped in `SecretResiliencePipeline.GetInfisicalPolicy()`.
+  - [ ] `EnvironmentSecretSource` and `InlineSecretSource` are wrapped in timeout-only policy.
+  - [ ] All sources implement `ValidateAsync` returning `SecretValidationDetail`.
+  - [ ] `InfisicalSecretSource.GetSecretAsync` catches `InfisicalApiException` and returns `SecretValidationDetail(Category: SourceUnreachable, DiagnosticMessage: ...)`.
+  - [ ] All source `GetSecretAsync` and `ValidateAsync` methods emit timing to `SecretResolverMetrics.resolve_duration_ms`.
+- **Effort**: L
+- **Skills**: `error-tracking`, `auth-patterns`
+
+### 3.7 Core resolver with HybridCache + version-aware resolve 🆕
+- **File**: `Explore.Secrets/Services/SecretResolver.cs` (on disk, major update needed).
+- **Acceptance Criteria**:
+  - [ ] Uses `HybridCache` instead of `IMemoryCache` for per-secret caching.
+  - [ ] Cache key format: `secret:{settingKey}:{scope}:{scopeId:N}`.
+  - [ ] Tags each cache entry with `secret-binding:{settingKey}:{scope}:{scopeId:N}` for tag-based invalidation.
+  - [ ] Resolves only `Status = Active` bindings. Pending/Previous are invisible.
+  - [ ] `InvalidateAsync` uses `HybridCache.RemoveByTagAsync()` for distributed cache invalidation.
+  - [ ] `ResolveRequiredAsync` throws `SecretNotConfiguredException` when binding not found.
+  - [ ] `ValidateAsync` returns `SecretValidationDetail` with categories.
+  - [ ] Falls back gracefully when L2 (Redis) is unavailable (L1-only).
+  - [ ] Per-source metrics emitted on every resolve.
 - **Effort**: XL
-- **Skills**: `clean-architecture-rules`, `cqrs-mediatr-guidelines`
+- **Skills**: `clean-architecture-rules`, `error-tracking`
 
-### 3.3 Auditing decorator 🟡 WRITTEN, UNCOMMITTED
-- **File**: `Explore.Secrets/Services/AuditingSecretResolverDecorator.cs`.
+### 3.8 Auditing decorator — persistent audit trail 🆕
+- **File**: `Explore.Secrets/Services/AuditingSecretResolverDecorator.cs` (on disk, major update needed).
 - **Acceptance Criteria**:
-  - [ ] Wraps `ISecretResolver`.
-  - [ ] Audits every write/delete/validate synchronously.
-  - [ ] Audits read failures synchronously.
-  - [ ] Samples successful reads at configurable rate (default 1%).
-  - [ ] Never logs plaintext or ciphertext.
-  - [ ] Redacts secret values from any exception text that may flow through.
+  - [ ] All write/delete/validate operations persist `SecretBindingAuditEntry` via `IAuditWriter`.
+  - [ ] `IAuditWriter` interface injected — implementation writes to `ISecretBindingAuditRepository`.
+  - [ ] Read operations sampled at `SecretResolverOptions.AuditSampleRate` (default 0.01) → structured logs only.
+  - [ ] NEVER logs/plaintext/ciphertext in audit entries.
+  - [ ] Audit entries include `IpAddress` from `IHttpContextAccessor` (when available).
 - **Effort**: M
 - **Skills**: `error-tracking`, `auth-patterns`
 
-### 3.4 Metrics + health check adaptation 🟡 WRITTEN, UNCOMMITTED
-- **Files**: `Explore.Secrets/Observability/SecretResolverMetrics.cs`, `Explore.Secrets/HealthChecks/SecretResolverHealthCheck.cs`.
+### 3.9 Health check — per-source granularity 🆕
+- **File**: `Explore.Secrets/HealthChecks/SecretResolverHealthCheck.cs` (on disk, major update needed).
 - **Acceptance Criteria**:
-  - [ ] `Meter("Event.Secrets.Resolver")` with counters (`resolve_total`, `resolve_failure_total`, `validate_total`, `cache_hit_total`, `cache_miss_total`) and histogram (`resolve_duration_ms`).
-  - [ ] Health check `secret_resolver` tagged `secrets`, Healthy when Infisical source reachable; Degraded otherwise.
+  - [ ] Returns `Dictionary<string, HealthStatus>` per source type.
+  - [ ] Overall: Healthy if all healthy, Degraded if any degraded and none unhealthy, Unhealthy if any unhealthy.
+  - [ ] Degraded conditions: source unreachable, binding with `TtlExpiresAt < DateTime.UtcNow`, binding with `LastValidationResult = Failure` for >1 hour.
+  - [ ] Circuit breaker state included in health data (per Infisical source).
 - **Effort**: M
 - **Skills**: `error-tracking`
 
-### 3.5 Admin CQRS — commands
-- **Files**: `Explore.Application/Features/Secrets/Commands/` (Create/Update/Delete/Validate with `*CommandValidator.cs`, `*CommandHandler.cs`).
+### 3.10 Tenant isolation — EF query filter 🆕
+- **Files**: `Explore.Persistence/Configurations/Entities/SecretBindingConfiguration.cs` (update), `Explore.Application/Services/ITenantContext.cs` (or use existing).
+- **Acceptance Criteria**:
+  - [ ] `.HasQueryFilter("TenantSecretIsolation", e => e.Scope == SecretScope.Instance || e.ScopeId == _currentTenantId)`.
+  - [ ] Admin query handlers that need cross-tenant view use `.IgnoreQueryFilters()`.
+  - [ ] Architecture test: every `IgnoreQueryFilters()` call on `SecretBinding` is in a method decorated with `[Authorize]` + Cerbos `secret_binding:manage_instance`.
+- **Effort**: M
+- **Skills**: `dotnet-efcore-guidelines`, `auth-patterns`
+
+### 3.11 DI registration + resilience configuration 🆕
+- **File**: `Explore.Secrets/Extensions/SecretResolutionServiceCollectionExtensions.cs` (on disk, major update needed).
+- **Acceptance Criteria**:
+  - [ ] Registers `HybridCache` (or uses existing `AddHybridCache()` from `Program.cs`).
+  - [ ] Registers Polly resilience pipeline per source type.
+  - [ ] Registers `SecretResilienceOptions` from config.
+  - [ ] Registers `IAuditWriter` → `SecretBindingAuditWriter`.
+  - [ ] Registers `ISecretBindingAuditRepository`.
+  - [ ] Registers all source implementations (`EnvironmentSecretSource`, `InlineSecretSource`, `InfisicalSecretSource`) as `ISecretSource`.
+  - [ ] Registers `SecretBindingStatus` enum converter.
+  - [ ] Registers `SecretResolver` (concrete) + `AuditingSecretResolverDecorator` (public `ISecretResolver`).
+  - [ ] Registers `SecretResolverMetrics` singleton.
+  - [ ] Registers health check with per-source granularity.
+- **Effort**: M
+
+### 3.12 Admin CQRS — commands (with audit trail + version handling)
+- **Files**: `Explore.Application/Features/SecretBindings/Commands/CreateSecretBindingCommand*.cs`, `UpdateSecretBindingCommand*.cs`, `DeleteSecretBindingCommand*.cs`, `ValidateSecretBindingCommand*.cs`.
 - **Acceptance Criteria**:
   - [ ] Each command returns `BaseCommandResponse<Guid>` (create/update) or `BaseCommandResponse<bool>` (delete/validate).
   - [ ] Handlers validate against `SecretDefinitionRegistry` + `ISecretBindingRepository`.
-  - [ ] Validators are manually instantiated per project rule.
-  - [ ] `CreateSecretBindingCommand` for `SourceType=InlineEncrypted` receives plaintext, protects it immediately, stores ciphertext, discards plaintext (no return of plaintext).
-  - [ ] `ValidateSecretBindingCommand` calls `ISecretResolver.TryResolveAsync` under a short timeout, updates `LastValidationResult/At/Message/By`; discards the fetched value.
-  - [ ] All mutations raise `SecretBindingUpdatedEvent` via `IMediator.Publish`.
-- **Effort**: L
+  - [ ] Validators manually instantiated per project rule.
+  - [ ] `CreateSecretBindingCommand`: `SourceType=InlineEncrypted` encrypts plaintext via `IDataProtector`, stores ciphertext, discards plaintext (no return of plaintext).
+  - [ ] `UpdateSecretBindingCommand`: detects source-type switch, publishes `SourceSwitched` audit action, handles version increment.
+  - [ ] `ValidateSecretBindingCommand`: returns `SecretValidationDetail` with categories, updates `LastValidationResult`, `LastValidationCategory`, `LastValidatedAt/By/Message`.
+  - [ ] All mutations raise `SecretBindingChangedNotification` via `IMediator.Publish` AND write `SecretBindingAuditEntry` via `IAuditWriter`.
+- **Effort**: XL
 - **Skills**: `cqrs-mediatr-guidelines`, `clean-architecture-rules`
 
-### 3.6 Admin CQRS — queries
-- **Files**: `Explore.Application/Features/Secrets/Queries/GetSecretBindingsQueryHandler.cs`, `DescribeSecretBindingQueryHandler.cs`, `GetAvailableSecretsForOnboardingQueryHandler.cs`.
+### 3.13 Admin CQRS — queries
+- **Files**: `Explore.Application/Features/SecretBindings/Queries/GetSecretBindingListRequestHandler.cs`, `GetSecretBindingDetailsRequestHandler.cs`, `GetAvailableSecretsForOnboardingRequestHandler.cs`.
 - **Acceptance Criteria**:
-  - [ ] Handlers return `SecretBindingDescriptor` / `SecretBindingDto`.
   - [ ] DTOs never include `InlineCiphertext`, resolved plaintext, or env var value.
-  - [ ] `GetAvailableSecretsForOnboardingQuery` returns a list of `{ SettingKey, AutoDetected (bool), Source? }` filtered to the onboarding-relevant keys (Keycloak, SMTP, S3, PostHog, AI).
+  - [ ] DTOs include `Version`, `Status`, `TtlExpiresAt`, `LastValidationCategory`.
+  - [ ] `GetAvailableSecretsForOnboardingQuery` returns list with `IsBound` and `AutoDetected` flags.
+  - [ ] Instance admin queries use `.IgnoreQueryFilters()` for cross-tenant visibility.
 - **Effort**: M
 - **Skills**: `cqrs-mediatr-guidelines`
 
-### 3.7 Cache invalidation + Keycloak scheme refresh handlers
-- **Files**: `Explore.Application/Notifications/SecretBindingCacheInvalidationHandler.cs`, `Explore.Application/Notifications/KeycloakSchemeRefreshHandler.cs`.
+### 3.14 Notification handlers + audit persistence
+- **Files**: `Explore.Application/Notifications/Secrets/SecretBindingChangedNotification.cs`, `Explore.Application/Notifications/SecretBindingCacheInvalidationHandler.cs`, `Explore.Application/Notifications/SecretBindingAuditPersistenceHandler.cs`, `Explore.Application/Notifications/KeycloakSchemeRefreshHandler.cs`.
 - **Acceptance Criteria**:
-  - [ ] Cache-invalidation handler calls `ISecretResolver.InvalidateAsync` synchronously before returning.
-  - [ ] Keycloak handler calls `IDynamicAuthSchemeManager.RefreshSchemeAsync("Keycloak")` when the updated key is `auth.keycloak.client_secret` (and similar for Google).
-  - [ ] Both are `INotificationHandler<SecretBindingUpdatedEvent>`.
+  - [ ] Cache-invalidation handler calls `ISecretResolver.InvalidateAsync` synchronously.
+  - [ ] Audit-persistence handler writes `SecretBindingAuditEntry` via `IAuditWriter`.
+  - [ ] Keycloak handler stubbed (logs warning, awaits Phase 4).
 - **Effort**: M
 - **Skills**: `cqrs-mediatr-guidelines`, `auth-patterns`
 
-### 3.8 `SecretBindingsController`
+### 3.15 `SecretBindingsController`
 - **File**: `Explore.API/Controllers/SecretBindingsController.cs`.
 - **Acceptance Criteria**:
-  - [ ] `GET /api/SecretBindings?scope=...&scopeId=...` `[Authorize]` + Cerbos action `secret_binding:read`.
-  - [ ] `GET /api/SecretBindings/{settingKey}` same auth.
-  - [ ] `PUT /api/SecretBindings/{settingKey}` `[Authorize]` + Cerbos `secret_binding:write` + `write` rate limit policy.
-  - [ ] `DELETE /api/SecretBindings/{settingKey}` same auth.
-  - [ ] `POST /api/SecretBindings/{settingKey}/validate` `[Authorize]` + `write` rate limit.
-  - [ ] Responses never contain plaintext / ciphertext.
-  - [ ] Uses `BaseCommandResponse<>` shape.
+  - [ ] `GET /api/SecretBindings` `[Authorize]` + Cerbos `secret_binding:read`.
+  - [ ] `GET /api/SecretBindings/{id:guid}` same auth.
+  - [ ] `POST /api/SecretBindings` create, `[Authorize]` + Cerbos `secret_binding:write`.
+  - [ ] `PUT /api/SecretBindings/{id:guid}` update, same auth.
+  - [ ] `DELETE /api/SecretBindings/{id:guid}` same auth.
+  - [ ] `POST /api/SecretBindings/{id:guid}/validate` `[Authorize]` + `write` rate limit.
+  - [ ] `POST /api/SecretBindings/{id:guid}/promote` promote Pending→Active (new enterprise endpoint).
+  - [ ] Responses never contain plaintext/ciphertext.
   - [ ] HAL links via `SecretBindingLinkPolicy`.
 - **Effort**: L
 - **Skills**: `auth-patterns`, `cqrs-mediatr-guidelines`
 
-### 3.9 HATEOAS policy + assembler
+### 3.16 HATEOAS policy + assembler
 - **Files**: `Explore.API/Hateoas/Policies/SecretBindingLinkPolicy.cs`, `Explore.API/Hateoas/Assemblers/SecretBindingResourceAssembler.cs`.
 - **Acceptance Criteria**:
-  - [ ] Matches `yield return` pattern used by other policies.
+  - [ ] Matches `yield return` pattern.
   - [ ] Named routes registered in `RouteNames`.
+  - [ ] Promote link only shown for bindings with `Status = Pending`.
 - **Effort**: S
-- **Skills**: `clean-architecture-rules`
 
-### 3.10 Cerbos policy
+### 3.17 Cerbos policy
 - **File**: `cerbos/policies/secret_binding.yaml`.
 - **Acceptance Criteria**:
-  - [ ] Resource `secret_binding` with actions `read`, `write`.
-  - [ ] Instance admin: read/write all scopes.
-  - [ ] Tenant admin: read/write tenant-scope only (`tenantId` matches).
+  - [ ] Resource `secret_binding` with actions `view`, `create`, `update`, `delete`, `validate`, `promote`.
+  - [ ] Instance admin: all actions on all scopes.
+  - [ ] Tenant admin: all actions on tenant-scope only (`tenantId` matches).
   - [ ] Default deny.
 - **Effort**: S
-- **Skills**: `auth-patterns`
 
-### 3.11 Tests — no-fallback + no-leak
-- **Files**: `Explore.Secrets.UnitTests/NoFallbackTests.cs`, `NoValueExposureTests.cs`, `SecretResolverTests.cs`, `InfisicalSecretSourceTests.cs`, `EnvironmentSecretSourceTests.cs`, `InlineSecretSourceTests.cs`, `Event.Application.UnitTests/Features/Secrets/*Tests.cs`, `Event.API.IntegrationTests/Features/SecretBindingsControllerTests.cs`.
+### 3.18 DTOs + Validators
+- **Files**: `Explore.Application/DTOs/SecretBindings/` (SecretBindingDto, SecretBindingListDto, CreateSecretBindingDto, UpdateSecretBindingDto, PromoteSecretBindingDto, ValidateSecretBindingDto + validators).
 - **Acceptance Criteria**:
-  - [ ] No-fallback: a binding with `SourceType=EnvironmentVariable` never triggers Infisical SDK calls.
-  - [ ] No-leak: serialized API responses assert no plaintext, no ciphertext, no `SMTP_PASSWORD` var value.
-  - [ ] `ValidateSecretBindingCommand` updates state, but the command response contains generic message only.
-  - [ ] Rate-limit regression test against `PUT` / `POST /validate`.
+  - [ ] SecretBindingDto includes `Version`, `Status`, `TtlExpiresAt`, `LastValidationCategory`.
+  - [ ] CreateSecretBindingDto: `SourceType`, metadata fields, `InlineSecretValue?` (plaintext — handler protects + discards).
+  - [ ] PromoteSecretBindingDto: binding ID only (promotion is explicit action).
+  - [ ] Validators enforce `SecretDefinitionRegistry` constraints.
+  - [ ] Validators reject `InlineEncrypted` for bootstrap keys.
+  - [ ] Validators reject `TtlExpiresAt` for `InlineEncrypted` source type.
 - **Effort**: L
-- **Skills**: `cqrs-mediatr-guidelines`, `auth-patterns`
+- **Skills**: `cqrs-mediatr-guidelines`
 
-### 3.12 PR 3 verification
+### 3.19 Tests — enterprise patterns 🆕
+- **Files**: `Explore.Secrets.UnitTests/` + `Event.Application.UnitTests/Features/SecretBindings/` + `Event.Architecture.Tests/`.
 - **Acceptance Criteria**:
-  - [ ] Build clean.
-  - [ ] All test projects pass.
-  - [ ] New Cerbos policy compiles (`cerbos compile cerbos/policies`).
+  - [ ] **No-fallback**: binding with `SourceType=EnvironmentVariable` never triggers Infisical SDK calls.
+  - [ ] **No-leak**: serialized API responses assert no plaintext, no ciphertext, no env var value.
+  - [ ] **Resilience**: Infisical source returns null after 3 retries; circuit breaker opens after 5 failures; env-var/inline sources resolve without resilience overhead.
+  - [ ] **Audit trail**: every create/update/delete/validate/publish/write persists a `SecretBindingAuditEntry` with correct action, user, and timestamp.
+  - [ ] **Version rotation lifecycle**: create Pending → validate → promote → verify Active version changed → cache invalidated → Previous still accessible during grace period.
+  - [ ] **Tenant isolation**: tenant A cannot resolve tenant B's secrets via resolver; instance admin CAN see all bindings via admin endpoint with `IgnoreQueryFilters`.
+  - [ ] **Structured validation**: `ValidateAsync` returns `SecretValidationDetail` with `Category` and `DiagnosticMessage`.
+  - [ ] **Per-source health**: health check returns individual source statuses; Infisical unreachable → Degraded (not Unhealthy).
+  - [ ] **HybridCache**: verify cache invalidation via tags propagates.
+  - [ ] Architecture test: Domain.Secrets has no Infisical/DataProtection/Polly refs.
+  - [ ] Architecture test: every `IgnoreQueryFilters()` on `SecretBinding` is Cerbos-gated.
+- **Effort**: XL
+- **Skills**: `cqrs-mediatr-guidelines`, `clean-architecture-rules`, `auth-patterns`
+
+### 3.20 PR 3 verification
+- **Acceptance Criteria**:
+  - [ ] Build clean (0 errors, 0 warnings in Release).
+  - [ ] All test projects pass individually.
+  - [ ] New test count ≥ baseline + 60 (28 existing Phase 1-2 + ~60 new Phase 3 tests).
+  - [ ] Cerbos policy compiles.
 - **Effort**: S
 
 ---
 
-## Phase 4 — Onboarding + Auth (PR 4)
+## Phase 4 — Onboarding + Auth + Tenant Isolation (PR 4)
 
-**PR title**: `refactor(secrets): route onboarding auth secrets through SecretBinding`
+**PR title**: `refactor(secrets): route onboarding auth secrets through SecretBinding + tenant isolation enforcement`
 
 ### 4.1 Refactor `AuthProviderConfigurationService`
 - **File**: `Explore.Application/Services/AuthProviderConfigurationService.cs`.
 - **Acceptance Criteria**:
   - [ ] Non-secret enable flags stay in `SystemSetting`.
-  - [ ] Secret writes now dispatch `IMediator.Send(new UpdateSecretBindingCommand(...))` - never write secrets into `SystemSetting.Value`.
+  - [ ] Secret writes dispatch `IMediator.Send(new UpdateSecretBindingCommand(...))`.
   - [ ] `ReadConfigurationAsync()` returns redacted + descriptor metadata from `ISecretResolver.DescribeAsync`.
-  - [ ] `ReadConfigurationWithSecretsAsync()` removed (no longer needed - BFF will resolve directly).
-  - [ ] `IsConfiguredAsync()` unchanged behavior.
+  - [ ] `ReadConfigurationWithSecretsAsync()` removed.
 - **Effort**: L
 - **Skills**: `cqrs-mediatr-guidelines`, `auth-patterns`, `blazor-bff-patterns`
 
@@ -313,196 +388,225 @@ Legend: `S` = <2h, `M` = 2-6h, `L` = 6-12h, `XL` = 12h+. Check tasks off as they
 - **File**: `Explore.Application/Features/InstanceOnboarding/SaveAuthProviderConfigurationCommandHandler.cs`.
 - **Acceptance Criteria**:
   - [ ] Calls new service contract.
-  - [ ] Validator updated if changed.
-  - [ ] Existing integration tests still pass (or are updated).
+  - [ ] Validator updated.
+  - [ ] Integration tests pass (or updated).
 - **Effort**: M
-- **Skills**: `cqrs-mediatr-guidelines`
 
 ### 4.3 Remove `/auth-provider-configuration/internal` endpoint
 - **File**: `Explore.API/Controllers/InstanceOnboardingController.cs`.
 - **Acceptance Criteria**:
   - [ ] Endpoint deleted.
-  - [ ] Related integration tests either deleted or rewritten.
-  - [ ] Any BFF caller updated to use `ISecretResolver` directly (or BFF endpoint proxying `GET /api/SecretBindings`).
+  - [ ] BFF caller updated to use `ISecretResolver` directly.
 - **Effort**: M
-- **Skills**: `auth-patterns`, `blazor-bff-patterns`
 
 ### 4.4 `DynamicAuthSchemeManager` reads from resolver
 - **File**: `Explore.Blazor/Services/DynamicAuthSchemeManager.cs`.
 - **Acceptance Criteria**:
-  - [ ] Reads `auth.keycloak.client_secret` (and Google counterpart) via `ISecretResolver.TryResolveAsync` at scheme registration time.
-  - [ ] `RefreshSchemeAsync` re-resolves and rebuilds the in-memory OIDC handler.
-  - [ ] Tests cover: secret missing → scheme disabled; secret updated → handler uses new secret on next request; tests assert in-flight OIDC exchange not disrupted.
+  - [ ] Reads `auth.keycloak.client_secret` via `ISecretResolver.TryResolveAsync`.
+  - [ ] `RefreshSchemeAsync` re-resolves and rebuilds OIDC handler.
+  - [ ] Tests: secret missing → scheme disabled; secret updated → handler uses new secret on next request.
 - **Effort**: L
-- **Skills**: `auth-patterns`, `blazor-bff-patterns`
 
-### 4.5 Onboarding UI — auto-detect chips
+### 4.5 Batch resolve API for onboarding 🆕
+- **File**: `Explore.API/Controllers/SecretBindingsController.cs` (add endpoint).
+- **Acceptance Criteria**:
+  - [ ] `POST /api/SecretBindings/batch-resolve` accepts list of `(SettingKey, Scope, ScopeId?)` and returns list of `(SettingKey, IsConfigured, SourceType?)` — never values.
+  - [ ] Used by onboarding UI to check all relevant secrets in one call.
+  - [ ] Rate-limited to `write` policy.
+- **Effort**: M
+- **Skills**: `cqrs-mediatr-guidelines`, `auth-patterns`
+
+### 4.6 Onboarding UI — auto-detect chips
 - **Files**: `Explore.Blazor.Client/Pages/Onboarding/AuthProviderConfiguration.razor` + `.razor.cs`.
 - **Acceptance Criteria**:
   - [ ] Calls `GetAvailableSecretsForOnboardingQuery` on init.
-  - [ ] For each provider (Keycloak, Google SSO): shows `Auto-detected` chip + disables toggle when secret resolves; otherwise shows input form (inline-encrypted default source).
+  - [ ] Auto-detect chips per provider when secret resolves.
   - [ ] Input form never shows previously stored value after save.
-  - [ ] A11y-compliant: labels, aria-describedby, proper focus management.
+  - [ ] A11y-compliant.
 - **Effort**: L
-- **Skills**: `blazor-ui-conventions`, `blazor-bff-patterns`, `accessibility`
 
-### 4.6 Tests — onboarding auto-detection + no-leak
-- **Files**: `Event.API.IntegrationTests/Features/OnboardingAutoDetectTests.cs`, `Event.API.IntegrationTests/Features/InstanceOnboardingControllerTests.cs` (updated).
+### 4.7 Tenant isolation enforcement tests 🆕
+- **Files**: `Event.API.IntegrationTests/Features/SecretBindingsTenantIsolationTests.cs`.
 - **Acceptance Criteria**:
-  - [ ] Configures Keycloak secrets in env vars, asserts onboarding status shows auto-detected for Keycloak.
-  - [ ] Posts a new Keycloak secret via onboarding, asserts binding created with `SourceType=InlineEncrypted`, asserts resolved value matches what was posted.
-  - [ ] No response contains plaintext.
+  - [ ] Tenant-scoped binding handler returns only the tenant's own secrets.
+  - [ ] Instance-scoped binding handler returns all instance secrets (with Cerbos auth).
+  - [ ] Cross-tenant attempt (tenant A tries to resolve tenant B's key) returns null, not 500.
 - **Effort**: M
-- **Skills**: `blazor-bff-patterns`, `cqrs-mediatr-guidelines`
 
-### 4.7 PR 4 verification
+### 4.8 PR 4 verification
 - **Effort**: S
 
 ---
 
-## Phase 5 — Consumer Migration (PR 5)
+## Phase 5 — Consumer Migration + File Source + Drift Detection (PR 5)
 
-**PR title**: `refactor(secrets): migrate S3/SMTP/Analytics resolvers to ISecretResolver`
+**PR title**: `refactor(secrets): migrate consumers to ISecretResolver + add FileSecretSource + drift detection`
 
 ### 5.1 `S3ConfigResolver` cutover
-- **File**: `Explore.Infrastructure/Services/S3ConfigResolver.cs`.
 - **Acceptance Criteria**:
-  - [ ] Reads `storage.s3.*` via `ISecretResolver.TryResolveAsync` (secrets) and `IHierarchicalSettingsResolver` (non-secret config).
-  - [ ] Returns `null` config object when required secrets missing → callers already handle this.
-  - [ ] Tests in `Event.Application.UnitTests/Infrastructure/S3ConfigResolverTests.cs` updated.
-- **Effort**: M
-- **Skills**: `clean-architecture-rules`
-
-### 5.2 `SmtpConfigResolver` cutover
-- **File**: `Explore.Infrastructure/Services/SmtpConfigResolver.cs`.
-- **Acceptance Criteria**:
-  - [ ] `smtp.username/password` resolved via `ISecretResolver`; remainder via governance.
-  - [ ] Null host or missing secret → returns null; `SmtpEmailService` logs warning per existing pattern.
+  - [ ] Reads `storage.s3.*` via `ISecretResolver.TryResolveAsync`.
+  - [ ] Returns null when required secrets missing.
   - [ ] Tests updated.
 - **Effort**: M
-- **Skills**: `clean-architecture-rules`
+
+### 5.2 `SmtpConfigResolver` cutover
+- **Acceptance Criteria**:
+  - [ ] `smtp.username/password` resolved via `ISecretResolver`; remainder via governance.
+  - [ ] Null host or missing secret → returns null.
+- **Effort**: M
 
 ### 5.3 `AnalyticsConfigResolver` cutover
-- **File**: `Explore.Infrastructure/Services/AnalyticsConfigResolver.cs`.
 - **Acceptance Criteria**:
-  - [ ] `analytics.posthog.public_key`, `analytics.posthog.host` resolved via `ISecretResolver` (if secrets - confirm with registry which are secret).
+  - [ ] `analytics.posthog.public_key` / `host` resolved via `ISecretResolver`.
   - [ ] Fire-and-forget graceful fail preserved.
 - **Effort**: S
-- **Skills**: `clean-architecture-rules`
 
 ### 5.4 Client-lifecycle audit for SMTP / S3 / PostHog
-- **Files**: `Explore.Infrastructure/Services/{SmtpEmailService, S3StorageService, PostHogAnalyticsProvider}.cs`.
 - **Acceptance Criteria**:
   - [ ] No singleton captures resolved credentials for process lifetime.
-  - [ ] Scoped resolution per operation; if a client must be long-lived, it re-reads `ISecretResolver` on each operation or subscribes to `SecretBindingUpdatedEvent` to dispose.
+  - [ ] Scoped resolution per operation or subscribe to `SecretBindingChangedNotification` to dispose.
 - **Effort**: M
-- **Skills**: `clean-architecture-rules`, `error-tracking`
 
-### 5.5 Delete unused secret mappings
-- **Files**: `Explore.API/Extensions/ConfigurationExtensions.cs`, `Explore.Blazor/Extensions/ConfigurationExtensions.cs`.
+### 5.5 `FileSecretSource` implementation 🆕
+- **Files**: `Explore.Secrets/Sources/FileSecretSource.cs`, `Explore.Domain/Secrets/SecretSourceType.cs` (add `File = 3`), `Explore.Domain/Secrets/SecretDefinition.cs` (update factory), `Explore.Persistence/Configurations/Entities/SecretBindingConfiguration.cs` (add `FilePath` column + update CHECK constraint).
 - **Acceptance Criteria**:
-  - [ ] Delete remaining S3 + Keycloak compat mappings (phase 2 left them; now remove).
+  - [ ] Reads files from disk using `binding.FilePath` (e.g., `/run/secrets/smtp_password`).
+  - [ ] Validates file exists and is readable.
+  - [ ] EF migration adds `FilePath` column + updates CHECK constraint for `SourceType = File`.
+  - [ ] `SecretDefinitionRegistry` entries updated with `AllowedSourceTypes` including `File` for Docker/K8s-appropriate secrets.
+  - [ ] Resilience: timeout-only (file I/O should be near-instant).
+- **Effort**: M
+- **Skills**: `clean-architecture-rules`, `dotnet-efcore-guidelines`
+
+### 5.6 Configuration drift detection 🆕
+- **Files**: `Explore.Secrets/Services/SecretDriftDetector.cs`, `Explore.Secrets/Services/SecretDriftDetectorHostedService.cs`.
+- **Acceptance Criteria**:
+  - [ ] At startup and periodically (configurable interval, default 1 hour), compares active `SecretBinding` rows against `SecretDefinitionRegistry.GetAll()`.
+  - [ ] Logs structured warning for: binding with no registry entry (orphan), registry entry with no binding (unconfigured), binding pointing to unreachable source.
+  - [ ] Emits `secrets.drift.detected` OpenTelemetry counter.
+  - [ ] Does NOT block startup or resolve calls on failure.
+- **Effort**: M
+- **Skills**: `error-tracking`
+
+### 5.7 Delete unused secret mappings
+- **Acceptance Criteria**:
+  - [ ] Delete remaining S3 + Keycloak compat mappings.
   - [ ] Tests that relied on compat mappings deleted or rewritten.
 - **Effort**: S
-- **Skills**: `clean-architecture-rules`
 
-### 5.6 PR 5 verification + graceful-degradation tests
-- **Files**: `Event.API.IntegrationTests/Features/MinimalDeploymentTests.cs` (new).
+### 5.8 PR 5 verification + graceful-degradation tests
 - **Acceptance Criteria**:
-  - [ ] Spins up with no SMTP, no S3, no PostHog secrets - health endpoint green, home page loads, attempts to send email → safe no-op with log.
-  - [ ] Other test projects pass.
+  - [ ] Minimal deployment test: SMTP/S3/PostHog unconfigured → health green, pages load, email/S3/analytics "not configured".
+  - [ ] All test projects pass.
 - **Effort**: M
-- **Skills**: `cqrs-mediatr-guidelines`
 
 ---
 
-## Phase 6 — Deletion + Docs (PR 6)
+## Phase 6 — Deletion + Docs + Key Rotation Procedure (PR 6)
 
-**PR title**: `refactor(secrets): delete legacy providers + destructive migration`
+**PR title**: `refactor(secrets): delete legacy providers + destructive migration + key rotation docs`
 
 ### 6.1 Destructive EF migration — drop `AppSettings`
-- **File**: `Explore.Persistence/Migrations/{timestamp}_DropAppSettingsAndLegacySecretRows.cs`.
 - **Acceptance Criteria**:
   - [ ] Drops `AppSettings` table and indexes.
-  - [ ] Deletes any `SystemSetting` row whose key starts with `email.smtp_username`, `email.smtp_password`, `s3.access_key_id`, `s3.secret_access_key`, `cerbos.custom_admin_*`, `auth.keycloak_client_secret`, `auth.google_client_secret` (the old `InfrastructureSecretSettingKeys` namespace).
+  - [ ] Deletes `SystemSetting` rows for `InfrastructureSecretSettingKeys.*` namespace.
   - [ ] Migration reversibility deliberately not supported (dev mode).
 - **Effort**: M
-- **Skills**: `dotnet-efcore-guidelines`
 
 ### 6.2 Delete legacy types
-- **Files**: See `secrets-refactor-control-plane-context.md` > "Key Files - Deleted (PR 6)".
 - **Acceptance Criteria**:
   - [ ] All listed files removed.
   - [ ] Solution builds.
-  - [ ] No references remain via `grep`/architecture test.
+  - [ ] No references remain via grep/architecture test.
 - **Effort**: M
-- **Skills**: `clean-architecture-rules`
 
 ### 6.3 Delete `InfrastructureSecretSettingKeys`
-- **File**: `Explore.Domain/Constants/InfrastructureSecretSettingKeys.cs`.
 - **Acceptance Criteria**:
   - [ ] File deleted.
-  - [ ] All usages replaced with `SecretDefinitionRegistry` keys during Phase 4/5 already; confirm none remain.
+  - [ ] All usages replaced with `SecretDefinitionRegistry` keys.
 - **Effort**: S
-- **Skills**: `clean-architecture-rules`
 
 ### 6.4 Adapt observability
-- **Files**: `Explore.Secrets/Observability/SecretResolverMetrics.cs` (finalized), `SecretResolverHealthCheck.cs`.
 - **Acceptance Criteria**:
-  - [ ] Old `SecretRefreshMetrics`, `SecretProviderHealthCheck` deleted.
-  - [ ] Metric/health names documented in `docs/SECRETS.md`.
+  - [ ] Old metrics/health checks deleted.
+  - [ ] New names documented in `docs/SECRETS.md`.
 - **Effort**: S
-- **Skills**: `error-tracking`
 
 ### 6.5 Architecture regression test
-- **File**: `Event.Architecture.Tests/SecretsArchitectureTests.cs` (extended).
 - **Acceptance Criteria**:
-  - [ ] Asserts no reference to `AppSetting`, `DbConfigurationProvider`, `InfisicalConfigurationProvider`, `AesEncryptionService`, `KeyRotationService`, `SecretRefreshService`, `InfrastructureSecretSettingKeys` anywhere in the solution.
+  - [ ] Asserts no reference to deleted types.
   - [ ] Asserts `ISecretResolver` is the only registered secret-fetch contract.
+  - [ ] Asserts `SecretBindingAuditEntry` is written for all mutations.
 - **Effort**: S
-- **Skills**: `clean-architecture-rules`
 
-### 6.6 Rewrite `docs/SECRETS.md`
-- **File**: `docs/SECRETS.md`.
+### 6.6 Document Data Protection key rotation procedure 🆕
+- **File**: `docs/SECRETS.md` (section: Key Rotation).
 - **Acceptance Criteria**:
-  - [ ] Documents the new control-plane/data-plane model, `SecretDefinitionRegistry`, `SecretBinding`, `ISecretResolver`, the three source types, UI contract, bootstrap path, Infisical folder layout, disaster-recovery note for DP keys.
-  - [ ] Removes references to deleted types.
+  - [ ] Step-by-step procedure: (1) Create new purpose string version (e.g., `v2`), (2) Deploy with both `v1` and `v2` protectors registered, (3) Migrate inline values via admin API, (4) Verify all bindings validate, (5) Remove `v1` protector registration.
+  - [ ] Test that verifies the rotation workflow end-to-end.
+  - [ ] Disaster recovery note: DP keys and ciphertext must be backed up together.
 - **Effort**: M
-- **Skills**: `error-tracking` (observability sections)
+- **Skills**: `auth-patterns`
 
-### 6.7 Update companion docs
+### 6.7 Rewrite `docs/SECRETS.md`
+- **Acceptance Criteria**:
+  - [ ] Documents control-plane/data-plane model, `SecretDefinitionRegistry`, `SecretBinding`, `ISecretResolver`, three source types, blue/green rotation workflow, audit trail, resilience, versioning, TTL, UI contract, bootstrap path, Infisical folder layout, DP key rotation, `FileSecretSource`, drift detection.
+  - [ ] Removes references to deleted types.
+- **Effort**: L
+
+### 6.8 Update companion docs
 - **Files**: `docs/CONFIGURATION.md`, `docs/QUICK_REFERENCE.md`, `docs/TROUBLESHOOTING.md`.
 - **Acceptance Criteria**:
-  - [ ] `CONFIGURATION.md` replaces `AddInfisicalCompatibility` / `AddSecretManagement` sections with `AddSecretResolution` + `BootstrapSecretLoader`.
-  - [ ] `QUICK_REFERENCE.md` adds the new invariant "no fallback chain - one binding, one source, one fetch".
-  - [ ] `TROUBLESHOOTING.md` adds common failure modes (DP key-ring lost, Infisical unreachable, validation failure semantics).
+  - [ ] `CONFIGURATION.md` replaces `AddInfisicalCompatibility` / `AddSecretManagement` with `AddSecretResolution` + `BootstrapSecretLoader`.
+  - [ ] `QUICK_REFERENCE.md` adds new invariants: "no fallback chain", "audit trail on all mutations", "HybridCache for multi-instance", "Polly resilience on Infisical calls", "tenant isolation via query filter".
+  - [ ] `TROUBLESHOOTING.md` adds failure modes: DP key-ring lost, Infisical unreachable (circuit breaker states), validation categories explained, TTL expiry handling, version rotation promotion.
 - **Effort**: M
-- **Skills**: (docs)
 
-### 6.8 PR 6 verification
+### 6.9 Load/performance test scaffolding 🆕
+- **File**: `Explore.Secrets.Tests/Performance/SecretResolverBenchmarkTests.cs`.
+- **Acceptance Criteria**:
+  - [ ] Benchmark: resolve 10,000 secrets with HybridCache L1 hit (target: <1ms per resolve).
+  - [ ] Benchmark: resolve with Infisical circuit breaker open (target: <5ms fallback to cache).
+  - [ ] Stress: 100 concurrent resolve calls (target: no deadlocks, no exceptions).
+- **Effort**: M
+
+### 6.10 Security test scaffolding 🆕
+- **File**: `Event.API.IntegrationTests/Security/SecretBindingsSecurityTests.cs`.
+- **Acceptance Criteria**:
+  - [ ] Anonymous GET returns 401.
+  - [ ] Non-admin user gets 403.
+  - [ ] Tenant A cannot resolve tenant B's secrets.
+  - [ ] Admin API responses never contain plaintext/ciphertext (regex scan).
+  - [ ] Rate limiting enforced on validate and promote endpoints.
+- **Effort**: M
+
+### 6.11 PR 6 verification
 - **Acceptance Criteria**:
   - [ ] `dotnet build --configuration Release --verbosity quiet` passes.
   - [ ] All test projects in CLAUDE.md pass individually.
-  - [ ] Manual smoke: fresh DB, minimal deployment boots, onboarding completes, admin Secrets page lists all registry entries with correct state.
-- **Effort**: M
+  - [ ] Manual smoke: fresh DB, minimal deployment boots, onboarding completes, admin Secrets page lists all registry entries.
+- **Effort**: S
 
 ---
 
 ## Meta
 
 ### Branch strategy
-- One feature branch per PR, off `main`.
-- Branches named `refactor/secrets-phase-{N}-{slug}` using `gitkraken-cli` skill conventions.
-- Each PR includes its own commit(s) per `conventional-commit` skill (`refactor(secrets): ...`).
+- One feature branch per PR, off `develop`.
+- Branches named `refactor/secrets-phase-{N}-{slug}`.
+- Each PR includes its own commit(s) per `conventional-commit` skill.
 
 ### Review cycle
-- Phase 3 and Phase 4 PRs get an extra Oracle consultation before merge (concurrency + Keycloak dynamic scheme).
-- Phase 6 gets an `ai-slop-remover` skill pass to ensure deleted-file list + doc rewrite are clean.
+- Phase 3 and Phase 4 PRs get an extra Oracle consultation before merge (concurrency + Keycloak dynamic scheme + resilience patterns).
+- Phase 6 gets an `ai-slop-remover` skill pass.
 
-### Out of scope (deliberately deferred)
-- Infisical webhook integration (cache has `InvalidateAsync` hook; webhook endpoint to be added in a follow-up sprint).
+### Out of scope (deliberately deferred to post-1.0)
+- Infisical webhook integration (cache has `InvalidateAsync` hook; webhook endpoint later).
 - `Module`-scoped bindings.
-- `Inherited` as a persisted source type.
+- `Inherited` as a persisted source type (computed by resolver).
 - Additional providers (Vault, Azure Key Vault, AWS Secrets Manager).
-- RLS for `SecretBindings` (tracked under post-1.0 plan per `docs/SECURITY.md`).
-- Automatic rotation workflows (manual via UI supported; automated rotation post-1.0).
+- RLS for `SecretBindings` (tracked under post-1.0).
+- Automated secret rotation workflows (manual + blue/green via UI supported; automated rotation later).
+- Import/Export API for bulk binding management.
+- Dynamic `SecretDefinition` registration (runtime loading).
+- Vault dynamic secrets with lease management (schema ready, provider not implemented).

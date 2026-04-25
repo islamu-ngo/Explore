@@ -3,7 +3,27 @@ ABOUTME: Reflects extension-layer boundaries, namespaced machine keys, projectio
 
 # EAV Custom Properties - Task Checklist
 
-**Last Updated: 2026-04-24 (Session 2 — Milestones E + F implementation complete; 4 Gaps + Cleanup Phases tracked in `progress.md`)**
+**Last Updated: 2026-04-24 (Session 3 — Phase 9.1+9.2+9.3 CRUD UIs shipped; session handoff)**
+
+---
+
+## Session 3 Delivery Summary (2026-04-24)
+
+**Phase 9.x Blazor CRUD UI Progress:**
+- Phase 9.1 — Stale helpers: ✅ CLOSED (zero changes needed)
+- Phase 9.2 — CustomPropertyDefinition CRUD: ✅ CLOSED (bg_a65ca891, 7 files)
+- Phase 9.3 — EventTemplate CRUD: ✅ CLOSED (bg_b8f4ef4b, 10+ files)
+- Phase 9.4 — Template selection dropdown: ⏳ PENDING
+- Phase 9.5/9.5A — Runtime editors: ⏳ PENDING (HIGH — dynamic PropertyType rendering)
+- Phase 9.6 — Template preview: ⏳ PENDING
+- Phase 9.10 — Org/Group cleanup: ⏳ PENDING
+- Phase 9.11 — NSwag regen: ⏳ PENDING
+
+**Build state**: 3 errors in `EventPublishedIntegrationEvent.cs` (orphan MQContract, NOT EAV). All EAV code clean.
+
+**Uncommitted work**: Phase 9.2 + 9.3 files need committing.
+
+**Orphan to delete**: `Explore.Blazor.Client/Models/EventTemplateSync/TemplateDiffResource.cs`
 
 ---
 

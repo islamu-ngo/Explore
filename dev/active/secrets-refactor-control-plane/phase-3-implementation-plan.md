@@ -1,21 +1,49 @@
-# Phase 3 Implementation Plan — ISecretResolver + Admin Bindings API
+# Phase 3 Implementation Plan — ISecretResolver + Admin Bindings API + Enterprise Patterns
 
-> **ABOUTME**: Tight, file-by-file execution blueprint for Phase 3 of the secrets control-plane refactor.
-> **ABOUTME**: Designed for a fresh session to execute without re-discovering templates or patterns.
+> **ABOUTME**: Enterprise-grade execution blueprint for Phase 3 of the secrets control-plane refactor.
+> **ABOUTME**: Incorporates resilience patterns, audit trail, versioned rotation, HybridCache, structured validation, per-source health, and tenant isolation.
 
 **Branch**: `develop`
 **Last commits**: `fc0b2b5a` (Phase 2), `38ce8098` (Phase 1)
 **Test baseline to preserve**: 1,305 green (Event.Application.UnitTests 823 + Event.Domain.UnitTests 207 + Event.Architecture.Tests 74 + Explore.Secrets.UnitTests 201)
-**Commit target**: `refactor(secrets): phase 3 introduce ISecretResolver + admin bindings API`
+**Commit target**: `refactor(secrets): phase 3 introduce ISecretResolver + admin bindings API + enterprise patterns`
 
 ## Standing User Directives (DO NOT VIOLATE)
 
-1. **NO delegation** — execute all work yourself (m0007)
-2. **NO backward compatibility** — break/fix/iterate (dev mode)
-3. **Enterprise-grade quality** — clean architecture, design patterns, highly maintainable
-4. **Single Phase 3 commit** at the end (m0229), no intermediate stops
-5. **Use Tavily MCP for research, Context7 MCP for library docs** when needed
-6. Follow ALL repo conventions in CLAUDE.md + QUICK_REFERENCE.md
+1. **NO backward compatibility** — break/fix/iterate (dev mode)
+2. **Enterprise-grade quality** — clean architecture, design patterns, highly maintainable
+3. **Single Phase 3 commit** at the end
+4. **Follow ALL repo conventions** in CLAUDE.md + QUICK_REFERENCE.md
+5. File-scoped namespaces for new C# files
+6. Every file starts with a two-line `ABOUTME:` comment summary
+7. Repositories return entities, not DTOs (map in handlers)
+8. Validators are manually instantiated (no DI)
+9. Commands return `BaseCommandResponse<Guid>` (create/update) or `BaseCommandResponse<bool>` (delete/validate)
+10. HAL `_links` is the **exclusive** source of UI action affordance
+11. Architecture tests must pass at every step
+
+## Enterprise Architecture Decisions for Phase 3 (ADRs)
+
+### ADR-003: Persistent Audit Trail
+Every mutation on `SecretBinding` persists an immutable `SecretBindingAuditEntry` row. Read operations are 1% sampled (logs only). The audit handler runs synchronously before command response.
+
+### ADR-004: Versioned Rotation (Blue/Green)
+`SecretBinding` has `Version` (int) and `Status` (Active/Pending/Previous). Only `Status=Active` bindings are resolved. Promotion is atomic: Pending→Active, Active→Previous. Previous bindings are deleted after a grace period.
+
+### ADR-005: HybridCache
+Replace `IMemoryCache` with `HybridCache` for per-secret caching. L1 in-process, L2 distributed (Redis in production, in-process in dev). Tag-based invalidation for multi-instance propagation.
+
+### ADR-006: Polly Resilience
+Infisical calls wrapped in Polly policies: retry (3x, exponential backoff), circuit breaker (5 failures → 30s open), timeout (10s Infisical, 5s others), bulkhead (20 concurrent). Environment and Inline sources get timeout-only.
+
+### ADR-007: Structured Validation
+`SecretValidationCategory` enum provides actionable diagnostics: `SourceReachable`, `SourceUnreachable`, `CredentialValid`, `CredentialInvalid`, `BindingMisconfigured`, `InternalError`, `TtlExpired`. API consumers see the category but NOT the diagnostic message.
+
+### ADR-008: Tenant Isolation
+EF Core global query filter on `SecretBinding`: `Scope == Instance || ScopeId == _currentTenantId`. Admin handlers that need cross-tenant visibility use `.IgnoreQueryFilters()` gated by Cerbos.
+
+### ADR-009: Lease/TTL Metadata
+`SecretBinding.TtlExpiresAt` (DateTime?) for dynamic secret expiration. `LastRotatedAt` for rotation tracking. Health check degrades when TTL expired.
 
 ## Foundation State (Already Committed)
 
@@ -24,16 +52,58 @@
 | `SecretBinding` entity + factory | `Explore.Domain/Secrets/SecretBinding{,.Factory}.cs` | ✅ Phase 1 |
 | `SecretDefinition` + Registry | `Explore.Domain/Secrets/SecretDefinition{,Registry}.cs` | ✅ Phase 1 |
 | Enums: `SecretScope`, `SecretSourceType`, `SecretValidationResult` | `Explore.Domain/Enums/` | ✅ Phase 1 |
-| `ISecretBindingRepository` | `Explore.Application/Contracts/Persistence/` | ✅ Phase 1 |
-| `SecretBindingRepository` impl | `Explore.Persistence/Repositories/` | ✅ Phase 1 |
+| `ISecretBindingRepository` + impl | `Explore.Application/Contracts/Persistence/` + `Explore.Persistence/Repositories/` | ✅ Phase 1 |
 | EF config + filtered unique indexes | `Explore.Persistence/Configurations/Entities/SecretBindingConfiguration.cs` | ✅ Phase 1 |
 | Migration `AddSecretBindingsAndDataProtectionKeys` | `Explore.Persistence/Migrations/` | ✅ Phase 1 |
 | `AddExploreDataProtection()` extension | `Explore.Persistence/Extensions/DataProtectionServiceCollectionExtensions.cs` | ✅ Phase 1 |
 | `BootstrapSecretLoader` | `Explore.Secrets/Bootstrap/BootstrapSecretLoader.cs` | ✅ Phase 2 |
 
-## Template Reference Files (READ FIRST in fresh session)
+## Files Written But Uncommitted (Phase 3 Runtime — Needs Updates)
 
-Before writing any new file, READ the corresponding template:
+The following 14 files are on disk from a previous session. They need updates to incorporate enterprise patterns:
+
+1. `Explore.Domain/Secrets/Events/SecretBindingUpdatedEvent.cs` — needs Version + Status + AuditAction
+2. `Explore.Application/Contracts/Secrets/ResolvedSecret.cs` — needs Version + TtlExpiresAt
+3. `Explore.Application/Contracts/Secrets/ISecretResolver.cs` — needs ResolveRequiredAsync + ValidateAsync
+4. `Explore.Application/Contracts/Secrets/ISecretSource.cs` — needs ValidateAsync returning SecretValidationDetail
+5. `Explore.Application/Contracts/Secrets/IInfisicalClientFactory.cs` — minor updates
+6. `Explore.Secrets/Sources/EnvironmentSecretSource.cs` — needs timeout-only Polly + ValidateAsync update
+7. `Explore.Secrets/Sources/InlineSecretSource.cs` — needs timeout-only Polly + ValidateAsync update
+8. `Explore.Secrets/Sources/InfisicalSecretSource.cs` — needs full Polly pipeline + ValidateAsync update
+9. `Explore.Secrets/Infrastructure/InfisicalClientFactory.cs` — OK as-is (minor updates)
+10. `Explore.Secrets/Observability/SecretResolverMetrics.cs` — needs resilience event counters
+11. `Explore.Secrets/Services/SecretResolver.cs` — **MAJOR UPDATE**: HybridCache, Status=Active filter, version-aware, ResolveRequiredAsync, ValidateAsync
+12. `Explore.Secrets/Services/AuditingSecretResolverDecorator.cs` — **MAJOR UPDATE**: persistent audit trail via IAuditWriter
+13. `Explore.Secrets/HealthChecks/SecretResolverHealthCheck.cs` — **MAJOR UPDATE**: per-source granularity
+14. `Explore.Secrets/Extensions/SecretResolutionServiceCollectionExtensions.cs` — **MAJOR UPDATE**: Polly, HybridCache, audit, resilience options
+
+**IMPORTANT**: The following entities/columns need a NEW EF migration (the Phase 1 migration has already been applied). Phase 3 requires an additive migration adding:
+- `SecretBinding.Version` (int, default 1)
+- `SecretBinding.Status` (int enum: Active/Pending/Previous)
+- `SecretBinding.TtlExpiresAt` (DateTime?)
+- `SecretBinding.LastRotatedAt` (DateTime?)
+- `SecretBinding.LastValidationCategory` (int enum)
+- NEW `SecretBindingAuditEntries` table
+- Updated filtered unique indexes (include `Status = Active` condition)
+
+## New Files to Create (Enterprise Additions)
+
+- `Explore.Domain/Secrets/SecretBindingAuditEntry.cs`
+- `Explore.Domain/Secrets/SecretBindingAuditAction.cs`
+- `Explore.Domain/Secrets/SecretBindingStatus.cs`
+- `Explore.Domain/Secrets/SecretValidationCategory.cs`
+- `Explore.Application/Contracts/Secrets/SecretValidationDetail.cs`
+- `Explore.Application/Contracts/Secrets/SecretNotConfiguredException.cs`
+- `Explore.Application/Contracts/Persistence/ISecretBindingAuditRepository.cs`
+- `Explore.Secrets/Resilience/SecretResiliencePipeline.cs`
+- `Explore.Secrets/Resilience/SecretResilienceOptions.cs`
+- `Explore.Secrets/Services/SecretBindingAuditWriter.cs`
+- `Explore.Secrets/Services/IAuditWriter.cs`
+- `Explore.Persistence/Repositories/SecretBindingAuditRepository.cs`
+- `Explore.Persistence/Configurations/Entities/SecretBindingAuditEntryConfiguration.cs`
+- `Explore.Persistence/Migrations/{timestamp}_AddSecretBindingEnterpriseColumns.cs`
+
+## Template Reference Files (READ FIRST in fresh session)
 
 | New file pattern | Template to read first |
 |---|---|
@@ -46,15 +116,17 @@ Before writing any new file, READ the corresponding template:
 | HATEOAS link policy | `Explore.API/Hateoas/Policies/CategoryLinkPolicy.cs` |
 | HATEOAS assembler | `Explore.API/Hateoas/Assemblers/CategoryResourceAssembler.cs` |
 | Cerbos policy | `cerbos/policies/category.yaml` |
-| Notification handler | search for `INotificationHandler` in `Explore.Application/` to find one |
+| Notification handler | search for `INotificationHandler` in `Explore.Application/` |
+| Entity + EF config | `Explore.Domain/Secrets/SecretBinding.cs` (already committed) |
+| Audit entity pattern | search for `IAuditableEntity` implementations in `Explore.Domain/` |
 
 Also read once:
-- `Explore.API/Hateoas/RouteNames.cs` — to know exact `#region` style for new routes
-- `Explore.Application/PipelineBehaviors/AuthorizationBehavior.cs` — confirm Cerbos integration shape
-- `Explore.Application/Mappings/MappingProfile.cs` (or `*Profile.cs` files) — to know where to add SecretBinding ↔ DTO mappings
-- `Explore.Application/ApplicationServicesRegistration.cs` — DI registration pattern
-- `Explore.Persistence/PersistenceServicesRegistration.cs` — DI registration pattern
-- `Explore.API/Program.cs` — find the `services.AddHybridCache()`, MediatR, and policy wiring blocks for Phase 3 wiring
+- `Explore.API/Hateoas/RouteNames.cs` — exact `#region` style for new routes
+- `Explore.Application/PipelineBehaviors/AuthorizationBehavior.cs` — Cerbos integration
+- `Explore.Application/Mappings/MappingProfile.cs` — AutoMapper profile location
+- `Explore.Application/ApplicationServicesRegistration.cs` — DI registration
+- `Explore.Persistence/PersistenceServicesRegistration.cs` — DI registration
+- `Explore.API/Program.cs` — `services.AddHybridCache()`, MediatR, and policy wiring blocks
 
 ## Implementation Order (Bottom-Up)
 
@@ -62,71 +134,257 @@ Execute in this exact order. Each section is atomic: complete fully before movin
 
 ---
 
-### 3.0 — Read Templates + Existing Mapping Profile (15 min)
+### 3.0 — Read Templates + Verify Entity Reality (15 min)
 
-**No file changes.** Just read the template files listed above. Confirm the namespace/folder conventions match what you'll create.
+**No file changes.** Read template files listed above. Confirm namespace/folder conventions.
 
-Verify:
-- `Explore.Application/Mappings/` — find the AutoMapper profile to extend (or create `SecretBindingProfile.cs` if pattern is one-profile-per-feature)
-- `Explore.Application/Authorization/AuthorizationActions.cs` — verify `Create/Update/Delete/View` constants exist (likely yes)
-- `Explore.Application/Authorization/ResourceDescriptors.cs` — note pattern for adding `SecretBinding` descriptor
-- `Explore.Application/Responses/BaseCommandResponse.cs` — confirm shape (5 fields per the research)
+**CRITICAL ENTITY REALITY CHECK** — verify these committed facts before writing code:
+- `SecretBinding` primary key: `string SettingKey` (NOT `int SecretKeyId`)
+- `SecretScope` enum: `Instance = 0, Tenant = 1`
+- `SecretSourceType` enum: `Infisical = 0, InlineEncrypted = 1, EnvironmentVariable = 2`
+- Factory methods: `CreateInfisical/CreateInlineEncrypted/CreateEnvironmentVariable`, `SwitchTo*`, `RecordValidation`
+- Entity is `IAuditableEntity` (NOT `ISoftDeletable`) → hard delete
+- Registry is `SecretDefinitionRegistry` with `FrozenDictionary` of known keys + `AllowedScopes`/`AllowedSources`/`IsBootstrap`
 
 ---
 
-### 3.1 — Domain Event (1 file)
+### 3.1 — EF Migration: Enterprise Schema Extensions
 
-**Path**: `Explore.Domain/Secrets/Events/SecretBindingUpdatedEvent.cs`
+**New migration file**: `Explore.Persistence/Migrations/{timestamp}_AddSecretBindingEnterpriseColumns.cs`
+
+Add to `SecretBindings` table:
+- `Version` int NOT NULL DEFAULT 1
+- `Status` int NOT NULL DEFAULT 0 (Active)
+- `TtlExpiresAt` datetime2 NULL
+- `LastRotatedAt` datetime2 NULL
+- `LastValidationCategory` int NULL
+
+Create `SecretBindingAuditEntries` table:
+- `Id` uniqueidentifier NOT NULL (PK, default NEWSEQUENTIALID())
+- `BindingId` uniqueidentifier NOT NULL (FK to SecretBindings)
+- `SettingKey` nvarchar(256) NOT NULL
+- `Scope` int NOT NULL
+- `ScopeId` uniqueidentifier NULL
+- `Action` int NOT NULL
+- `SourceType` int NOT NULL
+- `Version` int NULL
+- `PreviousSourceType` int NULL
+- `ValidationResult` int NULL
+- `ValidationCategory` int NULL
+- `DiagnosticMessage` nvarchar(1024) NULL
+- `PerformedBy` uniqueidentifier NULL
+- `PerformedAt` datetimeoffset NOT NULL DEFAULT NOW
+- `IpAddress` nvarchar(45) NULL
+
+Update filtered unique indexes:
+- DROP existing `IX_SecretBindings_SettingKey_Instance` and `IX_SecretBindings_SettingKey_Tenant`
+- CREATE `IX_SecretBindings_Active_Instance` ON `SecretBindings(SettingKey)` WHERE `Scope = 0 AND Status = 0` (Instance + Active)
+- CREATE `IX_SecretBindings_Active_Tenant` ON `SecretBindings(SettingKey, ScopeId)` WHERE `Scope = 1 AND Status = 0` (Tenant + Active)
+
+Add indexes on `SecretBindingAuditEntries`:
+- `IX_SecretBindingAuditEntries_SettingKey_PerformedAt` (covering index for audit queries)
+- `IX_SecretBindingAuditEntries_BindingId` (FK lookup)
+
+Add CHECK constraints:
+- `CK_SecretBindings_Version_Positive`: `Version > 0`
+- `CK_SecretBindings_InlineC_NoTtl`: `SourceType <> 1 OR TtlExpiresAt IS NULL` (InlineEncrypted cannot have TTL)
+
+**Verify**: Migration compiles. Run against test DB to confirm schema.
+
+---
+
+### 3.2 — Domain: New Enums + Audit Entity
+
+#### 3.2.1 `Explore.Domain/Secrets/SecretBindingAuditAction.cs`
 
 ```csharp
-// ABOUTME: Domain event raised when a SecretBinding is created, updated, or deleted.
-// ABOUTME: Triggers cache invalidation and downstream resolver refreshes.
+// ABOUTME: Enum for audit action types recorded on every SecretBinding mutation.
+// ABOUTME: Enables queryable audit trail for compliance and forensic debugging.
 
-namespace Explore.Domain.Secrets.Events;
+namespace Explore.Domain.Secrets;
 
-public sealed record SecretBindingUpdatedEvent(
-    Guid BindingId,
-    int SecretKeyId,
-    SecretScope Scope,
-    Guid? ScopeId,
-    SecretBindingChangeKind ChangeKind,
-    DateTimeOffset OccurredAt);
-
-public enum SecretBindingChangeKind
+public enum SecretBindingAuditAction
 {
     Created = 0,
     Updated = 1,
     Deleted = 2,
-    SourceSwitched = 3
+    Validated = 3,
+    SourceSwitched = 4,
+    VersionPromoted = 5,
+    Rotated = 6,
+    CacheInvalidated = 7
 }
 ```
 
-**Verify**: Domain has zero deps. Add `using` only for `System` types. The enum lives in same file (small, cohesive).
+#### 3.2.2 `Explore.Domain/Secrets/SecretBindingStatus.cs`
+
+```csharp
+// ABOUTME: Lifecycle status for versioned secret rotation (blue/green model).
+// ABOUTME: Only Active bindings are resolved by ISecretResolver.
+
+namespace Explore.Domain.Secrets;
+
+public enum SecretBindingStatus
+{
+    Active = 0,
+    Pending = 1,
+    Previous = 2
+}
+```
+
+#### 3.2.3 `Explore.Domain/Secrets/SecretValidationCategory.cs`
+
+```csharp
+// ABOUTME: Structured validation categories for actionable diagnostics.
+// ABOUTME: UI sees the category; diagnostic message is server-side only (info leakage prevention).
+
+namespace Explore.Domain.Secrets;
+
+public enum SecretValidationCategory
+{
+    SourceReachable = 0,
+    SourceUnreachable = 1,
+    CredentialValid = 2,
+    CredentialInvalid = 3,
+    BindingMisconfigured = 4,
+    InternalError = 5,
+    TtlExpired = 6
+}
+```
+
+#### 3.2.4 `Explore.Domain/Secrets/SecretBindingAuditEntry.cs`
+
+```csharp
+// ABOUTME: Immutable audit trail entity for SecretBinding mutations.
+// ABOUTME: Append-only — no updates, no deletes (GDPR/compliance retention via DBA).
+
+namespace Explore.Domain.Secrets;
+
+public sealed class SecretBindingAuditEntry : IAuditableEntity
+{
+    public Guid Id { get; set; }
+    public Guid BindingId { get; set; }
+    public string SettingKey { get; set; } = string.Empty;
+    public SecretScope Scope { get; set; }
+    public Guid? ScopeId { get; set; }
+    public SecretBindingAuditAction Action { get; set; }
+    public SecretSourceType SourceType { get; set; }
+    public int? Version { get; set; }
+    public SecretSourceType? PreviousSourceType { get; set; }
+    public SecretValidationResult? ValidationResult { get; set; }
+    public SecretValidationCategory? ValidationCategory { get; set; }
+    public string? DiagnosticMessage { get; set; } // Max 1024, server-side only
+    public Guid? PerformedBy { get; set; }
+    public DateTimeOffset PerformedAt { get; set; } = DateTimeOffset.UtcNow;
+    public string? IpAddress { get; set; } // Max 45, for API-initiated actions
+
+    // Navigation
+    public SecretBinding? Binding { get; set; }
+
+    // IAuditableEntity (write-once since this is append-only)
+    public DateTime CreatedAt { get; set; }
+    public Guid? CreatedBy { get; set; }
+    public DateTime? UpdatedAt { get; set; } // Always null for append-only
+    public Guid? UpdatedBy { get; set; }      // Always null for append-only
+    public byte[] RowVersion { get; set; } = [];
+}
+```
+
+#### 3.2.5 Update `Explore.Domain/Secrets/SecretBinding.cs`
+
+Add these properties and update factory methods:
+
+```csharp
+// New columns
+public int Version { get; private set; } = 1;
+public SecretBindingStatus Status { get; private set; } = SecretBindingStatus.Active;
+public DateTime? TtlExpiresAt { get; private set; }
+public DateTime? LastRotatedAt { get; private set; }
+public SecretValidationCategory? LastValidationCategory { get; private set; }
+
+// New factory methods
+public static SecretBinding CreateWithPendingVersion(...) { /* Status = Pending, Version = 1 */ }
+public void PromoteToActive(Guid performedBy) { Status = SecretBindingStatus.Active; Version++; LastRotatedAt = DateTime.UtcNow; }
+public void DemoteToPrevious(Guid performedBy) { Status = SecretBindingStatus.Previous; }
+
+// Updated RecordValidation
+public void RecordValidation(SecretValidationResult result, SecretValidationCategory category, string? message = null)
+{
+    LastValidationResult = result;
+    LastValidationCategory = category;
+    LastValidationMessage = message?[..Math.Min(message.Length, 512)];
+    LastValidatedAt = DateTime.UtcNow;
+    LastValidatedBy = performedBy;
+}
+```
 
 ---
 
-### 3.2 — Application Contracts (4 files)
+### 3.3 — Domain Event Update
 
-#### 3.2.1 `Explore.Application/Contracts/Secrets/ResolvedSecret.cs`
+**File**: `Explore.Domain/Secrets/Events/SecretBindingUpdatedEvent.cs` (already on disk)
+
+Update to include versioning and audit action:
 
 ```csharp
-// ABOUTME: Immutable record returned by ISecretResolver containing the materialized secret value
-// ABOUTME: plus provenance metadata for audit and observability.
+public sealed record SecretBindingUpdatedEvent(
+    Guid BindingId,
+    string SettingKey,
+    SecretScope Scope,
+    Guid? ScopeId,
+    SecretSourceType SourceType,
+    SecretBindingChangeKind ChangeKind,
+    SecretBindingAuditAction AuditAction, // NEW
+    int Version,                           // NEW
+    SecretBindingStatus Status,            // NEW
+    DateTimeOffset OccurredAt
+) : INotification; // If MediatR is not accessible from Domain, keep as plain record
+```
+
+**NOTE**: If `INotification` coupling in Domain is a clean-architecture violation, keep the domain event as a plain record and create the Application-layer wrapper `SecretBindingChangedNotification : INotification` as planned.
+
+---
+
+### 3.4 — Application Contracts (Enhanced)
+
+#### 3.4.1 `Explore.Application/Contracts/Secrets/SecretValidationDetail.cs` (NEW)
+
+```csharp
+// ABOUTME: Structured validation result with actionable category and internal diagnostic message.
+// ABOUTME: API consumers see the category only; diagnostic message is server-side.
 
 namespace Explore.Application.Contracts.Secrets;
 
-public sealed record ResolvedSecret(
-    int SecretKeyId,
-    string Value,
-    SecretSourceType Source,
-    DateTimeOffset ResolvedAt,
-    DateTimeOffset? ExpiresAt,
-    string? VersionHint);
+public sealed record SecretValidationDetail(
+    SecretValidationResult Result,
+    SecretValidationCategory Category,
+    string? DiagnosticMessage // Server-side ONLY — never exposed in API responses
+);
 ```
 
-(Reference `Explore.Domain.Enums.SecretSourceType` via using.)
+#### 3.4.2 `Explore.Application/Contracts/Secrets/SecretNotConfiguredException.cs` (NEW)
 
-#### 3.2.2 `Explore.Application/Contracts/Secrets/ISecretResolver.cs`
+```csharp
+// ABOUTME: Exception thrown by ISecretResolver.ResolveRequiredAsync when a binding is not configured.
+// ABOUTME: Differentiates "not configured" from "configured but source returned null".
+
+namespace Explore.Application.Contracts.Secrets;
+
+public sealed class SecretNotConfiguredException : Exception
+{
+    public string SettingKey { get; }
+    public Guid? TenantId { get; }
+
+    public SecretNotConfiguredException(string settingKey, Guid? tenantId)
+        : base($"Secret binding for '{settingKey}' is not configured{(tenantId.HasValue ? $" for tenant {tenantId.Value}" : " at instance scope")}.")
+    {
+        SettingKey = settingKey;
+        TenantId = tenantId;
+    }
+}
+```
+
+#### 3.4.3 `Explore.Application/Contracts/Secrets/ISecretResolver.cs` (UPDATE existing on disk)
 
 ```csharp
 // ABOUTME: Primary abstraction for resolving a secret value from its declared single source.
@@ -136,656 +394,315 @@ namespace Explore.Application.Contracts.Secrets;
 
 public interface ISecretResolver
 {
-    Task<ResolvedSecret?> ResolveAsync(int secretKeyId, Guid? tenantId, CancellationToken cancellationToken);
-    Task InvalidateAsync(int secretKeyId, Guid? tenantId, CancellationToken cancellationToken);
+    Task<ResolvedSecret?> TryResolveAsync(string settingKey, Guid? tenantId, CancellationToken ct);
+    Task<ResolvedSecret> ResolveRequiredAsync(string settingKey, Guid? tenantId, CancellationToken ct);
+    Task<SecretBindingDescriptor> DescribeAsync(string settingKey, Guid? tenantId, CancellationToken ct);
+    Task<IReadOnlyList<SecretBindingDescriptor>> DescribeAllAsync(Guid? tenantId, CancellationToken ct);
+    Task InvalidateAsync(string settingKey, Guid? tenantId, CancellationToken ct);
+    Task<SecretValidationDetail> ValidateAsync(string settingKey, Guid? tenantId, CancellationToken ct);
 }
 ```
 
-#### 3.2.3 `Explore.Application/Contracts/Secrets/ISecretSource.cs`
+#### 3.4.4 `Explore.Application/Contracts/Secrets/ResolvedSecret.cs` (UPDATE existing)
+
+Add `Version` and `TtlExpiresAt`:
 
 ```csharp
-// ABOUTME: Marker base for per-source secret retrieval. Each implementation handles exactly one SecretSourceType.
-// ABOUTME: Returns null when the secret is not found at the source (never throws for missing).
+public sealed record ResolvedSecret(
+    string SettingKey,
+    string Value,
+    SecretSourceType Source,
+    SecretScope Scope,
+    Guid? ScopeId,
+    int Version,
+    DateTimeOffset ResolvedAt,
+    DateTimeOffset? TtlExpiresAt
+);
+```
 
-namespace Explore.Application.Contracts.Secrets;
+#### 3.4.5 `Explore.Application/Contracts/Secrets/ISecretSource.cs` (UPDATE existing)
 
+```csharp
 public interface ISecretSource
 {
     SecretSourceType SourceType { get; }
-    Task<string?> GetSecretAsync(SecretBinding binding, CancellationToken cancellationToken);
-    Task<bool> ValidateAsync(SecretBinding binding, CancellationToken cancellationToken);
+    Task<string?> GetSecretAsync(SecretBinding binding, CancellationToken ct);
+    Task<SecretValidationDetail> ValidateAsync(SecretBinding binding, CancellationToken ct);
 }
 ```
 
-#### 3.2.4 `Explore.Application/Contracts/Secrets/IInfisicalClientFactory.cs`
+#### 3.4.6 `Explore.Application/Contracts/Persistence/ISecretBindingAuditRepository.cs` (NEW)
 
 ```csharp
-// ABOUTME: Factory abstraction so the Infisical SDK client lifetime is owned by Infrastructure
-// ABOUTME: while Application code remains library-agnostic and unit-testable.
+// ABOUTME: Repository for the append-only audit trail of SecretBinding mutations.
+// ABOUTME: No update/delete methods — audit entries are immutable.
+
+namespace Explore.Application.Contracts.Persistence;
+
+public interface ISecretBindingAuditRepository
+{
+    Task AddAsync(SecretBindingAuditEntry entry, CancellationToken ct);
+    Task<IReadOnlyList<SecretBindingAuditEntry>> GetRecentAsync(string settingKey, int count, CancellationToken ct);
+}
+```
+
+#### 3.4.7 `Explore.Application/Contracts/Secrets/IAuditWriter.cs` (NEW)
+
+```csharp
+// ABOUTME: Abstraction for writing audit trail entries from the resolver layer.
+// ABOUTME: Implementation writes to ISecretBindingAuditRepository + structured log.
 
 namespace Explore.Application.Contracts.Secrets;
 
-public interface IInfisicalClientFactory
+public interface IAuditWriter
 {
-    Task<IInfisicalClient> GetClientAsync(CancellationToken cancellationToken);
-}
-
-public interface IInfisicalClient : IAsyncDisposable
-{
-    Task<string?> GetSecretRawAsync(string projectId, string environment, string folderPath, string secretName, CancellationToken cancellationToken);
+    Task WriteAsync(SecretBindingAuditEntry entry, CancellationToken ct);
 }
 ```
 
 ---
 
-### 3.3 — Per-Source Implementations (3 files)
+### 3.5 — Resilience Pipeline (Polly)
 
-All in `Explore.Secrets/Sources/`:
-
-#### 3.3.1 `EnvironmentSecretSource.cs`
+**File**: `Explore.Secrets/Resilience/SecretResiliencePipeline.cs`
 
 ```csharp
-// ABOUTME: Resolves secrets from process environment variables using the binding's EnvVarName metadata.
-// ABOUTME: Always available, no external deps; suitable for bootstrap and local dev.
+// ABOUTME: Polly resilience policies for secret source calls.
+// ABOUTME: Infisical gets retry + circuit breaker + timeout + bulkhead.
+// ABOUTME: Environment and Inline sources get timeout-only (local operations).
 
-namespace Explore.Secrets.Sources;
+namespace Explore.Secrets.Resilience;
 
-public sealed class EnvironmentSecretSource : ISecretSource
+public sealed class SecretResiliencePipeline
 {
-    public SecretSourceType SourceType => SecretSourceType.EnvironmentVariable;
+    public ResiliencePipeline<HttpResponseMessage> InfisicalPipeline { get; }
+    public ResiliencePipeline LocalSourcePipeline { get; }
 
-    public Task<string?> GetSecretAsync(SecretBinding binding, CancellationToken cancellationToken)
+    public SecretResiliencePipeline(SecretResilienceOptions options, ILogger<SecretResiliencePipeline> logger)
     {
-        ArgumentNullException.ThrowIfNull(binding);
-        if (string.IsNullOrWhiteSpace(binding.EnvironmentVariableName))
-            return Task.FromResult<string?>(null);
-        var raw = Environment.GetEnvironmentVariable(binding.EnvironmentVariableName);
-        return Task.FromResult(string.IsNullOrEmpty(raw) ? null : raw);
+        // Build Infisical pipeline: retry + circuit breaker + timeout + bulkhead
+        InfisicalPipeline = new ResiliencePipelineBuilder<HttpResponseMessage>()
+            .AddRetry(new HttpRetryStrategyOptions { ... }) // 3 retries, 500ms/1s/2s exponential backoff
+            .AddCircuitBreaker(new HttpCircuitBreakerStrategyOptions { ... }) // 5 failures → 30s open
+            .AddTimeout(TimeSpan.FromSeconds(options.InfisicalTimeoutSeconds))
+            .AddConcurrencyLimiter(options.MaxConcurrentInfisicalCalls) // 20
+            .Build();
+
+        // Build local pipeline: timeout-only
+        LocalSourcePipeline = new ResiliencePipelineBuilder()
+            .AddTimeout(TimeSpan.FromSeconds(options.LocalSourceTimeoutSeconds))
+            .Build();
     }
-
-    public async Task<bool> ValidateAsync(SecretBinding binding, CancellationToken cancellationToken)
-        => !string.IsNullOrEmpty(await GetSecretAsync(binding, cancellationToken));
 }
 ```
 
-(NOTE: confirm exact property name on `SecretBinding` — it may be `EnvVarName` or similar. Read the entity file first.)
-
-#### 3.3.2 `InlineSecretSource.cs`
-
-Uses `IDataProtectionProvider` with purpose `("Event.Secrets", "Binding", "v1")`. Reads `binding.InlineEncryptedValue` (verify exact property name), unprotects, returns plaintext.
+**File**: `Explore.Secrets/Resilience/SecretResilienceOptions.cs`
 
 ```csharp
-// ABOUTME: Resolves secrets stored inline as DataProtection-encrypted ciphertext on the SecretBinding row.
-// ABOUTME: Bootstrap secrets (DB connection) MUST NOT use this source — see SecretDefinition.AllowsInlineEncrypted.
+// ABOUTME: Configuration options for secret source resilience policies.
+// ABOUTME: Binds from SecretProvider:Resilibility configuration section.
 
-namespace Explore.Secrets.Sources;
+namespace Explore.Secrets.Resilience;
 
-public sealed class InlineSecretSource : ISecretSource
+public sealed class SecretResilienceOptions
 {
-    private readonly IDataProtector _protector;
-
-    public InlineSecretSource(IDataProtectionProvider provider)
-    {
-        ArgumentNullException.ThrowIfNull(provider);
-        _protector = provider.CreateProtector("Event.Secrets", "Binding", "v1");
-    }
-
-    public SecretSourceType SourceType => SecretSourceType.InlineEncrypted;
-
-    public Task<string?> GetSecretAsync(SecretBinding binding, CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(binding);
-        if (string.IsNullOrEmpty(binding.InlineEncryptedValue))
-            return Task.FromResult<string?>(null);
-        try
-        {
-            var plaintext = _protector.Unprotect(binding.InlineEncryptedValue);
-            return Task.FromResult<string?>(plaintext);
-        }
-        catch (CryptographicException)
-        {
-            return Task.FromResult<string?>(null);
-        }
-    }
-
-    public async Task<bool> ValidateAsync(SecretBinding binding, CancellationToken cancellationToken)
-        => !string.IsNullOrEmpty(await GetSecretAsync(binding, cancellationToken));
+    public int RetryCount { get; set; } = 3;
+    public double RetryBaseDelaySeconds { get; set; } = 0.5;
+    public int CircuitBreakerFailureCount { get; set; } = 5;
+    public double CircuitBreakerOpenDurationSeconds { get; set; } = 30;
+    public int InfisicalTimeoutSeconds { get; set; } = 10;
+    public int LocalSourceTimeoutSeconds { get; set; } = 5;
+    public int MaxConcurrentInfisicalCalls { get; set; } = 20;
 }
 ```
 
-#### 3.3.3 `InfisicalSecretSource.cs`
+**NuGet requirement**: `Microsoft.Extensions.Http.Polly` (or `Polly` + `Polly.Extensions.Http`) — must be added to `Explore.Secrets.csproj`.
 
-Reads `binding.InfisicalProjectId`, `binding.InfisicalEnvironment`, `binding.InfisicalFolderPath`, `binding.InfisicalSecretName` (verify names). Resolves through `IInfisicalClientFactory.GetClientAsync()`.
+---
 
+### 3.6 — Per-Source Implementations (Updated)
+
+All source implementations update to:
+1. Use Polly policies from `SecretResiliencePipeline`
+2. Return `SecretValidationDetail` from `ValidateAsync`
+3. Emit timing metrics to `SecretResolverMetrics`
+
+#### 3.6.1 `EnvironmentSecretSource.cs`
+- Wrapped in `LocalResiliencePipeline` (timeout-only)
+- `ValidateAsync` returns `SecretValidationDetail(SourceReachable, CredentialValid, null)` when var is set, or `SecretValidationDetail(Success, SourceReachable, null)` when missing
+- `GetSecretAsync` emits `resolve.duration_ms` via metrics
+
+#### 3.6.2 `InlineSecretSource.cs`
+- Wrapped in `LocalResiliencePipeline` (timeout-only)
+- `ValidateAsync` returns `SecretValidationDetail(Success, CredentialValid, null)` on roundtrip, or `(Failure, CredentialInvalid, exc.Message)` on CryptographicException
+
+#### 3.6.3 `InfisicalSecretSource.cs`
+- Wrapped in `InfisicalResiliencePipeline` (retry + circuit breaker + timeout + bulkhead)
+- `GetSecretAsync` returns null on source error after retry exhaustion
+- `ValidateAsync` distinguishes `SourceReachable`/`SourceUnreachable`/`CredentialValid`/`CredentialInvalid`
+- Circuit breaker state exposed for health check
+
+---
+
+### 3.7 — Core Resolver (Major Update)
+
+**File**: `Explore.Secrets/Services/SecretResolver.cs` (already on disk, needs complete rewrite)
+
+Key changes:
+- **HybridCache** replaces `IMemoryCache`
+- **Status = Active filter**: only resolve Active bindings
+- **Version-aware cache key**: includes binding version
+- **Tag-based invalidation**: `HybridCache.RemoveByTagAsync($"secret-binding:{settingKey}:{scope}:{scopeId}")`
+- **ResolveRequiredAsync**: throws `SecretNotConfiguredException` on null
+- **ValidateAsync**: returns `SecretValidationDetail`
+- **L2 graceful fallback**: if Redis unavailable, HybridCache falls back to L1
+
+---
+
+### 3.8 — Auditing Decorator (Major Update)
+
+**File**: `Explore.Secrets/Services/AuditingSecretResolverDecorator.cs` (already on disk, needs update)
+
+Key changes:
+- **Write operations**: every create/update/delete/validate persists `SecretBindingAuditEntry` via `IAuditWriter`
+- **Read operations**: 1% sampled (configurable) → structured log only
+- **Audit entries include**: `IpAddress` from `IHttpContextAccessor` (when available)
+- **Never logs/values**: only key + source + scope + outcome
+
+**File**: `Explore.Secrets/Services/SecretBindingAuditWriter.cs` (NEW)
+
+Implements `IAuditWriter`:
+- Persists `SecretBindingAuditEntry` via `ISecretBindingAuditRepository`
+- Also emits structured log (for observability)
+
+---
+
+### 3.9 — Health Check (Major Update)
+
+**File**: `Explore.Secrets/HealthChecks/SecretResolverHealthCheck.cs` (already on disk, needs update)
+
+Key changes:
+- Returns `Dictionary<string, HealthStatus>` per source type
+- Infisical health includes circuit breaker state
+- Degraded conditions: binding with `TtlExpiresAt < DateTime.UtcNow`, binding with `LastValidationResult = Failure` > 1 hour
+- Overall: Healthy if all healthy, Degraded if any degraded, Unhealthy if any unhealthy
+
+---
+
+### 3.10 — Tenant Isolation Query Filter
+
+**File**: `Explore.Persistence/Configurations/Entities/SecretBindingConfiguration.cs` (UPDATE committed file)
+
+Add query filter:
 ```csharp
-// ABOUTME: Resolves secrets via the Infisical Universal Auth API using the binding's project/env/folder/name metadata.
-// ABOUTME: Returns null on missing secret; logs and returns null on transient errors (resolver may fall through to cache).
-
-namespace Explore.Secrets.Sources;
-
-public sealed class InfisicalSecretSource : ISecretSource
-{
-    private readonly IInfisicalClientFactory _clientFactory;
-    private readonly ILogger<InfisicalSecretSource> _logger;
-
-    public InfisicalSecretSource(IInfisicalClientFactory clientFactory, ILogger<InfisicalSecretSource> logger) { ... }
-
-    public SecretSourceType SourceType => SecretSourceType.Infisical;
-
-    public async Task<string?> GetSecretAsync(SecretBinding binding, CancellationToken cancellationToken) { ... }
-    public async Task<bool> ValidateAsync(SecretBinding binding, CancellationToken cancellationToken) { ... }
-}
+.HasQueryFilter("TenantSecretIsolation", e =>
+    e.Scope == SecretScope.Instance ||
+    e.ScopeId == _tenantContext.CurrentTenantId)
 ```
 
----
+Where `ITenantContext` provides the current tenant ID from the request pipeline.
 
-### 3.4 — Infisical Client Implementation (1 file)
-
-**Path**: `Explore.Secrets/Infrastructure/InfisicalClientFactory.cs`
-
-Wraps `Infisical.Sdk.InfisicalSdk`. Uses `IOptions<InfisicalOptions>` for clientId/clientSecret/siteUrl. Caches authenticated client. Defensive disposal pattern (the SDK is NOT IDisposable directly per Phase 1 research):
-
-```csharp
-if (_client is IAsyncDisposable a) await a.DisposeAsync();
-else if (_client is IDisposable d) d.Dispose();
-```
-
-Also create `Explore.Secrets/Infrastructure/InfisicalOptions.cs`:
-
-```csharp
-public sealed class InfisicalOptions
-{
-    public string? SiteUrl { get; set; }
-    public string? ClientId { get; set; }
-    public string? ClientSecret { get; set; }
-}
-```
+**Architecture test**: every `IgnoreQueryFilters()` call on `SecretBinding` must be in a method gated by `[Authorize]` + Cerbos `secret_binding:manage_instance`.
 
 ---
 
-### 3.5 — Resolver + Decorators (3 files)
+### 3.11 — DI Registration (Major Update)
 
-#### 3.5.1 `Explore.Secrets/Services/SecretResolver.cs`
+**File**: `Explore.Secrets/Extensions/SecretResolutionServiceCollectionExtensions.cs` (already on disk, needs major update)
 
-Core dispatch. Composition: `IEnumerable<ISecretSource> sources`, `ISecretBindingRepository bindings`, `IMemoryCache cache`, `ILogger`. Uses 5-min TTL keyed by `($"sec:{secretKeyId}:{tenantId ?? Guid.Empty}")`.
+Add:
+- `services.Configure<SecretResilienceOptions>(configuration.GetSection("SecretProvider:Resilience"))`
+- `services.AddSingleton<SecretResiliencePipeline>()`
+- `services.AddHybridCache()` (or verify already registered in `Program.cs`)
+- `services.AddScoped<IAuditWriter, SecretBindingAuditWriter>()`
+- `services.AddScoped<ISecretBindingAuditRepository, SecretBindingAuditRepository>()`
+- Polly pipeline registration per source type
+- Tenant isolation: `ITenantContext` registration
 
-Algorithm:
-1. Look up binding in repo by (secretKeyId, tenantId scope).
-2. If no binding → return null (NEVER fall through to another source).
-3. Find the source whose `SourceType == binding.SourceType` from the registered `IEnumerable<ISecretSource>`.
-4. If no matching source registered → log error, return null.
-5. Call `source.GetSecretAsync(binding, ct)`.
-6. Cache result (only when non-null) with 5-min TTL.
-7. Return `ResolvedSecret(...)`.
-
-`InvalidateAsync` → `cache.Remove(key)`.
-
-#### 3.5.2 `Explore.Secrets/Services/AuditingSecretResolverDecorator.cs`
-
-Decorator wrapping `ISecretResolver`. Sample reads (e.g., 1 in 50 via `RandomNumberGenerator`) emit a structured log + an `secret_binding_audit_logs` row (or just structured log for v1; defer DB audit to Phase 5 if it adds scope). For v1, log to ILogger + emit OpenTelemetry counter. NO secret value in the log — only `(secretKeyId, source, tenantId, success)`.
-
-#### 3.5.3 `Explore.Secrets/Services/CompositeSecretResolverRegistration.cs`
-
-Static extension class with `AddSecretResolver(this IServiceCollection services)` that:
-- Registers `EnvironmentSecretSource`, `InlineSecretSource`, `InfisicalSecretSource` as `ISecretSource`
-- Registers `InfisicalClientFactory` as singleton `IInfisicalClientFactory`
-- Registers concrete `SecretResolver`
-- Wraps with `AuditingSecretResolverDecorator` as the public `ISecretResolver`
-- Configures `services.Configure<InfisicalOptions>(configuration.GetSection("SecretProvider:Infisical"))`
-
-Wire from `Program.cs` (API + Blazor).
+Wire in `Program.cs` (API + Blazor).
 
 ---
 
-### 3.6 — Observability (2 files)
-
-#### 3.6.1 `Explore.Secrets/Observability/SecretResolverMetrics.cs`
-
-Static class exposing OpenTelemetry `Meter` named `Event.Secrets`. Counters:
-- `secrets.resolve.success` (tags: source, has_tenant)
-- `secrets.resolve.miss` (tags: source, has_tenant)
-- `secrets.resolve.error` (tags: source, error_kind)
-- `secrets.cache.hit` (tags: scope)
-- `secrets.cache.miss` (tags: scope)
-
-Histogram: `secrets.resolve.duration_ms` (tags: source).
-
-`SecretResolver` and `AuditingSecretResolverDecorator` consume these.
-
-#### 3.6.2 `Explore.Secrets/HealthChecks/SecretResolverHealthCheck.cs`
-
-`IHealthCheck`. Iterates registered `IEnumerable<ISecretSource>`. For each, attempts a lightweight ping (e.g., `EnvironmentSecretSource` → no-op success; `InfisicalSecretSource` → `await _clientFactory.GetClientAsync()`; `InlineSecretSource` → confirms `_protector` non-null). Returns `HealthCheckResult.Degraded` if any source fails (NOT Unhealthy — secrets may be intentionally absent).
-
-Wire in `Program.cs`: `services.AddHealthChecks().AddCheck<SecretResolverHealthCheck>("secret-resolver", tags: ["secrets", "ready"]);`
-
----
-
-### 3.7 — DTOs + Validators (5 files)
+### 3.12 — DTOs + Validators
 
 In `Explore.Application/DTOs/SecretBindings/`:
 
-#### 3.7.1 `SecretBindingDto.cs` (read-only detail DTO)
-
-Fields: `Id`, `SecretKeyId`, `SecretKeyName` (registry lookup), `Scope`, `ScopeId`, `SourceType`, `EnvironmentVariableName`, `InfisicalProjectId/Environment/FolderPath/SecretName`, `LastValidationResult`, `LastValidatedAt`, `CreatedAt`, `UpdatedAt`. **NEVER includes the secret value.**
-
-#### 3.7.2 `SecretBindingListDto.cs`
-
-Subset for collection display: `Id`, `SecretKeyId`, `SecretKeyName`, `Scope`, `SourceType`, `LastValidationResult`, `LastValidatedAt`, `UpdatedAt`.
-
-#### 3.7.3 `CreateSecretBindingDto.cs`
-
-Mutation input: `SecretKeyId`, `Scope`, `ScopeId?`, `SourceType`, `EnvironmentVariableName?`, `InfisicalProjectId?/Environment?/FolderPath?/SecretName?`, `InlineSecretValue?` (plaintext — handler protects + discards).
-
-#### 3.7.4 `UpdateSecretBindingDto.cs`
-
-Same as Create plus `Id`. Used to switch sources or update metadata.
-
-#### 3.7.5 `Validators/CreateSecretBindingDtoValidator.cs` and `UpdateSecretBindingDtoValidator.cs`
-
-FluentValidation. Rules:
-- `SecretKeyId` must exist in `SecretDefinitionRegistry`.
-- `SourceType` must be in `definition.AllowedSources`.
-- `Scope` must be in `definition.AllowedScopes`.
-- `ScopeId` required when `Scope == Tenant`, must be null when `Scope == Instance`.
-- Per-source field validation:
-  - `Infisical`: project/env/secretName required, folderPath optional.
-  - `EnvironmentVariable`: `EnvironmentVariableName` required.
-  - `InlineEncrypted`: `InlineSecretValue` required AND `definition.AllowsInlineEncrypted == true` (bootstrap secrets fail here).
-- Inject `ISecretBindingRepository` (manually instantiated in handler) to check uniqueness against the filtered indexes.
+- `SecretBindingDto.cs` — includes `Version`, `Status`, `TtlExpiresAt`, `LastValidationCategory`
+- `SecretBindingListDto.cs` — includes `Version`, `Status`
+- `CreateSecretBindingDto.cs` — `SourceType`, metadata fields, `InlineSecretValue?`
+- `UpdateSecretBindingDto.cs` — includes `InlineSecretValue?` for re-encryption on update
+- `PromoteSecretBindingDto.cs` — binding ID only (promotion is explicit action)
+- `ValidateSecretBindingDto.cs` — binding ID
+- Validators enforce `SecretDefinitionRegistry` constraints + `TtlExpiresAt` null for `InlineEncrypted`
 
 ---
 
-### 3.8 — AutoMapper Profile (1 file)
-
-**Path**: `Explore.Application/Mappings/SecretBindingProfile.cs` (or extend existing `MappingProfile.cs` — read first to know which).
-
-Maps:
-- `SecretBinding` → `SecretBindingDto` (looks up `SecretKeyName` from registry — use `AfterMap` or custom resolver)
-- `SecretBinding` → `SecretBindingListDto`
-- `CreateSecretBindingDto` → factory call (do not map directly; handler uses `SecretBinding.Create(...)` factory)
-
----
-
-### 3.9 — CQRS Commands (4 commands × 2 files = 8 files)
+### 3.13 — CQRS Commands (with audit + version handling)
 
 In `Explore.Application/Features/SecretBindings/`:
 
-#### 3.9.1 Folder structure
-```
-Handlers/Commands/
-  CreateSecretBindingCommandHandler.cs
-  UpdateSecretBindingCommandHandler.cs
-  DeleteSecretBindingCommandHandler.cs
-  ValidateSecretBindingCommandHandler.cs
-Handlers/Queries/
-  GetSecretBindingListRequestHandler.cs
-  GetSecretBindingDetailsRequestHandler.cs
-  GetAvailableSecretsForOnboardingRequestHandler.cs
-Requests/Commands/
-  CreateSecretBindingCommand.cs
-  UpdateSecretBindingCommand.cs
-  DeleteSecretBindingCommand.cs
-  ValidateSecretBindingCommand.cs
-Requests/Queries/
-  GetSecretBindingListRequest.cs
-  GetSecretBindingDetailsRequest.cs
-  GetAvailableSecretsForOnboardingRequest.cs
-```
+- `CreateSecretBindingCommand` → factory call + audit entry (Created) + domain event
+- `UpdateSecretBindingCommand` → detect source-switch + version bump + audit (Updated/SourceSwitched) + domain event
+- `DeleteSecretBindingCommand` → hard delete + audit (Deleted) + domain event
+- `ValidateSecretBindingCommand` → call `ISecretSource.ValidateAsync` + `RecordValidation` with category + audit (Validated)
+- `PromoteSecretBindingCommand` → Status: Pending→Active, Active→Previous, version++ + audit (VersionPromoted) + domain event + cache invalidation
 
-#### 3.9.2 Command shape (template `CreateCategoryCommand.cs`)
-
-```csharp
-[AuthorizeResource("secret_binding", AuthorizationActions.Create)]
-public class CreateSecretBindingCommand : IRequest<BaseCommandResponse<Guid>>, ISecureRequest
-{
-    public required CreateSecretBindingDto Dto { get; set; }
-    string? ISecureRequest.ResourceId => null;
-    IDictionary<string, object>? ISecureRequest.ResourceAttributes =>
-        Dto.Scope == SecretScope.Tenant && Dto.ScopeId.HasValue
-            ? new Dictionary<string, object> { ["tenantId"] = Dto.ScopeId.Value.ToString() }
-            : null;
-}
-```
-
-#### 3.9.3 `CreateSecretBindingCommandHandler.cs` algorithm
-
-1. Manual validate: `var validator = new CreateSecretBindingDtoValidator(_repo); var result = await validator.ValidateAsync(request.Dto, ct);` — on failure, return failure response with `Errors`.
-2. Lookup definition: `var def = SecretDefinitionRegistry.Get(request.Dto.SecretKeyId);` — if null, return failure with `FailureCode = "SECRET_KEY_UNKNOWN"`.
-3. Encrypt inline secret if `SourceType == InlineEncrypted`: `var protector = _dataProtectionProvider.CreateProtector("Event.Secrets","Binding","v1"); var ciphertext = protector.Protect(request.Dto.InlineSecretValue!);`
-4. Call factory: `var binding = SecretBinding.Create(...)` passing all metadata. Factory enforces invariants from registry.
-5. `_repo.Create(binding); await _unitOfWork.SaveAsync(ct);`
-6. Publish `SecretBindingUpdatedEvent(binding.Id, ..., ChangeKind.Created, DateTimeOffset.UtcNow)` via MediatR.
-7. Return `new BaseCommandResponse<Guid> { Success = true, Id = binding.Id, Message = "Secret binding created." }`.
-
-#### 3.9.4 `UpdateSecretBindingCommandHandler.cs`
-
-Similar but loads existing binding, calls `binding.Switch(...)` factory method (or property setters via factory), publishes `ChangeKind.Updated` or `ChangeKind.SourceSwitched` based on whether `SourceType` changed.
-
-#### 3.9.5 `DeleteSecretBindingCommandHandler.cs`
-
-Loads binding, `_repo.Delete(binding)`, saves, publishes `ChangeKind.Deleted`. Returns `BaseCommandResponse<bool>`.
-
-#### 3.9.6 `ValidateSecretBindingCommandHandler.cs`
-
-Loads binding, finds matching `ISecretSource` from injected `IEnumerable<ISecretSource>`, calls `source.ValidateAsync(binding, ct)`. Updates `binding.RecordValidation(success ? Success : Failure)`. Saves. Returns response with success flag + message.
+All handlers:
+- Publish `SecretBindingChangedNotification` via `IMediator.Publish`
+- Write `SecretBindingAuditEntry` via `IAuditWriter`
+- Use `SecretDefinitionRegistry` for validation
+- Validators manually instantiated (no DI)
 
 ---
 
-### 3.10 — CQRS Queries (3 queries × 2 files = 6 files)
+### 3.14 — CQRS Queries
 
-#### 3.10.1 `GetSecretBindingListRequest.cs`
+- `GetSecretBindingListRequest` — paged, filtered by scope/scopeId, includes version/status/TTL
+- `GetSecretBindingDetailsRequest` — single binding by ID, includes audit history (last 10 entries)
+- `GetAvailableSecretsForOnboardingRequest` — enumerates registry + binding state
 
-```csharp
-public class GetSecretBindingListRequest : IRequest<PaginatedResult<SecretBindingListDto>>
-{
-    public int Page { get; set; } = 1;
-    public int PageSize { get; set; } = 20;
-    public SecretScope? ScopeFilter { get; set; }
-    public Guid? ScopeIdFilter { get; set; }
-}
-```
-
-Handler: pages through repo, maps to DTO, includes registry-derived `SecretKeyName`. Uses HybridCache with key `secret_bindings:list:{scopeFilter}:{scopeIdFilter}:{page}:{pageSize}` 30-sec TTL.
-
-#### 3.10.2 `GetSecretBindingDetailsRequest.cs`
-
-Loads single binding by Id. Returns `SecretBindingDto?` (null if not found — controller maps to 404).
-
-#### 3.10.3 `GetAvailableSecretsForOnboardingRequest.cs`
-
-Returns `IReadOnlyList<AvailableSecretDto>` enumerated from `SecretDefinitionRegistry.GetAll()` filtered by `def.AllowedScopes` and current request's scope context. Each item: `SecretKeyId`, `SecretKeyName`, `Description`, `IsBootstrap`, `AllowedSources`, `AllowedScopes`, `IsBound` (true if a binding exists for this key+scope), `CurrentSourceType?`.
-
-This drives the Onboarding UI's "what secrets need configuring" panel.
+Instance admin queries use `.IgnoreQueryFilters()` for cross-tenant visibility.
 
 ---
 
-### 3.11 — Notification Handlers (2 files)
+### 3.15 — Notification Handlers
 
-In `Explore.Application/Features/SecretBindings/Handlers/Notifications/`:
-
-#### 3.11.1 `InvalidateSecretCacheOnUpdatedHandler.cs`
-
-```csharp
-// ABOUTME: Invalidates the in-memory ISecretResolver cache when a SecretBinding changes.
-// ABOUTME: Listens to SecretBindingUpdatedEvent.
-
-public sealed class InvalidateSecretCacheOnUpdatedHandler : INotificationHandler<SecretBindingUpdatedEvent>
-{
-    private readonly ISecretResolver _resolver;
-    public InvalidateSecretCacheOnUpdatedHandler(ISecretResolver resolver) { _resolver = resolver; }
-    public async Task Handle(SecretBindingUpdatedEvent notification, CancellationToken cancellationToken)
-    {
-        var tenantId = notification.Scope == SecretScope.Tenant ? notification.ScopeId : null;
-        await _resolver.InvalidateAsync(notification.SecretKeyId, tenantId, cancellationToken);
-    }
-}
-```
-
-NOTE: `SecretBindingUpdatedEvent` must implement `INotification` (MediatR) — adjust the record to inherit `INotification`. (Re-edit the domain file in section 3.1 to add `: INotification` if MediatR is referenced from Domain — IF NOT, create a thin wrapper notification in Application layer instead. Confirm clean-arch rule: Domain has zero deps. **Decision: create wrapper in Application.**)
-
-So actually:
-
-- Domain stays pure: `SecretBindingUpdatedEvent` is a plain record in Domain.
-- Application has `Explore.Application/Notifications/Secrets/SecretBindingChangedNotification.cs` implementing `INotification`, wrapping the domain event.
-- Command handlers publish the wrapper.
-
-Adjust 3.1 accordingly: keep domain event as plain record. Add wrapper file:
-
-**Path**: `Explore.Application/Notifications/Secrets/SecretBindingChangedNotification.cs`
-
-```csharp
-public sealed record SecretBindingChangedNotification(SecretBindingUpdatedEvent Event) : INotification;
-```
-
-#### 3.11.2 `RefreshKeycloakSchemeOnAuthSecretUpdatedHandler.cs`
-
-Listens to `SecretBindingChangedNotification`. If `notification.Event.SecretKeyId` corresponds to a Keycloak/auth-related secret (check definition.Category or hardcoded set), calls `IDynamicAuthSchemeManager.RefreshSchemesAsync()`. **Verify** if `IDynamicAuthSchemeManager` exists in current code — Phase 4 plan mentions it. If not yet present, **stub this handler** to log a warning "Keycloak scheme refresh requested for {SecretKey}, awaiting Phase 4 IDynamicAuthSchemeManager wire-up." Don't block Phase 3 on Phase 4 work.
+- `InvalidateSecretCacheOnUpdatedHandler` → `ISecretResolver.InvalidateAsync` (tag-based HybridCache invalidation)
+- `SecretBindingAuditPersistenceHandler` → persists `SecretBindingAuditEntry` via `IAuditWriter`
+- `KeycloakSchemeRefreshHandler` → stub (logs warning, awaits Phase 4)
 
 ---
 
-### 3.12 — Authorization Resource Descriptor (1 modification)
+### 3.16 — Controller, HATEOAS, Cerbos
 
-Edit `Explore.Application/Authorization/ResourceDescriptors.cs` to add:
-
-```csharp
-public const string SecretBinding = "secret_binding";
-```
-
-Verify the file's existing pattern first.
+- `SecretBindingsController` with all endpoints including `POST /{id}/promote`
+- Route names in `RouteNames.cs`
+- `SecretBindingDetailLinkPolicy` + `SecretBindingCollectionLinkPolicy`
+- `SecretBindingResourceAssembler`
+- Cerbos policy: `secret_binding.yaml` with `view`, `create`, `update`, `delete`, `validate`, `promote` actions
 
 ---
 
-### 3.13 — RouteNames (1 modification)
+### 3.17 — Tests (~60-70 new tests)
 
-Edit `Explore.API/Hateoas/RouteNames.cs`. Add a new region:
+Critical test categories:
 
-```csharp
-#region Secret Binding Routes
-public const string GetSecretBindings = "GetSecretBindings";
-public const string GetSecretBindingById = "GetSecretBindingById";
-public const string CreateSecretBinding = "CreateSecretBinding";
-public const string UpdateSecretBinding = "UpdateSecretBinding";
-public const string DeleteSecretBinding = "DeleteSecretBinding";
-public const string ValidateSecretBinding = "ValidateSecretBinding";
-public const string GetAvailableSecretsForOnboarding = "GetAvailableSecretsForOnboarding";
-#endregion
-```
-
----
-
-### 3.14 — Controller (1 file)
-
-**Path**: `Explore.API/Controllers/SecretBindingsController.cs`
-
-Template: `CategoryController.cs` exactly. Key differences:
-
-- ALL endpoints `[Authorize]` (no `[AllowAnonymous]` — admin only). Cerbos enforces actual permission via pipeline behavior.
-- Constructor injects: `IMediator`, `ILogger<SecretBindingsController>`, `IResourceAssembler<SecretBindingDto, SecretBindingListDto>`.
-- Routes:
-  - `GET /api/SecretBindings` → list (output cache `ListData`)
-  - `GET /api/SecretBindings/{id:guid}` → detail (output cache `DetailData`)
-  - `GET /api/SecretBindings/available-for-onboarding` → `IReadOnlyList<AvailableSecretDto>` (no HAL wrapping needed — flat list)
-  - `POST /api/SecretBindings` → create, returns `CreatedAtRoute(RouteNames.GetSecretBindingById, ...)`
-  - `PUT /api/SecretBindings/{id:guid}` → update, validates id match
-  - `POST /api/SecretBindings/{id:guid}/validate` → validate (write op because it updates `LastValidatedAt`)
-  - `DELETE /api/SecretBindings/{id:guid}` → delete, returns `NoContent()`
-- All endpoints have `[EndpointSummary]` + `[EndpointDescription]` for OpenAPI.
-- Output cache: `[OutputCache(PolicyName = "ListData")]` on list, `"DetailData"` on detail. Mutation endpoints invalidate via output cache eviction tag (use `EvictByTagAsync` in handlers OR cache version key).
+1. **No-fallback**: binding with `SourceType=EnvironmentVariable` never triggers Infisical SDK calls
+2. **No-leak**: API responses never contain plaintext/ciphertext/environment variable values
+3. **Resilience**: Infisical returns null after 3 retries; circuit breaker opens; env-var/inline resolve without retry overhead
+4. **Audit trail**: every create/update/delete/validate/publish/persist produces a `SecretBindingAuditEntry` with correct action
+5. **Version rotation lifecycle**: create Pending → validate → promote → Active version changes → cache invalidated → Previous still accessible during grace period
+6. **Tenant isolation**: tenant A cannot resolve tenant B's secrets via `ISecretResolver`; instance admin CAN see all bindings via admin endpoint with `IgnoreQueryFilters()`
+7. **Structured validation**: `ValidateAsync` returns `SecretValidationDetail` with `Category` and `DiagnosticMessage`
+8. **Per-source health**: health check returns individual source statuses; Infisical unreachable → Degraded (NOT Unhealthy)
+9. **HybridCache**: verify tag-based invalidation propagates
+10. **Architecture test**: `Domain.Secrets` has no Infisical/DataProtection/Polly refs
+11. **Architecture test**: every `IgnoreQueryFilters()` on `SecretBinding` is Cerbos-gated
+12. **HybridCache fallback**: Redis unavailable → L1-only resolution still works
 
 ---
 
-### 3.15 — HATEOAS Policy + Assembler (2 files)
-
-#### 3.15.1 `Explore.API/Hateoas/Policies/SecretBindingLinkPolicy.cs`
-
-Two classes (per template):
-- `SecretBindingDetailLinkPolicy : ILinkPolicy<SecretBindingDto>` — yields self, edit, delete, validate links with `RequirePermission(AuthorizationActions.Update/Delete, ResourceDescriptors.SecretBinding, dto)`.
-- `SecretBindingCollectionLinkPolicy : ICollectionLinkPolicy<SecretBindingListDto>` — yields self, create link with `RequirePermission(AuthorizationActions.Create, typeof(SecretBindingDto), ResourceDescriptors.SecretBinding)`, item-level edit/delete links.
-
-#### 3.15.2 `Explore.API/Hateoas/Assemblers/SecretBindingResourceAssembler.cs`
-
-19-line stub matching `CategoryResourceAssembler.cs`:
-
-```csharp
-public sealed class SecretBindingResourceAssembler : ResourceAssemblerBase<SecretBindingDto, SecretBindingListDto>
-{
-    public SecretBindingResourceAssembler(
-        IHateoasLinkGenerator linkGenerator,
-        ILinkPolicy<SecretBindingDto> detailLinkPolicy,
-        ICollectionLinkPolicy<SecretBindingListDto> collectionLinkPolicy)
-        : base(linkGenerator, detailLinkPolicy, collectionLinkPolicy) { }
-}
-```
-
-Wire in `Program.cs` (find the existing block where `CategoryResourceAssembler` and link policies register):
-
-```csharp
-services.AddScoped<ILinkPolicy<SecretBindingDto>, SecretBindingDetailLinkPolicy>();
-services.AddScoped<ICollectionLinkPolicy<SecretBindingListDto>, SecretBindingCollectionLinkPolicy>();
-services.AddScoped<IResourceAssembler<SecretBindingDto, SecretBindingListDto>, SecretBindingResourceAssembler>();
-```
-
----
-
-### 3.16 — Cerbos Policy (1 file)
-
-**Path**: `cerbos/policies/secret_binding.yaml`
-
-```yaml
-# ABOUTME: Authorization policy for SecretBinding admin resource.
-# ABOUTME: Instance admins can manage all bindings; tenant admins can only manage tenant-scoped bindings for their tenant.
-apiVersion: api.cerbos.dev/v1
-resourcePolicy:
-  resource: "secret_binding"
-  version: "default"
-  importDerivedRoles:
-    - explore_admin_roles
-  schemas:
-    principalSchema:
-      ref: cerbos:///principal.json
-    resourceSchema:
-      ref: cerbos:///secret_binding.json
-  rules:
-    - actions: ["*"]
-      effect: EFFECT_ALLOW
-      derivedRoles: [instance_admin]
-    - actions: ["view", "create", "update", "delete", "validate"]
-      effect: EFFECT_ALLOW
-      derivedRoles: [tenant_admin]
-      condition:
-        match:
-          expr: request.resource.attr.tenantId == request.principal.attr.tenantId
-    # No role below tenant_admin gets any access to secret bindings.
-```
-
-Also create `cerbos/schemas/secret_binding.json` if the existing schemas folder pattern requires per-resource JSON schemas (check first by `ls cerbos/schemas/`).
-
----
-
-### 3.17 — DI Wiring (3 modifications)
-
-#### 3.17.1 `Explore.Secrets/Extensions/SecretsServiceCollectionExtensions.cs` (new file)
-
-```csharp
-public static class SecretsServiceCollectionExtensions
-{
-    public static IServiceCollection AddSecretResolution(this IServiceCollection services, IConfiguration configuration)
-    {
-        services.Configure<InfisicalOptions>(configuration.GetSection("SecretProvider:Infisical"));
-
-        services.AddSingleton<IInfisicalClientFactory, InfisicalClientFactory>();
-
-        services.AddScoped<ISecretSource, EnvironmentSecretSource>();
-        services.AddScoped<ISecretSource, InlineSecretSource>();
-        services.AddScoped<ISecretSource, InfisicalSecretSource>();
-
-        services.AddScoped<SecretResolver>();
-        services.AddScoped<ISecretResolver>(sp =>
-            new AuditingSecretResolverDecorator(
-                sp.GetRequiredService<SecretResolver>(),
-                sp.GetRequiredService<ILogger<AuditingSecretResolverDecorator>>()));
-
-        services.AddMemoryCache();
-
-        services.AddHealthChecks()
-            .AddCheck<SecretResolverHealthCheck>("secret-resolver", tags: new[] { "secrets", "ready" });
-
-        return services;
-    }
-}
-```
-
-#### 3.17.2 Edit `Explore.API/Program.cs`
-
-Add `services.AddSecretResolution(builder.Configuration);` near the existing `AddExploreDataProtection` call. Also register the SecretBinding HATEOAS triplet.
-
-#### 3.17.3 Edit `Explore.Blazor/Extensions/ServiceRegistrationExtensions.cs`
-
-Add the same `services.AddSecretResolution(builder.Configuration);` after the existing data protection wiring.
-
----
-
-### 3.18 — Tests
-
-Add tests in this order. Target: ~40-50 new tests total.
-
-#### 3.18.1 `Explore.Secrets.UnitTests/Sources/EnvironmentSecretSourceTests.cs` (~6 tests)
-- Returns null when EnvVarName empty
-- Returns null when env var missing
-- Returns value when env var set
-- Validate true when value present
-- Validate false when missing
-- SourceType == EnvironmentVariable
-
-#### 3.18.2 `Explore.Secrets.UnitTests/Sources/InlineSecretSourceTests.cs` (~5 tests)
-- Returns null when InlineEncryptedValue empty
-- Returns null when ciphertext invalid (CryptographicException)
-- Returns plaintext after Protect roundtrip
-- Validate true after roundtrip
-- SourceType == InlineEncrypted
-
-#### 3.18.3 `Explore.Secrets.UnitTests/Sources/InfisicalSecretSourceTests.cs` (~5 tests)
-Use mock `IInfisicalClientFactory` returning fake `IInfisicalClient`.
-- Resolves via client factory
-- Returns null when client returns null
-- Catches client exceptions, returns null
-- Validate uses GetSecret success
-- SourceType == Infisical
-
-#### 3.18.4 `Explore.Secrets.UnitTests/Services/SecretResolverTests.cs` (~10 tests) — **CRITICAL**
-- Returns null when binding not found (NEVER falls through)
-- Returns null when no source registered for binding's SourceType (NEVER falls through)
-- Dispatches to correct source by SourceType
-- Caches non-null results 5 min
-- Does NOT cache null results
-- InvalidateAsync removes cache entry
-- Different tenantIds use different cache keys
-- Returns ResolvedSecret with correct provenance
-- Logs error when source missing
-- **No-fallback test**: when binding says Infisical but Infisical source returns null, resolver returns null (does NOT try Environment or Inline)
-
-#### 3.18.5 `Explore.Secrets.UnitTests/Services/AuditingSecretResolverDecoratorTests.cs` (~4 tests)
-- Forwards calls to inner resolver
-- **Never logs the secret value** (regex check on log output)
-- Increments metrics on success
-- Increments metrics on miss
-
-#### 3.18.6 `Event.Application.UnitTests/Features/SecretBindings/Commands/CreateSecretBindingCommandHandlerTests.cs` (~8 tests)
-- Validation failure returns BaseCommandResponse with Errors
-- Unknown SecretKeyId returns FailureCode=SECRET_KEY_UNKNOWN
-- Bootstrap secret + InlineEncrypted returns failure (factory throws)
-- Successful create returns Success=true with new Id
-- Publishes SecretBindingChangedNotification
-- Inline secret encrypted via DataProtection (cannot read plaintext from saved entity)
-- Tenant-scoped binding requires ScopeId
-- Instance-scoped binding rejects ScopeId
-
-#### 3.18.7 `Event.Application.UnitTests/Features/SecretBindings/Queries/GetAvailableSecretsForOnboardingRequestHandlerTests.cs` (~3 tests)
-- Returns all registry entries when no bindings exist
-- Marks IsBound=true for keys with existing bindings
-- Filters by scope correctly
-
-#### 3.18.8 `Event.Application.UnitTests/Notifications/InvalidateSecretCacheOnUpdatedHandlerTests.cs` (~2 tests)
-- Calls resolver.InvalidateAsync with correct key+tenantId
-- Tenant scope passes ScopeId; Instance scope passes null
-
-#### 3.18.9 `Event.Architecture.Tests/SecretsArchitectureTests.cs` (~3 tests)
-- Domain.Secrets has no Infisical/DataProtection refs
-- Application.Contracts.Secrets has no Persistence refs
-- ISecretSource implementations all in Explore.Secrets namespace
-
-#### 3.18.10 (DEFER to Phase 3.5 if time-pressed) `Event.API.IntegrationTests/Features/SecretBindings/SecretBindingsControllerTests.cs`
-- Anonymous GET returns 401
-- Admin GET list returns paginated HAL collection
-- Admin POST creates binding
-- Admin POST validate returns success after binding creation
-- Non-admin user gets 403
-
----
-
-### 3.19 — Verification (MANDATORY before commit)
-
-Run in this exact order:
+### 3.18 — Verification (MANDATORY before commit)
 
 ```bash
 dotnet build --configuration Release --verbosity quiet
@@ -795,7 +712,7 @@ dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj -
 dotnet test --project Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --verbosity quiet
 ```
 
-**Acceptance gate**: All pass + new tests count ≥ 1,345 (1,305 baseline + ~40 new).
+**Acceptance gate**: All pass + new test count ≥ 1,365 (1,305 baseline + ~60 new).
 
 If integration tests added:
 ```bash
@@ -804,74 +721,15 @@ dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.cspr
 
 ---
 
-### 3.20 — Commit
+### 3.19 — Commit
 
-```bash
-git add \
-  Explore.Domain/Secrets/Events/ \
-  Explore.Application/Contracts/Secrets/ \
-  Explore.Application/Notifications/Secrets/ \
-  Explore.Application/DTOs/SecretBindings/ \
-  Explore.Application/Features/SecretBindings/ \
-  Explore.Application/Mappings/SecretBindingProfile.cs \
-  Explore.Application/Authorization/ResourceDescriptors.cs \
-  Explore.Secrets/Sources/ \
-  Explore.Secrets/Services/ \
-  Explore.Secrets/Observability/ \
-  Explore.Secrets/HealthChecks/ \
-  Explore.Secrets/Infrastructure/ \
-  Explore.Secrets/Extensions/ \
-  Explore.API/Controllers/SecretBindingsController.cs \
-  Explore.API/Hateoas/RouteNames.cs \
-  Explore.API/Hateoas/Policies/SecretBindingLinkPolicy.cs \
-  Explore.API/Hateoas/Assemblers/SecretBindingResourceAssembler.cs \
-  Explore.API/Program.cs \
-  Explore.Blazor/Extensions/ServiceRegistrationExtensions.cs \
-  cerbos/policies/secret_binding.yaml \
-  cerbos/schemas/secret_binding.json \
-  Explore.Secrets.UnitTests/Sources/ \
-  Explore.Secrets.UnitTests/Services/ \
-  Event.Application.UnitTests/Features/SecretBindings/ \
-  Event.Application.UnitTests/Notifications/ \
-  Event.Architecture.Tests/SecretsArchitectureTests.cs
-
-git status   # confirm ONLY Phase 3 files staged
-
-git commit -m "refactor(secrets): phase 3 introduce ISecretResolver + admin bindings API
-
-Introduces single-source-of-truth secret resolution per SecretBinding row.
-Each binding declares its source (Infisical | InlineEncrypted | EnvironmentVariable)
-and the resolver dispatches to that source ONLY — no fallback chains.
-
-Adds:
-- ISecretResolver + per-source ISecretSource implementations
-- DataProtection-backed InlineSecretSource (purpose Event.Secrets/Binding/v1)
-- SecretResolver with IMemoryCache 5-min TTL + AuditingSecretResolverDecorator
-- SecretResolverMetrics (OpenTelemetry) + SecretResolverHealthCheck
-- CQRS Commands: Create/Update/Delete/Validate (BaseCommandResponse)
-- CQRS Queries: List/Details/AvailableForOnboarding
-- SecretBindingChangedNotification + cache invalidation handler
-- /api/SecretBindings admin REST API with HAL + HATEOAS policies
-- Cerbos policy (instance_admin all, tenant_admin scoped to own tenant)
-- 40+ unit + architecture tests covering no-fallback and no-leak invariants"
-```
-
-**Do NOT push.** Stop and report.
+Single Phase 3 commit. **Do NOT push.** Stop and report.
 
 ---
 
-### 3.21 — Update Dev-Docs (post-commit)
+### 3.20 — Update Dev-Docs (post-commit)
 
-Edit `dev/active/secrets-refactor-control-plane/secrets-refactor-control-plane-context.md`:
-- Mark Phase 3 ✅ COMMITTED with commit hash
-- Update SESSION PROGRESS section
-- Note any deviations from this plan
-
-Edit `dev/active/secrets-refactor-control-plane/secrets-refactor-control-plane-tasks.md`:
-- Mark all Phase 3 tasks `[x]` with phase header `✅ COMMITTED <hash>`
-- Record final test count
-
-Move/delete this `phase-3-implementation-plan.md` file (it has served its purpose) OR archive to `dev/_journal/`.
+Edit context file and tasks file to mark Phase 3 complete.
 
 ---
 
@@ -879,31 +737,34 @@ Move/delete this `phase-3-implementation-plan.md` file (it has served its purpos
 
 | Risk | Mitigation |
 |---|---|
-| `SecretBinding` property names differ from this plan | First action: open `Explore.Domain/Secrets/SecretBinding.cs` and adjust source files to match exact property names |
-| AutoMapper profile location varies | Read `Explore.Application/Mappings/` first; either add new profile or extend existing |
-| `IUnitOfWork` may not exist by that name | Search for `SaveAsync` / `SaveChangesAsync` patterns in existing handlers; use whatever pattern Categories handler uses |
-| Cerbos derived role `tenant_admin` may differ | Check `cerbos/derived_roles/explore_admin_roles.yaml` for exact role name |
-| Output cache eviction by tag may not be wired | If absent, fall back to time-based 30-sec invalidation (acceptable for admin UI) |
-| Infisical SDK API surface changed | If `Infisical.Sdk` v3 doesn't match `GetSecretRawAsync`, consult docs via Context7 MCP, adapt the wrapper |
-| `IDynamicAuthSchemeManager` not yet present | Stub the Keycloak refresh notification handler (log warning); Phase 4 wires real refresh |
-| Test project namespace conventions | Check existing tests in `Event.Application.UnitTests/Features/Categories/` for namespace + base class patterns |
-| Domain event vs MediatR INotification coupling | Keep domain event pure record in Domain; wrap with `SecretBindingChangedNotification : INotification` in Application layer |
+| `SecretBinding` property names differ from this plan | First action: open committed entity file and verify exact names |
+| AutoMapper profile location varies | Read `Explore.Application/Mappings/` first |
+| `IUnitOfWork` may not exist by that name | Search for `SaveAsync` / `SaveChangesAsync` patterns in existing handlers |
+| Cerbos derived role `tenant_admin` may differ | Check `cerbos/derived_roles/explore_admin_roles.yaml` |
+| Output cache eviction by tag may not be wired | Fall back to time-based 30-sec invalidation (acceptable for admin UI) |
+| Infisical SDK API surface changed | If `Infisical.Sdk` v3 doesn't match `GetSecretRawAsync`, consult docs via Context7 MCP |
+| `IDynamicAuthSchemeManager` not yet present | Stub the Keycloak refresh handler (log warning); Phase 4 wires real refresh |
+| Domain event vs MediatR `INotification` | Keep domain event as plain record in Domain; wrap with `SecretBindingChangedNotification : INotification` in Application |
+| `HybridCache` API surface differs from `IMemoryCache` | Verify `AddHybridCache()` registration and `SetAsync`/`GetOrCreateAsync`/`RemoveByTagAsync` methods |
+| Polly `ResiliencePipeline` builder API | Verify against `Microsoft.Extensions.Http.Polly` or `Polly` docs via Context7 MCP |
+| `ITenantContext` injection for query filter | May need to create or find the existing tenant context service in the codebase |
+| Circuit breaker state sharing across instances | HybridCache L2 + `RemoveByTagAsync` handles cross-instance invalidation; circuit breaker state is per-instance (acceptable) |
 
 ## Estimated Scope
 
-- **New files**: ~40
-- **Modified files**: ~6
-- **Net lines**: ~5,000–7,000 (production) + ~2,000 (tests)
-- **Time budget for fresh session**: 4-6 hours of focused work
-- **Tests added**: ~40-50
+- **New files**: ~55
+- **Modified files**: ~8
+- **Net lines**: ~7,000–9,000 (production) + ~3,000 (tests)
+- **Time budget for fresh session**: 8-12 hours of focused work (enterprise additions add ~40% over original plan)
+- **Tests added**: ~60-70
 
 ## Post-Phase-3 — Phase 4 Preview
 
 Phase 4 will:
 - Refactor `AuthProviderConfigurationService` to use `ISecretResolver`
 - Wire `IDynamicAuthSchemeManager` to real Keycloak scheme refresh
-- Update Onboarding UI (`AuthProviderConfiguration.razor`) to auto-detect bound vs unbound secrets
-- Remove the `/internal` endpoint that exposed AppSetting reads
-- Migrate existing AppSetting Keycloak rows to SecretBinding rows (data migration)
-
-Do NOT touch any Phase 4 work in Phase 3. Phase 3 is purely additive — legacy paths still function.
+- Update Onboarding UI with auto-detect chips
+- Remove `/internal` endpoint that exposed AppSetting values
+- Add batch resolve API for onboarding
+- Enforce tenant isolation query filter in handlers
+- Migrate existing AppSetting Keycloak rows to SecretBinding rows

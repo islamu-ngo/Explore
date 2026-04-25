@@ -10,8 +10,6 @@ on:
     tags: ["v*"]
     paths-ignore:
       # AI / tool configuration directories
-      - ".ai/**"
-      - ".caliber/**"
       - ".claude/**"
       - ".codex/**"
       - ".copilot/**"
@@ -138,160 +136,19 @@ jobs:
 
           echo "matrix=$(echo $MATRIX_JSON | tr -d '\n')" >> $GITHUB_OUTPUT
 
-  # JOB 2: Run API Tests
-  test-api:
+  # JOB 2: Run Tests (Unified)
+  run-tests:
     needs: detect-changes
-    if: ${{ needs.detect-changes.outputs.api == 'true' || github.ref_type == 'tag' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    if: needs.detect-changes.outputs.api == 'true' || needs.detect-changes.outputs.ui == 'true' || github.ref_type == 'tag'
+    uses: ./.github/workflows/_build-test.yml
+    with:
+      run-integration-tests: true
+      configuration: Release
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "10.0.x"
-          global-json-file: "./global.json"
-
-      - name: Restore dependencies
-        run: dotnet restore
-
-      - name: Build solution
-        run: dotnet build --no-restore --configuration Release
-
-      - name: Run API Unit Tests
-        run: |
-          dotnet test Event.Application.UnitTests/Event.Application.UnitTests.csproj \
-            --no-build --configuration Release \
-            --logger "console;verbosity=normal" \
-            --logger "trx;LogFileName=application-unit-tests.trx" \
-            --results-directory ./TestResults
-        env:
-          TUNIT_GITHUB_REPORTER_STYLE: collapsible
-
-      - name: Run Domain Unit Tests
-        run: |
-          dotnet test Event.Domain.UnitTests/Event.Domain.UnitTests.csproj \
-            --no-build --configuration Release \
-            --logger "console;verbosity=normal" \
-            --logger "trx;LogFileName=domain-unit-tests.trx" \
-            --results-directory ./TestResults
-        env:
-          TUNIT_GITHUB_REPORTER_STYLE: collapsible
-
-      - name: Run Architecture Tests
-        run: |
-          dotnet test Event.Architecture.Tests/Event.Architecture.Tests.csproj \
-            --no-build --configuration Release \
-            --logger "console;verbosity=normal" \
-            --logger "trx;LogFileName=architecture-tests.trx" \
-            --results-directory ./TestResults
-        env:
-          TUNIT_GITHUB_REPORTER_STYLE: collapsible
-
-      - name: Run Secrets Unit Tests
-        run: |
-          dotnet test Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj \
-            --no-build --configuration Release \
-            --logger "console;verbosity=normal" \
-            --logger "trx;LogFileName=secrets-unit-tests.trx" \
-            --results-directory ./TestResults
-        env:
-          TUNIT_GITHUB_REPORTER_STYLE: collapsible
-
-      - name: Run Persistence Integration Tests
-        run: |
-          dotnet test Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj \
-            --no-build --configuration Release \
-            --logger "console;verbosity=normal" \
-            --logger "trx;LogFileName=persistence-integration-tests.trx" \
-            --results-directory ./TestResults
-        env:
-          TUNIT_GITHUB_REPORTER_STYLE: collapsible
-
-      - name: Run API Integration Tests
-        run: |
-          dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj \
-            --no-build --configuration Release \
-            --logger "console;verbosity=normal" \
-            --logger "trx;LogFileName=api-integration-tests.trx" \
-            --results-directory ./TestResults
-        env:
-          TUNIT_GITHUB_REPORTER_STYLE: collapsible
-
-      - name: Upload Test Results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: api-test-results
-          path: ./TestResults/*.trx
-          retention-days: 7
-
-  # JOB 3: Run Blazor/UI Tests
-  test-ui:
-    needs: detect-changes
-    if: ${{ needs.detect-changes.outputs.ui == 'true' || github.ref_type == 'tag' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "10.0.x"
-          global-json-file: "./global.json"
-
-      - name: Restore dependencies
-        run: dotnet restore
-
-      - name: Build solution
-        run: dotnet build --no-restore --configuration Release
-
-      - name: Run Blazor Client Tests
-        run: |
-          dotnet test Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj \
-            --no-build --configuration Release \
-            --logger "console;verbosity=normal" \
-            --logger "trx;LogFileName=blazor-client-tests.trx" \
-            --results-directory ./TestResults
-        env:
-          TUNIT_GITHUB_REPORTER_STYLE: collapsible
-
-      - name: Upload Test Results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: ui-test-results
-          path: ./TestResults/*.trx
-          retention-days: 7
-
-  # JOB 4: Build & Push - STRICT: If both changed, BOTH tests must pass
+  # JOB 3: Build & Push
   build-and-push:
-    needs: [detect-changes, test-api, test-ui]
-    # CRITICAL SYNC PROTECTION:
-    # - If BOTH API and UI changed: BOTH test jobs must succeed (no partial deploys)
-    # - If ONLY API changed: Only test-api must succeed
-    # - If ONLY UI changed: Only test-ui must succeed
-    # This prevents API/UI version mismatch in production
-    if: |
-      always() &&
-      needs.detect-changes.outputs.matrix != '[]' &&
-      (
-        (needs.detect-changes.outputs.both_changed == 'true' &&
-         needs.test-api.result == 'success' &&
-         needs.test-ui.result == 'success')
-        ||
-        (needs.detect-changes.outputs.both_changed == 'false' &&
-         needs.detect-changes.outputs.api == 'true' &&
-         needs.detect-changes.outputs.ui != 'true' &&
-         needs.test-api.result == 'success')
-        ||
-        (needs.detect-changes.outputs.both_changed == 'false' &&
-         needs.detect-changes.outputs.ui == 'true' &&
-         needs.detect-changes.outputs.api != 'true' &&
-         needs.test-ui.result == 'success')
-      )
+    needs: [detect-changes, run-tests]
+    if: always() && needs.run-tests.result == 'success' && needs.detect-changes.outputs.matrix != '[]'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -347,9 +204,9 @@ jobs:
           build-args: |
             BUILD_CONFIGURATION=Release
 
-  # JOB 5: Deploy to Production
+  # JOB 4: Deploy to Production
   deploy:
-    needs: [detect-changes, test-api, test-ui, build-and-push]
+    needs: [detect-changes, build-and-push]
     if: always() && needs.build-and-push.result == 'success'
     runs-on: ubuntu-latest
     steps:

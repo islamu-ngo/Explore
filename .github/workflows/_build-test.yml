@@ -1,0 +1,81 @@
+name: "Build & Test (Reusable)"
+
+on:
+  workflow_call:
+    inputs:
+      run-integration-tests:
+        required: false
+        type: boolean
+        default: false
+      configuration:
+        required: false
+        type: string
+        default: "Release"
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: event_test
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: NuGet Security Audit
+        run: dotnet list package --vulnerable --count 0
+
+      - name: Linting Check
+        run: dotnet format --verify-no-changes --verbosity minimal
+
+      - name: Build
+        run: dotnet build --configuration ${{ inputs.configuration }} --no-restore --verbosity minimal
+
+      - name: Unit Tests — Application
+        run: dotnet test Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration ${{ inputs.configuration }} --no-build --verbosity minimal
+
+      - name: Unit Tests — Domain
+        run: dotnet test Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration ${{ inputs.configuration }} --no-build --verbosity minimal
+
+      - name: Architecture Tests
+        run: dotnet test Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration ${{ inputs.configuration }} --no-build --verbosity minimal
+
+      - name: Unit Tests — Secrets
+        run: dotnet test Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration ${{ inputs.configuration }} --no-build --verbosity minimal
+
+      - name: Blazor Client Tests
+        run: dotnet test Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration ${{ inputs.configuration }} --no-build --verbosity minimal
+
+      - name: Blazor Integration Tests
+        run: dotnet test Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration ${{ inputs.configuration }} --no-build --verbosity minimal
+
+      - name: Persistence Integration Tests
+        if: ${{ inputs.run-integration-tests }}
+        run: dotnet test Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration ${{ inputs.configuration }} --no-build --verbosity minimal
+        env:
+          ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=event_test;Username=postgres;Password=password"
+
+      - name: API Integration Tests
+        if: ${{ inputs.run-integration-tests }}
+        run: dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration ${{ inputs.configuration }} --no-build --verbosity minimal
+        env:
+          ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=event_test;Username=postgres;Password=password"

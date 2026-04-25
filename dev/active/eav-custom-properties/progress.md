@@ -3,8 +3,8 @@
 
 # EAV Custom Properties — Execution Progress
 
-**Last updated:** 2026-04-24 (Sisyphus orchestration session 2 — build verified green)
-**Scope:** Fully implement Milestones E (Explicit Sync Workflows) + F (Aggregate Views + Lexicon Docs) + cleanup phases.
+**Last updated:** 2026-04-24 (Session 3 — Phase 9.1 + 9.2 + 9.3 Blazor CRUD UIs shipped, session handoff)
+**Scope:** Cleanup Phase 9.x — Blazor admin UI for definitions, templates, runtime editors.
 **Mode:** Development (no backward compatibility required).
 
 ---
@@ -29,7 +29,14 @@
 | F | Phase 3 Integration Tests | ⏳ PENDING | Combined with E Phase 4 retry |
 | F | Phase 4 LEXICONS.md | ✅ 2026-04-24 | `bg_0907d67e` / `docs/LEXICONS.md` |
 | Cleanup | Phase 7 Stale JSONB refs | ⏳ PENDING | — |
-| Cleanup | Phase 9.x Blazor Governance UI | ⏳ PENDING | Blocked on HAL alignment |
+| Cleanup | Phase 9.1 Stale helpers | ✅ 2026-04-24 | Zero changes needed |
+| Cleanup | Phase 9.2 Definition CRUD UI | ✅ 2026-04-24 | bg_a65ca891 — 7 new files |
+| Cleanup | Phase 9.3 Template CRUD UI | ✅ 2026-04-24 | bg_b8f4ef4b — 10+ new files |
+| Cleanup | Phase 9.4 Template selection | ⏳ PENDING | — |
+| Cleanup | Phase 9.5/9.5A Runtime editors | ⏳ PENDING | — |
+| Cleanup | Phase 9.6 Template preview | ⏳ PENDING | — |
+| Cleanup | Phase 9.10 Org/Group cleanup | ⏳ PENDING | — |
+| Cleanup | Phase 9.11 NSwag regen | ⏳ PENDING | — |
 | Cleanup | Phase 11+10.0 Architecture tests | ⏳ PENDING | — |
 | Cleanup | Phase 8.5.13 Prometheus metrics | ⏳ PENDING | — |
 
@@ -54,6 +61,9 @@
 | `bg_0907d67e` | `ses_24075d05cffeja74URGht1YwS8` | LEXICONS.md | ✅ 2m 29s |
 | `bg_fa738248` | `ses_240371592ffeHNe0uxAkEcfxcL` | Blazor UI (both pages) | ⚠️ Infrastructure-failed 2×; partial work on disk — orchestrator patched pages + test stubs to restore build green |
 | `bg_debe3b3b` | `ses_24036519fffey1tW1aPZG5uO5T` | Integration tests (E4 + F3) | ❌ Infrastructure-failed before output; retry required |
+| `bg_bdbef870` | `ses_23ee34f13ffeBVti5L95D3bYkg` | Phase 9.1 stale helpers | ✅ Zero changes needed |
+| `bg_a65ca891` | `ses_23ee393c6ffeTCcfCIYFe3kwtO` | Phase 9.2 definition CRUD UI | ✅ 7 files + DI reg |
+| `bg_b8f4ef4b` | `ses_23ed87d33ffe8sxg39h079k71j` | Phase 9.3 template CRUD UI | ✅ 10+ files + HAL ext + DI |
 
 ---
 
@@ -83,10 +93,17 @@
 2. Fix HAL wiring (Gap 1) — ✅ closed (API controllers emit HAL diffs).
 3. Cerbos test fixtures (Gap 2) — ✅ closed via `BlazorTestContext` machine-principal stub.
 4. Expand Blazor sync page bUnit coverage (Gap 4) — ✅ closed (6 bUnit tests per page).
-5. Cleanup Phase 7 — remove stale `MetadataJson` / JSONB references.
-6. Cleanup Phase 9.x — Blazor definition governance + template mgmt UIs.
-7. Cleanup Phase 11 + 10.0 — architecture tests for Layer 2 vs Layer 3 discovery; API roundtrip tests.
-8. Phase 8.5.13 — Prometheus metrics for projection updater.
+5. Cleanup Phase 7 — ✅ closed (zero `MetadataJson` refs found, already cleaned).
+6. Cleanup Phase 9.1 — ✅ closed (no stale helpers found).
+7. Cleanup Phase 9.2 — ✅ closed (CustomPropertyDefinition CRUD UI shipped).
+8. Cleanup Phase 9.3 — ✅ closed (EventTemplate CRUD UI shipped).
+9. **Phase 9.5/9.5A** — Event + Session runtime custom-property editors (dynamic PropertyType rendering). HIGH PRIORITY.
+10. **Phase 9.4** — Template selection dropdown in event creation flow.
+11. **Phase 9.11** — Regenerate NSwag API clients.
+12. **Phase 11 + 10.0** — Architecture tests + API roundtrip tests.
+13. **Phase 8.5.13** — Prometheus metrics for projection updater.
+14. **Phase 9.6** — Template preview admin overview.
+15. **Phase 9.10** — Organization/Group page cleanup.
 
 ---
 

@@ -8,8 +8,6 @@ on:
     branches: [main, develop]
     paths-ignore:
       # AI / tool configuration directories
-      - ".ai/**"
-      - ".caliber/**"
       - ".claude/**"
       - ".codex/**"
       - ".copilot/**"
@@ -49,8 +47,6 @@ on:
   pull_request:
     branches: [main, develop]
     paths-ignore:
-      - ".ai/**"
-      - ".caliber/**"
       - ".claude/**"
       - ".codex/**"
       - ".copilot/**"
@@ -86,47 +82,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-test:
-    name: Build & Test
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          global-json-file: global.json
-
-      - name: Restore
-        run: dotnet restore
-
-      - name: Build
-        run: dotnet build --configuration Release --no-restore --verbosity minimal
-
-      # Run each test project individually per CLAUDE.md convention
-      - name: Unit Tests — Application
-        run: dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --no-build --verbosity minimal
-
-      - name: Unit Tests — Domain
-        run: dotnet test --project Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --no-build --verbosity minimal
-
-      - name: Architecture Tests
-        run: dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --no-build --verbosity minimal
-
-      - name: Unit Tests — Secrets
-        run: dotnet test --project Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --no-build --verbosity minimal
-
-      - name: Blazor Client Tests
-        run: dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --no-build --verbosity minimal
-
-      - name: Blazor Integration Tests
-        run: dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --no-build --verbosity minimal
-
-      # Integration tests excluded from CI — they require PostgreSQL + Keycloak infrastructure
-      # - name: Persistence Integration Tests
-      #   run: dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj
-      # - name: API Integration Tests
-      #   run: dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj
+  run-tests:
+    uses: ./.github/workflows/_build-test.yml
+    with:
+      run-integration-tests: false
+      configuration: Release

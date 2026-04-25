@@ -1,84 +1,69 @@
 # Message Queue Provider Abstraction — Task Checklist
 
-Last Updated: 2026-03-29
+Last Updated: 2026-04-25
 
-## Phase 1: Domain & Application Contracts ⏳ NOT STARTED
+## Phase 1: Domain & Application Contracts ✅ COMPLETE (8/8)
 
-- [ ] **1.1** Create `MessageQueueProviderEnum` in `Explore.Domain/Enums/` — **S**
-  - None=0, RabbitMQ=1, Kafka=2, NATS=3, AzureServiceBus=4, Redis=5
-- [ ] **1.2** Add `GovernanceSettingKeys.Messaging` class — **S**
-  - Keys: provider, enabled, endpoint, exchange_prefix, username, virtual_host
-- [ ] **1.3** Add `TenantDelegation.LockMessaging` key — **S**
-- [ ] **1.4** Define `IMessageBrokerProvider` interface — **M**
-  - PublishAsync, BulkPublishAsync, SubscribeAsync, PingAsync, CloseAsync, ProviderType, IsConnected
-  - MessagePublishResult, BulkPublishResult records
-- [ ] **1.5** Define `IMessageBrokerConfigResolver` interface — **S**
-  - ResolveAsync → MessagingConfiguration, InvalidateCache
-- [ ] **1.6** Create `MessagingConfiguration` model — **S**
-  - Provider (enum), IsEnabled, Endpoint, ExchangePrefix, Username, VirtualHost
-- [ ] **1.7** Add `MQContract.Abstractions` NuGet to `Explore.Application.csproj` — **S**
-- [ ] **1.8** Define integration event contracts in `Explore.Application/IntegrationEvents/` — **M**
-  - EventPublished, EventCreated, RegistrationConfirmed, OrganizationCreated
-  - Each with [Message] attribute, channel, version
+- [x] **1.1** Create `MessagingProviderEnum` in `Explore.Domain/Enums/` — None=0, RabbitMq=1, InMemory=2 ✅
+- [x] **1.2** Create `IMessagingProvider` interface — PublishAsync, BulkPublishAsync, SubscribeAsync ✅
+- [x] **1.3** Create `IMessagingConfigResolver` interface — ResolveAsync, InvalidateCache ✅
+- [x] **1.4** Create `MessagingConfiguration` POCO — 14 properties with MQContract defaults ✅
+- [x] **1.5** Add `GovernanceSettingKeys.Messaging` + `TenantDelegation.LockMessaging` ✅
+- [x] **1.6** Create `MessagingSettingGroup` (ISettingGroup with batch loading) ✅
+- [x] **1.7** Create `IntegrationEventBase` abstract record ✅
+- [x] **1.8** Create `EventPublishedIntegrationEvent` with [Message] attribute ✅
 
-## Phase 2: Infrastructure — Providers & Config (Effort: L) ⏳ NOT STARTED
+## Phase 2: Infrastructure Providers ✅ COMPLETE (8/8)
 
-- [ ] **2.1** Add NuGet packages to Infrastructure + AppHost — **S**
-  - MQContract, MQContract.RabbitMQ, MQContract.InMemory, Aspire.Hosting.RabbitMQ
-- [ ] **2.2** Implement `NullMessageBrokerProvider` — **S**
-  - No-op, uses InMemory connector, ProviderType=None
-- [ ] **2.3** Implement `RabbitMqMessageBrokerProvider` — **L**
-  - Full MQContract: middleware (OpenTelemetry, compression), resilience, publish, subscribe
-  - Lazy connection, IAsyncDisposable, PingAsync health
-- [ ] **2.4** Implement `RuntimeMessageBrokerProvider` — **M**
-  - Mirrors RuntimeAnalyticsProvider: cached resolution, fallback to Null, scoped wrapper
-- [ ] **2.5** Implement `MessageBrokerConfigResolver` — **M**
-  - IHierarchicalSettingsResolver, messaging.* keys, tenant cache, static fallback
-- [ ] **2.6** Create `MessageBrokerSettings` static config POCO — **S**
-  - Provider, Enabled, RabbitMQ (nested), ExchangePrefix
-- [ ] **2.7** Implement `MqContractOutboxDispatcher` — **M**
-  - Replaces LoggingOutboxMessageDispatcher, maps OutboxMessage → typed event → PublishAsync
-- [ ] **2.8** Delete `LoggingOutboxMessageDispatcher.cs` — **S**
+- [x] **2.1** Implement `RabbitMqMessagingProvider` — Full MQContract (OTEL, compression, Polly resilience, lazy init) ✅
+- [x] **2.2** Implement `NullMessagingProvider` — No-op with debug logging ✅
+- [x] **2.3** Implement `RuntimeMessagingProvider` — Runtime selection, exception fallback ✅
+- [x] **2.4** Implement `MessagingConfigResolver` — IHierarchicalSettingsResolver, 5-min cache, per-tenant ✅
+- [x] **2.5** Implement `MqContractOutboxMessageDispatcher` — EventType → typed event → channel routing ✅
+- [x] **2.6** Delete `LoggingOutboxMessageDispatcher` ✅
+- [x] **2.7** OpenTelemetry middleware — Integrated in RabbitMqMessagingProvider ✅
+- [x] **2.8** Polly resilience policies — Integrated in RabbitMqMessagingProvider ✅
 
-## Phase 3: DI Registration & Configuration ⏳ NOT STARTED
+## Phase 3: DI Registration & Configuration ✅ COMPLETE (3/3)
 
-- [ ] **3.1** Register messaging services in `InfrastructureServicesRegistration.cs` — **M**
-  - All providers + RuntimeWrapper + ConfigResolver + Dispatcher
-- [ ] **3.2** Add `Messaging` section to appsettings — **S**
-  - Provider=rabbitmq, Enabled=true, RabbitMQ defaults
-- [ ] **3.3** Add messaging governance settings seed data — **S**
+- [x] **3.1** Register messaging services in `InfrastructureServicesRegistration.cs` ✅
+- [x] **3.2** Replace IOutboxMessageDispatcher → MqContractOutboxMessageDispatcher ✅
+- [x] **3.3** Add MQContract OpenTelemetry source to `Explore.ServiceDefaults/Extensions.cs` ✅
 
-## Phase 4: Health, Observability & Metrics ⏳ NOT STARTED
+## Phase 4: Health, Observability & Metrics ⏳ NOT STARTED (0/3)
 
-- [ ] **4.1** Implement `MessagingHealthCheck` — **S**
-  - PingAsync-based, consecutive failure tracking, tagged `messaging`
-- [ ] **4.2** Implement `MessagingMetrics` — **S**
-  - Meter: Explore.Messaging. Counters: published, publish_failed, consumed, consume_failed. Histogram: duration.
-- [ ] **4.3** Register health check in `Program.cs` — **S**
+- [ ] **4.1** Create `MessagingHealthCheck` — IHealthCheck using IMessagingProvider
+  - File: `Explore.Infrastructure/Messaging/MessagingHealthCheck.cs`
+  - Pattern: `SecretProviderHealthCheck` (consecutive failure tracking, tagged "messaging")
+  - Returns provider type in health data
+- [ ] **4.2** Create `MessagingMetrics` — Prometheus meter + counters
+  - File: `Explore.Infrastructure/Messaging/MessagingMetrics.cs`
+  - Meter: "Explore.Messaging"
+  - Counters: published, publish_failed, consumed, consume_failed
+  - Histogram: publish_duration_seconds
+  - Pattern: `BusinessMetrics`, `SecretRefreshMetrics`
+- [ ] **4.3** Register health check in `Explore.API/Program.cs`
+  - Conditionally registered when messaging enabled
+  - Tagged "messaging", excluded from "/alive"
 
-## Phase 5: Docker Compose & Aspire ⏳ NOT STARTED
+## Phase 5: Docker Compose & Aspire ⏳ NOT STARTED (0/3)
 
-- [ ] **5.1** Add RabbitMQ service to `docker-compose.yml` — **S**
-  - rabbitmq:4-management-alpine, ports 5672+15672, healthcheck
-- [ ] **5.2** Add RabbitMQ resource to `Explore.AppHost/AppHost.cs` — **M**
-- [ ] **5.3** Update API bootstrap for Aspire connection string — **S**
+- [ ] **5.1** Add RabbitMQ to `docker-compose.yml`
+  - `rabbitmq:4-management-alpine`, ports 5672+15672, healthcheck
+  - API depends_on rabbitmq
+- [ ] **5.2** Add RabbitMQ resource to `Explore.AppHost/AppHost.cs`
+  - `builder.AddRabbitMQ("messaging")` + wire to API
+- [ ] **5.3** Update `.env.example` with RabbitMQ settings
 
-## Phase 6: Testing ⏳ NOT STARTED
+## Phase 6: Testing ⏳ NOT STARTED (0/7)
 
-- [ ] **6.1** Unit tests: `RabbitMqMessageBrokerProviderTests` — **M**
-  - Publish, BulkPublish, failure handling, resilience, lifecycle (InMemory transport)
-- [ ] **6.2** Unit tests: `RuntimeMessageBrokerProviderTests` — **M**
-  - Provider delegation, fallback, caching, disabled state
-- [ ] **6.3** Unit tests: `MqContractOutboxDispatcherTests` — **M**
-  - OutboxMessage → typed event mapping, publish delegation, failure throws
-- [ ] **6.4** Unit tests: `MessageBrokerConfigResolverTests` — **S**
-  - Governance resolution, caching, static fallback, enum parsing
-- [ ] **6.5** Unit tests: `IntegrationEventContractTests` — **S**
-  - [Message] attribute presence, channel convention, serialization round-trip
-- [ ] **6.6** Integration tests: `MessagingIntegrationTests` — **L**
-  - E2E outbox → dispatcher → InMemory publish, retry, provider switch
-- [ ] **6.7** Architecture tests: `MessagingConventionTests` — **S**
-  - [Message] on all events, key prefix, layer boundary enforcement
+- [ ] **6.1** Unit tests: `RabbitMqMessagingProvider` — publish, bulk, failure, resilience, lifecycle
+- [ ] **6.2** Unit tests: `RuntimeMessagingProvider` — delegation, fallback, caching, disabled
+- [ ] **6.3** Unit tests: `MessagingConfigResolver` — governance resolution, caching, enum parsing
+- [ ] **6.4** Unit tests: `MqContractOutboxMessageDispatcher` — EventType mapping, publish delegation, failure throws
+- [ ] **6.5** Integration tests: RabbitMQ publish/subscribe (InMemory transport)
+- [ ] **6.6** Integration tests: Outbox → dispatcher → broker E2E
+- [ ] **6.7** Architecture tests: [Message] on events, layer boundaries, key prefix convention
 
 ---
 
@@ -86,36 +71,21 @@ Last Updated: 2026-03-29
 
 | Phase | Tasks | Status |
 |-------|-------|--------|
-| 1. Domain & Application Contracts | 8 | ⏳ |
-| 2. Infrastructure Providers | 8 | ⏳ |
-| 3. DI & Configuration | 3 | ⏳ |
+| 1. Domain & Application Contracts | 8 | ✅ |
+| 2. Infrastructure Providers | 8 | ✅ |
+| 3. DI & Configuration | 3 | ✅ |
 | 4. Health & Observability | 3 | ⏳ |
 | 5. Docker & Aspire | 3 | ⏳ |
 | 6. Testing | 7 | ⏳ |
-| **Total** | **32** | |
+| **Total** | **32** | **19/32 done** |
 
-## Task Dependencies
+## ⚠️ Pre-Work Verification Required
 
+Before starting Phase 4, **MUST** verify build:
+```bash
+dotnet build --configuration Release --verbosity quiet
 ```
-Phase 1 (contracts) ──────────→ Phase 2 (providers)
-  1.1 (enum)     → 2.3, 2.4
-  1.2 (keys)     → 2.5, 3.3
-  1.4 (interface) → 2.2, 2.3, 2.4, 2.7
-  1.5 (resolver)  → 2.5
-  1.8 (events)    → 2.7
-
-Phase 2 (providers) ──────────→ Phase 3 (DI)
-  2.2-2.7         → 3.1
-
-Phase 3 (DI) ────────────────→ Phase 4 (health)
-  3.1             → 4.1, 4.2, 4.3
-
-Phase 2 (providers) ──────────→ Phase 5 (docker/aspire)
-  2.3             → 5.1, 5.2, 5.3
-
-Phase 1-4 ────────────────────→ Phase 6 (testing)
-  All phases      → 6.1-6.7
-```
-
-Note: TDD means tests are written alongside each phase, not deferred to Phase 6.
-Phase 6 captures the test inventory — actual test writing happens during each phase.
+Known risks:
+1. MQContract NuGet packages may not be in `.csproj` files
+2. Journal entry from 2026-04-24 mentions orphan MQContract build break in EventPublishedIntegrationEvent.cs
+3. No tests have been run yet

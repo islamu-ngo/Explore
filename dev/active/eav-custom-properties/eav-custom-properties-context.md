@@ -3,7 +3,75 @@ ABOUTME: Read this first when resuming so implementation follows the hardened ex
 
 # EAV Custom Properties - Context
 
-**Last Updated: 2026-04-21 (D1 + D2 + D3 complete + Phase 9.7/9.9 governance UI shipped)**
+**Last Updated: 2026-04-24 (Phase 9.1 + 9.2 + 9.3 Blazor CRUD UIs shipped — session handoff)**
+
+---
+
+## SESSION PROGRESS (2026-04-24 — session 3) — PHASE 9.1 + 9.2 + 9.3 BLAZOR CRUD UIs SHIPPED
+
+### ✅ Phase 9.1 — Remove Stale Metadata Helpers (2026-04-24)
+- Agent bg_bdbef870 explored codebase. No stale metadata helpers found — `AppearanceStyleBuilder.cs` already uses direct typed property access.
+- Zero file changes.
+
+### ✅ Phase 9.2 — CustomPropertyDefinition CRUD Pages (2026-04-24)
+- Agent bg_a65ca891 (ses_23ee393c6ffeTCcfCIYFe3kwtO) created full CRUD UI for custom property definitions.
+- **Files created (all under `Explore.Blazor.Client`):**
+  - `Pages/Admin/CustomProperties/CustomPropertyDefinitionListPage.razor` + `.razor.css` — route `/admin/tenant/custom-property-definitions`, MudDataGrid with EntityTypeName filter, server-side pagination, HAL-gated delete, create dialog
+  - `Pages/Admin/CustomProperties/CustomPropertyDefinitionDetailsPage.razor` + `.razor.css` — route `/admin/tenant/custom-property-definitions/{id:guid}`, read-only view, HAL-gated edit/delete
+  - `Pages/Admin/CustomProperties/Components/CustomPropertyDefinitionEditor.razor` + `.razor.css` — reusable editor with PropertyType-switched validation fields, embedded OptionEditor
+  - `Pages/Admin/CustomProperties/Components/CustomPropertyOptionEditor.razor` + `.razor.css` — add/remove options with Key, DisplayName, Value, IsDefault, IsActive, SortOrder
+  - `Services/CustomPropertyDefinitionService.cs` — wraps IEventApiClient, HAL unwrap, error handling
+  - `Contracts/Services/CustomProperties/ICustomPropertyDefinitionService.cs` — interface
+- **DI**: Registered in `ServiceCollectionExtensions.cs` line 35
+- Build verified 0 errors from EAV code.
+
+### ✅ Phase 9.3 — EventTemplate Management UI (2026-04-24)
+- Agent bg_b8f4ef4b (ses_23ed87d33ffe8sxg39h079k71j) created full CRUD UI for event templates.
+- First attempt produced zero files (exploration only). Continued session to complete.
+- **Files created (all under `Explore.Blazor.Client`):**
+  - `Models/EventTemplates/EventTemplateOptionModel.cs` — option model
+  - `Models/EventTemplates/EventTemplateDefinitionModel.cs` — definition with PropertyType + ExposureLevel as domain enums, Options list
+  - `Models/EventTemplates/EventTemplateListModel.cs` — list item with Links dict for HAL gating
+  - `Models/EventTemplates/EventTemplateDetailModel.cs` — detail with Definitions + Links dict
+  - `Contracts/Services/EventTemplates/IEventTemplateService.cs` — service interface
+  - `Services/EventTemplateService.cs` — wraps IEventApiClient with HAL unwrap pattern
+  - `Pages/Admin/EventTemplates/EventTemplateListPage.razor` + `.razor.css` — template list with server-side pagination
+  - `Pages/Admin/EventTemplates/EventTemplateDetailsPage.razor` + `.razor.css` — read-only template details
+  - `Pages/Admin/EventTemplates/Components/EventTemplateEditor.razor` + `.razor.css` — create/edit form with embedded definition editor
+  - `Pages/Admin/EventTemplates/Components/EventTemplateDefinitionEditor.razor` + `.razor.css` — per-definition editor with PropertyType enum switch, inline option editor
+- **Helper updates**:
+  - `HalResourceExtensions.cs` — added EventTemplate HAL extension methods (GetItems, ToPaginatedResult, ToModel)
+  - `ServiceCollectionExtensions.cs` — registered IEventTemplateService
+- **Key decisions**:
+  - Used domain Enums (`PropertyType`, `ExposureLevel`) in Blazor models, cast to `(int)` when mapping to NSwag `CreateEventTemplateDefinitionDto`
+  - `DefaultDateTimeValue` mapped from `DateTime?` to `DateTimeOffset?` in editor
+  - Used `BaseCommandResponse<Guid>` for create/update return types (matching generated client)
+- Build verified 0 errors from EAV code.
+
+### ⚠️ Build State
+- 3 errors in `EventPublishedIntegrationEvent.cs` (orphan MQContract from incomplete messaging infrastructure) — NOT EAV-related
+- All EAV/Blazor code builds clean
+
+### 🟡 Remaining Phase 9.x Work
+- **Phase 9.4**: Template selection dropdown in event creation flow (medium priority)
+- **Phase 9.5**: Event runtime custom-property editor — dynamic PropertyType rendering (high priority)
+- **Phase 9.5A**: Session runtime editor (mirrors 9.5) (high priority)
+- **Phase 9.6**: Template preview admin overview (low priority)
+- **Phase 9.10**: Organization/Group page cleanup (low priority)
+- **Phase 9.11**: Regenerate NSwag API clients (medium priority — needed if API surface changed)
+
+### ⏳ Other Remaining Work
+- Phase 11+10.0: Architecture tests + API roundtrip tests
+- Phase 8.5.13: Prometheus metrics for projection updater
+- Gap 3: Integration tests (E Phase 4 + F Phase 3 — needs Docker)
+- Final verification: full build + per-project test sweep
+
+### Git State
+- 5 prior commits on develop from earlier sessions (eda957fa, 1a7f0607, b20def51, be0e08b3, aee1fd55)
+- **Uncommitted**: Phase 9.2 + 9.3 files (all the Blazor CRUD pages + services + models)
+- **Uncommitted broken**: Messaging infrastructure files (NOT EAV)
+- **Orphan**: `Explore.Blazor.Client/Models/EventTemplateSync/TemplateDiffResource.cs` (untracked, can delete)
+- **Stash@{0}**: still exists, safe to drop
 
 ---
 
