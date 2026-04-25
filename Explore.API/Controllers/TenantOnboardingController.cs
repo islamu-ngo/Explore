@@ -59,7 +59,7 @@ public class TenantOnboardingController : ExploreControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> Complete([FromBody] UpdateTenantPolicyRequest settings, CancellationToken cancellationToken = default)
     {
-        var currentUserId = CurrentUserId;
+        var currentUserId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!currentUserId.HasValue)
         {
             return BadRequest(new BaseCommandResponse<Guid>
@@ -97,7 +97,7 @@ public class TenantOnboardingController : ExploreControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateSettings([FromBody] UpdateTenantPolicyRequest settings, CancellationToken cancellationToken = default)
     {
-        var currentUserId = CurrentUserId;
+        var currentUserId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!currentUserId.HasValue)
         {
             return BadRequest(new BaseCommandResponse<Guid>
@@ -134,7 +134,7 @@ public class TenantOnboardingController : ExploreControllerBase
     [ProducesResponseType(typeof(BaseCommandResponse<Guid>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BaseCommandResponse<Guid>>> SaveStep([FromBody] SaveTenantOnboardingStepDto dto, CancellationToken cancellationToken = default)
     {
-        var currentUserId = CurrentUserId;
+        var currentUserId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!currentUserId.HasValue)
         {
             return BadRequest(new BaseCommandResponse<Guid>

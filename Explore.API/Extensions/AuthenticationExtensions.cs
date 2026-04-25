@@ -180,7 +180,11 @@ public static class AuthenticationExtensions
                     }
                 });
 
-        services.AddAuthorizationBuilder();
+        services.AddAuthorizationBuilder()
+            .AddPolicy("template_admin", policy => policy.RequireAuthenticatedUser())
+            .AddPolicy("event_editor", policy => policy.RequireAuthenticatedUser())
+            .AddPolicy("property_governance_admin", policy => policy.RequireAuthenticatedUser())
+            .AddPolicy("platform_namespace_editor", policy => policy.RequireAuthenticatedUser());
 
         return services;
     }

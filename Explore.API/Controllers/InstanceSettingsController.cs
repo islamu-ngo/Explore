@@ -67,7 +67,7 @@ public class InstanceSettingsController : ExploreControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateModuleSettings(
         [FromBody] ModuleSettingsDto settings, CancellationToken cancellationToken = default)
     {
-        var userId = CurrentUserId;
+        var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return BadRequest(InvalidIdentityResponse());
 
         var response = await _mediator.Send(new UpdateModuleSettingsCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
@@ -95,7 +95,7 @@ public class InstanceSettingsController : ExploreControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateEventPolicy(
         [FromBody] EventPolicyDto settings, CancellationToken cancellationToken = default)
     {
-        var userId = CurrentUserId;
+        var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return BadRequest(InvalidIdentityResponse());
 
         var response = await _mediator.Send(new UpdateEventPolicyCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
@@ -123,7 +123,7 @@ public class InstanceSettingsController : ExploreControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateOrganizationPolicy(
         [FromBody] OrganizationPolicyDto settings, CancellationToken cancellationToken = default)
     {
-        var userId = CurrentUserId;
+        var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return BadRequest(InvalidIdentityResponse());
 
         var response = await _mediator.Send(new UpdateOrganizationPolicyCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
@@ -151,7 +151,7 @@ public class InstanceSettingsController : ExploreControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateBrandingSettings(
         [FromBody] BrandingSettingsDto settings, CancellationToken cancellationToken = default)
     {
-        var userId = CurrentUserId;
+        var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return BadRequest(InvalidIdentityResponse());
 
         var response = await _mediator.Send(new UpdateBrandingSettingsCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
@@ -179,7 +179,7 @@ public class InstanceSettingsController : ExploreControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateDomainSettings(
         [FromBody] DomainSettingsDto settings, CancellationToken cancellationToken = default)
     {
-        var userId = CurrentUserId;
+        var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return BadRequest(InvalidIdentityResponse());
 
         var response = await _mediator.Send(new UpdateDomainSettingsCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
@@ -207,7 +207,7 @@ public class InstanceSettingsController : ExploreControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateTenantDelegationSettings(
         [FromBody] TenantDelegationSettingsDto settings, CancellationToken cancellationToken = default)
     {
-        var userId = CurrentUserId;
+        var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return BadRequest(InvalidIdentityResponse());
 
         var response = await _mediator.Send(new UpdateTenantDelegationSettingsCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
@@ -235,7 +235,7 @@ public class InstanceSettingsController : ExploreControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateRenderPolicySettings(
         [FromBody] RenderPolicySettingsDto settings, CancellationToken cancellationToken = default)
     {
-        var userId = CurrentUserId;
+        var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return BadRequest(InvalidIdentityResponse());
 
         var response = await _mediator.Send(new UpdateRenderPolicySettingsCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
@@ -263,7 +263,7 @@ public class InstanceSettingsController : ExploreControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateDeploymentMode(
         [FromBody] UpdateDeploymentModeRequest request, CancellationToken cancellationToken = default)
     {
-        var userId = CurrentUserId;
+        var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return BadRequest(InvalidIdentityResponse());
 
         var existingSettings = await _mediator.Send(new GetInstanceGovernanceSettingsQuery(), cancellationToken);
@@ -324,7 +324,7 @@ public class InstanceSettingsController : ExploreControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateStorageSettings(
         [FromBody] InstanceStorageSettingsDto settings, CancellationToken cancellationToken = default)
     {
-        var userId = CurrentUserId;
+        var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return BadRequest(InvalidIdentityResponse());
 
         var response = await _mediator.Send(new UpdateInstanceStorageSettingsCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
@@ -367,7 +367,7 @@ public class InstanceSettingsController : ExploreControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateSmtpSettings(
         [FromBody] InstanceSmtpSettingsDto settings, CancellationToken cancellationToken = default)
     {
-        var userId = CurrentUserId;
+        var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return BadRequest(InvalidIdentityResponse());
 
         var response = await _mediator.Send(new UpdateInstanceSmtpSettingsCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
@@ -414,7 +414,7 @@ public class InstanceSettingsController : ExploreControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateResolverConfiguration(
         [FromBody] ResolverConfigurationDto configuration, CancellationToken cancellationToken = default)
     {
-        var userId = CurrentUserId;
+        var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return BadRequest(InvalidIdentityResponse());
 
         var response = await _mediator.Send(new UpdateResolverConfigurationCommand { UserId = userId.Value, Configuration = configuration }, cancellationToken);
@@ -443,7 +443,7 @@ public class InstanceSettingsController : ExploreControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateAnalyticsGovernanceSettings(
         [FromBody] AnalyticsGovernanceSettingsDto settings, CancellationToken cancellationToken = default)
     {
-        var userId = CurrentUserId;
+        var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return BadRequest(InvalidIdentityResponse());
 
         var response = await _mediator.Send(new UpdateAnalyticsGovernanceSettingsCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
@@ -473,7 +473,7 @@ public class InstanceSettingsController : ExploreControllerBase
         [FromBody] FooterGovernanceSettingsDto settings, CancellationToken cancellationToken = default)
     {
         if (!await IsInstanceAdminOrSetupAuthenticated(cancellationToken)) return Forbid();
-        var userId = CurrentUserId;
+        var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return BadRequest(InvalidIdentityResponse());
 
         var response = await _mediator.Send(new UpdateFooterGovernanceSettingsCommand { UserId = userId.Value, Settings = settings }, cancellationToken);
@@ -502,7 +502,7 @@ public class InstanceSettingsController : ExploreControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateAuthProviderConfiguration(
         [FromBody] AuthProviderConfigurationDto configuration, CancellationToken cancellationToken = default)
     {
-        var userId = CurrentUserId;
+        var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return BadRequest(InvalidIdentityResponse());
 
         var response = await _mediator.Send(new UpdateAuthProviderConfigurationCommand { UserId = userId.Value, Configuration = configuration }, cancellationToken);
@@ -543,7 +543,7 @@ public class InstanceSettingsController : ExploreControllerBase
     public async Task<ActionResult<BaseCommandResponse<Guid>>> UpdateAuthorizationProviderConfiguration(
         [FromBody] AuthorizationProviderConfigurationDto configuration, CancellationToken cancellationToken = default)
     {
-        var userId = CurrentUserId;
+        var userId = await ResolveCurrentUserIdAsync(_mediator, cancellationToken);
         if (!userId.HasValue) return BadRequest(InvalidIdentityResponse());
 
         var response = await _mediator.Send(
