@@ -16,6 +16,8 @@ public sealed class CerbosContainerFixture : IAsyncInitializer, IAsyncDisposable
     /// <summary>Pinned Cerbos version for reproducible test results.</summary>
     private const string CerbosImage = "ghcr.io/cerbos/cerbos:0.51.0";
 
+    private static readonly TimeSpan StartupTimeout = TimeSpan.FromMinutes(2);
+
     private IContainer _container = null!;
 
     /// <summary>
@@ -52,10 +54,12 @@ public sealed class CerbosContainerFixture : IAsyncInitializer, IAsyncDisposable
                     request
                         .ForPath("/_cerbos/health")
                         .ForPort(3592)
-                        .ForStatusCode(System.Net.HttpStatusCode.OK)))
+                        .ForStatusCode(System.Net.HttpStatusCode.OK),
+                    wait => wait.WithTimeout(StartupTimeout)))
             .Build();
 
-        await _container.StartAsync();
+        using var startupCts = new CancellationTokenSource(StartupTimeout);
+        await _container.StartAsync(startupCts.Token);
 
         var host = _container.Hostname;
         var httpPort = _container.GetMappedPublicPort(3592);

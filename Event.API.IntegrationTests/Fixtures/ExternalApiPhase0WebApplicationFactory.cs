@@ -139,7 +139,7 @@ public sealed class ExternalApiPhase0WebApplicationFactory : WebApplicationFacto
 
         builder.ConfigureServices(services =>
         {
-            services.RemoveAll<DbContextOptions<ExploreDbContext>>();
+            services.RemoveExploreDbContextRegistrations();
 
             services.AddDbContext<ExploreDbContext>(options =>
             {

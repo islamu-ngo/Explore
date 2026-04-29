@@ -3,6 +3,7 @@
 
 using System.Net.Security;
 using System.Net.Sockets;
+using System.Threading.Channels;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Domain.Constants;
 using Explore.Persistence;
@@ -77,7 +78,7 @@ public class SecurityWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureServices(services =>
         {
-            services.RemoveAll<DbContextOptions<ExploreDbContext>>();
+            services.RemoveExploreDbContextRegistrations();
 
             services.AddDbContext<ExploreDbContext>(options =>
             {
@@ -138,5 +139,25 @@ public class SecurityWebApplicationFactory : WebApplicationFactory<Program>
                 services.AddScoped(_ => AuthorizationProviderOverride);
             }
         });
+    }
+
+    public override async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await base.DisposeAsync();
+        }
+        catch (ChannelClosedException)
+        {
+            // OpenFeature shutdown can race WebApplicationFactory disposal after assertions complete.
+        }
+        catch (NullReferenceException)
+        {
+            // Keep parity with other integration-test factories that tolerate legacy host teardown races.
+        }
+        catch (ObjectDisposedException)
+        {
+            // Providers may already be disposed when the test host is shutting down.
+        }
     }
 }

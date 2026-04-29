@@ -22,6 +22,7 @@ namespace Explore.Blazor.IntegrationTests.Endpoints;
 /// and the BFF should start and serve pages normally with no authentication provider.
 /// </summary>
 [Category(BffTestCategories.Security)]
+[NotInParallel("BlazorBootstrapEnvironment")]
 public class BffNoKeycloakResilienceTests : IAsyncDisposable
 {
     private readonly NoKeycloakBlazorBffWebApplicationFactory _factory;
@@ -143,6 +144,35 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
     /// </summary>
     private sealed class NoKeycloakBlazorBffWebApplicationFactory : WebApplicationFactory<Program>
     {
+        private static readonly IReadOnlyDictionary<string, string?> BootstrapEnvironmentOverrides =
+            new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["Infisical__ProjectId"] = string.Empty,
+                ["Infisical__ClientId"] = string.Empty,
+                ["Infisical__ClientSecret"] = string.Empty,
+                ["Keycloak__Authority"] = string.Empty,
+                ["Keycloak__MetadataAddress"] = string.Empty,
+                ["Keycloak__Realm"] = string.Empty,
+                ["Keycloak__ClientId"] = string.Empty,
+                ["Keycloak__ClientSecret"] = string.Empty,
+                ["POSTGRESQL_HOST"] = "localhost",
+                ["POSTGRESQL_PORT"] = "5432",
+                ["POSTGRESQL_DATABASE"] = "test_bff_no_keycloak",
+                ["POSTGRESQL_USERNAME"] = "postgres",
+                ["POSTGRESQL_PASSWORD"] = "postgres"
+            };
+
+        private readonly Dictionary<string, string?> _originalEnvironmentValues = new(StringComparer.Ordinal);
+
+        public NoKeycloakBlazorBffWebApplicationFactory()
+        {
+            foreach (var (key, value) in BootstrapEnvironmentOverrides)
+            {
+                _originalEnvironmentValues[key] = Environment.GetEnvironmentVariable(key);
+                Environment.SetEnvironmentVariable(key, value);
+            }
+        }
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Development");
@@ -151,6 +181,14 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
             {
                 var testConfig = new Dictionary<string, string?>
                 {
+                    ["Infisical:ProjectId"] = string.Empty,
+                    ["Infisical:ClientId"] = string.Empty,
+                    ["Infisical:ClientSecret"] = string.Empty,
+                    ["Keycloak:Authority"] = string.Empty,
+                    ["Keycloak:MetadataAddress"] = string.Empty,
+                    ["Keycloak:Realm"] = string.Empty,
+                    ["Keycloak:ClientId"] = string.Empty,
+                    ["Keycloak:ClientSecret"] = string.Empty,
                     ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=test_bff_no_keycloak;Username=postgres;Password=postgres",
                     ["Deployment:Mode"] = "SingleTenant",
                     ["Deployment:DefaultTenantId"] = "018e4e5c-7f00-7000-8000-000000000001",
@@ -169,8 +207,7 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
             {
                 services.AddDataProtection().UseEphemeralDataProtectionProvider();
 
-                services.RemoveAll(typeof(IDbContextFactory<Explore.Persistence.ExploreDbContext>));
-                services.RemoveAll<Explore.Persistence.ExploreDbContext>();
+                RemoveExploreDbContextRegistrations(services);
                 services.AddDbContext<Explore.Persistence.ExploreDbContext>(options =>
                     options.UseInMemoryDatabase($"BffNoKeycloakDb_{Guid.NewGuid():N}"));
 
@@ -184,6 +221,49 @@ public class BffNoKeycloakResilienceTests : IAsyncDisposable
                 services.RemoveAll<Explore.Blazor.Services.IBffOnboardingStatusProvider>();
                 services.AddSingleton(mockOnboarding);
             });
+        }
+
+        private static void RemoveExploreDbContextRegistrations(IServiceCollection services)
+        {
+            var descriptors = services
+                .Where(descriptor => IsExploreDbContextRegistration(descriptor.ServiceType) ||
+                                     IsExploreDbContextRegistration(descriptor.ImplementationType))
+                .ToList();
+
+            foreach (var descriptor in descriptors)
+            {
+                services.Remove(descriptor);
+            }
+        }
+
+        private static bool IsExploreDbContextRegistration(Type? type)
+        {
+            if (type is null)
+            {
+                return false;
+            }
+
+            if (type == typeof(Explore.Persistence.ExploreDbContext) ||
+                type == typeof(DbContextOptions) ||
+                type == typeof(DbContextOptions<Explore.Persistence.ExploreDbContext>) ||
+                type == typeof(IDbContextFactory<Explore.Persistence.ExploreDbContext>))
+            {
+                return true;
+            }
+
+            return type.IsGenericType &&
+                   type.Namespace?.StartsWith("Microsoft.EntityFrameworkCore", StringComparison.Ordinal) == true &&
+                   type.GenericTypeArguments.Contains(typeof(Explore.Persistence.ExploreDbContext));
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            foreach (var (key, value) in _originalEnvironmentValues)
+            {
+                Environment.SetEnvironmentVariable(key, value);
+            }
+
+            base.Dispose(disposing);
         }
     }
 }

@@ -4,23 +4,19 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Security;
-using System.Net.Sockets;
+using System.Text;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.Domain;
 using Explore.Domain.Constants;
 using Explore.Persistence;
 using FluentAssertions;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.IdentityModel.Tokens;
-using TUnit.Core;
 using TUnit.Core.Interfaces;
 
 namespace Event.Api.IntegrationTests.Features;
@@ -67,7 +63,7 @@ public class CerbosFailClosedTests : IAsyncDisposable
     public async Task InstanceAdmin_DeniedWhenCerbosDown()
     {
         var token = await _keycloak.TokenClient.GetAdminTokenAsync();
-        using var request = CreateAuthorizedRequest(HttpMethod.Get, "/api/instancesettings", token);
+        using var request = CreateAuthorizedRequest(HttpMethod.Get, "/api/instance/settings/modules", token);
 
         var response = await _client.SendAsync(request);
 
@@ -80,7 +76,7 @@ public class CerbosFailClosedTests : IAsyncDisposable
     public async Task InstanceAdmin_DeniedTenantCreation_WhenCerbosDown()
     {
         var token = await _keycloak.TokenClient.GetAdminTokenAsync();
-        using var request = CreateAuthorizedRequest(HttpMethod.Get, "/api/tenants", token);
+        using var request = CreateAuthorizedRequest(HttpMethod.Post, "/api/tenant", token, CreateTenantJson());
 
         var response = await _client.SendAsync(request);
 
@@ -92,7 +88,7 @@ public class CerbosFailClosedTests : IAsyncDisposable
     public async Task RegularUser_DeniedEventView_WhenCerbosDown()
     {
         var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = CreateAuthorizedRequest(HttpMethod.Get, "/api/events", token);
+        using var request = CreateAuthorizedRequest(HttpMethod.Post, "/api/tenant", token, CreateTenantJson());
 
         var response = await _client.SendAsync(request);
 
@@ -104,7 +100,7 @@ public class CerbosFailClosedTests : IAsyncDisposable
     public async Task TenantAdmin_DeniedOwnTenant_WhenCerbosDown()
     {
         var token = await _keycloak.TokenClient.GetTenantAdminTokenAsync();
-        using var request = CreateAuthorizedRequest(HttpMethod.Get, "/api/tenants", token);
+        using var request = CreateAuthorizedRequest(HttpMethod.Post, "/api/tenant", token, CreateTenantJson());
 
         var response = await _client.SendAsync(request);
 
@@ -119,7 +115,7 @@ public class CerbosFailClosedTests : IAsyncDisposable
     [Test]
     public async Task Anonymous_StillGetsUnauthorized_WhenCerbosDown()
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/events");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/event/my");
 
         var response = await _client.SendAsync(request);
 
@@ -131,7 +127,7 @@ public class CerbosFailClosedTests : IAsyncDisposable
     [Test]
     public async Task AnonymousEndpoints_StillWork_WhenCerbosDown()
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/eventformats");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/eventformat");
 
         var response = await _client.SendAsync(request);
 
@@ -148,8 +144,8 @@ public class CerbosFailClosedTests : IAsyncDisposable
     {
         var token = await _keycloak.TokenClient.GetUserTokenAsync();
 
-        using var request1 = CreateAuthorizedRequest(HttpMethod.Get, "/api/events", token);
-        using var request2 = CreateAuthorizedRequest(HttpMethod.Get, "/api/tenants", token);
+        using var request1 = CreateAuthorizedRequest(HttpMethod.Post, "/api/tenant", token, CreateTenantJson());
+        using var request2 = CreateAuthorizedRequest(HttpMethod.Post, "/api/tenant", token, CreateTenantJson());
 
         var response1 = await _client.SendAsync(request1);
         var response2 = await _client.SendAsync(request2);
@@ -161,10 +157,21 @@ public class CerbosFailClosedTests : IAsyncDisposable
 
     #endregion
 
-    private static HttpRequestMessage CreateAuthorizedRequest(HttpMethod method, string url, string token)
+    private static string CreateTenantJson()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        return $"{{\"fullName\":\"Security Test Tenant {suffix}\",\"slug\":\"security-test-tenant-{suffix}\",\"isActive\":true}}";
+    }
+
+    private static HttpRequestMessage CreateAuthorizedRequest(HttpMethod method, string url, string token, string? jsonBody = null)
     {
         var request = new HttpRequestMessage(method, url);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        if (jsonBody is not null)
+        {
+            request.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+        }
+
         return request;
     }
 
@@ -217,7 +224,7 @@ public class CerbosFailClosedTests : IAsyncDisposable
 
             builder.ConfigureServices(services =>
             {
-                services.RemoveAll<DbContextOptions<ExploreDbContext>>();
+                services.RemoveExploreDbContextRegistrations();
 
                 services.AddDbContext<ExploreDbContext>(options =>
                 {

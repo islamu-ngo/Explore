@@ -65,11 +65,11 @@ public sealed class CerbosTestClient : IDisposable
     }
 
     /// <summary>
-    /// Sends a GET request to the Cerbos API schema endpoint.
+    /// Sends a GET request to the Cerbos OpenAPI schema endpoint.
     /// </summary>
     public async Task<HttpResponseMessage> GetSchemaAsync()
     {
-        return await _httpClient.GetAsync("/api/schema");
+        return await _httpClient.GetAsync("/schema/swagger.json");
     }
 
     public void Dispose()

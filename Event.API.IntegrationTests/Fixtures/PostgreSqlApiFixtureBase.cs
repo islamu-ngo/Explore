@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.DependencyInjection;
+using System.Threading.Channels;
 using Testcontainers.PostgreSql;
 using TUnit.Core.Interfaces;
 
@@ -75,12 +76,13 @@ public abstract class PostgreSqlApiFixtureBase : IAsyncInitializer, IAsyncDispos
         Client?.Dispose();
         if (Factory is not null)
         {
-            await Factory.DisposeAsync();
+            await DisposeFactoryAsync();
         }
 
         RecreateHost();
+        var factory = Factory ?? throw new InvalidOperationException("PostgreSQL API test host was not recreated.");
 
-        await using var scope = Factory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var cache = scope.ServiceProvider.GetRequiredService<HybridCache>();
         var outputCacheStore = scope.ServiceProvider.GetRequiredService<IOutputCacheStore>();
 
@@ -142,10 +144,36 @@ public abstract class PostgreSqlApiFixtureBase : IAsyncInitializer, IAsyncDispos
 
         if (Factory is not null)
         {
-            await Factory.DisposeAsync();
+            await DisposeFactoryAsync();
         }
 
         await _container.DisposeAsync();
         GC.SuppressFinalize(this);
+    }
+
+    private async ValueTask DisposeFactoryAsync()
+    {
+        var factory = Factory;
+        if (factory is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await factory.DisposeAsync();
+        }
+        catch (ChannelClosedException)
+        {
+            // OpenFeature can race WebApplicationFactory shutdown in tests after the host has already stopped.
+        }
+        catch (NullReferenceException)
+        {
+            // Some hosted providers are already torn down when TestHost disposes repeated host instances.
+        }
+        catch (ObjectDisposedException)
+        {
+            // Disposal is idempotent for the test fixture; repeated shutdown signals are safe to ignore.
+        }
     }
 }

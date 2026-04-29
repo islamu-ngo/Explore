@@ -15,7 +15,6 @@ using Explore.Application.Utilities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using CerbosCheckResourcesRequest = Cerbos.Sdk.Builder.CheckResourcesRequest;
-using CerbosPrincipalBuilder = Explore.Infrastructure.Services.CerbosPrincipalBuilder;
 using CerbosResourceEntry = Cerbos.Sdk.Builder.ResourceEntry;
 
 namespace Explore.Infrastructure.Services;
@@ -102,7 +101,7 @@ public class CerbosAuthorizationService : IAuthorizationProvider
             return [];
 
         var byoClient = _clientFactory.GetOrCreate(endpointUrl);
-        return await ExecuteCheckAsync(byoClient, endpointUrl, checks, cancellationToken);
+        return await ExecuteCheckAsync(byoClient, endpointUrl, checks, cancellationToken, throwOnUnavailable: true);
     }
 
     public async Task<bool> CheckSettingAccessAsync(
@@ -139,7 +138,8 @@ public class CerbosAuthorizationService : IAuthorizationProvider
         ICerbosClient client,
         string endpointLabel,
         IReadOnlyList<AuthorizationCheck> checks,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool throwOnUnavailable = false)
     {
         var userId = _adminContext.UserId;
         var machineContext = _machinePrincipalAccessor.Current;
@@ -176,6 +176,10 @@ public class CerbosAuthorizationService : IAuthorizationProvider
                 ex,
                 "Cerbos PDP unreachable at {Endpoint}. Denying access for requestId={RequestId} correlationId={CorrelationId}",
                 endpointLabel, requestId, correlationId);
+
+            if (throwOnUnavailable)
+                throw;
+
             return DenyAll(checks.Count);
         }
     }

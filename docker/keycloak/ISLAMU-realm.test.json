@@ -201,8 +201,7 @@
         "profile",
         "email",
         "web-origins",
-        "acr",
-        "offline_access"
+        "acr"
       ],
       "optionalClientScopes": [],
       "attributes": {

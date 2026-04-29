@@ -54,7 +54,7 @@ public class NoKeycloakAuthenticationTests : IAsyncDisposable
     [Test]
     public async Task NoAuthority_Anonymous_RejectedOnProtectedEndpoint()
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/events");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/event/my");
 
         var response = await _client.SendAsync(request);
 
@@ -65,7 +65,7 @@ public class NoKeycloakAuthenticationTests : IAsyncDisposable
     [Test]
     public async Task NoAuthority_ArbitraryJwt_Rejected()
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/events");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/event/my");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer",
             "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0In0.fake");
 
@@ -82,7 +82,7 @@ public class NoKeycloakAuthenticationTests : IAsyncDisposable
                          "eyJzdWIiOiJ0ZXN0LWFkbWluIiwiZXhwIjoxMDAwMDAwMDAwfQ." +
                          "fake-signature";
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/events");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/event/my");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", expiredJwt);
 
         var response = await _client.SendAsync(request);
@@ -98,7 +98,7 @@ public class NoKeycloakAuthenticationTests : IAsyncDisposable
     [Test]
     public async Task NoAuthority_AnonymousEndpoints_StillWork()
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/eventformats");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/eventformat");
 
         var response = await _client.SendAsync(request);
 
@@ -178,7 +178,7 @@ public class NoKeycloakAuthenticationTests : IAsyncDisposable
 
             builder.ConfigureServices(services =>
             {
-                services.RemoveAll<DbContextOptions<ExploreDbContext>>();
+                services.RemoveExploreDbContextRegistrations();
 
                 services.AddDbContext<ExploreDbContext>(options =>
                 {

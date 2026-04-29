@@ -5,6 +5,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Security;
+using System.Text;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
@@ -24,8 +25,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NSubstitute;
-using TUnit.Core;
-using TUnit.Core.Interfaces;
 
 namespace Event.Api.IntegrationTests.Features;
 
@@ -116,7 +115,7 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
     public async Task LocalRbac_InstanceAdmin_GetInstanceSettings()
     {
         var token = await _keycloak.TokenClient.GetAdminTokenAsync();
-        using var request = CreateAuthorizedRequest(HttpMethod.Get, "/api/instancesettings", token);
+        using var request = CreateAuthorizedRequest(HttpMethod.Get, "/api/instance/settings/modules", token);
 
         var response = await _instanceAdminClient.SendAsync(request);
 
@@ -128,12 +127,12 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
     public async Task LocalRbac_InstanceAdmin_CreateTenant()
     {
         var token = await _keycloak.TokenClient.GetAdminTokenAsync();
-        using var request = CreateAuthorizedRequest(HttpMethod.Post, "/api/tenants", token);
+        using var request = CreateAuthorizedRequest(HttpMethod.Post, "/api/tenant", token, CreateTenantJson());
 
         var response = await _instanceAdminClient.SendAsync(request);
 
         response.StatusCode.Should().BeOneOf(
-            new[] { HttpStatusCode.Created, HttpStatusCode.BadRequest },
+            new[] { HttpStatusCode.OK, HttpStatusCode.BadRequest },
             "instance admin should be allowed to create tenants via local RBAC " +
             "(actual status depends on request body validation, not authorization)");
     }
@@ -146,7 +145,7 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
     public async Task LocalRbac_RegularUser_DeniedInstanceSettings()
     {
         var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = CreateAuthorizedRequest(HttpMethod.Get, "/api/instancesettings", token);
+        using var request = CreateAuthorizedRequest(HttpMethod.Get, "/api/instance/settings/modules", token);
 
         var response = await _regularUserClient.SendAsync(request);
 
@@ -158,7 +157,7 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
     public async Task LocalRbac_RegularUser_DeniedTenantCreation()
     {
         var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = CreateAuthorizedRequest(HttpMethod.Post, "/api/tenants", token);
+        using var request = CreateAuthorizedRequest(HttpMethod.Post, "/api/tenant", token, CreateTenantJson());
 
         var response = await _regularUserClient.SendAsync(request);
 
@@ -174,7 +173,7 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
     public async Task LocalRbac_TenantAdmin_CanViewTenants()
     {
         var token = await _keycloak.TokenClient.GetTenantAdminTokenAsync();
-        using var request = CreateAuthorizedRequest(HttpMethod.Get, "/api/tenants", token);
+        using var request = CreateAuthorizedRequest(HttpMethod.Get, "/api/tenant", token);
 
         var response = await _tenantAdminClient.SendAsync(request);
 
@@ -186,7 +185,7 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
     public async Task LocalRbac_TenantAdmin_DeniedInstanceSettings()
     {
         var token = await _keycloak.TokenClient.GetTenantAdminTokenAsync();
-        using var request = CreateAuthorizedRequest(HttpMethod.Get, "/api/instancesettings", token);
+        using var request = CreateAuthorizedRequest(HttpMethod.Get, "/api/instance/settings/modules", token);
 
         var response = await _tenantAdminClient.SendAsync(request);
 
@@ -201,7 +200,7 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
     [Test]
     public async Task LocalRbac_Anonymous_StillGets401()
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/events");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/event/my");
 
         var response = await _anonymousClient.SendAsync(request);
 
@@ -212,7 +211,7 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
     [Test]
     public async Task LocalRbac_AnonymousEndpoints_StillWork()
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/eventformats");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/eventformat");
 
         var response = await _anonymousClient.SendAsync(request);
 
@@ -228,7 +227,7 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
     public async Task LocalRbac_InstanceAdmin_CanUpdateSettings()
     {
         var token = await _keycloak.TokenClient.GetAdminTokenAsync();
-        using var request = CreateAuthorizedRequest(HttpMethod.Put, "/api/instancesettings/some-setting", token);
+        using var request = CreateAuthorizedRequest(HttpMethod.Put, "/api/instance/settings/modules", token, ModuleSettingsJson);
 
         var response = await _instanceAdminClient.SendAsync(request);
 
@@ -242,7 +241,7 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
     public async Task LocalRbac_RegularUser_DeniedSettingUpdate()
     {
         var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = CreateAuthorizedRequest(HttpMethod.Put, "/api/instancesettings/some-setting", token);
+        using var request = CreateAuthorizedRequest(HttpMethod.Put, "/api/instance/settings/modules", token, ModuleSettingsJson);
 
         var response = await _regularUserClient.SendAsync(request);
 
@@ -254,10 +253,23 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
 
     #region Helpers
 
-    private static HttpRequestMessage CreateAuthorizedRequest(HttpMethod method, string url, string token)
+    private const string ModuleSettingsJson = "{\"enableIslamicModule\":true,\"enableTechModule\":true}";
+
+    private static string CreateTenantJson()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        return $"{{\"fullName\":\"Security Test Tenant {suffix}\",\"slug\":\"security-test-tenant-{suffix}\",\"isActive\":true}}";
+    }
+
+    private static HttpRequestMessage CreateAuthorizedRequest(HttpMethod method, string url, string token, string? jsonBody = null)
     {
         var request = new HttpRequestMessage(method, url);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        if (jsonBody is not null)
+        {
+            request.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+        }
+
         return request;
     }
 
@@ -388,7 +400,7 @@ public class LocalRbacAuthorizationTests : IAsyncDisposable
 
             builder.ConfigureServices(services =>
             {
-                services.RemoveAll<DbContextOptions<ExploreDbContext>>();
+            services.RemoveExploreDbContextRegistrations();
 
                 services.AddDbContext<ExploreDbContext>(options =>
                 {

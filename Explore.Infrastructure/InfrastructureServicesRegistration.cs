@@ -13,6 +13,7 @@ using Explore.Infrastructure.Identity;
 using Explore.Infrastructure.Localization;
 using Explore.Infrastructure.Localization.Resilience;
 using Explore.Infrastructure.Mail;
+using Explore.Infrastructure.Mail.Unsubscribe;
 using Explore.Infrastructure.Messaging;
 using Explore.Infrastructure.Services;
 using Explore.Infrastructure.Services.Federation;
@@ -37,6 +38,7 @@ public static class InfrastructureServicesRegistration
         // Instance admin can lock settings to enforce SaaS-wide SMTP or let tenants override
         services.AddScoped<ISmtpConfigResolver, SmtpConfigResolver>();
         services.AddScoped<IEmailService, SmtpEmailService>();
+        services.AddScoped<IEmailUnsubscribeTokenService, EmailUnsubscribeTokenService>();
 
         // Object storage: provider-agnostic S3-compatible via AWS SDK
         // Config resolved per-tenant from cascading settings engine (SystemSetting → TenantSetting)

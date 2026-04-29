@@ -14,6 +14,8 @@ namespace Explore.Blazor.IntegrationTests.Fixtures;
 public sealed class BffKeycloakFixture : IAsyncInitializer, IAsyncDisposable
 {
     private const string KeycloakImage = "quay.io/keycloak/keycloak:26.1.2";
+    private static readonly TimeSpan StartupTimeout = TimeSpan.FromMinutes(2);
+
     public const string RealmName = "ISLAMU";
     public const string TestClientId = "islamu-event-blazor";
     public const string TestClientSecret = "test-blazor-secret";
@@ -38,7 +40,7 @@ public sealed class BffKeycloakFixture : IAsyncInitializer, IAsyncDisposable
         _container = new ContainerBuilder()
             .WithImage(KeycloakImage)
             .WithPortBinding(8080, true)
-            .WithResourceMapping(testRealmPath, "/opt/keycloak/data/import/ISLAMU-realm.test.json")
+            .WithResourceMapping(testRealmPath, "/opt/keycloak/data/import/")
             .WithCommand("start-dev", "--import-realm", "--http-port=8080")
             .WithEnvironment("KC_HEALTH_ENABLED", "true")
             .WithEnvironment("KC_HTTP_ENABLED", "true")
@@ -49,10 +51,12 @@ public sealed class BffKeycloakFixture : IAsyncInitializer, IAsyncDisposable
                     request
                         .ForPath($"/realms/{RealmName}/.well-known/openid-configuration")
                         .ForPort(8080)
-                        .ForStatusCode(System.Net.HttpStatusCode.OK)))
+                        .ForStatusCode(System.Net.HttpStatusCode.OK),
+                    wait => wait.WithTimeout(StartupTimeout)))
             .Build();
 
-        await _container.StartAsync();
+        using var startupCts = new CancellationTokenSource(StartupTimeout);
+        await _container.StartAsync(startupCts.Token);
 
         await Task.Delay(TimeSpan.FromSeconds(3));
 

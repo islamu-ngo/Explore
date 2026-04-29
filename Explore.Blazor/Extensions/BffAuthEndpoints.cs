@@ -213,15 +213,55 @@ public static class BffAuthEndpoints
             "[AuthEndpoints] /auth/signout hit - Url: {Url} ReturnUrl: {ReturnUrl}",
             ctx.Request.GetDisplayUrl(), returnUrl);
 
+        var cookieAuthResult = AuthenticateResult.NoResult();
         try
         {
-            // Always sign out of the cookie session
-            await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            cookieAuthResult = await ctx.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        }
+        catch (Exception ex)
+        {
+            logger.LogDebug(ex, "[AuthEndpoints] Could not authenticate cookie session during signout");
+        }
 
-            // If user authenticated via an OIDC provider, sign out of that too
-            // (triggers RP-initiated logout at the IdP for Keycloak/Google)
-            var schemeManager = ctx.RequestServices.GetRequiredService<IDynamicAuthSchemeManager>();
-            var registered = await schemeManager.GetRegisteredProviderSchemesAsync();
+        try
+        {
+            // Always clear the local BFF cookie session. Remote provider signout is best-effort,
+            // but local cookie clearing is the security boundary and must not be reported as success
+            // if it fails.
+            await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "[AuthEndpoints] Could not clear cookie session during signout");
+            if (!ctx.Response.HasStarted)
+            {
+                ctx.Response.StatusCode = StatusCodes.Status500InternalServerError;
+                ctx.Response.ContentType = "application/problem+json";
+                await ctx.Response.WriteAsJsonAsync(new
+                {
+                    type = "https://tools.ietf.org/html/rfc9110#section-15.6.1",
+                    title = "Logout Failed",
+                    status = StatusCodes.Status500InternalServerError,
+                    detail = "The local session could not be cleared. Please retry signout."
+                });
+            }
+
+            return;
+        }
+
+        if (cookieAuthResult.Succeeded && cookieAuthResult.Principal?.Identity?.IsAuthenticated == true)
+        {
+            IReadOnlyCollection<string> registered = [];
+
+            try
+            {
+                var schemeManager = ctx.RequestServices.GetRequiredService<IDynamicAuthSchemeManager>();
+                registered = await schemeManager.GetRegisteredProviderSchemesAsync();
+            }
+            catch (Exception ex)
+            {
+                logger.LogDebug(ex, "[AuthEndpoints] Could not enumerate remote signout providers");
+            }
 
             foreach (var scheme in registered)
             {
@@ -237,26 +277,17 @@ public static class BffAuthEndpoints
                     catch (Exception ex)
                     {
                         logger.LogDebug(ex,
-                            "[AuthEndpoints] Could not sign out of {Scheme} — user may not have used this provider",
+                            "[AuthEndpoints] Could not sign out of {Scheme} — falling back to local redirect",
                             scheme);
                     }
                 }
             }
-
-            // Fallback: redirect manually if no OIDC signout performed
-            ctx.Response.Redirect(returnUrl);
-            logger.LogInformation("[AuthEndpoints] Signout completed (cookie only)");
         }
-        catch (Exception ex)
+
+        if (!ctx.Response.HasStarted)
         {
-            logger.LogError(ex, "[AuthEndpoints] Error during signout");
-            ctx.Response.StatusCode = StatusCodes.Status500InternalServerError;
-            await ctx.Response.WriteAsJsonAsync(new Microsoft.AspNetCore.Mvc.ProblemDetails
-            {
-                Status = StatusCodes.Status500InternalServerError,
-                Title = "Logout Failed",
-                Detail = "Logout failed. Please try again later."
-            });
+            ctx.Response.Redirect(returnUrl);
+            logger.LogInformation("[AuthEndpoints] Signout completed with local redirect");
         }
     }
 

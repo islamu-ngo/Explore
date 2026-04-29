@@ -109,10 +109,12 @@ public class ApiEndpointSmokeTests
             .Where(description => !IsHttpMethod(description, HttpMethod.Get))
             .Where(description => !IsExternalDependencyEndpoint(description));
 
+        var failures = new List<string>();
+
         foreach (var description in endpoints)
         {
             var path = BuildPath(description);
-            var request = new HttpRequestMessage(new HttpMethod(description.HttpMethod ?? HttpMethod.Post.Method), path)
+            using var request = new HttpRequestMessage(new HttpMethod(description.HttpMethod ?? HttpMethod.Post.Method), path)
             {
                 Content = BuildBody(description)
             };
@@ -121,11 +123,14 @@ public class ApiEndpointSmokeTests
             var isUnauthorized = response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden;
             var isServerError = (int)response.StatusCode >= 500;
 
-            await Assert.That(isUnauthorized)
-                .IsFalse();
-            await Assert.That(isServerError)
-                .IsFalse();
+            if (isUnauthorized || isServerError)
+            {
+                failures.Add($"{description.HttpMethod} {path} => {(int)response.StatusCode} {response.StatusCode}");
+            }
         }
+
+        await Assert.That(failures).IsEmpty()
+            .Because($"Public write endpoints should not challenge anonymous callers or return 5xx. Failures: {string.Join("; ", failures)}");
     }
 
     private IReadOnlyList<ApiDescription> GetApiDescriptions()

@@ -520,13 +520,11 @@ public class CerbosPolicyContractTests : IDisposable
         yield return "group_member";
         yield return "storage_object";
         yield return "instance_setting";
-        yield return "tenant_setting";
         yield return "event_session";
         yield return "event_day";
         yield return "event_agenda_item";
         yield return "event_session_agenda_item";
         yield return "event_registration";
-        yield return "event_contact_share_consent";
         yield return "organization_review";
         yield return "notification";
         yield return "custom_property_definition";

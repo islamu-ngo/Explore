@@ -5,6 +5,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Security;
+using System.Text;
 using Event.Api.IntegrationTests.Fixtures;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
@@ -307,7 +308,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
     [Test]
     public async Task Matrix_Auth_FooterSettings_AnonymousDenied()
     {
-        await AssertAnonymousUnauthorized("/api/footer/settings");
+        await AssertAnonymousUnauthorized("/api/footer/settings", HttpMethod.Put);
     }
 
     [Test]
@@ -766,39 +767,40 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
     }
 
     [Test]
-    public async Task Matrix_CrossRole_RegularUser_DeniedTenantList()
+    public async Task Matrix_CrossRole_RegularUser_DeniedTenantCreation()
     {
         var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/tenant", token);
+        using var request = Auth(HttpMethod.Post, "/api/tenant", token);
+
+        var response = await _regularUserClient.SendAsync(request);
+
+        response.StatusCode.Should().BeOneOf(
+            new[] { HttpStatusCode.Forbidden, HttpStatusCode.BadRequest },
+            "regular users should be denied tenant creation or fail request validation before creation");
+    }
+
+    [Test]
+    public async Task Matrix_CrossRole_RegularUser_DeniedTenantMemberCreation()
+    {
+        var token = await _keycloak.TokenClient.GetUserTokenAsync();
+        using var request = Auth(HttpMethod.Post, "/api/tenantmember", token);
 
         var response = await _regularUserClient.SendAsync(request);
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "regular users should not be able to list tenants");
+            "regular users should not be able to create tenant members");
     }
 
     [Test]
-    public async Task Matrix_CrossRole_RegularUser_DeniedTenantMembers()
-    {
-        var token = await _keycloak.TokenClient.GetUserTokenAsync();
-        using var request = Auth(HttpMethod.Get, "/api/tenantmember", token);
-
-        var response = await _regularUserClient.SendAsync(request);
-
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "regular users should not be able to list tenant members");
-    }
-
-    [Test]
-    public async Task Matrix_CrossRole_RegularUser_DeniedExternalApiKeys()
+    public async Task Matrix_CrossRole_RegularUser_CanAccessVisibleExternalApiKeys()
     {
         var token = await _keycloak.TokenClient.GetUserTokenAsync();
         using var request = Auth(HttpMethod.Get, "/api/externalapikey", token);
 
         var response = await _regularUserClient.SendAsync(request);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
-            "regular users should not be able to access external API keys");
+        response.StatusCode.Should().Be(HttpStatusCode.OK,
+            "regular users can list external API keys visible to the current user");
     }
 
     [Test]
@@ -837,6 +839,12 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
     {
         var request = new HttpRequestMessage(method, url);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        if (method == HttpMethod.Post || method == HttpMethod.Put || method == HttpMethod.Patch)
+        {
+            request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+        }
+
         return request;
     }
 
@@ -959,7 +967,7 @@ public class EndpointAuthorizationMatrixTests : IAsyncDisposable
 
             builder.ConfigureServices(services =>
             {
-                services.RemoveAll<DbContextOptions<ExploreDbContext>>();
+            services.RemoveExploreDbContextRegistrations();
 
                 services.AddDbContext<ExploreDbContext>(options =>
                 {

@@ -3,6 +3,7 @@
 
 using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Headers;
+using System.Security.Claims;
 using Event.Api.IntegrationTests.Fixtures;
 using FluentAssertions;
 using TUnit.Core;
@@ -53,7 +54,7 @@ public class TokenClaimsVerificationTests
         var token = await _infra.TokenClient.GetAdminTokenAsync();
         var jwt = DecodeToken(token);
 
-        jwt.Subject.Should().NotBeNullOrEmpty("every token must have a subject (sub) claim");
+        GetSubject(jwt).Should().NotBeNullOrEmpty("every token must have a subject (sub) claim");
     }
 
     [Test]
@@ -138,7 +139,7 @@ public class TokenClaimsVerificationTests
         var adminJwt = DecodeToken(adminToken);
         var userJwt = DecodeToken(userToken);
 
-        adminJwt.Subject.Should().NotBe(userJwt.Subject,
+        GetSubject(adminJwt).Should().NotBe(GetSubject(userJwt),
             "different users must have different sub claims");
     }
 
@@ -192,6 +193,27 @@ public class TokenClaimsVerificationTests
     {
         var handler = new JwtSecurityTokenHandler();
         return handler.ReadJwtToken(token);
+    }
+
+    private static string? GetSubject(JwtSecurityToken jwt)
+    {
+        if (!string.IsNullOrWhiteSpace(jwt.Subject))
+        {
+            return jwt.Subject;
+        }
+
+        if (jwt.Payload.TryGetValue(JwtRegisteredClaimNames.Sub, out var payloadSubject))
+        {
+            return payloadSubject?.ToString();
+        }
+
+        return jwt.Claims.FirstOrDefault(IsSubjectClaim)?.Value;
+    }
+
+    private static bool IsSubjectClaim(Claim claim)
+    {
+        return claim.Type is JwtRegisteredClaimNames.Sub or ClaimTypes.NameIdentifier or "nameid" or "sid"
+            || claim.Type.EndsWith("/nameidentifier", StringComparison.OrdinalIgnoreCase);
     }
 
     #endregion

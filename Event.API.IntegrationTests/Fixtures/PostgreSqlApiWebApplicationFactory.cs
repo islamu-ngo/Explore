@@ -69,7 +69,7 @@ public class PostgreSqlApiWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureServices(services =>
         {
-            services.RemoveAll<DbContextOptions<ExploreDbContext>>();
+            services.RemoveExploreDbContextRegistrations();
 
             services.AddDbContext<ExploreDbContext>(options =>
             {

@@ -46,6 +46,7 @@ resources:
     attr:
       tenantId: "tenant-1"
       organizationId: "org-1"
+      userId: "user-1"
 
 tests:
   - name: "Instance admin has full access to org members"

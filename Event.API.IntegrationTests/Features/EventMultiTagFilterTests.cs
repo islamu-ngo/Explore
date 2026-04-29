@@ -27,7 +27,7 @@ public class EventMultiTagFilterTests : IAsyncDisposable
             builder.UseEnvironment("Testing");
             builder.ConfigureServices(services =>
             {
-                services.RemoveAll<DbContextOptions<ExploreDbContext>>();
+        services.RemoveExploreDbContextRegistrations();
                 services.AddDbContext<ExploreDbContext>(options =>
                 {
                     options.UseInMemoryDatabase($"InMemoryDb_{Guid.NewGuid()}");

@@ -25,6 +25,8 @@ public sealed class KeycloakContainerFixture : IAsyncInitializer, IAsyncDisposab
     /// <summary>Client secret from the test realm export.</summary>
     public const string TestClientSecret = "test-blazor-secret";
 
+    private static readonly TimeSpan StartupTimeout = TimeSpan.FromMinutes(2);
+
     private IContainer _container = null!;
 
     /// <summary>
@@ -57,7 +59,7 @@ public sealed class KeycloakContainerFixture : IAsyncInitializer, IAsyncDisposab
         _container = new ContainerBuilder()
             .WithImage(KeycloakImage)
             .WithPortBinding(8080, true)
-            .WithResourceMapping(testRealmPath, "/opt/keycloak/data/import/ISLAMU-realm.test.json")
+            .WithResourceMapping(testRealmPath, "/opt/keycloak/data/import/")
             .WithCommand("start-dev", "--import-realm", "--http-port=8080")
             .WithEnvironment("KC_HEALTH_ENABLED", "true")
             .WithEnvironment("KC_HTTP_ENABLED", "true")
@@ -68,10 +70,12 @@ public sealed class KeycloakContainerFixture : IAsyncInitializer, IAsyncDisposab
                     request
                         .ForPath($"/realms/{RealmName}/.well-known/openid-configuration")
                         .ForPort(8080)
-                        .ForStatusCode(System.Net.HttpStatusCode.OK)))
+                        .ForStatusCode(System.Net.HttpStatusCode.OK),
+                    wait => wait.WithTimeout(StartupTimeout)))
             .Build();
 
-        await _container.StartAsync();
+        using var startupCts = new CancellationTokenSource(StartupTimeout);
+        await _container.StartAsync(startupCts.Token);
 
         // Brief delay to ensure realm import is fully settled after OIDC metadata becomes available
         await Task.Delay(TimeSpan.FromSeconds(3));

@@ -174,7 +174,7 @@ public sealed class RuntimeAuthorizationProvider : IAuthorizationProvider
             _logger.LogDebug("Routing {Count} auth checks to BYO Cerbos endpoint: {Endpoint}", checks.Count, config.Endpoint);
             return await _cerbosProvider.IsAllowedBatchWithEndpointAsync(config.Endpoint, checks, cancellationToken);
         }
-        catch (Exception ex) when (ex is Grpc.Core.RpcException or HttpRequestException or TaskCanceledException)
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             _logger.LogWarning(
                 ex,

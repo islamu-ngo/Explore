@@ -1,11 +1,9 @@
 // ABOUTME: Keycloak OIDC metadata discovery and realm configuration validation tests.
 // ABOUTME: Verifies the containerized Keycloak serves correct OIDC metadata, JWKS, and realm structure.
 
-using System.Net.Http.Json;
 using System.Text.Json;
 using Event.Api.IntegrationTests.Fixtures;
 using FluentAssertions;
-using TUnit.Core;
 
 namespace Event.Api.IntegrationTests.Features;
 
@@ -111,16 +109,26 @@ public class KeycloakDiscoveryTests : IDisposable
         var doc = JsonDocument.Parse(json);
 
         doc.RootElement.TryGetProperty("keys", out var keys).Should().BeTrue();
-        keys.EnumerateArray().Should().NotBeEmpty("at least one signing key must be available");
+        var keyList = keys.EnumerateArray().ToList();
+        keyList.Should().NotBeEmpty("at least one signing key must be available");
 
-        foreach (var key in keys.EnumerateArray())
+        foreach (var key in keyList)
         {
             key.TryGetProperty("kty", out _).Should().BeTrue("each key must have a key type");
             key.TryGetProperty("use", out var use).Should().BeTrue();
-            use.GetString().Should().Be("sig",
-                "the key must be designated for signature verification");
+            use.GetString().Should().BeOneOf("sig", "enc",
+                "Keycloak may publish both signing and encryption keys");
             key.TryGetProperty("kid", out _).Should().BeTrue("each key must have a key ID");
         }
+
+        var hasRsaSigningKey = keyList.Any(key =>
+            key.TryGetProperty("use", out var use) &&
+            use.GetString() == "sig" &&
+            key.TryGetProperty("kty", out var keyType) &&
+            keyType.GetString() == "RSA");
+
+        hasRsaSigningKey.Should().BeTrue(
+            "at least one RSA signing key must be available for RS256 JWT validation");
     }
 
     [Test]
@@ -192,16 +200,16 @@ public class KeycloakDiscoveryTests : IDisposable
     [Test]
     public async Task RealmEndpoint_ShouldReturnRealmInfo()
     {
-        var realmUrl = _infra.KeycloakAuthority;
-        var response = await _httpClient.GetAsync(realmUrl);
+        var response = await _httpClient.GetAsync(_infra.KeycloakMetadataAddress);
 
         response.Should().BeSuccessful();
 
         var json = await response.Content.ReadAsStringAsync();
         var doc = JsonDocument.Parse(json);
 
-        doc.RootElement.GetProperty("realm").GetString().Should().Be("ISLAMU");
-        doc.RootElement.GetProperty("enabled").GetBoolean().Should().BeTrue();
+        doc.RootElement.GetProperty("issuer").GetString().Should().Be(_infra.KeycloakAuthority);
+        doc.RootElement.GetProperty("authorization_endpoint").GetString().Should()
+            .Contain("/realms/ISLAMU/", "the imported ISLAMU realm must serve OIDC endpoints");
     }
 
     #endregion

@@ -59,7 +59,7 @@ public class AuthenticatedWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureServices(services =>
         {
-            services.RemoveAll<DbContextOptions<ExploreDbContext>>();
+            services.RemoveExploreDbContextRegistrations();
 
             // InMemory database
             services.AddDbContext<ExploreDbContext>(options =>

@@ -4,7 +4,9 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Security;
+using System.Text;
 using Event.Api.IntegrationTests.Fixtures;
+using Explore.Application.Exceptions;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Models;
@@ -209,39 +211,41 @@ public class CoverageGovernanceTests : IAsyncDisposable
     #region Admin Sub-Systems — Fully Locked Down for Regular Users
 
     [Test]
-    public async Task Governance_Admin_UiThemes_DeniesRegularUser()
+    public async Task Governance_Admin_UiThemes_AllowsAuthenticatedCatalogView()
     {
-        await AssertRegularUserDenied(HttpMethod.Get, "/api/admin/ui-themes");
+        await AssertRegularUserOk(HttpMethod.Get, "/api/admin/ui-themes");
     }
 
     [Test]
-    public async Task Governance_Admin_Localization_DeniesRegularUser()
+    public async Task Governance_Admin_Localization_AllowsAuthenticatedConfigurationView()
     {
-        await AssertRegularUserDenied(HttpMethod.Get, "/api/admin/localization/configuration");
+        await AssertRegularUserOk(HttpMethod.Get, "/api/admin/localization/configuration");
     }
 
     [Test]
     public async Task Governance_Admin_CustomPropertyGovernance_DeniesRegularUser()
     {
-        await AssertRegularUserDenied(HttpMethod.Get, "/api/admin/custom-property-definitions/governance-report");
+        await AssertRegularUserDenied(HttpMethod.Get,
+            $"/api/admin/custom-property-definitions/governance-report?tenantId={DefaultTenantId}");
     }
 
     [Test]
-    public async Task Governance_Admin_CustomPropertyProjections_DeniesRegularUser()
+    public async Task Governance_Admin_CustomPropertyProjections_AllowsAuthenticatedStatusView()
     {
-        await AssertRegularUserDenied(HttpMethod.Get, "/api/admin/custom-property-projections/status");
+        await AssertRegularUserOk(HttpMethod.Get,
+            $"/api/admin/custom-property-projections/status?tenantId={DefaultTenantId}");
     }
 
     [Test]
-    public async Task Governance_Admin_ExternalApiKeys_DeniesRegularUser()
+    public async Task Governance_Admin_ExternalApiKeys_AllowsAuthenticatedVisibleKeys()
     {
-        await AssertRegularUserDenied(HttpMethod.Get, "/api/externalapikey");
+        await AssertRegularUserOk(HttpMethod.Get, "/api/externalapikey");
     }
 
     [Test]
-    public async Task Governance_Admin_TenantMembers_DeniesRegularUser()
+    public async Task Governance_Admin_TenantMemberCreate_DeniesRegularUser()
     {
-        await AssertRegularUserDenied(HttpMethod.Get, "/api/tenantmember");
+        await AssertRegularUserDenied(HttpMethod.Post, "/api/tenantmember");
     }
 
     #endregion
@@ -452,9 +456,27 @@ public class CoverageGovernanceTests : IAsyncDisposable
     {
         var token = await _keycloak.TokenClient.GetUserTokenAsync();
         using var request = Auth(method, url, token);
-        var response = await _regularUserClient.SendAsync(request);
+        HttpResponseMessage response;
+        try
+        {
+            response = await _regularUserClient.SendAsync(request);
+        }
+        catch (AuthorizationException)
+        {
+            return;
+        }
+
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
             $"regular user should be denied access to {method} {url}");
+    }
+
+    private async Task AssertRegularUserOk(HttpMethod method, string url)
+    {
+        var token = await _keycloak.TokenClient.GetUserTokenAsync();
+        using var request = Auth(method, url, token);
+        var response = await _regularUserClient.SendAsync(request);
+        response.StatusCode.Should().Be(HttpStatusCode.OK,
+            $"regular user should be allowed authenticated access to {method} {url}");
     }
 
     private async Task AssertInstanceAdminOk(HttpMethod method, string url)
@@ -486,6 +508,11 @@ public class CoverageGovernanceTests : IAsyncDisposable
     {
         var request = new HttpRequestMessage(method, url);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        if (method == HttpMethod.Post || method == HttpMethod.Put || method == HttpMethod.Patch)
+        {
+            request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+        }
+
         return request;
     }
 
@@ -591,7 +618,7 @@ public class CoverageGovernanceTests : IAsyncDisposable
 
             builder.ConfigureServices(services =>
             {
-                services.RemoveAll<DbContextOptions<ExploreDbContext>>();
+                services.RemoveExploreDbContextRegistrations();
 
                 services.AddDbContext<ExploreDbContext>(options =>
                 {

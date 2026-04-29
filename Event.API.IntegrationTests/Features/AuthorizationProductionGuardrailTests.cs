@@ -69,7 +69,7 @@ public class AuthorizationProductionGuardrailTests
         using var factory = new NoAuthConfigWebApplicationFactory();
         var client = factory.CreateClient();
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/events");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/event/my");
 
         var response = await client.SendAsync(request);
 
@@ -129,7 +129,7 @@ public class AuthorizationProductionGuardrailTests
 
             builder.ConfigureServices(services =>
             {
-                services.RemoveAll<DbContextOptions<ExploreDbContext>>();
+                services.RemoveExploreDbContextRegistrations();
 
                 services.AddDbContext<ExploreDbContext>(options =>
                 {
@@ -190,7 +190,7 @@ public class AuthorizationProductionGuardrailTests
 
             builder.ConfigureServices(services =>
             {
-                services.RemoveAll<DbContextOptions<ExploreDbContext>>();
+                services.RemoveExploreDbContextRegistrations();
 
                 services.AddDbContext<ExploreDbContext>(options =>
                 {
