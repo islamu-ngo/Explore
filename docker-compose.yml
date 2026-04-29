@@ -52,6 +52,18 @@ services:
       interval: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   keycloak-db:
     image: postgres:18-alpine
     restart: unless-stopped
@@ -106,6 +118,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       Keycloak__MetadataAddress: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}/realms/${KEYCLOAK_REALM:-ISLAMU}/.well-known/openid-configuration
       Keycloak__Authority: ${KEYCLOAK_ENDPOINT:-http://keycloak.localhost:8080}/realms/${KEYCLOAK_REALM:-ISLAMU}
+      ConnectionStrings__cache: ${REDIS_CONNECTION_STRING:-redis:6379}
     ports:
       - "7039:8080"
     extra_hosts:
@@ -134,6 +147,7 @@ services:
       Keycloak__Realm: ${KEYCLOAK_REALM:-ISLAMU}
       Keycloak__ClientId: islamu-event-blazor
       Keycloak__ClientSecret: ${KEYCLOAK_BLAZOR_CLIENT_SECRET:-islamu-event-blazor-secret}
+      ConnectionStrings__cache: ${REDIS_CONNECTION_STRING:-redis:6379}
     ports:
       - "7002:8080"
     extra_hosts:
@@ -196,5 +210,6 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
   keycloak_data:
   minio_data:

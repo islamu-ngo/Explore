@@ -38,7 +38,7 @@ builder.Host.ConfigureHostOptions(options =>
 builder.Configuration.AddInfisicalBlazorCompatibility();
 
 builder.AddServiceDefaults();
-builder.AddRedisDistributedCache(connectionName: "cache");
+builder.AddResilientDistributedCache(connectionName: "cache");
 
 builder.Services.AddSecretManagement(builder.Configuration);
 

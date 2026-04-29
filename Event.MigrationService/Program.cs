@@ -24,6 +24,10 @@ public class Program
             "EventMigrationService", configureDbContextOptions: options =>
                 options.UseSnakeCaseNamingConvention());
 
+        builder.AddNpgsqlDbContext<DataProtectionKeyContext>(
+            "EventMigrationService", configureDbContextOptions: options =>
+                options.UseSnakeCaseNamingConvention());
+
         var host = builder.Build();
         host.Run();
     }

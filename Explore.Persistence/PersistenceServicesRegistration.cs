@@ -87,10 +87,6 @@ public static class PersistenceServicesRegistration
                 return context;
             });
 
-            // ASP.NET Core Data Protection keyring persisted in the same Postgres database.
-            // Used to Protect/Unprotect inline-encrypted SecretBinding ciphertexts (UI-leak defense).
-            // Shared across API + Blazor so ciphertexts written by one can be decrypted by the other.
-            services.AddExploreDataProtection();
         }
 
         // Unit of Work (wraps EF Core transactions)
@@ -143,6 +139,7 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IExternalApiKeyRepository, ExternalApiKeyRepository>();
         services.AddScoped<IExternalApiKeyQuotaRepository, ExternalApiKeyQuotaRepository>();
+        services.AddScoped<IUserNotificationPreferenceRepository, UserNotificationPreferenceRepository>();
         services.AddScoped<IUserAuthenticationTokenRepository, UserAuthenticationTokenRepository>();
         services.AddScoped<IUserExternalLoginRepository, UserExternalLoginRepository>();
 

@@ -241,14 +241,16 @@ builder.Services.AddOpenFeature(featureBuilder =>
 });
 
 var app = builder.Build();
+var appLifetime = app.Lifetime;
+var appLogger = app.Logger;
 
 // Register graceful shutdown handlers for zero-downtime deployments
 // SIGTERM: Start graceful shutdown with 25 second grace period
 // SIGINT (Ctrl+C): Immediate shutdown
-app.Lifetime.ApplicationStopping.Register(() =>
+appLifetime.ApplicationStopping.Register(() =>
 {
     isShuttingDown = true;
-    app.Logger.LogInformation(
+    appLogger.LogInformation(
         "SIGTERM received. Starting graceful shutdown. Health checks return 503. " +
         "Accepting requests for {Seconds} more seconds...",
         GracefulShutdownSeconds);
@@ -257,10 +259,20 @@ app.Lifetime.ApplicationStopping.Register(() =>
 // Handle SIGINT — delegate to host for graceful drain
 Console.CancelKeyPress += (sender, e) =>
 {
-    app.Logger.LogWarning("SIGINT received. Initiating graceful shutdown...");
+    appLogger.LogWarning("SIGINT received. Initiating graceful shutdown...");
     e.Cancel = true; // Prevent immediate CLR termination; let the host drain
     shutdownCts.Cancel();
-    app.Lifetime.StopApplication();
+
+    try
+    {
+        appLifetime.StopApplication();
+    }
+    catch (ObjectDisposedException)
+    {
+        // The host may already be disposing when the test runner forwards SIGINT.
+        // Treat repeated shutdown signals as idempotent so cancellation does not
+        // turn a clean test abort into an unhandled process crash.
+    }
 };
 
 
@@ -275,9 +287,18 @@ if (!builder.Environment.IsEnvironment("Testing"))
 
     try
     {
-        logger.LogInformation("Applying database migrations...");
-        await db.Database.MigrateAsync();
-        logger.LogInformation("Database migrations completed successfully.");
+        if (db.Database.IsRelational())
+        {
+            logger.LogInformation("Applying database migrations...");
+            await db.Database.MigrateAsync();
+            logger.LogInformation("Database migrations completed successfully.");
+        }
+        else
+        {
+            logger.LogInformation(
+                "Skipping database migrations because provider {ProviderName} is non-relational.",
+                db.Database.ProviderName ?? "(unknown)");
+        }
 
         // Run seeding (lookup tables in all environments, dev data in Development)
         await DatabaseSeeder.SeedAsync(db, app.Environment);

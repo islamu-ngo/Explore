@@ -41,6 +41,8 @@ public static class RateLimitingExtensions
                 options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(
                     _ => RateLimitPartition.GetNoLimiter("test"));
 
+                options.AddPolicy(GlobalPolicy, _ =>
+                    RateLimitPartition.GetNoLimiter<string>("test"));
                 options.AddPolicy(AuthenticatedPolicy, _ =>
                     RateLimitPartition.GetNoLimiter<string>("test"));
                 options.AddPolicy(WritePolicy, _ =>
@@ -122,43 +124,8 @@ public static class RateLimitingExtensions
             // Global limiter: token bucket per IP.
             // API-key callers are partitioned by authenticated key id; other callers remain IP-based.
             // RemoteIpAddress is already proxy-aware when UseForwardedHeaders is configured.
-            options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
-            {
-                var apiKeyId = httpContext.User.GetApiKeyId();
-                if (!string.IsNullOrWhiteSpace(apiKeyId))
-                {
-                    return RateLimitPartition.GetTokenBucketLimiter(
-                        $"api-key:{apiKeyId}",
-                        _ => new TokenBucketRateLimiterOptions
-                        {
-                            TokenLimit = globalTokenLimit,
-                            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                            QueueLimit = 0,
-                            ReplenishmentPeriod = TimeSpan.FromSeconds(globalReplenishPeriodSeconds),
-                            TokensPerPeriod = globalTokensPerPeriod,
-                            AutoReplenishment = true
-                        });
-                }
-
-                var remoteIp = ResolveClientIp(httpContext);
-
-                if (remoteIp is not null && IPAddress.IsLoopback(remoteIp))
-                {
-                    return RateLimitPartition.GetNoLimiter(remoteIp.ToString());
-                }
-
-                return RateLimitPartition.GetTokenBucketLimiter(
-                    remoteIp?.ToString() ?? "unknown",
-                    _ => new TokenBucketRateLimiterOptions
-                    {
-                        TokenLimit = globalTokenLimit,
-                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                        QueueLimit = 0,
-                        ReplenishmentPeriod = TimeSpan.FromSeconds(globalReplenishPeriodSeconds),
-                        TokensPerPeriod = globalTokensPerPeriod,
-                        AutoReplenishment = true
-                    });
-            });
+            options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(CreateGlobalPartition);
+            options.AddPolicy(GlobalPolicy, CreateGlobalPartition);
 
             // Authenticated: sliding window per user identity
             options.AddPolicy(AuthenticatedPolicy, httpContext =>
@@ -223,6 +190,44 @@ public static class RateLimitingExtensions
         });
 
         return services;
+
+        RateLimitPartition<string> CreateGlobalPartition(HttpContext httpContext)
+        {
+            var apiKeyId = httpContext.User.GetApiKeyId();
+            if (!string.IsNullOrWhiteSpace(apiKeyId))
+            {
+                return RateLimitPartition.GetTokenBucketLimiter(
+                    $"api-key:{apiKeyId}",
+                    _ => new TokenBucketRateLimiterOptions
+                    {
+                        TokenLimit = globalTokenLimit,
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0,
+                        ReplenishmentPeriod = TimeSpan.FromSeconds(globalReplenishPeriodSeconds),
+                        TokensPerPeriod = globalTokensPerPeriod,
+                        AutoReplenishment = true
+                    });
+            }
+
+            var remoteIp = ResolveClientIp(httpContext);
+
+            if (remoteIp is not null && IPAddress.IsLoopback(remoteIp))
+            {
+                return RateLimitPartition.GetNoLimiter(remoteIp.ToString());
+            }
+
+            return RateLimitPartition.GetTokenBucketLimiter(
+                remoteIp?.ToString() ?? "unknown",
+                _ => new TokenBucketRateLimiterOptions
+                {
+                    TokenLimit = globalTokenLimit,
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 0,
+                    ReplenishmentPeriod = TimeSpan.FromSeconds(globalReplenishPeriodSeconds),
+                    TokensPerPeriod = globalTokensPerPeriod,
+                    AutoReplenishment = true
+                });
+        }
     }
 
     /// <summary>
