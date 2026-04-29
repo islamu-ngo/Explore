@@ -3,7 +3,7 @@ ABOUTME: Read this first when resuming so implementation follows the hardened ex
 
 # EAV Custom Properties - Context
 
-**Last Updated: 2026-04-24 (Phase 9.1 + 9.2 + 9.3 Blazor CRUD UIs shipped — session handoff)**
+**Last Updated: 2026-04-29 (Phase 9.4A Oracle blocker fixed + verified)**
 
 ---
 
@@ -48,15 +48,16 @@ ABOUTME: Read this first when resuming so implementation follows the hardened ex
   - Used `BaseCommandResponse<Guid>` for create/update return types (matching generated client)
 - Build verified 0 errors from EAV code.
 
-### ⚠️ Build State
-- 3 errors in `EventPublishedIntegrationEvent.cs` (orphan MQContract from incomplete messaging infrastructure) — NOT EAV-related
-- All EAV/Blazor code builds clean
+### ✅ Current Build State
+- `dotnet build --configuration Release --verbosity quiet` ✅ 0 errors on 2026-04-29; remaining warnings are existing analyzer/package warnings.
+- `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` ✅ 835 total / 834 passed / 1 known skipped on 2026-04-29.
 
 ### 🟡 Remaining Phase 9.x Work
-- **Phase 9.4**: Template selection dropdown in event creation flow (medium priority)
-- **Phase 9.5**: Event runtime custom-property editor — dynamic PropertyType rendering (high priority)
-- **Phase 9.5A**: Session runtime editor (mirrors 9.5) (high priority)
+- **Phase 9.4**: ✅ CLOSED — event creation template selection with stale async guards and final Oracle review safe.
+- **Phase 9.4A**: ✅ CLOSED — CreateEvent new-session drawer supports parent-scoped session blueprint selection, preview, submit guard, bUnit race coverage, and stale local-session `SessionTemplateId` clearing when the parent event template changes. EventEdit remains deferred until parent event template identity is exposed by API DTOs.
+- **Phase 9.5/9.5A**: ✅ CLOSED — event/session runtime custom-property editors wired and Oracle-reviewed.
 - **Phase 9.6**: Template preview admin overview (low priority)
+- **Phase 9.6A**: Session blueprint preview admin overview (low priority)
 - **Phase 9.10**: Organization/Group page cleanup (low priority)
 - **Phase 9.11**: Regenerate NSwag API clients (medium priority — needed if API surface changed)
 
@@ -218,11 +219,11 @@ D2 Operability is functionally complete: CQRS layer, admin API endpoints, HATEOA
 - Explore.Secrets.UnitTests: 190/190 ✅
 - **Total: 1099 tests, 0 failures**
 
-### ⏳ NEXT: MILESTONE D3 CONSUMPTION
+### ✅ MILESTONE D3 CONSUMPTION STATUS
 
-**D3 was started but no code written.** Tasks were planned but implementation had not begun when session ended.
+**D3 is now marked complete in the active progress tracker** (projection-filter specification + factories). Remaining projection-related work is verification hardening and observability, not initial D3 implementation.
 
-**D3 scope (Tasks 10.2, 10.2A):**
+**Original D3 scope (Tasks 10.2, 10.2A):**
 1. `EventCustomPropertyProjectionFilter` specification — filter by namespace+key, text search on NormalizedValue, option filter
 2. Compose into `EventQuerySpecification.And(...)` when request has custom-property filters
 3. Gate behind `custom_properties.projection_discovery_enabled` tenant feature flag

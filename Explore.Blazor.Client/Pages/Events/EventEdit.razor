@@ -1,6 +1,7 @@
 @* ABOUTME: Luma-inspired edit event page — mirrors CreateEvent layout with pre-filled data and Update button. *@
 @* ABOUTME: Two-column layout with image left, form right. Loads existing event data and sessions for editing. *@
 @using MudBlazor
+@using Explore.Blazor.Client.Components.CustomProperties
 @using Explore.Blazor.Client.Shared
 @using Explore.Blazor.Client.Pages.Events.Components
 @using Microsoft.AspNetCore.Components
@@ -582,6 +583,24 @@
                         </div>
                     </div>
 
+                    @if (!string.IsNullOrWhiteSpace(_customPropertyDefinitionLoadError))
+                    {
+                        <MudAlert Severity="Severity.Error" Class="mt-4 rounded-lg">
+                            @_customPropertyDefinitionLoadError
+                        </MudAlert>
+                    }
+
+                    @if (_eventCustomPropertyDefinitions.Count > 0)
+                    {
+                        <MudExpansionPanels Class="mt-4" Elevation="0">
+                            <MudExpansionPanel Text="Custom Properties" MaxHeight="900"
+                                               Class="rounded-lg border-solid border-1 mud-border-lines-default">
+                                <EventCustomPropertyRuntimeEditor EventId="EventId"
+                                                                  Definitions="_eventCustomPropertyDefinitions" />
+                            </MudExpansionPanel>
+                        </MudExpansionPanels>
+                    }
+
                 </MudItem>
             </MudGrid>
 
@@ -647,6 +666,8 @@
                                         Locations="locations"
                                         RegistrationModes="registrationModes"
                                         Languages="languages"
+                                        CustomPropertyDefinitions="@GetSessionCustomPropertyDefinitions(_sessionWorkflow.DrawerModel.Id)"
+                                        CustomPropertyDefinitionLoadError="@GetSessionCustomPropertyDefinitionLoadError(_sessionWorkflow.DrawerModel.Id)"
                                         OnSave="HandleSessionSave"
                                         OnCancel="@(() => _sessionWorkflow.Close())" />
                 }

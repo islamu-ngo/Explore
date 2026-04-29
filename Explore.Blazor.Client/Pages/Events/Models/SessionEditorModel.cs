@@ -16,6 +16,7 @@ public class SessionEditorModel
     public Guid? LocationId { get; set; }
     public int? MaxAudienceAttendees { get; set; }
     public int? RegistrationModeId { get; set; } = 1;
+    public Guid? SessionTemplateId { get; set; }
     public IReadOnlyCollection<int> LanguageIds { get; set; } = new HashSet<int>();
 
     // Media
@@ -37,6 +38,7 @@ public class SessionEditorModel
             LocationId = LocationId,
             MaxAudienceAttendees = MaxAudienceAttendees,
             RegistrationModeId = RegistrationModeId,
+            SessionTemplateId = SessionTemplateId,
             TenantId = tenantId
             // FeaturedImageId = UseEventImage ? null : FeaturedImageId
         };
@@ -95,6 +97,7 @@ public class SessionEditorModel
             LocationId = LocationId,
             MaxAudienceAttendees = MaxAudienceAttendees,
             RegistrationModeId = RegistrationModeId,
+            SessionTemplateId = SessionTemplateId,
             LanguageIds = new HashSet<int>(LanguageIds),
             FeaturedImageId = null,
             FeaturedImagePreviewUrl = null,

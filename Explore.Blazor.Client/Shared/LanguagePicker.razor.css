@@ -19,6 +19,23 @@
     outline-offset: var(--isl-focus-ring-offset, 2px);
 }
 
+.language-picker__button-content {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--isl-space-2, 8px);
+}
+
+.language-picker__flag {
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.language-picker__current-language {
+    font-size: 0.875rem;
+    font-weight: var(--isl-font-weight-semibold, 600);
+    line-height: 1;
+}
+
 .language-picker__menu {
     min-inline-size: 12rem;
 }
@@ -33,4 +50,10 @@
 .language-picker__item--active {
     font-weight: var(--isl-font-weight-semibold, 600);
     background-color: var(--isl-surface-selected, rgba(0, 0, 0, 0.04));
+}
+
+@media (max-width: 37.5em) {
+    .language-picker__current-language {
+        display: none;
+    }
 }

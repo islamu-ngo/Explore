@@ -213,6 +213,13 @@ public static class RouteNames
 
     #endregion
 
+    #region Email Unsubscribe Routes
+
+    public const string GetEmailUnsubscribe = "GetEmailUnsubscribe";
+    public const string OneClickEmailUnsubscribe = "OneClickEmailUnsubscribe";
+
+    #endregion
+
     #region Tenant Routes
 
     public const string GetTenants = "GetTenants";

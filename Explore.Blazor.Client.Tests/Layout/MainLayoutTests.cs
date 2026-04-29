@@ -43,7 +43,14 @@ public class MainLayoutTests : IDisposable
 
         // Theme service — CreateTheme returns a valid MudTheme to avoid NRE
         _appearanceThemeService = Substitute.For<IAppearanceThemeService>();
+        _appearanceThemeService.Current.Returns(new AppearanceState());
         _appearanceThemeService.CreateTheme(Arg.Any<string>()).Returns(new MudTheme());
+        _appearanceThemeService.InitializeAsync(Arg.Any<MudThemeProvider>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        _appearanceThemeService.ResolveEffectiveDarkModeAsync(Arg.Any<MudThemeProvider>())
+            .Returns(Task.FromResult(false));
+        _appearanceThemeService.SetThemeModeAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
         _ctx.Services.AddSingleton(_appearanceThemeService);
 
         // AnalyticsInitializer child deps (GetSettingsAsync returns null → early-return, no JS calls)

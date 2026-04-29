@@ -5,6 +5,7 @@ using System.Text.Json;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Models.CustomProperties;
+using Explore.Blazor.Client.Models.EventSessionTemplates;
 
 namespace Explore.Blazor.Client.Helpers;
 
@@ -505,6 +506,39 @@ public static class HalResourceExtensions
         return JsonSerializer.Deserialize<Explore.Blazor.Client.Models.EventTemplates.EventTemplateDetailModel>(json, JsonOptions);
     }
 
+    // ========== EventSessionTemplate Extensions ==========
+
+    public static ICollection<EventSessionTemplateListModel> GetEventSessionTemplateItems(this HalCollectionResourceOfEventSessionTemplateListDto collection)
+    {
+        if (collection._embedded?.Items == null)
+            return new List<EventSessionTemplateListModel>();
+
+        return DeserializeItems<EventSessionTemplateListModel>(collection._embedded.Items);
+    }
+
+    public static PaginatedResult<EventSessionTemplateListModel> ToEventSessionTemplatePaginatedResult(this HalCollectionResourceOfEventSessionTemplateListDto? collection)
+    {
+        if (collection is null)
+            return PaginatedResult<EventSessionTemplateListModel>.Empty();
+
+        return new PaginatedResult<EventSessionTemplateListModel>
+        {
+            Items = collection.GetEventSessionTemplateItems().ToList(),
+            PageNumber = collection.PageNumber ?? 1,
+            PageSize = collection.PageSize ?? 20,
+            TotalCount = collection.TotalCount ?? 0
+        };
+    }
+
+    public static EventSessionTemplateDetailModel? ToEventSessionTemplateModel(this HalResourceOfEventSessionTemplateDto? halResource)
+    {
+        if (halResource is null)
+            return null;
+
+        var json = JsonSerializer.Serialize(halResource.AdditionalProperties, JsonOptions);
+        return JsonSerializer.Deserialize<EventSessionTemplateDetailModel>(json, JsonOptions);
+    }
+
     // ========== Custom Property Definition Extensions ==========
 
     public static ICollection<CustomPropertyDefinitionListModel> GetItems(this HalCollectionResourceOfCustomPropertyDefinitionListDto collection)
@@ -529,7 +563,41 @@ public static class HalResourceExtensions
         };
     }
 
+    public static ICollection<CustomPropertyDefinitionListModel> GetItems(this HalCollectionResourceOfEventCustomPropertyDefinitionListDto collection)
+    {
+        if (collection._embedded?.Items == null)
+            return new List<CustomPropertyDefinitionListModel>();
+
+        return DeserializeItems<CustomPropertyDefinitionListModel>(collection._embedded.Items);
+    }
+
+    public static ICollection<CustomPropertyDefinitionListModel> GetItems(this HalCollectionResourceOfEventSessionCustomPropertyDefinitionListDto collection)
+    {
+        if (collection._embedded?.Items == null)
+            return new List<CustomPropertyDefinitionListModel>();
+
+        return DeserializeItems<CustomPropertyDefinitionListModel>(collection._embedded.Items);
+    }
+
     public static CustomPropertyDefinitionDetailModel? ToModel(this HalResourceOfCustomPropertyDefinitionDto? halResource)
+    {
+        if (halResource is null)
+            return null;
+
+        var json = JsonSerializer.Serialize(halResource.AdditionalProperties, JsonOptions);
+        return JsonSerializer.Deserialize<CustomPropertyDefinitionDetailModel>(json, JsonOptions);
+    }
+
+    public static CustomPropertyDefinitionDetailModel? ToModel(this HalResourceOfEventCustomPropertyDefinitionDto? halResource)
+    {
+        if (halResource is null)
+            return null;
+
+        var json = JsonSerializer.Serialize(halResource.AdditionalProperties, JsonOptions);
+        return JsonSerializer.Deserialize<CustomPropertyDefinitionDetailModel>(json, JsonOptions);
+    }
+
+    public static CustomPropertyDefinitionDetailModel? ToModel(this HalResourceOfEventSessionCustomPropertyDefinitionDto? halResource)
     {
         if (halResource is null)
             return null;

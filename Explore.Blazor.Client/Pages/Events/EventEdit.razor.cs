@@ -5,9 +5,11 @@ using System.Linq;
 using Blazouter.Services;
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
+using Explore.Blazor.Client.Contracts.Services.CustomProperties;
 using Explore.Blazor.Client.Contracts.Services.Events;
 using Explore.Blazor.Client.Contracts.Services.Lookup;
 using Explore.Blazor.Client.Helpers;
+using Explore.Blazor.Client.Models.CustomProperties;
 using Explore.Blazor.Client.Pages.Events.Components;
 using Explore.Blazor.Client.Pages.Events.Models;
 using Explore.Blazor.Client.Pages.Events.Workflows;
@@ -36,6 +38,7 @@ public partial class EventEdit
     [Inject] private IEventDayService EventDayService { get; set; } = default!;
     [Inject] private IEventAgendaItemService EventAgendaItemService { get; set; } = default!;
     [Inject] private ILocationRoomService LocationRoomService { get; set; } = default!;
+    [Inject] private ICustomPropertyDefinitionService CustomPropertyDefinitionService { get; set; } = default!;
 
     private Guid EventId { get; set; }
 
@@ -85,6 +88,10 @@ public partial class EventEdit
     private List<LocationRoomListDto> _locationRooms = new();
     private List<EventAgendaItemListDto> _agendaItems = new();
     private ToggleView _agendaViewMode = ToggleView.Grid;
+    private IReadOnlyList<CustomPropertyDefinitionDetailModel> _eventCustomPropertyDefinitions = Array.Empty<CustomPropertyDefinitionDetailModel>();
+    private Dictionary<Guid, IReadOnlyList<CustomPropertyDefinitionDetailModel>> _sessionCustomPropertyDefinitions = new();
+    private Dictionary<Guid, string> _sessionCustomPropertyDefinitionLoadErrors = new();
+    private string? _customPropertyDefinitionLoadError;
 
     // UI toggles
     private bool _showFirstSessionLocation = false;
@@ -158,6 +165,8 @@ public partial class EventEdit
                 var eventSessions = await EventService.GetSessionsByEventAsync(EventId);
                 sessions = eventSessions?.Select(s => SessionEditorModel.FromDto(s)).ToList()
                            ?? new List<SessionEditorModel>();
+
+                await LoadCustomPropertyDefinitionsAsync();
 
                 // Show location selector if first session has a location
                 if (sessions.Count > 0 && sessions[0].LocationId.HasValue)
@@ -410,6 +419,80 @@ public partial class EventEdit
     {
         _sessionWorkflow.SaveSession(sessions, model);
         StateHasChanged();
+    }
+
+    private async Task LoadCustomPropertyDefinitionsAsync()
+    {
+        _customPropertyDefinitionLoadError = null;
+        _sessionCustomPropertyDefinitionLoadErrors = new Dictionary<Guid, string>();
+
+        try
+        {
+            _eventCustomPropertyDefinitions = await CustomPropertyDefinitionService.GetEventDefinitionsAsync(EventId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load runtime custom-property definitions for event {EventId}", EventId);
+            _eventCustomPropertyDefinitions = Array.Empty<CustomPropertyDefinitionDetailModel>();
+            _customPropertyDefinitionLoadError = "Custom property definitions could not be loaded. Refresh before editing custom fields.";
+        }
+
+        var persistedSessionIds = sessions
+            .Select(s => s.Id)
+            .Where(id => id.HasValue && id.Value != Guid.Empty)
+            .Select(id => id.GetValueOrDefault())
+            .Distinct()
+            .ToList();
+
+        var definitionTasks = persistedSessionIds.Select(async sessionId =>
+        {
+            IReadOnlyList<CustomPropertyDefinitionDetailModel> definitions;
+            string? loadError = null;
+            try
+            {
+                definitions = await CustomPropertyDefinitionService.GetEventSessionDefinitionsAsync(sessionId);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to load runtime custom-property definitions for event session {EventSessionId}", sessionId);
+                loadError = "Session custom property definitions could not be loaded. Refresh before editing custom fields.";
+                definitions = Array.Empty<CustomPropertyDefinitionDetailModel>();
+            }
+
+            return (SessionId: sessionId, Definitions: definitions, LoadError: loadError);
+        });
+
+        var results = await Task.WhenAll(definitionTasks);
+        _sessionCustomPropertyDefinitions = results.ToDictionary(
+            result => result.SessionId,
+            result => result.Definitions);
+        _sessionCustomPropertyDefinitionLoadErrors = results
+            .Where(result => !string.IsNullOrWhiteSpace(result.LoadError))
+            .ToDictionary(result => result.SessionId, result => result.LoadError!);
+    }
+
+    private IReadOnlyList<CustomPropertyDefinitionDetailModel> GetSessionCustomPropertyDefinitions(Guid? sessionId)
+    {
+        if (!sessionId.HasValue || sessionId.Value == Guid.Empty)
+        {
+            return Array.Empty<CustomPropertyDefinitionDetailModel>();
+        }
+
+        return _sessionCustomPropertyDefinitions.TryGetValue(sessionId.Value, out var definitions)
+            ? definitions
+            : Array.Empty<CustomPropertyDefinitionDetailModel>();
+    }
+
+    private string? GetSessionCustomPropertyDefinitionLoadError(Guid? sessionId)
+    {
+        if (!sessionId.HasValue || sessionId.Value == Guid.Empty)
+        {
+            return null;
+        }
+
+        return _sessionCustomPropertyDefinitionLoadErrors.TryGetValue(sessionId.Value, out var error)
+            ? error
+            : null;
     }
 
     // ========== Validation & Submission ==========

@@ -3,7 +3,7 @@ ABOUTME: Treats EAV as the Layer 3 extension system only, with governed semantic
 
 # EAV Custom Properties - Implementation Plan
 
-**Last Updated: 2026-04-11 (Milestones A+B+C complete; Milestones D/E/F hardened against 2025-2026 industry best practices; CTO architecture review incorporated with delivery-discipline tightening)**
+**Last Updated: 2026-04-29 (Phase 9.4A Oracle blocker fixed + verified; Milestones D/E/F plan remains locked)**
 
 ---
 
@@ -2274,22 +2274,61 @@ Actual delivery is milestone-driven. Milestones control implementation order and
 - **Acceptance Criteria:** admin can build an event template end-to-end and publish it
 
 #### Task 9.4: Add Template Selection To Event Creation UI (**Milestone B follow-up**)
-- **Location:** `Explore.Blazor.Client/Pages/Events/EventCreate.razor`
+- **Status:** ✅ Complete 2026-04-29. Implemented in event creation with optional `TemplateId` submission, event-type scoped reload, read-only definition preview, stale async completion guards, and focused client-test coverage restored after Oracle review.
+- **Location:** `Explore.Blazor.Client/Pages/Events/CreateEvent.razor`
+- **Supporting files:**
+  - `Explore.Blazor.Client/Pages/Events/CreateEvent.razor.cs`
+  - `Explore.Blazor.Client/Pages/Events/CreateEvent.razor.css`
+  - `Explore.Blazor.Client.Tests/Pages/Event/CreateEventTests.cs`
+  - `Explore.Blazor.Client.Tests/GlobalUsings.cs`
 - **Behavior:**
-  - An "Use template" MudSelect dropdown lists published templates for the current tenant + event type (if `EventTypeId` on template matches or is null)
-  - Selecting a template previews (non-interactive) the definitions that will be instantiated
-  - On submit, the create request includes `TemplateId`
+  - An optional "Use template" MudSelect dropdown lists active/published templates loaded through `IEventTemplateService.GetTemplatesAsync(eventTypeId, pageNumber: 1, pageSize: 100)`.
+  - Changing Event Type immediately clears the list, reloads for the selected type, disables template selection while loading, clears any stale `TemplateId` / preview state, and ignores stale list-load completions.
+  - Selecting a template loads detail through `GetTemplateByIdAsync` and previews definitions non-interactively with loading and warning states; failed/null preview loads clear `TemplateId` so the form submits as a vanilla event, and submit is blocked while preview is still in flight.
+  - On submit, the existing generated `CreateEventDto.TemplateId` is populated; empty selection still creates a vanilla event.
 - **Acceptance Criteria:**
-  - template preview is read-only
-  - template selection is optional (empty selection creates a vanilla event)
-  - accessible focus order: event basics → template selection → preview → submit
+  - template preview is read-only ✅
+  - template selection is optional (empty selection creates a vanilla event) ✅
+  - accessible placement/announcements: event basics → event type → template selection → `aria-live` preview → submit ✅
+- **Verification:** `dotnet build --configuration Release --verbosity quiet` ✅ 0 errors; `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` ✅ 828 total / 827 passed / 1 known skipped. LSP diagnostics clean for touched C# files; Razor/CSS LSP unavailable locally. Oracle blocker review found stale async state risks and an in-flight preview submit race; follow-up fixed both and added regression tests.
 
 #### Task 9.4A: Add Session Blueprint Selection / Editing To Event Session UI (**Milestone C follow-up**)
-- Mirrors Task 9.4 in `Explore.Blazor.Client/Pages/EventSessions/EventSessionCreate.razor`
-- Session template dropdown is scoped to the parent event's template tree (only session templates owned by the parent's `EventTemplateId`)
+- **Status:** ✅ Complete 2026-04-29. Implemented for CreateEvent's new-session drawer with parent-template scoping, read-only preview, stale async guards, and submit blocking while preview is unresolved.
+- **Primary target:** `Explore.Blazor.Client/Pages/Events/Components/SessionEditorPanel.razor`, hosted by `CreateEvent.razor`. The historical placeholder `Explore.Blazor.Client/Pages/EventSessions/EventSessionCreate.razor` does not exist.
+- **Supporting files:**
+  - `Explore.Blazor.Client/Contracts/Services/EventSessionTemplates/IEventSessionTemplateService.cs`
+  - `Explore.Blazor.Client/Services/EventSessionTemplateService.cs`
+  - `Explore.Blazor.Client/Models/EventSessionTemplates/*`
+  - `Explore.Blazor.Client/Helpers/HalResourceExtensions.cs`
+  - `Explore.Blazor.Client/Pages/Events/Models/SessionEditorModel.cs`
+  - `Explore.Blazor.Client/Pages/Events/Workflows/SessionEditorWorkflow.cs`
+  - `Explore.Blazor.Client.Tests/Pages/Event/SessionEditorPanelTests.cs`
+- **Behavior:**
+  - Session template dropdown is scoped to the resolved parent event template (`ParentEventTemplateId="@_selectedEventTemplate?.Id"`), so unrelated session blueprints are not selectable.
+  - Session blueprint selection is optional; empty selection keeps vanilla session creation behavior.
+  - Changing or clearing the parent event template clears stale session-template selection, preview, and list state immediately.
+  - Changing or clearing the parent event template also clears `SessionTemplateId` on already-added local CreateEvent sessions, preventing stale child-session blueprints from submitting under a new parent template.
+  - Loading states disable the session-template select, show an announced preview region, and prevent drawer save while a selected blueprint preview is unresolved.
+  - Preview null/failure clears `SessionTemplateId` and shows truthful warning copy.
+  - Stale async list/preview completions are ignored unless request version and current parent/selection still match.
+- **Acceptance Criteria:**
+  - session blueprint selection is optional; empty selection keeps vanilla session creation behavior ✅
+  - preview is read-only and announced via accessible loading/error/detail states ✅
+  - selection is scoped to the parent event template tree ✅
+  - bUnit coverage mirrors Phase 9.4 risk areas: scoped list load, preview failure, parent-template change clearing, stale completion guards, in-flight preview submit blocking, and stale local-session submit clearing ✅
+- **Known scope boundary:** EventEdit session blueprint selection is deferred because current generated event read/update DTOs do not expose the parent event template identity required for safe scoping.
+- **Verification:** C# diagnostics clean for touched files; `dotnet build --configuration Release --verbosity quiet` ✅ 0 errors; `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` ✅ 835 total / 834 passed / 1 known skipped. Oracle blocker review found stale `SessionTemplateId` retention on already-added local sessions after parent-template changes; follow-up fixed it in `CreateEvent.razor.cs` and added regression coverage in `CreateEventTests.cs`.
 
 #### Task 9.5: Add Event Runtime Custom-Property Editor Against Event-Local Definitions (**Milestone B follow-up**)
+- **Status:** ✅ Complete 2026-04-29. Implemented as runtime editor + reusable field editor, wired into event edit flow, and verified with build/client tests plus Oracle review.
 - **Location:** `Explore.Blazor.Client/Components/CustomProperties/EventCustomPropertyRuntimeEditor.razor`
+- **Supporting files:**
+  - `Explore.Blazor.Client/Components/CustomProperties/CustomPropertyFieldEditor.razor`
+  - `Explore.Blazor.Client/Services/CustomPropertyValueService.cs`
+  - `Explore.Blazor.Client/Contracts/Services/CustomProperties/ICustomPropertyValueService.cs`
+  - `Explore.Blazor.Client/Models/CustomProperties/CustomPropertyValueModel.cs`
+  - `Explore.Blazor.Client/Pages/Events/EventEdit.razor`
+  - `Explore.Blazor.Client/Pages/Events/EventEdit.razor.cs`
 - **Dynamic form rendering strategy:**
   - Not reflection-based; drives off `PropertyType` enum (Text, Number, Option, Boolean, DateTime, Url)
   - Switch-based component selection:
@@ -2301,7 +2340,9 @@ Actual delivery is milestone-driven. Milestones control implementation order and
     - `Url` → `MudTextField` with URL validation + `AllowedUrlSchemes` check via a manual validator
   - Multi-value rendering: repeated field with "Add" + "Remove" buttons; `Ordinal` computed from position
   - Required markers + validation errors rendered inline per definition
-- **State management:** component accepts `EventCustomPropertyDefinitionDto[]` + existing value rows; emits `SetEventCustomPropertyValueDto` / `SetEventCustomPropertyMultiValuesDto` via `EventCallback`
+- **State management:** component accepts event-local `CustomPropertyDefinitionDetailModel` rows, loads existing runtime values through `ICustomPropertyValueService`, and saves each definition independently through `SetEventValueAsync` / `SetEventMultiValuesAsync`. Custom-property saves remain intentionally separate from the parent event update action.
+- **Failure handling:** runtime value load failures are shown inline and block custom-property saves until refresh; definition-load failures are surfaced in `EventEdit.razor` instead of being treated as no definitions.
+- **Lifecycle:** editor reloads when `EventId` or definition identity/signature changes to avoid stale value state.
 - **Accessibility:**
   - each dynamic input has a proper label (DisplayName) and description (Description)
   - required fields carry `aria-required="true"`
@@ -2315,7 +2356,9 @@ Actual delivery is milestone-driven. Milestones control implementation order and
   - keyboard-only users can complete the form
 
 #### Task 9.5A: Add EventSession Runtime Custom-Property Editor Against Session-Local Definitions (**Milestone C follow-up**)
-- `EventSessionCustomPropertyRuntimeEditor.razor` mirrors Task 9.5
+- **Status:** ✅ Complete 2026-04-29. `EventSessionCustomPropertyRuntimeEditor.razor` mirrors Task 9.5 and is wired into `SessionEditorPanel.razor` for persisted sessions only.
+- **Lifecycle:** editor reloads when `EventSessionId` or definition identity/signature changes, which prevents stale values when the event edit drawer navigates between sessions.
+- **Failure handling:** session definition-load failures surface as visible alerts in `SessionEditorPanel.razor`; runtime value load failures block custom-property save until refresh.
 
 #### Task 9.6: Add Template Selection Preview For Admin Overview (**Milestone B follow-up**)
 - Secondary admin page listing which events were created from a given template and when

@@ -43,6 +43,7 @@ public class SessionEditorWorkflowTests
             {
                 Id = Guid.NewGuid(),
                 Title = "Session 1",
+                SessionTemplateId = Guid.NewGuid(),
                 LanguageIds = new HashSet<int> { 1, 2 }
             }
         };
@@ -54,6 +55,7 @@ public class SessionEditorWorkflowTests
         await Assert.That(workflow.EditingSessionIndex).IsEqualTo(0);
         await Assert.That(workflow.DrawerModel).IsNotNull();
         await Assert.That(workflow.DrawerModel!.Title).IsEqualTo("Session 1");
+        await Assert.That(workflow.DrawerModel.SessionTemplateId).IsEqualTo(sessions[0].SessionTemplateId);
         await Assert.That(ReferenceEquals(workflow.DrawerModel, sessions[0])).IsFalse();
     }
 

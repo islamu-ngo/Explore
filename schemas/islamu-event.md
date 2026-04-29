@@ -15,6 +15,8 @@ Table "actor_types" {
   "full_name" varchar(200) [not null]
   "master_code" varchar(100) [not null]
   "description" varchar(500)
+
+  Note: 'Lookup: classifies federated actors. Values: User(1), Organization(2), Group(3), Bot(4). Seeded.'
 }
 
 Table "analytics_providers" {
@@ -22,6 +24,8 @@ Table "analytics_providers" {
   "master_code" varchar(100) [not null]
   "full_name" varchar(200) [not null]
   "description" varchar(500)
+
+  Note: 'Lookup: supported analytics engines. Values: PostHog(1), Plausible(2), GoogleAnalytics(3). Seeded.'
 }
 
 Table "approval_statuses" {
@@ -29,6 +33,8 @@ Table "approval_statuses" {
   "master_code" varchar(100) [not null]
   "full_name" varchar(200) [not null]
   "description" varchar(500)
+
+  Note: 'Lookup: entity approval lifecycle. Values: Pending(1), Approved(2), Rejected(3), Deferred(4). Seeded.'
 }
 
 Table "audience_ages" {
@@ -38,6 +44,8 @@ Table "audience_ages" {
   "description" text
   "min_age" int
   "max_age" int
+
+  Note: 'Lookup: age-group targeting. Values: AllAges(1), Kids(2), Teens(3), Adults(4). Seeded.'
 }
 
 Table "audience_genders" {
@@ -45,6 +53,8 @@ Table "audience_genders" {
   "master_code" text [not null]
   "full_name" text [not null]
   "description" text
+
+  Note: 'Lookup: gender-based targeting. Values: Mixed(1), MenOnly(2), WomenOnly(3). Seeded.'
 }
 
 Table "category_types" {
@@ -52,6 +62,8 @@ Table "category_types" {
   "master_code" varchar(100) [not null]
   "full_name" varchar(200) [not null]
   "description" varchar(500)
+
+  Note: 'Lookup: classifies categories for different contexts (Events, Organizations, Users). Seeded.'
 }
 
 Table "did_custody_types" {
@@ -59,6 +71,8 @@ Table "did_custody_types" {
   "master_code" varchar(100) [not null]
   "full_name" varchar(200) [not null]
   "description" varchar(500)
+
+  Note: 'Lookup: ATProto DID key management model. Values: SelfCustody(1), PlatformManaged(2). Seeded.'
 }
 
 Table "event_formats" {
@@ -66,6 +80,8 @@ Table "event_formats" {
   "master_code" varchar(100) [not null]
   "full_name" varchar(200) [not null]
   "description" varchar(500)
+
+  Note: 'Lookup: event delivery mode. Values: InPerson(1), Virtual(2), Hybrid(3). Seeded.'
 }
 
 Table "event_statuses" {
@@ -73,6 +89,8 @@ Table "event_statuses" {
   "master_code" varchar(100) [not null]
   "full_name" varchar(200) [not null]
   "description" varchar(500)
+
+  Note: 'Lookup: event lifecycle state. Values: Draft(1), Published(2), Cancelled(3), Completed(4), Archived(5). Seeded.'
 }
 
 Table "event_types" {
@@ -81,6 +99,14 @@ Table "event_types" {
   "master_code" varchar(500) [not null]
   "description" varchar(500)
   "tenant_id" uuid
+
+  indexes {
+    tenant_id
+    master_code [unique, name: 'ix_event_types_master_code', note: 'filter: tenant_id IS NULL']
+    (tenant_id, master_code) [unique, name: 'ix_event_types_tenant_master_code', note: 'filter: tenant_id IS NOT NULL']
+  }
+
+  Note: 'Lookup: categorizes events (e.g. Conference, Webinar, Workshop). TenantId null = instance-wide default.'
 }
 
 Table "file_types" {
@@ -88,6 +114,8 @@ Table "file_types" {
   "master_code" varchar(100) [not null]
   "full_name" varchar(200) [not null]
   "description" varchar(500)
+
+  Note: 'Lookup: media/document classifications. Values: Image(1), Video(2), Document(3), Archive(4). Seeded.'
 }
 
 Table "group_positions" {
@@ -95,6 +123,8 @@ Table "group_positions" {
   "master_code" varchar(100) [not null]
   "full_name" varchar(200) [not null]
   "description" varchar(500)
+
+  Note: 'Lookup: formal roles within a group. Values: Lead(1), Admin(2), Moderator(3), Member(4). Seeded.'
 }
 
 Table "languages" {
@@ -102,6 +132,8 @@ Table "languages" {
   "master_code" varchar(100) [not null]
   "full_name" varchar(200) [not null]
   "description" varchar(500)
+
+  Note: 'Lookup: ISO language codes for localization and content metadata. Seeded.'
 }
 
 Table "madhabs" {
@@ -109,6 +141,8 @@ Table "madhabs" {
   "master_code" varchar(100) [not null]
   "full_name" varchar(200) [not null]
   "description" varchar(500)
+
+  Note: 'Lookup: Islamic schools of jurisprudence. Values: Hanafi(1), Maliki(2), Shafii(3), Hanbali(4), Other(5). Seeded.'
 }
 
 Table "organization_positions" {
@@ -116,6 +150,8 @@ Table "organization_positions" {
   "master_code" varchar(100) [not null]
   "full_name" varchar(200) [not null]
   "description" varchar(500)
+
+  Note: 'Lookup: formal roles within an organization. Values: CEO(1), Admin(2), Staff(3), Volunteer(4). Seeded.'
 }
 
 Table "owner_types" {
@@ -123,6 +159,8 @@ Table "owner_types" {
   "master_code" text [not null]
   "full_name" text [not null]
   "description" text
+
+  Note: 'Lookup: classifies entities that can own resources. Values: User(1), Organization(2), Group(3), Tenant(4), InstanceAdmin(5). Seeded.'
 }
 
 Table "registration_modes" {
@@ -130,6 +168,8 @@ Table "registration_modes" {
   "master_code" varchar(50) [not null]
   "full_name" varchar(200) [not null]
   "description" varchar(500)
+
+  Note: 'Lookup: registration policy. Values: Open(1), ApprovalRequired(2), InviteOnly(3), Closed(4). Seeded.'
 }
 
 Table "tag_types" {
@@ -137,6 +177,8 @@ Table "tag_types" {
   "master_code" varchar(100) [not null]
   "full_name" varchar(200) [not null]
   "description" varchar(500)
+
+  Note: 'Lookup: classifies tags for different contexts. Seeded.'
 }
 
 Table "tenant_statuses" {
@@ -145,6 +187,8 @@ Table "tenant_statuses" {
   "full_name" varchar(100) [not null]
   "description" varchar(500)
   "is_active_state" boolean [not null]
+
+  Note: 'Lookup: tenant lifecycle. Values: Active(1), Suspended(2), Provisioning(3), Deactivated(4). Seeded.'
 }
 
 Table "visibility_types" {
@@ -152,6 +196,8 @@ Table "visibility_types" {
   "master_code" varchar(100) [not null]
   "full_name" varchar(200) [not null]
   "description" varchar(500)
+
+  Note: 'Lookup: discovery level. Values: Public(1), Private(2), Unlisted(3), MembersOnly(4). Seeded.'
 }
 
 Table "schedule_item_kinds" {
@@ -160,7 +206,7 @@ Table "schedule_item_kinds" {
   "full_name" varchar(200) [not null]
   "description" varchar(500)
 
-  Note: 'Lookup: classifies agenda items (e.g. Break, Prayer, Keynote, Workshop). Seeded.'
+  Note: 'Lookup: classifies agenda items. Values: Intro(1), Talk(2), QAndA(3), Break(4), Prayer(5), Outro(6), Logistics(7), Custom(8). Seeded.'
 }
 
 Table "event_registration_policies" {
@@ -179,6 +225,51 @@ Table "registration_scopes" {
   "description" varchar(500)
 
   Note: 'Lookup: granularity of a registration intent. Values: Event(1), Day(2), SessionSelection(3). Seeded.'
+}
+
+Table "external_api_key_statuses" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  Note: 'Lookup: external API key state. Values: Active(1), Revoked(2), Expired(3). Seeded.'
+}
+
+Table "external_api_key_credit_periods" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  Note: 'Lookup: credit reset frequency. Values: None(1), Daily(2), Weekly(3), Monthly(4). Seeded.'
+}
+
+Table "notification_types" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  Note: 'Lookup: notification classification. Seeded.'
+}
+
+Table "notification_entity_types" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  Note: 'Lookup: type of entity a notification relates to. Seeded.'
+}
+
+Table "notification_reasons" {
+  "id" int [pk, not null]
+  "master_code" varchar(100) [not null]
+  "full_name" varchar(200) [not null]
+  "description" varchar(500)
+
+  Note: 'Lookup: why a notification was triggered. Seeded.'
 }
 
 // ============================================================
@@ -201,7 +292,12 @@ Table "app_settings" {
   "updated_by" uuid
   "row_version" bytea [not null]
 
-  Note: 'Check: CK_AppSettings_NoHighValueSecrets — blocks Database:*, Security:MasterKey*, ConnectionStrings:* keys.'
+  indexes {
+    category [name: 'ix_app_settings_category']
+    is_sensitive [name: 'ix_app_settings_is_sensitive']
+  }
+
+  Note: 'Encrypted system settings. Check: CK_AppSettings_NoHighValueSecrets — blocks database/security keys.'
 }
 
 Table "system_settings" {
@@ -218,6 +314,10 @@ Table "system_settings" {
   "created_by" uuid
   "updated_at" timestamptz
   "updated_by" uuid
+
+  indexes {
+    setting_key [unique]
+  }
 }
 
 Table "configuration_change_logs" {
@@ -243,6 +343,32 @@ Table "configuration_change_logs" {
   }
 }
 
+Table "secret_bindings" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "setting_key" varchar(256) [not null]
+  "scope" int [not null]
+  "scope_id" uuid
+  "secret_name" varchar(256) [not null]
+  "vault_provider" varchar(100) [not null]
+  "source_type" int [not null]
+  "is_active" boolean [not null]
+  "last_validated_at" timestamptz
+  "validation_status" int [not null]
+  "validation_error" text
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    setting_key [name: 'ix_secret_bindings_setting_key_instance_unique', note: 'filter: scope = 0']
+    (setting_key, scope_id) [unique, name: 'ix_secret_bindings_setting_key_scope_id_tenant_unique', note: 'filter: scope = 1']
+    (scope, scope_id) [name: 'ix_secret_bindings_scope_scope_id']
+  }
+
+  Note: 'Maps application settings to external vault secrets (KeyVault, AWS Secrets, etc.).'
+}
+
 // ============================================================
 // RBAC (Roles & Permissions)
 // ============================================================
@@ -256,7 +382,8 @@ Table "roles" {
   "is_system" boolean [not null]
 
   indexes {
-    master_code [unique]
+    master_code [unique, name: 'ix_roles_mastercode']
+    scope [name: 'ix_roles_scope']
   }
 }
 
@@ -279,7 +406,9 @@ Table "permissions" {
   "updated_by" uuid
 
   indexes {
-    master_code [unique]
+    master_code [unique, name: 'ix_permissions_mastercode']
+    (resource_kind, action) [name: 'ix_permissions_resource_action']
+    scope [name: 'ix_permissions_scope']
   }
 }
 
@@ -288,6 +417,11 @@ Table "role_permissions" {
   "permission_id" int [pk, not null]
   "granted_at" timestamptz [not null]
   "granted_by" uuid
+
+  indexes {
+    role_id [name: 'ix_rolepermissions_role']
+    permission_id [name: 'ix_rolepermissions_permission']
+  }
 }
 
 // ============================================================
@@ -316,6 +450,10 @@ Table "indexed_dids" {
   "is_active" boolean [not null]
   "last_indexed_at" timestamptz [not null]
   "last_seen_at" timestamptz
+
+  indexes {
+    did [unique]
+  }
 }
 
 Table "sync_states" {
@@ -324,6 +462,10 @@ Table "sync_states" {
   "cursor" bigint [not null]
   "last_seq_time" timestamptz
   "updated_at" timestamptz [not null]
+
+  indexes {
+    service [unique]
+  }
 }
 
 Table "pds_sync_outbox" {
@@ -365,7 +507,7 @@ Table "outbox_messages" {
   "aggregate_id" uuid [not null]
   "event_type" varchar(200) [not null]
   "payload" jsonb
-  "status" outbox_message_status [not null, default: 'Pending']
+  "status" int [not null, default: 1]
   "created_at" timestamptz [not null]
   "processed_at" timestamptz
   "retry_count" integer [not null, default: 0]
@@ -399,6 +541,10 @@ Table "module_definitions" {
   "category" varchar(50)
   "created_at" timestamptz [not null]
   "updated_at" timestamptz
+
+  indexes {
+    module_key [unique]
+  }
 }
 
 // ============================================================
@@ -412,6 +558,10 @@ Table "instance_bootstrap_states" {
   "completed_at" timestamptz
   "completed_by_user_id" uuid
   "selected_deployment_mode" varchar(32)
+
+  indexes {
+    is_completed [unique, name: 'ix_instance_bootstrap_state_completed_unique', note: 'filter: is_completed = true']
+  }
 }
 
 Table "instance_policy_sets" {
@@ -491,6 +641,13 @@ Table "tenant_navigation_links" {
   "order" int [not null]
   "open_in_new_tab" boolean [not null]
   "is_active" boolean [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
 }
 
 // ============================================================
@@ -498,15 +655,18 @@ Table "tenant_navigation_links" {
 // ============================================================
 
 Table "tenant_footer_link_groups" {
-  "id" uuid [pk, not null]
+  "id" uuid [pk, not null, note: 'uuidv7()']
   "tenant_id" uuid
-  "title" varchar(100) [not null]
+  "title" varchar(200) [not null]
   "order" int [not null]
   "is_active" boolean [not null]
   "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
   "updated_by" uuid
+  "is_deleted" boolean [not null]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
 
   indexes {
     tenant_id [name: 'ix_tenant_footer_link_groups_tenant_id']
@@ -517,10 +677,10 @@ Table "tenant_footer_link_groups" {
 }
 
 Table "tenant_footer_links" {
-  "id" uuid [pk, not null]
+  "id" uuid [pk, not null, note: 'uuidv7()']
   "footer_link_group_id" uuid [not null]
-  "label" varchar(100) [not null]
-  "url" varchar(1000) [not null]
+  "label" varchar(200) [not null]
+  "url" varchar(2000) [not null]
   "open_in_new_tab" boolean [not null]
   "order" int [not null]
   "is_active" boolean [not null]
@@ -528,6 +688,9 @@ Table "tenant_footer_links" {
   "created_by" uuid
   "updated_at" timestamptz
   "updated_by" uuid
+  "is_deleted" boolean [not null]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
 
   indexes {
     (footer_link_group_id, order) [name: 'ix_tenant_footer_links_footer_link_group_id_order']
@@ -595,6 +758,65 @@ Table "ui_themes" {
   }
 }
 
+Table "ui_theme_presets" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid
+  "theme_key" varchar(128) [not null]
+  "display_name" varchar(200) [not null]
+  "description" varchar(1000)
+  "is_active" boolean [not null]
+  "is_archived" boolean [not null]
+  "sort_order" int [not null]
+  "origin" int [not null]
+  "light_primary" varchar(7) [not null]
+  "light_secondary" varchar(7) [not null]
+  "light_background" varchar(7) [not null]
+  "light_surface" varchar(7) [not null]
+  "light_appbar_background" varchar(32) [not null]
+  "light_appbar_text" varchar(7) [not null]
+  "light_drawer_background" varchar(32) [not null]
+  "light_drawer_text" varchar(7) [not null]
+  "light_drawer_icon" varchar(7) [not null]
+  "light_text_primary" varchar(7) [not null]
+  "light_text_secondary" varchar(7) [not null]
+  "light_info" varchar(7) [not null]
+  "light_success" varchar(7) [not null]
+  "light_warning" varchar(7) [not null]
+  "light_error" varchar(7) [not null]
+  "light_lines_default" varchar(7) [not null]
+  "light_divider" varchar(32) [not null]
+  "dark_primary" varchar(7) [not null]
+  "dark_secondary" varchar(7) [not null]
+  "dark_background" varchar(7) [not null]
+  "dark_surface" varchar(7) [not null]
+  "dark_appbar_background" varchar(32) [not null]
+  "dark_appbar_text" varchar(7) [not null]
+  "dark_drawer_background" varchar(32) [not null]
+  "dark_drawer_text" varchar(7) [not null]
+  "dark_drawer_icon" varchar(7) [not null]
+  "dark_text_primary" varchar(7) [not null]
+  "dark_text_secondary" varchar(7) [not null]
+  "dark_info" varchar(7) [not null]
+  "dark_success" varchar(7) [not null]
+  "dark_warning" varchar(7) [not null]
+  "dark_error" varchar(7) [not null]
+  "dark_lines_default" varchar(7) [not null]
+  "dark_divider" varchar(32) [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+
+  indexes {
+    theme_key [unique, name: 'ix_ui_theme_presets_theme_key', note: 'filter: tenant_id IS NULL']
+    (tenant_id, theme_key) [unique, name: 'ix_ui_theme_presets_tenant_id_theme_key', note: 'filter: tenant_id IS NOT NULL']
+    (tenant_id, is_active) [name: 'ix_ui_theme_presets_tenant_id_is_active']
+  }
+}
+
 Table "tenant_onboarding_states" {
   "id" uuid [pk, not null, note: 'uuidv7 app-side']
   "tenant_id" uuid [not null]
@@ -605,6 +827,10 @@ Table "tenant_onboarding_states" {
   "created_at" timestamptz [not null]
   "completed_at" timestamptz
   "completed_by_user_id" uuid
+
+  indexes {
+    tenant_id [unique]
+  }
 }
 
 Table "tenant_policy_sets" {
@@ -651,54 +877,10 @@ Table "tenant_capabilities" {
   "created_by" uuid
   "updated_at" timestamptz
   "updated_by" uuid
-}
-
-// ============================================================
-// Footer
-// ============================================================
-
-Table "tenant_footer_link_groups" {
-  "id" uuid [pk, not null, note: 'uuidv7()']
-  "tenant_id" uuid [not null]
-  "title" varchar(200) [not null]
-  "order" integer [not null, default: 0]
-  "is_active" boolean [not null, default: true]
-  "created_at" timestamptz [not null]
-  "created_by" uuid
-  "updated_at" timestamptz
-  "updated_by" uuid
-  "is_deleted" boolean [not null, default: false]
-  "deleted_at" timestamptz
-  "deleted_by" uuid
 
   indexes {
-    (tenant_id, "order") [name: 'IX_FooterLinkGroups_TenantOrder']
+    (tenant_id, module_id) [unique]
   }
-
-  Note: 'Ordered groups of footer links per tenant. Soft-deletable.'
-}
-
-Table "tenant_footer_links" {
-  "id" uuid [pk, not null, note: 'uuidv7()']
-  "footer_link_group_id" uuid [not null]
-  "label" varchar(200) [not null]
-  "url" varchar(2000) [not null]
-  "open_in_new_tab" boolean [not null, default: false]
-  "order" integer [not null, default: 0]
-  "is_active" boolean [not null, default: true]
-  "created_at" timestamptz [not null]
-  "created_by" uuid
-  "updated_at" timestamptz
-  "updated_by" uuid
-  "is_deleted" boolean [not null, default: false]
-  "deleted_at" timestamptz
-  "deleted_by" uuid
-
-  indexes {
-    (footer_link_group_id, "order") [name: 'IX_FooterLinks_GroupOrder']
-  }
-
-  Note: 'Individual links within a footer link group. Soft-deletable.'
 }
 
 Table "tenant_invitations" {
@@ -717,6 +899,11 @@ Table "tenant_invitations" {
   "created_by" uuid
   "updated_at" timestamptz
   "updated_by" uuid
+
+  indexes {
+    token [unique]
+    (tenant_id, email)
+  }
 }
 
 Table "tenant_members" {
@@ -732,20 +919,24 @@ Table "tenant_members" {
   "updated_by" uuid
 
   indexes {
-    (user_id, tenant_id) [unique, name: 'IX_tenant_members_user_id_tenant_id']
+    (user_id, tenant_id) [unique, name: 'ix_tenantmembers_user_tenant']
   }
 }
 
 Table "external_api_keys" {
   "id" uuid [pk, not null]
-  "tenant_id" uuid [not null]
+  "tenant_id" uuid
   "name" varchar(200) [not null]
+  "description" varchar(1000)
   "key_id" varchar(64) [not null]
   "secret_hash" varchar(500) [not null]
   "scopes" varchar(1000) [not null]
   "owner_type" int [not null]
   "owner_id" uuid [not null]
-  "status" int [not null]
+  "external_api_key_status_id" int [not null]
+  "external_api_key_credit_period_id" int [not null]
+  "credit_limit" int
+  "max_rollover_credits" int
   "expires_at" timestamptz
   "last_used_at" timestamptz
   "last_used_ip" varchar(64)
@@ -755,9 +946,27 @@ Table "external_api_keys" {
   "updated_by" uuid
 
   indexes {
-    key_id [unique]
-    (tenant_id, owner_type, owner_id)
-    (tenant_id, status)
+    key_id [unique, name: 'ix_external_api_keys_key_id']
+    (tenant_id, owner_type, owner_id) [name: 'ix_external_api_keys_tenant_id_owner_type_owner_id']
+    (tenant_id, external_api_key_status_id) [name: 'ix_external_api_keys_tenant_id_external_api_key_status_id']
+  }
+}
+
+Table "external_api_key_quotas" {
+  "id" uuid [pk, not null]
+  "external_api_key_id" uuid [not null]
+  "period_start" timestamptz [not null]
+  "period_end" timestamptz [not null]
+  "credits_allowed" int [not null]
+  "credits_consumed" int [not null]
+  "credits_remaining" int [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (external_api_key_id, period_start) [unique]
   }
 }
 
@@ -773,7 +982,7 @@ Table "categories" {
   "tenant_id" uuid [not null]
 
   Indexes {
-    (tenant_id, master_code) [unique, name: 'ix_categories_tenant_master_code']
+    (tenant_id, master_code) [unique]
   }
 }
 
@@ -814,12 +1023,12 @@ Table "custom_property_definitions" {
   "key" varchar(100) [not null]
   "display_name" varchar(200) [not null]
   "description" varchar(500)
-  "property_type" varchar(50) [not null]
+  "property_type" int [not null]
   "is_required" boolean [not null]
   "is_multi" boolean [not null]
   "is_active" boolean [not null]
   "sort_order" int [not null]
-  "exposure_level" varchar(50) [not null]
+  "exposure_level" int [not null]
   "is_searchable" boolean [not null]
   "is_filterable" boolean [not null]
   "is_exportable" boolean [not null]
@@ -846,12 +1055,12 @@ Table "custom_property_definitions" {
   "is_deleted" boolean [not null]
   "deleted_at" timestamptz
   "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
 
   indexes {
     (tenant_id, entity_type_name, namespace, key) [unique, name: 'ix_cpd_tenant_entity_namespace_key']
     (tenant_id, entity_type_name, is_active) [name: 'ix_cpd_tenant_entity_active']
     (tenant_id, entity_type_name, is_searchable, is_filterable) [name: 'ix_cpd_tenant_entity_search_filter']
-    default_option_id [name: 'ix_custom_property_definitions_default_option_id']
   }
 }
 
@@ -874,11 +1083,11 @@ Table "custom_property_options" {
   "is_deleted" boolean [not null]
   "deleted_at" timestamptz
   "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
 
   indexes {
-    (custom_property_definition_id, namespace, key) [unique, name: 'ix_cpo_definition_namespace_key']
     (custom_property_definition_id, sort_order) [name: 'ix_cpo_definition_sort']
-    parent_option_id [name: 'ix_custom_property_options_parent_option_id']
+    (custom_property_definition_id, namespace, key) [unique, name: 'ix_cpo_definition_namespace_key']
   }
 }
 
@@ -900,12 +1109,12 @@ Table "custom_property_values" {
   "is_deleted" boolean [not null]
   "deleted_at" timestamptz
   "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
 
   indexes {
+    (tenant_id, entity_id) [name: 'ix_cpv_tenant_entity']
     (custom_property_definition_id, entity_id, ordinal) [unique, name: 'ix_cpv_definition_entity_ordinal']
     (tenant_id, custom_property_definition_id) [name: 'ix_cpv_tenant_definition']
-    (tenant_id, entity_id) [name: 'ix_cpv_tenant_entity']
-    option_id [name: 'ix_custom_property_values_option_id']
   }
 }
 
@@ -931,9 +1140,9 @@ Table "event_templates" {
   "is_deleted" boolean [not null]
   "deleted_at" timestamptz
   "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
 
   indexes {
-    event_type_id [name: 'ix_event_templates_event_type_id']
     (tenant_id, template_key, version) [unique, name: 'ix_event_templates_tenant_key_version']
     (tenant_id, is_published, is_active) [name: 'ix_event_templates_tenant_published_active']
   }
@@ -947,12 +1156,12 @@ Table "event_template_custom_property_definitions" {
   "key" varchar(100) [not null]
   "display_name" varchar(200) [not null]
   "description" varchar(500)
-  "property_type" varchar(50) [not null]
+  "property_type" int [not null]
   "is_required" boolean [not null]
   "is_multi" boolean [not null]
   "is_active" boolean [not null]
   "sort_order" int [not null]
-  "exposure_level" varchar(50) [not null]
+  "exposure_level" int [not null]
   "is_searchable" boolean [not null]
   "is_filterable" boolean [not null]
   "is_exportable" boolean [not null]
@@ -979,11 +1188,11 @@ Table "event_template_custom_property_definitions" {
   "is_deleted" boolean [not null]
   "deleted_at" timestamptz
   "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
 
   indexes {
     (event_template_id, namespace, key) [unique, name: 'ix_etcpd_template_namespace_key']
     (tenant_id, is_searchable, is_filterable) [name: 'ix_etcpd_tenant_search_filter']
-    default_option_id [name: 'ix_event_template_custom_property_definitions_default_option_id']
   }
 }
 
@@ -1006,11 +1215,11 @@ Table "event_template_custom_property_options" {
   "is_deleted" boolean [not null]
   "deleted_at" timestamptz
   "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
 
   indexes {
     (event_template_custom_property_definition_id, sort_order) [name: 'ix_etcpo_definition_sort']
     (event_template_custom_property_definition_id, namespace, key) [unique, name: 'ix_etcpo_definition_namespace_key']
-    parent_option_id [name: 'ix_event_template_custom_property_options_parent_option_id']
   }
 }
 
@@ -1022,12 +1231,12 @@ Table "event_custom_property_definitions" {
   "key" varchar(100) [not null]
   "display_name" varchar(200) [not null]
   "description" varchar(500)
-  "property_type" varchar(50) [not null]
+  "property_type" int [not null]
   "is_required" boolean [not null]
   "is_multi" boolean [not null]
   "is_active" boolean [not null]
   "sort_order" int [not null]
-  "exposure_level" varchar(50) [not null]
+  "exposure_level" int [not null]
   "is_searchable" boolean [not null]
   "is_filterable" boolean [not null]
   "is_exportable" boolean [not null]
@@ -1060,12 +1269,11 @@ Table "event_custom_property_definitions" {
   "is_deleted" boolean [not null]
   "deleted_at" timestamptz
   "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
 
   indexes {
     (event_id, namespace, key) [unique, name: 'ix_ecpd_event_namespace_key']
     (tenant_id, event_id, is_searchable, is_filterable) [name: 'ix_ecpd_tenant_event_search_filter']
-    default_option_id [name: 'ix_event_custom_property_definitions_default_option_id']
-    source_template_id [name: 'ix_event_custom_property_definitions_source_template_id']
   }
 }
 
@@ -1090,11 +1298,11 @@ Table "event_custom_property_options" {
   "is_deleted" boolean [not null]
   "deleted_at" timestamptz
   "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
 
   indexes {
     (event_custom_property_definition_id, sort_order) [name: 'ix_ecpo_definition_sort']
     (event_custom_property_definition_id, namespace, key) [unique, name: 'ix_ecpo_definition_namespace_key']
-    parent_option_id [name: 'ix_event_custom_property_options_parent_option_id']
   }
 }
 
@@ -1116,12 +1324,11 @@ Table "event_custom_property_values" {
   "is_deleted" boolean [not null]
   "deleted_at" timestamptz
   "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
 
   indexes {
     (tenant_id, event_id) [name: 'ix_ecpv_tenant_event']
     (event_custom_property_definition_id, event_id, ordinal) [unique, name: 'ix_ecpv_definition_event_ordinal']
-    event_id [name: 'ix_event_custom_property_values_event_id']
-    option_id [name: 'ix_event_custom_property_values_option_id']
   }
 }
 
@@ -1133,8 +1340,8 @@ Table "event_custom_property_projections" {
   "tenant_id" uuid [not null]
   "namespace" varchar(100) [not null]
   "key" varchar(100) [not null]
-  "property_type" varchar(50) [not null]
-  "exposure_level" varchar(50) [not null]
+  "property_type" int [not null]
+  "exposure_level" int [not null]
   "is_searchable" boolean [not null]
   "is_filterable" boolean [not null]
   "is_exportable" boolean [not null]
@@ -1150,13 +1357,256 @@ Table "event_custom_property_projections" {
   "updated_at" timestamptz [not null]
 
   indexes {
-    event_custom_property_definition_id [name: 'ix_event_custom_property_projections_event_custom_property_def']
-    event_id [name: 'ix_event_custom_property_projections_event_id']
-    option_id [name: 'ix_event_custom_property_projections_option_id']
     event_custom_property_value_id [unique, name: 'ix_ecpp_value']
     (tenant_id, namespace, key, normalized_value) [name: 'ix_ecpp_tenant_namespace_key_normalized']
     (tenant_id, exposure_level) [name: 'ix_ecpp_tenant_exposure']
     (tenant_id, event_id, namespace, key, ordinal) [name: 'ix_ecpp_tenant_event_namespace_key_ordinal']
+  }
+}
+
+// ============================================================
+// Event Session Templates & Session Custom Properties
+// ============================================================
+
+Table "event_session_templates" {
+  "id" uuid [pk, not null]
+  "event_template_id" uuid [not null]
+  "tenant_id" uuid [not null]
+  "session_template_key" varchar(100) [not null]
+  "display_name" varchar(200) [not null]
+  "description" varchar(500)
+  "version" int [not null]
+  "is_published" boolean [not null]
+  "is_active" boolean [not null]
+  "sort_order" int [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
+
+  indexes {
+    (event_template_id, session_template_key, version) [unique, name: 'ix_est_template_key_version']
+    (tenant_id, is_published, is_active) [name: 'ix_est_tenant_published_active']
+  }
+}
+
+Table "event_session_template_custom_property_definitions" {
+  "id" uuid [pk, not null]
+  "event_session_template_id" uuid [not null]
+  "tenant_id" uuid [not null]
+  "namespace" varchar(100) [not null]
+  "key" varchar(100) [not null]
+  "display_name" varchar(200) [not null]
+  "description" varchar(500)
+  "property_type" int [not null]
+  "is_required" boolean [not null]
+  "is_multi" boolean [not null]
+  "is_active" boolean [not null]
+  "sort_order" int [not null]
+  "exposure_level" int [not null]
+  "is_searchable" boolean [not null]
+  "is_filterable" boolean [not null]
+  "is_exportable" boolean [not null]
+  "is_moderation_relevant" boolean [not null]
+  "is_analytics_relevant" boolean [not null]
+  "is_system_owned" boolean [not null]
+  "default_text_value" varchar(1000)
+  "default_number_value" decimal(19,4)
+  "default_boolean_value" boolean
+  "default_date_time_value" timestamptz
+  "default_option_id" uuid
+  "min_length" int
+  "max_length" int
+  "regex_pattern" varchar(1000)
+  "min_number" decimal(19,4)
+  "max_number" decimal(19,4)
+  "min_date_time" timestamptz
+  "max_date_time" timestamptz
+  "allowed_url_schemes" varchar(500)
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
+
+  indexes {
+    (event_session_template_id, namespace, key) [unique, name: 'ix_estcpd_template_namespace_key']
+    (tenant_id, is_searchable, is_filterable) [name: 'ix_estcpd_tenant_search_filter']
+  }
+}
+
+Table "event_session_template_custom_property_options" {
+  "id" uuid [pk, not null]
+  "event_session_template_custom_property_definition_id" uuid [not null]
+  "namespace" varchar(100) [not null]
+  "key" varchar(100) [not null]
+  "display_name" varchar(200) [not null]
+  "description" varchar(500)
+  "value" varchar(500) [not null]
+  "is_default" boolean [not null]
+  "is_active" boolean [not null]
+  "sort_order" int [not null]
+  "parent_option_id" uuid
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
+
+  indexes {
+    (event_session_template_custom_property_definition_id, sort_order) [name: 'ix_estcpo_definition_sort']
+    (event_session_template_custom_property_definition_id, namespace, key) [unique, name: 'ix_estcpo_definition_namespace_key']
+  }
+}
+
+Table "event_session_custom_property_definitions" {
+  "id" uuid [pk, not null]
+  "event_session_id" uuid [not null]
+  "tenant_id" uuid [not null]
+  "namespace" varchar(100) [not null]
+  "key" varchar(100) [not null]
+  "display_name" varchar(200) [not null]
+  "description" varchar(500)
+  "property_type" int [not null]
+  "is_required" boolean [not null]
+  "is_multi" boolean [not null]
+  "is_active" boolean [not null]
+  "sort_order" int [not null]
+  "exposure_level" int [not null]
+  "is_searchable" boolean [not null]
+  "is_filterable" boolean [not null]
+  "is_exportable" boolean [not null]
+  "is_moderation_relevant" boolean [not null]
+  "is_analytics_relevant" boolean [not null]
+  "is_system_owned" boolean [not null]
+  "default_text_value" varchar(1000)
+  "default_number_value" decimal(19,4)
+  "default_boolean_value" boolean
+  "default_date_time_value" timestamptz
+  "default_option_id" uuid
+  "min_length" int
+  "max_length" int
+  "regex_pattern" varchar(1000)
+  "min_number" decimal(19,4)
+  "max_number" decimal(19,4)
+  "min_date_time" timestamptz
+  "max_date_time" timestamptz
+  "allowed_url_schemes" varchar(500)
+  "source_template_id" uuid
+  "source_template_key" varchar(100)
+  "source_template_version" int
+  "source_template_definition_id" uuid
+  "instantiated_at" timestamptz [not null]
+  "last_synced_from_template_at" timestamptz
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
+
+  indexes {
+    (event_session_id, namespace, key) [unique, name: 'ix_escpd_session_namespace_key']
+    (tenant_id, event_session_id, is_searchable, is_filterable) [name: 'ix_escpd_tenant_session_search_filter']
+  }
+}
+
+Table "event_session_custom_property_options" {
+  "id" uuid [pk, not null]
+  "event_session_custom_property_definition_id" uuid [not null]
+  "namespace" varchar(100) [not null]
+  "key" varchar(100) [not null]
+  "display_name" varchar(200) [not null]
+  "description" varchar(500)
+  "value" varchar(500) [not null]
+  "is_default" boolean [not null]
+  "is_active" boolean [not null]
+  "sort_order" int [not null]
+  "parent_option_id" uuid
+  "source_template_option_id" uuid
+  "source_template_version" int
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
+
+  indexes {
+    (event_session_custom_property_definition_id, sort_order) [name: 'ix_escpo_definition_sort']
+    (event_session_custom_property_definition_id, namespace, key) [unique, name: 'ix_escpo_definition_namespace_key']
+  }
+}
+
+Table "event_session_custom_property_values" {
+  "id" uuid [pk, not null]
+  "event_session_custom_property_definition_id" uuid [not null]
+  "event_session_id" uuid [not null]
+  "tenant_id" uuid [not null]
+  "ordinal" int [not null]
+  "text_value" varchar(4000)
+  "number_value" decimal(19,4)
+  "boolean_value" boolean
+  "date_time_value" timestamptz
+  "option_id" uuid
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "is_deleted" boolean [not null]
+  "deleted_at" timestamptz
+  "deleted_by" uuid
+  "concurrency_stamp" uuid [not null]
+
+  indexes {
+    (tenant_id, event_session_id) [name: 'ix_escpv_tenant_session']
+    (event_session_custom_property_definition_id, event_session_id, ordinal) [unique, name: 'ix_escpv_definition_session_ordinal']
+  }
+}
+
+Table "event_session_custom_property_projections" {
+  "id" uuid [pk, not null]
+  "event_session_custom_property_definition_id" uuid [not null]
+  "event_session_custom_property_value_id" uuid [not null]
+  "event_session_id" uuid [not null]
+  "tenant_id" uuid [not null]
+  "namespace" varchar(100) [not null]
+  "key" varchar(100) [not null]
+  "property_type" int [not null]
+  "exposure_level" int [not null]
+  "is_searchable" boolean [not null]
+  "is_filterable" boolean [not null]
+  "is_exportable" boolean [not null]
+  "is_moderation_relevant" boolean [not null]
+  "is_analytics_relevant" boolean [not null]
+  "ordinal" int [not null]
+  "option_id" uuid
+  "text_value" varchar(4000)
+  "number_value" decimal(19,4)
+  "boolean_value" boolean
+  "date_time_value" timestamptz
+  "normalized_value" varchar(4000)
+  "updated_at" timestamptz [not null]
+
+  indexes {
+    event_session_custom_property_value_id [unique, name: 'ix_escpp_value']
+    (tenant_id, namespace, key, normalized_value) [name: 'ix_escpp_tenant_namespace_key_normalized']
+    (tenant_id, exposure_level) [name: 'ix_escpp_tenant_exposure']
+    (tenant_id, event_session_id, namespace, key, ordinal) [name: 'ix_escpp_tenant_session_namespace_key_ordinal']
   }
 }
 
@@ -1171,6 +1621,12 @@ Table "locations" {
   "city" varchar(500) [not null]
   "tenant_id" uuid [not null]
   "timezone" varchar(500)
+
+  indexes {
+    tenant_id
+    (tenant_id, city) [name: 'ix_locations_tenant_city']
+    (tenant_id, country) [name: 'ix_locations_tenant_country']
+  }
 }
 
 Table "location_rooms" {
@@ -1189,11 +1645,11 @@ Table "location_rooms" {
   "is_deleted" boolean [not null]
   "deleted_at" timestamptz
   "deleted_by" uuid
-  "concurrency_stamp" uuid [not null, note: 'optimistic concurrency token, app-managed']
+  "concurrency_stamp" uuid [not null]
 
   indexes {
-    (location_id) [name: 'ix_location_rooms_location_id']
-    (tenant_id) [name: 'ix_location_rooms_tenant_id']
+    (tenant_id, location_id, name) [unique, name: 'ix_location_rooms_tenant_location_name']
+    (tenant_id, location_id, sort_order) [name: 'ix_location_rooms_tenant_location_sort']
   }
 
   Note: 'Sub-venue within a location (e.g. Conference Room A, Main Hall). Used for room-based agenda grid layout. Soft-deletable, tenant-scoped.'
@@ -1311,6 +1767,11 @@ Table "platform_user_roles" {
   "role_id" int [not null]
   "granted_at" timestamptz [not null]
   "granted_by" uuid
+
+  indexes {
+    (user_id, role_id) [unique]
+    user_id
+  }
 }
 
 Table "user_authentication_tokens" {
@@ -1359,6 +1820,69 @@ Table "user_preferences" {
   }
 }
 
+Table "user_notification_preferences" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid [not null]
+  "user_id" uuid [not null]
+  "category" varchar(100) [not null]
+  "is_email_enabled" boolean [not null]
+  "is_push_enabled" boolean [not null]
+  "is_in_app_enabled" boolean [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (tenant_id, user_id, category) [unique]
+  }
+}
+
+Table "user_appearance_profiles" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "user_id" uuid [not null]
+  "tenant_id" uuid
+  "name" varchar(200) [not null]
+  "description" varchar(1000)
+  "is_default" boolean [not null]
+  "is_archived" boolean [not null]
+  "theme_mode" int [not null]
+  "theme_key" varchar(128)
+  "source_preset_id" uuid
+  "light_primary" varchar(7)
+  "light_secondary" varchar(7)
+  "light_background" varchar(7)
+  "light_surface" varchar(7)
+  "dark_primary" varchar(7)
+  "dark_secondary" varchar(7)
+  "dark_background" varchar(7)
+  "dark_surface" varchar(7)
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+
+  indexes {
+    (user_id, tenant_id, name)
+    (user_id, tenant_id, is_archived)
+    (user_id, tenant_id, is_default) [unique, name: 'ix_user_appearance_profiles_is_default', note: 'filter: is_default = true AND is_archived = false']
+    (user_id, source_preset_id)
+  }
+}
+
+Table "user_appearance_preferences" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "user_id" uuid [not null]
+  "tenant_id" uuid
+  "active_profile_id" uuid
+  "resolution_source" int [not null]
+  "last_resolved_at" timestamptz [not null]
+
+  indexes {
+    (user_id, tenant_id) [unique]
+  }
+}
+
 // ============================================================
 // Organizations
 // ============================================================
@@ -1379,11 +1903,11 @@ Table "organizations" {
   "is_deleted" boolean [not null]
   "deleted_at" timestamptz
   "deleted_by" uuid
-  "concurrency_stamp" uuid [not null, note: 'optimistic concurrency token, app-managed']
+  "concurrency_stamp" uuid [not null]
 
   indexes {
-    (tenant_id, is_deleted, approval_status_id) [name: 'ix_organization_tenant_active']
-    (tenant_id, actor_id) [name: 'ix_organization_tenant_actor']
+    (tenant_id, is_deleted, approval_status_id) [name: 'ix_organizations_tenant_active_status']
+    tenant_id [name: 'ix_organizations_tenant']
   }
 
   Note: 'Approval-gated org. Soft-deletable, concurrency-protected.'
@@ -1397,6 +1921,10 @@ Table "organization_pii" {
   "city" varchar(200)
   "address" varchar(500)
   "postcode" varchar(50)
+
+  indexes {
+    full_name [name: 'ix_organization_pii_name']
+  }
 }
 
 Table "organization_members" {
@@ -1413,12 +1941,17 @@ Table "organization_members" {
   "is_deleted" boolean [not null]
   "deleted_at" timestamptz
   "deleted_by" uuid
+
+  indexes {
+    (organization_id, user_id) [unique, name: 'ix_orgmembers_org_user']
+    user_id [name: 'ix_orgmembers_user']
+  }
 }
 
 Table "organization_reviews" {
   "id" uuid [pk, not null, note: 'uuidv7()']
   "organization_id" uuid [not null]
-  "event_id" uuid [not null, note: 'renamed from program_id']
+  "event_id" uuid [not null]
   "user_id" uuid [not null]
   "reviewer_name" varchar(200) [not null]
   "rating" int [not null]
@@ -1449,6 +1982,22 @@ Table "organization_setting_overrides" {
   }
 }
 
+Table "organization_policy_sets" {
+  "id" uuid [pk, not null]
+  "organization_id" uuid [not null]
+  "tenant_id" uuid [not null]
+  "created_at" timestamptz [not null]
+  "created_by" uuid
+  "updated_at" timestamptz
+  "updated_by" uuid
+  "xmin" xid [not null, note: 'rowversion / optimistic concurrency']
+  "events_policy" jsonb [not null]
+
+  indexes {
+    organization_id [unique, name: 'ix_organization_policy_sets_organization_id']
+  }
+}
+
 // ============================================================
 // Groups
 // ============================================================
@@ -1468,47 +2017,13 @@ Table "groups" {
   "is_deleted" boolean [not null]
   "deleted_at" timestamptz
   "deleted_by" uuid
-  "concurrency_stamp" uuid [not null, note: 'optimistic concurrency token, app-managed']
+  "concurrency_stamp" uuid [not null]
 
   indexes {
     (tenant_id, is_deleted, approval_status_id) [name: 'ix_groups_tenant_active']
   }
 
   Note: 'Community groups. Approval-gated, soft-deletable, concurrency-protected.'
-}
-
-Table "organization_policy_sets" {
-  "id" uuid [pk, not null]
-  "organization_id" uuid [not null]
-  "tenant_id" uuid [not null]
-  "created_at" timestamptz [not null]
-  "created_by" uuid
-  "updated_at" timestamptz
-  "updated_by" uuid
-  "xmin" xid [not null, note: 'rowversion / optimistic concurrency']
-  "events_policy" jsonb [not null]
-
-  indexes {
-    organization_id [unique, name: 'ix_organization_policy_sets_organization_id']
-  }
-}
-
-Table "policy_change_outbox" {
-  "id" uuid [pk, not null]
-  "scope" int [not null]
-  "scope_id" uuid
-  "operation" int [not null]
-  "status" int [not null]
-  "created_at" timestamptz [not null]
-  "created_by" varchar(200)
-  "processed_at" timestamptz
-  "retry_count" int [not null]
-  "last_error" varchar(2000)
-  "next_retry_at" timestamptz
-
-  indexes {
-    (status, next_retry_at) [name: 'ix_policy_change_outbox_status_retry']
-  }
 }
 
 Table "group_members" {
@@ -1525,6 +2040,10 @@ Table "group_members" {
   "is_deleted" boolean [not null]
   "deleted_at" timestamptz
   "deleted_by" uuid
+
+  indexes {
+    (group_id, user_id) [unique]
+  }
 }
 
 Table "group_setting_overrides" {
@@ -1561,8 +2080,17 @@ Table "storage_objects" {
   "updated_at" timestamptz
   "updated_by" uuid
 
+  indexes {
+    tenant_id
+    actor_id
+  }
+
   Note: 'File metadata. Actual blobs stored in external object storage.'
 }
+
+// ============================================================
+// Events
+// ============================================================
 
 Table "event_series" {
   "id" uuid [pk, not null]
@@ -1592,10 +2120,6 @@ Table "event_series" {
     (tenant_id, total_views) [name: 'ix_event_series_tenant_id_total_views']
   }
 }
-
-// ============================================================
-// Events
-// ============================================================
 
 Table "events" {
   "id" uuid [pk, not null, note: 'uuidv7 app-side']
@@ -1628,7 +2152,7 @@ Table "events" {
   "event_time_zone_id" text
   "event_series_id" uuid
   "series_order" int
-  "registration_policy_id" int [note: 'FK to event_registration_policies. Null = Flexible (all scopes allowed).']
+  "registration_policy_id" int [note: 'FK to event_registration_policies. Null = Flexible.']
   "event_format_id" int [not null]
   "atproto_record_id" uuid
   "created_at" timestamptz [not null]
@@ -1638,7 +2162,7 @@ Table "events" {
   "is_deleted" boolean [not null]
   "deleted_at" timestamptz
   "deleted_by" uuid
-  "concurrency_stamp" uuid [not null, note: 'optimistic concurrency token, app-managed']
+  "concurrency_stamp" uuid [not null]
   "background_color" varchar(50)
   "background_effect" varchar(50)
   "background_image_id" uuid
@@ -1647,11 +2171,11 @@ Table "events" {
     (tenant_id, is_deleted, event_status_id) [name: 'ix_events_tenant_active_status']
     (tenant_id, actor_id, created_at) [name: 'ix_events_tenant_actor_created']
     (tenant_id, first_session_date, last_session_date) [name: 'ix_events_tenant_daterange']
-    (tenant_id, event_type_id) [name: 'ix_events_tenant_type']
+    (tenant_id, event_type_id) [name: 'ix_events_tenant_eventtype']
     (tenant_id, slug) [name: 'ix_events_tenant_slug']
   }
 
-  Note: 'Core aggregate. Check: CK_Event_NonNegativePrice (price IS NULL OR price >= 0). Soft-deletable, tenant-scoped, concurrency-protected.'
+  Note: 'Core aggregate. Check: CK_Event_NonNegativePrice (price >= 0). Soft-deletable, tenant-scoped, concurrency-protected.'
 }
 
 Table "event_islamic_aspects" {
@@ -1682,13 +2206,13 @@ Table "event_days" {
   "event_id" uuid [not null]
   "tenant_id" uuid [not null]
   "local_date" date [not null, note: 'calendar date in event timezone']
-  "label" varchar(200) [note: 'e.g. "Day 1 — Opening Ceremony"']
+  "label" varchar(200)
   "description" varchar(2000)
   "banner_text" varchar(500)
   "banner_image_id" uuid
   "is_published" boolean [not null, default: false]
   "sort_order" int [not null, default: 0]
-  "allows_day_scope_registration" boolean [not null, default: false, note: 'whether day-level registration intent is allowed']
+  "allows_day_scope_registration" boolean [not null, default: false]
   "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
@@ -1696,34 +2220,35 @@ Table "event_days" {
   "is_deleted" boolean [not null]
   "deleted_at" timestamptz
   "deleted_by" uuid
-  "concurrency_stamp" uuid [not null, note: 'optimistic concurrency token, app-managed']
+  "concurrency_stamp" uuid [not null]
 
   indexes {
-    (event_id, local_date) [unique, name: 'ix_event_days_event_date', note: 'partial: WHERE is_deleted = false']
-    (tenant_id) [name: 'ix_event_days_tenant_id']
+    (tenant_id, event_id, local_date) [unique, name: 'ix_event_days_tenant_event_local_date', note: 'partial: is_deleted = false']
+    (tenant_id, event_id, sort_order) [name: 'ix_event_days_tenant_event_sort']
+    (tenant_id, event_id, is_published) [name: 'ix_event_days_tenant_event_published']
   }
 
-  Note: 'Calendar-day grouping for multi-day events. One row per local date. Sessions and agenda items link here via event_day_id. Soft-deletable, tenant-scoped.'
+  Note: 'Calendar-day grouping for multi-day events.'
 }
 
 Table "event_agenda_items" {
   "id" uuid [pk, not null, note: 'uuidv7()']
   "event_id" uuid [not null]
-  "event_day_id" uuid [note: 'FK to event_days. Auto-linked by handler from LocalStartDate.']
+  "event_day_id" uuid
   "tenant_id" uuid [not null]
   "title" varchar(500) [not null]
   "description" varchar(2000)
   "start_time" timestamptz [not null]
   "end_time" timestamptz [not null]
-  "local_start_date" date [not null, note: 'cached projection']
-  "local_end_date" date [not null, note: 'cached projection']
-  "local_start_time" time [not null, note: 'cached projection']
-  "local_end_time" time [not null, note: 'cached projection']
-  "local_start_minute_of_day" int [not null, note: 'cached: hours*60+minutes']
-  "local_end_minute_of_day" int [not null, note: 'cached: hours*60+minutes']
+  "local_start_date" date [not null]
+  "local_end_date" date [not null]
+  "local_start_time" time [not null]
+  "local_end_time" time [not null]
+  "local_start_minute_of_day" int [not null]
+  "local_end_minute_of_day" int [not null]
   "location_id" uuid
-  "room_id" uuid [note: 'FK to location_rooms']
-  "kind_id" int [note: 'FK to schedule_item_kinds']
+  "room_id" uuid
+  "kind_id" int
   "sort_order" int [not null, default: 0]
   "created_at" timestamptz [not null]
   "created_by" uuid
@@ -1732,25 +2257,24 @@ Table "event_agenda_items" {
   "is_deleted" boolean [not null]
   "deleted_at" timestamptz
   "deleted_by" uuid
-  "concurrency_stamp" uuid [not null, note: 'optimistic concurrency token, app-managed']
+  "concurrency_stamp" uuid [not null]
 
   indexes {
-    (event_id) [name: 'ix_event_agenda_items_event_id']
-    (event_day_id) [name: 'ix_event_agenda_items_event_day_id']
-    (tenant_id) [name: 'ix_event_agenda_items_tenant_id']
+    (tenant_id, event_id, local_start_date, local_start_minute_of_day) [name: 'ix_event_agenda_items_tenant_event_local_start']
+    (tenant_id, event_id, sort_order) [name: 'ix_event_agenda_items_tenant_event_sort']
   }
 
-  Note: 'Event-level schedule entries (breaks, prayers, keynotes) that are not sessions. Appear in the unified agenda alongside sessions. Local projection fields cached via IEventScheduleProjectionCalculator.'
+  Note: 'Non-session schedule entries (breaks, prayers). Check: CK_EventAgendaItem_DurationPositive.'
 }
 
 Table "event_sessions" {
   "id" uuid [pk, not null, note: 'uuidv7()']
   "event_id" uuid [not null]
-  "event_day_id" uuid [note: 'FK to event_days. Auto-linked by handler from LocalStartDate.']
+  "event_day_id" uuid
   "start_time" timestamptz [not null]
   "end_time" timestamptz [not null]
   "location_id" uuid
-  "room_id" uuid [note: 'FK to location_rooms. Finer-grained venue assignment.']
+  "room_id" uuid
   "title" varchar(500)
   "tenant_id" uuid [not null]
   "slug" varchar(200)
@@ -1761,12 +2285,12 @@ Table "event_sessions" {
   "currency_code" varchar(3)
   "description" varchar(500)
   "sort_order" int [not null, default: 0]
-  "local_start_date" date [not null, note: 'cached projection from start_time + event timezone']
-  "local_end_date" date [not null, note: 'cached projection from end_time + event timezone']
-  "local_start_time" time [not null, note: 'cached projection']
-  "local_end_time" time [not null, note: 'cached projection']
-  "local_start_minute_of_day" int [not null, note: 'cached: hours*60+minutes for sorting']
-  "local_end_minute_of_day" int [not null, note: 'cached: hours*60+minutes for sorting']
+  "local_start_date" date [not null]
+  "local_end_date" date [not null]
+  "local_start_time" time [not null]
+  "local_end_time" time [not null]
+  "local_start_minute_of_day" int [not null]
+  "local_end_minute_of_day" int [not null]
   "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
@@ -1774,27 +2298,26 @@ Table "event_sessions" {
   "is_deleted" boolean [not null]
   "deleted_at" timestamptz
   "deleted_by" uuid
-  "concurrency_stamp" uuid [not null, note: 'optimistic concurrency token, app-managed']
+  "concurrency_stamp" uuid [not null]
 
   indexes {
-    (event_id) [name: 'ix_event_sessions_event_id']
-    (tenant_id) [name: 'ix_event_sessions_tenant_id']
-    (event_day_id) [name: 'ix_event_sessions_event_day_id']
-    (room_id) [name: 'ix_event_sessions_room_id']
+    (tenant_id, event_id, local_start_date, local_start_minute_of_day) [name: 'ix_event_sessions_tenant_event_local_start']
+    (tenant_id, room_id, start_time, end_time) [name: 'ix_event_sessions_tenant_room_time']
+    (tenant_id, event_day_id, sort_order) [name: 'ix_event_sessions_tenant_day_sort']
   }
 
-  Note: 'Individual sessions within an event. Check: CK_EventSession_NonNegativePrice. Cascade deletes with parent event. Local projection fields are cached from UTC times + event timezone via IEventScheduleProjectionCalculator.'
+  Note: 'Check: CK_EventSession_NonNegativePrice, CK_EventSession_DurationPositive.'
 }
 
 Table "event_session_islamic_aspects" {
   "event_session_id" uuid [pk, not null, note: 'shared PK with event_sessions']
-  "start_time_type" int [not null]
+  "start_time_type" int [not null, default: 1]
   "reference_prayer" int
   "offset_minutes" int
-  "requires_wudu" boolean [not null]
+  "requires_wudu" boolean [not null, default: false]
   "ritual_requirements_json" jsonb
 
-  Note: 'Check: CK_EventSessionIslamicAspect_RelativeStartFields — requires prayer fields when start_time_type is relative.'
+  Note: 'Check: CK_EventSessionIslamicAspect_RelativeStartFields.'
 }
 
 Table "event_session_agenda_items" {
@@ -1809,13 +2332,13 @@ Table "event_session_agenda_items" {
 }
 
 Table "event_session_languages" {
-  "id" int [pk, not null]
+  "id" int [pk, not null, note: 'auto-increment']
   "event_session_id" uuid [not null]
   "language_id" int [not null]
   "tenant_id" uuid [not null]
 
   indexes {
-    (event_session_id, language_id) [unique, name: 'IX_event_session_languages_event_session_id_language_id']
+    (event_session_id, language_id) [unique]
   }
 }
 
@@ -1824,6 +2347,10 @@ Table "event_session_speakers" {
   "actor_id" uuid [not null]
   "event_session_id" uuid [not null]
   "tenant_id" uuid [not null]
+
+  indexes {
+    (tenant_id, event_session_id, actor_id) [unique, name: 'ix_event_session_speakers_tenant_session_actor']
+  }
 }
 
 Table "event_categories" {
@@ -1835,6 +2362,10 @@ Table "event_categories" {
   "created_by" uuid
   "updated_at" timestamptz
   "updated_by" uuid
+
+  indexes {
+    (tenant_id, event_id, category_id) [unique, name: 'ix_event_categories_tenant_event_category']
+  }
 }
 
 Table "event_tags" {
@@ -1846,13 +2377,17 @@ Table "event_tags" {
   "created_by" uuid
   "updated_at" timestamptz
   "updated_by" uuid
+
+  indexes {
+    (tenant_id, event_id, tag_id) [unique, name: 'ix_event_tags_tenant_event_tag']
+  }
 }
 
 Table "event_registrations" {
   "id" uuid [pk, not null, note: 'uuidv7()']
   "user_id" uuid [not null]
   "event_session_id" uuid [not null]
-  "event_registration_intent_id" uuid [note: 'FK to event_registration_intents. Links child registration to parent intent.']
+  "event_registration_intent_id" uuid
   "approval_status_id" int
   "tenant_id" uuid [not null]
   "atproto_record_id" uuid
@@ -1864,17 +2399,21 @@ Table "event_registrations" {
   "deleted_at" timestamptz
   "deleted_by" uuid
 
-  Note: 'Session-level RSVP. Soft-deletable, unique per (user, session). Now linked to a parent EventRegistrationIntent for intent-first registration model.'
+  indexes {
+    (event_session_id, user_id) [unique, name: 'ix_eventregistrations_session_user']
+    user_id [name: 'ix_eventregistrations_user']
+    event_registration_intent_id [name: 'ix_eventregistrations_intent']
+  }
 }
 
 Table "event_registration_intents" {
   "id" uuid [pk, not null, note: 'uuidv7()']
   "event_id" uuid [not null]
   "user_id" uuid [not null]
-  "registration_scope_id" int [not null, note: 'FK to registration_scopes (Event=1, Day=2, SessionSelection=3)']
-  "selected_event_day_id" uuid [note: 'FK to event_days. Required when scope=Day.']
-  "registration_policy_snapshot_id" int [note: 'FK to event_registration_policies. Snapshot of event policy at registration time.']
-  "approval_status_id" int [note: 'FK to approval_statuses']
+  "registration_scope_id" int [not null]
+  "selected_event_day_id" uuid
+  "registration_policy_snapshot_id" int
+  "approval_status_id" int
   "tenant_id" uuid [not null]
   "created_at" timestamptz [not null]
   "created_by" uuid
@@ -1883,15 +2422,16 @@ Table "event_registration_intents" {
   "is_deleted" boolean [not null]
   "deleted_at" timestamptz
   "deleted_by" uuid
-  "concurrency_stamp" uuid [not null, note: 'optimistic concurrency token, app-managed']
+  "concurrency_stamp" uuid [not null]
 
   indexes {
-    (event_id, user_id) [name: 'ix_event_registration_intents_event_user', note: 'partial unique: scope=Event, WHERE is_deleted=false']
-    (event_id, user_id, selected_event_day_id) [name: 'ix_event_registration_intents_event_user_day', note: 'partial unique: scope=Day, WHERE is_deleted=false']
-    (tenant_id) [name: 'ix_event_registration_intents_tenant_id']
+    (tenant_id, event_id, user_id, registration_scope_id) [name: 'ix_event_registration_intents_tenant_event_user_scope']
+    (tenant_id, event_id, selected_event_day_id) [name: 'ix_event_registration_intents_tenant_event_day']
+    (tenant_id, user_id) [name: 'ix_event_registration_intents_tenant_user']
+    (tenant_id, event_id, user_id) [unique, name: 'ix_event_registration_intents_unique_event_scope', note: 'filter: scope=1']
+    (tenant_id, event_id, user_id, selected_event_day_id) [unique, name: 'ix_event_registration_intents_unique_day_scope', note: 'filter: scope=2']
+    (tenant_id, event_id, user_id) [unique, name: 'ix_event_registration_intents_unique_session_selection_scope', note: 'filter: scope=3']
   }
-
-  Note: 'Parent registration intent. One per (user, event, scope). Child event_registrations link back via event_registration_intent_id. Scope determines granularity: Event (whole-event), Day (specific day), SessionSelection (pick sessions).'
 }
 
 Table "event_session_categories" {
@@ -1901,10 +2441,9 @@ Table "event_session_categories" {
   "tenant_id" uuid [not null]
 
   indexes {
-    (event_session_id, category_id) [unique, name: 'ix_event_session_categories_session_category']
+    (event_session_id, category_id) [unique]
+    (tenant_id, event_session_id, category_id) [name: 'ix_event_session_categories_tenant_session_category']
   }
-
-  Note: 'Junction: session ↔ category. Managed as sub-resource of EventSession.'
 }
 
 Table "event_session_tags" {
@@ -1914,10 +2453,9 @@ Table "event_session_tags" {
   "tenant_id" uuid [not null]
 
   indexes {
-    (event_session_id, tag_id) [unique, name: 'ix_event_session_tags_session_tag']
+    (event_session_id, tag_id) [unique]
+    (tenant_id, event_session_id, tag_id) [name: 'ix_event_session_tags_tenant_session_tag']
   }
-
-  Note: 'Junction: session ↔ tag. Managed as sub-resource of EventSession.'
 }
 
 Table "event_contact_share_consents" {
@@ -1945,8 +2483,6 @@ Table "event_contact_share_consents" {
     (tenant_id, recipient_actor_id, status) [name: 'ix_eventcontactshareconsents_recipient_status']
     (tenant_id, user_id, status) [name: 'ix_eventcontactshareconsents_user_status']
   }
-
-  Note: 'Explicit opt-in email-sharing consent. Scope is tenant + user + recipient actor + purpose, not per event; source_event_id and source_event_registration_intent_id are audit context only. Withdrawal is represented by status=Withdrawn, not soft delete. Email fields are snapshots captured at grant/reactivation time and must not track live user PII changes.'
 }
 
 Table "event_contact_share_export" {
@@ -1962,16 +2498,12 @@ Table "event_contact_share_export" {
   indexes {
     (tenant_id, recipient_actor_id, created_at) [name: 'ix_eventcontactshareexports_recipient_date']
   }
-
-  Note: 'Audit header for an organization contact export. event_id is nullable because organizations may export all currently granted consents or filter to a single source event.'
 }
 
 Table "event_contact_share_export_item" {
   "export_id" uuid [pk, not null]
   "consent_id" uuid [pk, not null]
   "email_snapshot" varchar(320) [not null]
-
-  Note: 'Audit line for a single exported consent. Stores the email value emitted in the file so historical export evidence remains stable even if consent or user PII changes later.'
 }
 
 // ============================================================
@@ -1982,7 +2514,7 @@ Table "audit_logs" {
   "id" uuid [pk, not null, note: 'uuidv7 app-side']
   "entity_type" varchar(200) [not null]
   "entity_id" varchar(200) [not null]
-  "action" varchar(50) [not null, note: 'Created, Updated, Deleted']
+  "action" varchar(50) [not null]
   "old_values" jsonb
   "new_values" jsonb
   "affected_columns" jsonb
@@ -1993,475 +2525,273 @@ Table "audit_logs" {
   indexes {
     (entity_type, entity_id) [name: 'IX_audit_logs_entity_type_entity_id']
     tenant_id [name: 'IX_audit_logs_tenant_id']
-    timestamp [name: 'IX_audit_logs_timestamp']
+    (tenant_id, entity_type, entity_id, timestamp) [name: 'ix_audit_logs_desc', note: 'descending: timestamp']
   }
-
-  Note: 'Entity-level audit trail. JSONB old/new values for change tracking.'
-}
-
-Table "notification_types" {
-  "id" int [pk, not null, note: 'ValueGeneratedNever — seeded lookup']
-  "master_code" varchar(100) [not null]
-  "full_name" varchar(200) [not null]
-  "description" varchar(500)
-
-  Note: 'Lookup: RegistrationConfirmed, ApprovalGranted, ApprovalRejected, WaitlistPromoted, EventCreated, EventUpdated, EventCancelled, MemberInvited, MemberRemoved, General.'
-}
-
-Table "notification_entity_types" {
-  "id" int [pk, not null, note: 'ValueGeneratedNever — seeded lookup']
-  "master_code" varchar(100) [not null]
-  "full_name" varchar(200) [not null]
-  "description" varchar(500)
-
-  Note: 'Lookup: Event, Organization, Group, EventRegistration, EventSession, User.'
 }
 
 Table "notifications" {
-  "id" uuid [pk, not null, note: 'uuidv7 default']
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "tenant_id" uuid [not null]
   "user_id" uuid [not null]
   "notification_type_id" int [not null]
-  "title" varchar(500) [not null]
-  "body" varchar(2000)
+  "notification_reason_id" int [not null]
+  "source_entity_type_id" int [not null]
+  "source_entity_id" uuid [not null]
+  "title" varchar(200) [not null]
+  "content" varchar(2000) [not null]
+  "action_url" varchar(1000)
   "is_read" boolean [not null]
   "read_at" timestamptz
-  "notification_entity_type_id" int [note: 'nullable — links to entity type for deep linking']
-  "entity_id" varchar(200) [note: 'nullable — ID of the related entity']
-  "notification_scope_id" int [not null]
-  "source_actor_id" uuid
-  "recipient_context_actor_id" uuid
-  "tenant_id" uuid [not null]
-  "created_at" timestamptz [not null, default: `NOW()`]
+  "is_archived" boolean [not null]
+  "archived_at" timestamptz
+  "notification_scope_id" uuid
+  "created_at" timestamptz [not null]
   "created_by" uuid
   "updated_at" timestamptz
   "updated_by" uuid
-  "is_deleted" boolean [not null, default: false]
+  "is_deleted" boolean [not null]
   "deleted_at" timestamptz
   "deleted_by" uuid
 
   indexes {
-    (tenant_id, user_id, is_read, created_at) [name: 'ix_notifications_tenant_user_unread', note: 'created_at DESC']
-    (tenant_id, user_id, created_at) [name: 'ix_notifications_unread_by_user', note: 'partial: is_read=false AND is_deleted=false, created_at DESC']
+    (tenant_id, user_id, is_read, created_at) [name: 'ix_notifications_tenant_user_unread', note: 'descending: created_at']
+    (tenant_id, user_id, created_at) [name: 'ix_notifications_unread_by_user', note: 'descending: created_at']
     (tenant_id, notification_type_id) [name: 'ix_notifications_tenant_type']
     (user_id, notification_scope_id, is_read) [name: 'ix_notifications_user_scope']
+    (user_id, is_archived, created_at) [name: 'ix_notifications_user_archived', note: 'descending: created_at']
   }
+}
 
-  Note: 'User notification inbox. Soft-deletable, tenant-scoped. FKs to notification_types and notification_entity_types for structured categorization.'
+Table "policy_change_outbox" {
+  "id" uuid [pk, not null]
+  "scope" int [not null]
+  "scope_id" uuid
+  "operation" int [not null]
+  "status" int [not null]
+  "created_at" timestamptz [not null]
+  "created_by" varchar(200)
+  "processed_at" timestamptz
+  "retry_count" int [not null]
+  "last_error" varchar(2000)
+  "next_retry_at" timestamptz
+
+  indexes {
+    (status, next_retry_at) [name: 'ix_policy_change_outbox_status_retry']
+  }
+}
+
+Table "idempotency_records" {
+  "id" uuid [pk, not null, note: 'uuidv7()']
+  "key" varchar(255) [not null]
+  "tenant_id" uuid [not null]
+  "expires_at" timestamptz [not null]
+  "response_status_code" int
+  "response_body" text
+  "created_at" timestamptz [not null]
+
+  indexes {
+    (key, tenant_id) [unique, name: 'IX_IdempotencyRecords_Key_TenantId']
+    expires_at [name: 'IX_IdempotencyRecords_ExpiresAt']
+  }
 }
 
 // ============================================================
-// Enums (domain value types stored as integers)
+// Views
 // ============================================================
 
-Enum "pds_sync_operation" {
-  "Create" [note: '1']
-  "Update" [note: '2']
-  "Delete" [note: '3']
-}
+Table "event_with_sessions_view" {
+  "event_id" uuid [pk]
+  "tenant_id" uuid
+  "event_title" varchar(200)
+  "session_count" int
+  "total_views" int
+  "first_session_start_utc" timestamptz
+  "last_session_end_utc" timestamptz
+  "is_deleted" boolean
 
-Enum "pds_sync_status" {
-  "Pending" [note: '1']
-  "Processing" [note: '2']
-  "Completed" [note: '3']
-  "Failed" [note: '4']
-  "DeadLettered" [note: '5']
-}
-
-Enum "actor_type_enum" {
-  "User" [note: '1']
-  "Organization" [note: '2']
-  "Group" [note: '3']
-  "Bot" [note: '4']
-}
-
-Enum "approval_status_enum" {
-  "Pending" [note: '1']
-  "Approved" [note: '2']
-  "Rejected" [note: '3']
-}
-
-Enum "event_status_enum" {
-  "Draft" [note: '1']
-  "Published" [note: '2']
-  "Cancelled" [note: '3']
-  "Completed" [note: '4']
-}
-
-Enum "event_format_enum" {
-  "InPerson" [note: '1']
-  "Online" [note: '2']
-  "Hybrid" [note: '3']
-}
-
-Enum "visibility_type_enum" {
-  "Public" [note: '1']
-  "Private" [note: '2']
-  "Unlisted" [note: '3']
-}
-
-Enum "role_scope_enum" {
-  "Platform" [note: '1']
-  "Tenant" [note: '2']
-  "Organization" [note: '3']
-  "Group" [note: '4']
-}
-
-Enum "did_custody_type_enum" {
-  "Custodial" [note: '1 - managed by platform']
-  "SelfCustody" [note: '2 - user controls keys']
-}
-
-Enum "tenant_status_enum" {
-  "Pending" [note: '1']
-  "Active" [note: '2']
-  "Suspended" [note: '3']
-  "Deactivated" [note: '4']
-}
-
-Enum "registration_mode_enum" {
-  "Open" [note: '1']
-  "ApprovalRequired" [note: '2']
-  "InviteOnly" [note: '3']
-  "Closed" [note: '4']
-}
-
-Enum "event_registration_policy_enum" {
-  "WholeEventOnly" [note: '1 — only whole-event registration allowed']
-  "WholeDayOnly" [note: '2 — only day-level registration allowed']
-  "SessionSelectionOnly" [note: '3 — only session-selection registration allowed']
-  "WholeEventOrDay" [note: '4 — event or day scope allowed']
-  "WholeEventOrSession" [note: '5 — event or session-selection allowed']
-  "Flexible" [note: '6 — all scopes allowed (default when null)']
-}
-
-Enum "registration_scope_enum" {
-  "Event" [note: '1 — whole-event registration']
-  "Day" [note: '2 — day-level registration']
-  "SessionSelection" [note: '3 — user picks individual sessions']
-}
-
-Enum "config_scope_enum" {
-  "Instance" [note: '0']
-  "Tenant" [note: '1']
-  "Organization" [note: '2']
-  "Group" [note: '3']
-  "User" [note: '4']
-}
-
-Enum "skill_level_enum" {
-  "AllLevels" [note: '0']
-  "Beginner" [note: '1']
-  "Intermediate" [note: '2']
-  "Advanced" [note: '3']
-}
-
-Enum "event_publishing_policy_enum" {
-  "Open" [note: '1 - anyone can publish']
-  "RequiresApproval" [note: '2 - admin must approve']
-}
-
-Enum "notification_type_enum" {
-  "RegistrationConfirmed" [note: '1']
-  "ApprovalGranted" [note: '2']
-  "ApprovalRejected" [note: '3']
-  "WaitlistPromoted" [note: '4']
-  "EventCreated" [note: '5']
-  "EventUpdated" [note: '6']
-  "EventCancelled" [note: '7']
-  "MemberInvited" [note: '8']
-  "MemberRemoved" [note: '9']
-  "General" [note: '10']
-}
-
-Enum "notification_entity_type_enum" {
-  "Event" [note: '1']
-  "Organization" [note: '2']
-  "Group" [note: '3']
-  "EventRegistration" [note: '4']
-  "EventSession" [note: '5']
-  "User" [note: '6']
-}
-
-Enum "external_api_key_owner_type_enum" {
-  "User" [note: '1']
-  "Organization" [note: '2']
-}
-
-Enum "external_api_key_status_enum" {
-  "Active" [note: '1']
-  "Revoked" [note: '2']
-}
-
-Enum "consent_status_enum" {
-  "Granted" [note: '1']
-  "Withdrawn" [note: '2']
-}
-
-Enum "policy_change_operation_enum" {
-  "Created" [note: '1']
-  "Updated" [note: '2']
-  "Deleted" [note: '3']
-}
-
-Enum "policy_change_status_enum" {
-  "Pending" [note: '1']
-  "Processing" [note: '2']
-  "Completed" [note: '3']
-  "Failed" [note: '4']
-}
-
-Enum "translation_management_provider_enum" {
-  "None" [note: '0 — Offline bundles only']
-  "Tolgee" [note: '1']
-  "Weblate" [note: '2']
-}
-
-Enum "outbox_message_status" {
-  "Pending" [note: '1']
-  "Processing" [note: '2']
-  "Completed" [note: '3']
-  "Failed" [note: '4']
-  "DeadLettered" [note: '5']
+  Note: 'Materialized or standard view for listing performance.'
 }
 
 // ============================================================
-// Relationships
+// Relationships (Foreign Keys)
 // ============================================================
 
-// Tenant relationships
+// Tenants & Setup
 Ref: "tenants"."tenant_status_id" > "tenant_statuses"."id" [delete: restrict]
-Ref: "tenant_settings"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "tenant_settings"."default_group_id" > "groups"."id" [delete: restrict]
-Ref: "tenant_settings"."default_organization_id" > "organizations"."id" [delete: restrict]
-Ref: "tenant_setting_overrides"."tenant_id" > "tenants"."id" [delete: cascade]
+Ref: "tenant_settings"."tenant_id" - "tenants"."id" [delete: cascade]
+Ref: "tenant_setting_overrides"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "tenant_navigation_links"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "tenant_footer_link_groups"."tenant_id" > "tenants"."id" [delete: cascade]
-Ref: "tenant_onboarding_states"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "tenant_policy_sets"."tenant_id" > "tenants"."id" [delete: cascade]
-Ref: "tenant_lifecycle_logs"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "tenant_lifecycle_logs"."old_status_id" > "tenant_statuses"."id" [delete: restrict]
-Ref: "tenant_lifecycle_logs"."new_status_id" > "tenant_statuses"."id" [delete: restrict]
+Ref: "tenant_footer_link_groups"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "tenant_footer_links"."footer_link_group_id" > "tenant_footer_link_groups"."id" [delete: cascade]
+Ref: "tenant_onboarding_states"."tenant_id" - "tenants"."id" [delete: cascade]
+Ref: "tenant_policy_sets"."tenant_id" - "tenants"."id" [delete: cascade]
 Ref: "tenant_capabilities"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "tenant_capabilities"."module_id" > "module_definitions"."id" [delete: restrict]
 Ref: "tenant_invitations"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "tenant_invitations"."role_id" > "roles"."id" [delete: restrict]
 Ref: "tenant_members"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "tenant_members"."user_id" > "users"."id" [delete: restrict]
-Ref: "tenant_members"."role_id" > "roles"."id" [delete: restrict]
-Ref: "external_api_keys"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "ui_themes"."tenant_id" > "tenants"."id" [delete: cascade]
+Ref: "tenant_members"."user_id" > "users"."id" [delete: cascade]
 
-// Footer link relationships
-Ref: "tenant_footer_links"."footer_link_group_id" > "tenant_footer_link_groups"."id" [delete: cascade]
-
-// Taxonomy relationships
-Ref: "categories"."parent_id" > "categories"."id" [delete: restrict]
-Ref: "categories"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "category_type_categories"."category_id" > "categories"."id" [delete: cascade]
-Ref: "category_type_categories"."category_type_id" > "category_types"."id" [delete: cascade]
-Ref: "category_type_categories"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "tags"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "tag_type_tags"."tag_id" > "tags"."id" [delete: cascade]
-Ref: "tag_type_tags"."tag_type_id" > "tag_types"."id" [delete: cascade]
-Ref: "tag_type_tags"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "custom_property_definitions"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "custom_property_definitions"."default_option_id" > "custom_property_options"."id" [delete: restrict]
-Ref: "custom_property_options"."custom_property_definition_id" > "custom_property_definitions"."id" [delete: cascade]
-Ref: "custom_property_options"."parent_option_id" > "custom_property_options"."id" [delete: set null]
-Ref: "custom_property_values"."custom_property_definition_id" > "custom_property_definitions"."id" [delete: cascade]
-Ref: "custom_property_values"."option_id" > "custom_property_options"."id" [delete: set null]
-Ref: "custom_property_values"."tenant_id" > "tenants"."id" [delete: restrict]
-
-// Location relationships
-Ref: "locations"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "location_pii"."location_id" - "locations"."id" [delete: cascade]
-Ref: "location_rooms"."location_id" > "locations"."id" [delete: cascade]
-Ref: "location_rooms"."tenant_id" > "tenants"."id" [delete: restrict]
-
-// Actor relationships
-Ref: "actors"."actor_type_id" > "actor_types"."id" [delete: restrict]
-Ref: "actors"."did_custody_type_id" > "did_custody_types"."id" [delete: restrict]
-Ref: "actors"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "actors"."user_id" > "users"."id" [delete: restrict]
-Ref: "actors"."organization_id" > "organizations"."id" [delete: restrict]
-Ref: "actors"."group_id" > "groups"."id" [delete: restrict]
-Ref: "actors"."profile_picture_id" > "storage_objects"."id" [delete: set null]
-Ref: "actors"."banner_picture_id" > "storage_objects"."id" [delete: set null]
-Ref: "actor_pii"."actor_id" - "actors"."id" [delete: cascade]
-Ref: "actor_key_stores"."actor_id" > "actors"."id" [delete: restrict]
-Ref: "actor_key_stores"."tenant_id" > "tenants"."id" [delete: restrict]
-
-// User relationships
-Ref: "users"."actor_id" > "actors"."id" [delete: restrict]
+// Users & Roles
 Ref: "user_pii"."user_id" - "users"."id" [delete: cascade]
 Ref: "platform_user_roles"."user_id" > "users"."id" [delete: restrict]
 Ref: "platform_user_roles"."role_id" > "roles"."id" [delete: restrict]
+Ref: "role_permissions"."role_id" > "roles"."id" [delete: cascade]
+Ref: "role_permissions"."permission_id" > "permissions"."id" [delete: cascade]
 Ref: "user_authentication_tokens"."user_id" > "users"."id" [delete: restrict]
-Ref: "user_authentication_tokens"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "user_external_logins"."user_id" > "users"."id" [delete: restrict]
-Ref: "user_external_logins"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "user_preferences"."tenant_id" > "tenants"."id" [delete: cascade]
-Ref: "user_preferences"."user_id" > "users"."id" [delete: cascade]
+Ref: "user_preferences"."user_id" > "users"."id" [delete: restrict]
+Ref: "user_notification_preferences"."user_id" > "users"."id" [delete: restrict]
+Ref: "user_appearance_profiles"."user_id" > "users"."id" [delete: restrict]
+Ref: "user_appearance_preferences"."user_id" > "users"."id" [delete: restrict]
+Ref: "user_appearance_preferences"."active_profile_id" > "user_appearance_profiles"."id" [delete: restrict]
 
-// Organization relationships
-Ref: "organizations"."actor_id" > "actors"."id" [delete: restrict]
+// Actors & Identity
+Ref: "actors"."actor_type_id" > "actor_types"."id" [delete: restrict]
+Ref: "actors"."user_id" - "users"."id" [delete: restrict]
+Ref: "actors"."organization_id" - "organizations"."id" [delete: restrict]
+Ref: "actors"."group_id" - "groups"."id" [delete: restrict]
+Ref: "actor_pii"."actor_id" - "actors"."id" [delete: cascade]
+Ref: "actor_key_stores"."actor_id" > "actors"."id" [delete: cascade]
+
+// Organizations & Groups
 Ref: "organizations"."approval_status_id" > "approval_statuses"."id" [delete: restrict]
-Ref: "organizations"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "organizations"."actor_id" - "actors"."id" [delete: restrict]
 Ref: "organization_pii"."organization_id" - "organizations"."id" [delete: cascade]
 Ref: "organization_members"."organization_id" > "organizations"."id" [delete: restrict]
 Ref: "organization_members"."user_id" > "users"."id" [delete: restrict]
-Ref: "organization_members"."role_id" > "roles"."id" [delete: restrict]
 Ref: "organization_members"."organization_position_id" > "organization_positions"."id" [delete: restrict]
-Ref: "organization_members"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "organization_reviews"."organization_id" > "organizations"."id" [delete: restrict]
 Ref: "organization_reviews"."event_id" > "events"."id" [delete: restrict]
-Ref: "organization_reviews"."user_id" > "users"."id" [delete: restrict]
-Ref: "organization_reviews"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "organization_setting_overrides"."tenant_id" > "tenants"."id" [delete: cascade]
-Ref: "organization_setting_overrides"."organization_id" > "organizations"."id" [delete: cascade]
-Ref: "organization_policy_sets"."tenant_id" > "tenants"."id" [delete: cascade]
-Ref: "organization_policy_sets"."organization_id" > "organizations"."id" [delete: cascade]
-
-// Group relationships
-Ref: "groups"."actor_id" > "actors"."id" [delete: restrict]
+Ref: "organization_setting_overrides"."organization_id" > "organizations"."id" [delete: restrict]
+Ref: "organization_policy_sets"."organization_id" - "organizations"."id" [delete: cascade]
 Ref: "groups"."approval_status_id" > "approval_statuses"."id" [delete: restrict]
-Ref: "groups"."profile_picture_id" > "storage_objects"."id" [delete: restrict]
-Ref: "groups"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "groups"."actor_id" - "actors"."id" [delete: restrict]
 Ref: "group_members"."group_id" > "groups"."id" [delete: restrict]
 Ref: "group_members"."user_id" > "users"."id" [delete: restrict]
-Ref: "group_members"."role_id" > "roles"."id" [delete: restrict]
 Ref: "group_members"."group_position_id" > "group_positions"."id" [delete: restrict]
-Ref: "group_members"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "group_setting_overrides"."tenant_id" > "tenants"."id" [delete: cascade]
-Ref: "group_setting_overrides"."group_id" > "groups"."id" [delete: cascade]
+Ref: "group_setting_overrides"."group_id" > "groups"."id" [delete: restrict]
 
-// Storage relationships
+// Taxonomy
+Ref: "categories"."parent_id" > "categories"."id" [delete: restrict]
+Ref: "category_type_categories"."category_id" > "categories"."id" [delete: restrict]
+Ref: "category_type_categories"."category_type_id" > "category_types"."id" [delete: restrict]
+Ref: "tag_type_tags"."tag_id" > "tags"."id" [delete: restrict]
+Ref: "tag_type_tags"."tag_type_id" > "tag_types"."id" [delete: restrict]
+
+// Storage
 Ref: "storage_objects"."file_type_id" > "file_types"."id" [delete: restrict]
-Ref: "storage_objects"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "storage_objects"."actor_id" > "actors"."id" [delete: restrict]
-Ref: "event_series"."actor_id" > "actors"."id" [delete: restrict]
-Ref: "event_series"."featured_image_id" > "storage_objects"."id"
-Ref: "event_series"."tenant_id" > "tenants"."id" [delete: cascade]
-Ref: "event_series"."visibility_type_id" > "visibility_types"."id" [delete: cascade]
 
-// Event relationships
+// Events Core
 Ref: "events"."event_type_id" > "event_types"."id" [delete: restrict]
-Ref: "events"."audience_gender_id" > "audience_genders"."id" [delete: restrict]
-Ref: "events"."audience_age_id" > "audience_ages"."id" [delete: restrict]
 Ref: "events"."actor_id" > "actors"."id" [delete: restrict]
-Ref: "events"."featured_image_id" > "storage_objects"."id" [delete: restrict]
-Ref: "events"."background_image_id" > "storage_objects"."id" [delete: set null]
-Ref: "events"."madhab_id" > "madhabs"."id" [delete: restrict]
-Ref: "events"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "events"."visibility_type_id" > "visibility_types"."id" [delete: restrict]
 Ref: "events"."event_status_id" > "event_statuses"."id" [delete: restrict]
 Ref: "events"."event_format_id" > "event_formats"."id" [delete: restrict]
+Ref: "events"."visibility_type_id" > "visibility_types"."id" [delete: restrict]
+Ref: "events"."registration_policy_id" > "event_registration_policies"."id" [delete: restrict]
+Ref: "events"."audience_gender_id" > "audience_genders"."id" [delete: restrict]
+Ref: "events"."audience_age_id" > "audience_ages"."id" [delete: restrict]
+Ref: "events"."madhab_id" > "madhabs"."id" [delete: restrict]
 Ref: "events"."atproto_record_id" > "atproto_records"."id" [delete: set null]
-Ref: "events"."event_series_id" > "event_series"."id"
-Ref: "events"."registration_policy_id" > "event_registration_policies"."id" [delete: set null]
-Ref: "event_types"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "events"."event_series_id" > "event_series"."id" [delete: restrict]
+
+// Event Extensions (1:1)
 Ref: "event_islamic_aspects"."id" - "events"."id" [delete: cascade]
-Ref: "event_islamic_aspects"."madhab_id" > "madhabs"."id" [delete: set null]
-Ref: "event_islamic_aspects"."primary_language_id" > "languages"."id" [delete: set null]
 Ref: "event_tech_aspects"."id" - "events"."id" [delete: cascade]
-Ref: "event_sessions"."event_id" > "events"."id" [delete: cascade]
-Ref: "event_sessions"."location_id" > "locations"."id" [delete: set null]
-Ref: "event_sessions"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "event_sessions"."registration_mode_id" > "registration_modes"."id" [delete: restrict]
-Ref: "event_sessions"."event_day_id" > "event_days"."id" [delete: set null]
-Ref: "event_sessions"."room_id" > "location_rooms"."id" [delete: set null]
+
+// Event Structure
 Ref: "event_days"."event_id" > "events"."id" [delete: cascade]
-Ref: "event_days"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "event_days"."banner_image_id" > "storage_objects"."id" [delete: set null]
 Ref: "event_agenda_items"."event_id" > "events"."id" [delete: cascade]
-Ref: "event_agenda_items"."event_day_id" > "event_days"."id" [delete: set null]
-Ref: "event_agenda_items"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "event_agenda_items"."location_id" > "locations"."id" [delete: set null]
-Ref: "event_agenda_items"."room_id" > "location_rooms"."id" [delete: set null]
-Ref: "event_agenda_items"."kind_id" > "schedule_item_kinds"."id" [delete: set null]
+Ref: "event_agenda_items"."event_day_id" > "event_days"."id" [delete: restrict]
+Ref: "event_agenda_items"."kind_id" > "schedule_item_kinds"."id" [delete: restrict]
+Ref: "event_sessions"."event_id" > "events"."id" [delete: cascade]
+Ref: "event_sessions"."event_day_id" > "event_days"."id" [delete: restrict]
+Ref: "event_sessions"."registration_mode_id" > "registration_modes"."id" [delete: restrict]
 Ref: "event_session_islamic_aspects"."event_session_id" - "event_sessions"."id" [delete: cascade]
 Ref: "event_session_agenda_items"."event_session_id" > "event_sessions"."id" [delete: cascade]
-Ref: "event_session_agenda_items"."location_id" > "locations"."id" [delete: set null]
-Ref: "event_session_agenda_items"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "event_session_languages"."event_session_id" > "event_sessions"."id" [delete: cascade]
 Ref: "event_session_languages"."language_id" > "languages"."id" [delete: restrict]
-Ref: "event_session_languages"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "event_session_speakers"."actor_id" > "actors"."id" [delete: cascade]
 Ref: "event_session_speakers"."event_session_id" > "event_sessions"."id" [delete: cascade]
-Ref: "event_session_speakers"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "event_session_speakers"."actor_id" > "actors"."id" [delete: restrict]
 Ref: "event_categories"."event_id" > "events"."id" [delete: cascade]
-Ref: "event_categories"."category_id" > "categories"."id" [delete: cascade]
-Ref: "event_categories"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "event_categories"."category_id" > "categories"."id" [delete: restrict]
 Ref: "event_tags"."event_id" > "events"."id" [delete: cascade]
-Ref: "event_tags"."tag_id" > "tags"."id" [delete: cascade]
-Ref: "event_tags"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "event_registrations"."user_id" > "users"."id" [delete: cascade]
-Ref: "event_registrations"."event_session_id" > "event_sessions"."id" [delete: cascade]
-Ref: "event_registrations"."approval_status_id" > "approval_statuses"."id"
-Ref: "event_registrations"."tenant_id" > "tenants"."id" [delete: cascade]
-Ref: "event_registrations"."atproto_record_id" > "atproto_records"."id"
-Ref: "event_registrations"."event_registration_intent_id" > "event_registration_intents"."id" [delete: set null]
-Ref: "event_registration_intents"."event_id" > "events"."id" [delete: cascade]
-Ref: "event_registration_intents"."user_id" > "users"."id" [delete: cascade]
-Ref: "event_registration_intents"."registration_scope_id" > "registration_scopes"."id" [delete: restrict]
-Ref: "event_registration_intents"."selected_event_day_id" > "event_days"."id" [delete: set null]
-Ref: "event_registration_intents"."registration_policy_snapshot_id" > "event_registration_policies"."id" [delete: set null]
-Ref: "event_registration_intents"."approval_status_id" > "approval_statuses"."id" [delete: set null]
-Ref: "event_registration_intents"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "event_tags"."tag_id" > "tags"."id" [delete: restrict]
 Ref: "event_session_categories"."event_session_id" > "event_sessions"."id" [delete: cascade]
-Ref: "event_session_categories"."category_id" > "categories"."id" [delete: cascade]
-Ref: "event_session_categories"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "event_session_categories"."category_id" > "categories"."id" [delete: restrict]
 Ref: "event_session_tags"."event_session_id" > "event_sessions"."id" [delete: cascade]
-Ref: "event_session_tags"."tag_id" > "tags"."id" [delete: cascade]
-Ref: "event_session_tags"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "event_contact_share_consents"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "event_contact_share_consents"."source_event_id" > "events"."id" [delete: restrict]
+Ref: "event_session_tags"."tag_id" > "tags"."id" [delete: restrict]
+
+// Registration
+Ref: "event_registration_intents"."event_id" > "events"."id" [delete: restrict]
+Ref: "event_registration_intents"."user_id" > "users"."id" [delete: restrict]
+Ref: "event_registration_intents"."registration_scope_id" > "registration_scopes"."id" [delete: restrict]
+Ref: "event_registration_intents"."selected_event_day_id" > "event_days"."id" [delete: restrict]
+Ref: "event_registration_intents"."registration_policy_snapshot_id" > "event_registration_policies"."id" [delete: restrict]
+Ref: "event_registration_intents"."approval_status_id" > "approval_statuses"."id" [delete: restrict]
+Ref: "event_registrations"."event_registration_intent_id" > "event_registration_intents"."id" [delete: cascade]
+Ref: "event_registrations"."event_session_id" > "event_sessions"."id" [delete: cascade]
+Ref: "event_registrations"."user_id" > "users"."id" [delete: restrict]
+
+// Contact Share
 Ref: "event_contact_share_consents"."user_id" > "users"."id" [delete: restrict]
 Ref: "event_contact_share_consents"."recipient_actor_id" > "actors"."id" [delete: restrict]
-Ref: "event_contact_share_consents"."source_event_registration_intent_id" > "event_registration_intents"."id" [delete: set null]
-Ref: "event_contact_share_export"."tenant_id" > "tenants"."id" [delete: restrict]
+Ref: "event_contact_share_consents"."source_event_id" > "events"."id" [delete: restrict]
+Ref: "event_contact_share_consents"."source_event_registration_intent_id" > "event_registration_intents"."id" [delete: restrict]
 Ref: "event_contact_share_export"."recipient_actor_id" > "actors"."id" [delete: restrict]
 Ref: "event_contact_share_export"."event_id" > "events"."id" [delete: restrict]
 Ref: "event_contact_share_export"."exported_by_user_id" > "users"."id" [delete: restrict]
 Ref: "event_contact_share_export_item"."export_id" > "event_contact_share_export"."id" [delete: cascade]
 Ref: "event_contact_share_export_item"."consent_id" > "event_contact_share_consents"."id" [delete: restrict]
 
-// Event template relationships
-Ref: "event_templates"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "event_templates"."event_type_id" > "event_types"."id" [delete: restrict]
+// Custom Properties (EAV)
+Ref: "custom_property_definitions"."default_option_id" > "custom_property_options"."id" [delete: cascade]
+Ref: "custom_property_options"."custom_property_definition_id" > "custom_property_definitions"."id" [delete: cascade]
+Ref: "custom_property_options"."parent_option_id" > "custom_property_options"."id" [delete: cascade]
+Ref: "custom_property_values"."custom_property_definition_id" > "custom_property_definitions"."id" [delete: restrict]
+Ref: "custom_property_values"."option_id" > "custom_property_options"."id" [delete: cascade]
+
+// Event EAV
 Ref: "event_template_custom_property_definitions"."event_template_id" > "event_templates"."id" [delete: cascade]
-Ref: "event_template_custom_property_definitions"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "event_template_custom_property_definitions"."default_option_id" > "event_template_custom_property_options"."id" [delete: restrict]
+Ref: "event_template_custom_property_definitions"."default_option_id" > "event_template_custom_property_options"."id" [delete: cascade]
 Ref: "event_template_custom_property_options"."event_template_custom_property_definition_id" > "event_template_custom_property_definitions"."id" [delete: cascade]
-Ref: "event_template_custom_property_options"."parent_option_id" > "event_template_custom_property_options"."id" [delete: set null]
-
-// Event custom property relationships
+Ref: "event_template_custom_property_options"."parent_option_id" > "event_template_custom_property_options"."id" [delete: cascade]
 Ref: "event_custom_property_definitions"."event_id" > "events"."id" [delete: cascade]
-Ref: "event_custom_property_definitions"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "event_custom_property_definitions"."source_template_id" > "event_templates"."id" [delete: restrict]
-Ref: "event_custom_property_definitions"."default_option_id" > "event_custom_property_options"."id" [delete: restrict]
+Ref: "event_custom_property_definitions"."default_option_id" > "event_custom_property_options"."id" [delete: cascade]
 Ref: "event_custom_property_options"."event_custom_property_definition_id" > "event_custom_property_definitions"."id" [delete: cascade]
-Ref: "event_custom_property_options"."parent_option_id" > "event_custom_property_options"."id" [delete: set null]
-Ref: "event_custom_property_values"."event_custom_property_definition_id" > "event_custom_property_definitions"."id" [delete: cascade]
+Ref: "event_custom_property_options"."parent_option_id" > "event_custom_property_options"."id" [delete: cascade]
 Ref: "event_custom_property_values"."event_id" > "events"."id" [delete: cascade]
-Ref: "event_custom_property_values"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "event_custom_property_values"."option_id" > "event_custom_property_options"."id" [delete: set null]
-Ref: "event_custom_property_projections"."event_custom_property_definition_id" > "event_custom_property_definitions"."id" [delete: cascade]
-Ref: "event_custom_property_projections"."event_custom_property_value_id" > "event_custom_property_values"."id" [delete: cascade]
+Ref: "event_custom_property_values"."event_custom_property_definition_id" > "event_custom_property_definitions"."id" [delete: restrict]
+Ref: "event_custom_property_values"."option_id" > "event_custom_property_options"."id" [delete: cascade]
 Ref: "event_custom_property_projections"."event_id" > "events"."id" [delete: cascade]
-Ref: "event_custom_property_projections"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "event_custom_property_projections"."option_id" > "event_custom_property_options"."id" [delete: set null]
+Ref: "event_custom_property_projections"."event_custom_property_definition_id" > "event_custom_property_definitions"."id" [delete: cascade]
+Ref: "event_custom_property_projections"."event_custom_property_value_id" - "event_custom_property_values"."id" [delete: cascade]
 
-// RBAC relationships
-Ref: "role_permissions"."role_id" > "roles"."id" [delete: restrict]
-Ref: "role_permissions"."permission_id" > "permissions"."id" [delete: restrict]
+// Event Session EAV
+Ref: "event_session_templates"."event_template_id" > "event_templates"."id" [delete: cascade]
+Ref: "event_session_template_custom_property_definitions"."event_session_template_id" > "event_session_templates"."id" [delete: cascade]
+Ref: "event_session_template_custom_property_definitions"."default_option_id" > "event_session_template_custom_property_options"."id" [delete: cascade]
+Ref: "event_session_template_custom_property_options"."event_session_template_custom_property_definition_id" > "event_session_template_custom_property_definitions"."id" [delete: cascade]
+Ref: "event_session_template_custom_property_options"."parent_option_id" > "event_session_template_custom_property_options"."id" [delete: cascade]
+Ref: "event_session_custom_property_definitions"."event_session_id" > "event_sessions"."id" [delete: cascade]
+Ref: "event_session_custom_property_definitions"."default_option_id" > "event_session_custom_property_options"."id" [delete: cascade]
+Ref: "event_session_custom_property_options"."event_session_custom_property_definition_id" > "event_session_custom_property_definitions"."id" [delete: cascade]
+Ref: "event_session_custom_property_options"."parent_option_id" > "event_session_custom_property_options"."id" [delete: cascade]
+Ref: "event_session_custom_property_values"."event_session_id" > "event_sessions"."id" [delete: cascade]
+Ref: "event_session_custom_property_values"."event_session_custom_property_definition_id" > "event_session_custom_property_definitions"."id" [delete: restrict]
+Ref: "event_session_custom_property_values"."option_id" > "event_session_custom_property_options"."id" [delete: cascade]
+Ref: "event_session_custom_property_projections"."event_session_id" > "event_sessions"."id" [delete: cascade]
+Ref: "event_session_custom_property_projections"."event_session_custom_property_definition_id" > "event_session_custom_property_definitions"."id" [delete: cascade]
+Ref: "event_session_custom_property_projections"."event_session_custom_property_value_id" - "event_session_custom_property_values"."id" [delete: cascade]
 
-// Audit & Notification relationships
-Ref: "audit_logs"."tenant_id" > "tenants"."id" [delete: restrict]
-Ref: "notifications"."user_id" > "users"."id" [delete: cascade]
-Ref: "notifications"."tenant_id" > "tenants"."id" [delete: restrict]
+// Notifications
 Ref: "notifications"."notification_type_id" > "notification_types"."id" [delete: restrict]
-Ref: "notifications"."notification_entity_type_id" > "notification_entity_types"."id" [delete: restrict]
-Ref: "notifications"."notification_scope_id" > "actor_types"."id" [delete: restrict]
-Ref: "notifications"."source_actor_id" > "actors"."id" [delete: set null]
-Ref: "notifications"."recipient_context_actor_id" > "actors"."id" [delete: set null]
+Ref: "notifications"."notification_reason_id" > "notification_reasons"."id" [delete: restrict]
+Ref: "notifications"."source_entity_type_id" > "notification_entity_types"."id" [delete: restrict]
+Ref: "notifications"."user_id" > "users"."id" [delete: restrict]
+
+// API Keys
+Ref: "external_api_keys"."external_api_key_status_id" > "external_api_key_statuses"."id" [delete: restrict]
+Ref: "external_api_keys"."external_api_key_credit_period_id" > "external_api_key_credit_periods"."id" [delete: restrict]
+Ref: "external_api_key_quotas"."external_api_key_id" > "external_api_keys"."id" [delete: cascade]

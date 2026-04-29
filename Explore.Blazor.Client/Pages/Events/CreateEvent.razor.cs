@@ -3,15 +3,15 @@
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
-using Explore.Blazor.Client.Contracts.Services.Lookup;
+using Explore.Blazor.Client.Contracts.Services.EventTemplates;
 using Explore.Blazor.Client.Helpers;
+using Explore.Blazor.Client.Models.EventTemplates;
 using Explore.Blazor.Client.Pages.Events.Components;
 using Explore.Blazor.Client.Pages.Events.Models;
 using Explore.Blazor.Client.Pages.Events.Workflows;
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
-using Microsoft.Extensions.Logging;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Pages.Events;
@@ -27,6 +27,7 @@ public partial class CreateEvent
     [Inject] protected ICategoryService CategoryService { get; set; } = null!;
     [Inject] protected ITagService TagService { get; set; } = null!;
     [Inject] protected ILocationService LocationService { get; set; } = null!;
+    [Inject] protected IEventTemplateService EventTemplateService { get; set; } = null!;
     [Inject] protected NavigationManager Navigation { get; set; } = null!;
     [Inject] protected IDialogService DialogService { get; set; } = null!;
     [Inject] protected ILogger<CreateEvent> Logger { get; set; } = null!;
@@ -66,6 +67,19 @@ public partial class CreateEvent
     private ICollection<RegistrationModeListDto>? registrationModes;
     private ICollection<LanguageListDto>? languages;
     private ICollection<EventRegistrationPolicyListDto>? registrationPolicies;
+    private IReadOnlyList<EventTemplateListModel> eventTemplates = Array.Empty<EventTemplateListModel>();
+    private EventTemplateDetailModel? _selectedEventTemplate;
+    private bool _isLoadingEventTemplates;
+    private bool _isLoadingTemplatePreview;
+    private string? _templateLoadError;
+    private int _templateListRequestVersion;
+    private int _templatePreviewRequestVersion;
+    private bool IsSubmitDisabled =>
+        isProcessing
+        || _isUploadingImage
+        || _isLoadingTemplatePreview
+        || !string.IsNullOrEmpty(_organizationRoleError)
+        || !string.IsNullOrEmpty(_groupRoleError);
     private bool isLoading = true;
     private bool _dataLoaded = false;
     private int? selectedMadhabId = null;
@@ -214,6 +228,88 @@ public partial class CreateEvent
             {
                 _groupRoleError = "You don't have the authority to publish events for this group. Only Creator or Admin roles can publish.";
             }
+        }
+    }
+
+    private async Task OnEventTypeChanged(int? eventTypeId)
+    {
+        if (createDto.EventTypeId == eventTypeId)
+        {
+            return;
+        }
+
+        createDto.EventTypeId = eventTypeId;
+        createDto.TemplateId = null;
+        _selectedEventTemplate = null;
+        eventTemplates = Array.Empty<EventTemplateListModel>();
+        ClearSessionTemplateSelections();
+        await LoadEventTemplatesAsync(eventTypeId);
+    }
+
+    private async Task OnEventTemplateChanged(Guid? templateId)
+    {
+        var previewRequestVersion = ++_templatePreviewRequestVersion;
+        createDto.TemplateId = templateId;
+        _selectedEventTemplate = null;
+        _templateLoadError = null;
+        ClearSessionTemplateSelections();
+
+        if (!templateId.HasValue || templateId.Value == Guid.Empty)
+        {
+            _isLoadingTemplatePreview = false;
+            return;
+        }
+
+        var requestedTemplateId = templateId.Value;
+        _isLoadingTemplatePreview = true;
+        try
+        {
+            var template = await EventTemplateService.GetTemplateByIdAsync(requestedTemplateId);
+            if (!IsCurrentTemplatePreviewRequest(previewRequestVersion, requestedTemplateId))
+            {
+                return;
+            }
+
+            if (template is null)
+            {
+                createDto.TemplateId = null;
+                _templateLoadError = "The selected template could not be loaded. The selection was cleared; choose another template or continue without one.";
+                return;
+            }
+
+            _selectedEventTemplate = template;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load event template preview for {TemplateId}", requestedTemplateId);
+            if (IsCurrentTemplatePreviewRequest(previewRequestVersion, requestedTemplateId))
+            {
+                createDto.TemplateId = null;
+                _templateLoadError = "Template preview could not be loaded. The selection was cleared; choose another template or continue without one.";
+            }
+        }
+        finally
+        {
+            if (IsCurrentTemplatePreviewRequest(previewRequestVersion, requestedTemplateId) || !createDto.TemplateId.HasValue)
+            {
+                _isLoadingTemplatePreview = false;
+            }
+        }
+    }
+
+    private bool IsCurrentTemplatePreviewRequest(int requestVersion, Guid requestedTemplateId) =>
+        requestVersion == _templatePreviewRequestVersion && createDto.TemplateId == requestedTemplateId;
+
+    private void ClearSessionTemplateSelections()
+    {
+        foreach (var session in sessions)
+        {
+            session.SessionTemplateId = null;
+        }
+
+        if (_sessionWorkflow.DrawerModel is not null)
+        {
+            _sessionWorkflow.DrawerModel.SessionTemplateId = null;
         }
     }
 
@@ -466,8 +562,9 @@ public partial class CreateEvent
             var registrationModesTask = AdminService.GetRegistrationModesAsync();
             var languagesTask = AdminService.GetLanguagesAsync();
             var registrationPoliciesTask = RegistrationPolicyService.GetEventRegistrationPoliciesAsync();
+            var eventTemplatesTask = LoadEventTemplatesAsync(createDto.EventTypeId);
 
-            await Task.WhenAll(eventTypesTask, audienceGendersTask, audienceAgesTask, eventFormatsTask, visibilityTypesTask, madhabsTask, categoriesTask, tagsTask, locationsTask, registrationModesTask, languagesTask, registrationPoliciesTask);
+            await Task.WhenAll(eventTypesTask, audienceGendersTask, audienceAgesTask, eventFormatsTask, visibilityTypesTask, madhabsTask, categoriesTask, tagsTask, locationsTask, registrationModesTask, languagesTask, registrationPoliciesTask, eventTemplatesTask);
 
             eventTypes = await eventTypesTask;
             audienceGenders = await audienceGendersTask;
@@ -494,6 +591,46 @@ public partial class CreateEvent
             isLoading = false;
         }
     }
+
+    private async Task LoadEventTemplatesAsync(int? eventTypeId)
+    {
+        var requestVersion = ++_templateListRequestVersion;
+        _templateLoadError = null;
+        _isLoadingEventTemplates = true;
+        try
+        {
+            var templates = await EventTemplateService.GetTemplatesAsync(eventTypeId, pageNumber: 1, pageSize: 100);
+            if (!IsCurrentTemplateListRequest(requestVersion, eventTypeId))
+            {
+                return;
+            }
+
+            eventTemplates = templates.Items
+                .Where(t => t.IsActive && t.IsPublished)
+                .OrderBy(t => t.SortOrder)
+                .ThenBy(t => t.DisplayName)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load event templates for event type {EventTypeId}", eventTypeId);
+            if (IsCurrentTemplateListRequest(requestVersion, eventTypeId))
+            {
+                eventTemplates = Array.Empty<EventTemplateListModel>();
+                _templateLoadError = "Event templates could not be loaded. You can still create a vanilla event.";
+            }
+        }
+        finally
+        {
+            if (IsCurrentTemplateListRequest(requestVersion, eventTypeId))
+            {
+                _isLoadingEventTemplates = false;
+            }
+        }
+    }
+
+    private bool IsCurrentTemplateListRequest(int requestVersion, int? requestedEventTypeId) =>
+        requestVersion == _templateListRequestVersion && createDto.EventTypeId == requestedEventTypeId;
 
     private void SetDefaultValues()
     {
@@ -569,6 +706,12 @@ public partial class CreateEvent
         if (_isUploadingImage)
         {
             errorMessage = "Please wait for the image upload to complete.";
+            return;
+        }
+
+        if (_isLoadingTemplatePreview)
+        {
+            errorMessage = "Please wait for the template preview to finish loading.";
             return;
         }
 
@@ -821,7 +964,7 @@ public partial class CreateEvent
 
     private void PopulateInlineSchedulingOnDto()
     {
-        if (_inlineDays.Any())
+        if (_inlineDays.Count > 0)
         {
             createDto.Days = _inlineDays.Select(d => new InlineEventDayDto
             {
@@ -833,7 +976,7 @@ public partial class CreateEvent
             }).ToList();
         }
 
-        if (_inlineRooms.Any() && sessions.Count > 0 && sessions[0].LocationId.HasValue)
+        if (_inlineRooms.Count > 0 && sessions.Count > 0 && sessions[0].LocationId.HasValue)
         {
             createDto.Rooms = _inlineRooms.Select(r => new InlineLocationRoomDto
             {
@@ -844,7 +987,7 @@ public partial class CreateEvent
             }).ToList();
         }
 
-        if (_inlineAgendaItems.Any())
+        if (_inlineAgendaItems.Count > 0)
         {
             createDto.AgendaItems = _inlineAgendaItems.Select(a => new InlineEventAgendaItemDto
             {

@@ -560,7 +560,8 @@
                                 <MudIcon Icon="@Icons.Material.Filled.Category" Size="Size.Small" Color="Color.Secondary" />
                                 <MudText Typo="Typo.body2">Event Type</MudText>
                             </div>
-                            <MudSelect T="int?" @bind-Value="createDto.EventTypeId"
+                            <MudSelect T="int?" Value="createDto.EventTypeId"
+                                       ValueChanged="OnEventTypeChanged"
                                        Variant="Variant.Text" Margin="Margin.Dense"
                                        AnchorOrigin="Origin.BottomCenter"
                                        Class="create-event__option-select">
@@ -574,6 +575,109 @@
                                 }
                             </MudSelect>
                         </div>
+
+                        @* Event Template *@
+                        <div class="create-event__option-row create-event__option-row--template">
+                            <div class="d-flex align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Schema" Size="Size.Small" Color="Color.Secondary" />
+                                <div>
+                                    <MudText Typo="Typo.body2">Template</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Optional custom-property blueprint</MudText>
+                                </div>
+                            </div>
+                            <MudSelect T="Guid?" Value="createDto.TemplateId"
+                                       ValueChanged="OnEventTemplateChanged"
+                                       Variant="Variant.Text" Margin="Margin.Dense"
+                                       AnchorOrigin="Origin.BottomCenter"
+                                       Clearable="true"
+                                       Disabled="_isLoadingEventTemplates"
+                                       Class="create-event__option-select create-event__template-select"
+                                       aria-label="Event template">
+                                <MudSelectItem T="Guid?" Value="@((Guid?)null)">No template</MudSelectItem>
+                                @foreach (var template in eventTemplates)
+                                {
+                                    <MudSelectItem T="Guid?" Value="@((Guid?)template.Id)">
+                                        @template.DisplayName v@template.Version (@template.DefinitionsCount)
+                                    </MudSelectItem>
+                                }
+                            </MudSelect>
+                        </div>
+
+                        @if (_isLoadingEventTemplates || _isLoadingTemplatePreview || !string.IsNullOrWhiteSpace(_templateLoadError) || _selectedEventTemplate is not null)
+                        {
+                            <div class="create-event__template-preview" aria-live="polite">
+                                @if (_isLoadingEventTemplates)
+                                {
+                                    <div class="d-flex align-center gap-2">
+                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Primary" />
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">Loading templates...</MudText>
+                                    </div>
+                                }
+                                else if (_isLoadingTemplatePreview)
+                                {
+                                    <div class="d-flex align-center gap-2">
+                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Primary" />
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">Loading template preview...</MudText>
+                                    </div>
+                                }
+                                else if (!string.IsNullOrWhiteSpace(_templateLoadError))
+                                {
+                                    <MudAlert Severity="Severity.Warning" Dense="true" Class="rounded-lg">
+                                        @_templateLoadError
+                                    </MudAlert>
+                                }
+                                else if (_selectedEventTemplate is not null)
+                                {
+                                    <div class="create-event__template-preview-header">
+                                        <div>
+                                            <MudText Typo="Typo.subtitle2">@_selectedEventTemplate.DisplayName v@_selectedEventTemplate.Version</MudText>
+                                            @if (!string.IsNullOrWhiteSpace(_selectedEventTemplate.Description))
+                                            {
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">@_selectedEventTemplate.Description</MudText>
+                                            }
+                                        </div>
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary">
+                                            @_selectedEventTemplate.Definitions.Count definition@(_selectedEventTemplate.Definitions.Count == 1 ? string.Empty : "s")
+                                        </MudChip>
+                                    </div>
+
+                                    @if (_selectedEventTemplate.Definitions.Count > 0)
+                                    {
+                                        <div class="create-event__template-definitions" aria-label="Template definition preview">
+                                            @foreach (var definition in _selectedEventTemplate.Definitions.OrderBy(d => d.SortOrder).ThenBy(d => d.DisplayName))
+                                            {
+                                                <div class="create-event__template-definition">
+                                                    <div class="create-event__template-definition-main">
+                                                        <MudText Typo="Typo.body2">@definition.DisplayName</MudText>
+                                                        @if (!string.IsNullOrWhiteSpace(definition.Description))
+                                                        {
+                                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@definition.Description</MudText>
+                                                        }
+                                                    </div>
+                                                    <div class="create-event__template-definition-meta">
+                                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">@definition.PropertyType</MudChip>
+                                                        @if (definition.IsRequired)
+                                                        {
+                                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning">Required</MudChip>
+                                                        }
+                                                        @if (definition.IsMulti)
+                                                        {
+                                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info">Multi</MudChip>
+                                                        }
+                                                        @if (definition.Options.Count > 0)
+                                                        {
+                                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Default">
+                                                                @definition.Options.Count option@(definition.Options.Count == 1 ? string.Empty : "s")
+                                                            </MudChip>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        }
 
                         @* Visibility *@
                         <div class="create-event__option-row">
@@ -714,7 +818,7 @@
             @* ===== Create Event Button with Draft Option ===== *@
             <div class="d-flex gap-0 mt-6" style="width: 100%;">
                 <AppButton ButtonType="ButtonType.Submit"
-                           Disabled="@(isProcessing || _isUploadingImage || !string.IsNullOrEmpty(_organizationRoleError) || !string.IsNullOrEmpty(_groupRoleError))"
+                           Disabled="@IsSubmitDisabled"
                            Class="create-event__submit-button"
                            Size="Size.Large"
                            Style="flex: 1; border-top-right-radius: 0; border-bottom-right-radius: 0;">
@@ -728,6 +832,11 @@
                         <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
                         <span>Uploading image...</span>
                     }
+                    else if (_isLoadingTemplatePreview)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        <span>Loading template...</span>
+                    }
                     else
                     {
                         <span>Create Event</span>
@@ -739,7 +848,7 @@
                          Size="Size.Large"
                          AnchorOrigin="Origin.BottomRight"
                          TransformOrigin="Origin.TopRight"
-                         Disabled="@(isProcessing || _isUploadingImage)"
+                          Disabled="@IsSubmitDisabled"
                          Class="create-event__submit-dropdown"
                          Style="border-top-left-radius: 0; border-bottom-left-radius: 0; min-width: 0;">
                     <MudMenuItem OnClick="@SaveAsDraftAsync"
@@ -783,10 +892,11 @@
             <div class="pa-4">
                 @if (_sessionWorkflow.DrawerModel != null)
                 {
-                    <SessionEditorPanel Session="_sessionWorkflow.DrawerModel"
-                                        IsNew="_sessionWorkflow.IsNewSession"
-                                        EventImageUrl="@imagePreviewUrl"
-                                        Locations="locations"
+                     <SessionEditorPanel Session="_sessionWorkflow.DrawerModel"
+                                         IsNew="_sessionWorkflow.IsNewSession"
+                                         EventImageUrl="@imagePreviewUrl"
+                                         ParentEventTemplateId="@_selectedEventTemplate?.Id"
+                                         Locations="locations"
                                         RegistrationModes="registrationModes"
                                         Languages="languages"
                                         OnSave="HandleSessionSave"

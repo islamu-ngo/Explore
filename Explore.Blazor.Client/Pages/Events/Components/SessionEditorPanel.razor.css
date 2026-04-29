@@ -24,3 +24,66 @@
     max-height: 200px;
     object-fit: cover;
 }
+
+.session-editor-panel__template-section {
+    padding: 0.75rem;
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--mud-default-borderradius);
+    background: var(--mud-palette-background);
+}
+
+.session-editor-panel__template-select {
+    width: 100%;
+}
+
+.session-editor-panel__template-preview {
+    padding: 0.75rem;
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--mud-default-borderradius);
+    background: var(--mud-palette-surface);
+}
+
+.session-editor-panel__template-preview-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.session-editor-panel__template-definitions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.session-editor-panel__template-definition {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    border-top: 1px solid var(--mud-palette-lines-default);
+}
+
+.session-editor-panel__template-definition-main {
+    min-width: 0;
+}
+
+.session-editor-panel__template-definition-meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.25rem;
+}
+
+@media (max-width: 600px) {
+    .session-editor-panel__template-preview-header,
+    .session-editor-panel__template-definition {
+        flex-direction: column;
+    }
+
+    .session-editor-panel__template-definition-meta {
+        justify-content: flex-start;
+    }
+}

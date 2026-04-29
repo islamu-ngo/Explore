@@ -3,7 +3,7 @@ ABOUTME: Reflects extension-layer boundaries, namespaced machine keys, projectio
 
 # EAV Custom Properties - Task Checklist
 
-**Last Updated: 2026-04-24 (Session 3 — Phase 9.1+9.2+9.3 CRUD UIs shipped; session handoff)**
+**Last Updated: 2026-04-29 (Session 5 — Phase 9.4A Oracle blocker fixed + verified)**
 
 ---
 
@@ -13,17 +13,23 @@ ABOUTME: Reflects extension-layer boundaries, namespaced machine keys, projectio
 - Phase 9.1 — Stale helpers: ✅ CLOSED (zero changes needed)
 - Phase 9.2 — CustomPropertyDefinition CRUD: ✅ CLOSED (bg_a65ca891, 7 files)
 - Phase 9.3 — EventTemplate CRUD: ✅ CLOSED (bg_b8f4ef4b, 10+ files)
-- Phase 9.4 — Template selection dropdown: ⏳ PENDING
-- Phase 9.5/9.5A — Runtime editors: ⏳ PENDING (HIGH — dynamic PropertyType rendering)
+- Phase 9.4 — Template selection dropdown: ✅ CLOSED (create-page template picker, read-only definition preview, event-type scoped reload, stale async guard coverage, `TemplateId` submit wiring)
+- Phase 9.4A — Session blueprint selection/editing UI: ✅ CLOSED (CreateEvent session drawer picker, parent-template scoping, async race guards, stale local-session clearing, submit guard)
+- Phase 9.5/9.5A — Runtime editors: ✅ CLOSED (event + session runtime editors, wiring, error surfacing, Oracle-reviewed)
 - Phase 9.6 — Template preview: ⏳ PENDING
+- Phase 9.6A — Session blueprint preview: ⏳ PENDING
 - Phase 9.10 — Org/Group cleanup: ⏳ PENDING
 - Phase 9.11 — NSwag regen: ⏳ PENDING
 
-**Build state**: 3 errors in `EventPublishedIntegrationEvent.cs` (orphan MQContract, NOT EAV). All EAV code clean.
+**Build state**: `dotnet build --configuration Release --verbosity quiet` ✅ 0 errors on 2026-04-29; warnings are existing analyzer/package warnings.
 
-**Uncommitted work**: Phase 9.2 + 9.3 files need committing.
+**Client test state**: `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` ✅ 835 total / 834 passed / 1 known skipped on 2026-04-29.
+
+**Uncommitted work**: Phase 9.2 + 9.3 files plus Phase 9.4 and Phase 9.5/9.5A files need committing when user requests it.
 
 **Orphan to delete**: `Explore.Blazor.Client/Models/EventTemplateSync/TemplateDiffResource.cs`
+
+**Next recommended implementation slice**: Phase 9.11 NSwag regeneration or Phase 9.6/9.6A preview admin overviews. Phase 9.4A is closed for CreateEvent's new-session drawer; EventEdit remains intentionally out of scope until the API exposes the parent event template identity on event read/update DTOs.
 
 ---
 
@@ -554,28 +560,33 @@ OUT of scope:
   - [ ] **9.3.3** `EventTemplateEditor.razor` with version + publish state controls
   - [ ] **9.3.4** `EventTemplateDefinitionEditor.razor` reused in template and runtime modes
   - [ ] **9.3.5** Confirmation dialog for creating new version
-- [ ] **9.4** Add template selection to event creation UI (**Milestone B follow-up**)
-  - [ ] **9.4.1** MudSelect dropdown with published templates scoped to tenant + event type
-  - [ ] **9.4.2** Read-only preview of definitions that will be instantiated
-  - [ ] **9.4.3** Accessible focus order + keyboard navigation
-- [ ] **9.4A** Add session blueprint selection/editing UI (**Milestone C follow-up**)
-  - [ ] **9.4A.1** Session template dropdown scoped to parent event's template tree
-- [ ] **9.5** Build event runtime custom-property editor against event-local definitions/values (**Milestone B follow-up**)
-  - [ ] **9.5.1** `EventCustomPropertyRuntimeEditor.razor` component
-  - [ ] **9.5.2** Dynamic rendering via `PropertyType` enum switch (not reflection)
-  - [ ] **9.5.3** `Text` → MudTextField with MaxLength + RegexPattern
-  - [ ] **9.5.4** `Number` → MudNumericField with Min/Max
-  - [ ] **9.5.5** `Option` → MudSelect single or multi-select based on `IsMulti`
-  - [ ] **9.5.6** `Boolean` → MudSwitch or MudCheckBox
-  - [ ] **9.5.7** `DateTime` → MudDatePicker + MudTimePicker
-  - [ ] **9.5.8** `Url` → MudTextField with URL + AllowedUrlSchemes validation
-  - [ ] **9.5.9** Multi-value add/remove with Ordinal-aware reordering
-  - [ ] **9.5.10** Inline validation errors aligned to server validators
-  - [ ] **9.5.11** `aria-required`, `aria-invalid`, `aria-describedby` attributes
-  - [ ] **9.5.12** Keyboard-only user can complete the form
-  - [ ] **9.5.13** BEM CSS classes: `event-cpr-editor__field`, `event-cpr-editor__field--required`, `event-cpr-editor__field--multi`
-- [ ] **9.5A** Build event session runtime custom-property editor (**Milestone C follow-up**)
-  - [ ] **9.5A.1** `EventSessionCustomPropertyRuntimeEditor.razor` mirrors 9.5.1-9.5.13
+- [x] **9.4** Add template selection to event creation UI (**Milestone B follow-up**) ✅ 2026-04-29; Oracle blocker pass fixed stale async completions + added focused regression coverage
+- [x] **9.4.1** MudSelect dropdown with published templates scoped to tenant + event type ✅ event-type changes reload published/active templates, disable selection while loading, and clear stale selection
+- [x] **9.4.2** Read-only preview of definitions that will be instantiated ✅ loading/error/detail states with definition chips; failed preview clears `TemplateId`; submit is blocked while preview is in flight
+- [x] **9.4.3** Accessible placement/announcements ✅ placed after Event Type in Event Options with labeled select and `aria-live` preview (no browser-level keyboard E2E added)
+- [x] **9.4A** Add session blueprint selection/editing UI (**Milestone C follow-up**) ✅ 2026-04-29; CreateEvent new-session drawer now supports parent-scoped session blueprints with stale async guards and clears already-added local session blueprint IDs when the parent event template changes
+  - [x] **9.4A.1** Session template dropdown scoped to parent event's template tree ✅ uses `ParentEventTemplateId="@_selectedEventTemplate?.Id"` so options appear only after parent event-template preview resolves
+  - [x] **9.4A.2** Read-only preview of session definitions/options that will be instantiated ✅ loading/warning/detail states with definition chips
+  - [x] **9.4A.3** Clear stale session-template selection when the parent event template changes ✅ panel clears selected blueprint/detail/list when parent changes or disappears
+  - [x] **9.4A.4** Guard stale async list/preview completions with current-selection checks ✅ request-version + current parent/selection checks
+  - [x] **9.4A.5** Block submit while session-template preview is loading and clear template ID on preview failure ✅ drawer save guard prevents unresolved template submission
+  - [x] **9.4A.6** bUnit coverage mirroring Phase 9.4 race and submit scenarios ✅ scoped load, parent clearing, preview failure, stale list/preview races, and in-flight preview save blocking
+- [x] **9.5** Build event runtime custom-property editor against event-local definitions/values (**Milestone B follow-up**) ✅ 2026-04-29
+  - [x] **9.5.1** `EventCustomPropertyRuntimeEditor.razor` component ✅
+  - [x] **9.5.2** Dynamic rendering via `PropertyType` enum switch (not reflection) ✅ via `CustomPropertyFieldEditor.razor`
+  - [x] **9.5.3** `Text` → MudTextField with MaxLength + RegexPattern ✅
+  - [x] **9.5.4** `Number` → MudNumericField with Min/Max ✅
+  - [x] **9.5.5** `Option` → MudSelect single or multi-select based on `IsMulti` ✅
+  - [x] **9.5.6** `Boolean` → MudSwitch or MudCheckBox ✅
+  - [x] **9.5.7** `DateTime` → MudDatePicker + MudTimePicker ✅
+  - [x] **9.5.8** `Url` → MudTextField with URL + AllowedUrlSchemes validation ✅
+  - [x] **9.5.9** Multi-value add/remove with Ordinal-aware reordering ✅
+  - [x] **9.5.10** Inline validation errors aligned to server validators ✅ client-side validation + server response display
+  - [x] **9.5.11** `aria-required`, `aria-invalid`, `aria-describedby` attributes ✅
+  - [x] **9.5.12** Keyboard-only user can complete the form ✅ standard MudBlazor focusable controls + add/remove/save buttons
+  - [x] **9.5.13** BEM CSS classes: `event-cpr-editor__field`, `event-cpr-editor__field--required`, `event-cpr-editor__field--multi` ✅
+- [x] **9.5A** Build event session runtime custom-property editor (**Milestone C follow-up**) ✅ 2026-04-29
+  - [x] **9.5A.1** `EventSessionCustomPropertyRuntimeEditor.razor` mirrors 9.5.1-9.5.13 ✅ plus parameter-change reload for drawer navigation
 - [ ] **9.6** Add template selection preview admin overview (**Milestone B follow-up**)
   - [ ] **9.6.1** Lists events created from a given template + when + by whom
 - [ ] **9.6A** Add session blueprint preview admin overview (**Milestone C follow-up**)

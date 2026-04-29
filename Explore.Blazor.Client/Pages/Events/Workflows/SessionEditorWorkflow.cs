@@ -168,6 +168,7 @@ public sealed class SessionEditorWorkflow
             LocationId = source.LocationId,
             MaxAudienceAttendees = source.MaxAudienceAttendees,
             RegistrationModeId = source.RegistrationModeId,
+            SessionTemplateId = source.SessionTemplateId,
             LanguageIds = new HashSet<int>(source.LanguageIds),
             FeaturedImageId = source.FeaturedImageId,
             FeaturedImagePreviewUrl = source.FeaturedImagePreviewUrl,

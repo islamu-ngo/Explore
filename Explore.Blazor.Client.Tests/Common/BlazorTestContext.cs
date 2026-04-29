@@ -73,6 +73,7 @@ public class BlazorTestContext : BunitContext
         Services.AddSingleton(Substitute.For<IHttpClientFactory>());
         AddAccessibilityMocks();
         AddAuthorizationSubstrateMocks();
+        AddAppearanceThemeMock();
         Services.AddScoped(_ => Substitute.For<ILanguagePreferenceService>());
     }
 
@@ -124,6 +125,28 @@ public class BlazorTestContext : BunitContext
         machinePrincipalAccessor.Current.Returns((ApiKeyPrincipalContext?)null);
         machinePrincipalAccessor.IsMachineCaller.Returns(false);
         Services.AddScoped(_ => machinePrincipalAccessor);
+    }
+
+    /// <summary>
+    /// Add appearance theme defaults used by shared shell components such as NavMenu and ThemeQuickSwitcher.
+    /// </summary>
+    public void AddAppearanceThemeMock()
+    {
+        var appearanceThemeService = Substitute.For<IAppearanceThemeService>();
+        appearanceThemeService.Current.Returns(new AppearanceState());
+        appearanceThemeService.CreateTheme(Arg.Any<string>()).Returns(new MudTheme());
+        appearanceThemeService.InitializeAsync(Arg.Any<MudThemeProvider>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        appearanceThemeService.ResolveEffectiveDarkModeAsync(Arg.Any<MudThemeProvider>())
+            .Returns(Task.FromResult(false));
+        appearanceThemeService.SetThemeModeAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        appearanceThemeService.SetActiveProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        appearanceThemeService.ClonePresetAndActivateAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        Services.AddSingleton(appearanceThemeService);
     }
 
     /// <summary>

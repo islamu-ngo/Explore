@@ -15,19 +15,27 @@
     return;
 }
 
+@{
+    var currentLanguage = LanguageContext.ForLanguage(_currentLang);
+}
+
 <MudMenu @bind-Open="_isOpen"
          AnchorOrigin="Origin.BottomCenter"
          TransformOrigin="Origin.TopCenter"
          Dense="true"
          Class="language-picker">
     <ActivatorContent>
-        <MudButton Variant="Variant.Text"
+        <AppButton Variant="Variant.Text"
                    Color="Color.Inherit"
+                   OnClick="ToggleMenu"
                    EndIcon="@(_isOpen ? Icons.Material.Filled.ArrowDropUp : Icons.Material.Filled.ArrowDropDown)"
                    aria-label="@GetAriaLabel()"
                    Class="language-picker__button">
-            <MudText Typo="Typo.body1">@LanguageContext.ForLanguage(_currentLang).Flag</MudText>
-        </MudButton>
+            <span class="language-picker__button-content">
+                <span class="language-picker__flag">@currentLanguage.Flag</span>
+                <span class="language-picker__current-language">@currentLanguage.LanguageCode.ToUpperInvariant()</span>
+            </span>
+        </AppButton>
     </ActivatorContent>
     <ChildContent>
         @if (_cultures.Count > 0)
@@ -86,6 +94,8 @@
             _currentLang = Language.LanguageCode;
         }
     }
+
+    private void ToggleMenu() => _isOpen = !_isOpen;
 
     private async Task SelectLanguageAsync(string languageCode)
     {

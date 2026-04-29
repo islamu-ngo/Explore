@@ -1,7 +1,6 @@
 // ABOUTME: Unit tests for SessionEditorModel — Clone, ToCreateDto, ToUpdateDto, FromDto.
 // ABOUTME: Validates session duplication logic and DTO conversion correctness.
 
-using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Pages.Events.Models;
 
 namespace Explore.Blazor.Client.Tests.Models;
@@ -105,6 +104,7 @@ public class SessionEditorModelTests
             LocationId = locationId,
             MaxAudienceAttendees = 50,
             RegistrationModeId = 3,
+            SessionTemplateId = Guid.NewGuid(),
             LanguageIds = new HashSet<int> { 2, 4 },
             FeaturedImageId = imageId,
             UseEventImage = false
@@ -121,6 +121,7 @@ public class SessionEditorModelTests
         await Assert.That(dto.LocationId).IsEqualTo(locationId);
         await Assert.That(dto.MaxAudienceAttendees).IsEqualTo(50);
         await Assert.That(dto.RegistrationModeId).IsEqualTo(3);
+        await Assert.That(dto.SessionTemplateId).IsEqualTo(model.SessionTemplateId);
         // await Assert.That(dto.FeaturedImageId).IsEqualTo(imageId);
     }
 

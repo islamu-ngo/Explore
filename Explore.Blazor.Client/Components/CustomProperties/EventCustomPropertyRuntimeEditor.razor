@@ -29,23 +29,21 @@
             </MudAlert>
         }
 
-        <MudForm @ref="form" Model="@_valueDictionary" ValidationDelay="0">
-            @foreach (var def in Definitions.OrderBy(d => d.SortOrder))
+        @foreach (var def in Definitions.OrderBy(d => d.SortOrder))
+        {
+            if (!_valueDictionary.TryGetValue(def.Id, out var values))
             {
-                if (!_valueDictionary.TryGetValue(def.Id, out var values))
-                {
-                    values = new List<CustomPropertyValueModel>();
-                    _valueDictionary[def.Id] = values;
-                }
-
-                <CustomPropertyFieldEditor Definition="@def"
-                                           Values="@values"
-                                           ParentId="@EventId"
-                                           OnChanged="HandleFieldChanged" />
+                values = new List<CustomPropertyValueModel>();
+                _valueDictionary[def.Id] = values;
             }
-        </MudForm>
 
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@IsSaving" OnClick="SaveAsync" Class="mt-4">
+            <CustomPropertyFieldEditor Definition="@def"
+                                       Values="@values"
+                                       ParentId="@EventId"
+                                       OnChanged="HandleFieldChanged" />
+        }
+
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(IsSaving || HasLoadError)" OnClick="SaveAsync" Class="mt-4">
             @if (IsSaving)
             {
                 <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
@@ -72,13 +70,22 @@
     public bool IsLoading { get; private set; } = true;
     public bool IsSaving { get; private set; }
     
-    private MudForm form = default!;
     private Dictionary<Guid, List<CustomPropertyValueModel>> _valueDictionary = new();
     private Dictionary<string, string[]> Errors { get; set; } = new();
+    private Guid _loadedEventId;
+    private string _loadedDefinitionSignature = string.Empty;
 
-    protected override async Task OnInitializedAsync()
+    private bool HasLoadError => Errors.ContainsKey("Load");
+
+    protected override async Task OnParametersSetAsync()
     {
-        await LoadValuesAsync();
+        var definitionSignature = GetDefinitionSignature();
+        if (EventId != Guid.Empty && (EventId != _loadedEventId || definitionSignature != _loadedDefinitionSignature))
+        {
+            _loadedEventId = EventId;
+            _loadedDefinitionSignature = definitionSignature;
+            await LoadValuesAsync();
+        }
     }
 
     private async Task LoadValuesAsync()
@@ -112,8 +119,11 @@
 
     public async Task SaveAsync()
     {
-        await form.Validate();
-        if (!form.IsValid) return;
+        if (HasLoadError)
+        {
+            Snackbar.Add("Refresh custom properties before saving.", Severity.Warning);
+            return;
+        }
 
         IsSaving = true;
         Errors.Clear();
@@ -125,17 +135,10 @@
             {
                 if (_valueDictionary.TryGetValue(def.Id, out var values))
                 {
-                    if (def.IsMulti)
+                    if (!PrepareValuesForSave(def, values))
                     {
-                        RemoveEmptyOptionalValues(values, def.PropertyType);
-                        Reorder(values);
-
-                        if (def.IsRequired && !values.Any(v => HasValue(v, def.PropertyType)))
-                        {
-                            hasErrors = true;
-                            Errors[$"Definition {def.DisplayName}"] = new[] { $"{def.DisplayName} requires at least one value." };
-                            continue;
-                        }
+                        hasErrors = true;
+                        continue;
                     }
 
                     BaseCommandResponse<Guid>? response;
@@ -190,6 +193,37 @@
         {
             IsSaving = false;
         }
+    }
+
+    private string GetDefinitionSignature()
+    {
+        return string.Join('|', Definitions.OrderBy(d => d.Id).Select(d => $"{d.Id:N}:{d.SortOrder}:{d.IsRequired}:{d.IsMulti}:{(int)d.PropertyType}"));
+    }
+
+    private bool PrepareValuesForSave(CustomPropertyDefinitionDetailModel definition, List<CustomPropertyValueModel> values)
+    {
+        if (definition.IsMulti)
+        {
+            RemoveEmptyOptionalValues(values, definition.PropertyType);
+            Reorder(values);
+
+            if (definition.IsRequired && !values.Any(v => HasValue(v, definition.PropertyType)))
+            {
+                Errors[$"Definition {definition.DisplayName}"] = new[] { $"{definition.DisplayName} requires at least one value." };
+                return false;
+            }
+
+            return true;
+        }
+
+        var value = values.FirstOrDefault();
+        if (definition.IsRequired && (value is null || !HasValue(value, definition.PropertyType)))
+        {
+            Errors[$"Definition {definition.DisplayName}"] = new[] { $"{definition.DisplayName} is required." };
+            return false;
+        }
+
+        return true;
     }
 
     private static void RemoveEmptyOptionalValues(List<CustomPropertyValueModel> values, PropertyType propertyType)

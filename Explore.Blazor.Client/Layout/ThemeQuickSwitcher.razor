@@ -12,9 +12,10 @@
          Dense="true"
          Class="theme-quick-switcher">
     <ActivatorContent>
-        <MudIconButton Icon="@CurrentIcon"
+        <AppIconButton Icon="@CurrentIcon"
                        Color="Color.Inherit"
                        Size="Size.Medium"
+                       OnClick="ToggleMenu"
                        Title="@GetAriaLabel()"
                        Class="navbar__theme-toggle"
                        @attributes="AdditionalAttributes" />
@@ -29,10 +30,11 @@
             {
                 var p = preset;
                 var isActive = _currentPresetKey == p.ThemeKey;
+                var swatch = p.LightPalette?.Primary ?? "#3B82F6";
                 <MudMenuItem OnClick="@(() => SelectPresetAsync(p))"
                              Class="@(isActive ? "theme-quick-switcher__item theme-quick-switcher__item--active" : "theme-quick-switcher__item")">
                     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                        <span class="theme-quick-switcher__swatch" style="background:@p.LightPalette.Primary;" />
+                        <span class="theme-quick-switcher__swatch" style="background:@swatch;" />
                         <MudText Typo="Typo.body2">@p.DisplayName</MudText>
                         @if (isActive)
                         {
@@ -119,6 +121,8 @@
         _presets = e.State.AvailablePresets;
         InvokeAsync(StateHasChanged);
     }
+
+    private void ToggleMenu() => _isOpen = !_isOpen;
 
     private async Task SelectPresetAsync(Services.Appearance.AvailablePresetDto preset)
     {

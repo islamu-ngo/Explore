@@ -35,6 +35,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICustomPropertyDefinitionService, CustomPropertyDefinitionService>();
         services.AddScoped<ICustomPropertyValueService, CustomPropertyValueService>();
         services.AddScoped<Explore.Blazor.Client.Contracts.Services.EventTemplates.IEventTemplateService, EventTemplateService>();
+        services.AddScoped<Explore.Blazor.Client.Contracts.Services.EventSessionTemplates.IEventSessionTemplateService, EventSessionTemplateService>();
         services.AddScoped<ILandingPageService, LandingPageService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IOrganizationReviewService, OrganizationReviewService>();

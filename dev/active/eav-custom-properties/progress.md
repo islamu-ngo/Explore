@@ -3,7 +3,7 @@
 
 # EAV Custom Properties — Execution Progress
 
-**Last updated:** 2026-04-24 (Session 3 — Phase 9.1 + 9.2 + 9.3 Blazor CRUD UIs shipped, session handoff)
+**Last updated:** 2026-04-29 (Session 5 — Phase 9.4A Oracle blocker fixed + verified)
 **Scope:** Cleanup Phase 9.x — Blazor admin UI for definitions, templates, runtime editors.
 **Mode:** Development (no backward compatibility required).
 
@@ -28,12 +28,14 @@
 | F | Phase 2 DTOs+CQRS | ✅ 2026-04-24 | `bg_6d710714` retry / 59+ new tests |
 | F | Phase 3 Integration Tests | ⏳ PENDING | Combined with E Phase 4 retry |
 | F | Phase 4 LEXICONS.md | ✅ 2026-04-24 | `bg_0907d67e` / `docs/LEXICONS.md` |
-| Cleanup | Phase 7 Stale JSONB refs | ⏳ PENDING | — |
+| Cleanup | Phase 7 Stale JSONB refs | ✅ 2026-04-24 | Zero `MetadataJson` refs found, already cleaned |
 | Cleanup | Phase 9.1 Stale helpers | ✅ 2026-04-24 | Zero changes needed |
 | Cleanup | Phase 9.2 Definition CRUD UI | ✅ 2026-04-24 | bg_a65ca891 — 7 new files |
 | Cleanup | Phase 9.3 Template CRUD UI | ✅ 2026-04-24 | bg_b8f4ef4b — 10+ new files |
-| Cleanup | Phase 9.4 Template selection | ⏳ PENDING | — |
-| Cleanup | Phase 9.5/9.5A Runtime editors | ⏳ PENDING | — |
+| Cleanup | Phase 9.4 Template selection | ✅ 2026-04-29 | CreateEvent template picker + read-only preview + stale async guards; build + client tests pass |
+| Cleanup | Phase 9.4A Session blueprint selection | ✅ 2026-04-29 | CreateEvent new-session drawer picker + parent-template scoping + stale async/session clearing guards; build + client tests pass |
+| Cleanup | Phase 9.5/9.5A Runtime editors | ✅ 2026-04-29 | Event/session runtime editors wired into edit flows; build + client tests pass; final Oracle review safe |
+| Cleanup | Phase 9.6A Session blueprint preview | ⏳ PENDING | Mirrors Phase 9.6 for session scope |
 | Cleanup | Phase 9.6 Template preview | ⏳ PENDING | — |
 | Cleanup | Phase 9.10 Org/Group cleanup | ⏳ PENDING | — |
 | Cleanup | Phase 9.11 NSwag regen | ⏳ PENDING | — |
@@ -89,21 +91,54 @@
 
 ## Remaining Work Queue (priority-ordered)
 
-1. **Retry Integration tests delegation** — highest value remaining, covers Gap 3.
-2. Fix HAL wiring (Gap 1) — ✅ closed (API controllers emit HAL diffs).
-3. Cerbos test fixtures (Gap 2) — ✅ closed via `BlazorTestContext` machine-principal stub.
-4. Expand Blazor sync page bUnit coverage (Gap 4) — ✅ closed (6 bUnit tests per page).
-5. Cleanup Phase 7 — ✅ closed (zero `MetadataJson` refs found, already cleaned).
-6. Cleanup Phase 9.1 — ✅ closed (no stale helpers found).
-7. Cleanup Phase 9.2 — ✅ closed (CustomPropertyDefinition CRUD UI shipped).
-8. Cleanup Phase 9.3 — ✅ closed (EventTemplate CRUD UI shipped).
-9. **Phase 9.5/9.5A** — Event + Session runtime custom-property editors (dynamic PropertyType rendering). HIGH PRIORITY.
-10. **Phase 9.4** — Template selection dropdown in event creation flow.
-11. **Phase 9.11** — Regenerate NSwag API clients.
-12. **Phase 11 + 10.0** — Architecture tests + API roundtrip tests.
-13. **Phase 8.5.13** — Prometheus metrics for projection updater.
-14. **Phase 9.6** — Template preview admin overview.
-15. **Phase 9.10** — Organization/Group page cleanup.
+Closed cleanup items are no longer listed here; see the milestone snapshot and phase sections below for closure evidence.
+
+1. **Retry E/F integration tests delegation** — highest value remaining, covers Gap 3 (sync + aggregate-view correctness; Docker required).
+2. **Phase 9.11** — Regenerate NSwag API clients after accumulated API surface changes and verify client compile/test compatibility.
+3. **Phase 11 + 10.0** — Add architecture tests + API roundtrip tests for the custom-property/template flows.
+4. **Phase 8.5.13** — Add Prometheus metrics for projection updater observability.
+5. **Phase 9.6** — Template preview admin overview for event templates.
+6. **Phase 9.6A** — Session blueprint preview admin overview.
+7. **Phase 9.10** — Organization/Group page cleanup.
+
+### Recommended Next Execution Slice
+
+**Next implementation target:** Phase 9.11 NSwag regeneration or Phase 9.6/9.6A preview admin overviews.
+
+- Phase 9.4A is closed for CreateEvent's new-session drawer. EventEdit session blueprint selection remains deferred because current event read/update DTOs do not expose the parent event template identity.
+- Current verification baseline: C# diagnostics clean for touched files; `dotnet build --configuration Release --verbosity quiet` ✅ 0 errors; `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` ✅ 835 total / 834 passed / 1 known skipped.
+
+### Phase 9.4 Template Selection — ✅ CLOSED 2026-04-29
+
+- Wired `Explore.Blazor.Client/Pages/Events/CreateEvent.razor` and `.razor.cs` to load published/active event templates through `IEventTemplateService`, scope reloads by selected `EventTypeId`, clear stale template selections when the event type changes, and ignore stale async list/preview completions.
+- Added optional `TemplateId` selection to the Event Options flow so submitting the existing generated `CreateEventDto.TemplateId` creates either a template-backed event or a vanilla event when empty; failed preview loads now clear `TemplateId`, and submit is blocked while preview is still in flight.
+- Added a read-only template definition preview with loading, warning, description, definition count, property type, required, multi-value, and options-count chips; preview uses `aria-live="polite"` and a labelled region for assistive technology.
+- Added BEM CSS for `create-event__template-*` preview layout and mobile stacking.
+- Updated `Explore.Blazor.Client.Tests/Pages/Event/CreateEventTests.cs` and `Explore.Blazor.Client.Tests/GlobalUsings.cs` with a deterministic `IEventTemplateService` mock returning an empty page by default plus focused coverage for event-type scoped loads, preview loads, event-type change clearing, vanilla submit, selected-template submit, stale async completion guards, and in-flight preview submit blocking.
+- Oracle review initially blocked handoff on async state races and insufficient coverage, then found one remaining submit race for in-flight preview loads; those blockers are now fixed in `CreateEvent.razor(.cs)` and covered by bUnit component-state tests.
+- Verification: LSP diagnostics clean for `CreateEvent.razor.cs` and `CreateEventTests.cs` (`.razor` LSP unavailable locally); `dotnet build --configuration Release --verbosity quiet` ✅ 0 errors; `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` ✅ 828 total / 827 passed / 1 known skipped.
+
+### Phase 9.4A Session Blueprint Selection — ✅ CLOSED 2026-04-29
+
+- Added typed Blazor client session-template service/model layer: `IEventSessionTemplateService`, `EventSessionTemplateService`, `Models/EventSessionTemplates/*`, HAL mapping extensions, DI registration, and test global usings.
+- Wired `SessionEditorPanel.razor` so new sessions in the CreateEvent drawer can optionally choose a session blueprint after the parent event-template preview resolves. The selector is scoped by parent `EventTemplateId`, hidden for edit flows without a parent template, and keeps vanilla session creation when empty.
+- Added read-only session blueprint preview with loading/warning/detail states, definition metadata chips, BEM CSS, and `aria-live`/labelled preview region.
+- Added stale async protection: parent changes clear selected blueprint/list/detail; list and preview completions only apply when request version and current parent/selection still match; failed preview clears `SessionTemplateId`; drawer save is blocked while preview is loading.
+- Fixed final Oracle blocker: parent event-template changes now clear `SessionTemplateId` on all already-added local CreateEvent sessions plus the open drawer model, so subsequent `CreateSessionAsync` payloads cannot submit a stale session blueprint from the old parent template.
+- `SessionEditorModel.ToCreateDto()` now carries `SessionTemplateId` into the generated `CreateEventSessionDto`; update DTO remains unchanged because generated `UpdateEventSessionDto` has no session-template field.
+- Tests added/updated: `SessionEditorPanelTests.cs` covers scoped load, parent clearing, preview failure, stale preview race, stale list race, and in-flight preview save blocking; `SessionEditorModelTests.cs` covers `SessionTemplateId` mapping; `SessionEditorWorkflowTests.cs` covers copy preservation; `CreateEventTests.cs` covers clearing stale local session `SessionTemplateId` values before submit.
+- Verification: C# LSP diagnostics clean for touched C# files; Razor LSP unavailable locally but Release build compiles Razor; `dotnet build --configuration Release --verbosity quiet` ✅ 0 errors; `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` ✅ 835 total / 834 passed / 1 known skipped.
+
+### Phase 9.5/9.5A Runtime Editors — ✅ CLOSED 2026-04-29
+
+- Implemented reusable dynamic field rendering in `Explore.Blazor.Client/Components/CustomProperties/CustomPropertyFieldEditor.razor` for Text, Number, Option, Boolean, DateTime, and Url property types.
+- Added event and event-session runtime editors (`EventCustomPropertyRuntimeEditor.razor`, `EventSessionCustomPropertyRuntimeEditor.razor`) with runtime value loading/saving, multi-value cleanup/reordering, null-response failure handling, required single/multi validation, and load-error save guards.
+- Added runtime value client service/contract/model and DI registration for `ICustomPropertyValueService`.
+- Extended `ICustomPropertyDefinitionService`, `CustomPropertyDefinitionService`, and HAL mapping helpers to load event-local and session-local definition details from generated API endpoints.
+- Wired event runtime custom properties into `EventEdit.razor` and persisted-session custom properties into `SessionEditorPanel.razor`.
+- Fixed Oracle blockers: parameter-change reload prevents stale session drawer values; definition-load failures surface as visible alerts; runtime editors no longer nest child `MudForm`s inside parent edit forms.
+- Verification: `dotnet build --configuration Release --verbosity quiet` ✅ 0 errors; `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` ✅ 820 total / 819 passed / 1 known skipped. LSP unavailable locally (`csharp-ls` missing; no Razor LSP).
+- Final Oracle review `bg_ffcde561` reported safe to hand back with no blocking issues. Non-blocking notes: custom-property saves remain separate from parent event/session saves; runtime definition detail 404s are treated as stale/missing definitions.
 
 ---
 

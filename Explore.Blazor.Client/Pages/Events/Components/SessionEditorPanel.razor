@@ -3,6 +3,10 @@
 
 @using MudBlazor
 @using Explore.Blazor.Client.Clients
+@using Explore.Blazor.Client.Components.CustomProperties
+@using Explore.Blazor.Client.Contracts.Services.EventSessionTemplates
+@using Explore.Blazor.Client.Models.CustomProperties
+@using Explore.Blazor.Client.Models.EventSessionTemplates
 @using Explore.Blazor.Client.Pages.Events.Models
 @using Explore.Blazor.Client.Pages.Events.Workflows
 @using Microsoft.AspNetCore.Components.Forms
@@ -62,6 +66,101 @@
 
         @* --- Basic Session Info --- *@
         <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2">Basic Info</MudText>
+
+        @if (CanUseSessionTemplates)
+        {
+            <div class="session-editor-panel__template-section mb-4"
+                 aria-live="polite">
+                <MudSelect T="Guid?"
+                           Value="_model.SessionTemplateId"
+                           ValueChanged="OnSessionTemplateChanged"
+                           Label="Session Blueprint"
+                           Variant="Variant.Outlined"
+                           Clearable="true"
+                           Disabled="_isLoadingSessionTemplates"
+                           Class="session-editor-panel__template-select mb-2">
+                    <MudSelectItem T="Guid?" Value="null">No blueprint</MudSelectItem>
+                    @foreach (var template in _sessionTemplates)
+                    {
+                        <MudSelectItem T="Guid?" Value="@template.Id">
+                            @template.DisplayName v@template.Version (@template.DefinitionCount)
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+
+                @if (_isLoadingSessionTemplates || _isLoadingSessionTemplatePreview || !string.IsNullOrWhiteSpace(_sessionTemplateLoadError) || _selectedSessionTemplate is not null)
+                {
+                    <div class="session-editor-panel__template-preview"
+                         role="status"
+                         aria-label="Session blueprint definition preview">
+                        @if (_isLoadingSessionTemplates)
+                        {
+                            <div class="d-flex align-center gap-2">
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                                <MudText Typo="Typo.body2">Loading session blueprints...</MudText>
+                            </div>
+                        }
+                        else if (_isLoadingSessionTemplatePreview)
+                        {
+                            <div class="d-flex align-center gap-2">
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                                <MudText Typo="Typo.body2">Loading session blueprint preview...</MudText>
+                            </div>
+                        }
+                        else if (!string.IsNullOrWhiteSpace(_sessionTemplateLoadError))
+                        {
+                            <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-0 rounded-lg">
+                                @_sessionTemplateLoadError
+                            </MudAlert>
+                        }
+                        else if (_selectedSessionTemplate is not null)
+                        {
+                            <div class="session-editor-panel__template-preview-header">
+                                <div>
+                                    <MudText Typo="Typo.subtitle2">@_selectedSessionTemplate.DisplayName</MudText>
+                                    @if (!string.IsNullOrWhiteSpace(_selectedSessionTemplate.Description))
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@_selectedSessionTemplate.Description</MudText>
+                                    }
+                                </div>
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">
+                                    @_selectedSessionTemplate.Definitions.Count definitions
+                                </MudChip>
+                            </div>
+
+                            @if (_selectedSessionTemplate.Definitions.Count > 0)
+                            {
+                                <div class="session-editor-panel__template-definitions">
+                                    @foreach (var definition in _selectedSessionTemplate.Definitions.OrderBy(d => d.SortOrder).ThenBy(d => d.DisplayName))
+                                    {
+                                        <div class="session-editor-panel__template-definition">
+                                            <div class="session-editor-panel__template-definition-main">
+                                                <MudText Typo="Typo.body2">@definition.DisplayName</MudText>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">@definition.PropertyType</MudText>
+                                            </div>
+                                            <div class="session-editor-panel__template-definition-meta">
+                                                @if (definition.IsRequired)
+                                                {
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Outlined">Required</MudChip>
+                                                }
+                                                @if (definition.IsMulti)
+                                                {
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">Multi</MudChip>
+                                                }
+                                                @if (definition.Options.Count > 0)
+                                                {
+                                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@definition.Options.Count options</MudChip>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        }
+                    </div>
+                }
+            </div>
+        }
 
         <AppTextField T="string" @bind-Value="_model.Title"
                       Label="Session Title"
@@ -172,15 +271,36 @@
                 }
             </MudSelect>
         }
+
+        @if (!IsNew && _model.Id.HasValue && _model.Id.Value != Guid.Empty && CustomPropertyDefinitions.Count > 0)
+        {
+            <MudText Typo="Typo.subtitle2" Color="Color.Secondary" Class="mb-2 mt-4">Custom Properties</MudText>
+            <EventSessionCustomPropertyRuntimeEditor EventSessionId="_model.Id.Value"
+                                                     Definitions="CustomPropertyDefinitions" />
+        }
+        else if (!string.IsNullOrWhiteSpace(CustomPropertyDefinitionLoadError))
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-4 rounded-lg">
+                @CustomPropertyDefinitionLoadError
+            </MudAlert>
+        }
     </MudForm>
 
     @* --- Action Buttons --- *@
     <div class="session-editor-panel__actions d-flex justify-end gap-2 mt-4 pt-3"
          style="border-top: 1px solid var(--mud-palette-lines-default);">
         <AppButton OnClick="Cancel" Variant="Variant.Text">Cancel</AppButton>
-        <AppButton Disabled="_isUploadingSessionImage"
-                   OnClick="Submit">
-            @(IsNew ? "Add Session" : "Save Changes")
+        <AppButton Disabled="@IsSaveDisabled"
+                    OnClick="Submit">
+            @if (_isLoadingSessionTemplatePreview)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+                <span>Loading blueprint...</span>
+            }
+            else
+            {
+                <span>@(IsNew ? "Add Session" : "Save Changes")</span>
+            }
         </AppButton>
     </div>
 </div>
@@ -196,6 +316,9 @@
     public string? EventImageUrl { get; set; }
 
     [Parameter]
+    public Guid? ParentEventTemplateId { get; set; }
+
+    [Parameter]
     public ICollection<LocationListDto>? Locations { get; set; }
 
     [Parameter]
@@ -205,12 +328,20 @@
     public ICollection<LanguageListDto>? Languages { get; set; }
 
     [Parameter]
+    public IReadOnlyList<CustomPropertyDefinitionDetailModel> CustomPropertyDefinitions { get; set; } = Array.Empty<CustomPropertyDefinitionDetailModel>();
+
+    [Parameter]
+    public string? CustomPropertyDefinitionLoadError { get; set; }
+
+    [Parameter]
     public EventCallback<SessionEditorModel> OnSave { get; set; }
 
     [Parameter]
     public EventCallback OnCancel { get; set; }
 
     [Inject] private IImageStorageService ImageStorageService { get; set; } = null!;
+    [Inject] private IEventSessionTemplateService EventSessionTemplateService { get; set; } = null!;
+    [Inject] private ILogger<SessionEditorPanel> Logger { get; set; } = null!;
 
     private MudForm _form = null!;
     private bool _isValid;
@@ -227,11 +358,24 @@
     private bool _isUploadingSessionImage;
     private string? _sessionImageError;
 
+    // Session blueprint state
+    private List<EventSessionTemplateListModel> _sessionTemplates = new();
+    private EventSessionTemplateDetailModel? _selectedSessionTemplate;
+    private bool _isLoadingSessionTemplates;
+    private bool _isLoadingSessionTemplatePreview;
+    private string? _sessionTemplateLoadError;
+    private int _sessionTemplateListRequestVersion;
+    private int _sessionTemplatePreviewRequestVersion;
+    private Guid? _loadedParentEventTemplateId;
+
+    private bool CanUseSessionTemplates => IsNew && ParentEventTemplateId.HasValue;
+    private bool IsSaveDisabled => _isUploadingSessionImage || _isLoadingSessionTemplatePreview;
+
     private string? _displayImageUrl => _model.UseEventImage
         ? EventImageUrl
         : (_model.FeaturedImagePreviewUrl ?? EventImageUrl);
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
         _model = new SessionEditorModel
         {
@@ -243,6 +387,7 @@
             LocationId = Session.LocationId,
             MaxAudienceAttendees = Session.MaxAudienceAttendees,
             RegistrationModeId = Session.RegistrationModeId,
+            SessionTemplateId = Session.SessionTemplateId,
             LanguageIds = new HashSet<int>(Session.LanguageIds),
             FeaturedImageId = Session.FeaturedImageId,
             FeaturedImagePreviewUrl = Session.FeaturedImagePreviewUrl,
@@ -256,6 +401,20 @@
         _endDate = _model.EndTime.Date;
         _endTime = _model.EndTime.TimeOfDay;
         _selectedLanguageIds = _model.LanguageIds;
+
+        if (!CanUseSessionTemplates)
+        {
+            ClearSessionTemplateState(clearParent: true);
+            return;
+        }
+
+        if (_loadedParentEventTemplateId != ParentEventTemplateId)
+        {
+            _model.SessionTemplateId = null;
+            _selectedSessionTemplate = null;
+            _sessionTemplates.Clear();
+            await LoadSessionTemplatesAsync(ParentEventTemplateId.Value);
+        }
     }
 
     private void OnUseEventImageChanged(bool value)
@@ -297,6 +456,12 @@
 
     private async Task Submit()
     {
+        if (_isLoadingSessionTemplatePreview)
+        {
+            _sessionTemplateLoadError = "Please wait for the session blueprint preview to finish loading.";
+            return;
+        }
+
         await _form.Validate();
         if (!_isValid) return;
 
@@ -312,4 +477,124 @@
     }
 
     private async Task Cancel() => await OnCancel.InvokeAsync();
+
+    private async Task OnSessionTemplateChanged(Guid? templateId)
+    {
+        var requestVersion = ++_sessionTemplatePreviewRequestVersion;
+        _model.SessionTemplateId = templateId;
+        _selectedSessionTemplate = null;
+        _sessionTemplateLoadError = null;
+
+        if (!templateId.HasValue)
+        {
+            _isLoadingSessionTemplatePreview = false;
+            return;
+        }
+
+        var requestedTemplateId = templateId.Value;
+        _isLoadingSessionTemplatePreview = true;
+
+        try
+        {
+            var template = await EventSessionTemplateService.GetTemplateByIdAsync(requestedTemplateId);
+            if (!IsCurrentSessionTemplatePreviewRequest(requestVersion, requestedTemplateId))
+            {
+                return;
+            }
+
+            if (template is null)
+            {
+                _model.SessionTemplateId = null;
+                _sessionTemplateLoadError = "The selected session blueprint could not be loaded. The selection was cleared; choose another blueprint or continue without one.";
+                return;
+            }
+
+            _selectedSessionTemplate = template;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "[SESSION TEMPLATE] Failed to load session template preview {SessionTemplateId}", requestedTemplateId);
+            if (!IsCurrentSessionTemplatePreviewRequest(requestVersion, requestedTemplateId))
+            {
+                return;
+            }
+
+            _model.SessionTemplateId = null;
+            _sessionTemplateLoadError = "Session blueprint preview could not be loaded. The selection was cleared; choose another blueprint or continue without one.";
+        }
+        finally
+        {
+            if (IsCurrentSessionTemplatePreviewRequest(requestVersion, requestedTemplateId) || !_model.SessionTemplateId.HasValue)
+            {
+                _isLoadingSessionTemplatePreview = false;
+            }
+        }
+    }
+
+    private async Task LoadSessionTemplatesAsync(Guid parentEventTemplateId)
+    {
+        var requestVersion = ++_sessionTemplateListRequestVersion;
+        _loadedParentEventTemplateId = parentEventTemplateId;
+        _sessionTemplateLoadError = null;
+        _isLoadingSessionTemplates = true;
+
+        try
+        {
+            var result = await EventSessionTemplateService.GetTemplatesAsync(parentEventTemplateId, pageNumber: 1, pageSize: 100);
+            if (!IsCurrentSessionTemplateListRequest(requestVersion, parentEventTemplateId))
+            {
+                return;
+            }
+
+            _sessionTemplates = result.Items
+                .Where(template => template.IsActive && template.IsPublished)
+                .OrderBy(template => template.SortOrder)
+                .ThenBy(template => template.DisplayName)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "[SESSION TEMPLATE] Failed to load session templates for event template {EventTemplateId}", parentEventTemplateId);
+            if (!IsCurrentSessionTemplateListRequest(requestVersion, parentEventTemplateId))
+            {
+                return;
+            }
+
+            _sessionTemplates.Clear();
+            _sessionTemplateLoadError = "Session blueprints could not be loaded. You can continue without one.";
+        }
+        finally
+        {
+            if (IsCurrentSessionTemplateListRequest(requestVersion, parentEventTemplateId))
+            {
+                _isLoadingSessionTemplates = false;
+            }
+        }
+    }
+
+    private bool IsCurrentSessionTemplateListRequest(int requestVersion, Guid requestedEventTemplateId)
+    {
+        return requestVersion == _sessionTemplateListRequestVersion
+            && ParentEventTemplateId == requestedEventTemplateId;
+    }
+
+    private bool IsCurrentSessionTemplatePreviewRequest(int requestVersion, Guid requestedTemplateId)
+    {
+        return requestVersion == _sessionTemplatePreviewRequestVersion
+            && _model.SessionTemplateId == requestedTemplateId;
+    }
+
+    private void ClearSessionTemplateState(bool clearParent)
+    {
+        _model.SessionTemplateId = null;
+        _selectedSessionTemplate = null;
+        _sessionTemplates.Clear();
+        _sessionTemplateLoadError = null;
+        _isLoadingSessionTemplates = false;
+        _isLoadingSessionTemplatePreview = false;
+        if (clearParent)
+        {
+            _loadedParentEventTemplateId = null;
+        }
+    }
 }
