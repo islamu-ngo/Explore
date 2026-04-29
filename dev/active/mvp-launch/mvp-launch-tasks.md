@@ -68,45 +68,48 @@ ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24; Update
 
 ## Tier 1A — Hard Launch Blockers
 
-### WP-1: Infrastructure Fixes ⏳ NOT STARTED (1-2 days)
+### WP-1: Infrastructure Fixes ✅ IMPLEMENTED — Docker smoke blocked locally (1-2 days)
+
+> **2026-04-29 implementation note:** WP-1 code changes are implemented and compiler/unit-style verification is green. Docker/Testcontainers verification is blocked in the current local environment because `docker info` fails with `Docker Desktop is unable to start` / `qemu: process terminated unexpectedly`; rerun Docker-dependent smoke and integration checks once Docker is healthy.
 
 #### WP-1.4: Fix Broken Email Promise (DO THIS FIRST)
-- [ ] Open `Explore.Blazor.Client/Pages/Events/Components/EventRegistration.razor`
-- [ ] Line 87: Remove "You will receive a confirmation email shortly."
-- [ ] Replace with: "Your registration has been confirmed."
-- [ ] Run Blazor client tests — no regressions
+- [x] Open `Explore.Blazor.Client/Pages/Events/Components/EventRegistration.razor`
+- [x] Line 87: Remove "You will receive a confirmation email shortly."
+- [x] Replace with: "Your registration has been confirmed."
+- [x] Run Blazor client tests — no regressions
 - Acceptance: No false promises in UI
 
 #### WP-1.1: Fix Blazor Dockerfile .NET Version
-- [ ] Open `Explore.Blazor/Dockerfile`
-- [ ] Line 6: `FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base` → `10.0`
-- [ ] Line 12: `FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build` → `10.0`
-- [ ] Verify `Explore.API/Dockerfile` already uses 10.0 ✅
+- [x] Open `Explore.Blazor/Dockerfile`
+- [x] Line 6: `FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base` → `10.0`
+- [x] Line 12: `FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build` → `10.0`
+- [x] Verify `Explore.API/Dockerfile` already uses 10.0 ✅
+- [ ] Docker build verification — blocked locally by Docker Desktop/QEMU startup failure
 - Acceptance: `docker build` succeeds for both Dockerfiles
 
 #### WP-1.2: Configure DataProtection Key Persistence
-- [ ] Add `Microsoft.AspNetCore.DataProtection.EntityFrameworkCore` v10.0.5 to `Explore.Persistence` and `Explore.Blazor`
-- [ ] **Do NOT add to Explore.API** (API is bearer-only, never needs BFF key ring)
-- [ ] Create `Explore.Persistence/DataProtectionKeyContext.cs`:
+- [x] Add `Microsoft.AspNetCore.DataProtection.EntityFrameworkCore` to `Explore.Persistence` and `Explore.Blazor` (central package version currently 10.0.7)
+- [x] **Do NOT add to Explore.API** (API is bearer-only, never needs BFF key ring)
+- [x] Create `Explore.Persistence/DataProtectionKeyContext.cs`:
   - Separate DbContext implementing `IDataProtectionKeyContext`
   - NOT on `ExploreDbContext` (keys are global, not tenant-scoped)
   - `DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();`
   - ABOUTME header, file-scoped namespace
-- [ ] Register `DataProtectionKeyContext` in DI with `UseNpgsql(DefaultConnection)`
-- [ ] Create EF migration: `--context DataProtectionKeyContext --output-dir Migrations/DataProtection`
-- [ ] Register in `Explore.Blazor/Program.cs` ONLY:
+- [x] Register `DataProtectionKeyContext` in DI with `UseNpgsql(DefaultConnection)`
+- [x] Create EF migration: `--context DataProtectionKeyContext --output-dir Migrations/DataProtection`
+- [x] Register in `Explore.Blazor/Program.cs` ONLY:
   ```csharp
   builder.Services.AddDataProtection()
       .SetApplicationName("islamu-event")
       .PersistKeysToDbContext<DataProtectionKeyContext>();
   ```
-- [ ] Verify migration auto-applies via `Event.MigrationService`
-- [ ] Run build — no errors
-- [ ] Run all test projects — no regressions
+- [x] Verify migration auto-applies via `Event.MigrationService` wiring
+- [x] Run build — no errors
+- [ ] Run all test projects — Docker/Testcontainers suites blocked locally; non-Docker build, architecture tests, and Blazor client tests pass
 - Acceptance: Gate B passes — sessions survive restart
 
 #### WP-1.3: Add Redis to docker-compose.yml (with graceful degradation)
-- [ ] Add Redis service:
+- [x] Add Redis service:
   ```yaml
   redis:
     image: redis:7-alpine
@@ -118,17 +121,18 @@ ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24; Update
       interval: 5s
       retries: 5
   ```
-- [ ] Add `redis_data` to volumes section
-- [ ] Wire Redis connection for Blazor service
-- [ ] **Verify in-memory fallback works:** remove Redis → app still starts and works
-- [ ] **Verify startup log:** app logs effective cache backend (Redis vs in-memory)
-- [ ] **Verify degradation warning:** if Redis configured but unavailable, log warning (not crash)
+- [x] Add `redis_data` to volumes section
+- [x] Wire Redis connection for Blazor service
+- [x] Implement in-memory fallback path when Redis is absent or unavailable
+- [x] Implement startup log for effective cache backend (Redis with fallback vs memory)
+- [x] Implement degradation warning when Redis is configured but unavailable
+- [ ] Runtime Docker verification of Redis/fallback behavior — blocked locally by Docker Desktop/QEMU startup failure
 - Acceptance: Gate A passes — works with or without Redis
 
 #### Post-WP-1: Deploy Smoke Test
-- [ ] Run `docker compose up` → all services healthy
-- [ ] Login → navigate → restart → login persists (Gate B)
-- [ ] Redis down → app still works (Gate A degradation)
+- [ ] Run `docker compose up` → all services healthy — blocked locally by Docker Desktop/QEMU startup failure
+- [ ] Login → navigate → restart → login persists (Gate B) — pending Docker/runtime verification
+- [ ] Redis down → app still works (Gate A degradation) — pending Docker/runtime verification
 
 ---
 
@@ -150,53 +154,55 @@ ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24; Update
 ### WP-14: Email Unsubscribe & GDPR Compliance (1.5 days)
 
 > **CRITICAL:** Must land BEFORE WP-3 ships any email. GDPR + CAN-SPAM violation without it.
+>
+> **2026-04-29 implementation note:** WP-14 foundation is implemented through the preference schema, DataProtection-backed unsubscribe tokens, and anonymous GET/POST unsubscribe endpoint. Header injection and dispatch-time consent remain open because the repository does not yet contain `RegistrationConfirmedEmailBuilder` or `RegistrationConfirmedOutboxHandler`; those should be completed when WP-3 introduces the registration-confirmation email flow.
 
 #### WP-14.0: Reconcile Existing Track
-- [ ] Read `dev/active/organizer-email-consent/` — merge any existing scope
-- [ ] Confirm no duplicated effort with existing notification preference work
+- [x] Read `dev/active/organizer-email-consent/` — merge any existing scope
+- [x] Confirm no duplicated effort with existing notification preference work
 - Acceptance: No scope overlap
 
 #### WP-14.1: Notification Preferences Schema
-- [ ] Check if `UserNotificationPreferences` already exists — reuse if present
-- [ ] Required preference categories: `registration-confirmations` (opt-in), `organizer-announcements` (opt-in)
-- [ ] Future categories (schema only): `event-reminders`, `event-updates`
-- [ ] Table columns: `UserId` (FK), `Category` (string), `IsEnabled` (bool), `UpdatedAt`, `UpdatedBy`
-- [ ] EF migration if new table
+- [x] Check if `UserNotificationPreferences` already exists — reuse if present
+- [x] Required preference categories: `registration-confirmations` (opt-in), `organizer-announcements` (opt-in)
+- [x] Future categories (schema only): `event-reminders`, `event-updates`
+- [x] Table columns: `UserId` (FK), `Category` (string), `IsEnabled` (bool), `UpdatedAt`, `UpdatedBy`
+- [x] EF migration if new table
 - Acceptance: Preference table exists with required categories
 
 #### WP-14.2: Unsubscribe Token Service
-- [ ] Create `Explore.Infrastructure/Mail/Unsubscribe/UnsubscribeTokenService.cs`
-- [ ] Use `ITimeLimitedDataProtector` (180-day token lifetime, reuses WP-1.2 DataProtection keys)
-- [ ] Token payload: `{ userId, category, tenantId, issuedAt }`
-- [ ] Timing-safe validation; invalid/expired → treat as "already unsubscribed"
-- [ ] Unit test: token round-trip, expiration, tamper detection
+- [x] Create `Explore.Infrastructure/Mail/Unsubscribe/UnsubscribeTokenService.cs`
+- [x] Use `ITimeLimitedDataProtector` (180-day token lifetime, reuses WP-1.2 DataProtection keys)
+- [x] Token payload: `{ userId, category, tenantId, issuedAt }`
+- [x] Timing-safe validation; invalid/expired → treat as "already unsubscribed"
+- [x] Unit test: token round-trip, expiration, tamper detection
 - Acceptance: Tokens encrypt/decrypt correctly; tampered tokens fail safely
 
 #### WP-14.3: Unsubscribe Endpoint (GET + POST)
-- [ ] Create `Explore.API/Controllers/EmailUnsubscribeController.cs`
-- [ ] `GET /api/email/unsubscribe?token=...` → `[AllowAnonymous]` + rate-limited (`global` policy)
-- [ ] Returns branded confirmation page with CTA to re-subscribe or manage preferences
-- [ ] `POST /api/email/unsubscribe?token=...` → RFC 8058 `List-Unsubscribe=One-Click` compliance
-- [ ] Updates `UserNotificationPreferences` for (userId, category)
+- [x] Create `Explore.API/Controllers/EmailUnsubscribeController.cs`
+- [x] `GET /api/email/unsubscribe?token=...` → `[AllowAnonymous]` + rate-limited (`global` policy)
+- [ ] Returns branded confirmation page with CTA to re-subscribe or manage preferences — endpoint foundation returns JSON status; branded page remains UI follow-up
+- [x] `POST /api/email/unsubscribe?token=...` → RFC 8058 `List-Unsubscribe=One-Click` compliance
+- [x] Updates `UserNotificationPreferences` for (userId, category)
 - [ ] Writes audit log entry (`PreferenceChange`, actor=system, delegated=token-subject)
 - Acceptance: Both GET and POST unsubscribe work; preference updated
 
 #### WP-14.4: Email Header Injection
-- [ ] Update `RegistrationConfirmedEmailBuilder` to accept injected unsubscribe URL
-- [ ] Set SMTP headers: `List-Unsubscribe: <url>, <mailto:...>` + `List-Unsubscribe-Post: List-Unsubscribe=One-Click`
-- [ ] Render same URL in visible email footer
+- [ ] Update `RegistrationConfirmedEmailBuilder` to accept injected unsubscribe URL — pending WP-3 email builder creation
+- [ ] Set SMTP headers: `List-Unsubscribe: <url>, <mailto:...>` + `List-Unsubscribe-Post: List-Unsubscribe=One-Click` — transport supports `EmailMessage.CustomHeaders`; pending WP-3 builder/dispatcher
+- [ ] Render same URL in visible email footer — pending WP-3 email template
 - Acceptance: Email contains valid List-Unsubscribe headers
 
 #### WP-14.5: Dispatch-Time Consent Check
-- [ ] In `RegistrationConfirmedOutboxHandler` (WP-3.5): query preferences before sending
-- [ ] Skip + log if user opted-out of "registration-confirmations"
-- [ ] Emit `outbox.messages.skipped_opt_out` counter
+- [ ] In `RegistrationConfirmedOutboxHandler` (WP-3.5): query preferences before sending — pending WP-3 handler creation
+- [ ] Skip + log if user opted-out of "registration-confirmations" — preference repository is available for WP-3
+- [ ] Emit `outbox.messages.skipped_opt_out` counter — pending WP-3 handler/metrics wiring
 - Acceptance: Opted-out users don't receive emails
 
 #### WP-14.6: Tests
-- [ ] Unit: token round-trip, expiration, tamper detection
-- [ ] Integration: end-to-end unsubscribe via GET + POST
-- [ ] Integration: handler skips dispatch when user opted-out
+- [x] Unit: token round-trip, expiration, tamper detection
+- [ ] Integration: end-to-end unsubscribe via GET + POST — pending Docker/Testcontainers availability or non-container API test harness
+- [ ] Integration: handler skips dispatch when user opted-out — pending WP-3 registration email handler
 - Acceptance: All tests pass
 
 **Acceptance:** Gate C + Gate E "unsubscribe works" pass.

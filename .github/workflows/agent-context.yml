@@ -54,4 +54,4 @@ jobs:
       # Non-context tests in this project are expected to pass as well; if any unrelated failure blocks the PR,
       # fix those in a dedicated change rather than relaxing this gate.
       - name: Run Event.Architecture.Tests
-        run: dotnet test Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --no-build --verbosity quiet
+        run: dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --no-build --verbosity quiet

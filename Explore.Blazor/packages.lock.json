@@ -56,6 +56,24 @@
           "Microsoft.AspNetCore.Components.WebAssembly": "10.0.7"
         }
       },
+      "Microsoft.AspNetCore.DataProtection.EntityFrameworkCore": {
+        "type": "Direct",
+        "requested": "[10.0.7, )",
+        "resolved": "10.0.7",
+        "contentHash": "chFGlgGqA0/CuB3a9yEosU13C29U4u7etvKtn92U3sXjjECrwy5PsDUU4SIuExE9Y1s+v0sOBb+6k7x26JJp+g==",
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore": "10.0.7"
+        }
+      },
+      "Microsoft.Extensions.Caching.StackExchangeRedis": {
+        "type": "Direct",
+        "requested": "[10.0.7, )",
+        "resolved": "10.0.7",
+        "contentHash": "TvD0totA8qeyrZ2YeY/qRNgYBy4BvO6dG59ziJDLVnLH4s2jeLUFEFcgA3xzqPhCMMbuz9bJTRwHxkZ/7c87jQ==",
+        "dependencies": {
+          "StackExchange.Redis": "2.7.27"
+        }
+      },
       "Microsoft.Extensions.Http": {
         "type": "Direct",
         "requested": "[10.0.7, )",
@@ -272,14 +290,6 @@
         "type": "Transitive",
         "resolved": "10.1.0",
         "contentHash": "+T2Ax2fgw7T7nlhio+ZtgSyYGfevHCOXNPqO0vxA+f2HmbtfwAnIwHEE/jm1/4uFRDDP8PEENpxAhbucg+wUWg=="
-      },
-      "Microsoft.Extensions.Caching.StackExchangeRedis": {
-        "type": "Transitive",
-        "resolved": "10.0.5",
-        "contentHash": "zXb143/TpEKOLQuWGw2CkJgb9F4XXh2XbevMvppzsIHr1/pjML0zjc+vzXcpCV8YUwpW5NIaScZhzFSm621B3Q==",
-        "dependencies": {
-          "StackExchange.Redis": "2.7.27"
-        }
       },
       "Microsoft.Extensions.DependencyInjection.AutoActivation": {
         "type": "Transitive",
@@ -615,7 +625,6 @@
       "explore.domain": {
         "type": "Project",
         "dependencies": {
-          "Microsoft.EntityFrameworkCore": "[10.0.7, )",
           "Microsoft.Extensions.Compliance.Abstractions": "[9.9.0, )"
         }
       },
@@ -802,15 +811,6 @@
         "requested": "[10.0.7, )",
         "resolved": "10.0.7",
         "contentHash": "lsMCW7OvNpgtUCDCcuoJvDwoKG6RZxuAdJ9nWfhzSSqlv5CemHFuGKwVO9kOtAk7YE6ITcQrjIG8RhSAQRT2MA=="
-      },
-      "Microsoft.AspNetCore.DataProtection.EntityFrameworkCore": {
-        "type": "CentralTransitive",
-        "requested": "[10.0.7, )",
-        "resolved": "10.0.7",
-        "contentHash": "chFGlgGqA0/CuB3a9yEosU13C29U4u7etvKtn92U3sXjjECrwy5PsDUU4SIuExE9Y1s+v0sOBb+6k7x26JJp+g==",
-        "dependencies": {
-          "Microsoft.EntityFrameworkCore": "10.0.7"
-        }
       },
       "Microsoft.CodeAnalysis.Common": {
         "type": "CentralTransitive",
