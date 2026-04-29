@@ -1,4 +1,4 @@
-{
+﻿{
   "openapi": "3.1.1",
   "info": {
     "title": "Event API",
@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "https://localhost:39641/"
+      "url": "http://localhost/"
     }
   ],
   "paths": {
@@ -4556,6 +4556,116 @@
               "text/json; v=0.1": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Public"
+      }
+    },
+    "/api/email/unsubscribe": {
+      "get": {
+        "tags": [
+          "EmailUnsubscribe"
+        ],
+        "summary": "Get Email Unsubscribe Status",
+        "description": "Validates an unsubscribe token and returns the confirmation state without changing preferences.",
+        "operationId": "GetEmailUnsubscribe",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailUnsubscribeResponseDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailUnsubscribeResponseDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailUnsubscribeResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "x-endpoint-class": "Public"
+      },
+      "post": {
+        "tags": [
+          "EmailUnsubscribe"
+        ],
+        "summary": "One-Click Email Unsubscribe",
+        "description": "Processes RFC 8058 one-click unsubscribe POSTs and manual confirmation posts.",
+        "operationId": "OneClickEmailUnsubscribe",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailUnsubscribeResponseDto"
+                }
+              },
+              "application/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailUnsubscribeResponseDto"
+                }
+              },
+              "text/json; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailUnsubscribeResponseDto"
                 }
               }
             }
@@ -31284,19 +31394,6 @@
         },
         "x-endpoint-class": "Public"
       }
-    },
-    "/admin/migrate": {
-      "post": {
-        "tags": [
-          "Explore.API"
-        ],
-        "operationId": "ApplyDatabaseMigrations",
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
     }
   },
   "components": {
@@ -36321,6 +36418,37 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "EmailUnsubscribeResponseDto": {
+        "required": [
+          "status",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "category": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isSubscribed": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "requiresConfirmation": {
+            "type": "boolean",
+            "default": false
           }
         }
       },
@@ -49296,6 +49424,9 @@
       "name": "DidCustodyType"
     },
     {
+      "name": "EmailUnsubscribe"
+    },
+    {
       "name": "EventAgendaItem"
     },
     {
@@ -49468,9 +49599,6 @@
     },
     {
       "name": "VisibilityType"
-    },
-    {
-      "name": "Explore.API"
     }
   ]
 }

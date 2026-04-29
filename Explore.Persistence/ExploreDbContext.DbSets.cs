@@ -151,6 +151,7 @@ public partial class ExploreDbContext
     public DbSet<OrganizationSetting> OrganizationSettingOverrides { get; set; }
     public DbSet<GroupSetting> GroupSettingOverrides { get; set; }
     public DbSet<UserPreference> UserPreferences { get; set; }
+    public DbSet<UserNotificationPreference> UserNotificationPreferences { get; set; }
     public DbSet<AppSetting> AppSettings { get; set; }
     public DbSet<SecretBinding> SecretBindings { get; set; }
     public DbSet<ConfigurationChangeLog> ConfigurationChangeLogs { get; set; }
