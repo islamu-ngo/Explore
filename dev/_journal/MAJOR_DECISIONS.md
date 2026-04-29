@@ -1,6 +1,62 @@
 # Major Decisions
 
-Last Updated: 2026-04-24 Europe/Brussels
+Last Updated: 2026-04-28 Europe/Brussels
+
+## 2026-04-28 Europe/Brussels - Organizer Email Consent: Event-Triggered, Organizer-Scoped Sharing
+
+### Consent Is Scoped to Recipient Actor + Purpose, Not to Each Event
+
+- **Decision:** A user's opt-in email-sharing consent is unique per `(TenantId, UserId, RecipientActorId, PurposeCode)`. `SourceEventId` and `SourceEventRegistrationIntentId` are audit context showing where the consent was collected; they are not part of the uniqueness boundary.
+- **Why:** The user-facing promise is "share my email with this organizer for future events and related updates," not "share my email for this one event only." Organizer-scoped consent prevents duplicate prompts across events by the same approved organization while still preserving the event/registration that collected the opt-in.
+- **Impact:** `EventContactShareConsentConfiguration` enforces `ix_eventcontactshareconsents_scope_unique` on tenant + user + recipient actor + purpose. Registration integration calls `IContactShareConsentService.ProcessRegistrationConsent(...)` after the registration intent succeeds and stores the parent `EventRegistrationIntent` id as audit context because a single intent can create multiple child registration rows; failures are logged but never roll back registration.
+- **Consequence:** Any future consent status endpoint or UI must reason from the publisher actor, not only the event id. Event ids are filters/audit metadata, not consent identity.
+
+### Email Sharing Uses Snapshots and Status Lifecycle, Not Live PII or Soft Delete
+
+- **Decision:** Granted consent stores `EmailSnapshot`, `EmailNormalizedSnapshot`, `ConsentTextSnapshot`, `ConsentUiVersion`, and `GrantedAt`. Withdrawal sets `Status = Withdrawn` and `WithdrawnAt`; consent rows are not soft-deleted and exported emails are copied into `EventContactShareExportItem.EmailSnapshot`.
+- **Why:** Consent and export records are evidence. They must reflect exactly what was shown and shared at the time, independent from later user email changes, profile deletion workflows, or export-time mutations.
+- **Impact:** The Connected Apps settings UI lets users withdraw future platform sharing, and organization exports include only currently granted consents. Export audit headers/items preserve who exported, when, in what format, how many rows, and which email snapshots were emitted.
+- **Consequence:** Future privacy work must distinguish platform visibility withdrawal from external mailing-list deletion. The UI copy intentionally warns that withdrawal does not guarantee removal from lists already compiled outside the platform.
+
+### Only Approved Organization Actors Can Receive Registration-Time Email Consent
+
+- **Decision:** Registration-time consent is processed only when the event publisher resolves through `Event.ActorId -> Actor.OrganizationId -> Organization` and that organization is approved. The schema remains actor-based (`RecipientActorId`) for future extensibility, but current business logic restricts recipients to approved organizations.
+- **Why:** Email sharing with unverified or non-organization actors creates avoidable privacy risk. Actor-based storage avoids a schema redesign if future recipient types are deliberately introduced.
+- **Impact:** `ContactShareConsentService` returns a safe no-op for unapproved/non-organization publishers. The registration handler wraps consent processing in a fail-safe try/catch so consent infrastructure cannot break event registration.
+- **Consequence:** New recipient types require an explicit policy decision, Cerbos policy update, and UI copy review; they must not be enabled by merely passing a different actor id.
+
+## 2026-04-27 Europe/Brussels - Multi-Theme Appearance: Presets vs. Profiles Architecture
+
+### Presets Are Templates; Profiles Are Snapshots; Active Preference Points to a Profile
+
+- **Decision:** When a user selects a theme, the system clones the preset into a `UserAppearanceProfile` (with palette snapshots and lineage tracking). The `UserAppearancePreference.ActiveProfileId` points to this clone, never to the original preset. Tenant changes, deletions, or restrictions cannot break a user's UI.
+- **Why:** The original `UiTheme` entity mixed too many concepts — system preset, tenant custom, selectable theme, active user theme, mutable admin object. Mixing these made it impossible to guarantee stability when a tenant modified or deleted a theme that users had selected.
+- **Impact:** Three new domain entities (`UiThemePreset`, `UserAppearanceProfile`, `UserAppearancePreference`), three new repositories, full EF Core configuration, 4 built-in presets seeded deterministically via `LookupTableSeeder`, `IAppearanceResolutionService` with 6-tier fallback chain, 9 API endpoints, 9 BFF proxy endpoints, `IAppearanceThemeService` Blazor state service with reactive `Changed` event, `ThemeQuickSwitcher` component, rewritten `SettingsAppearance` page.
+- **Consequence:** `DefaultThemeId` on `UserAppearancePreference` is now `ActiveProfileId` (points to a profile, not a theme). Old `appearance.default_theme_id` setting key is `[Obsolete]` but still exists for backward compat. `UiTheme` entity/table preserved for migration — not deleted.
+
+### Blazor Client Is the Runtime Authority for System Dark Mode
+
+- **Decision:** `ServerEffectiveDarkMode` in `ResolvedAppearanceDto` is nullable (`bool?`). The Blazor client calls `MudThemeProvider.GetSystemDarkModeAsync()` when `ThemeMode == System` to determine the effective mode at runtime.
+- **Why:** The server cannot know the browser's preferred color scheme at request time. Only the client-side `prefers-color-scheme` media query can resolve "System" mode.
+- **Impact:** `ResolveEffectiveDarkModeAsync(MudThemeProvider)` on `IAppearanceThemeService` is the single source of truth. SSR bootstrap relies on cookie hints (`theme=dark/light`); InteractiveServer resolves the full truth.
+
+### BFF Proxies All Appearance API Calls; Anonymous Users Get Cookie-Based Fallback
+
+- **Decision:** The Blazor client never calls `api/user/appearance/*` directly. All calls go through `/bff/appearance/*` endpoints in `BffPreferenceEndpoints.cs`. For authenticated users, requests are proxied to the API. For anonymous users, a `ResolvedAppearanceDto` is constructed from cookies.
+- **Why:** The BFF pattern keeps auth tokens on the server side and provides a consistent API surface. Cookie-based fallback enables SSR to render correct theming before authentication.
+- **Impact:** 9 new BFF endpoints. Anonymous theme/direction/language cookies are set and read by the BFF, mirroring the existing `/bff/theme`, `/bff/language`, `/bff/direction` pattern.
+
+### ThemeQuickSwitcher Is Self-Contained; No Parent Callbacks
+
+- **Decision:** The `ThemeQuickSwitcher` component injects `IAppearanceThemeService` directly and calls `SetThemeModeAsync()` on mode selection. The old `[Parameter] EventCallback OnToggleTheme` on `NavMenu` was removed.
+- **Why:** Reactive state management via `IAppearanceThemeService.Changed` event means any component can react to theme changes without parent-child callback chains. The switcher doesn't need to know about `MainLayout` or vice versa.
+- **Impact:** `NavMenu` no longer has `OnToggleTheme`. `MainLayout` subscribes to `Changed` and updates `_theme`/`_isDarkMode` in the handler. The floating chrome-less toggle in `MainLayout` still calls `DarkModeToggle()` directly (for setup/onboarding pages that don't show the navbar).
+
+### Client DTOs Duplicate Server DTOs Due to Architecture Boundary
+
+- **Decision:** `Explore.Blazor.Client/Services/Appearance/AppearanceDtos.cs` contains client-side DTOs (`ResolvedAppearanceDto`, `AvailablePresetDto`, `UserAppearanceProfileDto`, `ClientPaletteDto`, etc.) that mirror server-side DTOs in `Explore.Application.DTOs.Appearance`. The Blazor.Client project cannot reference `Explore.Application` (Clean Architecture boundary).
+- **Why:** The Blazor.Client project uses direct `HttpClient` calls to BFF endpoints rather than the NSwag-generated `IEventApiClient`. The NSwag client doesn't have the new appearance endpoints yet. When regen happens, some of these client DTOs can potentially be replaced by generated types.
+- **Impact:** Class name collisions (`CS0104`) in `BffPreferenceEndpoints.cs` which imports both namespaces. Fixed by using only `Explore.Application.DTOs.Appearance` in the BFF project.
 
 ## 2026-04-24 Europe/Brussels - AI-Native Contribution System (Context Contract as Primary Abstraction)
 

@@ -77,4 +77,4 @@ When an entry has been referenced by ≥2 subsequent entries, cited in a PR revi
 - [`dev/_journal/FINDING_TEMPLATE.md`](../../dev/_journal/FINDING_TEMPLATE.md)
 - [`dev/_journal/PROMOTION_RULES.md`](../../dev/_journal/PROMOTION_RULES.md)
 - [`AGENTS.md`](../../AGENTS.md) §8 Memory & Findings.
-- [`/bootstrap`](bootstrap.md) Step 8 — closing the loop on a change.
+- [`CLAUDE.md`](../../CLAUDE.md) — closing the loop on a change.

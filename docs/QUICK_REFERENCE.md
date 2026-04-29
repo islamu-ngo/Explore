@@ -10,7 +10,7 @@ ABOUTME: Focuses on non-inferable constraints and project-specific behavior.
 4. Use `Guid` for core aggregates, `int` for most lookup IDs, `long` only for size/cursor style fields.
 5. Do not rely on implicit business defaults in entities; set values in handler or EF config.
 6. Keep file-scoped namespaces for new C# files.
-7. Avoid deleting seemingly unused `using` statements blindly; verify build/test impact first.
+7. Avoid deleting seemingly unused `using` statements blindly.
 8. `GET` endpoints are typically `[AllowAnonymous]`; write endpoints are protected with `[Authorize]`.
 9. User ID fallback order is `sub` -> `nameidentifier` -> `sid`.
 10. HAL responses are default; `Prefer: return=minimal` can remove link-heavy payloads.

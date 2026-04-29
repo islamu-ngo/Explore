@@ -419,11 +419,62 @@ Admin settings management:
 5. Check setup-secret mode if onboarding is blocked.
 6. Check `islamu_tms_fallback_activated_total` if localization is degraded — flip force-offline if needed.
 
-## Related
+## Verification Policy (Execution Baseline)
 
-- [CONFIGURATION.md](CONFIGURATION.md)
-- [SECURITY.md](SECURITY.md)
-- [MULTI_TENANCY.md](MULTI_TENANCY.md)
+Every session **must** start with a green build before making changes. Every PR **must** leave the build and its declared minimum tests green.
+
+**Shortcut:** the `/check` slash command runs the build + per-project tests in one go.
+
+### Full Project Test List
+
+Run each test project individually (no solution-level `dotnet test`):
+
+```bash
+dotnet test --project Event.Application.UnitTests/Event.Application.UnitTests.csproj --configuration Release --verbosity quiet
+dotnet test --project Event.Domain.UnitTests/Event.Domain.UnitTests.csproj --configuration Release --verbosity quiet
+dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet
+dotnet test --project Explore.Secrets.UnitTests/Explore.Secrets.UnitTests.csproj --configuration Release --verbosity quiet
+dotnet test --project Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj --configuration Release --verbosity quiet
+dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --verbosity quiet
+dotnet test --project Explore.Blazor.IntegrationTests/Explore.Blazor.IntegrationTests.csproj --configuration Release --verbosity quiet
+dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet
+dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet
+```
+
+`Explore.Blazor.Client.E2ETests` requires running infrastructure (Aspire AppHost) and is not included in standard test runs.
+
+## AI Agent Operational Rules
+
+### Subagent Delegation
+
+- **Prefer subagents over direct work** when a domain match exists. Index: [`.claude/agents/`](.claude/agents/) and [`.claude/agents/README.md`](.claude/agents/README.md).
+- Every `task()` call **must** include `load_skills=[...]` and `run_in_background=<bool>`.
+- Store every returned `session_id` — continuing the same subagent saves 70%+ tokens.
+
+### MCP Tool Use
+
+| MCP Server | Use For |
+|---|---|
+| Context7 | Library docs, configuration references, pinned API versions |
+| Tavily | Web research, scraping, extraction |
+| Sequential Thinking | Multi-step architecture / debugging / tradeoff analysis |
+| At-Explore | ATProto / ActivityPub integration & debugging |
+| Playwriter | Blazor UI testing & visual inspection |
+| Chrome-DevTools | Frontend / network / performance inspection |
+| GitKraken | Branches, commits, PRs, stashing |
+| Aspire | Distributed-app orchestration |
+
+### Session Memory
+
+- **Short-term** (this session's plan + tasks): `dev/active/<task-name>/` — see [`dev/active/README.md`](dev/active/README.md).
+- **Durable** (findings, patterns, decisions): [`dev/_journal/journal.md`](dev/_journal/journal.md), [`dev/_journal/MAJOR_DECISIONS.md`](dev/_journal/MAJOR_DECISIONS.md).
+
+### Todo Discipline
+
+- Create todos IMMEDIATELY for any multi-step task (2+ steps). Use the `todowrite` tool.
+- Mark exactly ONE todo `in_progress` at a time.
+- Mark `completed` as soon as done — do not batch.
+
 
 ## Partitioning Strategy — Planned
 

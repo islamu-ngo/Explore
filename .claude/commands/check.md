@@ -79,5 +79,5 @@ Run the full list only when the change touches multiple layers or you are about 
 - [`AGENTS.md`](../../AGENTS.md) §7 — canonical command source.
 - [`CLAUDE.md`](../../CLAUDE.md) — Claude-specific notes.
 - [`docs/TROUBLESHOOTING.md`](../../docs/TROUBLESHOOTING.md) — common failure modes.
-- [`/bootstrap`](bootstrap.md) — full cold-start workflow (includes this step).
+- [`CLAUDE.md`](../../CLAUDE.md) — full cold-start workflow (includes this step).
 - [`/review-pr`](review-pr.md) — pre-PR checklist.

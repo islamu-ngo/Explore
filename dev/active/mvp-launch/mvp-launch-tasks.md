@@ -1,9 +1,9 @@
 ABOUTME: Checklist for all MVP launch work packages with acceptance criteria and release gates.
-ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24 with codebase audit findings (25 WPs, 7 gates).
+ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24; Updated 2026-04-28 (Enterprise Grade Alignment).
 
 # MVP Launch — Task Checklist
 
-> **Last Updated:** 2026-04-24 (25 WPs, 7 gates, 6 tiers)
+> **Last Updated:** 2026-04-28 (25 WPs, 7 gates, 7 tiers)
 
 ---
 
@@ -145,184 +145,9 @@ ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24 with co
 
 ---
 
-## Tier 2 — Must-Do Before First Real Users
+## Tier 2 — Enterprise Core & Compliance ⏳ NOT STARTED (4-5 days)
 
-### WP-6: Calendar Integration — iCal/.ics ⏳ NOT STARTED (1-2 days)
-
-#### WP-6.1: Add Ical.Net NuGet Package
-- [ ] `dotnet add Explore.API package Ical.Net`
-- Acceptance: Package restores and builds
-
-#### WP-6.2: API — Calendar Endpoint
-- [ ] Add `GET /api/event/{id}/calendar` to `EventController`
-- [ ] `[AllowAnonymous]`
-- [ ] `Content-Type: text/calendar; charset=utf-8`
-- [ ] `Content-Disposition: attachment; filename="{sanitized-slug}.ics"`
-- [ ] VEVENT: SUMMARY, DTSTART/DTEND (UTC), LOCATION, DESCRIPTION, URL (canonical), UID (event GUID)
-- [ ] Non-negotiable checks:
-  - [ ] UID = event GUID (stable, not random)
-  - [ ] All timestamps UTC normalized
-  - [ ] Filename sanitized (strip special chars)
-  - [ ] 404 for Draft, Archived, non-existent
-  - [ ] Canonical URL matches `GetCanonicalUrl()` pattern
-- [ ] Route name: `RouteNames.GetEventCalendar`
-- Acceptance: .ics opens correctly in Calendar apps
-
-#### WP-6.3: Blazor — Calendar Buttons
-- [ ] `EventDetail.razor`: "Add to Calendar" button → `/api/event/{id}/calendar`
-- [ ] `MyRegistrations.razor`: per-event calendar icon button
-- [ ] Post-registration success (WP-5): calendar button
-- [ ] Optional: Google Calendar URL link
-- Acceptance: Calendar buttons work from 3 touchpoints
-
-#### WP-6.4: NSwag Client Regeneration
-- [ ] Export OpenAPI (run API)
-- [ ] Rebuild Blazor client (regenerates `EventApiClient.g.cs`)
-- [ ] Fix consuming code
-- [ ] Run client tests
-- Acceptance: Client builds cleanly
-
-#### WP-6.5: Tests
-- [ ] Integration: valid .ics with correct Content-Type
-- [ ] 404 for Draft/Archived events
-- [ ] UTC timestamps correct
-- Acceptance: Tests pass
-
-### WP-7: Event Sharing — Verification ⏳ NOT STARTED (0.5 day)
-
-> **EXISTS:** `ShareEventAsync()` + `GetCanonicalUrl()` + OG meta tags
-
-- [ ] Verify share button visible on EventDetail
-- [ ] Check EventCard (list view) — add share icon if missing
-- [ ] Verify canonical URL tenant-aware in multi-tenant
-- [ ] If URL generation duplicated → centralize into shared helper
-- Acceptance: Gate D "user can share" passes
-
-### WP-4: My Registrations — Enhancement ⏳ NOT STARTED (0.5 day)
-
-> **EXISTS:** `Pages/User/MyRegistrations.razor` at `/my/registrations`
-
-- [ ] Verify NavMenu/user menu link — add if missing
-- [ ] Verify discoverability from nav AND post-registration flow
-- [ ] Add "Add to Calendar" icon per registration card (after WP-6)
-- [ ] Verify empty state UX
-- Acceptance: Gate D "user can view registration later" passes
-
-### WP-5: Post-Registration Confirmation UX ⏳ NOT STARTED (1 day)
-
-> Enhance `EventRegistration.razor` success state (lines 77-96)
-
-- [ ] Add "Add to Calendar" button (WP-6 dependency)
-- [ ] Add "Share this Event" button (reuse `ShareEventAsync` pattern)
-- [ ] Add "View My Registrations" link → `/my/registrations`
-- [ ] Keep it lightweight — 3 actions only, no workflow engine
-- [ ] bUnit test for enhanced success state
-- Acceptance: Post-registration has 3 actionable next steps
-
-### WP-3: Registration Confirmation Email ⏳ NOT STARTED (3 days)
-
-#### WP-3.1: Email Template Builder
-- [ ] Create `Explore.Infrastructure/Mail/Templates/RegistrationConfirmedEmailBuilder.cs`
-- [ ] ABOUTME header, file-scoped namespace
-- [ ] String interpolation (no template engine for MVP)
-- [ ] Inputs: event name, date/time, location, organizer, event URL, calendar URL, **unsubscribe URL**
-- [ ] Output: HTML email body
-- [ ] Unsubscribe slot: template renders URL in body footer
-- [ ] Unit test for builder
-- Acceptance: Clean HTML rendered from event data
-
-#### WP-3.2: IOutboxMessageHandler Interface
-- [ ] Create `Explore.Application/Contracts/Outbox/IOutboxMessageHandler.cs`
-  ```csharp
-  public interface IOutboxMessageHandler
-  {
-      string EventType { get; }
-      Task HandleAsync(OutboxMessage message, CancellationToken ct);
-  }
-  ```
-- [ ] ABOUTME header, file-scoped namespace
-- Acceptance: Interface defined
-
-#### WP-3.3: Routing Outbox Message Dispatcher
-- [ ] Create `Explore.Infrastructure/Outbox/RoutingOutboxMessageDispatcher.cs`
-- [ ] Resolves `IEnumerable<IOutboxMessageHandler>` from DI
-- [ ] Routes by `OutboxMessage.EventType` → matching handler
-- [ ] Unhandled types → log warning (no failure, preserves current behavior)
-- [ ] Register as `IOutboxMessageDispatcher` (replaces `LoggingOutboxMessageDispatcher`)
-- [ ] Unit test for routing + fallback behavior
-- Acceptance: Messages route correctly
-
-#### WP-3.4: Wire Registration Handler to Outbox (Reference Payload)
-- [ ] Open `CreateEventRegistrationCommandHandler.cs`
-- [ ] After successful save, create `OutboxMessage`:
-  - `AggregateType = "EventRegistration"`
-  - `AggregateId = registration.Id`
-  - `EventType = "RegistrationConfirmed"`
-  - `Payload = JSON { registrationId, eventId, eventSessionId, userId, tenantId, correlationId }`
-- [ ] **Reference payload only — no presentation data**
-- [ ] Persist via `IOutboxRepository.Create()` in same UoW transaction
-- [ ] Unit test verifying outbox message creation
-- Acceptance: OutboxMessage created atomically with registration
-
-#### WP-3.5: RegistrationConfirmed Handler (Idempotent)
-- [ ] Create `Explore.Infrastructure/Outbox/Handlers/RegistrationConfirmedOutboxHandler.cs`
-- [ ] `EventType = "RegistrationConfirmed"`
-- [ ] **Idempotency:** check if email already sent for this registration before dispatching
-- [ ] **Consent check (WP-14 dependency):** query `UserNotificationPreferencesRepository.GetAsync(userId, "registration-confirmations")` — skip + log if opted-out
-- [ ] Deserialize reference payload → fetch fresh data from repos → build email → send via `IEmailService`
-- [ ] Inject unsubscribe URL from WP-14 token service
-- [ ] Set SMTP headers: `List-Unsubscribe`, `List-Unsubscribe-Post: List-Unsubscribe=One-Click`
-- [ ] Structured logging: `RegistrationId`, `EventId`, `UserId`, `TenantId`, `OutboxMessageId`
-- [ ] Unit test with mocked repos and IEmailService
-- Acceptance: Email sent; no duplicates on replay; unsubscribe respected
-
-#### WP-3.6: Observability
-- [ ] Counter: `outbox.messages.processed` with `{event_type, outcome, tenant_id}`
-- [ ] Counter: `outbox.messages.failed` with `{event_type, tenant_id}`
-- [ ] Counter: `outbox.messages.skipped_opt_out` with `{event_type, category, tenant_id}`
-- [ ] Dead-letter visibility via `GetFailedEntries`
-- Acceptance: Operators can monitor outbox health
-
-#### WP-3.7: Restore Email Promise + Integration Test
-- [ ] Restore line 87: "You will receive a confirmation email shortly."
-- [ ] Integration test: register → outbox message created → handler processes → email sent → unsubscribe link valid
-- [ ] Run all tests
-- Acceptance: Gate C fully passes
-
-### WP-8: HATEOAS Client Alignment ⏳ NOT STARTED (1.5 days)
-
-- [ ] Read `dev/active/hateoas-client-alignment/hateoas-client-alignment-tasks.md`
-- [ ] Phase 2.1: Extract `HasHalLinkInAdditionalProperties` private helper
-- [ ] Phase 2.2: Add `HasHalLink` for `OrganizationDto` and `OrganizationListDto`
-- [ ] Phase 3.1: Remove `CheckEditPermissions()`, delete `currentUserRole`, use `HasHalLink("edit")`
-- [ ] Phase 3.2: Verify `_links` preservation in service
-- [ ] **Grep for `RoleHelper.CanManage` in adjacent pages** — fix any cousins
-- [ ] **Legacy HAL removal (WP-19.7 overlap):** ensure all link policies call `RequirePermission("resource", "action")` explicitly
-- [ ] Phase 4.3: bUnit tests for OrganizationDetails HATEOAS consumption
-- [ ] Run all tests — no regressions
-- Acceptance: No RoleHelper for action gating; HAL links are source of truth
-
-### WP-9: Save Draft vs Publish UX ⏳ NOT STARTED (1-1.5 days)
-
-> **Scope warning:** MVP minimum only. Defer beforeunload and advanced transitions.
-
-#### WP-9.1: MVP — Explicit Buttons
-- [ ] Event create form: "Save as Draft" (secondary) + "Publish" (primary) buttons
-- [ ] Event edit form for Draft: "Save" + "Publish"; for Published: "Save" only
-- [ ] Verify Draft → Published transition works in API handler
-- [ ] bUnit tests for button rendering based on status
-- Acceptance: Organizers choose visibility via explicit button
-
-#### Deferred (post-MVP)
-- `beforeunload` guard for unsaved changes
-- Advanced status transition validation
-- Undo publish
-
----
-
-## Tier 2B — Launch-Blocking Polish (NEW, 2026-04-24)
-
-### WP-14: Email Unsubscribe & GDPR Compliance ⏳ NOT STARTED (1.5 days)
+### WP-14: Email Unsubscribe & GDPR Compliance (1.5 days)
 
 > **CRITICAL:** Must land BEFORE WP-3 ships any email. GDPR + CAN-SPAM violation without it.
 
@@ -376,76 +201,7 @@ ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24 with co
 
 **Acceptance:** Gate C + Gate E "unsubscribe works" pass.
 
-### WP-15: Branded Error Pages ⏳ NOT STARTED (1 day)
-
-#### WP-15.1: 404 Not Found
-- [ ] Create `Explore.Blazor.Client/Pages/Errors/NotFound.razor` with `@page "/errors/404"`
-- [ ] Branded layout: logo, "Page Not Found", search bar, CTAs ("Return Home", "Browse Events")
-- [ ] `<PageTitle>Not Found — {TenantName}</PageTitle>` and `<meta name="robots" content="noindex">`
-- Acceptance: Direct URL to `/nonexistent` shows branded 404
-
-#### WP-15.2: 403 Unauthorized
-- [ ] Create `Explore.Blazor.Client/Pages/Errors/Unauthorized.razor` with `@page "/errors/403"`
-- [ ] CTAs: "Request Access" (if applicable), "Return Home"
-- Acceptance: Auth failure shows branded 403
-
-#### WP-15.3: 500 Server Error
-- [ ] Create `Explore.Blazor.Client/Pages/Errors/ServerError.razor` with `@page "/errors/500"`
-- [ ] Enhance existing `Explore.Blazor/Components/Pages/Error.razor` for branded content
-- [ ] Display correlation ID for support; hide stack traces in production
-- [ ] CTAs: "Return Home", "Contact Support" (prefilled with correlation ID)
-- Acceptance: Server error shows branded 500 with correlation ID
-
-#### WP-15.4: Status Code Pages Middleware
-- [ ] In `Explore.Blazor/Program.cs`: `app.UseStatusCodePagesWithReExecute("/errors/{0}")`
-- [ ] Verify works with Blazor Server interactive routes
-- [ ] Add catch-all route in `Routes.razor` if needed
-- Acceptance: All HTTP errors redirect to branded pages
-
-#### WP-15.5: Tests
-- [ ] bUnit: each error page renders with correct copy + CTA
-- [ ] Integration: `/nonexistent` returns branded 404 page
-- [ ] Integration: unauthenticated `[Authorize]` endpoint returns branded 403
-- Acceptance: Tests pass
-
-**Acceptance:** Gate F "branded error pages" passes.
-
-### WP-16: SEO Foundation ⏳ NOT STARTED (1 day)
-
-#### WP-16.1: Sitemap Controller
-- [ ] Create `Explore.API/Controllers/SitemapController.cs`
-- [ ] `GET /sitemap.xml` → `[AllowAnonymous]`, `Content-Type: application/xml`
-- [ ] Output: static pages + all Published events (respect tenant visibility + soft-delete filter)
-- [ ] Per-URL: `<loc>`, `<lastmod>`, `<changefreq>`, `<priority>`
-- [ ] Tenant-aware: canonical host from current tenant's domain/subdomain
-- [ ] Output-cache 30 minutes
-- Acceptance: `/sitemap.xml` returns valid XML
-
-#### WP-16.2: Robots.txt
-- [ ] Create `Explore.Blazor/wwwroot/robots.txt` (static) OR dynamic controller
-- [ ] Prod: `User-agent: * / Allow: / / Sitemap: https://{host}/sitemap.xml`
-- [ ] Dev: `Disallow: /`
-- Acceptance: `/robots.txt` returns correct content per environment
-
-#### WP-16.3: Canonical URLs on Public Pages
-- [ ] Add `<link rel="canonical">` to: Home, LandingForNonUsers, LandingForUsers, OrganizationProfile, OrganizationDetails, EventList
-- [ ] Centralize canonical URL helper if not already shared
-- Acceptance: Canonical URLs on all public pages
-
-#### WP-16.4: Tests
-- [ ] Integration: `/sitemap.xml` returns valid XML with published events
-- [ ] Integration: Draft/Archived events absent from sitemap
-- [ ] Integration: tenant A sitemap doesn't leak tenant B events
-- [ ] Integration: `/robots.txt` returns expected content
-- Acceptance: Tests pass
-
-**Acceptance:** Gate F "sitemap + robots.txt" passes.
-
----
-
-## Tier 3 — Must-Have Before Public Announcement
-
-### WP-17: Capacity Enforcement & Basic Waitlist ⏳ NOT STARTED (1.5 days)
+### WP-17: Capacity Enforcement & Basic Waitlist (1.5 days)
 
 #### WP-17.1: Capacity Check in Registration Handler
 - [ ] Open `CreateEventRegistrationCommandHandler.cs`
@@ -483,7 +239,7 @@ ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24 with co
 
 **Acceptance:** Gate D "capacity + waitlist + no double-register" passes.
 
-### WP-18: External Dependency Health Checks ⏳ NOT STARTED (1 day)
+### WP-18: External Dependency Health Checks (1 day)
 
 #### WP-18.1: Redis Health Check
 - [ ] Add `.AddRedis(connectionString, tags: ["ready"])` if Redis configured (skip when not configured)
@@ -518,7 +274,7 @@ ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24 with co
 
 **Acceptance:** Gate A "all deps observable via /health" passes.
 
-### WP-19: Security Audit Trail Hardening ⏳ NOT STARTED (1.5 days)
+### WP-19: Security Audit Trail Hardening (1.5 days)
 
 #### WP-19.1: Rate-Limit Setup-Secret Validation
 - [ ] Apply existing `setup_secret` policy to `validate-secret` endpoint and any `X-Setup-Secret` endpoints
@@ -573,7 +329,301 @@ ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24 with co
 
 **Acceptance:** Gate G passes fully.
 
-### WP-20: Public Page SEO & OG Polish ⏳ NOT STARTED (1 day)
+---
+
+## Tier 3 — Core Business Workflows ⏳ NOT STARTED (6-7 days)
+
+### WP-3: Registration Confirmation Email (3 days)
+
+#### WP-3.1: Email Template Builder
+- [ ] Create `Explore.Infrastructure/Mail/Templates/RegistrationConfirmedEmailBuilder.cs`
+- [ ] ABOUTME header, file-scoped namespace
+- [ ] String interpolation (no template engine for MVP)
+- [ ] Inputs: event name, date/time, location, organizer, event URL, calendar URL, **unsubscribe URL**
+- [ ] Output: HTML email body
+- [ ] Unsubscribe slot: template renders URL in body footer
+- [ ] Unit test for builder
+- Acceptance: Clean HTML rendered from event data
+
+#### WP-3.2: IOutboxMessageHandler Interface
+- [ ] Create `Explore.Application/Contracts/Outbox/IOutboxMessageHandler.cs`
+- [ ] ABOUTME header, file-scoped namespace
+- Acceptance: Interface defined
+
+#### WP-3.3: Routing Outbox Message Dispatcher
+- [ ] Create `Explore.Infrastructure/Outbox/RoutingOutboxMessageDispatcher.cs`
+- [ ] Resolves `IEnumerable<IOutboxMessageHandler>` from DI
+- [ ] Routes by `OutboxMessage.EventType` → matching handler
+- [ ] Unhandled types → log warning (no failure, preserves current behavior)
+- [ ] Register as `IOutboxMessageDispatcher` (replaces `LoggingOutboxMessageDispatcher`)
+- [ ] Unit test for routing + fallback behavior
+- Acceptance: Messages route correctly
+
+#### WP-3.4: Wire Registration Handler to Outbox (Reference Payload)
+- [ ] Open `CreateEventRegistrationCommandHandler.cs`
+- [ ] After successful save, create `OutboxMessage`:
+  - `AggregateType = "EventRegistration"`
+  - `AggregateId = registration.Id`
+  - `EventType = "RegistrationConfirmed"`
+  - `Payload = JSON { registrationId, eventId, eventSessionId, userId, tenantId, correlationId }`
+- [ ] **Reference payload only — no presentation data**
+- [ ] Persist via `IOutboxRepository.Create()` in same UoW transaction
+- [ ] Unit test verifying outbox message creation
+- Acceptance: OutboxMessage created atomically with registration
+
+#### WP-3.5: RegistrationConfirmed Handler (Idempotent)
+- [ ] Create `Explore.Infrastructure/Outbox/Handlers/RegistrationConfirmedOutboxHandler.cs`
+- [ ] `EventType = "RegistrationConfirmed"`
+- [ ] **Idempotency:** check if email already sent for this registration before dispatching
+- [ ] **Consent check (WP-14 dependency):** query `UserNotificationPreferencesRepository.GetAsync(userId, "registration-confirmations")` — skip + log if opted-out
+- [ ] Deserialize reference payload → fetch fresh data from repos → build email → send via `IEmailService`
+- [ ] Inject unsubscribe URL from WP-14 token service
+- [ ] Set SMTP headers: `List-Unsubscribe`, `List-Unsubscribe-Post: List-Unsubscribe=One-Click`
+- [ ] Structured logging: `RegistrationId`, `EventId`, `UserId`, `TenantId`, `OutboxMessageId`
+- [ ] Unit test with mocked repos and IEmailService
+- Acceptance: Email sent; no duplicates on replay; unsubscribe respected
+
+#### WP-3.6: Observability
+- [ ] Counter: `outbox.messages.processed` with `{event_type, outcome, tenant_id}`
+- [ ] Counter: `outbox.messages.failed` with `{event_type, tenant_id}`
+- [ ] Counter: `outbox.messages.skipped_opt_out` with `{event_type, category, tenant_id}`
+- [ ] Dead-letter visibility via `GetFailedEntries`
+- Acceptance: Operators can monitor outbox health
+
+#### WP-3.7: Restore Email Promise + Integration Test
+- [ ] Restore line 87: "You will receive a confirmation email shortly."
+- [ ] Integration test: register → outbox message created → handler processes → email sent → unsubscribe link valid
+- [ ] Run all tests
+- Acceptance: Gate C fully passes
+
+### WP-6: Calendar Integration — iCal/.ics (1-2 days)
+
+#### WP-6.1: Add Ical.Net NuGet Package
+- [ ] `dotnet add Explore.API package Ical.Net`
+- Acceptance: Package restores and builds
+
+#### WP-6.2: API — Calendar Endpoint
+- [ ] Add `GET /api/event/{id}/calendar` to `EventController`
+- [ ] `[AllowAnonymous]`
+- [ ] `Content-Type: text/calendar; charset=utf-8`
+- [ ] `Content-Disposition: attachment; filename="{sanitized-slug}.ics"`
+- [ ] VEVENT: SUMMARY, DTSTART/DTEND (UTC), LOCATION, DESCRIPTION, URL (canonical), UID (event GUID)
+- [ ] Non-negotiable checks:
+  - [ ] UID = event GUID (stable, not random)
+  - [ ] All timestamps UTC normalized
+  - [ ] Filename sanitized (strip special chars)
+  - [ ] 404 for Draft, Archived, non-existent
+  - [ ] Canonical URL matches `GetCanonicalUrl()` pattern
+- [ ] Route name: `RouteNames.GetEventCalendar`
+- Acceptance: .ics opens correctly in Calendar apps
+
+#### WP-6.3: Blazor — Calendar Buttons
+- [ ] `EventDetail.razor`: "Add to Calendar" button → `/api/event/{id}/calendar`
+- [ ] `MyRegistrations.razor`: per-event calendar icon button
+- [ ] Post-registration success (WP-5): calendar button
+- [ ] Optional: Google Calendar URL link
+- Acceptance: Calendar buttons work from 3 touchpoints
+
+#### WP-6.4: NSwag Client Regeneration
+- [ ] Export OpenAPI (run API)
+- [ ] Rebuild Blazor client (regenerates `EventApiClient.g.cs`)
+- [ ] Fix consuming code
+- [ ] Run client tests
+- Acceptance: Client builds cleanly
+
+#### WP-6.5: Tests
+- [ ] Integration: valid .ics with correct Content-Type
+- [ ] 404 for Draft/Archived events
+- [ ] UTC timestamps correct
+- Acceptance: Tests pass
+
+### WP-8: HATEOAS Client Alignment (1.5 days)
+
+- [ ] Read `dev/active/hateoas-client-alignment/hateoas-client-alignment-tasks.md`
+- [ ] Phase 2.1: Extract `HasHalLinkInAdditionalProperties` private helper
+- [ ] Phase 2.2: Add `HasHalLink` for `OrganizationDto` and `OrganizationListDto`
+- [ ] Phase 3.1: Remove `CheckEditPermissions()`, delete `currentUserRole`, use `HasHalLink("edit")`
+- [ ] Phase 3.2: Verify `_links` preservation in service
+- [ ] **Grep for `RoleHelper.CanManage` in adjacent pages** — fix any cousins
+- [ ] **Legacy HAL removal (WP-19.7 overlap):** ensure all link policies call `RequirePermission("resource", "action")` explicitly
+- [ ] Phase 4.3: bUnit tests for OrganizationDetails HATEOAS consumption
+- [ ] Run all tests — no regressions
+- Acceptance: No RoleHelper for action gating; HAL links are source of truth
+
+### WP-9: Save Draft vs Publish UX (1-1.5 days)
+
+> **Scope warning:** MVP minimum only. Defer beforeunload and advanced transitions.
+
+#### WP-9.1: MVP — Explicit Buttons
+- [ ] Event create form: "Save as Draft" (secondary) + "Publish" (primary) buttons
+- [ ] Event edit form for Draft: "Save" + "Publish"; for Published: "Save" only
+- [ ] Verify Draft → Published transition works in API handler
+- [ ] bUnit tests for button rendering based on status
+- Acceptance: Organizers choose visibility via explicit button
+
+---
+
+## Tier 4 — Public Readiness & Discoverability ⏳ NOT STARTED (3-4 days)
+
+### WP-15: Branded Error Pages (1 day)
+
+#### WP-15.1: 404 Not Found
+- [ ] Create `Explore.Blazor.Client/Pages/Errors/NotFound.razor` with `@page "/errors/404"`
+- [ ] Branded layout: logo, "Page Not Found", search bar, CTAs ("Return Home", "Browse Events")
+- [ ] `<PageTitle>Not Found — {TenantName}</PageTitle>` and `<meta name="robots" content="noindex">`
+- Acceptance: Direct URL to `/nonexistent` shows branded 404
+
+#### WP-15.2: 403 Unauthorized
+- [ ] Create `Explore.Blazor.Client/Pages/Errors/Unauthorized.razor` with `@page "/errors/403"`
+- [ ] CTAs: "Request Access" (if applicable), "Return Home"
+- Acceptance: Auth failure shows branded 403
+
+#### WP-15.3: 500 Server Error
+- [ ] Create `Explore.Blazor.Client/Pages/Errors/ServerError.razor` with `@page "/errors/500"`
+- [ ] Enhance existing `Explore.Blazor/Components/Pages/Error.razor` for branded content
+- [ ] Display correlation ID for support; hide stack traces in production
+- [ ] CTAs: "Return Home", "Contact Support" (prefilled with correlation ID)
+- Acceptance: Server error shows branded 500 with correlation ID
+
+#### WP-15.4: Status Code Pages Middleware
+- [ ] In `Explore.Blazor/Program.cs`: `app.UseStatusCodePagesWithReExecute("/errors/{0}")`
+- [ ] Verify works with Blazor Server interactive routes
+- [ ] Add catch-all route in `Routes.razor` if needed
+- Acceptance: All HTTP errors redirect to branded pages
+
+#### WP-15.5: Tests
+- [ ] bUnit: each error page renders with correct copy + CTA
+- [ ] Integration: `/nonexistent` returns branded 404 page
+- [ ] Integration: unauthenticated `[Authorize]` endpoint returns branded 403
+- Acceptance: Tests pass
+
+**Acceptance:** Gate F "branded error pages" passes.
+
+### WP-16: SEO Foundation (1 day)
+
+#### WP-16.1: Sitemap Controller
+- [ ] Create `Explore.API/Controllers/SitemapController.cs`
+- [ ] `GET /sitemap.xml` → `[AllowAnonymous]`, `Content-Type: application/xml`
+- [ ] Output: static pages + all Published events (respect tenant visibility + soft-delete filter)
+- [ ] Per-URL: `<loc>`, `<lastmod>`, `<changefreq>`, `<priority>`
+- [ ] Tenant-aware: canonical host from current tenant's domain/subdomain
+- [ ] Output-cache 30 minutes
+- Acceptance: `/sitemap.xml` returns valid XML
+
+#### WP-16.2: Robots.txt
+- [ ] Create `Explore.Blazor/wwwroot/robots.txt` (static) OR dynamic controller
+- [ ] Prod: `User-agent: * / Allow: / / Sitemap: https://{host}/sitemap.xml`
+- [ ] Dev: `Disallow: /`
+- Acceptance: `/robots.txt` returns correct content per environment
+
+#### WP-16.3: Canonical URLs on Public Pages
+- [ ] Add `<link rel="canonical">` to: Home, LandingForNonUsers, LandingForUsers, OrganizationProfile, OrganizationDetails, EventList
+- [ ] Centralize canonical URL helper if not already shared
+- Acceptance: Canonical URLs on all public pages
+
+#### WP-16.4: Tests
+- [ ] Integration: `/sitemap.xml` returns valid XML with published events
+- [ ] Integration: Draft/Archived events absent from sitemap
+- [ ] Integration: tenant A sitemap doesn't leak tenant B events
+- [ ] Integration: `/robots.txt` returns expected content
+- Acceptance: Tests pass
+
+**Acceptance:** Gate F "sitemap + robots.txt" passes.
+
+### WP-4: My Registrations — Enhancement (0.5 day)
+- [ ] Verify NavMenu/user menu link — add if missing
+- [ ] Verify discoverability from nav AND post-registration flow
+- [ ] Add "Add to Calendar" icon per registration card (after WP-6)
+- [ ] Verify empty state UX
+- Acceptance: Gate D "user can view registration later" passes
+
+### WP-5: Post-Registration Confirmation UX (1 day)
+- [ ] Add "Add to Calendar" button (WP-6 dependency)
+- [ ] Add "Share this Event" button (reuse `ShareEventAsync` pattern)
+- [ ] Add "View My Registrations" link → `/my/registrations`
+- [ ] Keep it lightweight — 3 actions only, no workflow engine
+- [ ] bUnit test for enhanced success state
+- Acceptance: Post-registration has 3 actionable next steps
+
+### WP-7: Event Sharing — Verification (0.5 day)
+- [ ] Verify share button visible on EventDetail
+- [ ] Check EventCard (list view) — add share icon if missing
+- [ ] Verify canonical URL tenant-aware in multi-tenant
+- [ ] If URL generation duplicated → centralize into shared helper
+- Acceptance: Gate D "user can share" passes
+
+---
+
+## Tier 5 — Quality Assurance ⏳ NOT STARTED (4-5 days)
+
+### WP-21: E2E Critical-Flow Tests (2 days)
+
+#### WP-21.1: Registration End-to-End
+- [ ] Create `Explore.Blazor.Client.E2ETests/CriticalFlows/RegistrationFlowTests.cs`
+- [ ] Playwright: login → browse → open event → register → confirmation → My Registrations
+- [ ] Uses `AppHostFixture` + `PostgreSqlContainerFixture`
+- [ ] Validates Gates C + D end-to-end
+- Acceptance: Registration E2E green
+
+#### WP-21.2: Multi-Tenancy Isolation
+- [ ] Two tenant contexts; tenant A creates event → tenant B cannot see it
+- [ ] Validates query filters + middleware isolation
+- Acceptance: Tenant isolation E2E green
+
+#### WP-21.3: Authorization Enforcement
+- [ ] User without edit permission → no Edit button → direct API mutation returns 403
+- Acceptance: Authz enforcement E2E green
+
+#### WP-21.4: BFF Token-Forwarding Chain
+- [ ] Login → BFF → YARP → API JWT + tenant header → HAL links → Blazor renders
+- Acceptance: Token chain E2E green
+
+**Acceptance:** All 4 flows green in CI (3 consecutive runs, no flakiness).
+
+### WP-22: Snapshot Tests for HATEOAS Contracts (1 day)
+
+#### WP-22.1: Add Snapshot Library
+- [ ] Install `Verify.TUnit` (or `Verify.Xunit`) in `Event.API.IntegrationTests`
+- [ ] Configure snapshot directory: `tests/snapshots/`
+- Acceptance: Library installed and configured
+
+#### WP-22.2: Snapshot EventDto Responses
+- [ ] Anonymous GET event detail → snapshot
+- [ ] Authenticated GET event detail → snapshot (more links)
+- [ ] Organizer GET event detail → snapshot (edit/delete links)
+- [ ] List response (first 5) → snapshot
+- Acceptance: Baseline event snapshots committed
+
+#### WP-22.3: Snapshot OrganizationDto, UserDto, EventRegistrationDto
+- [ ] Public GET + authenticated GET for each
+- Acceptance: Baseline DTO snapshots committed
+
+#### WP-22.4: Snapshot ProblemDetails
+- [ ] 400, 401, 403, 404, 500 → snapshots (RFC 7807 shape)
+- Acceptance: Error contract snapshots committed
+
+#### WP-22.5: PR Policy
+- [ ] Document snapshot-review policy in testing docs
+- Acceptance: Policy documented
+
+**Acceptance:** Baseline snapshots committed; CI confirms stability.
+
+### WP-11: Targeted Test Coverage (rolling)
+- [ ] Registration flow unit tests (approval policy, waitlist, capacity from WP-17)
+- [ ] Visibility rules (Draft hidden, Archived 404) — API integration tests
+- [ ] HATEOAS action gating (OrganizationDetails) — bUnit
+- [ ] Calendar endpoint (valid .ics, 404 non-public, UTC normalization)
+- [ ] Session persistence regression (DataProtection key ring)
+- [ ] Unsubscribe flow end-to-end (WP-14)
+- [ ] Rate limit enforcement on setup-secret (WP-19.1)
+- [ ] Handler coverage target: ≥70% (from current ~39%)
+- Acceptance: Critical paths guarded; handler coverage ≥70%
+
+---
+
+## Tier 6 — Final Polish ⏳ NOT STARTED (2-3 days)
+
+### WP-20: Public Page SEO & OG Polish (1 day)
 
 #### WP-20.1: JSON-LD Event Schema
 - [ ] `EventDetail.razor`: render `<script type="application/ld+json">` with `schema.org/Event`
@@ -606,81 +656,7 @@ ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24 with co
 
 **Acceptance:** Gate F "JSON-LD + OG tags everywhere" passes.
 
----
-
-## Tier 4 — Test Coverage & Polish
-
-### WP-21: E2E Critical-Flow Tests ⏳ NOT STARTED (2 days)
-
-#### WP-21.1: Registration End-to-End
-- [ ] Create `Explore.Blazor.Client.E2ETests/CriticalFlows/RegistrationFlowTests.cs`
-- [ ] Playwright: login → browse → open event → register → confirmation → My Registrations
-- [ ] Uses `AppHostFixture` + `PostgreSqlContainerFixture`
-- [ ] Validates Gates C + D end-to-end
-- Acceptance: Registration E2E green
-
-#### WP-21.2: Multi-Tenancy Isolation
-- [ ] Two tenant contexts; tenant A creates event → tenant B cannot see it
-- [ ] Validates query filters + middleware isolation
-- Acceptance: Tenant isolation E2E green
-
-#### WP-21.3: Authorization Enforcement
-- [ ] User without edit permission → no Edit button → direct API mutation returns 403
-- Acceptance: Authz enforcement E2E green
-
-#### WP-21.4: BFF Token-Forwarding Chain
-- [ ] Login → BFF → YARP → API JWT + tenant header → HAL links → Blazor renders
-- Acceptance: Token chain E2E green
-
-**Acceptance:** All 4 flows green in CI (3 consecutive runs, no flakiness).
-
-### WP-22: Snapshot Tests for HATEOAS Contracts ⏳ NOT STARTED (1 day)
-
-#### WP-22.1: Add Snapshot Library
-- [ ] Install `Verify.TUnit` (or `Verify.Xunit`) in `Event.API.IntegrationTests`
-- [ ] Configure snapshot directory: `tests/snapshots/`
-- Acceptance: Library installed and configured
-
-#### WP-22.2: Snapshot EventDto Responses
-- [ ] Anonymous GET event detail → snapshot
-- [ ] Authenticated GET event detail → snapshot (more links)
-- [ ] Organizer GET event detail → snapshot (edit/delete links)
-- [ ] List response (first 5) → snapshot
-- Acceptance: Baseline event snapshots committed
-
-#### WP-22.3: Snapshot OrganizationDto, UserDto, EventRegistrationDto
-- [ ] Public GET + authenticated GET for each
-- Acceptance: Baseline DTO snapshots committed
-
-#### WP-22.4: Snapshot ProblemDetails
-- [ ] 400, 401, 403, 404, 500 → snapshots (RFC 7807 shape)
-- Acceptance: Error contract snapshots committed
-
-#### WP-22.5: PR Policy
-- [ ] Document snapshot-review policy in testing docs
-- Acceptance: Policy documented
-
-**Acceptance:** Baseline snapshots committed; CI confirms stability.
-
-### WP-11: Targeted Test Coverage ⏳ NOT STARTED (rolling)
-
-> Focus on high-value tests only. Avoid coverage ambition trap.
-
-- [ ] Registration flow unit tests (approval policy, waitlist, capacity from WP-17)
-- [ ] Visibility rules (Draft hidden, Archived 404) — API integration tests
-- [ ] HATEOAS action gating (OrganizationDetails) — bUnit
-- [ ] Calendar endpoint (valid .ics, 404 non-public, UTC normalization)
-- [ ] Session persistence regression (DataProtection key ring)
-- [ ] Unsubscribe flow end-to-end (WP-14)
-- [ ] Rate limit enforcement on setup-secret (WP-19.1)
-- [ ] Handler coverage target: ≥70% (from current ~39%)
-- Acceptance: Critical paths guarded; handler coverage ≥70%
-
----
-
-## Tier 5 — Final Polish
-
-### WP-23: Accessibility Polish ⏳ NOT STARTED (1 day)
+### WP-23: Accessibility Polish (1 day)
 
 #### WP-23.1: Breadcrumbs
 - [ ] Add `MudBreadcrumbs` to EventDetail, OrganizationDetails, OrganizationProfile, UserProfile, MyRegistrations
@@ -709,7 +685,7 @@ ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24 with co
 - [ ] Fix findings < 90
 - Acceptance: Key pages score ≥90 Lighthouse a11y
 
-### WP-24: PWA Manifest Only ⏳ NOT STARTED (0.5 day)
+### WP-24: PWA Manifest Only (0.5 day)
 
 > Per D14: manifest only; no service worker, no offline for MVP.
 
@@ -725,7 +701,7 @@ ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24 with co
 - [ ] Cache 5 minutes; vary by tenant + host
 - Acceptance: Per-tenant manifest works
 
-### WP-25: Placeholder & TODO Cleanup ⏳ NOT STARTED (0.5 day)
+### WP-25: Placeholder & TODO Cleanup (0.5 day)
 
 #### WP-25.1: Replace Placeholder Images
 - [ ] `MyRegistrations.razor`: swap `placehold.co` with real event image or branded fallback
@@ -749,35 +725,10 @@ ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24 with co
 
 ---
 
-## Tier 6 — Pre-Existing Deferred Items
+## Tier 7 — Pre-Existing Deferred Items ⏳ NOT STARTED (2 days)
 
-### WP-10: User Onboarding — Gap Analysis ⏳ NOT STARTED (1 day)
-
-> **PARTIALLY EXISTS:** Admin onboarding covers instance/tenant. User-level may be missing.
-
-- [ ] Audit existing onboarding completeness
-- [ ] If admin satisfies need → close fast
-- [ ] If gap → lightweight first-login detection + welcome modal
-- Acceptance: Guided path exists or gap documented as post-MVP
-
-### WP-12: Production Docker & External API Key ⏳ NOT STARTED (1 day)
-
-#### WP-12.1: docker-compose.prod.yml Override
-- [ ] Pre-built image references
-- [ ] Starter `prometheus.yml` scrape config
-- [ ] Redis profile honors D8 (optional but recommended)
-- Acceptance: `docker compose -f docker-compose.prod.yml up` works
-
-#### WP-12.2: Disable External API Key Endpoints
-- [ ] Add config flag `ExternalApiKeys:Enabled=false` (default) or remove from routing
-- Acceptance: External API key surface not exposed
-
-### WP-13: Cleanup ⏳ NOT STARTED (covered by WP-25)
-
-> WP-13 scope absorbed into WP-25. Retained as checklist anchor only.
-
-- [ ] Verify Price/CurrencyCode not in any UI form (checked in WP-25.3)
-- [ ] Final docs update (checked in WP-25.4)
+### WP-10: User Onboarding — Gap Analysis (1 day)
+### WP-12: Production Docker & External API Key (1 day)
 
 ---
 
@@ -795,9 +746,9 @@ ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24 with co
 | 8 | 17-18 | WP-23 (A11y) + WP-25 (Placeholders) + WP-10 (Onboarding decision) + final gate sign-off | All gates green |
 
 ### If Schedule Compresses
-- **Tier 4** (WP-21/22) can slip to Week 4 if Tier 1-3 held quality bar
-- **Tier 5** (WP-23/24) can slip to post-MVP if gates A-G are otherwise green
-- **Never slip:** Tier 2B (WP-14/15/16) or Tier 3 (WP-17/18/19) — gate-critical
+- **Tier 5** (WP-21/22) can slip to Week 4 if Tier 1-3 held quality bar
+- **Tier 6** (WP-23/24) can slip to post-MVP if gates A-G are otherwise green
+- **Never slip:** Tier 2 (WP-14/17/18/19) — gate-critical
 
 ---
 

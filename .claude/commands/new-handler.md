@@ -126,7 +126,7 @@ dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.cspr
 
 ## Related
 
-- [`/bootstrap`](bootstrap.md)
+- [`CLAUDE.md`](../../CLAUDE.md) — cold-start flow.
 - [`/check`](check.md)
 - [`/review-pr`](review-pr.md)
 - Intent: [`add-cqrs-handler`](../contract/intents.yaml)

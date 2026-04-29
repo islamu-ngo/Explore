@@ -107,7 +107,7 @@ Outstanding questions: <list or None>
 
 ## Related
 
-- [`/bootstrap`](bootstrap.md) — get to a valid PR state in the first place.
+- [`CLAUDE.md`](../../CLAUDE.md) — get to a valid PR state.
 - [`/check`](check.md) — run the verification commands.
 - [`/docs-lint`](docs-lint.md) — check doc link integrity.
 - [`AGENTS.md`](../../AGENTS.md) — Contribution Contract authority.

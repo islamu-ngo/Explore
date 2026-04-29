@@ -1926,7 +1926,7 @@ Table "event_contact_share_consents" {
   "source_event_id" uuid
   "user_id" uuid [not null]
   "recipient_actor_id" uuid [not null]
-  "source_event_registration_id" uuid
+  "source_event_registration_intent_id" uuid
   "purpose_code" varchar(100) [not null]
   "status" int [not null]
   "email_snapshot" varchar(320) [not null]
@@ -1945,6 +1945,8 @@ Table "event_contact_share_consents" {
     (tenant_id, recipient_actor_id, status) [name: 'ix_eventcontactshareconsents_recipient_status']
     (tenant_id, user_id, status) [name: 'ix_eventcontactshareconsents_user_status']
   }
+
+  Note: 'Explicit opt-in email-sharing consent. Scope is tenant + user + recipient actor + purpose, not per event; source_event_id and source_event_registration_intent_id are audit context only. Withdrawal is represented by status=Withdrawn, not soft delete. Email fields are snapshots captured at grant/reactivation time and must not track live user PII changes.'
 }
 
 Table "event_contact_share_export" {
@@ -1960,12 +1962,16 @@ Table "event_contact_share_export" {
   indexes {
     (tenant_id, recipient_actor_id, created_at) [name: 'ix_eventcontactshareexports_recipient_date']
   }
+
+  Note: 'Audit header for an organization contact export. event_id is nullable because organizations may export all currently granted consents or filter to a single source event.'
 }
 
 Table "event_contact_share_export_item" {
   "export_id" uuid [pk, not null]
   "consent_id" uuid [pk, not null]
   "email_snapshot" varchar(320) [not null]
+
+  Note: 'Audit line for a single exported consent. Stores the email value emitted in the file so historical export evidence remains stable even if consent or user PII changes later.'
 }
 
 // ============================================================
@@ -2412,7 +2418,7 @@ Ref: "event_contact_share_consents"."tenant_id" > "tenants"."id" [delete: restri
 Ref: "event_contact_share_consents"."source_event_id" > "events"."id" [delete: restrict]
 Ref: "event_contact_share_consents"."user_id" > "users"."id" [delete: restrict]
 Ref: "event_contact_share_consents"."recipient_actor_id" > "actors"."id" [delete: restrict]
-Ref: "event_contact_share_consents"."source_event_registration_id" > "event_registrations"."id" [delete: set null]
+Ref: "event_contact_share_consents"."source_event_registration_intent_id" > "event_registration_intents"."id" [delete: set null]
 Ref: "event_contact_share_export"."tenant_id" > "tenants"."id" [delete: restrict]
 Ref: "event_contact_share_export"."recipient_actor_id" > "actors"."id" [delete: restrict]
 Ref: "event_contact_share_export"."event_id" > "events"."id" [delete: restrict]
