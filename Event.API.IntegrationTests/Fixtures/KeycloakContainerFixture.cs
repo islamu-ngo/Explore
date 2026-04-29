@@ -1,0 +1,99 @@
+// ABOUTME: Manages Keycloak container lifecycle for security integration tests using Testcontainers.
+// ABOUTME: Imports the deterministic test realm and waits for OIDC metadata endpoint readiness.
+
+using DotNet.Testcontainers.Builders;
+using DotNet.Testcontainers.Containers;
+using TUnit.Core.Interfaces;
+
+namespace Event.Api.IntegrationTests.Fixtures;
+
+/// <summary>
+/// Manages a Keycloak container with the deterministic ISLAMU test realm.
+/// Provides the OIDC authority URL and a <see cref="KeycloakTokenClient"/> for acquiring real JWTs.
+/// </summary>
+public sealed class KeycloakContainerFixture : IAsyncInitializer, IAsyncDisposable
+{
+    /// <summary>Pinned Keycloak version aligned with docker-compose.yml.</summary>
+    private const string KeycloakImage = "quay.io/keycloak/keycloak:26.1.2";
+
+    /// <summary>Realm name matching the test realm export.</summary>
+    public const string RealmName = "ISLAMU";
+
+    /// <summary>Client ID with directAccessGrantsEnabled for ROPC token acquisition.</summary>
+    public const string TestClientId = "islamu-event-blazor";
+
+    /// <summary>Client secret from the test realm export.</summary>
+    public const string TestClientSecret = "test-blazor-secret";
+
+    private IContainer _container = null!;
+
+    /// <summary>
+    /// The OIDC authority URL (e.g., <c>http://localhost:{port}/realms/ISLAMU</c>).
+    /// Use this as the JWT Bearer authority in SecurityWebApplicationFactory.
+    /// </summary>
+    public string Authority { get; private set; } = string.Empty;
+
+    /// <summary>
+    /// Full OIDC metadata endpoint URL.
+    /// </summary>
+    public string MetadataAddress { get; private set; } = string.Empty;
+
+    /// <summary>
+    /// Token client for acquiring real JWTs from the containerized Keycloak.
+    /// </summary>
+    public KeycloakTokenClient TokenClient { get; private set; } = null!;
+
+    public async Task InitializeAsync()
+    {
+        var testRealmPath = Path.Combine(AppContext.BaseDirectory, "TestAssets", "ISLAMU-realm.test.json");
+
+        if (!File.Exists(testRealmPath))
+        {
+            throw new FileNotFoundException(
+                $"Test realm export not found at '{testRealmPath}'. " +
+                "Ensure ISLAMU-realm.test.json is included as Content with CopyToOutputDirectory=PreserveNewest.");
+        }
+
+        _container = new ContainerBuilder()
+            .WithImage(KeycloakImage)
+            .WithPortBinding(8080, true)
+            .WithResourceMapping(testRealmPath, "/opt/keycloak/data/import/ISLAMU-realm.test.json")
+            .WithCommand("start-dev", "--import-realm", "--http-port=8080")
+            .WithEnvironment("KC_HEALTH_ENABLED", "true")
+            .WithEnvironment("KC_HTTP_ENABLED", "true")
+            .WithEnvironment("KEYCLOAK_ADMIN", "admin")
+            .WithEnvironment("KEYCLOAK_ADMIN_PASSWORD", "admin")
+            .WithWaitStrategy(Wait.ForUnixContainer()
+                .UntilHttpRequestIsSucceeded(request =>
+                    request
+                        .ForPath($"/realms/{RealmName}/.well-known/openid-configuration")
+                        .ForPort(8080)
+                        .ForStatusCode(System.Net.HttpStatusCode.OK)))
+            .Build();
+
+        await _container.StartAsync();
+
+        // Brief delay to ensure realm import is fully settled after OIDC metadata becomes available
+        await Task.Delay(TimeSpan.FromSeconds(3));
+
+        var host = _container.Hostname;
+        var port = _container.GetMappedPublicPort(8080);
+
+        Authority = $"http://{host}:{port}/realms/{RealmName}";
+        MetadataAddress = $"{Authority}/.well-known/openid-configuration";
+
+        TokenClient = new KeycloakTokenClient(
+            $"http://{host}:{port}",
+            RealmName,
+            TestClientId,
+            TestClientSecret);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_container is not null)
+        {
+            await _container.DisposeAsync();
+        }
+    }
+}

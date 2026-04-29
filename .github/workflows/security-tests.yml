@@ -1,0 +1,73 @@
+# ABOUTME: CI workflow running security integration tests with containerized Keycloak and Cerbos.
+# ABOUTME: Uses Docker (via Testcontainers) to validate real OIDC token validation and Cerbos policy decisions.
+
+name: Security Integration Tests
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "cerbos/**"
+      - "docker/keycloak/**"
+      - "Explore.Application/Authorization/**"
+      - "Explore.Infrastructure/Services/CerbosAuthorizationService.cs"
+      - "Explore.Infrastructure/Services/CerbosPrincipalBuilder.cs"
+      - "Explore.Infrastructure/Services/RuntimeAuthorizationProvider.cs"
+      - "Event.API.IntegrationTests/Fixtures/Keycloak*"
+      - "Event.API.IntegrationTests/Fixtures/Cerbos*"
+      - "Event.API.IntegrationTests/Fixtures/Security*"
+      - "Event.API.IntegrationTests/Fixtures/TestCategories.cs"
+      - "Event.API.IntegrationTests/Fixtures/KeycloakTokenClient.cs"
+      - "Event.API.IntegrationTests/Features/SecurityIntegrationTests.cs"
+      - "Event.API.IntegrationTests/Features/CerbosPolicyContractTests.cs"
+      - "Event.API.IntegrationTests/Features/CerbosPolicyCompilationTests.cs"
+      - "Event.API.IntegrationTests/Features/TokenClaimsVerificationTests.cs"
+      - "Event.API.IntegrationTests/Features/AuthorizationPipelineIntegrationTests.cs"
+      - "Event.API.IntegrationTests/Features/CloudIsolationGuardrailTests.cs"
+      - ".github/workflows/security-tests.yml"
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "cerbos/**"
+      - "docker/keycloak/**"
+      - "Explore.Application/Authorization/**"
+      - "Event.API.IntegrationTests/Fixtures/**"
+      - "Event.API.IntegrationTests/Features/Security*"
+      - "Event.API.IntegrationTests/Features/Cerbos*"
+      - "Event.API.IntegrationTests/Features/Token*"
+      - "Event.API.IntegrationTests/Features/Authorization*"
+      - "Event.API.IntegrationTests/Features/Cloud*"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  security-tests:
+    name: Security Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-restore --verbosity minimal
+
+      - name: Security Integration Tests
+        run: dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity minimal --treenode-filter "/*/*[Category=Security]"
+
+      - name: Cerbos Policy Contract Tests
+        run: dotnet test Event.API.IntegrationTests/Event.API.IntegrationTests.csproj --configuration Release --no-build --verbosity minimal --treenode-filter "/*/*[Category=PolicyContract]"

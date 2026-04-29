@@ -1,0 +1,210 @@
+// ABOUTME: Tests that when no OIDC provider is configured, the API safely rejects all
+// ABOUTME: authenticated requests with 401 Unauthorized. No crash, no accidental allow.
+
+using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Security;
+using System.Net.Sockets;
+using Event.Api.IntegrationTests.Fixtures;
+using Explore.Domain.Constants;
+using Explore.Persistence;
+using FluentAssertions;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.IdentityModel.Tokens;
+using TUnit.Core;
+
+namespace Event.Api.IntegrationTests.Features;
+
+/// <summary>
+/// Verifies the API's behavior when no Keycloak OIDC configuration is present.
+/// This simulates a self-hoster who has not yet configured authentication.
+///
+/// Core invariant: the API must not crash, must not accidentally allow access,
+/// and must return 401 for all protected endpoints. Anonymous endpoints must
+/// continue to function normally.
+/// </summary>
+[Category(TestCategories.Fast)]
+public class NoKeycloakAuthenticationTests : IAsyncDisposable
+{
+    private readonly NoKeycloakWebApplicationFactory _factory;
+    private readonly HttpClient _client;
+
+    public NoKeycloakAuthenticationTests()
+    {
+        _factory = new NoKeycloakWebApplicationFactory();
+        _client = _factory.CreateClient();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _client.Dispose();
+        await _factory.DisposeAsync();
+    }
+
+    #region Protected Endpoints — All Rejected
+
+    [Test]
+    public async Task NoAuthority_Anonymous_RejectedOnProtectedEndpoint()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/events");
+
+        var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized,
+            "without any OIDC authority, anonymous requests to protected endpoints must get 401");
+    }
+
+    [Test]
+    public async Task NoAuthority_ArbitraryJwt_Rejected()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/events");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer",
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0In0.fake");
+
+        var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized,
+            "arbitrary JWTs must be rejected when no authority is configured to validate them");
+    }
+
+    [Test]
+    public async Task NoAuthority_ExpiredToken_Rejected()
+    {
+        var expiredJwt = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9." +
+                         "eyJzdWIiOiJ0ZXN0LWFkbWluIiwiZXhwIjoxMDAwMDAwMDAwfQ." +
+                         "fake-signature";
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/events");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", expiredJwt);
+
+        var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized,
+            "expired tokens must be rejected when no authority can validate them");
+    }
+
+    #endregion
+
+    #region Anonymous Endpoints — Still Work
+
+    [Test]
+    public async Task NoAuthority_AnonymousEndpoints_StillWork()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/eventformats");
+
+        var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK,
+            "[AllowAnonymous] endpoints must function regardless of OIDC configuration");
+    }
+
+    [Test]
+    public async Task NoAuthority_InstanceOnboardingStatus_StillAccessible()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/InstanceOnboarding/status");
+
+        var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().BeOneOf([HttpStatusCode.OK, HttpStatusCode.NotFound],
+            "onboarding status must be accessible for initial setup before Keycloak is configured");
+    }
+
+    [Test]
+    public async Task NoAuthority_HealthEndpoint_StillAccessible()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/health");
+
+        var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().BeOneOf([HttpStatusCode.OK, HttpStatusCode.ServiceUnavailable],
+            "health endpoints must be accessible for infrastructure monitoring");
+    }
+
+    #endregion
+
+    #region Startup Stability
+
+    [Test]
+    public async Task NoAuthority_ServerStartsWithoutCrash()
+    {
+        _factory.Should().NotBeNull("the factory must build successfully without Keycloak config");
+        _client.Should().NotBeNull("the HTTP client must be created without errors");
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/eventtypes");
+        var response = await _client.SendAsync(request);
+
+        response.Should().NotBeNull("the server must respond to requests even without OIDC config");
+    }
+
+    #endregion
+
+    /// <summary>
+    /// WebApplicationFactory with NO Keycloak configuration at all.
+    /// Simulates a fresh deployment where OIDC has not been configured yet.
+    /// </summary>
+    private sealed class NoKeycloakWebApplicationFactory : WebApplicationFactory<Program>
+    {
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            builder.UseEnvironment("Testing");
+
+            builder.ConfigureAppConfiguration((_, config) =>
+            {
+                var testConfig = new Dictionary<string, string?>
+                {
+                    ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=test_no_keycloak;Username=postgres;Password=postgres",
+                    ["S3Settings:Region"] = "us-east-1",
+                    ["S3Settings:BucketName"] = "test-bucket",
+                    ["S3Settings:AccessKeyId"] = "test-key",
+                    ["S3Settings:SecretAccessKey"] = "test-secret",
+                    ["S3Settings:Endpoint"] = "https://s3.example.com",
+                    ["Deployment:Mode"] = "SingleTenant",
+                    ["Deployment:DefaultTenantId"] = PlatformDefaults.DefaultTenantId.ToString(),
+                    ["Testing:HostProfile"] = TestHostProfile.Security,
+                    ["Cerbos:GrpcEndpoint"] = "http://localhost:19999",
+                    ["Cerbos:PlaintextMode"] = "true",
+                };
+
+                config.AddInMemoryCollection(testConfig);
+            });
+
+            builder.ConfigureServices(services =>
+            {
+                services.RemoveAll<DbContextOptions<ExploreDbContext>>();
+
+                services.AddDbContext<ExploreDbContext>(options =>
+                {
+                    options.UseInMemoryDatabase($"NoKeycloakDb_{Guid.NewGuid():N}");
+                    options.ConfigureWarnings(x =>
+                        x.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning));
+                });
+
+                services.RemoveAll<IDistributedCache>();
+                services.AddDistributedMemoryCache();
+            });
+
+            builder.ConfigureTestServices(services =>
+            {
+                services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
+                {
+                    options.RequireHttpsMetadata = false;
+                    options.BackchannelHttpHandler = new SocketsHttpHandler
+                    {
+                        SslOptions = new SslClientAuthenticationOptions
+                        {
+                            RemoteCertificateValidationCallback = (_, _, _, _) => true
+                        }
+                    };
+                });
+            });
+        }
+    }
+}

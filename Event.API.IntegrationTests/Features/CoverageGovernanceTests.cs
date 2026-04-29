@@ -1,0 +1,691 @@
+// ABOUTME: Coverage governance — verifies that all security-critical endpoint categories
+// ABOUTME: are covered by the test suite and no regressions in auth enforcement can slip through.
+
+using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Security;
+using Event.Api.IntegrationTests.Fixtures;
+using Explore.Application.Contracts.Identity;
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Models;
+using Explore.Domain.Constants;
+using Explore.Persistence;
+using FluentAssertions;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using NSubstitute;
+using TUnit.Core;
+using TUnit.Core.Interfaces;
+
+namespace Event.Api.IntegrationTests.Features;
+
+/// <summary>
+/// Coverage governance tests that verify no endpoint category has auth regressions.
+/// These tests act as a safety net ensuring critical authorization patterns remain enforced.
+///
+/// <para>Tests cover:</para>
+/// <list type="bullet">
+/// <item>Every instance-setting sub-endpoint denies regular users</item>
+/// <item>Every tenant admin endpoint denies unauthenticated access</item>
+/// <item>Every public endpoint still works without auth</item>
+/// <item>Write operations on lookup tables are gated by tenant admin</item>
+/// <item>Admin-only sub-systems are fully locked down</item>
+/// </list>
+/// </summary>
+[Category(TestCategories.Security)]
+[ClassDataSource<KeycloakOnlyFixture>(Shared = SharedType.PerAssembly)]
+public class CoverageGovernanceTests : IAsyncDisposable
+{
+    private readonly KeycloakOnlyFixture _keycloak;
+
+    private readonly WebApplicationFactory<Program> _regularUserFactory;
+    private readonly HttpClient _regularUserClient;
+
+    private readonly WebApplicationFactory<Program> _instanceAdminFactory;
+    private readonly HttpClient _instanceAdminClient;
+
+    private readonly HttpClient _anonymousClient;
+
+    private static readonly Guid DefaultTenantId = PlatformDefaults.DefaultTenantId;
+
+    public CoverageGovernanceTests(KeycloakOnlyFixture keycloak)
+    {
+        _keycloak = keycloak;
+
+        _regularUserFactory = CreateFactory(CreateRegularUserContext());
+        _regularUserClient = _regularUserFactory.CreateClient();
+
+        _instanceAdminFactory = CreateFactory(CreateInstanceAdminContext());
+        _instanceAdminClient = _instanceAdminFactory.CreateClient();
+
+        _anonymousClient = _regularUserFactory.CreateClient();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _regularUserClient.Dispose();
+        _instanceAdminClient.Dispose();
+        _anonymousClient.Dispose();
+        await _regularUserFactory.DisposeAsync();
+        await _instanceAdminFactory.DisposeAsync();
+    }
+
+    #region Instance Settings — All Sub-Endpoints Deny Regular Users
+
+    [Test]
+    public async Task Governance_InstanceSettings_Modules_DeniesRegularUser()
+    {
+        await AssertRegularUserDenied(HttpMethod.Get, "/api/instance/settings/modules");
+    }
+
+    [Test]
+    public async Task Governance_InstanceSettings_Events_DeniesRegularUser()
+    {
+        await AssertRegularUserDenied(HttpMethod.Get, "/api/instance/settings/events");
+    }
+
+    [Test]
+    public async Task Governance_InstanceSettings_Organizations_DeniesRegularUser()
+    {
+        await AssertRegularUserDenied(HttpMethod.Get, "/api/instance/settings/organizations");
+    }
+
+    [Test]
+    public async Task Governance_InstanceSettings_Branding_DeniesRegularUser()
+    {
+        await AssertRegularUserDenied(HttpMethod.Get, "/api/instance/settings/branding");
+    }
+
+    [Test]
+    public async Task Governance_InstanceSettings_Domains_DeniesRegularUser()
+    {
+        await AssertRegularUserDenied(HttpMethod.Get, "/api/instance/settings/domains");
+    }
+
+    [Test]
+    public async Task Governance_InstanceSettings_Storage_DeniesRegularUser()
+    {
+        await AssertRegularUserDenied(HttpMethod.Get, "/api/instance/settings/storage");
+    }
+
+    [Test]
+    public async Task Governance_InstanceSettings_Smtp_DeniesRegularUser()
+    {
+        await AssertRegularUserDenied(HttpMethod.Get, "/api/instance/settings/smtp");
+    }
+
+    [Test]
+    public async Task Governance_InstanceSettings_DeploymentMode_DeniesRegularUser()
+    {
+        await AssertRegularUserDenied(HttpMethod.Get, "/api/instance/settings/deployment-mode");
+    }
+
+    [Test]
+    public async Task Governance_InstanceSettings_TenantDelegation_DeniesRegularUser()
+    {
+        await AssertRegularUserDenied(HttpMethod.Get, "/api/instance/settings/tenant-delegation");
+    }
+
+    [Test]
+    public async Task Governance_InstanceSettings_RenderPolicy_DeniesRegularUser()
+    {
+        await AssertRegularUserDenied(HttpMethod.Get, "/api/instance/settings/render-policy");
+    }
+
+    [Test]
+    public async Task Governance_InstanceSettings_AnalyticsGovernance_DeniesRegularUser()
+    {
+        await AssertRegularUserDenied(HttpMethod.Get, "/api/instance/settings/analytics-governance");
+    }
+
+    [Test]
+    public async Task Governance_InstanceSettings_FooterGovernance_DeniesRegularUser()
+    {
+        await AssertRegularUserDenied(HttpMethod.Get, "/api/instance/settings/footer-governance");
+    }
+
+    [Test]
+    public async Task Governance_InstanceSettings_AuthProvider_DeniesRegularUser()
+    {
+        await AssertRegularUserDenied(HttpMethod.Get, "/api/instance/settings/auth-provider");
+    }
+
+    [Test]
+    public async Task Governance_InstanceSettings_AuthzProvider_DeniesRegularUser()
+    {
+        await AssertRegularUserDenied(HttpMethod.Get, "/api/instance/settings/authz-provider");
+    }
+
+    [Test]
+    public async Task Governance_InstanceSettings_ResolverConfig_DeniesRegularUser()
+    {
+        await AssertRegularUserDenied(HttpMethod.Get, "/api/instance/settings/resolver-config");
+    }
+
+    #endregion
+
+    #region Instance Settings — All Sub-Endpoints Allow Instance Admin
+
+    [Test]
+    public async Task Governance_InstanceSettings_Modules_AllowsInstanceAdmin()
+    {
+        await AssertInstanceAdminOk(HttpMethod.Get, "/api/instance/settings/modules");
+    }
+
+    [Test]
+    public async Task Governance_InstanceSettings_Events_AllowsInstanceAdmin()
+    {
+        await AssertInstanceAdminOk(HttpMethod.Get, "/api/instance/settings/events");
+    }
+
+    [Test]
+    public async Task Governance_InstanceSettings_Branding_AllowsInstanceAdmin()
+    {
+        await AssertInstanceAdminOk(HttpMethod.Get, "/api/instance/settings/branding");
+    }
+
+    [Test]
+    public async Task Governance_InstanceSettings_Storage_AllowsInstanceAdmin()
+    {
+        await AssertInstanceAdminOk(HttpMethod.Get, "/api/instance/settings/storage");
+    }
+
+    [Test]
+    public async Task Governance_InstanceSettings_Smtp_AllowsInstanceAdmin()
+    {
+        await AssertInstanceAdminOk(HttpMethod.Get, "/api/instance/settings/smtp");
+    }
+
+    #endregion
+
+    #region Admin Sub-Systems — Fully Locked Down for Regular Users
+
+    [Test]
+    public async Task Governance_Admin_UiThemes_DeniesRegularUser()
+    {
+        await AssertRegularUserDenied(HttpMethod.Get, "/api/admin/ui-themes");
+    }
+
+    [Test]
+    public async Task Governance_Admin_Localization_DeniesRegularUser()
+    {
+        await AssertRegularUserDenied(HttpMethod.Get, "/api/admin/localization/configuration");
+    }
+
+    [Test]
+    public async Task Governance_Admin_CustomPropertyGovernance_DeniesRegularUser()
+    {
+        await AssertRegularUserDenied(HttpMethod.Get, "/api/admin/custom-property-definitions/governance-report");
+    }
+
+    [Test]
+    public async Task Governance_Admin_CustomPropertyProjections_DeniesRegularUser()
+    {
+        await AssertRegularUserDenied(HttpMethod.Get, "/api/admin/custom-property-projections/status");
+    }
+
+    [Test]
+    public async Task Governance_Admin_ExternalApiKeys_DeniesRegularUser()
+    {
+        await AssertRegularUserDenied(HttpMethod.Get, "/api/externalapikey");
+    }
+
+    [Test]
+    public async Task Governance_Admin_TenantMembers_DeniesRegularUser()
+    {
+        await AssertRegularUserDenied(HttpMethod.Get, "/api/tenantmember");
+    }
+
+    #endregion
+
+    #region Lookup Tables — Write Operations Gated
+
+    [Test]
+    public async Task Governance_Lookup_CategoryCreate_DeniesAnonymous()
+    {
+        await AssertAnonymous401(HttpMethod.Post, "/api/category");
+    }
+
+    [Test]
+    public async Task Governance_Lookup_TagCreate_DeniesAnonymous()
+    {
+        await AssertAnonymous401(HttpMethod.Post, "/api/tag");
+    }
+
+    [Test]
+    public async Task Governance_Lookup_LocationCreate_DeniesAnonymous()
+    {
+        await AssertAnonymous401(HttpMethod.Post, "/api/location");
+    }
+
+    [Test]
+    public async Task Governance_Lookup_LocationRoomCreate_DeniesAnonymous()
+    {
+        await AssertAnonymous401(HttpMethod.Post, "/api/locationroom");
+    }
+
+    [Test]
+    public async Task Governance_Lookup_EventDayCreate_DeniesAnonymous()
+    {
+        await AssertAnonymous401(HttpMethod.Post, "/api/eventday");
+    }
+
+    [Test]
+    public async Task Governance_Lookup_EventSessionCreate_DeniesAnonymous()
+    {
+        await AssertAnonymous401(HttpMethod.Post, "/api/eventsession");
+    }
+
+    [Test]
+    public async Task Governance_Lookup_EventAgendaItemCreate_DeniesAnonymous()
+    {
+        await AssertAnonymous401(HttpMethod.Post, "/api/eventagendaitem");
+    }
+
+    [Test]
+    public async Task Governance_Lookup_EventSeriesCreate_DeniesAnonymous()
+    {
+        await AssertAnonymous401(HttpMethod.Post, "/api/eventseries");
+    }
+
+    [Test]
+    public async Task Governance_Lookup_CustomPropertyDefCreate_DeniesAnonymous()
+    {
+        await AssertAnonymous401(HttpMethod.Post, "/api/custompropertydefinition");
+    }
+
+    [Test]
+    public async Task Governance_Lookup_OrganizationCreate_DeniesAnonymous()
+    {
+        await AssertAnonymous401(HttpMethod.Post, "/api/organization");
+    }
+
+    [Test]
+    public async Task Governance_Lookup_GroupCreate_DeniesAnonymous()
+    {
+        await AssertAnonymous401(HttpMethod.Post, "/api/group");
+    }
+
+    [Test]
+    public async Task Governance_Lookup_EventCreate_DeniesAnonymous()
+    {
+        await AssertAnonymous401(HttpMethod.Post, "/api/event");
+    }
+
+    [Test]
+    public async Task Governance_Lookup_EventRegistrationCreate_DeniesAnonymous()
+    {
+        await AssertAnonymous401(HttpMethod.Post, "/api/eventregistration");
+    }
+
+    [Test]
+    public async Task Governance_Lookup_StorageUpload_DeniesAnonymous()
+    {
+        await AssertAnonymous401(HttpMethod.Post, "/api/storageobject/generate-upload-url");
+    }
+
+    [Test]
+    public async Task Governance_Lookup_EventTemplateCreate_DeniesAnonymous()
+    {
+        await AssertAnonymous401(HttpMethod.Post, "/api/eventtemplate");
+    }
+
+    [Test]
+    public async Task Governance_Lookup_EventSessionTemplateCreate_DeniesAnonymous()
+    {
+        await AssertAnonymous401(HttpMethod.Post, "/api/eventsessiontemplate");
+    }
+
+    #endregion
+
+    #region Lookup Tables — Read Operations Public
+
+    [Test]
+    public async Task Governance_PublicLookup_EventFormats_AnonymousOK()
+    {
+        await AssertAnonymousOk("/api/eventformat");
+    }
+
+    [Test]
+    public async Task Governance_PublicLookup_EventStatuses_AnonymousOK()
+    {
+        await AssertAnonymousOk("/api/eventstatus");
+    }
+
+    [Test]
+    public async Task Governance_PublicLookup_VisibilityTypes_AnonymousOK()
+    {
+        await AssertAnonymousOk("/api/visibilitytype");
+    }
+
+    [Test]
+    public async Task Governance_PublicLookup_FileTypes_AnonymousOK()
+    {
+        await AssertAnonymousOk("/api/filetype");
+    }
+
+    [Test]
+    public async Task Governance_PublicLookup_AudienceAges_AnonymousOK()
+    {
+        await AssertAnonymousOk("/api/audienceage");
+    }
+
+    [Test]
+    public async Task Governance_PublicLookup_AudienceGenders_AnonymousOK()
+    {
+        await AssertAnonymousOk("/api/audiencegender");
+    }
+
+    [Test]
+    public async Task Governance_PublicLookup_ApprovalStatuses_AnonymousOK()
+    {
+        await AssertAnonymousOk("/api/approvalstatus");
+    }
+
+    [Test]
+    public async Task Governance_PublicLookup_RegistrationModes_AnonymousOK()
+    {
+        await AssertAnonymousOk("/api/registrationmode");
+    }
+
+    [Test]
+    public async Task Governance_PublicLookup_CategoryTypes_AnonymousOK()
+    {
+        await AssertAnonymousOk("/api/categorytype");
+    }
+
+    [Test]
+    public async Task Governance_PublicLookup_TagTypes_AnonymousOK()
+    {
+        await AssertAnonymousOk("/api/tagtype");
+    }
+
+    [Test]
+    public async Task Governance_PublicLookup_OrganizationPositions_AnonymousOK()
+    {
+        await AssertAnonymousOk("/api/organizationposition");
+    }
+
+    [Test]
+    public async Task Governance_PublicLookup_GroupPositions_AnonymousOK()
+    {
+        await AssertAnonymousOk("/api/groupposition");
+    }
+
+    [Test]
+    public async Task Governance_PublicLookup_DidCustodyTypes_AnonymousOK()
+    {
+        await AssertAnonymousOk("/api/didcustodytype");
+    }
+
+    [Test]
+    public async Task Governance_PublicLookup_Madhabs_AnonymousOK()
+    {
+        await AssertAnonymousOk("/api/madhab");
+    }
+
+    [Test]
+    public async Task Governance_PublicLookup_ActorTypes_AnonymousOK()
+    {
+        await AssertAnonymousOk("/api/actortype");
+    }
+
+    [Test]
+    public async Task Governance_PublicLookup_EventRegistrationPolicies_AnonymousOK()
+    {
+        await AssertAnonymousOk("/api/eventregistrationpolicy");
+    }
+
+    #endregion
+
+    #region Helpers
+
+    private async Task AssertRegularUserDenied(HttpMethod method, string url)
+    {
+        var token = await _keycloak.TokenClient.GetUserTokenAsync();
+        using var request = Auth(method, url, token);
+        var response = await _regularUserClient.SendAsync(request);
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden,
+            $"regular user should be denied access to {method} {url}");
+    }
+
+    private async Task AssertInstanceAdminOk(HttpMethod method, string url)
+    {
+        var token = await _keycloak.TokenClient.GetAdminTokenAsync();
+        using var request = Auth(method, url, token);
+        var response = await _instanceAdminClient.SendAsync(request);
+        response.StatusCode.Should().Be(HttpStatusCode.OK,
+            $"instance admin should be allowed access to {method} {url}");
+    }
+
+    private async Task AssertAnonymous401(HttpMethod method, string url)
+    {
+        using var request = new HttpRequestMessage(method, url);
+        var response = await _anonymousClient.SendAsync(request);
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized,
+            $"anonymous should get 401 for {method} {url}");
+    }
+
+    private async Task AssertAnonymousOk(string url)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        var response = await _anonymousClient.SendAsync(request);
+        response.StatusCode.Should().Be(HttpStatusCode.OK,
+            $"[AllowAnonymous] endpoint {url} should return 200 for anonymous");
+    }
+
+    private static HttpRequestMessage Auth(HttpMethod method, string url, string token)
+    {
+        var request = new HttpRequestMessage(method, url);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return request;
+    }
+
+    private static IAdminContext CreateRegularUserContext()
+    {
+        var ctx = Substitute.For<IAdminContext>();
+        ctx.UserId.Returns(Guid.NewGuid());
+        ctx.ResolveUserIdAsync(Arg.Any<CancellationToken>()).Returns(Guid.NewGuid());
+        ctx.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        ctx.IsInstanceAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
+        ctx.IsTenantAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
+        ctx.IsOrganizationAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(false);
+        ctx.GetAdminTenantIdsAsync(Arg.Any<CancellationToken>()).Returns(
+            new List<Guid>().AsReadOnly());
+        ctx.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns(
+            new List<Guid>().AsReadOnly());
+        return ctx;
+    }
+
+    private static IAdminContext CreateInstanceAdminContext()
+    {
+        var ctx = Substitute.For<IAdminContext>();
+        ctx.UserId.Returns(Guid.NewGuid());
+        ctx.ResolveUserIdAsync(Arg.Any<CancellationToken>()).Returns(Guid.NewGuid());
+        ctx.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(true);
+        ctx.IsInstanceAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);
+        ctx.IsTenantAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);
+        ctx.IsOrganizationAdminAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);
+        ctx.GetAdminTenantIdsAsync(Arg.Any<CancellationToken>()).Returns(
+            new List<Guid> { DefaultTenantId }.AsReadOnly());
+        ctx.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns(
+            new List<Guid>().AsReadOnly());
+        return ctx;
+    }
+
+    private WebApplicationFactory<Program> CreateFactory(IAdminContext adminContext)
+    {
+        var tenantContext = Substitute.For<ITenantContext>();
+        tenantContext.TenantId.Returns(DefaultTenantId);
+
+        var cerbosConfigResolver = Substitute.For<ICerbosConfigResolver>();
+        cerbosConfigResolver.ResolveAsync(Arg.Any<CancellationToken>()).Returns((CerbosConfiguration?)null);
+
+        return new GovernanceWebApplicationFactory(
+            _keycloak.Authority, _keycloak.MetadataAddress,
+            adminContext, tenantContext, cerbosConfigResolver);
+    }
+
+    #endregion
+
+    #region WebApplicationFactory
+
+    private sealed class GovernanceWebApplicationFactory : WebApplicationFactory<Program>
+    {
+        private readonly string _keycloakAuthority;
+        private readonly string _keycloakMetadataAddress;
+        private readonly IAdminContext _adminContext;
+        private readonly ITenantContext _tenantContext;
+        private readonly ICerbosConfigResolver _cerbosConfigResolver;
+
+        public GovernanceWebApplicationFactory(
+            string keycloakAuthority,
+            string keycloakMetadataAddress,
+            IAdminContext adminContext,
+            ITenantContext tenantContext,
+            ICerbosConfigResolver cerbosConfigResolver)
+        {
+            _keycloakAuthority = keycloakAuthority;
+            _keycloakMetadataAddress = keycloakMetadataAddress;
+            _adminContext = adminContext;
+            _tenantContext = tenantContext;
+            _cerbosConfigResolver = cerbosConfigResolver;
+        }
+
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            builder.UseEnvironment("Testing");
+
+            builder.ConfigureAppConfiguration((_, config) =>
+            {
+                var testConfig = new Dictionary<string, string?>
+                {
+                    ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=test_governance;Username=postgres;Password=postgres",
+                    ["Keycloak:Authority"] = _keycloakAuthority,
+                    ["Keycloak:Realm"] = KeycloakContainerFixture.RealmName,
+                    ["Keycloak:Audience"] = "islamu-event-api",
+                    ["Keycloak:RequireHttpsMetadata"] = "false",
+                    ["Keycloak:MetadataAddress"] = _keycloakMetadataAddress,
+                    ["S3Settings:Region"] = "us-east-1",
+                    ["S3Settings:BucketName"] = "test-bucket",
+                    ["S3Settings:AccessKeyId"] = "test-key",
+                    ["S3Settings:SecretAccessKey"] = "test-secret",
+                    ["S3Settings:Endpoint"] = "https://s3.example.com",
+                    ["Deployment:Mode"] = "SingleTenant",
+                    ["Deployment:DefaultTenantId"] = DefaultTenantId.ToString(),
+                    ["Testing:HostProfile"] = TestHostProfile.Security,
+                    ["Cerbos:GrpcEndpoint"] = "http://localhost:19999",
+                    ["Cerbos:PlaintextMode"] = "true",
+                };
+
+                config.AddInMemoryCollection(testConfig);
+            });
+
+            builder.ConfigureServices(services =>
+            {
+                services.RemoveAll<DbContextOptions<ExploreDbContext>>();
+
+                services.AddDbContext<ExploreDbContext>(options =>
+                {
+                    options.UseInMemoryDatabase($"GovernanceDb_{Guid.NewGuid():N}");
+                    options.ConfigureWarnings(x =>
+                        x.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning));
+                });
+
+                services.RemoveAll<IDistributedCache>();
+                services.AddDistributedMemoryCache();
+
+                services.RemoveAll<IAdminContext>();
+                services.AddScoped(_ => _adminContext);
+
+                services.RemoveAll<ITenantContext>();
+                services.AddScoped(_ => _tenantContext);
+
+                services.RemoveAll<ICerbosConfigResolver>();
+                services.AddScoped(_ => _cerbosConfigResolver);
+
+                services.AddSingleton<IHostedService, GovernanceSystemSettingSeeder>();
+            });
+
+            builder.ConfigureTestServices(services =>
+            {
+                services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
+                {
+                    options.RequireHttpsMetadata = false;
+                    options.Authority = _keycloakAuthority;
+                    options.MetadataAddress = _keycloakMetadataAddress;
+                    options.TokenValidationParameters.ValidIssuer = _keycloakAuthority;
+                    options.TokenValidationParameters.ValidIssuers = [_keycloakAuthority];
+                    options.BackchannelHttpHandler = new SocketsHttpHandler
+                    {
+                        PooledConnectionLifetime = TimeSpan.FromMinutes(2),
+                        SslOptions = new SslClientAuthenticationOptions
+                        {
+                            RemoteCertificateValidationCallback = (_, _, _, _) => true
+                        },
+                        ConnectCallback = async (context, cancellationToken) =>
+                        {
+                            var socket = new System.Net.Sockets.Socket(
+                                System.Net.Sockets.AddressFamily.InterNetwork,
+                                System.Net.Sockets.SocketType.Stream,
+                                System.Net.Sockets.ProtocolType.Tcp);
+                            try
+                            {
+                                await socket.ConnectAsync(context.DnsEndPoint, cancellationToken);
+                                return new System.Net.Sockets.NetworkStream(socket, ownsSocket: true);
+                            }
+                            catch
+                            {
+                                socket.Dispose();
+                                throw;
+                            }
+                        }
+                    };
+                });
+            });
+        }
+    }
+
+    private sealed class GovernanceSystemSettingSeeder : IHostedService
+    {
+        private readonly IServiceProvider _serviceProvider;
+
+        public GovernanceSystemSettingSeeder(IServiceProvider serviceProvider)
+        {
+            _serviceProvider = serviceProvider;
+        }
+
+        public async Task StartAsync(CancellationToken cancellationToken)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ExploreDbContext>();
+
+            dbContext.SystemSettings.Add(new Explore.Domain.SystemSetting
+            {
+                Id = Guid.NewGuid(),
+                SettingKey = GovernanceSettingKeys.Security.AuthorizationProvider,
+                Value = "\"local\"",
+                ValueType = Explore.Domain.SettingValueType.String,
+                IsLocked = false,
+                Category = "Security",
+                Description = "Authorization provider (local RBAC)",
+                DisplayOrder = 0,
+                CreatedAt = DateTime.UtcNow
+            });
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    }
+
+    #endregion
+}

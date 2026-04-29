@@ -8,6 +8,28 @@
         "resolved": "35.6.5",
         "contentHash": "2FGZn+aAVHjmCgClgmGkTDBVZk0zkLvAKGaxEf5JL6b3i9JbHTE4wnuY4vHCuzlCmJdU6VZjgDfHwmYkQF8VAA=="
       },
+      "Cerbos.Sdk": {
+        "type": "Direct",
+        "requested": "[1.9.1, )",
+        "resolved": "1.9.1",
+        "contentHash": "0nXDkOcM59conBKNITfOm7dLwRdU5pO65y/r06FZKDq/Q85xse2p2fhY3sXmjSfxmcXFTkHEQd/ldKzqeleNlQ==",
+        "dependencies": {
+          "Google.Api.CommonProtos": "2.17.0",
+          "Google.Protobuf": "3.34.1",
+          "Grpc": "2.46.6",
+          "Grpc.Net.Client": "2.76.0",
+          "Polly": "8.6.6"
+        }
+      },
+      "FluentAssertions": {
+        "type": "Direct",
+        "requested": "[7.1.0, )",
+        "resolved": "7.1.0",
+        "contentHash": "98Dt8m2ZYAjxAzoVGnv+yYh441lhM/SLIxWXp9aZU1rF0mRtA8W49GzTPhwQcclqAiRnjeM0VydVkM1OwKF4NQ==",
+        "dependencies": {
+          "System.Configuration.ConfigurationManager": "6.0.0"
+        }
+      },
       "Microsoft.AspNetCore.Mvc.Testing": {
         "type": "Direct",
         "requested": "[10.0.7, )",
@@ -30,11 +52,29 @@
           "Microsoft.Extensions.Logging": "10.0.7"
         }
       },
+      "NSubstitute": {
+        "type": "Direct",
+        "requested": "[6.0.0-rc.1, )",
+        "resolved": "6.0.0-rc.1",
+        "contentHash": "ADs3G3kWKryXeXw1z2g3pc+sSJ1Pgberg1uT+VZUsIBCY+/37a8YzzQxauiVNYxobpdIPRw3ip58l0ILkadM5A==",
+        "dependencies": {
+          "Castle.Core": "5.1.1"
+        }
+      },
       "Respawn": {
         "type": "Direct",
         "requested": "[7.0.0, )",
         "resolved": "7.0.0",
         "contentHash": "AyWlducZGOnmlEVz4PaL3Qv8wcY3ClPZS9CrlDnSVahGd/E9tTEgSFiC8yoV/F6o6P6IYm8xnHFa/vmWT8tfcw=="
+      },
+      "Testcontainers.Keycloak": {
+        "type": "Direct",
+        "requested": "[4.10.0, )",
+        "resolved": "4.10.0",
+        "contentHash": "8F1AWMgObMfC3XaC/ro5c8JsSusWqezsjR+QmiU8CePuZX32EEbMFc5E+rrj2btLJX7XefOliLjGKLMb+hOREQ==",
+        "dependencies": {
+          "Testcontainers": "4.10.0"
+        }
       },
       "Testcontainers.PostgreSql": {
         "type": "Direct",
@@ -112,6 +152,14 @@
         "type": "Transitive",
         "resolved": "2.6.2",
         "contentHash": "7oWOcvnntmMKNzDLsdxAYqApt+AjpRpP2CShjMfIa3umZ42UQMvH0tl1qAliYPNYO6vTdcGMqnRrCPmsfzTI1w=="
+      },
+      "Castle.Core": {
+        "type": "Transitive",
+        "resolved": "5.1.1",
+        "contentHash": "rpYtIczkzGpf+EkZgDr9CClTdemhsrwA/W5hMoPjLkRFnXzH44zDLoovXeKtmxb1ykXK9aJVODSpiJml8CTw2g==",
+        "dependencies": {
+          "System.Diagnostics.EventLog": "6.0.0"
+        }
       },
       "Docker.DotNet.Enhanced": {
         "type": "Transitive",
@@ -1108,7 +1156,6 @@
       "explore.domain": {
         "type": "Project",
         "dependencies": {
-          "Microsoft.EntityFrameworkCore": "[10.0.7, )",
           "Microsoft.Extensions.Compliance.Abstractions": "[9.9.0, )"
         }
       },
@@ -1233,19 +1280,6 @@
         "contentHash": "LYqhlD/2ragWo7WHwQOjPLSXn3BuFa2gf+/0eIqSUknwdJLGRNyXdhaSUVvqUDsAVkkQu455X+Oknk/lqCJx9A==",
         "dependencies": {
           "AWSSDK.Core": "[4.0.3.6, 5.0.0)"
-        }
-      },
-      "Cerbos.Sdk": {
-        "type": "CentralTransitive",
-        "requested": "[1.9.1, )",
-        "resolved": "1.9.1",
-        "contentHash": "0nXDkOcM59conBKNITfOm7dLwRdU5pO65y/r06FZKDq/Q85xse2p2fhY3sXmjSfxmcXFTkHEQd/ldKzqeleNlQ==",
-        "dependencies": {
-          "Google.Api.CommonProtos": "2.17.0",
-          "Google.Protobuf": "3.34.1",
-          "Grpc": "2.46.6",
-          "Grpc.Net.Client": "2.76.0",
-          "Polly": "8.6.6"
         }
       },
       "EFCore.NamingConventions": {

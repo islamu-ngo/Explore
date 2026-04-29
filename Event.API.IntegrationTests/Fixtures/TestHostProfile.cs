@@ -1,5 +1,5 @@
 // ABOUTME: Defines string constants identifying each test host profile used for fixture configuration.
-// Contract (fast, InMemory), RealRuntime (PostgreSQL), and Stress (rate limiting enabled).
+// ABOUTME: Contract (fast, InMemory), RealRuntime (PostgreSQL), Stress, and Security (real JWT+Cerbos).
 
 namespace Event.Api.IntegrationTests.Fixtures;
 
@@ -16,4 +16,7 @@ public static class TestHostProfile
 
     /// <summary>Timing-sensitive scenarios: rate limiting, timeouts, auth conflicts.</summary>
     public const string Stress = "Stress";
+
+    /// <summary>Security infrastructure: real Keycloak JWT validation, real Cerbos PDP authorization.</summary>
+    public const string Security = "Security";
 }

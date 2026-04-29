@@ -3,9 +3,11 @@
     <ProjectReference Include="..\Explore.Blazor\Explore.Blazor.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
     <PackageReference Include="NSubstitute" />
+    <PackageReference Include="Testcontainers.Keycloak" />
     <PackageReference Include="TUnit" />
   </ItemGroup>
   <PropertyGroup>
@@ -14,4 +16,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+  <ItemGroup>
+    <Content Include="..\docker\keycloak\ISLAMU-realm.test.json" Link="TestAssets\ISLAMU-realm.test.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 </Project>
