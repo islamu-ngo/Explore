@@ -125,7 +125,9 @@ public class DeleteUiThemeCommandHandlerTests
     private static Explore.Domain.ValueObjects.UiThemePalette SamplePalette() => new()
     {
         Primary = "#336699",
+        PrimaryContrastText = "#FFFFFF",
         Secondary = "#112233",
+        SecondaryContrastText = "#FFFFFF",
         Background = "#F8FAFC",
         Surface = "#FFFFFF",
         AppbarBackground = "rgba(51,102,153,0.85)",

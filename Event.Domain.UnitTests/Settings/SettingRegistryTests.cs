@@ -142,7 +142,7 @@ public class SettingRegistryTests
             GovernanceSettingKeys.Branding.LogoUrl,
             GovernanceSettingKeys.Branding.FaviconUrl,
             GovernanceSettingKeys.Branding.CustomCssUrl,
-            GovernanceSettingKeys.Appearance.DefaultThemeId,
+            GovernanceSettingKeys.Appearance.ActiveProfileId,
             GovernanceSettingKeys.Appearance.ThemeMode,
             GovernanceSettingKeys.Domains.InstanceBaseDomain,
             GovernanceSettingKeys.Domains.AllowTenantCustomDomain,

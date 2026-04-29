@@ -104,13 +104,15 @@ public class UpdateCurrentUserAppearancePreferencesCommandHandler : IRequestHand
             parentAppearance.Direction);
 
         var requestedThemeIdValue = request.Preferences.DefaultThemeId?.ToString() ?? string.Empty;
-        var parentThemeIdValue = parentAppearance.DefaultThemeId?.ToString() ?? string.Empty;
+        var parentThemeIdValue = parentAppearance.ActiveProfileId?.ToString() ?? string.Empty;
+#pragma warning disable CS0618
         await UpsertOrRemoveOverrideAsync(
             tenantId,
             userId.Value,
-            GovernanceSettingKeys.Appearance.DefaultThemeId,
+            GovernanceSettingKeys.Appearance.LegacyDefaultThemeId,
             requestedThemeIdValue,
             parentThemeIdValue);
+#pragma warning restore CS0618
 
         _hierarchicalSettingsResolver.InvalidateUserCache(tenantId, userId.Value);
 

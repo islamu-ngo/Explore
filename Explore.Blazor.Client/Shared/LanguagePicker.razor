@@ -21,13 +21,13 @@
          Dense="true"
          Class="language-picker">
     <ActivatorContent>
-        <AppButton Variant="Variant.Text"
+        <MudButton Variant="Variant.Text"
                    Color="Color.Inherit"
                    EndIcon="@(_isOpen ? Icons.Material.Filled.ArrowDropUp : Icons.Material.Filled.ArrowDropDown)"
                    aria-label="@GetAriaLabel()"
                    Class="language-picker__button">
             <MudText Typo="Typo.body1">@LanguageContext.ForLanguage(_currentLang).Flag</MudText>
-        </AppButton>
+        </MudButton>
     </ActivatorContent>
     <ChildContent>
         @if (_cultures.Count > 0)

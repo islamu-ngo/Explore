@@ -40,7 +40,7 @@ public class AgentContextDuplicationTests
                 if (content.Contains(phrase, StringComparison.OrdinalIgnoreCase))
                 {
                     var relative = Path.GetRelativePath(RepoRoot, file);
-                    errors.Add($"{relative}: contains forbidden stack-overview phrase '{phrase}'. Link to AGENTS.md instead.");
+                    errors.Add($"{relative}: contains forbidden stack-overview phrase '{phrase}'. Link to CLAUDE.md instead.");
                 }
             }
         }
@@ -51,22 +51,30 @@ public class AgentContextDuplicationTests
     [Test]
     public async Task NoPairOfAgentsHasLongConsecutiveDuplicateBlock()
     {
-        var files = EnumerateAgentFiles().ToList();
+        await AssertNoLongDuplicateRuns(EnumerateAgentFiles(), MinConsecutiveDuplicateLines, "Agents");
+    }
+
+    [Test]
+    public async Task NoPairOfRulesHasLongConsecutiveDuplicateBlock()
+    {
+        await AssertNoLongDuplicateRuns(EnumerateRuleFiles(), 10, "Rules");
+    }
+
+    [Test]
+    public async Task NoRuleDuplicatesQuickReference()
+    {
+        var quickRef = RepoPath("docs", "QUICK_REFERENCE.md");
+        var quickRefLines = MeaningfulLines(quickRef);
         var errors = new List<string>();
 
-        var signatures = files.ToDictionary(f => f, f => MeaningfulLines(f));
-
-        for (int i = 0; i < files.Count; i++)
+        foreach (var ruleFile in EnumerateRuleFiles())
         {
-            for (int j = i + 1; j < files.Count; j++)
+            var ruleLines = MeaningfulLines(ruleFile);
+            var run = LongestCommonLineRun(quickRefLines, ruleLines);
+            if (run >= 8) // Lower threshold for QuickRef overlap
             {
-                var run = LongestCommonLineRun(signatures[files[i]], signatures[files[j]]);
-                if (run >= MinConsecutiveDuplicateLines)
-                {
-                    var a = Path.GetRelativePath(RepoRoot, files[i]);
-                    var b = Path.GetRelativePath(RepoRoot, files[j]);
-                    errors.Add($"{a} and {b}: share {run} consecutive identical meaningful lines (limit: {MinConsecutiveDuplicateLines - 1}).");
-                }
+                var relative = Path.GetRelativePath(RepoRoot, ruleFile);
+                errors.Add($"{relative}: duplicates {run} lines from QUICK_REFERENCE.md. Link to anchors instead of restating invariants.");
             }
         }
 
@@ -104,6 +112,38 @@ public class AgentContextDuplicationTests
         }
 
         await Assert.That(errors).IsEmpty().Because(string.Join("\n", errors));
+    }
+
+    private async Task AssertNoLongDuplicateRuns(IEnumerable<string> filesList, int threshold, string category)
+    {
+        var files = filesList.ToList();
+        var errors = new List<string>();
+        var signatures = files.ToDictionary(f => f, f => MeaningfulLines(f));
+
+        for (int i = 0; i < files.Count; i++)
+        {
+            for (int j = i + 1; j < files.Count; j++)
+            {
+                var run = LongestCommonLineRun(signatures[files[i]], signatures[files[j]]);
+                if (run >= threshold)
+                {
+                    var a = Path.GetRelativePath(RepoRoot, files[i]);
+                    var b = Path.GetRelativePath(RepoRoot, files[j]);
+                    errors.Add($"{a} and {b}: share {run} consecutive identical meaningful lines (limit: {threshold - 1}).");
+                }
+            }
+        }
+
+        await Assert.That(errors).IsEmpty().Because($"{category} duplication detected:\n{string.Join("\n", errors)}");
+    }
+
+    private static IEnumerable<string> EnumerateRuleFiles()
+    {
+        var dir = RepoPath(".claude", "rules");
+        if (!Directory.Exists(dir)) { return Array.Empty<string>(); }
+        return Directory.EnumerateFiles(dir, "*.md")
+            .Where(f => !new[] { "README.md", "_schema.md" }.Contains(Path.GetFileName(f)))
+            .OrderBy(f => f);
     }
 
     private static IEnumerable<string> EnumerateAgentFiles()

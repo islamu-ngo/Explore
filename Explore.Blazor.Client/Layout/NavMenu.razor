@@ -88,11 +88,7 @@
         <!-- Right Actions -->
         <div class="navbar__actions">
             <LanguagePicker />
-            <AppIconButton Icon="@Icons.Material.Rounded.LightMode"
-                           Color="Color.Inherit"
-                           OnClick="@OnToggleTheme"
-                           Title="Toggle Theme"
-                           Class="navbar__theme-toggle" />
+            <ThemeQuickSwitcher />
 
             <AuthorizeView>
                 <Authorized>

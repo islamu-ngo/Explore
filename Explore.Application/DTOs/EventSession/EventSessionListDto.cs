@@ -37,6 +37,10 @@ public class EventSessionListDto
     public string? Title { get; set; }
     public string? Slug { get; set; }
 
+    // Media
+    public Guid? FeaturedImageId { get; set; }
+    public string? FeaturedImageUri { get; set; }
+
     // Attendance
     public int? MaxAudienceAttendees { get; set; }
     public int? CurrentAudienceAttendees { get; set; }

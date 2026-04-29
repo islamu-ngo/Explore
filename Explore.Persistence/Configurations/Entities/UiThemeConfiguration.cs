@@ -79,7 +79,9 @@ public class UiThemeConfiguration : IEntityTypeConfiguration<UiTheme>
     private static void ConfigurePalette(OwnedNavigationBuilder<UiTheme, UiThemePalette> builder, string prefix)
     {
         builder.Property(p => p.Primary).IsRequired().HasMaxLength(7).HasColumnName($"{prefix}_primary");
+        builder.Property(p => p.PrimaryContrastText).IsRequired().HasMaxLength(7).HasColumnName($"{prefix}_primary_contrast_text");
         builder.Property(p => p.Secondary).IsRequired().HasMaxLength(7).HasColumnName($"{prefix}_secondary");
+        builder.Property(p => p.SecondaryContrastText).IsRequired().HasMaxLength(7).HasColumnName($"{prefix}_secondary_contrast_text");
         builder.Property(p => p.Background).IsRequired().HasMaxLength(7).HasColumnName($"{prefix}_background");
         builder.Property(p => p.Surface).IsRequired().HasMaxLength(7).HasColumnName($"{prefix}_surface");
         builder.Property(p => p.AppbarBackground).IsRequired().HasMaxLength(32).HasColumnName($"{prefix}_appbar_background");

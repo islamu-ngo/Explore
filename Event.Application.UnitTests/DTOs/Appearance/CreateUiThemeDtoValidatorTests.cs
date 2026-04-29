@@ -57,7 +57,9 @@ public class CreateUiThemeDtoValidatorTests
     private static UiThemePaletteDto CreatePalette(string primary, string appbarBackground) => new()
     {
         Primary = primary,
+        PrimaryContrastText = "#FFFFFF",
         Secondary = "#112233",
+        SecondaryContrastText = "#FFFFFF",
         Background = "#F8FAFC",
         Surface = "#FFFFFF",
         AppbarBackground = appbarBackground,

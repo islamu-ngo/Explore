@@ -81,7 +81,7 @@ public class UpdateCurrentUserAppearancePreferencesCommandHandlerTests
         await _userPreferenceRepository.Received().RemoveOverride(TestTenantId, TestUserId, GovernanceSettingKeys.Appearance.ThemeMode);
         await _userPreferenceRepository.Received().RemoveOverride(TestTenantId, TestUserId, GovernanceSettingKeys.Appearance.Direction);
         await _userPreferenceRepository.Received().RemoveOverride(TestTenantId, TestUserId, GovernanceSettingKeys.Appearance.Language);
-        await _userPreferenceRepository.Received().RemoveOverride(TestTenantId, TestUserId, GovernanceSettingKeys.Appearance.DefaultThemeId);
+        await _userPreferenceRepository.Received().RemoveOverride(TestTenantId, TestUserId, GovernanceSettingKeys.Appearance.LegacyDefaultThemeId);
         await _userPreferenceRepository.DidNotReceive().Create(Arg.Any<UserPreference>());
         _hierarchicalSettingsResolver.Received(1).InvalidateUserCache(TestTenantId, TestUserId);
     }
@@ -182,7 +182,7 @@ public class UpdateCurrentUserAppearancePreferencesCommandHandlerTests
 
         await Assert.That(result.Success).IsTrue();
         await _userPreferenceRepository.Received(1).Create(Arg.Is<UserPreference>(p =>
-            p.SettingKey == GovernanceSettingKeys.Appearance.DefaultThemeId
+            p.SettingKey == GovernanceSettingKeys.Appearance.LegacyDefaultThemeId
             && p.Value.Contains(themeId.ToString())));
         _hierarchicalSettingsResolver.Received(1).InvalidateUserCache(TestTenantId, TestUserId);
     }
@@ -213,7 +213,9 @@ public class UpdateCurrentUserAppearancePreferencesCommandHandlerTests
     private static Explore.Domain.ValueObjects.UiThemePalette SamplePalette() => new()
     {
         Primary = "#336699",
+        PrimaryContrastText = "#FFFFFF",
         Secondary = "#112233",
+        SecondaryContrastText = "#FFFFFF",
         Background = "#F8FAFC",
         Surface = "#FFFFFF",
         AppbarBackground = "rgba(51,102,153,0.85)",

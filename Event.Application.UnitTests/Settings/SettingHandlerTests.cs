@@ -397,7 +397,7 @@ public class SettingHandlerTests
         SetupResolverBatchForBatchCommand();
 
         // Use a key from another category
-        var foreignKey = GovernanceSettingKeys.Appearance.DefaultThemeId;
+        var foreignKey = GovernanceSettingKeys.Appearance.ActiveProfileId;
         var cmd = new UpdateSettingBatchCommand
         {
             Category = "EventList",

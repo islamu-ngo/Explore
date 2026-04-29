@@ -12,17 +12,19 @@ namespace Explore.Application.Features.ContactShareConsents.Requests.Queries;
 public class GetOrganizationSharedContactsQuery : IRequest<PaginatedResult<SharedContactDto>>, ISecureRequest
 {
     public Guid RecipientActorId { get; set; }
+    public Guid OrganizationId { get; set; }
     public Guid? EventId { get; set; }
     public string? EmailSearch { get; set; }
     public int PageNumber { get; set; } = 1;
     public int PageSize { get; set; } = 20;
     public Guid TenantId { get; set; }
 
-    string? ISecureRequest.ResourceId => RecipientActorId.ToString();
+    string? ISecureRequest.ResourceId => OrganizationId.ToString();
 
     IDictionary<string, object>? ISecureRequest.ResourceAttributes =>
         new Dictionary<string, object>
         {
-            ["organizationId"] = RecipientActorId
+            ["tenantId"] = TenantId,
+            ["organizationId"] = OrganizationId
         };
 }

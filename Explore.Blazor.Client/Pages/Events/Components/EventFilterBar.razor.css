@@ -3,99 +3,96 @@
 
 /* ── Primary action row: search + toggle + search button ── */
 .filter-bar__primary-row {
-    display: flex;
-    align-items: center;
-    gap: var(--isl-space-2);
-    padding: var(--isl-space-3) var(--isl-space-4);
-    flex-wrap: wrap;
+  display: flex;
+  align-items: center;
+  gap: var(--isl-space-2);
+  padding: var(--isl-space-3) var(--isl-space-4);
+  flex-wrap: wrap;
 }
 
 .filter-bar__search-field {
-    flex: 1 1 12.5rem;
-    min-width: 12.5rem;
+  flex: 1 1 12.5rem;
+  min-width: 12.5rem;
 }
 
 .filter-bar__toggle-btn {
-    text-transform: none;
-    font-weight: 500;
-    flex-shrink: 0;
-    white-space: nowrap;
+  text-transform: none;
+  font-weight: 500;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .filter-bar__search-btn {
-    flex-shrink: 0;
-    white-space: nowrap;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 /* ── Layout switcher bottom row — always visible, always last, right-aligned ── */
 .filter-bar__layout-row {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    padding: 0.375rem var(--isl-space-4);
-    border-top: 1px solid var(--mud-palette-lines-default);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0.375rem var(--isl-space-4);
 }
 
 ::deep .filter-bar__layout-switcher {
-    flex-shrink: 0;
+  flex-shrink: 0;
 }
 
 /* ── Collapsible filter panel ── */
 .filter-bar__panel {
-    padding: var(--isl-space-2) var(--isl-space-4) var(--isl-space-3);
-    background-color: color-mix(in srgb, var(--mud-palette-surface) 60%, var(--mud-palette-background-grey) 40%);
-    border-top: 1px solid var(--mud-palette-lines-default);
+  padding: var(--isl-space-2) var(--isl-space-4) var(--isl-space-3);
 }
 
 /* ── Filter items: flex-wrap layout, no separators ── */
 .filter-bar__filters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--isl-space-3);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--isl-space-3);
 }
 
 .filter-bar__filter-item {
-    flex: 0 1 11.25rem;
-    min-width: 8.75rem;
+  flex: 0 1 11.25rem;
+  min-width: 8.75rem;
 }
 
 /* ── Label above each filter control ── */
 .filter-bar__label {
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-size: 0.7rem;
-    line-height: 1;
-    color: var(--mud-palette-text-secondary);
-    margin-bottom: var(--isl-space-1);
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.7rem;
+  line-height: 1;
+  color: var(--mud-palette-text-secondary);
+  margin-bottom: var(--isl-space-1);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ── Active filter summary bar ── */
 .filter-bar__active-summary {
-    display: flex;
-    align-items: center;
-    gap: var(--isl-space-2);
-    margin-top: var(--isl-space-2);
-    padding-top: var(--isl-space-2);
-    border-top: 1px solid var(--mud-palette-lines-default);
+  display: flex;
+  align-items: center;
+  gap: var(--isl-space-2);
+  margin-top: var(--isl-space-2);
+  padding-top: var(--isl-space-2);
+  border-top: 1px solid var(--mud-palette-lines-default);
 }
 
 /* ── Compact MudSelect / MudTextField inputs via ::deep ── */
 ::deep .mud-input-control {
-    margin-top: 0;
-    margin-bottom: 0;
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
 ::deep .mud-select .mud-input-slot {
-    font-size: 0.875rem;
+  font-size: 0.875rem;
 }
 
 ::deep .filter-bar__search-field .mud-input-control {
-    margin-top: 0;
-    margin-bottom: 0;
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
 /* ── Mobile Filter Drawer ──
@@ -103,51 +100,51 @@
    renders the drawer <aside> outside the component scope boundary. */
 
 .filter-bar__drawer-body {
-    flex: 1 1 auto;
-    overflow-y: auto;
-    padding: var(--isl-space-3);
-    -webkit-overflow-scrolling: touch;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: var(--isl-space-3);
+  -webkit-overflow-scrolling: touch;
 }
 
 .filter-bar__filters--vertical {
-    flex-direction: column;
-    gap: var(--isl-space-3);
+  flex-direction: column;
+  gap: var(--isl-space-3);
 }
 
 .filter-bar__filter-item--full {
-    flex: 1 1 100%;
-    min-width: 0;
+  flex: 1 1 100%;
+  min-width: 0;
 }
 
 .filter-bar__drawer-footer {
-    flex-shrink: 0;
-    padding: var(--isl-space-3);
-    border-top: 1px solid var(--mud-palette-lines-default);
-    background-color: var(--mud-palette-surface);
+  flex-shrink: 0;
+  padding: var(--isl-space-3);
+  border-top: 1px solid var(--mud-palette-lines-default);
+  background-color: var(--mud-palette-surface);
 }
 
 /* ── Responsive: compact on small screens ── */
 @media (max-width: 37.5em) {
-    .filter-bar__primary-row {
-        flex-wrap: nowrap;
-    }
+  .filter-bar__primary-row {
+    flex-wrap: nowrap;
+  }
 
-    .filter-bar__search-field {
-        flex: 1 1 0%;
-        min-width: 0;
-    }
+  .filter-bar__search-field {
+    flex: 1 1 0%;
+    min-width: 0;
+  }
 
-    .filter-bar__filter-item {
-        flex: 1 1 calc(50% - 0.375rem);
-        min-width: 7.5rem;
-    }
+  .filter-bar__filter-item {
+    flex: 1 1 calc(50% - 0.375rem);
+    min-width: 7.5rem;
+  }
 
-    .filter-bar__search-btn ::deep .mud-button-label {
-        display: none;
-    }
+  .filter-bar__search-btn ::deep .mud-button-label {
+    display: none;
+  }
 
-    .filter-bar__search-btn {
-        min-width: auto;
-        padding-inline: var(--isl-space-2);
-    }
+  .filter-bar__search-btn {
+    min-width: auto;
+    padding-inline: var(--isl-space-2);
+  }
 }

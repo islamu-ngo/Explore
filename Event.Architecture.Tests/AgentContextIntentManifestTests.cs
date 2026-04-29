@@ -20,9 +20,8 @@ public class AgentContextIntentManifestTests
         "paths_in_scope",
         "minimum_tests",
         "docs_to_update",
-        "pr_checklist",
+        "unique_acceptance",
         "forbidden_without_approval",
-        "verification_commands",
     ];
 
     private static readonly HashSet<string> AllowedCategories =

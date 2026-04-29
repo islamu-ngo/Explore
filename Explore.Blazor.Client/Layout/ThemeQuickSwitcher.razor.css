@@ -1,0 +1,28 @@
+.theme-quick-switcher ::deep .mud-menu-content {
+    min-width: 220px;
+}
+
+.theme-quick-switcher__header {
+    padding: 0.5rem 1rem 0.375rem;
+}
+
+.theme-quick-switcher__item ::deep .mud-stack {
+    width: 100%;
+}
+
+.theme-quick-switcher__item--active {
+    font-weight: 600;
+}
+
+.theme-quick-switcher__swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    display: inline-block;
+    border: 1px solid rgba(128, 128, 128, 0.3);
+    flex-shrink: 0;
+}
+
+.ml-auto {
+    margin-left: auto;
+}

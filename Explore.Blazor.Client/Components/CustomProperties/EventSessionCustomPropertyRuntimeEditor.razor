@@ -1,0 +1,222 @@
+@* ABOUTME: Runtime editor for an EventSession's custom properties. *@
+@* ABOUTME: Wraps a list of CustomPropertyFieldEditor and manages save/validation state. *@
+
+@using Explore.Blazor.Client.Contracts.Services.CustomProperties
+@using Explore.Blazor.Client.Models.CustomProperties
+@using Explore.Blazor.Client.Models.Responses
+@using Explore.Domain.Enums
+@using MudBlazor
+
+@inject ICustomPropertyValueService CustomPropertyValueService
+@inject ISnackbar Snackbar
+
+<div class="session-cpr-editor">
+    @if (IsLoading)
+    {
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+    }
+    else
+    {
+        @if (Errors != null && Errors.Any())
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4">
+                <ul>
+                    @foreach (var error in Errors)
+                    {
+                        <li>@error.Key: @string.Join(", ", error.Value)</li>
+                    }
+                </ul>
+            </MudAlert>
+        }
+
+        <MudForm @ref="form" Model="@_valueDictionary" ValidationDelay="0">
+            @foreach (var def in Definitions.OrderBy(d => d.SortOrder))
+            {
+                if (!_valueDictionary.TryGetValue(def.Id, out var values))
+                {
+                    values = new List<CustomPropertyValueModel>();
+                    _valueDictionary[def.Id] = values;
+                }
+
+                <CustomPropertyFieldEditor Definition="@def"
+                                           Values="@values"
+                                           ParentId="@EventSessionId"
+                                           BaseCssClass="session-cpr-editor"
+                                           OnChanged="HandleFieldChanged" />
+            }
+        </MudForm>
+
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@IsSaving" OnClick="SaveAsync" Class="mt-4">
+            @if (IsSaving)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                <MudText Class="ms-2">Saving</MudText>
+            }
+            else
+            {
+                <MudText>Save Properties</MudText>
+            }
+        </MudButton>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public Guid EventSessionId { get; set; }
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<CustomPropertyDefinitionDetailModel> Definitions { get; set; } = Array.Empty<CustomPropertyDefinitionDetailModel>();
+
+    [Parameter]
+    public EventCallback OnSaved { get; set; }
+
+    public bool IsLoading { get; private set; } = true;
+    public bool IsSaving { get; private set; }
+    
+    private MudForm form = default!;
+    private Dictionary<Guid, List<CustomPropertyValueModel>> _valueDictionary = new();
+    private Dictionary<string, string[]> Errors { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadValuesAsync();
+    }
+
+    private async Task LoadValuesAsync()
+    {
+        IsLoading = true;
+        Errors.Clear();
+        try
+        {
+            var values = await CustomPropertyValueService.GetEventSessionValuesAsync(EventSessionId);
+            
+            _valueDictionary = Definitions.ToDictionary(
+                d => d.Id,
+                d => values.Where(v => v.DefinitionId == d.Id).OrderBy(v => v.Ordinal).ToList()
+            );
+        }
+        catch (Exception)
+        {
+            Errors["Load"] = new[] { "Failed to load session custom properties. Refresh and try again before saving." };
+            Snackbar.Add("Failed to load session custom properties.", Severity.Error);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void HandleFieldChanged()
+    {
+        // For potential auto-save or form dirty state tracking
+    }
+
+    public async Task SaveAsync()
+    {
+        await form.Validate();
+        if (!form.IsValid) return;
+
+        IsSaving = true;
+        Errors.Clear();
+        bool hasErrors = false;
+
+        try
+        {
+            foreach (var def in Definitions)
+            {
+                if (_valueDictionary.TryGetValue(def.Id, out var values))
+                {
+                    if (def.IsMulti)
+                    {
+                        RemoveEmptyOptionalValues(values, def.PropertyType);
+                        Reorder(values);
+
+                        if (def.IsRequired && !values.Any(v => HasValue(v, def.PropertyType)))
+                        {
+                            hasErrors = true;
+                            Errors[$"Definition {def.DisplayName}"] = new[] { $"{def.DisplayName} requires at least one value." };
+                            continue;
+                        }
+                    }
+
+                    BaseCommandResponse<Guid>? response;
+                    if (def.IsMulti)
+                    {
+                        response = await CustomPropertyValueService.SetEventSessionMultiValuesAsync(def.Id, EventSessionId, values);
+                    }
+                    else
+                    {
+                        var model = values.FirstOrDefault();
+                        if (model == null) continue;
+                        
+                        response = await CustomPropertyValueService.SetEventSessionValueAsync(def.Id, EventSessionId, model);
+                    }
+
+                    if (response is null)
+                    {
+                        hasErrors = true;
+                        Errors[$"Definition {def.DisplayName}"] = new[] { "Save did not return a result." };
+                    }
+                    else if (!response.Success)
+                    {
+                        hasErrors = true;
+                        if (response.Errors != null && response.Errors.Any())
+                        {
+                            Errors[$"Definition {def.DisplayName}"] = response.Errors.ToArray();
+                        }
+                    }
+                }
+            }
+
+            if (!hasErrors)
+            {
+                Snackbar.Add("Session custom properties saved successfully.", Severity.Success);
+                if (OnSaved.HasDelegate)
+                {
+                    await OnSaved.InvokeAsync();
+                }
+            }
+        }
+        catch (Explore.Blazor.Client.Clients.ApiException<Explore.Blazor.Client.Clients.ProblemDetails> apiEx)
+        {
+            hasErrors = true;
+            Errors["API Error"] = new[] { apiEx.Result?.Detail ?? apiEx.Message };
+        }
+        catch (Exception)
+        {
+            hasErrors = true;
+            Snackbar.Add("An unexpected error occurred while saving.", Severity.Error);
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+    private static void RemoveEmptyOptionalValues(List<CustomPropertyValueModel> values, PropertyType propertyType)
+    {
+        values.RemoveAll(v => !HasValue(v, propertyType));
+    }
+
+    private static bool HasValue(CustomPropertyValueModel value, PropertyType propertyType)
+    {
+        return propertyType switch
+        {
+            PropertyType.Text => !string.IsNullOrWhiteSpace(value.TextValue),
+            PropertyType.Url => !string.IsNullOrWhiteSpace(value.TextValue),
+            PropertyType.Number => value.NumberValue.HasValue,
+            PropertyType.Option => value.OptionId.HasValue,
+            PropertyType.Boolean => value.BooleanValue.HasValue,
+            PropertyType.DateTime => value.DateTimeValue.HasValue,
+            _ => false
+        };
+    }
+
+    private static void Reorder(List<CustomPropertyValueModel> values)
+    {
+        for (var i = 0; i < values.Count; i++)
+        {
+            values[i].Ordinal = i;
+        }
+    }
+}

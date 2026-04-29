@@ -1,0 +1,176 @@
+@* ABOUTME: Theme quick-switch popover in the navbar. Offers preset selection, mode switching, and links to full settings. *@
+@* ABOUTME: Delegates persistence to IAppearanceThemeService; links to Settings > Appearance for full control. *@
+
+@using Explore.Blazor.Client.Services
+@using MudBlazor
+@inject IAppearanceThemeService AppearanceThemeService
+@inject NavigationManager Nav
+
+<MudMenu @bind-Open="_isOpen"
+         AnchorOrigin="Origin.BottomCenter"
+         TransformOrigin="Origin.TopCenter"
+         Dense="true"
+         Class="theme-quick-switcher">
+    <ActivatorContent>
+        <MudIconButton Icon="@CurrentIcon"
+                       Color="Color.Inherit"
+                       Size="Size.Medium"
+                       Title="@GetAriaLabel()"
+                       Class="navbar__theme-toggle"
+                       @attributes="AdditionalAttributes" />
+    </ActivatorContent>
+    <ChildContent>
+        @if (_presets.Count > 0)
+        {
+            <div class="theme-quick-switcher__header">
+                <MudText Typo="Typo.subtitle2" Style="font-weight: 600;">Theme</MudText>
+            </div>
+            @foreach (var preset in _presets)
+            {
+                var p = preset;
+                var isActive = _currentPresetKey == p.ThemeKey;
+                <MudMenuItem OnClick="@(() => SelectPresetAsync(p))"
+                             Class="@(isActive ? "theme-quick-switcher__item theme-quick-switcher__item--active" : "theme-quick-switcher__item")">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                        <span class="theme-quick-switcher__swatch" style="background:@p.LightPalette.Primary;" />
+                        <MudText Typo="Typo.body2">@p.DisplayName</MudText>
+                        @if (isActive)
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Color="Color.Primary" Class="ml-auto" />
+                        }
+                    </MudStack>
+                </MudMenuItem>
+            }
+            <MudDivider />
+        }
+        <div class="theme-quick-switcher__header">
+            <MudText Typo="Typo.subtitle2" Style="font-weight: 600;">Mode</MudText>
+        </div>
+        @foreach (var mode in _modes)
+        {
+            var m = mode;
+            <MudMenuItem OnClick="@(() => SelectModeAsync(m.Value))"
+                         Class="@(m.Value == _currentMode ? "theme-quick-switcher__item theme-quick-switcher__item--active" : "theme-quick-switcher__item")">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="@m.Icon" Size="Size.Small" />
+                    <MudText Typo="Typo.body2">@m.Label</MudText>
+                    @if (m.Value == _currentMode)
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Color="Color.Primary" Class="ml-auto" />
+                    }
+                </MudStack>
+            </MudMenuItem>
+        }
+        <MudDivider />
+        <MudMenuItem OnClick="NavigateToAppearanceSettings" Class="theme-quick-switcher__item">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Outlined.Palette" Size="Size.Small" />
+                <MudText Typo="Typo.body2">Custom Theme</MudText>
+            </MudStack>
+        </MudMenuItem>
+        <MudMenuItem OnClick="NavigateToSettings" Class="theme-quick-switcher__item">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Outlined.Settings" Size="Size.Small" />
+                <MudText Typo="Typo.body2">Full settings</MudText>
+            </MudStack>
+        </MudMenuItem>
+    </ChildContent>
+</MudMenu>
+
+@code {
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool _isOpen;
+    private string _currentMode = "system";
+    private string? _currentPresetKey;
+    private IReadOnlyList<Services.Appearance.AvailablePresetDto> _presets = Array.Empty<Services.Appearance.AvailablePresetDto>();
+
+    private sealed record ModeOption(string Value, string Label, string Icon);
+
+    private static readonly ModeOption[] _modes =
+    [
+        new("system", "System", Icons.Material.Rounded.AutoMode),
+        new("light", "Light", Icons.Material.Rounded.LightMode),
+        new("dark", "Dark", Icons.Material.Rounded.DarkMode),
+        new("lighthighcontrast", "Light HC", Icons.Material.Rounded.Visibility),
+        new("darkhighcontrast", "Dark HC", Icons.Material.Rounded.NightsStay)
+    ];
+
+    private string CurrentIcon => _currentMode switch
+    {
+        "dark" or "darkhighcontrast" => Icons.Material.Rounded.DarkMode,
+        "light" or "lighthighcontrast" => Icons.Material.Rounded.LightMode,
+        _ => Icons.Material.Rounded.AutoMode
+    };
+
+    protected override void OnInitialized()
+    {
+        _currentMode = AppearanceThemeService.Current.ThemeMode ?? "system";
+        _currentPresetKey = AppearanceThemeService.Current.ResolvedAppearance?.SourcePresetKey;
+        _presets = AppearanceThemeService.Current.AvailablePresets;
+        AppearanceThemeService.Changed += OnAppearanceChanged;
+    }
+
+    private void OnAppearanceChanged(object? sender, AppearanceStateChangedEventArgs e)
+    {
+        _currentMode = e.State.ThemeMode ?? "system";
+        _currentPresetKey = e.State.ResolvedAppearance?.SourcePresetKey;
+        _presets = e.State.AvailablePresets;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SelectPresetAsync(Services.Appearance.AvailablePresetDto preset)
+    {
+        _currentPresetKey = preset.ThemeKey;
+        _isOpen = false;
+
+        var existingProfile = AppearanceThemeService.Current.UserProfiles
+            .FirstOrDefault(p => p.SourcePresetId == preset.Id && !p.IsArchived);
+
+        if (existingProfile is not null)
+        {
+            await AppearanceThemeService.SetActiveProfileAsync(existingProfile.Id);
+        }
+        else
+        {
+            await AppearanceThemeService.ClonePresetAndActivateAsync(preset.Id);
+        }
+    }
+
+    private async Task SelectModeAsync(string mode)
+    {
+        if (mode == _currentMode) return;
+        _currentMode = mode;
+        _isOpen = false;
+        await AppearanceThemeService.SetThemeModeAsync(mode);
+    }
+
+    private void NavigateToAppearanceSettings()
+    {
+        _isOpen = false;
+        Nav.NavigateTo("/settings?section=appearance&custom=true");
+    }
+
+    private void NavigateToSettings()
+    {
+        _isOpen = false;
+        Nav.NavigateTo("/settings?section=appearance");
+    }
+
+    private string GetAriaLabel() => _currentMode switch
+    {
+        "dark" => "Theme: Dark. Click to change.",
+        "light" => "Theme: Light. Click to change.",
+        "lighthighcontrast" => "Theme: Light High Contrast. Click to change.",
+        "darkhighcontrast" => "Theme: Dark High Contrast. Click to change.",
+        "custom" => "Theme: Custom. Click to change.",
+        _ => "Theme: System. Click to change."
+    };
+
+    public void Dispose()
+    {
+        AppearanceThemeService.Changed -= OnAppearanceChanged;
+        GC.SuppressFinalize(this);
+    }
+}

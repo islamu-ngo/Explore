@@ -1,0 +1,398 @@
+@* ABOUTME: Reusable field component for editing a single custom property definition. *@
+@* ABOUTME: Handles single and multi values (IsMulti), and switches on PropertyType. *@
+
+@using Explore.Blazor.Client.Models.CustomProperties
+@using Explore.Domain.Enums
+@using MudBlazor
+@using System.Text.RegularExpressions
+
+<div class="@($"{BaseCssClass}__field {(Definition.IsRequired ? $"{BaseCssClass}__field--required" : "")} {(Definition.IsMulti ? $"{BaseCssClass}__field--multi" : "")}")"
+     role="group"
+     aria-labelledby="@LabelId"
+     aria-describedby="@DescriptionId">
+    
+    @if (!Definition.IsMulti)
+    {
+        var model = Values.FirstOrDefault();
+        if (model == null)
+        {
+            model = new CustomPropertyValueModel { DefinitionId = Definition.Id, ParentId = ParentId };
+            Values.Add(model);
+        }
+        
+        <MudStack Spacing="1">
+            <span id="@LabelId" class="sr-only">@Definition.DisplayName</span>
+            @RenderInputMarkup(model, Definition.DisplayName)
+            @if (!string.IsNullOrEmpty(Definition.Description))
+            {
+                <MudText Typo="Typo.caption" id="@DescriptionId">@Definition.Description</MudText>
+            }
+        </MudStack>
+    }
+    else
+    {
+        <MudCard Outlined="true" Class="pa-4">
+            <MudStack Spacing="2">
+                <MudStack Row="true" AlignItems="AlignItems.Center">
+                    <MudText Typo="Typo.subtitle1" id="@LabelId">@Definition.DisplayName</MudText>
+                    @if (Definition.IsRequired)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Error">*</MudText>
+                    }
+                    <MudSpacer />
+                    <MudButton StartIcon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="AddMultiValue" aria-label="Add Value">Add</MudButton>
+                </MudStack>
+                @if (!string.IsNullOrEmpty(Definition.Description))
+                {
+                    <MudText Typo="Typo.caption" id="@DescriptionId">@Definition.Description</MudText>
+                }
+                
+                @if (!Values.Any())
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Surface">No values added.</MudText>
+                }
+                else
+                {
+                    @foreach (var model in Values.OrderBy(v => v.Ordinal).ToList())
+                    {
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+                            <div class="flex-grow-1">
+                                @RenderInputMarkup(model, null)
+                            </div>
+                            <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small" OnClick="@(() => MoveUp(model))" Disabled="@(model.Ordinal == 0)" aria-label="Move Up" />
+                            <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small" OnClick="@(() => MoveDown(model))" Disabled="@(model.Ordinal == Values.Count - 1)" aria-label="Move Down" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => RemoveValue(model))" aria-label="Remove Value" />
+                        </MudStack>
+                    }
+                }
+            </MudStack>
+        </MudCard>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public CustomPropertyDefinitionDetailModel Definition { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public List<CustomPropertyValueModel> Values { get; set; } = new();
+
+    [Parameter, EditorRequired]
+    public Guid ParentId { get; set; }
+    
+    [Parameter]
+    public string BaseCssClass { get; set; } = "event-cpr-editor";
+    
+    [Parameter]
+    public EventCallback OnChanged { get; set; }
+
+    private string LabelId => $"cp-label-{Definition.Id:N}";
+    private string DescriptionId => $"cp-description-{Definition.Id:N}";
+
+    private RenderFragment RenderInputMarkup(CustomPropertyValueModel model, string? label) => __builder =>
+    {
+        var isRequired = Definition.IsRequired && !Definition.IsMulti;
+
+        switch (Definition.PropertyType)
+        {
+            case PropertyType.Text:
+                <MudTextField T="string"
+                              Value="@model.TextValue"
+                              ValueChanged="@(EventCallback.Factory.Create<string>(this, v => { model.TextValue = v; NotifyChanged(); }))"
+                              Label="@label"
+                              Required="@isRequired"
+                              MaxLength="@(Definition.MaxLength.HasValue ? Definition.MaxLength.Value : 524288)"
+                              aria-required="@Definition.IsRequired.ToString().ToLowerInvariant()"
+                              aria-describedby="@DescriptionId"
+                              Validation="@(new Func<string?, string?>(ValidateText))" />
+                break;
+                
+            case PropertyType.Number:
+                <MudNumericField T="double?"
+                                 Value="@model.NumberValue"
+                                 ValueChanged="@(EventCallback.Factory.Create<double?>(this, v => { model.NumberValue = v; NotifyChanged(); }))"
+                                 Label="@label"
+                                 Required="@isRequired"
+                                 Min="@ToNullableDouble(Definition.MinNumber)"
+                                 Max="@ToNullableDouble(Definition.MaxNumber)"
+                                 aria-required="@Definition.IsRequired.ToString().ToLowerInvariant()"
+                                 aria-describedby="@DescriptionId"
+                                 Validation="@(new Func<double?, string?>(ValidateNumber))" />
+                break;
+
+            case PropertyType.Boolean:
+                <MudCheckBox T="bool?"
+                             Value="@model.BooleanValue"
+                             ValueChanged="@(EventCallback.Factory.Create<bool?>(this, v => { model.BooleanValue = v; NotifyChanged(); }))"
+                             Label="@(label ?? Definition.DisplayName)"
+                             Required="@isRequired"
+                             aria-required="@Definition.IsRequired.ToString().ToLowerInvariant()"
+                             aria-describedby="@DescriptionId" />
+                break;
+
+            case PropertyType.DateTime:
+                <MudStack Row="true" Spacing="2">
+                    <MudDatePicker Date="@model.DateTimeValue?.DateTime"
+                                   DateChanged="@(EventCallback.Factory.Create<DateTime?>(this, v => SetDate(model, v)))"
+                                   Label="@label"
+                                   Required="@isRequired"
+                                   aria-required="@Definition.IsRequired.ToString().ToLowerInvariant()"
+                                   aria-describedby="@DescriptionId"
+                                   Validation="@(new Func<DateTime?, string?>(ValidateDateTime))" />
+                    <MudTimePicker Time="@model.DateTimeValue?.TimeOfDay"
+                                   TimeChanged="@(EventCallback.Factory.Create<TimeSpan?>(this, v => SetTime(model, v)))"
+                                   Label="@(label is null ? "Time" : $"{label} time")"
+                                   Required="@isRequired"
+                                   aria-required="@Definition.IsRequired.ToString().ToLowerInvariant()"
+                                   aria-describedby="@DescriptionId" />
+                </MudStack>
+                break;
+
+            case PropertyType.Url:
+                <MudTextField T="string"
+                              Value="@model.TextValue"
+                              ValueChanged="@(EventCallback.Factory.Create<string>(this, v => { model.TextValue = v; NotifyChanged(); }))"
+                              Label="@label"
+                              Required="@isRequired"
+                              InputType="InputType.Url"
+                              MaxLength="@(Definition.MaxLength.HasValue ? Definition.MaxLength.Value : 524288)"
+                              aria-required="@Definition.IsRequired.ToString().ToLowerInvariant()"
+                              aria-describedby="@DescriptionId"
+                              Validation="@(new Func<string?, string?>(ValidateUrl))" />
+                break;
+
+            case PropertyType.Option:
+                <MudSelect T="Guid?"
+                           Value="@model.OptionId"
+                           ValueChanged="@(EventCallback.Factory.Create<Guid?>(this, v => { model.OptionId = v; NotifyChanged(); }))"
+                           Label="@label"
+                           Required="@isRequired"
+                           aria-required="@Definition.IsRequired.ToString().ToLowerInvariant()"
+                           aria-describedby="@DescriptionId"
+                           Validation="@(new Func<Guid?, string?>(ValidateOption))">
+                    @if (!Definition.IsRequired || Definition.IsMulti)
+                    {
+                        <MudSelectItem T="Guid?" Value="@(null)">None</MudSelectItem>
+                    }
+                    @if (Definition.Options != null)
+                    {
+                        @foreach (var opt in Definition.Options)
+                        {
+                            <MudSelectItem T="Guid?" Value="@opt.Id">@opt.DisplayName</MudSelectItem>
+                        }
+                    }
+                </MudSelect>
+                break;
+        }
+    };
+
+    private void AddMultiValue()
+    {
+        var maxOrdinal = Values.Any() ? Values.Max(v => v.Ordinal) : -1;
+        Values.Add(new CustomPropertyValueModel { DefinitionId = Definition.Id, ParentId = ParentId, Ordinal = maxOrdinal + 1 });
+        NotifyChanged();
+    }
+
+    private void RemoveValue(CustomPropertyValueModel model)
+    {
+        Values.Remove(model);
+        Reorder();
+        NotifyChanged();
+    }
+
+    private void MoveUp(CustomPropertyValueModel model)
+    {
+        var idx = Values.OrderBy(v => v.Ordinal).ToList().IndexOf(model);
+        if (idx > 0)
+        {
+            var prev = Values.OrderBy(v => v.Ordinal).ElementAt(idx - 1);
+            (prev.Ordinal, model.Ordinal) = (model.Ordinal, prev.Ordinal);
+            NotifyChanged();
+        }
+    }
+
+    private void MoveDown(CustomPropertyValueModel model)
+    {
+        var idx = Values.OrderBy(v => v.Ordinal).ToList().IndexOf(model);
+        if (idx < Values.Count - 1)
+        {
+            var next = Values.OrderBy(v => v.Ordinal).ElementAt(idx + 1);
+            (next.Ordinal, model.Ordinal) = (model.Ordinal, next.Ordinal);
+            NotifyChanged();
+        }
+    }
+
+    private void Reorder()
+    {
+        var ordered = Values.OrderBy(v => v.Ordinal).ToList();
+        for (int i = 0; i < ordered.Count; i++)
+        {
+            ordered[i].Ordinal = i;
+        }
+    }
+
+    private static double? ToNullableDouble(decimal? value)
+    {
+        return value.HasValue ? (double)value.Value : null;
+    }
+
+    private string? ValidateText(string? value)
+    {
+        if (Definition.IsRequired && !Definition.IsMulti && string.IsNullOrWhiteSpace(value))
+        {
+            return $"{Definition.DisplayName} is required.";
+        }
+
+        if (string.IsNullOrEmpty(value))
+        {
+            return null;
+        }
+
+        if (Definition.MinLength.HasValue && value.Length < Definition.MinLength.Value)
+        {
+            return $"Must be at least {Definition.MinLength.Value} characters.";
+        }
+
+        if (Definition.MaxLength.HasValue && value.Length > Definition.MaxLength.Value)
+        {
+            return $"Must be {Definition.MaxLength.Value} characters or fewer.";
+        }
+
+        if (!string.IsNullOrWhiteSpace(Definition.RegexPattern) && !Regex.IsMatch(value, Definition.RegexPattern))
+        {
+            return "Value does not match the required format.";
+        }
+
+        return null;
+    }
+
+    private string? ValidateNumber(double? value)
+    {
+        if (Definition.IsRequired && !Definition.IsMulti && !value.HasValue)
+        {
+            return $"{Definition.DisplayName} is required.";
+        }
+
+        if (!value.HasValue)
+        {
+            return null;
+        }
+
+        if (Definition.MinNumber.HasValue && value.Value < (double)Definition.MinNumber.Value)
+        {
+            return $"Must be greater than or equal to {Definition.MinNumber.Value}.";
+        }
+
+        if (Definition.MaxNumber.HasValue && value.Value > (double)Definition.MaxNumber.Value)
+        {
+            return $"Must be less than or equal to {Definition.MaxNumber.Value}.";
+        }
+
+        return null;
+    }
+
+    private string? ValidateOption(Guid? value)
+    {
+        if (Definition.IsRequired && !Definition.IsMulti && !value.HasValue)
+        {
+            return $"{Definition.DisplayName} is required.";
+        }
+
+        return null;
+    }
+
+    private string? ValidateDateTime(DateTime? value)
+    {
+        if (Definition.IsRequired && !Definition.IsMulti && !value.HasValue)
+        {
+            return $"{Definition.DisplayName} is required.";
+        }
+
+        if (!value.HasValue)
+        {
+            return null;
+        }
+
+        var selected = new DateTimeOffset(value.Value, TimeSpan.Zero);
+        if (Definition.MinDateTime.HasValue && selected < Definition.MinDateTime.Value)
+        {
+            return $"Must be on or after {Definition.MinDateTime.Value:g}.";
+        }
+
+        if (Definition.MaxDateTime.HasValue && selected > Definition.MaxDateTime.Value)
+        {
+            return $"Must be on or before {Definition.MaxDateTime.Value:g}.";
+        }
+
+        return null;
+    }
+
+    private void SetDate(CustomPropertyValueModel model, DateTime? value)
+    {
+        if (!value.HasValue)
+        {
+            model.DateTimeValue = null;
+            NotifyChanged();
+            return;
+        }
+
+        var time = model.DateTimeValue?.TimeOfDay ?? TimeSpan.Zero;
+        model.DateTimeValue = new DateTimeOffset(value.Value.Date.Add(time), TimeSpan.Zero);
+        NotifyChanged();
+    }
+
+    private void SetTime(CustomPropertyValueModel model, TimeSpan? value)
+    {
+        if (!model.DateTimeValue.HasValue)
+        {
+            NotifyChanged();
+            return;
+        }
+
+        if (!value.HasValue)
+        {
+            model.DateTimeValue = new DateTimeOffset(model.DateTimeValue.Value.Date, TimeSpan.Zero);
+            NotifyChanged();
+            return;
+        }
+
+        var date = model.DateTimeValue.Value.Date;
+        model.DateTimeValue = new DateTimeOffset(date.Add(value.Value), TimeSpan.Zero);
+        NotifyChanged();
+    }
+
+    private string? ValidateUrl(string? url)
+    {
+        var textError = ValidateText(url);
+        if (textError is not null)
+        {
+            return textError;
+        }
+
+        if (string.IsNullOrWhiteSpace(url)) return null;
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        {
+            return "Invalid URL format.";
+        }
+
+        if (!string.IsNullOrWhiteSpace(Definition.AllowedUrlSchemes))
+        {
+            var allowed = Definition.AllowedUrlSchemes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (allowed.Any() && !allowed.Contains(uri.Scheme, StringComparer.OrdinalIgnoreCase))
+            {
+                return $"Scheme '{uri.Scheme}' is not allowed. Allowed: {Definition.AllowedUrlSchemes}";
+            }
+        }
+
+        return null;
+    }
+
+    private void NotifyChanged()
+    {
+        if (OnChanged.HasDelegate)
+        {
+            OnChanged.InvokeAsync();
+        }
+    }
+}

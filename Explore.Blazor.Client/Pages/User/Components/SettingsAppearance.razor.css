@@ -1,4 +1,4 @@
-/* ABOUTME: Scoped CSS for the user Appearance settings section (theme picker swatches). */
+/* ABOUTME: Scoped CSS for the user Appearance settings section (theme picker, custom builder, and profile management). */
 /* ABOUTME: BEM classes under the settings-appearance root; ::deep not required. */
 
 .settings-appearance__theme-card {
@@ -31,6 +31,79 @@
     height: 2rem;
     border-radius: 0.5rem;
     border: 1px solid var(--mud-palette-lines-default);
+}
+
+.settings-appearance__swatch-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.settings-appearance__preset-swatch {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.5rem;
+    border: 2px solid var(--mud-palette-lines-default);
+    cursor: pointer;
+    transition: border-color 0.15s ease, transform 0.1s ease;
+}
+
+.settings-appearance__preset-swatch:hover {
+    transform: scale(1.08);
+}
+
+.settings-appearance__preset-swatch--active {
+    border-color: var(--mud-palette-primary);
+    border-width: 0.2rem;
+    box-shadow: 0 0 0 0.125rem rgba(37, 99, 235, 0.2);
+}
+
+.settings-appearance__preview {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.settings-appearance__preview-card {
+    border-radius: 12px;
+    overflow: hidden;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.settings-appearance__preview-appbar {
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+}
+
+.settings-appearance__preview-body {
+    padding: 16px;
+}
+
+.settings-appearance__preview-card-inner {
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.settings-appearance__preview-btn {
+    border: none;
+    padding: 6px 16px;
+    border-radius: 6px;
+    cursor: default;
+    font-size: 0.875rem;
+    margin-top: 8px;
+    display: inline-block;
+}
+
+.settings-appearance__profile-card {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 8px;
+    transition: border-color 0.15s ease;
+}
+
+.settings-appearance__profile-card:hover {
+    border-color: var(--mud-palette-primary);
 }
 
 .settings-appearance__actions {

@@ -2,6 +2,7 @@
 // ABOUTME: Verifies non-org actors and unapproved orgs return empty results.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Authorization;
 using Explore.Application.DTOs.ContactShareConsent;
 using Explore.Application.Features.ContactShareConsents.Handlers.Queries;
 using Explore.Application.Features.ContactShareConsents.Requests.Queries;
@@ -114,6 +115,17 @@ public class GetOrganizationSharedContactsQueryHandlerTests
         await Assert.That(result.Items[0].Email).IsEqualTo("user0@example.com");
     }
 
+    [Test]
+    public async Task SecureRequest_UsesOrganizationIdAndTenantId_ForAuthorizationContext()
+    {
+        var query = CreateQuery();
+        var secureRequest = (ISecureRequest)query;
+
+        await Assert.That(secureRequest.ResourceId).IsEqualTo(_orgId.ToString());
+        await Assert.That(secureRequest.ResourceAttributes!["organizationId"]).IsEqualTo(_orgId);
+        await Assert.That(secureRequest.ResourceAttributes!["tenantId"]).IsEqualTo(_tenantId);
+    }
+
     #region Helpers
 
     private static Tenant CreateTenant() => new()
@@ -156,6 +168,7 @@ public class GetOrganizationSharedContactsQueryHandlerTests
         return new GetOrganizationSharedContactsQuery
         {
             RecipientActorId = _actorId,
+            OrganizationId = _orgId,
             TenantId = _tenantId,
             PageNumber = 1,
             PageSize = 20

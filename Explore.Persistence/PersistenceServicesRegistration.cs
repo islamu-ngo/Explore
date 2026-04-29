@@ -231,6 +231,9 @@ public static class PersistenceServicesRegistration
         services.AddScoped<IAppSettingRepository, AppSettingRepository>();
         services.AddScoped<ISecretBindingRepository, SecretBindingRepository>();
         services.AddScoped<IUiThemeRepository, UiThemeRepository>();
+        services.AddScoped<IUiThemePresetRepository, UiThemePresetRepository>();
+        services.AddScoped<IUserAppearanceProfileRepository, UserAppearanceProfileRepository>();
+        services.AddScoped<IUserAppearancePreferenceRepository, UserAppearancePreferenceRepository>();
 
         // Module Governance Repositories
         services.AddScoped<IModuleDefinitionRepository, ModuleDefinitionRepository>();

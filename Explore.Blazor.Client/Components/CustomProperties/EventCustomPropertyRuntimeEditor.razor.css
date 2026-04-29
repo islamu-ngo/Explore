@@ -1,0 +1,15 @@
+.event-cpr-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.event-cpr-editor__field {
+    width: 100%;
+}
+
+.event-cpr-editor__field--required {
+}
+
+.event-cpr-editor__field--multi {
+}

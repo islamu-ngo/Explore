@@ -1,68 +1,60 @@
-// ABOUTME: Central runtime service for composing MudBlazor themes and persisting the current appearance mode.
-// ABOUTME: Supports dynamic UiTheme palettes fetched via the BFF with a built-in fallback for anonymous or failure paths.
+// ABOUTME: Central runtime service for composing MudBlazor themes and managing appearance state.
+// ABOUTME: Supports preset-based selection, user-owned profiles, custom theme generation, and System mode resolution.
 
 using System.Net.Http.Json;
-using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Services.Appearance;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Services;
-
-public interface IAppearanceThemeService
-{
-    MudTheme CreateTheme(string appbarHeight, AvailableThemeDto? activeTheme = null);
-    Task<bool> ResolveInitialDarkModeAsync(bool? serverHint, MudThemeProvider themeProvider);
-    Task PersistThemeModeAsync(bool isDarkMode, CancellationToken cancellationToken = default);
-    Task<string> ResolveInitialDirectionAsync();
-    Task PersistDirectionAsync(string direction, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<AvailableThemeDto>> GetAvailableThemesAsync(CancellationToken cancellationToken = default);
-    Task<AvailableThemeDto?> ResolveActiveThemeAsync(CancellationToken cancellationToken = default);
-}
 
 public sealed class AppearanceThemeService : IAppearanceThemeService
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<AppearanceThemeService> _logger;
 
+    private AppearanceState _current = new();
+    private bool _isInitialized;
+
     private static readonly PaletteLight BuiltInLight = new()
     {
-        Primary = "#2563EB",
-        Secondary = "#1E293B",
-        Black = "#0F172A",
+        Primary = "#0F62FE",
+        Secondary = "#475569",
+        Black = "#09090B",
         AppbarText = "#1E293B",
-        AppbarBackground = "rgba(248,250,252,0.85)",
-        Background = "#F8FAFC",
+        AppbarBackground = "#FFFFFF",
+        Background = "#F1F5F9",
         Surface = "#FFFFFF",
-        DrawerBackground = "#F1F5F9",
+        DrawerBackground = "#FFFFFF",
         DrawerText = "#1E293B",
         DrawerIcon = "#475569",
         GrayLight = "#E2E8F0",
         GrayLighter = "#F8FAFC",
         TextPrimary = "#0F172A",
-        TextSecondary = "#64748B",
+        TextSecondary = "#475569",
         Info = "#2563EB",
-        Success = "#047857",
-        Warning = "#B45309",
+        Success = "#16A34A",
+        Warning = "#D97706",
         Error = "#DC2626",
-        LinesDefault = "#E2E8F0",
-        TableLines = "#E2E8F0",
-        Divider = "#E2E8F0",
+        LinesDefault = "#CBD5E1",
+        TableLines = "#CBD5E1",
+        Divider = "#CBD5E1",
         OverlayLight = "rgba(248,250,252,0.8)"
     };
 
     private static readonly PaletteDark BuiltInDark = new()
     {
-        Primary = "#60A5FA",
+        Primary = "#3B82F6",
         Secondary = "#F1F5F9",
         Surface = "#1E293B",
-        Background = "#0F172A",
+        Background = "#0B0F19",
         BackgroundGray = "#1E293B",
         AppbarText = "#F1F5F9",
-        AppbarBackground = "rgba(15,23,42,0.85)",
-        DrawerBackground = "#0F172A",
+        AppbarBackground = "rgba(11,15,25,0.85)",
+        DrawerBackground = "#0B0F19",
         ActionDefault = "#94A3B8",
         ActionDisabled = "#334155",
         ActionDisabledBackground = "#1E293B",
-        TextPrimary = "#F1F5F9",
+        TextPrimary = "#F8FAFC",
         TextSecondary = "#94A3B8",
         TextDisabled = "#475569",
         DrawerIcon = "#CBD5E1",
@@ -70,9 +62,9 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
         GrayLight = "#334155",
         GrayLighter = "#1E293B",
         Info = "#60A5FA",
-        Success = "#34D399",
-        Warning = "#FBBF24",
-        Error = "#F87171",
+        Success = "#10B981",
+        Warning = "#F59E0B",
+        Error = "#EF4444",
         LinesDefault = "#334155",
         TableLines = "#334155",
         Divider = "#1E293B",
@@ -102,18 +94,199 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
         Overline = new OverlineTypography { FontSize = ".75rem", FontWeight = "500", TextTransform = "uppercase", LetterSpacing = ".08em" }
     };
 
-    public AppearanceThemeService(
-        HttpClient httpClient,
-        ILogger<AppearanceThemeService> logger)
+    public AppearanceState Current => _current;
+    public event EventHandler<AppearanceStateChangedEventArgs>? Changed;
+
+    public AppearanceThemeService(HttpClient httpClient, ILogger<AppearanceThemeService> logger)
     {
         _httpClient = httpClient;
         _logger = logger;
     }
 
-    public MudTheme CreateTheme(string appbarHeight, AvailableThemeDto? activeTheme = null)
+    public async Task InitializeAsync(MudThemeProvider themeProvider, CancellationToken cancellationToken = default)
     {
-        var light = activeTheme?.LightPalette is { } lightDto ? ComposeLight(lightDto) : BuiltInLight;
-        var dark = activeTheme?.DarkPalette is { } darkDto ? ComposeDark(darkDto) : BuiltInDark;
+        if (_isInitialized) return;
+
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<ResolvedAppearanceDto>("/bff/appearance", cancellationToken);
+            if (response is not null)
+            {
+                _current.ResolvedAppearance = response;
+                _current.ThemeMode = response.ThemeMode;
+                _current.ServerEffectiveDarkMode = response.ServerEffectiveDarkMode;
+                _current.Direction = response.Direction;
+                _current.Language = response.Language;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Could not load resolved appearance from BFF.");
+        }
+
+        try
+        {
+            var presets = await _httpClient.GetFromJsonAsync<IReadOnlyList<AvailablePresetDto>>("/bff/appearance/presets", cancellationToken);
+            _current.AvailablePresets = presets ?? Array.Empty<AvailablePresetDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error loading available presets from BFF.");
+            _current.AvailablePresets = Array.Empty<AvailablePresetDto>();
+        }
+
+        try
+        {
+            var profiles = await _httpClient.GetFromJsonAsync<IReadOnlyList<UserAppearanceProfileDto>>("/bff/appearance/profiles", cancellationToken);
+            _current.UserProfiles = profiles ?? Array.Empty<UserAppearanceProfileDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Could not load user appearance profiles from BFF.");
+            _current.UserProfiles = Array.Empty<UserAppearanceProfileDto>();
+        }
+
+        _current.IsInitialized = true;
+        _isInitialized = true;
+        Changed?.Invoke(this, new AppearanceStateChangedEventArgs { State = _current });
+    }
+
+    public async Task SetActiveProfileAsync(Guid profileId, CancellationToken cancellationToken = default)
+    {
+        var previousMode = _current.ThemeMode;
+        var previousDirection = _current.Direction;
+        var previousLanguage = _current.Language;
+
+        try
+        {
+            await _httpClient.PutAsJsonAsync("/bff/appearance/active-profile", new SetActiveProfileRequestDto { ProfileId = profileId }, cancellationToken);
+            _current.ResolvedAppearance = await _httpClient.GetFromJsonAsync<ResolvedAppearanceDto>("/bff/appearance", cancellationToken);
+            Changed?.Invoke(this, new AppearanceStateChangedEventArgs { State = _current });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error setting active profile.");
+            _current.ThemeMode = previousMode;
+            _current.Direction = previousDirection;
+            _current.Language = previousLanguage;
+            Changed?.Invoke(this, new AppearanceStateChangedEventArgs { State = _current });
+        }
+    }
+
+    public async Task ClonePresetAndActivateAsync(Guid presetId, CancellationToken cancellationToken = default)
+    {
+        var previousMode = _current.ThemeMode;
+        var previousDirection = _current.Direction;
+        var previousLanguage = _current.Language;
+
+        try
+        {
+            var profile = await _httpClient.PostAsJsonAsync($"/bff/appearance/profiles/from-preset/{presetId}", new ClonePresetRequestDto(), cancellationToken);
+            var profileDto = await profile.Content.ReadFromJsonAsync<UserAppearanceProfileDto>(cancellationToken: cancellationToken);
+
+            if (profileDto is not null)
+            {
+                await _httpClient.PutAsJsonAsync("/bff/appearance/active-profile", new SetActiveProfileRequestDto { ProfileId = profileDto.Id }, cancellationToken);
+                _current.ResolvedAppearance = await _httpClient.GetFromJsonAsync<ResolvedAppearanceDto>("/bff/appearance", cancellationToken);
+            }
+
+            Changed?.Invoke(this, new AppearanceStateChangedEventArgs { State = _current });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error cloning preset.");
+            _current.ThemeMode = previousMode;
+            _current.Direction = previousDirection;
+            _current.Language = previousLanguage;
+            Changed?.Invoke(this, new AppearanceStateChangedEventArgs { State = _current });
+        }
+    }
+
+    public async Task SetThemeModeAsync(string mode, CancellationToken cancellationToken = default)
+    {
+        var previousMode = _current.ThemeMode;
+
+        try
+        {
+            _current.ThemeMode = mode;
+            Changed?.Invoke(this, new AppearanceStateChangedEventArgs { State = _current });
+
+            await _httpClient.PutAsJsonAsync("/bff/appearance/mode", new SetThemeModeRequestDto { ThemeMode = mode }, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error setting theme mode.");
+            _current.ThemeMode = previousMode;
+            Changed?.Invoke(this, new AppearanceStateChangedEventArgs { State = _current });
+        }
+    }
+
+    public async Task UpdateCurrentProfileAsync(UpdateAppearanceProfileRequestDto request, CancellationToken cancellationToken = default)
+    {
+        var activeProfileId = _current.ResolvedAppearance?.ActiveProfileId;
+        if (activeProfileId is null) return;
+
+        try
+        {
+            await _httpClient.PutAsJsonAsync($"/bff/appearance/profiles/{activeProfileId}", request, cancellationToken);
+            _current.ResolvedAppearance = await _httpClient.GetFromJsonAsync<ResolvedAppearanceDto>("/bff/appearance", cancellationToken);
+            Changed?.Invoke(this, new AppearanceStateChangedEventArgs { State = _current });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error updating current profile.");
+        }
+    }
+
+    public async Task<UserAppearanceProfileDto?> CreateCustomProfileAsync(CreateCustomProfileRequestDto request, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("/bff/appearance/profiles", request, cancellationToken);
+            return await response.Content.ReadFromJsonAsync<UserAppearanceProfileDto>(cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error creating custom profile.");
+            return null;
+        }
+    }
+
+    public ClientPaletteDto GeneratePalettePreview(string naturalColor, string brandColor, bool isDark)
+    {
+        try
+        {
+            var response = _httpClient.GetFromJsonAsync<ClientPaletteDto>(
+                $"/bff/appearance/generate-palette?naturalColor={Uri.EscapeDataString(naturalColor)}&brandColor={Uri.EscapeDataString(brandColor)}&isDark={isDark}",
+                CancellationToken.None);
+            return response.Result ?? GetFallbackPalette(isDark);
+        }
+        catch
+        {
+            return GetFallbackPalette(isDark);
+        }
+    }
+
+    public async Task<ClientPaletteDto?> GeneratePalettePreviewAsync(string naturalColor, string brandColor, bool isDark, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await _httpClient.GetFromJsonAsync<ClientPaletteDto>(
+                $"/bff/appearance/generate-palette?naturalColor={Uri.EscapeDataString(naturalColor)}&brandColor={Uri.EscapeDataString(brandColor)}&isDark={isDark}",
+                cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error generating palette preview.");
+            return null;
+        }
+    }
+
+    public MudTheme CreateTheme(string appbarHeight)
+    {
+        var theme = _current.ResolvedAppearance?.Theme;
+        var light = theme?.LightPalette is not null ? ComposeLight(theme.LightPalette) : BuiltInLight;
+        var dark = theme?.DarkPalette is not null ? ComposeDark(theme.DarkPalette) : BuiltInDark;
 
         return new MudTheme
         {
@@ -128,29 +301,16 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
         };
     }
 
-    public async Task<bool> ResolveInitialDarkModeAsync(bool? serverHint, MudThemeProvider themeProvider)
+    public async Task<bool> ResolveEffectiveDarkModeAsync(MudThemeProvider themeProvider)
     {
-        if (serverHint.HasValue)
-        {
-            return serverHint.Value;
-        }
+        var mode = _current.ThemeMode.ToLowerInvariant();
 
-        try
-        {
-            var preferences = await _httpClient.GetFromJsonAsync<UserAppearancePreferencesDto>("/bff/theme");
-            if (preferences?.ThemeMode is "dark")
-            {
-                return true;
-            }
+        if (mode is "dark" or "darkhighcontrast") return true;
+        if (mode is "light" or "lighthighcontrast") return false;
 
-            if (preferences?.ThemeMode is "light")
-            {
-                return false;
-            }
-        }
-        catch (Exception ex)
+        if (_current.ServerEffectiveDarkMode.HasValue)
         {
-            _logger.LogDebug(ex, "Could not load current theme preference from the BFF.");
+            return _current.ServerEffectiveDarkMode.Value;
         }
 
         try
@@ -159,117 +319,74 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error resolving system theme preference");
+            _logger.LogWarning(ex, "Error resolving system dark mode preference.");
             return false;
         }
     }
 
-    public async Task PersistThemeModeAsync(bool isDarkMode, CancellationToken cancellationToken = default)
-    {
-        var themeMode = isDarkMode ? "dark" : "light";
-
-        try
-        {
-            using var response = await _httpClient.PostAsync(
-                $"/bff/theme?theme={Uri.EscapeDataString(themeMode)}",
-                content: null,
-                cancellationToken);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogWarning("Theme preference persistence failed with status code {StatusCode}", (int)response.StatusCode);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error saving theme preference");
-        }
-    }
-
-    public async Task<string> ResolveInitialDirectionAsync()
+    public async Task ArchiveProfileAsync(Guid profileId, CancellationToken cancellationToken = default)
     {
         try
         {
-            var preferences = await _httpClient.GetFromJsonAsync<UserAppearancePreferencesDto>("/bff/theme");
-            if (preferences?.Direction is "ltr" or "rtl")
-            {
-                return preferences.Direction;
-            }
+            await _httpClient.PutAsync($"/bff/appearance/profiles/{profileId}/archive", null, cancellationToken);
+            await RefreshProfilesAsync(cancellationToken);
+            Changed?.Invoke(this, new AppearanceStateChangedEventArgs { State = _current });
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Could not load direction preference from the BFF.");
+            _logger.LogWarning(ex, "Error archiving profile.");
         }
-
-        return "auto";
     }
 
-    public async Task PersistDirectionAsync(string direction, CancellationToken cancellationToken = default)
+    public async Task<UserAppearanceProfileDto?> DuplicateProfileAsync(Guid profileId, string? name, CancellationToken cancellationToken = default)
     {
         try
         {
-            using var response = await _httpClient.PostAsync(
-                $"/bff/direction?dir={Uri.EscapeDataString(direction)}",
-                null,
-                cancellationToken);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogWarning("Direction preference persistence failed with status code {StatusCode}", (int)response.StatusCode);
-            }
+            var request = name is not null
+                ? JsonContent.Create(new { Name = name })
+                : null;
+            var response = await _httpClient.PostAsync($"/bff/appearance/profiles/{profileId}/duplicate", request, cancellationToken);
+            return await response.Content.ReadFromJsonAsync<UserAppearanceProfileDto>(cancellationToken: cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error saving direction preference");
-        }
-    }
-
-    public async Task<IReadOnlyList<AvailableThemeDto>> GetAvailableThemesAsync(CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            var themes = await _httpClient.GetFromJsonAsync<IReadOnlyList<AvailableThemeDto>>("/bff/ui-themes", cancellationToken);
-            return themes ?? Array.Empty<AvailableThemeDto>();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error loading available UI themes from the BFF.");
-            return Array.Empty<AvailableThemeDto>();
-        }
-    }
-
-    public async Task<AvailableThemeDto?> ResolveActiveThemeAsync(CancellationToken cancellationToken = default)
-    {
-        var themes = await GetAvailableThemesAsync(cancellationToken);
-        if (themes.Count == 0)
-        {
+            _logger.LogWarning(ex, "Error duplicating profile.");
             return null;
         }
+    }
 
-        Guid? preferredThemeId = null;
+    public async Task RefreshProfilesAsync(CancellationToken cancellationToken = default)
+    {
         try
         {
-            var preferences = await _httpClient.GetFromJsonAsync<UserAppearancePreferencesDto>("/bff/theme", cancellationToken);
-            preferredThemeId = preferences?.DefaultThemeId;
+            var profiles = await _httpClient.GetFromJsonAsync<IReadOnlyList<UserAppearanceProfileDto>>("/bff/appearance/profiles", cancellationToken);
+            _current.UserProfiles = profiles ?? Array.Empty<UserAppearanceProfileDto>();
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Could not load appearance preferences while resolving active theme.");
+            _logger.LogWarning(ex, "Error refreshing profiles.");
         }
-
-        if (preferredThemeId.HasValue)
-        {
-            var preferred = themes.FirstOrDefault(t => t.Id == preferredThemeId.Value);
-            if (preferred is not null)
-            {
-                return preferred;
-            }
-        }
-
-        return themes.FirstOrDefault(t => t.IsDefault == true) ?? themes[0];
     }
 
-    private static PaletteLight ComposeLight(UiThemePaletteDto dto) => new()
+    private static ClientPaletteDto GetFallbackPalette(bool isDark) => isDark
+        ? new ClientPaletteDto
+        {
+            Primary = "#3B82F6", PrimaryContrastText = "#FFFFFF", Secondary = "#F1F5F9", SecondaryContrastText = "#0F172A",
+            Background = "#0B0F19", Surface = "#1E293B", AppbarBackground = "rgba(11,15,25,0.85)", AppbarText = "#F1F5F9",
+            DrawerBackground = "#0B0F19", DrawerText = "#F1F5F9", DrawerIcon = "#CBD5E1",
+            TextPrimary = "#F8FAFC", TextSecondary = "#94A3B8", Info = "#60A5FA", Success = "#10B981", Warning = "#F59E0B", Error = "#EF4444",
+            LinesDefault = "#334155", Divider = "#1E293B"
+        }
+        : new ClientPaletteDto
+        {
+            Primary = "#0F62FE", PrimaryContrastText = "#FFFFFF", Secondary = "#475569", SecondaryContrastText = "#FFFFFF",
+            Background = "#F1F5F9", Surface = "#FFFFFF", AppbarBackground = "#FFFFFF", AppbarText = "#1E293B",
+            DrawerBackground = "#FFFFFF", DrawerText = "#1E293B", DrawerIcon = "#475569",
+            TextPrimary = "#0F172A", TextSecondary = "#475569", Info = "#2563EB", Success = "#16A34A", Warning = "#D97706", Error = "#DC2626",
+            LinesDefault = "#CBD5E1", Divider = "#CBD5E1"
+        };
+
+    private static PaletteLight ComposeLight(ClientPaletteDto dto) => new()
     {
         Primary = dto.Primary ?? BuiltInLight.Primary.ToString(),
         Secondary = dto.Secondary ?? BuiltInLight.Secondary.ToString(),
@@ -295,7 +412,7 @@ public sealed class AppearanceThemeService : IAppearanceThemeService
         OverlayLight = BuiltInLight.OverlayLight
     };
 
-    private static PaletteDark ComposeDark(UiThemePaletteDto dto) => new()
+    private static PaletteDark ComposeDark(ClientPaletteDto dto) => new()
     {
         Primary = dto.Primary ?? BuiltInDark.Primary.ToString(),
         Secondary = dto.Secondary ?? BuiltInDark.Secondary.ToString(),

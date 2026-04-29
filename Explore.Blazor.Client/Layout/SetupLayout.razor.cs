@@ -1,5 +1,5 @@
 // ABOUTME: Code-behind for SetupLayout providing theme toggle with same palettes as MainLayout.
-// ABOUTME: Persists theme preference via BFF cookie endpoint for SSR consistency.
+// ABOUTME: Uses the new IAppearanceThemeService for theme mode persistence.
 
 using Explore.Blazor.Client.Services;
 using Microsoft.AspNetCore.Components;
@@ -35,7 +35,7 @@ public partial class SetupLayout : LayoutComponentBase
         {
             try
             {
-                _isDarkMode = await AppearanceThemeService.ResolveInitialDarkModeAsync(null, _mudThemeProvider);
+                _isDarkMode = await AppearanceThemeService.ResolveEffectiveDarkModeAsync(_mudThemeProvider);
                 StateHasChanged();
             }
             catch
@@ -48,6 +48,7 @@ public partial class SetupLayout : LayoutComponentBase
     private async Task ToggleDarkMode()
     {
         _isDarkMode = !_isDarkMode;
-        await AppearanceThemeService.PersistThemeModeAsync(_isDarkMode);
+        var mode = _isDarkMode ? "dark" : "light";
+        await AppearanceThemeService.SetThemeModeAsync(mode);
     }
 }

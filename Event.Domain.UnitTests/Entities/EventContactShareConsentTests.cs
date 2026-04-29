@@ -55,7 +55,7 @@ public class EventContactShareConsentTests
         var entity = CreateConsent();
 
         await Assert.That(entity.SourceEvent).IsNull();
-        await Assert.That(entity.SourceEventRegistration).IsNull();
+        await Assert.That(entity.SourceEventRegistrationIntent).IsNull();
     }
 
     [Test]
@@ -64,7 +64,7 @@ public class EventContactShareConsentTests
         var entity = CreateConsent();
 
         await Assert.That(entity.SourceEventId).IsNull();
-        await Assert.That(entity.SourceEventRegistrationId).IsNull();
+        await Assert.That(entity.SourceEventRegistrationIntentId).IsNull();
         await Assert.That(entity.WithdrawnAt).IsNull();
     }
 

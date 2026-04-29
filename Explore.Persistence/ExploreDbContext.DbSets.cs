@@ -155,6 +155,9 @@ public partial class ExploreDbContext
     public DbSet<SecretBinding> SecretBindings { get; set; }
     public DbSet<ConfigurationChangeLog> ConfigurationChangeLogs { get; set; }
     public DbSet<UiTheme> UiThemes { get; set; }
+    public DbSet<UiThemePreset> UiThemePresets { get; set; }
+    public DbSet<UserAppearanceProfile> UserAppearanceProfiles { get; set; }
+    public DbSet<UserAppearancePreference> UserAppearancePreferences { get; set; }
 
     // ===== Audit & Notifications =====
     public DbSet<AuditLog> AuditLogs { get; set; }

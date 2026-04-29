@@ -57,8 +57,7 @@ public partial class NavMenu : IDisposable
     [Inject]
     protected AiAssistantState AiAssistantState { get; set; } = null!;
 
-    [Parameter]
-    public EventCallback OnToggleTheme { get; set; }
+    
 
     private bool _dropdownOpen = false;
     private UserDto? _currentUser;

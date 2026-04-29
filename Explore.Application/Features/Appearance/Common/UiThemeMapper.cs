@@ -65,7 +65,9 @@ internal static class UiThemeMapper
     private static UiThemePalette ToPalette(UiThemePaletteDto palette) => new()
     {
         Primary = UiThemeInputRules.NormalizeHex(palette.Primary),
+        PrimaryContrastText = UiThemeInputRules.NormalizeHex(palette.PrimaryContrastText ?? "#FFFFFF"),
         Secondary = UiThemeInputRules.NormalizeHex(palette.Secondary),
+        SecondaryContrastText = UiThemeInputRules.NormalizeHex(palette.SecondaryContrastText ?? "#FFFFFF"),
         Background = UiThemeInputRules.NormalizeHex(palette.Background),
         Surface = UiThemeInputRules.NormalizeHex(palette.Surface),
         AppbarBackground = UiThemeInputRules.NormalizeFlexibleColor(palette.AppbarBackground),
@@ -86,7 +88,9 @@ internal static class UiThemeMapper
     internal static UiThemePaletteDto ToPaletteDto(UiThemePalette palette) => new()
     {
         Primary = palette.Primary,
+        PrimaryContrastText = palette.PrimaryContrastText,
         Secondary = palette.Secondary,
+        SecondaryContrastText = palette.SecondaryContrastText,
         Background = palette.Background,
         Surface = palette.Surface,
         AppbarBackground = palette.AppbarBackground,

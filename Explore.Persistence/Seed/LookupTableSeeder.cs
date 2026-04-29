@@ -60,6 +60,7 @@ public static class LookupTableSeeder
         await SeedScheduleItemKindsAsync(context, cancellationToken);
         await SeedEventRegistrationPoliciesAsync(context, cancellationToken);
         await SeedRegistrationScopesAsync(context, cancellationToken);
+        await SeedUiThemePresetsAsync(context, cancellationToken);
     }
 
     private static async Task SeedRegistrationScopesAsync(ExploreDbContext context, CancellationToken ct)
@@ -738,6 +739,322 @@ public static class LookupTableSeeder
             new NotificationReason { Id = (int)NotificationReasonEnum.Subscription, MasterCode = "SUBSCRIPTION", FullName = "Subscription", Description = "User is subscribed to the source" },
             new NotificationReason { Id = (int)NotificationReasonEnum.Membership, MasterCode = "MEMBERSHIP", FullName = "Membership", Description = "User is a member of the related entity" },
             new NotificationReason { Id = (int)NotificationReasonEnum.System, MasterCode = "SYSTEM", FullName = "System", Description = "System-generated notification" });
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static async Task SeedUiThemePresetsAsync(ExploreDbContext context, CancellationToken ct)
+    {
+        var currentSeedVersion = 3;
+        var existingPresets = await context.UiThemePresets
+            .Where(p => p.IsSystem && p.TenantId == null)
+            .ToListAsync(ct);
+
+        var alreadySeeded = existingPresets.Any(p => p.SeedVersion >= currentSeedVersion);
+        if (alreadySeeded) return;
+
+        var enterpriseBlue = new UiThemePreset
+        {
+            Id = Guid.Parse("a1b2c3d4-1111-1111-1111-111111111111"),
+            TenantId = null,
+            ThemeKey = "enterprise-blue",
+            DisplayName = "Enterprise Blue",
+            Description = "Default professional theme with a blue accent palette.",
+            IsSystem = true,
+            IsEditable = false,
+            IsActive = true,
+            SeedVersion = currentSeedVersion,
+            LightPalette = new Domain.ValueObjects.UiThemePalette
+            {
+                Primary = "#0F62FE", PrimaryContrastText = "#FFFFFF",
+                Secondary = "#475569", SecondaryContrastText = "#FFFFFF",
+                Background = "#F1F5F9", Surface = "#FFFFFF",
+                AppbarBackground = "#FFFFFF", AppbarText = "#1E293B",
+                DrawerBackground = "#FFFFFF", DrawerText = "#1E293B", DrawerIcon = "#475569",
+                TextPrimary = "#0F172A", TextSecondary = "#475569",
+                Info = "#2563EB", Success = "#16A34A", Warning = "#D97706", Error = "#DC2626",
+                LinesDefault = "#CBD5E1", Divider = "#CBD5E1"
+            },
+            DarkPalette = new Domain.ValueObjects.UiThemePalette
+            {
+                Primary = "#3B82F6", PrimaryContrastText = "#FFFFFF",
+                Secondary = "#F1F5F9", SecondaryContrastText = "#0F172A",
+                Background = "#0B0F19", Surface = "#1E293B",
+                AppbarBackground = "rgba(11,15,25,0.85)", AppbarText = "#F1F5F9",
+                DrawerBackground = "#0B0F19", DrawerText = "#F1F5F9", DrawerIcon = "#CBD5E1",
+                TextPrimary = "#F8FAFC", TextSecondary = "#94A3B8",
+                Info = "#60A5FA", Success = "#10B981", Warning = "#F59E0B", Error = "#EF4444",
+                LinesDefault = "#334155", Divider = "#1E293B"
+            }
+        };
+
+        var emeraldGreen = new UiThemePreset
+        {
+            Id = Guid.Parse("a1b2c3d4-2222-2222-2222-222222222222"),
+            TenantId = null,
+            ThemeKey = "emerald-green",
+            DisplayName = "Emerald Green",
+            Description = "Fresh and natural theme with green accents, ideal for Islamic event branding.",
+            IsSystem = true,
+            IsEditable = false,
+            IsActive = true,
+            SeedVersion = currentSeedVersion,
+            LightPalette = new Domain.ValueObjects.UiThemePalette
+            {
+                Primary = "#16A34A", PrimaryContrastText = "#FFFFFF",
+                Secondary = "#475569", SecondaryContrastText = "#FFFFFF",
+                Background = "#F0FDF4", Surface = "#FFFFFF",
+                AppbarBackground = "#FFFFFF", AppbarText = "#14532D",
+                DrawerBackground = "#FFFFFF", DrawerText = "#14532D", DrawerIcon = "#475569",
+                TextPrimary = "#052E16", TextSecondary = "#475569",
+                Info = "#2563EB", Success = "#16A34A", Warning = "#D97706", Error = "#DC2626",
+                LinesDefault = "#BBF7D0", Divider = "#BBF7D0"
+            },
+            DarkPalette = new Domain.ValueObjects.UiThemePalette
+            {
+                Primary = "#22C55E", PrimaryContrastText = "#052E16",
+                Secondary = "#E2E8F0", SecondaryContrastText = "#0F172A",
+                Background = "#052E16", Surface = "#14532D",
+                AppbarBackground = "rgba(5,46,22,0.85)", AppbarText = "#F0FDF4",
+                DrawerBackground = "#052E16", DrawerText = "#F0FDF4", DrawerIcon = "#BBF7D0",
+                TextPrimary = "#F0FDF4", TextSecondary = "#BBF7D0",
+                Info = "#60A5FA", Success = "#22C55E", Warning = "#F59E0B", Error = "#EF4444",
+                LinesDefault = "#14532D", Divider = "#14532D"
+            }
+        };
+
+        var abyssalDark = new UiThemePreset
+        {
+            Id = Guid.Parse("a1b2c3d4-3333-3333-3333-333333333333"),
+            TenantId = null,
+            ThemeKey = "abyssal-dark",
+            DisplayName = "Abyssal Dark",
+            Description = "Dark-first theme with deep navy tones, still offering a light palette.",
+            IsSystem = true,
+            IsEditable = false,
+            IsActive = true,
+            SeedVersion = currentSeedVersion,
+            LightPalette = new Domain.ValueObjects.UiThemePalette
+            {
+                Primary = "#0F62FE", PrimaryContrastText = "#FFFFFF",
+                Secondary = "#475569", SecondaryContrastText = "#FFFFFF",
+                Background = "#F8FAFC", Surface = "#FFFFFF",
+                AppbarBackground = "#FFFFFF", AppbarText = "#0F172A",
+                DrawerBackground = "#FFFFFF", DrawerText = "#0F172A", DrawerIcon = "#64748B",
+                TextPrimary = "#0F172A", TextSecondary = "#64748B",
+                Info = "#2563EB", Success = "#16A34A", Warning = "#D97706", Error = "#DC2626",
+                LinesDefault = "#E2E8F0", Divider = "#E2E8F0"
+            },
+            DarkPalette = new Domain.ValueObjects.UiThemePalette
+            {
+                Primary = "#60A5FA", PrimaryContrastText = "#0F172A",
+                Secondary = "#94A3B8", SecondaryContrastText = "#0F172A",
+                Background = "#020617", Surface = "#0F172A",
+                AppbarBackground = "rgba(2,6,23,0.95)", AppbarText = "#F8FAFC",
+                DrawerBackground = "#020617", DrawerText = "#F8FAFC", DrawerIcon = "#64748B",
+                TextPrimary = "#F8FAFC", TextSecondary = "#94A3B8",
+                Info = "#60A5FA", Success = "#34D399", Warning = "#FBBF24", Error = "#F87171",
+                LinesDefault = "#1E293B", Divider = "#1E293B"
+            }
+        };
+
+        var pureWhite = new UiThemePreset
+        {
+            Id = Guid.Parse("a1b2c3d4-4444-4444-4444-444444444444"),
+            TenantId = null,
+            ThemeKey = "pure-white",
+            DisplayName = "Pure White",
+            Description = "Minimal clean theme with subtle neutral boundaries for maximum clarity.",
+            IsSystem = true,
+            IsEditable = false,
+            IsActive = true,
+            SeedVersion = currentSeedVersion,
+            LightPalette = new Domain.ValueObjects.UiThemePalette
+            {
+                Primary = "#3B82F6", PrimaryContrastText = "#FFFFFF",
+                Secondary = "#6B7280", SecondaryContrastText = "#FFFFFF",
+                Background = "#FFFFFF", Surface = "#F9FAFB",
+                AppbarBackground = "#FFFFFF", AppbarText = "#111827",
+                DrawerBackground = "#F9FAFB", DrawerText = "#111827", DrawerIcon = "#6B7280",
+                TextPrimary = "#111827", TextSecondary = "#6B7280",
+                Info = "#3B82F6", Success = "#10B981", Warning = "#F59E0B", Error = "#EF4444",
+                LinesDefault = "#E5E7EB", Divider = "#F3F4F6"
+            },
+            DarkPalette = new Domain.ValueObjects.UiThemePalette
+            {
+                Primary = "#60A5FA", PrimaryContrastText = "#0F172A",
+                Secondary = "#94A3B8", SecondaryContrastText = "#0F172A",
+                Background = "#0F172A", Surface = "#1E293B",
+                AppbarBackground = "#0F172A", AppbarText = "#F8FAFC",
+                DrawerBackground = "#0F172A", DrawerText = "#F8FAFC", DrawerIcon = "#64748B",
+                TextPrimary = "#F8FAFC", TextSecondary = "#94A3B8",
+                Info = "#60A5FA", Success = "#34D399", Warning = "#FBBF24", Error = "#F87171",
+                LinesDefault = "#334155", Divider = "#334155"
+            }
+        };
+
+        var lightHighContrast = new UiThemePreset
+        {
+            Id = Guid.Parse("a1b2c3d4-5555-5555-5555-555555555555"),
+            TenantId = null,
+            ThemeKey = "light-hc",
+            DisplayName = "Light High Contrast",
+            Description = "WCAG AAA-compliant light theme with maximum text contrast for accessibility.",
+            IsSystem = true,
+            IsEditable = false,
+            IsActive = true,
+            SeedVersion = currentSeedVersion,
+            LightPalette = new Domain.ValueObjects.UiThemePalette
+            {
+                Primary = "#0050D8", PrimaryContrastText = "#FFFFFF",
+                Secondary = "#1E293B", SecondaryContrastText = "#FFFFFF",
+                Background = "#FFFFFF", Surface = "#FFFFFF",
+                AppbarBackground = "#FFFFFF", AppbarText = "#000000",
+                DrawerBackground = "#FFFFFF", DrawerText = "#000000", DrawerIcon = "#000000",
+                TextPrimary = "#000000", TextSecondary = "#1E293B",
+                Info = "#0050D8", Success = "#006600", Warning = "#B45309", Error = "#B91C1C",
+                LinesDefault = "#000000", Divider = "#000000"
+            },
+            DarkPalette = new Domain.ValueObjects.UiThemePalette
+            {
+                Primary = "#0050D8", PrimaryContrastText = "#FFFFFF",
+                Secondary = "#1E293B", SecondaryContrastText = "#FFFFFF",
+                Background = "#F8FAFC", Surface = "#FFFFFF",
+                AppbarBackground = "#FFFFFF", AppbarText = "#000000",
+                DrawerBackground = "#FFFFFF", DrawerText = "#000000", DrawerIcon = "#000000",
+                TextPrimary = "#000000", TextSecondary = "#1E293B",
+                Info = "#0050D8", Success = "#006600", Warning = "#B45309", Error = "#B91C1C",
+                LinesDefault = "#000000", Divider = "#000000"
+            }
+        };
+
+        var darkHighContrast = new UiThemePreset
+        {
+            Id = Guid.Parse("a1b2c3d4-6666-6666-6666-666666666666"),
+            TenantId = null,
+            ThemeKey = "dark-hc",
+            DisplayName = "Dark High Contrast",
+            Description = "WCAG AAA-compliant dark theme with pure white text on black backgrounds for maximum readability.",
+            IsSystem = true,
+            IsEditable = false,
+            IsActive = true,
+            SeedVersion = currentSeedVersion,
+            LightPalette = new Domain.ValueObjects.UiThemePalette
+            {
+                Primary = "#93C5FD", PrimaryContrastText = "#000000",
+                Secondary = "#F8FAFC", SecondaryContrastText = "#000000",
+                Background = "#FFFFFF", Surface = "#F9FAFB",
+                AppbarBackground = "#FFFFFF", AppbarText = "#000000",
+                DrawerBackground = "#F9FAFB", DrawerText = "#000000", DrawerIcon = "#000000",
+                TextPrimary = "#000000", TextSecondary = "#1E293B",
+                Info = "#2563EB", Success = "#16A34A", Warning = "#D97706", Error = "#DC2626",
+                LinesDefault = "#1E293B", Divider = "#E2E8F0"
+            },
+            DarkPalette = new Domain.ValueObjects.UiThemePalette
+            {
+                Primary = "#93C5FD", PrimaryContrastText = "#000000",
+                Secondary = "#F8FAFC", SecondaryContrastText = "#000000",
+                Background = "#000000", Surface = "#0A0A0A",
+                AppbarBackground = "#000000", AppbarText = "#FFFFFF",
+                DrawerBackground = "#000000", DrawerText = "#FFFFFF", DrawerIcon = "#FFFFFF",
+                TextPrimary = "#FFFFFF", TextSecondary = "#E2E8F0",
+                Info = "#93C5FD", Success = "#6EE7B7", Warning = "#FCD34D", Error = "#FCA5A5",
+                LinesDefault = "#FFFFFF", Divider = "#FFFFFF"
+            }
+        };
+
+        var white = new UiThemePreset
+        {
+            Id = Guid.Parse("a1b2c3d4-7777-7777-7777-777777777777"),
+            TenantId = null,
+            ThemeKey = "classic-white",
+            DisplayName = "White",
+            Description = "Clean, bright theme with pure white surfaces and crisp blue accents for a professional look.",
+            IsSystem = true,
+            IsEditable = false,
+            IsActive = true,
+            SeedVersion = currentSeedVersion,
+            LightPalette = new Domain.ValueObjects.UiThemePalette
+            {
+                Primary = "#2563EB", PrimaryContrastText = "#FFFFFF",
+                Secondary = "#64748B", SecondaryContrastText = "#FFFFFF",
+                Background = "#FFFFFF", Surface = "#FFFFFF",
+                AppbarBackground = "#FFFFFF", AppbarText = "#0F172A",
+                DrawerBackground = "#F8FAFC", DrawerText = "#0F172A", DrawerIcon = "#64748B",
+                TextPrimary = "#0F172A", TextSecondary = "#475569",
+                Info = "#2563EB", Success = "#16A34A", Warning = "#D97706", Error = "#DC2626",
+                LinesDefault = "#E2E8F0", Divider = "#E2E8F0"
+            },
+            DarkPalette = new Domain.ValueObjects.UiThemePalette
+            {
+                Primary = "#60A5FA", PrimaryContrastText = "#0F172A",
+                Secondary = "#94A3B8", SecondaryContrastText = "#0F172A",
+                Background = "#0F172A", Surface = "#1E293B",
+                AppbarBackground = "rgba(15,23,42,0.92)", AppbarText = "#F8FAFC",
+                DrawerBackground = "#0F172A", DrawerText = "#F8FAFC", DrawerIcon = "#94A3B8",
+                TextPrimary = "#F8FAFC", TextSecondary = "#94A3B8",
+                Info = "#60A5FA", Success = "#34D399", Warning = "#FBBF24", Error = "#F87171",
+                LinesDefault = "#334155", Divider = "#1E293B"
+            }
+        };
+
+        var dark = new UiThemePreset
+        {
+            Id = Guid.Parse("a1b2c3d4-8888-8888-8888-888888888888"),
+            TenantId = null,
+            ThemeKey = "classic-dark",
+            DisplayName = "Dark",
+            Description = "Refined dark theme with deep charcoal surfaces and vibrant accents for comfortable extended use.",
+            IsSystem = true,
+            IsEditable = false,
+            IsActive = true,
+            SeedVersion = currentSeedVersion,
+            LightPalette = new Domain.ValueObjects.UiThemePalette
+            {
+                Primary = "#2563EB", PrimaryContrastText = "#FFFFFF",
+                Secondary = "#64748B", SecondaryContrastText = "#FFFFFF",
+                Background = "#F8FAFC", Surface = "#FFFFFF",
+                AppbarBackground = "#FFFFFF", AppbarText = "#0F172A",
+                DrawerBackground = "#FFFFFF", DrawerText = "#0F172A", DrawerIcon = "#64748B",
+                TextPrimary = "#0F172A", TextSecondary = "#475569",
+                Info = "#2563EB", Success = "#16A34A", Warning = "#D97706", Error = "#DC2626",
+                LinesDefault = "#E2E8F0", Divider = "#E2E8F0"
+            },
+            DarkPalette = new Domain.ValueObjects.UiThemePalette
+            {
+                Primary = "#818CF8", PrimaryContrastText = "#0F172A",
+                Secondary = "#A1A1AA", SecondaryContrastText = "#0F172A",
+                Background = "#09090B", Surface = "#18181B",
+                AppbarBackground = "rgba(9,9,11,0.92)", AppbarText = "#FAFAFA",
+                DrawerBackground = "#09090B", DrawerText = "#FAFAFA", DrawerIcon = "#A1A1AA",
+                TextPrimary = "#FAFAFA", TextSecondary = "#A1A1AA",
+                Info = "#60A5FA", Success = "#4ADE80", Warning = "#FACC15", Error = "#F87171",
+                LinesDefault = "#27272A", Divider = "#27272A"
+            }
+        };
+
+        var presets = new[] { enterpriseBlue, emeraldGreen, abyssalDark, pureWhite, lightHighContrast, darkHighContrast, white, dark };
+
+        foreach (var preset in presets)
+        {
+            var existing = existingPresets.FirstOrDefault(p => p.ThemeKey == preset.ThemeKey);
+            if (existing is not null)
+            {
+                existing.DisplayName = preset.DisplayName;
+                existing.Description = preset.Description;
+                existing.LightPalette = preset.LightPalette;
+                existing.DarkPalette = preset.DarkPalette;
+                existing.SeedVersion = currentSeedVersion;
+                existing.IsActive = true;
+                existing.UpdatedAt = DateTime.UtcNow;
+                context.UiThemePresets.Update(existing);
+            }
+            else
+            {
+                preset.CreatedAt = DateTime.UtcNow;
+                context.UiThemePresets.Add(preset);
+            }
+        }
+
         await context.SaveChangesAsync(ct);
     }
 }

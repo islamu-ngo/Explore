@@ -1,0 +1,106 @@
+// ABOUTME: EF Core configuration for UserAppearanceProfile — user-owned theme snapshots with lineage tracking.
+// ABOUTME: Preserves palette snapshots so tenant preset changes do not affect active user themes.
+
+namespace Explore.Persistence.Configurations.Entities;
+
+using Explore.Domain;
+using Explore.Domain.ValueObjects;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+public class UserAppearanceProfileConfiguration : IEntityTypeConfiguration<UserAppearanceProfile>
+{
+    public void Configure(EntityTypeBuilder<UserAppearanceProfile> builder)
+    {
+        builder.ToTable("user_appearance_profiles");
+        builder.HasKey(e => e.Id);
+
+        builder.Property(e => e.Id)
+            .HasDefaultValueSql("uuidv7()");
+
+        builder.Property(e => e.UserId)
+            .IsRequired();
+
+        builder.Property(e => e.TenantId);
+
+        builder.Property(e => e.Name)
+            .IsRequired()
+            .HasMaxLength(200);
+
+        builder.Property(e => e.ThemeMode)
+            .IsRequired()
+            .HasConversion<string>()
+            .HasMaxLength(10);
+
+        builder.Property(e => e.SourcePresetKey)
+            .HasMaxLength(128);
+
+        builder.Property(e => e.SourcePresetId);
+
+        builder.Property(e => e.SourcePresetSeedVersion);
+
+        builder.Property(e => e.IsUserEditable)
+            .IsRequired()
+            .HasDefaultValue(true);
+
+        builder.Property(e => e.IsDefault)
+            .IsRequired()
+            .HasDefaultValue(false);
+
+        builder.Property(e => e.IsArchived)
+            .IsRequired()
+            .HasDefaultValue(false);
+
+        builder.Property(e => e.ClonedAt);
+
+        builder.Property(e => e.CreatedAt)
+            .IsRequired()
+            .HasDefaultValueSql("NOW()");
+
+        builder.Property(e => e.CreatedBy);
+
+        builder.Property(e => e.UpdatedAt);
+
+        builder.Property(e => e.UpdatedBy);
+
+        // Index for finding profiles by user and tenant scope
+        builder.HasIndex(e => new { e.UserId, e.TenantId, e.Name });
+
+        // Index for finding non-archived profiles
+        builder.HasIndex(e => new { e.UserId, e.TenantId, e.IsArchived });
+
+        // Index for finding default profile per scope
+        builder.HasIndex(e => new { e.UserId, e.TenantId, e.IsDefault })
+            .HasFilter("is_default = true")
+            .IsUnique();
+
+        // Index for finding profiles cloned from a specific preset
+        builder.HasIndex(e => new { e.UserId, e.SourcePresetId });
+
+        ConfigurePalette(builder.OwnsOne(e => e.LightPaletteSnapshot), "light_snapshot");
+        ConfigurePalette(builder.OwnsOne(e => e.DarkPaletteSnapshot), "dark_snapshot");
+    }
+
+    private static void ConfigurePalette(OwnedNavigationBuilder<UserAppearanceProfile, UiThemePalette> builder, string prefix)
+    {
+        builder.Property(p => p.Primary).IsRequired().HasMaxLength(7).HasColumnName($"{prefix}_primary");
+        builder.Property(p => p.PrimaryContrastText).IsRequired().HasMaxLength(7).HasColumnName($"{prefix}_primary_contrast_text");
+        builder.Property(p => p.Secondary).IsRequired().HasMaxLength(7).HasColumnName($"{prefix}_secondary");
+        builder.Property(p => p.SecondaryContrastText).IsRequired().HasMaxLength(7).HasColumnName($"{prefix}_secondary_contrast_text");
+        builder.Property(p => p.Background).IsRequired().HasMaxLength(7).HasColumnName($"{prefix}_background");
+        builder.Property(p => p.Surface).IsRequired().HasMaxLength(7).HasColumnName($"{prefix}_surface");
+        builder.Property(p => p.AppbarBackground).IsRequired().HasMaxLength(32).HasColumnName($"{prefix}_appbar_background");
+        builder.Property(p => p.AppbarText).IsRequired().HasMaxLength(7).HasColumnName($"{prefix}_appbar_text");
+        builder.Property(p => p.DrawerBackground).IsRequired().HasMaxLength(32).HasColumnName($"{prefix}_drawer_background");
+        builder.Property(p => p.DrawerText).IsRequired().HasMaxLength(7).HasColumnName($"{prefix}_drawer_text");
+        builder.Property(p => p.DrawerIcon).IsRequired().HasMaxLength(7).HasColumnName($"{prefix}_drawer_icon");
+        builder.Property(p => p.TextPrimary).IsRequired().HasMaxLength(7).HasColumnName($"{prefix}_text_primary");
+        builder.Property(p => p.TextSecondary).IsRequired().HasMaxLength(7).HasColumnName($"{prefix}_text_secondary");
+        builder.Property(p => p.Info).IsRequired().HasMaxLength(7).HasColumnName($"{prefix}_info");
+        builder.Property(p => p.Success).IsRequired().HasMaxLength(7).HasColumnName($"{prefix}_success");
+        builder.Property(p => p.Warning).IsRequired().HasMaxLength(7).HasColumnName($"{prefix}_warning");
+        builder.Property(p => p.Error).IsRequired().HasMaxLength(7).HasColumnName($"{prefix}_error");
+        builder.Property(p => p.LinesDefault).IsRequired().HasMaxLength(7).HasColumnName($"{prefix}_lines_default");
+        builder.Property(p => p.Divider).IsRequired().HasMaxLength(32).HasColumnName($"{prefix}_divider");
+    }
+}

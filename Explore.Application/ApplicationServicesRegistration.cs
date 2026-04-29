@@ -51,6 +51,9 @@ public static class ApplicationServicesRegistration
         // Scheduling domain services (stateless, safe as singleton).
         services.AddSingleton<IEventScheduleProjectionCalculator, EventScheduleProjectionCalculator>();
 
+        // Appearance resolution and palette generation
+        services.AddScoped<IAppearanceResolutionService, AppearanceResolutionService>();
+
         return services;
     }
 }

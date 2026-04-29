@@ -346,6 +346,15 @@ public static class RouteNames
     public const string GetCurrentUserAppearancePreferences = "GetCurrentUserAppearancePreferences";
     public const string UpdateCurrentUserAppearancePreferences = "UpdateCurrentUserAppearancePreferences";
     public const string GetAvailableThemes = "GetAvailableThemes";
+    public const string GetUserAppearanceProfiles = "GetUserAppearanceProfiles";
+    public const string ClonePresetToProfile = "ClonePresetToProfile";
+    public const string CreateCustomAppearanceProfile = "CreateCustomAppearanceProfile";
+    public const string UpdateAppearanceProfile = "UpdateAppearanceProfile";
+    public const string SetActiveAppearanceProfile = "SetActiveAppearanceProfile";
+    public const string SetAppearanceThemeMode = "SetAppearanceThemeMode";
+    public const string GenerateAppearancePalette = "GenerateAppearancePalette";
+    public const string ArchiveAppearanceProfile = "ArchiveAppearanceProfile";
+    public const string DuplicateAppearanceProfile = "DuplicateAppearanceProfile";
 
     #endregion
 

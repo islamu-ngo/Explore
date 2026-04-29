@@ -47,6 +47,16 @@ public class AgentContextSchemaTests
 
     private const int SkillMaxLines = 250;
     private const int AgentMaxLines = 160;
+    private const int ClaudeBootloaderMaxLines = 150;
+
+    [Test]
+    public async Task ClaudeBootloader_UnderMaxLineCount()
+    {
+        var path = RepoPath("CLAUDE.md");
+        var lines = CountLines(path);
+        await Assert.That(lines).IsLessThanOrEqualTo(ClaudeBootloaderMaxLines)
+            .Because($"CLAUDE.md has {lines} lines, exceeds bootloader max of {ClaudeBootloaderMaxLines}. Move operational prose to docs/OPERATIONS.md.");
+    }
 
     [Test]
     public async Task Rules_AllPathScopedFilesHaveRequiredFrontmatter()
@@ -156,9 +166,9 @@ public class AgentContextSchemaTests
         {
             var content = File.ReadAllText(file);
             var mandatoryReadsBlock = ExtractSection(content, "Mandatory Reads");
-            if (!mandatoryReadsBlock.Contains("AGENTS.md", StringComparison.OrdinalIgnoreCase))
+            if (!mandatoryReadsBlock.Contains("CLAUDE.md", StringComparison.OrdinalIgnoreCase))
             {
-                errors.Add($"{Path.GetFileName(file)} 'Mandatory Reads' must reference AGENTS.md.");
+                errors.Add($"{Path.GetFileName(file)} 'Mandatory Reads' must reference CLAUDE.md.");
             }
             if (!mandatoryReadsBlock.Contains("QUICK_REFERENCE.md", StringComparison.OrdinalIgnoreCase))
             {

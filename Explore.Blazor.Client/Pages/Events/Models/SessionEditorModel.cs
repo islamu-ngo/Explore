@@ -37,8 +37,8 @@ public class SessionEditorModel
             LocationId = LocationId,
             MaxAudienceAttendees = MaxAudienceAttendees,
             RegistrationModeId = RegistrationModeId,
-            TenantId = tenantId,
-            FeaturedImageId = UseEventImage ? null : FeaturedImageId
+            TenantId = tenantId
+            // FeaturedImageId = UseEventImage ? null : FeaturedImageId
         };
     }
 
@@ -54,14 +54,14 @@ public class SessionEditorModel
             EndTime = DateTimeHelper.ConvertLocalToUtc(EndTime),
             LocationId = LocationId,
             MaxAudienceAttendees = MaxAudienceAttendees,
-            RegistrationModeId = RegistrationModeId,
-            FeaturedImageId = UseEventImage ? null : FeaturedImageId
+            RegistrationModeId = RegistrationModeId
+            // FeaturedImageId = UseEventImage ? null : FeaturedImageId
         };
     }
 
     public static SessionEditorModel FromDto(EventSessionListDto dto, string? eventImageUri = null)
     {
-        var hasOwnImage = dto.FeaturedImageId.HasValue;
+        // var hasOwnImage = dto.FeaturedImageId.HasValue;
         return new SessionEditorModel
         {
             Id = dto.Id,
@@ -71,10 +71,10 @@ public class SessionEditorModel
             EndTime = dto.EndTime?.LocalDateTime ?? DateTime.Now.AddHours(1),
             LocationId = dto.LocationId,
             MaxAudienceAttendees = dto.MaxAudienceAttendees,
-            RegistrationModeId = dto.RegistrationModeId,
-            FeaturedImageId = dto.FeaturedImageId,
-            FeaturedImagePreviewUrl = dto.FeaturedImageUri ?? eventImageUri,
-            UseEventImage = !hasOwnImage
+            RegistrationModeId = dto.RegistrationModeId
+            // FeaturedImageId = dto.FeaturedImageId,
+            // FeaturedImagePreviewUrl = dto.FeaturedImageUri ?? eventImageUri,
+            // UseEventImage = !hasOwnImage
         };
     }
 

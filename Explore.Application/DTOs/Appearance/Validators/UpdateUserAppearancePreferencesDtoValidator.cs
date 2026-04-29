@@ -8,12 +8,14 @@ using FluentValidation;
 
 public class UpdateUserAppearancePreferencesDtoValidator : AbstractValidator<UpdateUserAppearancePreferencesDto>
 {
+    private static readonly string[] ValidThemeModes = ["system", "light", "dark", "lighthighcontrast", "darkhighcontrast", "custom"];
+
     public UpdateUserAppearancePreferencesDtoValidator()
     {
         RuleFor(preferences => preferences.ThemeMode)
             .NotEmpty().WithMessage("Theme mode is required.")
-            .Must(mode => mode is "system" or "light" or "dark")
-            .WithMessage("Theme mode must be one of: system, light, dark.");
+            .Must(mode => ValidThemeModes.Contains(mode.ToLowerInvariant()))
+            .WithMessage("Theme mode must be one of: system, light, dark, lighthighcontrast, darkhighcontrast, custom.");
 
         RuleFor(preferences => preferences.Direction)
             .NotEmpty().WithMessage("Direction is required.")

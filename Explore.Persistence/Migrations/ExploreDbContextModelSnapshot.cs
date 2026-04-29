@@ -1895,9 +1895,9 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("source_event_id");
 
-                    b.Property<Guid?>("SourceEventRegistrationId")
+                    b.Property<Guid?>("SourceEventRegistrationIntentId")
                         .HasColumnType("uuid")
-                        .HasColumnName("source_event_registration_id");
+                        .HasColumnName("source_event_registration_intent_id");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer")
@@ -1932,8 +1932,8 @@ namespace Explore.Persistence.Migrations
                     b.HasIndex("SourceEventId")
                         .HasDatabaseName("ix_event_contact_share_consents_source_event_id");
 
-                    b.HasIndex("SourceEventRegistrationId")
-                        .HasDatabaseName("ix_event_contact_share_consents_source_event_registration_id");
+                    b.HasIndex("SourceEventRegistrationIntentId")
+                        .HasDatabaseName("ix_event_contact_share_consents_source_event_registration_inte");
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_event_contact_share_consents_user_id");
@@ -3178,6 +3178,10 @@ namespace Explore.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("event_id");
 
+                    b.Property<Guid?>("FeaturedImageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("featured_image_id");
+
                     b.Property<DateTimeOffset?>("InstantiatedFromTemplateAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("instantiated_from_template_at");
@@ -3285,6 +3289,9 @@ namespace Explore.Persistence.Migrations
 
                     b.HasIndex("EventId")
                         .HasDatabaseName("ix_event_sessions_event_id");
+
+                    b.HasIndex("FeaturedImageId")
+                        .HasDatabaseName("ix_event_sessions_featured_image_id");
 
                     b.HasIndex("LocationId")
                         .HasDatabaseName("ix_event_sessions_location_id");
@@ -8674,6 +8681,114 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("ui_themes", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.UiThemePreset", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deleted_by");
+
+                    b.Property<DateTimeOffset?>("DeprecatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deprecated_at");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("display_name");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<bool>("IsEditable")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_editable");
+
+                    b.Property<bool>("IsSystem")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_system");
+
+                    b.Property<int>("SeedVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("seed_version");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("ThemeKey")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("theme_key");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ui_theme_presets");
+
+                    b.HasIndex("ThemeKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ui_theme_presets_theme_key")
+                        .HasFilter("tenant_id IS NULL AND is_deleted = false");
+
+                    b.HasIndex("TenantId", "IsActive")
+                        .HasDatabaseName("ix_ui_theme_presets_tenant_id_is_active");
+
+                    b.HasIndex("TenantId", "ThemeKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ui_theme_presets_tenant_id_theme_key")
+                        .HasFilter("tenant_id IS NOT NULL AND is_deleted = false");
+
+                    b.ToTable("ui_theme_presets", (string)null);
+                });
+
             modelBuilder.Entity("Explore.Domain.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -8738,6 +8853,164 @@ namespace Explore.Persistence.Migrations
                         .HasDatabaseName("ix_users_actor_id");
 
                     b.ToTable("users", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.UserAppearancePreference", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<Guid>("ActiveProfileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("active_profile_id");
+
+                    b.Property<string>("Direction")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("auto")
+                        .HasColumnName("direction");
+
+                    b.Property<string>("Language")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("en")
+                        .HasColumnName("language");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("ThemeMode")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("System")
+                        .HasColumnName("theme_mode");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_appearance_preferences");
+
+                    b.HasIndex("ActiveProfileId")
+                        .HasDatabaseName("ix_user_appearance_preferences_active_profile_id");
+
+                    b.HasIndex("UserId", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_user_appearance_preferences_user_id_tenant_id");
+
+                    b.ToTable("user_appearance_preferences", (string)null);
+                });
+
+            modelBuilder.Entity("Explore.Domain.UserAppearanceProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuidv7()");
+
+                    b.Property<DateTimeOffset?>("ClonedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cloned_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<bool>("IsArchived")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_archived");
+
+                    b.Property<bool>("IsDefault")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_default");
+
+                    b.Property<bool>("IsUserEditable")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_user_editable");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid?>("SourcePresetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_preset_id");
+
+                    b.Property<string>("SourcePresetKey")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("source_preset_key");
+
+                    b.Property<int?>("SourcePresetSeedVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("source_preset_seed_version");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("ThemeMode")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("theme_mode");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_appearance_profiles");
+
+                    b.HasIndex("UserId", "SourcePresetId")
+                        .HasDatabaseName("ix_user_appearance_profiles_user_id_source_preset_id");
+
+                    b.HasIndex("UserId", "TenantId", "IsArchived")
+                        .HasDatabaseName("ix_user_appearance_profiles_user_id_tenant_id_is_archived");
+
+                    b.HasIndex("UserId", "TenantId", "IsDefault")
+                        .IsUnique()
+                        .HasDatabaseName("ix_user_appearance_profiles_user_id_tenant_id_is_default")
+                        .HasFilter("is_default = true");
+
+                    b.HasIndex("UserId", "TenantId", "Name")
+                        .HasDatabaseName("ix_user_appearance_profiles_user_id_tenant_id_name");
+
+                    b.ToTable("user_appearance_profiles", (string)null);
                 });
 
             modelBuilder.Entity("Explore.Domain.UserAuthenticationToken", b =>
@@ -9619,11 +9892,11 @@ namespace Explore.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_event_contact_share_consents_events_source_event_id");
 
-                    b.HasOne("Explore.Domain.EventRegistration", "SourceEventRegistration")
+                    b.HasOne("Explore.Domain.EventRegistrationIntent", "SourceEventRegistrationIntent")
                         .WithMany()
-                        .HasForeignKey("SourceEventRegistrationId")
+                        .HasForeignKey("SourceEventRegistrationIntentId")
                         .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_event_contact_share_consents_event_registrations_source_eve");
+                        .HasConstraintName("fk_event_contact_share_consents_event_registration_intents_sou");
 
                     b.HasOne("Explore.Domain.Tenant", "Tenant")
                         .WithMany()
@@ -9643,7 +9916,7 @@ namespace Explore.Persistence.Migrations
 
                     b.Navigation("SourceEvent");
 
-                    b.Navigation("SourceEventRegistration");
+                    b.Navigation("SourceEventRegistrationIntent");
 
                     b.Navigation("Tenant");
 
@@ -10075,6 +10348,11 @@ namespace Explore.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_event_sessions_events_event_id");
 
+                    b.HasOne("Explore.Domain.StorageObject", "FeaturedImage")
+                        .WithMany()
+                        .HasForeignKey("FeaturedImageId")
+                        .HasConstraintName("fk_event_sessions_storage_objects_featured_image_id");
+
                     b.HasOne("Explore.Domain.Location", "Location")
                         .WithMany()
                         .HasForeignKey("LocationId")
@@ -10102,6 +10380,8 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Event");
 
                     b.Navigation("EventDay");
+
+                    b.Navigation("FeaturedImage");
 
                     b.Navigation("Location");
 
@@ -13662,11 +13942,23 @@ namespace Explore.Persistence.Migrations
                                 .HasColumnType("character varying(7)")
                                 .HasColumnName("dark_primary");
 
+                            b1.Property<string>("PrimaryContrastText")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_primary_contrast_text");
+
                             b1.Property<string>("Secondary")
                                 .IsRequired()
                                 .HasMaxLength(7)
                                 .HasColumnType("character varying(7)")
                                 .HasColumnName("dark_secondary");
+
+                            b1.Property<string>("SecondaryContrastText")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_secondary_contrast_text");
 
                             b1.Property<string>("Success")
                                 .IsRequired()
@@ -13780,11 +14072,23 @@ namespace Explore.Persistence.Migrations
                                 .HasColumnType("character varying(7)")
                                 .HasColumnName("light_primary");
 
+                            b1.Property<string>("PrimaryContrastText")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_primary_contrast_text");
+
                             b1.Property<string>("Secondary")
                                 .IsRequired()
                                 .HasMaxLength(7)
                                 .HasColumnType("character varying(7)")
                                 .HasColumnName("light_secondary");
+
+                            b1.Property<string>("SecondaryContrastText")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_secondary_contrast_text");
 
                             b1.Property<string>("Success")
                                 .IsRequired()
@@ -13834,6 +14138,283 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("Explore.Domain.UiThemePreset", b =>
+                {
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_ui_theme_presets_tenants_tenant_id");
+
+                    b.OwnsOne("Explore.Domain.ValueObjects.UiThemePalette", "DarkPalette", b1 =>
+                        {
+                            b1.Property<Guid>("UiThemePresetId")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("uuid")
+                                .HasColumnName("id");
+
+                            b1.Property<string>("AppbarBackground")
+                                .IsRequired()
+                                .HasMaxLength(32)
+                                .HasColumnType("character varying(32)")
+                                .HasColumnName("dark_appbar_background");
+
+                            b1.Property<string>("AppbarText")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_appbar_text");
+
+                            b1.Property<string>("Background")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_background");
+
+                            b1.Property<string>("Divider")
+                                .IsRequired()
+                                .HasMaxLength(32)
+                                .HasColumnType("character varying(32)")
+                                .HasColumnName("dark_divider");
+
+                            b1.Property<string>("DrawerBackground")
+                                .IsRequired()
+                                .HasMaxLength(32)
+                                .HasColumnType("character varying(32)")
+                                .HasColumnName("dark_drawer_background");
+
+                            b1.Property<string>("DrawerIcon")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_drawer_icon");
+
+                            b1.Property<string>("DrawerText")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_drawer_text");
+
+                            b1.Property<string>("Error")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_error");
+
+                            b1.Property<string>("Info")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_info");
+
+                            b1.Property<string>("LinesDefault")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_lines_default");
+
+                            b1.Property<string>("Primary")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_primary");
+
+                            b1.Property<string>("PrimaryContrastText")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_primary_contrast_text");
+
+                            b1.Property<string>("Secondary")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_secondary");
+
+                            b1.Property<string>("SecondaryContrastText")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_secondary_contrast_text");
+
+                            b1.Property<string>("Success")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_success");
+
+                            b1.Property<string>("Surface")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_surface");
+
+                            b1.Property<string>("TextPrimary")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_text_primary");
+
+                            b1.Property<string>("TextSecondary")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_text_secondary");
+
+                            b1.Property<string>("Warning")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_warning");
+
+                            b1.HasKey("UiThemePresetId");
+
+                            b1.ToTable("ui_theme_presets");
+
+                            b1.WithOwner()
+                                .HasForeignKey("UiThemePresetId")
+                                .HasConstraintName("fk_ui_theme_presets_ui_theme_presets_id");
+                        });
+
+                    b.OwnsOne("Explore.Domain.ValueObjects.UiThemePalette", "LightPalette", b1 =>
+                        {
+                            b1.Property<Guid>("UiThemePresetId")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("uuid")
+                                .HasColumnName("id");
+
+                            b1.Property<string>("AppbarBackground")
+                                .IsRequired()
+                                .HasMaxLength(32)
+                                .HasColumnType("character varying(32)")
+                                .HasColumnName("light_appbar_background");
+
+                            b1.Property<string>("AppbarText")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_appbar_text");
+
+                            b1.Property<string>("Background")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_background");
+
+                            b1.Property<string>("Divider")
+                                .IsRequired()
+                                .HasMaxLength(32)
+                                .HasColumnType("character varying(32)")
+                                .HasColumnName("light_divider");
+
+                            b1.Property<string>("DrawerBackground")
+                                .IsRequired()
+                                .HasMaxLength(32)
+                                .HasColumnType("character varying(32)")
+                                .HasColumnName("light_drawer_background");
+
+                            b1.Property<string>("DrawerIcon")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_drawer_icon");
+
+                            b1.Property<string>("DrawerText")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_drawer_text");
+
+                            b1.Property<string>("Error")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_error");
+
+                            b1.Property<string>("Info")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_info");
+
+                            b1.Property<string>("LinesDefault")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_lines_default");
+
+                            b1.Property<string>("Primary")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_primary");
+
+                            b1.Property<string>("PrimaryContrastText")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_primary_contrast_text");
+
+                            b1.Property<string>("Secondary")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_secondary");
+
+                            b1.Property<string>("SecondaryContrastText")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_secondary_contrast_text");
+
+                            b1.Property<string>("Success")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_success");
+
+                            b1.Property<string>("Surface")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_surface");
+
+                            b1.Property<string>("TextPrimary")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_text_primary");
+
+                            b1.Property<string>("TextSecondary")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_text_secondary");
+
+                            b1.Property<string>("Warning")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_warning");
+
+                            b1.HasKey("UiThemePresetId");
+
+                            b1.ToTable("ui_theme_presets");
+
+                            b1.WithOwner()
+                                .HasForeignKey("UiThemePresetId")
+                                .HasConstraintName("fk_ui_theme_presets_ui_theme_presets_id");
+                        });
+
+                    b.Navigation("DarkPalette")
+                        .IsRequired();
+
+                    b.Navigation("LightPalette")
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
+                });
+
             modelBuilder.Entity("Explore.Domain.User", b =>
                 {
                     b.HasOne("Explore.Domain.Actor", "Actor")
@@ -13843,6 +14424,287 @@ namespace Explore.Persistence.Migrations
                         .HasConstraintName("fk_users_actors_actor_id");
 
                     b.Navigation("Actor");
+                });
+
+            modelBuilder.Entity("Explore.Domain.UserAppearancePreference", b =>
+                {
+                    b.HasOne("Explore.Domain.UserAppearanceProfile", "ActiveProfile")
+                        .WithMany()
+                        .HasForeignKey("ActiveProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_appearance_preferences_user_appearance_profiles_active");
+
+                    b.Navigation("ActiveProfile");
+                });
+
+            modelBuilder.Entity("Explore.Domain.UserAppearanceProfile", b =>
+                {
+                    b.OwnsOne("Explore.Domain.ValueObjects.UiThemePalette", "DarkPaletteSnapshot", b1 =>
+                        {
+                            b1.Property<Guid>("UserAppearanceProfileId")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("uuid")
+                                .HasColumnName("id");
+
+                            b1.Property<string>("AppbarBackground")
+                                .IsRequired()
+                                .HasMaxLength(32)
+                                .HasColumnType("character varying(32)")
+                                .HasColumnName("dark_snapshot_appbar_background");
+
+                            b1.Property<string>("AppbarText")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_snapshot_appbar_text");
+
+                            b1.Property<string>("Background")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_snapshot_background");
+
+                            b1.Property<string>("Divider")
+                                .IsRequired()
+                                .HasMaxLength(32)
+                                .HasColumnType("character varying(32)")
+                                .HasColumnName("dark_snapshot_divider");
+
+                            b1.Property<string>("DrawerBackground")
+                                .IsRequired()
+                                .HasMaxLength(32)
+                                .HasColumnType("character varying(32)")
+                                .HasColumnName("dark_snapshot_drawer_background");
+
+                            b1.Property<string>("DrawerIcon")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_snapshot_drawer_icon");
+
+                            b1.Property<string>("DrawerText")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_snapshot_drawer_text");
+
+                            b1.Property<string>("Error")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_snapshot_error");
+
+                            b1.Property<string>("Info")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_snapshot_info");
+
+                            b1.Property<string>("LinesDefault")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_snapshot_lines_default");
+
+                            b1.Property<string>("Primary")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_snapshot_primary");
+
+                            b1.Property<string>("PrimaryContrastText")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_snapshot_primary_contrast_text");
+
+                            b1.Property<string>("Secondary")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_snapshot_secondary");
+
+                            b1.Property<string>("SecondaryContrastText")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_snapshot_secondary_contrast_text");
+
+                            b1.Property<string>("Success")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_snapshot_success");
+
+                            b1.Property<string>("Surface")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_snapshot_surface");
+
+                            b1.Property<string>("TextPrimary")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_snapshot_text_primary");
+
+                            b1.Property<string>("TextSecondary")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_snapshot_text_secondary");
+
+                            b1.Property<string>("Warning")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("dark_snapshot_warning");
+
+                            b1.HasKey("UserAppearanceProfileId");
+
+                            b1.ToTable("user_appearance_profiles");
+
+                            b1.WithOwner()
+                                .HasForeignKey("UserAppearanceProfileId")
+                                .HasConstraintName("fk_user_appearance_profiles_user_appearance_profiles_id");
+                        });
+
+                    b.OwnsOne("Explore.Domain.ValueObjects.UiThemePalette", "LightPaletteSnapshot", b1 =>
+                        {
+                            b1.Property<Guid>("UserAppearanceProfileId")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("uuid")
+                                .HasColumnName("id");
+
+                            b1.Property<string>("AppbarBackground")
+                                .IsRequired()
+                                .HasMaxLength(32)
+                                .HasColumnType("character varying(32)")
+                                .HasColumnName("light_snapshot_appbar_background");
+
+                            b1.Property<string>("AppbarText")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_snapshot_appbar_text");
+
+                            b1.Property<string>("Background")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_snapshot_background");
+
+                            b1.Property<string>("Divider")
+                                .IsRequired()
+                                .HasMaxLength(32)
+                                .HasColumnType("character varying(32)")
+                                .HasColumnName("light_snapshot_divider");
+
+                            b1.Property<string>("DrawerBackground")
+                                .IsRequired()
+                                .HasMaxLength(32)
+                                .HasColumnType("character varying(32)")
+                                .HasColumnName("light_snapshot_drawer_background");
+
+                            b1.Property<string>("DrawerIcon")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_snapshot_drawer_icon");
+
+                            b1.Property<string>("DrawerText")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_snapshot_drawer_text");
+
+                            b1.Property<string>("Error")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_snapshot_error");
+
+                            b1.Property<string>("Info")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_snapshot_info");
+
+                            b1.Property<string>("LinesDefault")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_snapshot_lines_default");
+
+                            b1.Property<string>("Primary")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_snapshot_primary");
+
+                            b1.Property<string>("PrimaryContrastText")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_snapshot_primary_contrast_text");
+
+                            b1.Property<string>("Secondary")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_snapshot_secondary");
+
+                            b1.Property<string>("SecondaryContrastText")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_snapshot_secondary_contrast_text");
+
+                            b1.Property<string>("Success")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_snapshot_success");
+
+                            b1.Property<string>("Surface")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_snapshot_surface");
+
+                            b1.Property<string>("TextPrimary")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_snapshot_text_primary");
+
+                            b1.Property<string>("TextSecondary")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_snapshot_text_secondary");
+
+                            b1.Property<string>("Warning")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("light_snapshot_warning");
+
+                            b1.HasKey("UserAppearanceProfileId");
+
+                            b1.ToTable("user_appearance_profiles");
+
+                            b1.WithOwner()
+                                .HasForeignKey("UserAppearanceProfileId")
+                                .HasConstraintName("fk_user_appearance_profiles_user_appearance_profiles_id");
+                        });
+
+                    b.Navigation("DarkPaletteSnapshot")
+                        .IsRequired();
+
+                    b.Navigation("LightPaletteSnapshot")
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Explore.Domain.UserAuthenticationToken", b =>

@@ -1,0 +1,15 @@
+.session-cpr-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.session-cpr-editor__field {
+    width: 100%;
+}
+
+.session-cpr-editor__field--required {
+}
+
+.session-cpr-editor__field--multi {
+}

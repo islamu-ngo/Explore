@@ -7,6 +7,6 @@ namespace Explore.Blazor.Client.Contracts.Services;
 
 public interface IUserAppearancePreferencesService
 {
-    Task<UserAppearancePreferencesDto> GetCurrentPreferencesAsync(CancellationToken ct = default);
-    Task<BaseCommandResponseOfGuid?> UpdatePreferencesAsync(UpdateUserAppearancePreferencesDto dto, CancellationToken ct = default);
+    Task<Explore.Blazor.Client.Services.Appearance.ResolvedAppearanceDto> GetCurrentPreferencesAsync(CancellationToken ct = default);
+    Task SetActiveProfileAsync(Explore.Blazor.Client.Services.Appearance.SetActiveProfileRequestDto dto, CancellationToken ct = default);
 }

@@ -1,11 +1,11 @@
 // ABOUTME: Main layout code-behind handling theme initialization, user sync, and accessibility.
-// ABOUTME: Uses MudBlazor theme switching with cookie persistence, and manages focus-on-navigate for screen readers.
+// ABOUTME: Uses the new IAppearanceThemeService with AppearanceState for reactive theme management.
 
 using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
-
 using Explore.Blazor.Client.Services;
+using Explore.Blazor.Client.Services.Appearance;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Routing;
@@ -27,7 +27,6 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     private bool _hideChrome;
     private bool _showCommunityGuidelinesLink = true;
     private string _brandDisplayName = string.Empty;
-    private AvailableThemeDto? _activeTheme;
 
     [Inject]
     protected IUserService UserService { get; set; } = null!;
@@ -91,7 +90,8 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
             _isDarkMode = InitialTheme.Value;
         }
 
-        _theme = AppearanceThemeService.CreateTheme(GetAppbarHeight(), _activeTheme);
+        _theme = AppearanceThemeService.CreateTheme(GetAppbarHeight());
+        AppearanceThemeService.Changed += OnAppearanceChanged;
         StateHasChanged();
     }
 
@@ -99,7 +99,6 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     {
         if (firstRender)
         {
-            // Sync user in background after first render to improve perceived performance
             try
             {
                 var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
@@ -113,7 +112,6 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
                 Logger.LogWarning(ex, "Error syncing user");
             }
 
-            // Load public experience settings to determine sidebar visibility
             try
             {
                 var settings = await PublicExperienceService.GetCachedSettingsAsync();
@@ -129,7 +127,6 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
                 Logger.LogWarning(ex, "Error loading public experience settings for sidebar");
             }
 
-            // Load tenant navigation links for the sidebar drawer
             try
             {
                 await TenantNavLinksState.EnsureLoadedAsync(TenantNavigationService);
@@ -144,19 +141,20 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
                 var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
                 if (authState.User.Identity?.IsAuthenticated == true)
                 {
-                    await LoadActiveThemeAsync();
+                    await AppearanceThemeService.InitializeAsync(_mudThemeProvider);
+                    _theme = AppearanceThemeService.CreateTheme(GetAppbarHeight());
                 }
             }
             catch (Exception ex)
             {
-                Logger.LogDebug(ex, "Could not load active UI theme for the current user.");
+                Logger.LogDebug(ex, "Could not initialize appearance theme service.");
             }
 
             if (!InitialTheme.HasValue)
             {
                 try
                 {
-                    _isDarkMode = await AppearanceThemeService.ResolveInitialDarkModeAsync(null, _mudThemeProvider);
+                    _isDarkMode = await AppearanceThemeService.ResolveEffectiveDarkModeAsync(_mudThemeProvider);
                     await InvokeAsync(StateHasChanged);
                 }
                 catch (Exception ex)
@@ -172,7 +170,17 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     private async Task DarkModeToggle()
     {
         _isDarkMode = !_isDarkMode;
-        await AppearanceThemeService.PersistThemeModeAsync(_isDarkMode);
+        var mode = _isDarkMode ? "dark" : "light";
+        await AppearanceThemeService.SetThemeModeAsync(mode);
+    }
+
+    private void OnAppearanceChanged(object? sender, AppearanceStateChangedEventArgs e)
+    {
+        _theme = AppearanceThemeService.CreateTheme(GetAppbarHeight());
+        var mode = e.State.ThemeMode.ToLowerInvariant();
+        if (mode is "dark" or "darkhighcontrast") _isDarkMode = true;
+        else if (mode is "light" or "lighthighcontrast") _isDarkMode = false;
+        InvokeAsync(StateHasChanged);
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
@@ -181,7 +189,6 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
         _ = InvokeAsync(async () =>
         {
             StateHasChanged();
-            // Move focus to h1 after navigation for screen readers (replaces FocusOnNavigate for Blazouter)
             await AccessibilityFocusService.FocusOnNavigateAsync();
         });
     }
@@ -210,34 +217,14 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
 
     private void OnDrawerOpenChanged(bool open) => SidebarState.SetOpen(open);
 
-    /// <summary>
-    /// Called when the announcement bar is shown or dismissed.
-    /// Recreates the theme with an updated AppbarHeight so
-    /// --mud-appbar-height on :root reflects the true header height.
-    /// MudBlazor's ClipMode.Always drawer CSS and sticky components
-    /// automatically use the updated value.
-    /// </summary>
     private void OnAnnouncementVisibilityChanged(bool isVisible)
     {
         _announcementVisible = isVisible;
         if (_theme is not null)
         {
-            _theme = AppearanceThemeService.CreateTheme(GetAppbarHeight(), _activeTheme);
+            _theme = AppearanceThemeService.CreateTheme(GetAppbarHeight());
             StateHasChanged();
         }
-    }
-
-    private async Task LoadActiveThemeAsync()
-    {
-        var active = await AppearanceThemeService.ResolveActiveThemeAsync();
-        if (active is null)
-        {
-            return;
-        }
-
-        _activeTheme = active;
-        _theme = AppearanceThemeService.CreateTheme(GetAppbarHeight(), _activeTheme);
-        await InvokeAsync(StateHasChanged);
     }
 
     private string GetAppbarHeight()
@@ -252,6 +239,7 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
         SidebarState.OnChange -= StateHasChanged;
         AiAssistantState.OnChange -= StateHasChanged;
         TenantNavLinksState.OnChange -= StateHasChanged;
+        AppearanceThemeService.Changed -= OnAppearanceChanged;
         GC.SuppressFinalize(this);
     }
 }

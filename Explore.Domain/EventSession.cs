@@ -48,6 +48,10 @@ public class EventSession : ITenantEntity, IAuditableEntity, ISoftDeletable, ICo
     public int? RegistrationModeId { get; set; }
     public RegistrationMode? RegistrationMode { get; set; }
 
+    [ForeignKey("FeaturedImage")]
+    public Guid? FeaturedImageId { get; set; }
+    public StorageObject? FeaturedImage { get; set; }
+
     /// <summary>
     /// Optional session-level pricing override.
     /// </summary>

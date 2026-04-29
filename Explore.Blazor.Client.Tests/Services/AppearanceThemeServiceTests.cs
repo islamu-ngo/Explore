@@ -1,5 +1,5 @@
-// ABOUTME: Unit tests for AppearanceThemeService covering theme composition and preference persistence.
-// ABOUTME: Verifies the extracted runtime seam preserves existing palette/appbar behavior and BFF preference writes.
+// ABOUTME: Unit tests for AppearanceThemeService covering theme composition, mode resolution, HC modes, and persistence.
+// ABOUTME: Verifies the IAppearanceThemeService API surface with AppearanceState, profile management, and preset operations.
 
 using System.Net;
 using System.Net.Http.Json;
@@ -22,43 +22,89 @@ public class AppearanceThemeServiceTests
     }
 
     [Test]
-    public async Task ResolveInitialDarkModeAsync_ReturnsServerHintWhenPresent()
+    public async Task ResolveEffectiveDarkModeAsync_ReturnsDarkForDarkMode()
+    {
+        var service = CreateService(_ => new HttpResponseMessage(HttpStatusCode.OK));
+        service.Current.ThemeMode = "dark";
+
+        var result = await service.ResolveEffectiveDarkModeAsync(null!);
+
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task ResolveEffectiveDarkModeAsync_ReturnsLightForLightMode()
+    {
+        var service = CreateService(_ => new HttpResponseMessage(HttpStatusCode.OK));
+        service.Current.ThemeMode = "light";
+
+        var result = await service.ResolveEffectiveDarkModeAsync(null!);
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task ResolveEffectiveDarkModeAsync_ReturnsDarkForDarkHighContrastMode()
+    {
+        var service = CreateService(_ => new HttpResponseMessage(HttpStatusCode.OK));
+        service.Current.ThemeMode = "darkhighcontrast";
+
+        var result = await service.ResolveEffectiveDarkModeAsync(null!);
+
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task ResolveEffectiveDarkModeAsync_ReturnsLightForLightHighContrastMode()
+    {
+        var service = CreateService(_ => new HttpResponseMessage(HttpStatusCode.OK));
+        service.Current.ThemeMode = "lighthighcontrast";
+
+        var result = await service.ResolveEffectiveDarkModeAsync(null!);
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task ResolveEffectiveDarkModeAsync_ReturnsServerHintForSystemMode()
+    {
+        var service = CreateService(_ => new HttpResponseMessage(HttpStatusCode.OK));
+        service.Current.ThemeMode = "system";
+        service.Current.ServerEffectiveDarkMode = true;
+
+        var result = await service.ResolveEffectiveDarkModeAsync(null!);
+
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task Current_InitialState_HasSystemThemeMode()
     {
         var service = CreateService(_ => new HttpResponseMessage(HttpStatusCode.OK));
 
-        var result = await service.ResolveInitialDarkModeAsync(true, null!);
-
-        await Assert.That(result).IsTrue();
+        await Assert.That(service.Current.ThemeMode).IsEqualTo("system");
     }
 
     [Test]
-    public async Task PersistThemeModeAsync_PostsExpectedThemeValue()
+    public async Task GeneratePalettePreview_ReturnsFallbackOnFailure()
     {
-        var postedBody = string.Empty;
-        var requestedPath = string.Empty;
-        var service = CreateService(request =>
-        {
-            requestedPath = request.RequestUri?.PathAndQuery ?? string.Empty;
-            postedBody = request.Content?.ReadAsStringAsync().GetAwaiter().GetResult() ?? string.Empty;
-            return new HttpResponseMessage(HttpStatusCode.OK);
-        });
+        var service = CreateService(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError));
 
-        await service.PersistThemeModeAsync(true);
+        var palette = service.GeneratePalettePreview("#475569", "#3B82F6", false);
 
-        await Assert.That(requestedPath).IsEqualTo("/bff/theme?theme=dark");
+        await Assert.That(palette).IsNotNull();
+        await Assert.That(palette.Primary).IsEqualTo("#0F62FE");
     }
 
     [Test]
-    public async Task ResolveInitialDarkModeAsync_UsesBffPreferenceBeforeSystemFallback()
+    public async Task GeneratePalettePreview_ReturnsFallbackForDarkOnFailure()
     {
-        var service = CreateService(_ => new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = JsonContent.Create(new { themeMode = "dark" })
-        });
+        var service = CreateService(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError));
 
-        var result = await service.ResolveInitialDarkModeAsync(null, null!);
+        var palette = service.GeneratePalettePreview("#475569", "#3B82F6", true);
 
-        await Assert.That(result).IsTrue();
+        await Assert.That(palette).IsNotNull();
+        await Assert.That(palette.Primary).IsEqualTo("#3B82F6");
     }
 
     private static AppearanceThemeService CreateService(Func<HttpRequestMessage, HttpResponseMessage> responseFactory)

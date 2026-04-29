@@ -1,4 +1,4 @@
-// ABOUTME: Preference BFF endpoints: theme, language, direction, and current-user info.
+// ABOUTME: Preference BFF endpoints: appearance, theme mode, language, direction, and current-user info.
 // ABOUTME: For authenticated users the API is authoritative; cookies mirror the server state for anonymous SSR.
 
 namespace Explore.Blazor.Extensions;
@@ -30,17 +30,292 @@ public static class BffPreferenceEndpoints
 
         app.MapGet("/bff/me", HandleGetCurrentUser);
 
+        app.MapGet("/bff/appearance", HandleGetResolvedAppearanceAsync)
+            .ExcludeFromDescription();
+
+        app.MapGet("/bff/appearance/presets", HandleGetPresetsAsync)
+            .ExcludeFromDescription();
+
+        app.MapGet("/bff/appearance/profiles", HandleGetProfilesAsync)
+            .ExcludeFromDescription();
+
+        app.MapPut("/bff/appearance/active-profile", HandleSetActiveProfileAsync)
+            .ExcludeFromDescription();
+
+        app.MapPost("/bff/appearance/profiles/from-preset/{presetId:guid}", HandleClonePresetAsync)
+            .ExcludeFromDescription();
+
+        app.MapPost("/bff/appearance/profiles", HandleCreateProfileAsync)
+            .ExcludeFromDescription();
+
+        app.MapPut("/bff/appearance/profiles/{profileId:guid}", HandleUpdateProfileAsync)
+            .ExcludeFromDescription();
+
+        app.MapPut("/bff/appearance/mode", HandleSetThemeModeAsync)
+            .ExcludeFromDescription();
+
+        app.MapGet("/bff/appearance/generate-palette", HandleGeneratePaletteAsync)
+            .ExcludeFromDescription();
+
+        app.MapPut("/bff/appearance/profiles/{profileId:guid}/archive", HandleArchiveProfileAsync)
+            .ExcludeFromDescription();
+
+        app.MapPost("/bff/appearance/profiles/{profileId:guid}/duplicate", HandleDuplicateProfileAsync)
+            .ExcludeFromDescription();
+
         return app;
+    }
+
+    private static async Task<IResult> HandleGetResolvedAppearanceAsync(HttpContext ctx, CancellationToken cancellationToken)
+    {
+        if (ctx.User.Identity?.IsAuthenticated != true)
+        {
+            return Results.Ok(BuildDefaultResolvedAppearance(ctx));
+        }
+
+        var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
+        using var response = await clientFactory.CreateClient("BffClient")
+            .GetAsync("api/user/appearance", cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return Results.Ok(BuildDefaultResolvedAppearance(ctx));
+        }
+
+        return Results.Stream(await response.Content.ReadAsStreamAsync(cancellationToken), "application/json");
+    }
+
+    private static async Task<IResult> HandleGetPresetsAsync(HttpContext ctx, CancellationToken cancellationToken)
+    {
+        if (ctx.User.Identity?.IsAuthenticated != true)
+        {
+            return Results.Ok(Array.Empty<AvailablePresetDto>());
+        }
+
+        var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
+        using var response = await clientFactory.CreateClient("BffClient")
+            .GetAsync("api/user/appearance/presets", cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return Results.Ok(Array.Empty<AvailablePresetDto>());
+        }
+
+        return Results.Stream(await response.Content.ReadAsStreamAsync(cancellationToken), "application/json");
+    }
+
+    private static async Task<IResult> HandleGetProfilesAsync(HttpContext ctx, CancellationToken cancellationToken)
+    {
+        if (ctx.User.Identity?.IsAuthenticated != true)
+        {
+            return Results.Ok(Array.Empty<UserAppearanceProfileDto>());
+        }
+
+        var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
+        using var response = await clientFactory.CreateClient("BffClient")
+            .GetAsync("api/user/appearance/profiles", cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return Results.Ok(Array.Empty<UserAppearanceProfileDto>());
+        }
+
+        return Results.Stream(await response.Content.ReadAsStreamAsync(cancellationToken), "application/json");
+    }
+
+    private static async Task<IResult> HandleSetActiveProfileAsync(HttpContext ctx, Guid profileId, CancellationToken cancellationToken)
+    {
+        if (ctx.User.Identity?.IsAuthenticated != true)
+        {
+            return Results.Unauthorized();
+        }
+
+        var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
+        var request = new SetActiveProfileRequestDto { ProfileId = profileId };
+        using var response = await clientFactory.CreateClient("BffClient")
+            .PutAsJsonAsync("api/user/appearance/active-profile", request, cancellationToken);
+
+        return response.IsSuccessStatusCode
+            ? Results.Ok()
+            : Results.Problem(detail: "Could not set active profile.", statusCode: (int)response.StatusCode, title: "Active profile update failed");
+    }
+
+    private static async Task<IResult> HandleClonePresetAsync(HttpContext ctx, Guid presetId, CancellationToken cancellationToken)
+    {
+        if (ctx.User.Identity?.IsAuthenticated != true)
+        {
+            return Results.Unauthorized();
+        }
+
+        var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
+        using var response = await clientFactory.CreateClient("BffClient")
+            .PostAsJsonAsync($"api/user/appearance/profiles/from-preset/{presetId}", (object?)null, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return Results.Problem(detail: "Could not clone preset.", statusCode: (int)response.StatusCode, title: "Preset clone failed");
+        }
+
+        return Results.Stream(await response.Content.ReadAsStreamAsync(cancellationToken), "application/json");
+    }
+
+    private static async Task<IResult> HandleCreateProfileAsync(HttpContext ctx, CreateCustomProfileRequestDto request, CancellationToken cancellationToken)
+    {
+        if (ctx.User.Identity?.IsAuthenticated != true)
+        {
+            return Results.Unauthorized();
+        }
+
+        var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
+        using var response = await clientFactory.CreateClient("BffClient")
+            .PostAsJsonAsync("api/user/appearance/profiles", request, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return Results.Problem(detail: "Could not create custom profile.", statusCode: (int)response.StatusCode, title: "Profile creation failed");
+        }
+
+        return Results.Stream(await response.Content.ReadAsStreamAsync(cancellationToken), "application/json");
+    }
+
+    private static async Task<IResult> HandleUpdateProfileAsync(HttpContext ctx, Guid profileId, UpdateAppearanceProfileRequestDto request, CancellationToken cancellationToken)
+    {
+        if (ctx.User.Identity?.IsAuthenticated != true)
+        {
+            return Results.Unauthorized();
+        }
+
+        var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
+        using var response = await clientFactory.CreateClient("BffClient")
+            .PutAsJsonAsync($"api/user/appearance/profiles/{profileId}", request, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return Results.Problem(detail: "Could not update profile.", statusCode: (int)response.StatusCode, title: "Profile update failed");
+        }
+
+        return Results.Stream(await response.Content.ReadAsStreamAsync(cancellationToken), "application/json");
+    }
+
+    private static async Task<IResult> HandleSetThemeModeAsync(HttpContext ctx, SetThemeModeRequestDto request, CancellationToken cancellationToken)
+    {
+        if (ctx.User.Identity?.IsAuthenticated != true)
+        {
+var mode = request.ThemeMode?.Trim().ToLowerInvariant();
+        var validModes = new[] { "system", "light", "dark", "lighthighcontrast", "darkhighcontrast", "custom" };
+        if (mode is null || !validModes.Contains(mode))
+        {
+            return Results.Problem(detail: "Theme mode must be one of: system, light, dark, lighthighcontrast, darkhighcontrast, custom.", statusCode: StatusCodes.Status400BadRequest, title: "Invalid theme mode");
+        }
+
+            PersistThemeCookie(ctx, mode);
+            return Results.Ok(new { themeMode = mode });
+        }
+
+        var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
+        using var response = await clientFactory.CreateClient("BffClient")
+            .PutAsJsonAsync("api/user/appearance/mode", request, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return Results.Problem(detail: "Could not set theme mode.", statusCode: (int)response.StatusCode, title: "Theme mode update failed");
+        }
+
+        PersistThemeCookie(ctx, request.ThemeMode ?? "system");
+        return Results.Stream(await response.Content.ReadAsStreamAsync(cancellationToken), "application/json");
+    }
+
+    private static async Task<IResult> HandleGeneratePaletteAsync(HttpContext ctx, string naturalColor, string brandColor, bool isDark, CancellationToken cancellationToken)
+    {
+        if (ctx.User.Identity?.IsAuthenticated != true)
+        {
+            return Results.Unauthorized();
+        }
+
+        var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
+        using var response = await clientFactory.CreateClient("BffClient")
+            .GetAsync($"api/user/appearance/generate-palette?naturalColor={Uri.EscapeDataString(naturalColor)}&brandColor={Uri.EscapeDataString(brandColor)}&isDark={isDark}", cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return Results.Problem(detail: "Could not generate palette.", statusCode: (int)response.StatusCode, title: "Palette generation failed");
+        }
+
+        return Results.Stream(await response.Content.ReadAsStreamAsync(cancellationToken), "application/json");
+    }
+
+    private static async Task<IResult> HandleArchiveProfileAsync(HttpContext ctx, Guid profileId, CancellationToken cancellationToken)
+    {
+        if (ctx.User.Identity?.IsAuthenticated != true)
+        {
+            return Results.Unauthorized();
+        }
+
+        var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
+        using var response = await clientFactory.CreateClient("BffClient")
+            .PutAsync($"api/user/appearance/profiles/{profileId}/archive", null, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return Results.Problem(detail: "Could not archive profile.", statusCode: (int)response.StatusCode, title: "Archive profile failed");
+        }
+
+        return Results.Ok();
+    }
+
+    private static async Task<IResult> HandleDuplicateProfileAsync(HttpContext ctx, Guid profileId, CancellationToken cancellationToken)
+    {
+        if (ctx.User.Identity?.IsAuthenticated != true)
+        {
+            return Results.Unauthorized();
+        }
+
+        var clientFactory = ctx.RequestServices.GetRequiredService<IHttpClientFactory>();
+        using var response = await clientFactory.CreateClient("BffClient")
+            .PostAsync($"api/user/appearance/profiles/{profileId}/duplicate", null, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return Results.Problem(detail: "Could not duplicate profile.", statusCode: (int)response.StatusCode, title: "Duplicate profile failed");
+        }
+
+        return Results.Stream(await response.Content.ReadAsStreamAsync(cancellationToken), "application/json");
+    }
+
+    private static ResolvedAppearanceDto BuildDefaultResolvedAppearance(HttpContext ctx)
+    {
+        var theme = ctx.Request.Cookies["theme"];
+        var direction = ctx.Request.Cookies["direction"];
+        var lang = ctx.Request.Cookies["lang"];
+
+        var validModes = new[] { "system", "light", "dark", "lighthighcontrast", "darkhighcontrast", "custom" };
+        var resolvedMode = validModes.Contains(theme) ? theme! : "system";
+
+        return new ResolvedAppearanceDto
+        {
+            ThemeMode = resolvedMode,
+            Direction = direction is "ltr" or "rtl" ? direction : "auto",
+            Language = CultureRegistry.TryGetEntry(lang ?? string.Empty, out var entry) ? entry.Code : "en",
+            ServerEffectiveDarkMode = resolvedMode switch
+            {
+                "dark" => true,
+                "lighthighcontrast" => false,
+                "darkhighcontrast" => true,
+                "light" => false,
+                _ => null
+            }
+        };
     }
 
     private static async Task<IResult> HandleThemePreference(HttpContext ctx, CancellationToken cancellationToken)
     {
         var themeMode = ctx.Request.Query["theme"].ToString().Trim().ToLowerInvariant();
 
-        if (themeMode is not "dark" and not "light" and not "system")
+        var validModes = new[] { "system", "light", "dark", "lighthighcontrast", "darkhighcontrast", "custom" };
+        if (!validModes.Contains(themeMode))
         {
             return Results.Problem(
-                detail: "Theme must be 'system', 'dark', or 'light'.",
+                detail: "Theme mode must be one of: system, light, dark, lighthighcontrast, darkhighcontrast, custom.",
                 statusCode: StatusCodes.Status400BadRequest,
                 title: "Invalid theme preference");
         }

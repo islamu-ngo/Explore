@@ -308,7 +308,9 @@
         return new UiThemePaletteDto
         {
             Primary = src.Primary,
+            PrimaryContrastText = src.PrimaryContrastText,
             Secondary = src.Secondary,
+            SecondaryContrastText = src.SecondaryContrastText,
             Background = src.Background,
             Surface = src.Surface,
             AppbarBackground = src.AppbarBackground,
@@ -329,7 +331,9 @@
 
     private static UiThemePaletteDto DefaultLightPalette() => new()
     {
-        Primary = "#2563EB", Secondary = "#64748B", Background = "#F8FAFC", Surface = "#FFFFFF",
+        Primary = "#2563EB", PrimaryContrastText = "#FFFFFF",
+        Secondary = "#64748B", SecondaryContrastText = "#FFFFFF",
+        Background = "#F8FAFC", Surface = "#FFFFFF",
         AppbarBackground = "#FFFFFF", AppbarText = "#0F172A", DrawerBackground = "#FFFFFF",
         DrawerText = "#0F172A", DrawerIcon = "#475569", TextPrimary = "#0F172A", TextSecondary = "#475569",
         Info = "#0EA5E9", Success = "#16A34A", Warning = "#F59E0B", Error = "#DC2626",
@@ -338,7 +342,9 @@
 
     private static UiThemePaletteDto DefaultDarkPalette() => new()
     {
-        Primary = "#60A5FA", Secondary = "#94A3B8", Background = "#0F172A", Surface = "#1E293B",
+        Primary = "#60A5FA", PrimaryContrastText = "#0F172A",
+        Secondary = "#94A3B8", SecondaryContrastText = "#0F172A",
+        Background = "#0F172A", Surface = "#1E293B",
         AppbarBackground = "#1E293B", AppbarText = "#F1F5F9", DrawerBackground = "#1E293B",
         DrawerText = "#F1F5F9", DrawerIcon = "#CBD5E1", TextPrimary = "#F1F5F9", TextSecondary = "#CBD5E1",
         Info = "#38BDF8", Success = "#22C55E", Warning = "#FBBF24", Error = "#F87171",

@@ -44,7 +44,7 @@ public class ContactShareConsentService : IContactShareConsentService
         Guid tenantId,
         Guid userId,
         Guid eventId,
-        Guid registrationId,
+        Guid registrationIntentId,
         bool shareEmailWithOrganizer,
         string? consentText,
         string? consentUiVersion)
@@ -102,7 +102,7 @@ public class ContactShareConsentService : IContactShareConsentService
             existing.GrantedAt = DateTime.UtcNow;
             existing.WithdrawnAt = null;
             existing.SourceEventId = eventId;
-            existing.SourceEventRegistrationId = registrationId;
+            existing.SourceEventRegistrationIntentId = registrationIntentId;
             await _consentRepository.Update(existing);
 
             _logger.LogInformation(
@@ -119,7 +119,7 @@ public class ContactShareConsentService : IContactShareConsentService
             UserId = userId,
             RecipientActorId = @event.ActorId,
             SourceEventId = eventId,
-            SourceEventRegistrationId = registrationId,
+            SourceEventRegistrationIntentId = registrationIntentId,
             PurposeCode = purposeCode,
             Status = ConsentStatus.Granted,
             EmailSnapshot = email,

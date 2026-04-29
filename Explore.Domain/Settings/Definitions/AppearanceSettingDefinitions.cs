@@ -1,16 +1,17 @@
 // ABOUTME: Appearance setting definitions for theme selection behavior resolved through the hierarchical settings engine.
-// ABOUTME: Stores only references and mode flags; theme catalog rows live in first-class UiTheme entities.
+// ABOUTME: Stores only references and mode flags; theme catalog rows live in first-class UiThemePreset entities.
+// ABOUTME: User scope uses active_profile_id; tenant/instance scope uses default_preset_id — semantically distinct.
 
 namespace Explore.Domain.Settings.Definitions;
 
 public static class AppearanceSettingDefinitions
 {
-    public static readonly SettingDefinition DefaultThemeId = new(
-        Key: "appearance.default_theme_id",
+    public static readonly SettingDefinition ActiveProfileId = new(
+        Key: "appearance.active_profile_id",
         ValueType: SettingValueType.String,
         DefaultValue: "\"\"",
         Category: "Appearance",
-        Description: "Effective selected theme reference inherited through the settings hierarchy",
+        Description: "Effective active appearance profile reference for the current user scope",
         MaxScope: SettingScope.User);
 
     public static readonly SettingDefinition ThemeMode = new(
@@ -31,8 +32,6 @@ public static class AppearanceSettingDefinitions
         MaxScope: SettingScope.User,
         AllowedValues: ["auto", "ltr", "rtl"]);
 
-    // Note: language is semantically not "appearance"; stored here for v1 delivery speed (plan D3).
-    // The tech-debt ticket to split into UserPreferences is tracked in the Phase 10 backlog.
     public static readonly SettingDefinition Language = new(
         Key: "appearance.language",
         ValueType: SettingValueType.String,
@@ -42,6 +41,35 @@ public static class AppearanceSettingDefinitions
         MaxScope: SettingScope.User,
         AllowedValues: ["en", "fr", "ar"]);
 
+    public static readonly SettingDefinition DefaultPresetId = new(
+        Key: "appearance.default_preset_id",
+        ValueType: SettingValueType.String,
+        DefaultValue: "\"\"",
+        Category: "Appearance",
+        Description: "Default theme preset for tenant or instance scope. Points to a UiThemePreset, not a user profile.",
+        MinScope: SettingScope.Instance,
+        MaxScope: SettingScope.Tenant);
+
+    public static readonly SettingDefinition DefaultThemeMode = new(
+        Key: "appearance.default_theme_mode",
+        ValueType: SettingValueType.String,
+        DefaultValue: "\"system\"",
+        Category: "Appearance",
+        Description: "Default theme mode for tenant or instance scope. Allowed values: system, light, dark",
+        MinScope: SettingScope.Instance,
+        MaxScope: SettingScope.Tenant,
+        AllowedValues: ["system", "light", "dark"]);
+
+    // Keep legacy key for backward compatibility during migration.
+    // This will be removed once all clients are updated.
+    public static readonly SettingDefinition LegacyDefaultThemeId = new(
+        Key: "appearance.default_theme_id",
+        ValueType: SettingValueType.String,
+        DefaultValue: "\"\"",
+        Category: "Appearance",
+        Description: "Legacy key — superseded by appearance.active_profile_id (user) and appearance.default_preset_id (tenant/instance).",
+        MaxScope: SettingScope.User);
+
     public static IReadOnlyList<SettingDefinition> All =>
-        [DefaultThemeId, ThemeMode, Direction, Language];
+    [ActiveProfileId, ThemeMode, Direction, Language, DefaultPresetId, DefaultThemeMode, LegacyDefaultThemeId];
 }

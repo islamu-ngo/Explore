@@ -6,7 +6,9 @@ namespace Explore.Application.DTOs.Appearance;
 public class UiThemePaletteDto
 {
     public string Primary { get; set; } = string.Empty;
+    public string PrimaryContrastText { get; set; } = "#FFFFFF";
     public string Secondary { get; set; } = string.Empty;
+    public string SecondaryContrastText { get; set; } = "#FFFFFF";
     public string Background { get; set; } = string.Empty;
     public string Surface { get; set; } = string.Empty;
     public string AppbarBackground { get; set; } = string.Empty;

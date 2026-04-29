@@ -2,6 +2,7 @@
 // ABOUTME: Covers format validation, org approval checks, file generation, and audit record creation.
 
 using Explore.Application.Contracts.Persistence;
+using Explore.Application.Authorization;
 using Explore.Application.DTOs.ContactShareConsent;
 using Explore.Application.Features.ContactShareConsents.Handlers.Commands;
 using Explore.Application.Features.ContactShareConsents.Requests.Commands;
@@ -193,6 +194,17 @@ public class ExportSharedContactsCommandHandlerTests
         await _exportRepository.Received(1).Create(Arg.Is<EventContactShareExport>(e => e.RowCount == 0));
     }
 
+    [Test]
+    public async Task SecureRequest_UsesOrganizationIdAndTenantId_ForAuthorizationContext()
+    {
+        var command = CreateCommand();
+        var secureRequest = (ISecureRequest)command;
+
+        await Assert.That(secureRequest.ResourceId).IsEqualTo(_orgId.ToString());
+        await Assert.That(secureRequest.ResourceAttributes!["organizationId"]).IsEqualTo(_orgId);
+        await Assert.That(secureRequest.ResourceAttributes!["tenantId"]).IsEqualTo(_tenantId);
+    }
+
     #endregion
 
     #region Helpers
@@ -237,6 +249,7 @@ public class ExportSharedContactsCommandHandlerTests
         return new ExportSharedContactsCommand
         {
             RecipientActorId = _actorId,
+            OrganizationId = _orgId,
             TenantId = _tenantId,
             ExportedByUserId = _userId,
             Format = format

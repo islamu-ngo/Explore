@@ -117,13 +117,15 @@ public static class GovernanceSettingKeys
 
     public static class Appearance
     {
-        public const string DefaultThemeId = "appearance.default_theme_id";
+        public const string ActiveProfileId = "appearance.active_profile_id";
+        public const string DefaultPresetId = "appearance.default_preset_id";
+        public const string DefaultThemeMode = "appearance.default_theme_mode";
         public const string ThemeMode = "appearance.theme_mode";
         public const string Direction = "appearance.direction";
-
-        // Note: semantically not "appearance" but persisted here for v1 speed.
-        // Tracked as tech debt in dev/backlog — see plan D3.
         public const string Language = "appearance.language";
+
+        [System.Obsolete("Use ActiveProfileId for user scope or DefaultPresetId for tenant/instance scope.")]
+        public const string LegacyDefaultThemeId = "appearance.default_theme_id";
     }
 
     public static class Domains

@@ -13,6 +13,9 @@ public class CreateEventSessionDto
     // Location
     public Guid? LocationId { get; set; }
 
+    // Media
+    public Guid? FeaturedImageId { get; set; }
+
     // Room (optional child of LocationId used by same-room overlap guard)
     public Guid? RoomId { get; set; }
 

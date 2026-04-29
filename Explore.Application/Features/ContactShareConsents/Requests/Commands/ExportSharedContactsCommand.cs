@@ -12,6 +12,7 @@ namespace Explore.Application.Features.ContactShareConsents.Requests.Commands;
 public class ExportSharedContactsCommand : IRequest<BaseCommandResponse<SharedContactExportResultDto>>, ISecureRequest
 {
     public Guid RecipientActorId { get; set; }
+    public Guid OrganizationId { get; set; }
     public Guid? EventId { get; set; }
     public Guid TenantId { get; set; }
     public Guid ExportedByUserId { get; set; }
@@ -21,11 +22,12 @@ public class ExportSharedContactsCommand : IRequest<BaseCommandResponse<SharedCo
     /// </summary>
     public string Format { get; set; } = "csv";
 
-    string? ISecureRequest.ResourceId => RecipientActorId.ToString();
+    string? ISecureRequest.ResourceId => OrganizationId.ToString();
 
     IDictionary<string, object>? ISecureRequest.ResourceAttributes =>
         new Dictionary<string, object>
         {
-            ["organizationId"] = RecipientActorId
+            ["tenantId"] = TenantId,
+            ["organizationId"] = OrganizationId
         };
 }

@@ -163,7 +163,7 @@ public class GetPublicExperienceSettingsQueryHandler : IRequestHandler<GetPublic
             DisallowInteractiveServerOnOnboarding = governanceSettings.RenderPolicy.DisallowInteractiveServerOnOnboarding,
             IsAiAssistantAvailable = aiSettingGroup.IsAvailable,
             FooterConfig = footerConfig,
-            DefaultThemeId = appearanceSettingGroup.DefaultThemeId,
+            DefaultThemeId = appearanceSettingGroup.ActiveProfileId,
             ThemeMode = appearanceSettingGroup.ThemeMode,
             Direction = appearanceSettingGroup.Direction,
             Language = appearanceSettingGroup.Language,

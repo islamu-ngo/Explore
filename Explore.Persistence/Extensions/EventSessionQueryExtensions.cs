@@ -16,6 +16,7 @@ internal static class EventSessionQueryExtensions
                 .ThenInclude(l => l!.Pii)
             .Include(s => s.RegistrationMode)
             .Include(s => s.Room)
+            .Include(s => s.FeaturedImage)
             .Include(s => s.IslamicAspect);
     }
 }
