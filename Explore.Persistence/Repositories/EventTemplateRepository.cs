@@ -3,6 +3,7 @@
 
 using Explore.Application.Contracts.Persistence;
 using Explore.Domain;
+using Explore.Persistence.QueryFilters;
 using Microsoft.EntityFrameworkCore;
 
 namespace Explore.Persistence.Repositories;
@@ -163,12 +164,12 @@ public class EventTemplateRepository : GenericRepository<EventTemplate, Guid>, I
         }
 
         await _dbContext.EventTemplateCustomPropertyOptions
-            .IgnoreQueryFilters()
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
             .Where(x => existingDefinitionIds.Contains(x.EventTemplateCustomPropertyDefinitionId))
             .ExecuteDeleteAsync(cancellationToken);
 
         await _dbContext.EventTemplateCustomPropertyDefinitions
-            .IgnoreQueryFilters()
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
             .Where(x => x.EventTemplateId == template.Id)
             .ExecuteDeleteAsync(cancellationToken);
 
@@ -197,7 +198,7 @@ public class EventTemplateRepository : GenericRepository<EventTemplate, Guid>, I
     public async Task<bool> DeleteTemplate(Guid id, CancellationToken cancellationToken)
     {
         var definitionIds = await _dbContext.EventTemplateCustomPropertyDefinitions
-            .IgnoreQueryFilters()
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
             .Where(x => x.EventTemplateId == id)
             .Select(x => x.Id)
             .ToListAsync(cancellationToken);
@@ -205,18 +206,18 @@ public class EventTemplateRepository : GenericRepository<EventTemplate, Guid>, I
         if (definitionIds.Count > 0)
         {
             await _dbContext.EventTemplateCustomPropertyOptions
-                .IgnoreQueryFilters()
+                .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
                 .Where(x => definitionIds.Contains(x.EventTemplateCustomPropertyDefinitionId))
                 .ExecuteDeleteAsync(cancellationToken);
 
             await _dbContext.EventTemplateCustomPropertyDefinitions
-                .IgnoreQueryFilters()
+                .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
                 .Where(x => x.EventTemplateId == id)
                 .ExecuteDeleteAsync(cancellationToken);
         }
 
         var affectedRows = await _dbContext.EventTemplates
-            .IgnoreQueryFilters()
+            .IgnoreQueryFilters([QueryFilterNames.SoftDelete])
             .Where(x => x.Id == id)
             .ExecuteDeleteAsync(cancellationToken);
 

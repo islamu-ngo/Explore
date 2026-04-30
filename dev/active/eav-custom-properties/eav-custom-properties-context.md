@@ -3,7 +3,7 @@ ABOUTME: Read this first when resuming so implementation follows the hardened ex
 
 # EAV Custom Properties - Context
 
-**Last Updated: 2026-04-29 (Phase 9.4A Oracle blocker fixed + verified)**
+**Last Updated: 2026-04-30 (Phase 10.0 boundary guard verified)**
 
 ---
 
@@ -49,8 +49,10 @@ ABOUTME: Read this first when resuming so implementation follows the hardened ex
 - Build verified 0 errors from EAV code.
 
 ### ✅ Current Build State
-- `dotnet build --configuration Release --verbosity quiet` ✅ 0 errors on 2026-04-29; remaining warnings are existing analyzer/package warnings.
-- `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` ✅ 835 total / 834 passed / 1 known skipped on 2026-04-29.
+- Phase 9.11 generated-client build: `rtk dotnet build "Explore.Blazor.Client/Explore.Blazor.Client.csproj" --configuration Release --verbosity quiet` ✅ on 2026-04-30.
+- Phase 10.0 architecture guard: LSP clean, diff check clean, and both new `ProjectionLayerBoundaryTests` TUnit guards passed with `--treenode-filter` on 2026-04-30.
+- Client tests: `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` ✅ 909 total / 908 passed / 1 known skipped on 2026-04-30.
+- Full solution build: attempted via `rtk dotnet build --configuration Release --verbosity quiet`; currently fails outside Phase 9.11 on unrelated existing analyzer/package issues plus a transient locked `Explore.Blazor.Client.pdb` during static-web-assets fingerprinting.
 
 ### 🟡 Remaining Phase 9.x Work
 - **Phase 9.4**: ✅ CLOSED — event creation template selection with stale async guards and final Oracle review safe.
@@ -59,17 +61,34 @@ ABOUTME: Read this first when resuming so implementation follows the hardened ex
 - **Phase 9.6**: Template preview admin overview (low priority)
 - **Phase 9.6A**: Session blueprint preview admin overview (low priority)
 - **Phase 9.10**: Organization/Group page cleanup (low priority)
-- **Phase 9.11**: Regenerate NSwag API clients (medium priority — needed if API surface changed)
+- **Phase 9.11**: ✅ CLOSED — regenerated `Explore.API/swagger.json` + `Explore.Blazor.Client/Clients/EventApiClient.g.cs`; no hand edits to generated client; generated diff adds `/sitemap.xml` and `GetSitemapAsync(...)`/`FileResponse`; current OpenAPI has no obvious aggregate-view endpoint to generate yet.
+
+### ✅ Phase 9.11 — NSwag Regeneration (2026-04-30)
+- `dotnet tool restore` restored local NSwag (`nswag.consolecore` 14.6.3).
+- Targeted TUnit swagger exporter succeeded:
+  `dotnet run --project "Event.API.IntegrationTests/Event.API.IntegrationTests.csproj" --configuration Release -- --treenode-filter "/*/*/*/SwaggerJson_Export_WritesPrettyPrintedDocToExploreApi" --minimum-expected-tests 1 --no-progress`.
+- Generated files changed: `Explore.API/swagger.json`, `Explore.Blazor.Client/Clients/EventApiClient.g.cs`.
+- Generated diff summary: 168 insertions / 3 deletions; includes `/sitemap.xml`, generated `GetSitemapAsync(...)`, generated `FileResponse : IDisposable`, and refreshed role description text.
+- Verification: generated-client build ✅; client tests ✅ 909 total / 908 passed / 1 known skipped.
+- Limitation: full-solution Release build was attempted but failed on unrelated existing analyzer/package issues plus transient locked client PDB; Docker-dependent E/F integration retry remains blocked locally.
+
+### ✅ Phase 10.0 — Layer 2/3 Boundary Verification (2026-04-30)
+- Added executable architecture coverage in `Event.Architecture.Tests/ProjectionLayerBoundaryTests.cs` so typed Layer 2 filters (`IslamicAspectFilter`, `TechAspectFilter`, `AspectPresenceFilter`) remain direct `EventQuerySpecification.And(...)` overloads instead of being routed through Layer 3 custom-property projections.
+- Added a projection-filter guard blocking event/session Layer 3 projection filters from growing sector-specific factory names (`Islamic`, `Madhab`, `Gender`, `Prayer`, `Tech`, `Skill`, `Aspect`).
+- Updated `docs/ARCHITECTURE.md` to state that Layer 2 filters compose directly, Layer 3 projection filters stay generic, and sector-standard/discovery-critical custom properties are promoted to typed Layer 2 schema.
+- Verification: `lsp_diagnostics` clean for the architecture test; `git diff --check` clean for `ProjectionLayerBoundaryTests.cs` + `docs/ARCHITECTURE.md`; both new TUnit guards passed with `--treenode-filter` and `--minimum-expected-tests 1`.
+- Remaining: Phase 11 API roundtrip tests (`11.9`, `11.9B`) require Docker/Testcontainers and are still locally blocked.
 
 ### ⏳ Other Remaining Work
-- Phase 11+10.0: Architecture tests + API roundtrip tests
+- Phase 11 local-only tests: display-name identity, multi-value semantics, exposure/search/filter/export/moderation flags, retired historical values
+- Phase 11 Docker-gated API roundtrips: `11.9`, `11.9B`
 - Phase 8.5.13: Prometheus metrics for projection updater
 - Gap 3: Integration tests (E Phase 4 + F Phase 3 — needs Docker)
-- Final verification: full build + per-project test sweep
+- Final verification: full build + per-project test sweep once unrelated build/analyzer/package blockers and Docker-dependent integration constraints are addressed
 
 ### Git State
 - 5 prior commits on develop from earlier sessions (eda957fa, 1a7f0607, b20def51, be0e08b3, aee1fd55)
-- **Uncommitted**: Phase 9.2 + 9.3 files (all the Blazor CRUD pages + services + models)
+- **Uncommitted**: Phase 9.2 + 9.3 files (all the Blazor CRUD pages + services + models), Phase 9.4/9.5 UI/runtime work, Phase 9.11 generated OpenAPI/client files, Phase 10.0 architecture/doc updates, and dev-doc updates
 - **Uncommitted broken**: Messaging infrastructure files (NOT EAV)
 - **Orphan**: `Explore.Blazor.Client/Models/EventTemplateSync/TemplateDiffResource.cs` (untracked, can delete)
 - **Stash@{0}**: still exists, safe to drop

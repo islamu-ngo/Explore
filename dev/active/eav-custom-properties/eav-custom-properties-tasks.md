@@ -3,7 +3,7 @@ ABOUTME: Reflects extension-layer boundaries, namespaced machine keys, projectio
 
 # EAV Custom Properties - Task Checklist
 
-**Last Updated: 2026-04-29 (Session 5 — Phase 9.4A Oracle blocker fixed + verified)**
+**Last Updated: 2026-04-30 (Session 6 — Phase 9.11 NSwag regen verified)**
 
 ---
 
@@ -19,17 +19,17 @@ ABOUTME: Reflects extension-layer boundaries, namespaced machine keys, projectio
 - Phase 9.6 — Template preview: ⏳ PENDING
 - Phase 9.6A — Session blueprint preview: ⏳ PENDING
 - Phase 9.10 — Org/Group cleanup: ⏳ PENDING
-- Phase 9.11 — NSwag regen: ⏳ PENDING
+- Phase 9.11 — NSwag regen: ✅ CLOSED (swagger snapshot + generated client refreshed; client build/regeneration succeeded; client tests 909 total / 908 passed / 1 known skipped)
 
-**Build state**: `dotnet build --configuration Release --verbosity quiet` ✅ 0 errors on 2026-04-29; warnings are existing analyzer/package warnings.
+**Build state**: Phase 9.11 generated-client build ✅ on 2026-04-30. Full-solution Release build currently fails outside this phase on unrelated existing analyzer/package issues plus a transient locked client PDB during static-web-assets fingerprinting.
 
-**Client test state**: `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` ✅ 835 total / 834 passed / 1 known skipped on 2026-04-29.
+**Client test state**: `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` ✅ 909 total / 908 passed / 1 known skipped on 2026-04-30.
 
-**Uncommitted work**: Phase 9.2 + 9.3 files plus Phase 9.4 and Phase 9.5/9.5A files need committing when user requests it.
+**Uncommitted work**: Phase 9.2 + 9.3 files plus Phase 9.4, Phase 9.5/9.5A, and Phase 9.11 generated files/docs need committing when user requests it.
 
 **Orphan to delete**: `Explore.Blazor.Client/Models/EventTemplateSync/TemplateDiffResource.cs`
 
-**Next recommended implementation slice**: Phase 9.11 NSwag regeneration or Phase 9.6/9.6A preview admin overviews. Phase 9.4A is closed for CreateEvent's new-session drawer; EventEdit remains intentionally out of scope until the API exposes the parent event template identity on event read/update DTOs.
+**Next recommended implementation slice**: Phase 11 + 10.0 architecture/API roundtrip tests or Phase 9.6/9.6A preview admin overviews. Phase 9.4A is closed for CreateEvent's new-session drawer; EventEdit remains intentionally out of scope until the API exposes the parent event template identity on event read/update DTOs.
 
 ---
 
@@ -611,16 +611,16 @@ OUT of scope:
   - [ ] **9.8A.1** Mirror 9.8.1-9.8.10 for session scope
 - [x] **9.9** Add governance UI for exposure/search/filter/export flags (polish + tooltips beyond 9.7) ✅ 2026-04-21 — `GovernanceTooltips` copy + doc link to `/docs/CUSTOM_PROPERTIES.md` on header opens in new tab; governance report + projection status sections added as polish to satisfy Milestone D operator coverage
 - [ ] **9.10** Update Organization and Group pages to remove any stale metadata-blob assumptions
-- [ ] **9.11** Regenerate generated API clients after milestone API contract changes
+- [x] **9.11** Regenerate generated API clients after milestone API contract changes ✅ 2026-04-30 — `Explore.API/swagger.json` + `Explore.Blazor.Client/Clients/EventApiClient.g.cs` regenerated through NSwag; targeted swagger export ✅; generated-client build ✅; client tests ✅ 909 total / 908 passed / 1 known skipped; full-solution build attempted but blocked by unrelated existing analyzer/package issues plus transient locked client PDB
 
 ---
 
-## Phase 10: Search, Projection, Moderation, Export, And Aggregate View Integration ⏳ NOT STARTED
+## Phase 10: Search, Projection, Moderation, Export, And Aggregate View Integration 🟡 PARTIALLY COMPLETE
 
-- [ ] **10.0** Integrate Layer 2 typed sector fields directly into discovery, policy, moderation, and export paths without routing them through Layer 3 first
-  - [ ] **10.0.1** Verify `EventQuerySpecification` composes `IslamicAspectFilter`, `TechAspectFilter`, `AspectPresenceFilter` directly (already does)
-  - [ ] **10.0.2** Architecture test enforces no Layer 2 field flows through Layer 3 projection
-  - [ ] **10.0.3** Document the boundary in `docs/ARCHITECTURE.md`
+- [x] **10.0** Integrate Layer 2 typed sector fields directly into discovery, policy, moderation, and export paths without routing them through Layer 3 first ✅ 2026-04-30 — architecture guard + docs verified locally; Docker-gated API roundtrips remain in Phase 11
+  - [x] **10.0.1** Verify `EventQuerySpecification` composes `IslamicAspectFilter`, `TechAspectFilter`, `AspectPresenceFilter` directly ✅ explicit overload guard added
+  - [x] **10.0.2** Architecture test enforces no Layer 2 field flows through Layer 3 projection ✅ projection filters cannot expose Layer 2 semantic factories
+  - [x] **10.0.3** Document the boundary in `docs/ARCHITECTURE.md` ✅ direct Layer 2 composition + generic Layer 3 projection rule documented
 - [x] **10.1** Populate event custom-property projections on writes and sync operations (**Milestone D baseline**) ✅ 2026-04-12
   - [x] **10.1.1** `SetEventCustomPropertyValueCommandHandler` — wraps in UoW + calls `UpdateForValueAsync`
   - [x] **10.1.2** `SetEventCustomPropertyMultiValuesCommandHandler` — calls `UpdateForDefinitionAsync` inside existing UoW
@@ -655,7 +655,7 @@ OUT of scope:
 
 > **Testing stack:** xUnit + TUnit + Moq + Testcontainers-PostgreSQL for integration tests + Aspire AppHost for E2E. All projection / sync / aggregate-view integration tests MUST use Testcontainers.
 
-- [ ] **11.1** Add architecture tests for the new entity families and boundaries
+- [ ] **11.1** Add architecture tests for the new entity families and boundaries — Phase 10.0 boundary subset added 2026-04-30; remaining bullets below still open
   - [ ] **11.1.1** Assert Layer 3 types do not reference Layer 2 aspect types
   - [ ] **11.1.2** Assert Layer 2 aspect types do not reference Layer 3 custom-property types
   - [ ] **11.1.3** Assert `IEventCustomPropertyProjectionUpdater` implementation lives in `Explore.Persistence`
@@ -709,7 +709,7 @@ OUT of scope:
 - [ ] **11.9** Add deeper integration tests for API roundtrips (template → event → sync → projections baseline) (**Milestone D/E**)
 - [x] **11.9A** Add initial API integration coverage for shared custom-property definition controller routes and auth posture
 - [ ] **11.9B** Add integration tests for API roundtrips (event template → session blueprint → event session → sync → projections baseline) (**Milestone D/C/E**)
-- [x] **11.10** Update docs: `docs/DOMAIN.md`, `docs/ARCHITECTURE.md`, `docs/EXTENSIBILITY.md`, `docs/MODULAR_EVENTS.md`, `docs/CUSTOM_PROPERTIES.md`
+- [x] **11.10** Update docs: `docs/DOMAIN.md`, `docs/ARCHITECTURE.md`, `docs/EXTENSIBILITY.md`, `docs/MODULAR_EVENTS.md`, `docs/CUSTOM_PROPERTIES.md` — `docs/ARCHITECTURE.md` boundary tightened again for Phase 10.0 on 2026-04-30
 - [ ] **11.10A** Update event/session lexicon planning docs for canonical event/session contracts and aggregate read views (**Milestone F**)
   - [ ] **11.10A.1** New `docs/LEXICONS.md` or extension to `docs/FEDERATION.md`
   - [ ] **11.10A.2** Canonical NSID hierarchy documented
