@@ -108,7 +108,7 @@ public class UserController : ExploreControllerBase
         var currentUserId = await ResolveCurrentUserIdAsync(cancellationToken);
         if (!currentUserId.HasValue)
         {
-            return BadRequest("Invalid User ID in token");
+            return UnauthorizedProblem();
         }
 
         var query = new GetUserRequest { UserId = currentUserId.Value };
@@ -153,7 +153,7 @@ public class UserController : ExploreControllerBase
         var currentUserId = await ResolveCurrentUserIdAsync(cancellationToken);
         if (!currentUserId.HasValue)
         {
-            return Unauthorized("Invalid User ID in token");
+            return UnauthorizedProblem();
         }
 
         // For now, only allow users to get their own organizations
@@ -176,7 +176,7 @@ public class UserController : ExploreControllerBase
         var currentUserId = await ResolveCurrentUserIdAsync(cancellationToken);
         if (!currentUserId.HasValue)
         {
-            return BadRequest("Invalid User ID in token");
+            return UnauthorizedProblem();
         }
 
         if (userDto.Id != currentUserId.Value)
@@ -196,7 +196,7 @@ public class UserController : ExploreControllerBase
         var currentUserId = await ResolveCurrentUserIdAsync(cancellationToken);
         if (!currentUserId.HasValue)
         {
-            return BadRequest("Invalid User ID in token");
+            return UnauthorizedProblem();
         }
 
         var command = new DeleteUserCommand { UserId = currentUserId.Value };
@@ -208,5 +208,14 @@ public class UserController : ExploreControllerBase
     private async Task<Guid?> ResolveCurrentUserIdAsync(CancellationToken cancellationToken)
     {
         return await base.ResolveCurrentUserIdAsync(_mediator, cancellationToken);
+    }
+
+    private ObjectResult UnauthorizedProblem()
+    {
+        return Problem(
+            title: "Unauthorized",
+            detail: "Authentication is required to access this resource.",
+            statusCode: StatusCodes.Status401Unauthorized,
+            type: "https://tools.ietf.org/html/rfc9110#section-15.5.2");
     }
 }

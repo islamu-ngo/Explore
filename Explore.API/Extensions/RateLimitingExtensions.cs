@@ -3,9 +3,11 @@
 
 using System.Globalization;
 using System.Net;
+using System.Security.Claims;
 using System.Threading.RateLimiting;
 using Explore.Application.Authentication;
 using Explore.Application.Telemetry;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Explore.API.Extensions;
 
@@ -76,18 +78,23 @@ public static class RateLimitingExtensions
         var analyticsRelayPermitLimit = section.GetValue("AnalyticsRelay:PermitLimit", 120);
         var analyticsRelayWindowSeconds = section.GetValue("AnalyticsRelay:WindowSeconds", 60);
 
+        // Setup-secret bootstrap limits
+        var setupSecretPermitLimit = section.GetValue("SetupSecret:PermitLimit", 5);
+        var setupSecretWindowSeconds = section.GetValue("SetupSecret:WindowSeconds", 60);
+
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
             options.OnRejected = async (ctx, token) =>
             {
+                var policyName = InferPolicyName(ctx.HttpContext);
                 var apiKeyPrincipal = ctx.HttpContext.User.TryGetApiKeyPrincipalContext();
                 if (apiKeyPrincipal is not null)
                 {
                     var metrics = ctx.HttpContext.RequestServices.GetRequiredService<BusinessMetrics>();
                     metrics.RecordExternalApiKeyThrottle(
-                        GlobalPolicy.ToLowerInvariant(),
+                        policyName.ToLowerInvariant(),
                         apiKeyPrincipal.TenantId?.ToString() ?? "platform",
                         apiKeyPrincipal.OwnerType.ToString());
 
@@ -97,7 +104,7 @@ public static class RateLimitingExtensions
                         "External API key {KeyId} for tenant {TenantId} was throttled by rate-limit policy {Policy} on {Path}.",
                         apiKeyPrincipal.KeyId,
                         apiKeyPrincipal.TenantId?.ToString() ?? "platform",
-                        GlobalPolicy,
+                        policyName,
                         ctx.HttpContext.Request.Path);
                 }
 
@@ -109,16 +116,22 @@ public static class RateLimitingExtensions
                         ((int)retryAfter.TotalSeconds).ToString(NumberFormatInfo.InvariantInfo);
                 }
 
-                ctx.HttpContext.Response.Headers["X-RateLimit-Limit"] = "0";
+                ctx.HttpContext.Response.Headers["X-RateLimit-Limit"] = ResolvePolicyLimit(policyName).ToString(NumberFormatInfo.InvariantInfo);
                 ctx.HttpContext.Response.Headers["X-RateLimit-Remaining"] = "0";
 
-                await ctx.HttpContext.Response.WriteAsJsonAsync(new
+                var problemDetailsService = ctx.HttpContext.RequestServices.GetRequiredService<IProblemDetailsService>();
+                await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
                 {
-                    type = "https://tools.ietf.org/html/rfc6585#section-4",
-                    title = "Too Many Requests",
-                    status = 429,
-                    detail = "Rate limit exceeded. Please retry after the period indicated in the Retry-After header."
-                }, token);
+                    HttpContext = ctx.HttpContext,
+                    ProblemDetails = new ProblemDetails
+                    {
+                        Type = "https://tools.ietf.org/html/rfc6585#section-4",
+                        Title = "Too Many Requests",
+                        Status = StatusCodes.Status429TooManyRequests,
+                        Detail = "Rate limit exceeded. Please retry after the period indicated in the Retry-After header.",
+                        Instance = ctx.HttpContext.Request.Path
+                    }
+                });
             };
 
             // Global limiter: token bucket per IP.
@@ -166,8 +179,8 @@ public static class RateLimitingExtensions
                 return RateLimitPartition.GetFixedWindowLimiter($"setup:{ip}", _ =>
                     new FixedWindowRateLimiterOptions
                     {
-                        PermitLimit = 5,
-                        Window = TimeSpan.FromMinutes(1),
+                        PermitLimit = setupSecretPermitLimit,
+                        Window = TimeSpan.FromSeconds(setupSecretWindowSeconds),
                         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                         QueueLimit = 0,
                         AutoReplenishment = true
@@ -228,6 +241,15 @@ public static class RateLimitingExtensions
                     AutoReplenishment = true
                 });
         }
+
+        int ResolvePolicyLimit(string policyName) => policyName switch
+        {
+            AuthenticatedPolicy => authPermitLimit,
+            WritePolicy => writePermitLimit,
+            SetupSecretPolicy => setupSecretPermitLimit,
+            AnalyticsRelayPolicy => analyticsRelayPermitLimit,
+            _ => globalTokenLimit
+        };
     }
 
     /// <summary>
@@ -238,6 +260,30 @@ public static class RateLimitingExtensions
         return context.Connection.RemoteIpAddress;
     }
 
+    private static string InferPolicyName(HttpContext context)
+    {
+        if (context.Request.Path.StartsWithSegments("/api/setup", StringComparison.OrdinalIgnoreCase)
+            || context.Request.Path.StartsWithSegments("/setup", StringComparison.OrdinalIgnoreCase))
+        {
+            return SetupSecretPolicy;
+        }
+
+        if (context.Request.Path.StartsWithSegments("/api/analytics", StringComparison.OrdinalIgnoreCase))
+        {
+            return AnalyticsRelayPolicy;
+        }
+
+        if (HttpMethods.IsPost(context.Request.Method)
+            || HttpMethods.IsPut(context.Request.Method)
+            || HttpMethods.IsPatch(context.Request.Method)
+            || HttpMethods.IsDelete(context.Request.Method))
+        {
+            return WritePolicy;
+        }
+
+        return context.User.Identity?.IsAuthenticated == true ? AuthenticatedPolicy : GlobalPolicy;
+    }
+
     private static string GetAuthenticatedPartitionKey(HttpContext context)
     {
         var apiKeyId = context.User.GetApiKeyId();
@@ -246,6 +292,11 @@ public static class RateLimitingExtensions
             return $"api-key:{apiKeyId}";
         }
 
-        return context.User.Identity?.Name ?? "anonymous";
+        var userId = context.User.FindFirstValue("sub")
+            ?? context.User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? context.User.FindFirstValue("sid")
+            ?? context.User.Identity?.Name;
+
+        return string.IsNullOrWhiteSpace(userId) ? "anonymous" : userId;
     }
 }

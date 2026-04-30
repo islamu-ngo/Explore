@@ -1278,216 +1278,6 @@
           }
         },
         "x-endpoint-class": "Public"
-      },
-      "post": {
-        "tags": [
-          "ApprovalStatus"
-        ],
-        "operationId": "CreateApprovalStatusOption",
-        "parameters": [
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json; v=0.1": {
-              "schema": {
-                "type": "string"
-              }
-            },
-            "text/json; v=0.1": {
-              "schema": {
-                "type": "string"
-              }
-            },
-            "application/*\u002Bjson; v=0.1": {
-              "schema": {
-                "type": "string"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        },
-        "x-endpoint-class": "Public"
-      }
-    },
-    "/api/approvalstatus/{id}": {
-      "get": {
-        "tags": [
-          "ApprovalStatus"
-        ],
-        "operationId": "GetApprovalStatusOptionById",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
-              "format": "int32"
-            }
-          },
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "type": "string"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "type": "string"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        },
-        "x-endpoint-class": "Public"
-      },
-      "put": {
-        "tags": [
-          "ApprovalStatus"
-        ],
-        "operationId": "UpdateApprovalStatusOption",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
-              "format": "int32"
-            }
-          },
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json; v=0.1": {
-              "schema": {
-                "type": "string"
-              }
-            },
-            "text/json; v=0.1": {
-              "schema": {
-                "type": "string"
-              }
-            },
-            "application/*\u002Bjson; v=0.1": {
-              "schema": {
-                "type": "string"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        },
-        "x-endpoint-class": "Public"
-      },
-      "delete": {
-        "tags": [
-          "ApprovalStatus"
-        ],
-        "operationId": "DeleteApprovalStatusOption",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
-              "format": "int32"
-            }
-          },
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        },
-        "x-endpoint-class": "Public"
       }
     },
     "/api/atprotorecord": {
@@ -6072,6 +5862,70 @@
         "x-endpoint-class": "Authenticated"
       }
     },
+    "/api/event/{id}/calendar": {
+      "get": {
+        "tags": [
+          "Event"
+        ],
+        "summary": "Download Event Calendar",
+        "description": "Downloads a published public event as an RFC 5545 iCalendar file.",
+        "operationId": "GetEventCalendar",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/calendar; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileContentResult"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {},
+              "text/calendar": {}
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/calendar; v=0.1": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {},
+              "application/hal\u002Bjson": {},
+              "text/calendar": {}
+            }
+          }
+        },
+        "x-endpoint-class": "Public"
+      }
+    },
     "/api/event/with-sessions": {
       "post": {
         "tags": [
@@ -8049,21 +7903,41 @@
           "content": {
             "application/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/CreateEventRegistrationDto"
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CreateEventRegistrationDto"
+                  }
+                ]
               }
             },
             "text/json; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/CreateEventRegistrationDto"
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CreateEventRegistrationDto"
+                  }
+                ]
               }
             },
             "application/*\u002Bjson; v=0.1": {
               "schema": {
-                "$ref": "#/components/schemas/CreateEventRegistrationDto"
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CreateEventRegistrationDto"
+                  }
+                ]
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -12599,7 +12473,7 @@
         "tags": [
           "EventType"
         ],
-        "summary": "Get all Event TYpes",
+        "summary": "Get all Event Types",
         "description": "Get A List of all the Event Type Options",
         "operationId": "GetEventTypes",
         "parameters": [
@@ -12647,216 +12521,6 @@
                 }
               }
             }
-          }
-        },
-        "x-endpoint-class": "Public"
-      },
-      "post": {
-        "tags": [
-          "EventType"
-        ],
-        "operationId": "CreateEventType",
-        "parameters": [
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json; v=0.1": {
-              "schema": {
-                "type": "string"
-              }
-            },
-            "text/json; v=0.1": {
-              "schema": {
-                "type": "string"
-              }
-            },
-            "application/*\u002Bjson; v=0.1": {
-              "schema": {
-                "type": "string"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        },
-        "x-endpoint-class": "Public"
-      }
-    },
-    "/api/eventtype/{id}": {
-      "get": {
-        "tags": [
-          "EventType"
-        ],
-        "operationId": "GetEventTypeById",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
-              "format": "int32"
-            }
-          },
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain; v=0.1": {
-                "schema": {
-                  "type": "string"
-                }
-              },
-              "application/json; v=0.1": {
-                "schema": {
-                  "type": "string"
-                }
-              },
-              "text/json; v=0.1": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        },
-        "x-endpoint-class": "Public"
-      },
-      "put": {
-        "tags": [
-          "EventType"
-        ],
-        "operationId": "UpdateEventType",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
-              "format": "int32"
-            }
-          },
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json; v=0.1": {
-              "schema": {
-                "type": "string"
-              }
-            },
-            "text/json; v=0.1": {
-              "schema": {
-                "type": "string"
-              }
-            },
-            "application/*\u002Bjson; v=0.1": {
-              "schema": {
-                "type": "string"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        },
-        "x-endpoint-class": "Public"
-      },
-      "delete": {
-        "tags": [
-          "EventType"
-        ],
-        "operationId": "DeleteEventType",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
-              "format": "int32"
-            }
-          },
-          {
-            "name": "api-version",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "X-Api-Version",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
           }
         },
         "x-endpoint-class": "Public"
@@ -23737,7 +23401,7 @@
           "Role"
         ],
         "summary": "Get all Roles",
-        "description": "Retrieve roles, optionally filtered by scope (Platform, Tenant, Organization). Returns all roles when no scope specified.",
+        "description": "Retrieve roles, optionally filtered by scope (Platform, Tenant, Organization, Group, Event). Returns all roles when no scope specified.",
         "operationId": "GetRoles",
         "parameters": [
           {
@@ -24939,6 +24603,41 @@
           }
         },
         "x-endpoint-class": "Authenticated"
+      }
+    },
+    "/sitemap.xml": {
+      "get": {
+        "tags": [
+          "Sitemap"
+        ],
+        "summary": "Get XML sitemap",
+        "description": "Returns tenant-aware sitemap.xml with static public routes and published public events.",
+        "operationId": "GetSitemap",
+        "parameters": [
+          {
+            "name": "api-version",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Api-Version",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/xml": {}
+            }
+          }
+        },
+        "x-endpoint-class": "Public"
       }
     },
     "/api/storageobject": {
@@ -37957,6 +37656,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "eventSessionId": {
             "type": "string",
             "format": "uuid"
@@ -38010,6 +37713,14 @@
         "type": "object",
         "properties": {
           "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
             "type": "string",
             "format": "uuid"
           },
@@ -49557,6 +49268,9 @@
     },
     {
       "name": "Settings"
+    },
+    {
+      "name": "Sitemap"
     },
     {
       "name": "StorageObject"

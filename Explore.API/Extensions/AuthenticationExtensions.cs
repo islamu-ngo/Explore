@@ -1,7 +1,6 @@
 // ABOUTME: Registers multi-auth (JWT Bearer + API Key) authentication and authorization for the API.
 // ABOUTME: Dispatches X-API-Key requests to the ApiKey handler; all others go through Keycloak JWT Bearer.
 
-using System.Net.Http;
 using System.Net.Security;
 using System.Net.Sockets;
 using Explore.API.Authentication;
@@ -16,11 +15,7 @@ namespace Explore.API.Extensions;
 public static class AuthenticationExtensions
 {
     // Security: audiences validated in both 'aud' and 'azp' claims (Keycloak BFF pattern)
-    private static readonly string[] ValidAudiences =
-    [
-        "islamu-event-api",
-        "islamu-event-blazor"
-    ];
+    private static readonly string[] DefaultValidAudiences = ["islamu-event-api", "islamu-event-blazor"];
 
     public static IServiceCollection AddApiAuthentication(
         this IServiceCollection services,
@@ -31,6 +26,11 @@ public static class AuthenticationExtensions
         // by DynamicJwtBearerPostConfigureOptions from env + DB (IAuthProviderConfigurationService).
         // Handlers call IJwtAuthorityRefreshNotifier.ReloadAsync() after onboarding/save-config
         // to hot-swap Keycloak metadata without restarting the API.
+        var validAudiences = configuration.GetSection("Keycloak:ValidAudiences").Get<string[]>()
+            ?? configuration.GetSection("Authentication:ValidAudiences").Get<string[]>()
+            ?? DefaultValidAudiences;
+        var validAudienceSet = new HashSet<string>(validAudiences.Where(audience => !string.IsNullOrWhiteSpace(audience)), StringComparer.Ordinal);
+
         services.AddSingleton<DynamicJwtConfigurationService>();
         services.AddSingleton<IJwtAuthorityRefreshNotifier>(sp =>
             sp.GetRequiredService<DynamicJwtConfigurationService>());
@@ -72,7 +72,7 @@ public static class AuthenticationExtensions
                     {
                         var audienceList = audiences?.ToList() ?? new List<string>();
 
-                        if (audienceList.Exists(aud => ValidAudiences.Contains(aud)))
+                        if (audienceList.Exists(validAudienceSet.Contains))
                         {
                             return true;
                         }
@@ -80,7 +80,7 @@ public static class AuthenticationExtensions
                         if (securityToken is System.IdentityModel.Tokens.Jwt.JwtSecurityToken jwtToken)
                         {
                             var azp = jwtToken.Claims.FirstOrDefault(c => c.Type == "azp")?.Value;
-                            if (!string.IsNullOrEmpty(azp) && ValidAudiences.Contains(azp))
+                            if (!string.IsNullOrEmpty(azp) && validAudienceSet.Contains(azp))
                             {
                                 return true;
                             }
@@ -137,7 +137,7 @@ public static class AuthenticationExtensions
                     {
                         var path = context.HttpContext.Request.Path;
                         if (path.StartsWithSegments("/api/instanceonboarding", StringComparison.OrdinalIgnoreCase)
-                            && !path.Value.EndsWith("/complete", StringComparison.OrdinalIgnoreCase))
+                            && path.Value?.EndsWith("/complete", StringComparison.OrdinalIgnoreCase) != true)
                         {
                             context.Token = null;
                         }
