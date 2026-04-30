@@ -1,17 +1,21 @@
-<!-- ABOUTME: Strategic implementation plan for rebuilding sidebar and sidepanel layout architecture. -->
-<!-- ABOUTME: Defines explicit App Shell plus Workspace Layout refactor phases, constraints, tests, and acceptance criteria. -->
+<!-- ABOUTME: Strategic implementation plan for the generic dock layout engine refactor. -->
+<!-- ABOUTME: Defines phased workbench-style docking architecture for shell and workspace side panels. -->
 
-# Sidebar Dock Layout Refactor - Implementation Plan
+# Sidebar Dock Layout Refactor - Implementation Plan v2
 
 Last Updated: 2026-04-29
 
 ## Executive Summary
 
-The Blazor web app currently has a visually strong sidebar experience, but the implementation is fragmented across unrelated mechanisms: a MudBlazor left `MudDrawer`, a custom fixed AI rail, a custom page-level `RightSidebar`, a temporary event detail drawer, page-local booleans, and page-specific CSS compensation. This works in selected combinations but is already leaking through visible gaps and brittle layout math.
+The Blazor web app currently has a strong visual sidebar experience, but it is implemented through several unrelated mechanisms: a MudBlazor left `MudDrawer`, a custom fixed AI rail, a custom page-level `RightSidebar`, a temporary event detail drawer, page-local booleans, and page-specific CSS compensation. The visible gap between the event-list customization panel and the AI rail is evidence that the layout model is leaking.
 
-The approved refactor is a layout subsystem rebuild, not a generic docking framework. The target is an explicit, typed, maintainable App Shell plus Workspace Layout system that preserves the current good UX while removing hacks, duplicated widths, independent panel state services, and page-specific compensation.
+The revised target is a generic internal dock engine used by an explicit App Shell and Workspace Layout. This is not an external plugin system and not an uncontrolled abstraction. It is a deliberately designed workbench foundation, closer to Obsidian/Zed/VS Code-style layouts, implemented incrementally so the current good UX is preserved.
 
-The implementation must preserve the event detail preview UX. The event detail panel is an overlay/inspector experience, not a persistent docked workspace panel. The customize-view panel is a persistent workspace dock on desktop and temporary overlay on mobile.
+The first consumers are the existing panels: shell left navigation, shell AI assistant, EventList Customize View, and EventList detail preview. The event detail preview must remain visually protected as an inspector/overlay panel.
+
+## Strategic Principle
+
+Build an explicit App Shell plus Workspace Layout on top of a generic internal docking engine. Do not implement external/plugin-driven docking yet, but the internal model must support dynamic descriptor registration, resizable panels, stacked panels, overlays, future panel additions, snapshots, and persistence without central enum rewrites.
 
 ## Non-Negotiable Constraints
 
@@ -19,46 +23,47 @@ The implementation must preserve the event detail preview UX. The event detail p
 2. No negative margin escape hatches in EventList layout.
 3. No duplicated hardcoded sidebar widths in page CSS or component CSS.
 4. No fixed-position persistent desktop panels unless they are true overlays.
-5. No independent state service per panel type after migration.
-6. Desktop persistent panels are CSS grid tracks.
-7. Mobile panels are temporary overlays with backdrop, focus restore, and scroll locking.
-8. Event detail preview remains overlay/inspector style and must not be degraded.
-9. Use logical CSS properties for start/end support and RTL readiness.
-10. Add regression coverage before removing the old implementation.
+5. Desktop persistent panels are CSS grid tracks.
+6. Mobile panels are temporary overlays with backdrop, focus restore, and scroll locking.
+7. Event detail preview remains inspector/overlay style and must not be degraded.
+8. Use logical CSS properties for start/end support and RTL readiness.
+9. Add regression coverage before removing the old implementation.
+10. No central enum must be edited for every future panel.
+11. Every panel must have a stable `DockPanelId`.
+12. Every panel must register with a `DockPanelDescriptor`.
+13. Runtime panel state must be separate from descriptor metadata.
+14. Docked, overlay, temporary, inspector, and collapsed modes must be modeled explicitly.
+15. Resizable panel support must be part of the architecture, even if implemented after the first migration.
+16. Multiple panels per side must be supported by the data model.
+17. Layout snapshots must exist for reset, persistence, debugging, tests, and future user preferences.
+18. Mobile behavior must be a policy of the panel/layout, not page-specific CSS.
+19. The dock engine must not depend on EventList or event-specific concepts.
+20. Event-specific panels depend on the dock engine, not the other way around.
 
 ## Research Summary
 
 Local repo findings are authoritative for current behavior. Official documentation and library source were used to validate framework expectations.
 
-Verified local sources:
-
 | Source | Finding |
 |---|---|
 | `CLAUDE.md` | Every change must follow repo contribution contract, Clean Architecture boundaries, and verification requirements. |
 | `docs/BLAZOR.md` | Scoped services are appropriate for cross-component UI state when URL state is insufficient; CSS isolation and wrappers are preferred. |
-| `docs/DESIGN_SYSTEM.md` | Global CSS uses `reset -> base -> tokens -> mudblazor-overrides -> components -> utilities`; drawer/overlay MudBlazor overrides are the only approved global `.mud-*` exceptions. |
+| `docs/DESIGN_SYSTEM.md` | Global CSS uses `reset -> base -> tokens -> mudblazor-overrides -> components -> utilities`; drawer/overlay MudBlazor overrides are approved only when documented. |
 | `docs/ACCESSIBILITY.md` | Page shell owns skip link, main landmark, sidebar navigation, live regions, focus-on-navigate, logical CSS properties, focus restore, and WCAG 2.2 AA expectations. |
 | `docs/BLAZOR_DEV_WORKFLOW.md` | UI work requires full build and visual verification cycle; scoped CSS changes require rebuild. |
 | `.claude/skills/blazor-ui-conventions` | MudBlazor v9 APIs, wrapper components, EventCallback flow, and BFF-safe UI rules apply. |
 | `.claude/skills/blazor-css-isolation` | Component CSS isolation, BEM, native CSS nesting, and limited `::deep` usage apply. |
 | `.claude/skills/design-system` | Layout widths, z-index, and motion tokens belong in token/design-system layer, not page CSS. |
-
-External docs findings:
-
-| Source | Finding |
-|---|---|
 | MudBlazor drawer docs/source | `Persistent` drawers push content, `Responsive` drawers switch behavior, `ClipMode` is evaluated only when drawers are directly inside `MudLayout`, and `@bind-Open` is recommended for self-closing behavior. |
 | Microsoft Blazor CSS isolation docs | `.razor.css` scopes styles to component output; `::deep` is needed only for descendants/child component internals. |
 | Microsoft Blazor state management docs | Scoped in-memory state containers with `OnChange` are appropriate for per-circuit app state; consumers must unsubscribe and use renderer-safe updates. |
 | MDN CSS Grid docs | CSS grid is appropriate for major page regions and explicit track sizing. |
 
-Tooling note: Tavily MCP and context7 MCP were requested but are not exposed in this runtime. Re-run research through those MCPs if they become available, but do not block this plan because local repo docs and official docs already establish the required architecture direction.
+Tooling note: Tavily MCP and context7 MCP were requested but are not exposed in this runtime. If available later, use them to confirm MudBlazor and Blazor guidance, but this plan is already grounded in verified local files and official documentation.
 
 ## Current State Analysis
 
 All file and class references in this section were verified by search on 2026-04-29.
-
-### Existing Shell Layout
 
 | Concern | Verified file/class | Current behavior |
 |---|---|---|
@@ -66,153 +71,220 @@ All file and class references in this section were verified by search on 2026-04
 | Main layout code-behind | `Explore.Blazor.Client/Layout/MainLayout.razor.cs` | Injects `SidebarState` and `AiAssistantState`; sets sidebar availability based on chrome visibility. |
 | Main layout CSS | `Explore.Blazor.Client/Layout/MainLayout.razor.css` | Uses `main-layout__main--ai-open` to add `margin-right: 360px`; relies on MudDrawer margin behavior for left nav. |
 | Top nav | `Explore.Blazor.Client/Layout/NavMenu.razor` and `.cs` | Toggles `SidebarState` and `AiAssistantState`; renders AI button when available. |
-| Left sidebar state | `Explore.Blazor.Client/Services/SidebarState.cs` | Tracks `IsOpen` and `HasSidebar`; not a true page panel registration model. |
+| Left sidebar state | `Explore.Blazor.Client/Services/SidebarState.cs` | Tracks `IsOpen` and `HasSidebar`; not a panel registry model. |
 | AI rail state | `Explore.Blazor.Client/Services/AiAssistantState.cs` | Tracks `IsOpen` and `IsAvailable`; separate from shell layout state. |
 | AI rail component | `Explore.Blazor.Client/Components/Shell/AiAssistantRail.razor` and `.css` | Custom fixed right rail, hard-coded `width: 360px`, physical `right`, backdrop on mobile. |
-
-### Existing Event List Workspace Layout
-
-| Concern | Verified file/class | Current behavior |
-|---|---|---|
 | Event list page | `Explore.Blazor.Client/Pages/Events/EventList.razor` | Owns detail drawer, main event list, customization sidebar, and page-specific state. |
 | Event list code-behind | `Explore.Blazor.Client/Pages/Events/EventList.razor.cs` | Uses `_detailDrawerOpen` and `_customizationDrawerOpen`; manually enforces mutual exclusion. |
 | Event list CSS | `Explore.Blazor.Client/Pages/Events/EventList.razor.css` | Uses `width: calc(100% + var(--layout-padding-inline))` and negative right margin to escape parent padding. |
 | Generic right sidebar | `Explore.Blazor.Client/Components/Common/RightSidebar.razor` and `.css` | Custom sticky desktop panel and fixed mobile overlay; not aware of shell AI rail. |
-| Customize view content | `Explore.Blazor.Client/Pages/Events/Components/EventListCustomizationDrawer.razor` and `.cs/.css` | Good content component but layout wrapper is page-specific. |
+| Customize view content | `Explore.Blazor.Client/Pages/Events/Components/EventListCustomizationDrawer.razor` and `.cs/.css` | Good content component; layout wrapper is page-specific. |
 | Event detail preview | `EventList.razor` | Uses `MudOverlay` plus `MudDrawer` temporary right drawer; visually strong and should be preserved. |
 
-### Existing Test Surface
+## Missing Files To Create
 
-| Concern | Verified file/class | Current coverage |
-|---|---|---|
-| Main layout tests | `Explore.Blazor.Client.Tests/Layout/MainLayoutTests.cs` | Existing bUnit coverage for landmarks/chrome behavior. |
-| Nav menu tests | `Explore.Blazor.Client.Tests/Layout/NavMenuAdminTests.cs` | Existing NavMenu behavior coverage. |
-| Event list tests | `Explore.Blazor.Client.Tests/Pages/Event/EventListTests.cs` | Existing event list loading/empty state coverage. |
-| Customize drawer tests | `Explore.Blazor.Client.Tests/Components/Event/EventListCustomizationDrawerTests.cs` | Existing content-level tests for customization drawer. |
-| E2E smoke tests | `Explore.Blazor.Client.E2ETests/Flows/SmokeTests.cs` | Playwright fixture exists, but visual regression coverage for panel combinations does not yet exist. |
-| Architecture tests | `Event.Architecture.Tests/BlazorClientArchitectureTests.cs` and `AccessibilityConventionTests.cs` | Existing enforcement surface for Blazor and accessibility conventions. |
+Search confirmed these docking subsystem files do not currently exist and must be created during implementation.
 
-### Missing Components To Create
-
-Search confirmed these do not currently exist and must be created during the refactor:
-
-| Missing concept | Required task |
+| File | Purpose |
 |---|---|
-| `ShellLayoutState` | Create a scoped shell layout state service. |
-| `WorkspacePanelState` | Create a scoped workspace panel state service. |
-| `AppShellLayout` | Refactor/replace `MainLayout` markup with explicit shell grid structure. |
-| `AppSideNav` | Extract shell left navigation content from `MainLayout`. |
-| `AppRightRail` | Replace AI fixed rail layout wrapper with shell right rail component. |
-| `WorkspaceLayout` | Create reusable page workspace layout with main and right panel slots. |
-| `WorkspaceRightPanel` | Create page-level docked/overlay panel wrapper. |
-| `WorkspaceOverlayPanel` | Create overlay/inspector panel wrapper for event detail preview behavior. |
-| Layout tokens | Extend `Explore.Blazor/wwwroot/css/tokens.css` with sidebar width, z-index, breakpoint, and motion tokens. |
+| `Explore.Blazor.Client/Services/Docking/DockPanelId.cs` | Stable typed panel identifier. |
+| `Explore.Blazor.Client/Services/Docking/DockScope.cs` | Shell/workspace scope enum. |
+| `Explore.Blazor.Client/Services/Docking/DockSide.cs` | Start/end/bottom side enum. |
+| `Explore.Blazor.Client/Services/Docking/DockMode.cs` | Docked/overlay/temporary/inspector/collapsed mode enum. |
+| `Explore.Blazor.Client/Services/Docking/DockPanelDescriptor.cs` | Panel metadata contract. |
+| `Explore.Blazor.Client/Services/Docking/DockPanelState.cs` | Runtime state contract. |
+| `Explore.Blazor.Client/Services/Docking/DockLayoutSnapshot.cs` | Serializable layout state snapshot. |
+| `Explore.Blazor.Client/Services/Docking/IDockPanelRegistry.cs` | Controlled panel registration abstraction. |
+| `Explore.Blazor.Client/Services/Docking/DockPanelRegistry.cs` | Registry implementation. |
+| `Explore.Blazor.Client/Services/Docking/DockLayoutState.cs` | Runtime state engine and orchestration. |
+| `Explore.Blazor.Client/Services/Docking/IDockLayoutPersistence.cs` | Snapshot load/save abstraction. |
+| `Explore.Blazor.Client/Services/Docking/LocalStorageDockLayoutPersistence.cs` | Initial client-side persistence implementation. |
+| `Explore.Blazor.Client/Services/Docking/DockFocusManager.cs` | Focus save/restore and active overlay focus policy. |
+| `Explore.Blazor.Client/Components/Docking/DockLayoutHost.razor` and `.razor.css` | Scope host and grid boundary. |
+| `Explore.Blazor.Client/Components/Docking/DockSideHost.razor` and `.razor.css` | Ordered side panel host. |
+| `Explore.Blazor.Client/Components/Docking/DockPanelHost.razor` and `.razor.css` | Individual docked panel renderer. |
+| `Explore.Blazor.Client/Components/Docking/DockOverlayHost.razor` and `.razor.css` | Overlay/inspector/temporary panel renderer. |
+| `Explore.Blazor.Client/Components/Docking/DockResizeHandle.razor` and `.razor.css` | Mouse/touch/keyboard resize affordance. |
+| `Explore.Blazor.Client/Components/Docking/DockTabStrip.razor` and `.razor.css` | Initial tabbed stack renderer for multiple panels per side. |
+| `Explore.Blazor.Client/Components/Shell/AppSideNav.razor` and `.razor.css` | Extracted shell left nav panel content. |
+| `Explore.Blazor.Client/Components/Shell/AppRightRail.razor` and `.razor.css` | Optional shell right rail wrapper for AI assistant content. |
+| `Explore.Blazor.Client/Pages/Events/EventDockPanels.cs` | Event module dock panel descriptors. |
+| `docs/DOCK_LAYOUT.md` | Platform-level dock layout architecture document. |
 
 ## Proposed Future State
 
 ### Architecture Shape
 
-The target hierarchy is explicit and typed:
-
 ```text
 MainLayout / AppShellLayout
-  TopBar
-  ShellBody
-    AppSideNav
-    MainWorkspaceRegion
-      Page content
-        WorkspaceLayout
-          WorkspaceMainContent
-          WorkspaceRightPanel
-          WorkspaceOverlayPanel when active
-    AppRightRail
+  DockLayoutHost Scope=Shell
+    TopBar
+    ShellBody
+      DockSideHost Side=Start
+        shell.left-nav
+      MainWorkspaceRegion
+        Page content
+          DockLayoutHost Scope=Workspace LayoutKey=route/module
+            WorkspaceMainContent
+            DockSideHost Side=End
+              events.customize-view
+            DockOverlayHost
+              events.event-preview
+      DockSideHost Side=End
+        shell.ai-assistant
 ```
 
-### Shell Scope
+### Dock Engine Responsibilities
 
-Shell scope owns UI outside route/page scrolling:
-
-| Shell responsibility | Target owner |
+| Component/service | Responsibility |
 |---|---|
-| Sticky header and top navigation | `MainLayout` plus `NavMenu` initially, optional extracted `AppTopBar` later. |
-| Left app navigation | `AppSideNav`, controlled by `ShellLayoutState`. |
-| Global AI assistant | `AppRightRail` plus `AiAssistantRail` content, controlled by `ShellLayoutState`. |
-| Mobile shell nav overlay | `AppSideNav` mobile mode or temporary MudDrawer with centralized state. |
-| Global shell dimensions | CSS tokens in `tokens.css`. |
+| `DockPanelDescriptor` | Immutable metadata: what the panel is and how it should default. |
+| `DockPanelState` | Runtime state: open/closed, mode, width, order, active state. |
+| `DockPanelRegistry` | Controlled descriptor/content registration. |
+| `DockLayoutState` | Runtime orchestration, open/close/toggle/resize/activate/snapshot. |
+| `DockLayoutHost` | Provides shell or workspace layout boundary and grid variables. |
+| `DockSideHost` | Renders ordered panels for a scope/side and supports stack policy. |
+| `DockPanelHost` | Renders a docked/collapsed panel. |
+| `DockOverlayHost` | Renders overlay, temporary, and inspector panels. |
+| `DockResizeHandle` | Width resizing and keyboard-accessible resizing. |
+| `DockFocusManager` | Focus save, restore, and active overlay focus behavior. |
+| `IDockLayoutPersistence` | Snapshot persistence abstraction. |
 
-### Workspace Scope
-
-Workspace scope owns page-specific panels inside the current page:
-
-| Workspace responsibility | Target owner |
-|---|---|
-| Event list main content | `WorkspaceLayout` main slot inside `EventList.razor`. |
-| Customize view | `WorkspaceRightPanel` containing `EventListCustomizationDrawer`. |
-| Event detail preview | `WorkspaceOverlayPanel` or equivalent inspector wrapper preserving current `MudDrawer` UX. |
-| Page panel state | `WorkspacePanelState`. |
-| Page panel dimensions | CSS tokens in `tokens.css`. |
-
-### State Model
-
-Do not build a generic dynamic registry first. Use explicit state services:
+### Core Model
 
 ```csharp
-public sealed class ShellLayoutState
-{
-    public bool IsLeftNavOpen { get; private set; }
-    public bool IsAiRailOpen { get; private set; }
-    public bool IsAiRailAvailable { get; private set; }
-    public event Action? Changed;
+public sealed record DockPanelId(string Value);
 
-    public void ToggleLeftNav();
-    public void SetLeftNavOpen(bool isOpen);
-    public void SetAiRailAvailable(bool isAvailable);
-    public void ToggleAiRail();
-    public void OpenAiRail();
-    public void CloseAiRail();
+public enum DockScope
+{
+    Shell,
+    Workspace
+}
+
+public enum DockSide
+{
+    Start,
+    End,
+    Bottom
+}
+
+public enum DockMode
+{
+    Docked,
+    Overlay,
+    Temporary,
+    Inspector,
+    Collapsed
+}
+
+public sealed record DockPanelDescriptor(
+    DockPanelId Id,
+    DockScope Scope,
+    DockSide Side,
+    DockMode DefaultMode,
+    string Title,
+    string AriaLabel,
+    int DefaultWidth,
+    int MinWidth,
+    int MaxWidth,
+    int Order,
+    bool IsResizable,
+    bool CanClose,
+    bool PersistState);
+
+public sealed record DockPanelState(
+    DockPanelId Id,
+    bool IsOpen,
+    DockMode Mode,
+    int Width,
+    int Order,
+    bool IsActive);
+
+public sealed record DockLayoutSnapshot(
+    string LayoutKey,
+    IReadOnlyList<DockPanelState> Panels,
+    DateTimeOffset UpdatedAt);
+```
+
+### Registry And Runtime State
+
+```csharp
+public interface IDockPanelRegistry
+{
+    void Register(DockPanelDescriptor descriptor, RenderFragment content);
+    void Unregister(DockPanelId id);
+    IReadOnlyList<DockPanelDescriptor> GetPanels(DockScope scope, DockSide side);
 }
 ```
 
 ```csharp
-public enum WorkspacePanel
+public sealed class DockLayoutState
 {
-    None,
-    CustomizeView,
-    EventPreview
-}
-
-public sealed class WorkspacePanelState
-{
-    public WorkspacePanel DockedPanel { get; private set; }
-    public WorkspacePanel OverlayPanel { get; private set; }
     public event Action? Changed;
 
-    public void OpenRightPanel(WorkspacePanel panel);
-    public void CloseRightPanel();
-    public void OpenOverlayPanel(WorkspacePanel panel);
-    public void CloseOverlayPanel();
-    public void CloseAll();
+    public void Register(DockPanelDescriptor descriptor);
+    public void Unregister(DockPanelId id);
+    public void Open(DockPanelId id);
+    public void Close(DockPanelId id);
+    public void Toggle(DockPanelId id);
+    public void SetMode(DockPanelId id, DockMode mode);
+    public void Resize(DockPanelId id, int width);
+    public void Activate(DockPanelId id);
+    public DockLayoutSnapshot CreateSnapshot(string layoutKey);
+    public void RestoreSnapshot(DockLayoutSnapshot snapshot);
+    public IReadOnlyList<DockPanelState> GetPanels(DockScope scope, DockSide side);
 }
 ```
 
-### CSS Model
+### Descriptor Examples
 
-Use grid tracks for desktop persistent panels:
+```csharp
+public static class EventDockPanels
+{
+    public static readonly DockPanelDescriptor CustomizeView = new(
+        Id: new DockPanelId("events.customize-view"),
+        Scope: DockScope.Workspace,
+        Side: DockSide.End,
+        DefaultMode: DockMode.Docked,
+        Title: "Customize View",
+        AriaLabel: "Customize event list view",
+        DefaultWidth: 320,
+        MinWidth: 280,
+        MaxWidth: 480,
+        Order: 100,
+        IsResizable: true,
+        CanClose: true,
+        PersistState: true);
+
+    public static readonly DockPanelDescriptor EventPreview = new(
+        Id: new DockPanelId("events.event-preview"),
+        Scope: DockScope.Workspace,
+        Side: DockSide.End,
+        DefaultMode: DockMode.Inspector,
+        Title: "Event Preview",
+        AriaLabel: "Event details preview",
+        DefaultWidth: 420,
+        MinWidth: 360,
+        MaxWidth: 640,
+        Order: 200,
+        IsResizable: true,
+        CanClose: true,
+        PersistState: false);
+}
+```
+
+## CSS Layout Model
+
+Use grid tracks for persistent desktop panels:
 
 ```css
-.app-shell__body {
+.dock-layout-host {
     display: grid;
     grid-template-columns:
-        var(--isl-shell-left-width-active)
+        var(--dock-start-width, 0px)
         minmax(0, 1fr)
-        var(--isl-shell-right-width-active);
-    min-height: calc(100dvh - var(--mud-appbar-height));
-    transition: grid-template-columns var(--isl-motion-panel-duration) var(--isl-motion-panel-easing);
-}
-
-.workspace-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) var(--isl-workspace-right-width-active);
+        var(--dock-end-width, 0px);
+    min-block-size: calc(100dvh - var(--mud-appbar-height));
     transition: grid-template-columns var(--isl-motion-panel-duration) var(--isl-motion-panel-easing);
 }
 ```
@@ -220,388 +292,300 @@ Use grid tracks for desktop persistent panels:
 Use overlay transforms for temporary/mobile/inspector panels:
 
 ```css
-.workspace-overlay-panel {
+.dock-overlay-host__panel {
     position: fixed;
     inset-block-start: var(--mud-appbar-height);
     inset-block-end: 0;
     inset-inline-end: 0;
-    inline-size: var(--isl-workspace-overlay-width);
+    inline-size: var(--dock-overlay-width, var(--isl-dock-overlay-width));
     transform: translateX(100%);
     transition: transform var(--isl-motion-panel-duration) var(--isl-motion-panel-easing);
 }
 ```
 
-For RTL, implementation must use start/end semantics and logical CSS properties. Physical `left`, `right`, `margin-left`, and `margin-right` must not be introduced except in approved third-party overrides.
+## Clean Architecture Impact
 
-## Layer Impact
-
-| Clean Architecture layer | Expected changes |
+| Layer | Expected changes |
 |---|---|
-| Domain | None. This is UI layout only. |
-| Application | None. No CQRS commands/queries required. |
-| Persistence | None. No EF Core migrations. |
+| Domain | None. |
+| Application | None. |
+| Persistence | None. |
 | Infrastructure | None. |
-| API | None. No API contract changes. |
-| Blazor Client | Main implementation surface: layout components, state services, CSS tokens, EventList integration, tests. |
-| Blazor Server/BFF | No auth/BFF behavior changes expected. Only static CSS asset consumption remains as-is. |
+| API | None. |
+| Blazor Client | Primary implementation: docking services, layout components, tokens, EventList integration, tests. |
+| Blazor Server/BFF | No auth/BFF behavior changes expected. |
 
 ## Implementation Phases
 
 ### Phase 1: Baseline Tests And Visual Freeze
 
-Purpose: protect the current good UX before refactoring.
-
-#### Task 1.1: Add panel visual regression scenarios
-
-- File: create `Explore.Blazor.Client.E2ETests/Flows/SidebarLayoutVisualTests.cs`.
-- Acceptance criteria:
-- [ ] Desktop scenario captures left nav open and AI closed.
-- [ ] Desktop scenario captures left nav open and AI open.
-- [ ] Desktop scenario captures customize panel open and AI open.
-- [ ] Desktop scenario captures event detail preview open.
-- [ ] Mobile scenario captures left nav open.
-- [ ] Mobile scenario captures customize view open.
-- [ ] Mobile scenario captures event detail preview open.
-- [ ] Tests use stable selectors or data attributes added intentionally for panel hosts.
-- Dependencies: existing Playwright fixtures in `Explore.Blazor.Client.E2ETests`.
-- Effort: L.
-- Related skills: `blazor-ui-conventions`, `blazor-css-isolation`.
-
-#### Task 1.2: Add state and component regression tests for existing behavior
-
-- Files: update or add tests near `Explore.Blazor.Client.Tests/Layout/MainLayoutTests.cs`, `Explore.Blazor.Client.Tests/Pages/Event/EventListTests.cs`, and `Explore.Blazor.Client.Tests/Components/Event/EventListCustomizationDrawerTests.cs`.
-- Acceptance criteria:
-- [ ] Test AI availability gates the AI toggle and rail.
-- [ ] Test customize drawer open closes detail preview in current behavior before refactor.
-- [ ] Test event detail preview close resets inline overlays/popups.
-- [ ] Test shell landmarks remain present.
-- Dependencies: none.
-- Effort: M.
-- Related skills: `blazor-ui-conventions`.
-
-### Phase 2: Design Tokens And Layout Contract
-
-Purpose: centralize dimensions, motion, and layering before behavior changes.
-
-#### Task 2.1: Extend global layout tokens
-
-- File: update `Explore.Blazor/wwwroot/css/tokens.css`.
-- Acceptance criteria:
-- [ ] Add shell tokens: `--isl-shell-left-nav-width`, `--isl-shell-left-nav-collapsed-width`, `--isl-shell-right-rail-width`.
-- [ ] Add workspace tokens: `--isl-workspace-right-panel-width`, `--isl-workspace-overlay-width`, `--isl-mobile-panel-width`.
-- [ ] Add motion tokens: `--isl-motion-panel-duration`, `--isl-motion-panel-easing`.
-- [ ] Add z-index semantic tokens for shell panels, workspace panels, overlays, and backdrops.
-- [ ] Add `@media (prefers-reduced-motion: reduce)` handling for panel motion tokens or equivalent component-level handling.
-- [ ] Existing design token comments and 3-tier structure remain intact.
-- Dependencies: none.
-- Effort: S.
-- Related skills: `design-system`, `blazor-css-isolation`.
-
-#### Task 2.2: Define layout contract documentation
-
-- File: create or update a concise section in `docs/BLAZOR.md` or create `docs/SIDEBAR_LAYOUT.md` if the content is too large.
-- Acceptance criteria:
-- [ ] Documents shell scope versus workspace scope.
-- [ ] Documents persistent desktop panels as grid tracks.
-- [ ] Documents temporary/mobile/inspector panels as overlays.
-- [ ] Documents the ban on page-level compensation for shell panels.
-- [ ] Documents event detail preview as overlay/inspector, not docked panel.
-- Dependencies: Task 2.1.
-- Effort: S.
-- Related skills: `design-system`, `blazor-ui-conventions`.
-
-### Phase 3: State Services
-
-Purpose: consolidate panel state without over-generalizing into a plugin docking framework.
-
-#### Task 3.1: Create `ShellLayoutState`
-
-- File: create `Explore.Blazor.Client/Services/ShellLayoutState.cs`.
-- Acceptance criteria:
-- [ ] File starts with two `ABOUTME:` lines.
-- [ ] Tracks left nav open state.
-- [ ] Tracks AI rail open and availability state.
-- [ ] Exposes one `Changed` event.
-- [ ] Does not reference Razor components or MudBlazor types.
-- [ ] Avoids redundant `Changed` notifications when values do not change.
-- [ ] Unit tests cover all state transitions.
-- Dependencies: none.
-- Effort: M.
-- Related skills: `blazor-ui-conventions`, `clean-architecture-rules`.
-
-#### Task 3.2: Create `WorkspacePanelState`
-
-- File: create `Explore.Blazor.Client/Services/WorkspacePanelState.cs`.
-- Acceptance criteria:
-- [ ] File starts with two `ABOUTME:` lines.
-- [ ] Tracks one docked workspace panel and one overlay panel.
-- [ ] Provides explicit methods for customize view and event preview workflows through enum values, not arbitrary string IDs.
-- [ ] Supports closing all workspace panels on route changes when needed.
-- [ ] Unit tests cover mutual exclusion rules: docked customize panel and overlay event preview can be controlled deterministically.
-- Dependencies: none.
-- Effort: M.
-- Related skills: `blazor-ui-conventions`, `clean-architecture-rules`.
-
-#### Task 3.3: Register new state services
-
-- File: update `Explore.Blazor.Client/Extensions/ServiceCollectionExtensions.cs`.
-- Acceptance criteria:
-- [ ] Register `ShellLayoutState` scoped.
-- [ ] Register `WorkspacePanelState` scoped.
-- [ ] Keep old `SidebarState` and `AiAssistantState` temporarily only until migration is complete.
-- [ ] Add removal tasks for old services in Phase 7.
-- Dependencies: Tasks 3.1 and 3.2.
-- Effort: S.
-- Related skills: `blazor-ui-conventions`.
-
-### Phase 4: Shell Grid Refactor
-
-Purpose: move shell left nav and AI rail into one predictable grid system.
-
-#### Task 4.1: Extract shell left navigation content
-
-- File: create `Explore.Blazor.Client/Components/Shell/AppSideNav.razor` and `.razor.css`.
-- Source to migrate from: `Explore.Blazor.Client/Layout/MainLayout.razor` left `MudDrawer` content.
-- Acceptance criteria:
-- [ ] Navigation markup is extracted without changing visible labels or HAL/tenant link behavior.
-- [ ] Component exposes parameters/callbacks or consumes `ShellLayoutState` consistently.
-- [ ] Uses `nav aria-label="Sidebar navigation"` or preserves equivalent landmark semantics.
-- [ ] CSS uses BEM and logical properties.
-- [ ] Desktop mode is in grid flow, not fixed drawer flow.
-- [ ] Mobile mode remains temporary overlay or MudDrawer-backed while using centralized state.
-- Dependencies: Task 3.1.
-- Effort: L.
-- Related skills: `blazor-ui-conventions`, `blazor-css-isolation`, `design-system`.
-
-#### Task 4.2: Convert AI rail into shell right rail
-
-- Files: update or replace `Explore.Blazor.Client/Components/Shell/AiAssistantRail.razor` and `.razor.css`; create `AppRightRail` only if separation improves clarity.
-- Acceptance criteria:
-- [ ] AI rail width comes from `--isl-shell-right-rail-width`.
-- [ ] Persistent desktop AI rail is a shell grid track, not `position: fixed` with main-content margin compensation.
-- [ ] Mobile AI rail remains temporary overlay with backdrop.
-- [ ] Uses logical properties (`inset-inline-end`, `border-inline-start`) where positioning is needed.
-- [ ] Existing placeholder content and close behavior are preserved.
-- Dependencies: Tasks 2.1 and 3.1.
-- Effort: M.
-- Related skills: `blazor-ui-conventions`, `blazor-css-isolation`, `design-system`.
-
-#### Task 4.3: Refactor `MainLayout` to shell grid
-
-- Files: update `Explore.Blazor.Client/Layout/MainLayout.razor`, `.razor.cs`, and `.razor.css`.
-- Acceptance criteria:
-- [ ] Shell body uses CSS grid tracks for left nav, main workspace, and AI rail.
-- [ ] Remove `main-layout__main--ai-open` margin-right compensation.
-- [ ] Remove direct dependence on `AiAssistantState` after AI migration.
-- [ ] `NavMenu` uses `ShellLayoutState` for toggles.
-- [ ] Footer remains inside the main workspace region and is not pushed by shell AI rail incorrectly.
-- [ ] Skip link, main landmark, header landmark, live regions, and focus-on-navigate behavior remain intact.
-- Dependencies: Tasks 4.1 and 4.2.
-- Effort: XL.
-- Related skills: `blazor-ui-conventions`, `blazor-css-isolation`, `design-system`.
-
-### Phase 5: Workspace Layout Refactor
-
-Purpose: make page-specific panels siblings inside a workspace grid, not strangers compensating for shell panels.
-
-#### Task 5.1: Create `WorkspaceLayout`
-
-- Files: create `Explore.Blazor.Client/Components/Layout/WorkspaceLayout.razor` and `.razor.css`.
-- Acceptance criteria:
-- [ ] Provides `MainContent`, `RightPanel`, and optional `OverlayPanel` render fragments.
-- [ ] Desktop persistent right panel is a grid track.
-- [ ] Mobile right panel renders as temporary overlay.
-- [ ] Uses CSS variables for active right-panel width.
-- [ ] Does not know EventList-specific concepts.
-- [ ] Uses BEM and logical CSS properties.
-- Dependencies: Task 2.1.
-- Effort: L.
-- Related skills: `blazor-ui-conventions`, `blazor-css-isolation`, `design-system`.
-
-#### Task 5.2: Create `WorkspaceRightPanel`
-
-- Files: create `Explore.Blazor.Client/Components/Layout/WorkspaceRightPanel.razor` and `.razor.css`.
-- Acceptance criteria:
-- [ ] Provides labelled complementary region semantics.
-- [ ] Supports header/body/footer slots or child content without forcing content layout.
-- [ ] Does not trap focus in desktop docked mode.
-- [ ] Supports mobile overlay close/backdrop behavior through `WorkspaceLayout` or explicit callbacks.
-- [ ] Width uses `--isl-workspace-right-panel-width`.
-- Dependencies: Task 5.1.
-- Effort: M.
-- Related skills: `blazor-ui-conventions`, `blazor-css-isolation`.
-
-#### Task 5.3: Migrate EventList customize view into `WorkspaceLayout`
-
-- Files: update `Explore.Blazor.Client/Pages/Events/EventList.razor`, `.razor.cs`, and `.razor.css`.
-- Acceptance criteria:
-- [ ] `EventListCustomizationDrawer` is hosted inside `WorkspaceRightPanel`.
-- [ ] `_customizationDrawerOpen` is replaced by `WorkspacePanelState` or a thin page adapter to it.
-- [ ] Remove `.event-list__page` negative right margin and width expansion.
-- [ ] Remove dependency on `RightSidebar` for customize view.
-- [ ] Customize panel and AI rail align with no gap when both are open.
-- [ ] Existing customization setting behavior remains unchanged.
-- Dependencies: Tasks 3.2, 5.1, and 5.2.
-- Effort: XL.
-- Related skills: `blazor-ui-conventions`, `blazor-css-isolation`, `design-system`.
-
-### Phase 6: Event Detail Inspector Integration
-
-Purpose: preserve and normalize the strongest existing panel UX.
-
-#### Task 6.1: Create workspace overlay/inspector wrapper
-
-- Files: create `Explore.Blazor.Client/Components/Layout/WorkspaceOverlayPanel.razor` and `.razor.css`.
-- Acceptance criteria:
-- [ ] Overlay panel slides from logical end side.
-- [ ] Backdrop is consistent with design tokens.
-- [ ] Escape closes active overlay.
-- [ ] Focus is saved before opening and restored after close.
-- [ ] Background scroll locks for temporary overlay mode.
-- [ ] Persistent workspace docked panels remain unaffected.
-- Dependencies: Tasks 2.1 and 3.2.
-- Effort: L.
-- Related skills: `blazor-ui-conventions`, `blazor-css-isolation`, `design-system`.
-
-#### Task 6.2: Integrate EventList detail preview as inspector overlay
-
-- Files: update `Explore.Blazor.Client/Pages/Events/EventList.razor` and `.razor.cs`.
-- Acceptance criteria:
-- [ ] Preserve current desktop visual behavior of event detail preview.
-- [ ] Preserve current mobile behavior or improve only where tests prove no regression.
-- [ ] `_detailDrawerOpen` is replaced by `WorkspacePanelState` or kept only as temporary adapter during migration.
-- [ ] Inline registration overlay and tag/category popup reset behavior remains intact.
-- [ ] The detail preview does not force EventList grid shrinkage unless explicitly required later.
-- [ ] Detail preview has clear close, backdrop, focus, and Escape behavior.
-- Dependencies: Task 6.1.
-- Effort: XL.
-- Related skills: `blazor-ui-conventions`, `blazor-css-isolation`, `design-system`.
-
-### Phase 7: Mobile, RTL, Accessibility, And Motion Hardening
-
-Purpose: make the new layout enterprise-grade rather than only visually correct on desktop.
-
-#### Task 7.1: Mobile panel policy
-
-- Files: update new shell/workspace layout components and CSS.
-- Acceptance criteria:
-- [ ] All mobile panels are temporary overlays.
-- [ ] Backdrops are consistent and token-driven.
-- [ ] Mobile overlays do not cause horizontal page overflow.
-- [ ] Background scroll is locked for active temporary overlay panels.
-- [ ] AI rail is hidden behind the AI button on mobile, not permanently docked.
-- Dependencies: Phases 4, 5, and 6.
-- Effort: L.
-- Related skills: `blazor-ui-conventions`, `blazor-css-isolation`, `design-system`.
-
-#### Task 7.2: Accessibility pass
-
-- Files: update all new panel components and relevant tests.
-- Acceptance criteria:
-- [ ] `Escape` closes the active temporary/overlay panel.
-- [ ] Focus returns to the opener after temporary/overlay panel close.
-- [ ] Temporary panels trap focus or use MudBlazor behavior that traps focus.
-- [ ] Persistent panels do not trap focus.
-- [ ] Toggle buttons use `aria-expanded` and `aria-controls` where practical.
-- [ ] Panels have accessible labels or labelled headers.
-- [ ] Keyboard tab order remains logical with multiple panels open.
-- Dependencies: Phases 4, 5, and 6.
-- Effort: L.
-- Related skills: `blazor-ui-conventions`, `blazor-css-isolation`.
-
-#### Task 7.3: RTL and logical CSS audit
-
-- Files: new/changed `.razor.css`, `MainLayout.razor.css`, `EventList.razor.css`, `AiAssistantRail.razor.css`.
-- Acceptance criteria:
-- [ ] No new physical `left`, `right`, `margin-left`, `margin-right`, `border-left`, or `border-right` in component CSS except justified third-party/MudBlazor override contexts.
-- [ ] Start/end panel semantics work under `MudRTLProvider`.
-- [ ] Existing physical properties removed where part of the sidebar refactor.
-- Dependencies: Phases 4, 5, and 6.
-- Effort: M.
-- Related skills: `blazor-css-isolation`, `design-system`.
-
-#### Task 7.4: Reduced motion pass
-
-- Files: `tokens.css`, panel `.razor.css` files.
-- Acceptance criteria:
-- [ ] `prefers-reduced-motion: reduce` disables or minimizes panel transitions.
-- [ ] Backdrop opacity changes do not animate in reduced motion.
-- [ ] Tests or documented manual checks cover reduced motion.
-- Dependencies: Task 2.1 and panel CSS implementation.
-- Effort: S.
-- Related skills: `design-system`, `blazor-css-isolation`.
-
-### Phase 8: Cleanup And Removal
-
-Purpose: remove old fragmented systems after migration is proven.
-
-#### Task 8.1: Remove old independent sidebar state services
-
-- Files: remove or stop registering `Explore.Blazor.Client/Services/SidebarState.cs` and `Explore.Blazor.Client/Services/AiAssistantState.cs` after all consumers are migrated.
-- Acceptance criteria:
-- [ ] No references remain to `SidebarState`.
-- [ ] No references remain to `AiAssistantState`.
-- [ ] `ServiceCollectionExtensions.cs` registers only the new layout state services for this concern.
-- [ ] Tests updated to use `ShellLayoutState`.
-- Dependencies: Phases 4 and 5.
-- Effort: M.
-- Related skills: `blazor-ui-conventions`, `clean-architecture-rules`.
-
-#### Task 8.2: Remove old `RightSidebar`
-
-- Files: remove or deprecate `Explore.Blazor.Client/Components/Common/RightSidebar.razor` and `.razor.css` after all usages are migrated.
-- Acceptance criteria:
-- [ ] No references remain to `RightSidebar`.
-- [ ] Workspace panels use `WorkspaceRightPanel`.
-- [ ] Shared component folder remains focused on generic wrappers, not layout-specific panels.
-- Dependencies: Phase 5.
-- Effort: S.
-- Related skills: `blazor-ui-conventions`.
-
-#### Task 8.3: Remove layout hacks
-
-- Files: `MainLayout.razor.css`, `EventList.razor.css`, new layout CSS.
-- Acceptance criteria:
-- [ ] Remove `main-layout__main--ai-open` and `margin-right: 360px` behavior.
-- [ ] Remove `.event-list__page` negative margin and width expansion.
-- [ ] No page-level hardcoded AI/customization widths remain.
-- [ ] No duplicate sidebar width constants remain outside `tokens.css` and intentional component fallback values.
-- Dependencies: Phases 4 and 5.
-- Effort: M.
-- Related skills: `design-system`, `blazor-css-isolation`.
-
-### Phase 9: Verification And Documentation
-
-Purpose: prove the refactor preserves UX and improves maintainability.
-
-#### Task 9.1: Run automated verification
-
-- Commands:
-- [ ] `dotnet build --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet --filter FullyQualifiedName~Event.Architecture.Tests.BlazorClientArchitectureTests`
-- [ ] `dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet --filter FullyQualifiedName~Event.Architecture.Tests.AccessibilityConventionTests`
-- [ ] `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet`
-- [ ] `dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet` where environment supports Aspire/Playwright.
-- Acceptance criteria:
-- [ ] Build passes.
-- [ ] Blazor client tests pass.
-- [ ] Architecture/accessibility tests pass.
-- [ ] E2E visual tests pass or are documented as environment-blocked with screenshots manually captured.
-- Dependencies: all implementation phases.
-- Effort: M.
-- Related skills: `blazor-ui-conventions`, `design-system`.
-
-#### Task 9.2: Update docs and dev context
-
-- Files: update this task package and final docs.
-- Acceptance criteria:
-- [ ] `sidebar-dock-layout-refactor-context.md` reflects final decisions.
-- [ ] `sidebar-dock-layout-refactor-tasks.md` is updated with completed tasks.
-- [ ] `docs/BLAZOR.md` or `docs/SIDEBAR_LAYOUT.md` documents the final layout contract.
-- [ ] Any new component usage examples are included where useful.
-- Dependencies: all implementation phases.
-- Effort: S.
-- Related skills: `blazor-ui-conventions`, `design-system`.
+Purpose: protect current UX before refactoring.
+
+Tasks:
+
+- Create `Explore.Blazor.Client.E2ETests/Flows/SidebarLayoutVisualTests.cs`.
+- Capture desktop states: left nav open and AI closed, left nav open and AI open, customize panel open and AI open, event detail preview open.
+- Capture mobile states: left nav open, customize view open, event detail preview open.
+- Add stable panel selectors or data attributes as needed.
+- Add bUnit regressions for current AI availability, customize/detail mutual exclusion, event detail close/reset, and shell landmarks.
+
+Acceptance criteria:
+
+- Current good UX is frozen before layout changes.
+- Event detail preview has visual coverage before migration.
+- Visual tests can catch gaps between customize panel and AI rail.
+
+Effort: L.
+
+### Phase 2: Design Tokens And Dock Contract
+
+Purpose: define the platform-level contract before behavior changes.
+
+Tasks:
+
+- Update `Explore.Blazor/wwwroot/css/tokens.css` with dock width, z-index, and motion tokens.
+- Add shell defaults: left nav, collapsed nav, AI rail.
+- Add workspace defaults: right panel, inspector overlay, mobile panel.
+- Add motion tokens and reduced-motion handling.
+- Create `docs/DOCK_LAYOUT.md`.
+- Document descriptors, state, scope, side, mode, stack behavior, resize behavior, mobile behavior, persistence, and reset behavior.
+
+Acceptance criteria:
+
+- Widths and motion are token-driven.
+- `docs/DOCK_LAYOUT.md` becomes the source of truth for panel architecture.
+- The contract explicitly bans central panel enums and page-level shell compensation.
+
+Effort: M.
+
+### Phase 3: Dock Engine Core
+
+Purpose: implement the generic internal model without rendering migration yet.
+
+Tasks:
+
+- Create `DockPanelId`, `DockScope`, `DockSide`, `DockMode`.
+- Create `DockPanelDescriptor`, `DockPanelState`, `DockLayoutSnapshot`.
+- Create `IDockPanelRegistry` and `DockPanelRegistry`.
+- Create `DockLayoutState` with register, unregister, open, close, toggle, mode, resize, activate, snapshot, and restore methods.
+- Register services in `Explore.Blazor.Client/Extensions/ServiceCollectionExtensions.cs`.
+- Add unit tests for descriptor registration, duplicate ID handling, open/close/toggle, resize min/max clamping, activation, multiple panels per side, and snapshot restore.
+
+Acceptance criteria:
+
+- New panels can be modeled without editing central enums.
+- Descriptor metadata and runtime state are separate.
+- At least two panels can exist on the same side in the model.
+- Panel widths can be controlled by state.
+- Layout state can serialize and restore snapshots.
+- Dock engine has no event-specific dependencies.
+
+Effort: L.
+
+### Phase 4: Shell Dock Host
+
+Purpose: migrate shell left nav and AI assistant onto the dock engine.
+
+Tasks:
+
+- Create `DockLayoutHost`, `DockSideHost`, `DockPanelHost`, and `DockOverlayHost` initial versions.
+- Extract left nav content into `AppSideNav`.
+- Convert AI assistant into `shell.ai-assistant` descriptor and content.
+- Convert left navigation into `shell.left-nav` descriptor and content.
+- Refactor `MainLayout.razor`, `.razor.cs`, and `.razor.css` to use shell `DockLayoutHost`.
+- Update `NavMenu` to toggle dock panels by `DockPanelId`.
+- Remove shell AI `margin-right: 360px` compensation.
+- Preserve skip link, header, main landmark, footer, live regions, and focus-on-navigate.
+
+Acceptance criteria:
+
+- AI assistant opens without page-level margin changes.
+- Left nav and AI assistant render through the dock engine.
+- Shell desktop panels are grid tracks.
+- Shell mobile panels are overlays.
+- Current visual shell behavior is preserved.
+
+Effort: XL.
+
+### Phase 5: Workspace Dock Host
+
+Purpose: migrate EventList page panels onto workspace dock host.
+
+Tasks:
+
+- Add workspace use of `DockLayoutHost` inside `EventList.razor` or a reusable workspace wrapper.
+- Create `EventDockPanels` descriptors for `events.customize-view` and `events.event-preview`.
+- Register EventList panel descriptors and content during page lifecycle.
+- Host `EventListCustomizationDrawer` as a docked workspace panel.
+- Host event detail preview as inspector/overlay through `DockOverlayHost`.
+- Remove `_customizationDrawerOpen` and `_detailDrawerOpen` or reduce them to temporary adapters during migration only.
+- Remove EventList negative margin and width expansion CSS.
+- Remove EventList dependency on `RightSidebar`.
+
+Acceptance criteria:
+
+- Customize View is a workspace docked panel on desktop.
+- Event Preview is a workspace inspector/overlay.
+- Customize View and AI rail align with no visible gap.
+- Event detail preview desktop/mobile UX is preserved.
+- EventList settings behavior remains unchanged.
+
+Effort: XL.
+
+### Phase 6: Resize Support
+
+Purpose: make panel widths state-driven and user-adjustable.
+
+Tasks:
+
+- Create `DockResizeHandle.razor` and `.razor.css`.
+- Add mouse and touch drag resizing for desktop.
+- Enforce descriptor min/max widths in `DockLayoutState.Resize`.
+- Add keyboard resizing: arrow keys adjust width, Shift plus arrow adjusts faster.
+- Add ARIA slider semantics where appropriate: `aria-valuemin`, `aria-valuemax`, `aria-valuenow`, labelled resize handle.
+- Add tests for min/max enforcement and keyboard resize behavior.
+
+Acceptance criteria:
+
+- Width changes update `DockPanelState`.
+- Resizing cannot cause layout overflow.
+- Resize handle is keyboard accessible.
+- Visual tests include at least one resized panel.
+
+Effort: L.
+
+### Phase 7: Stacking Support
+
+Purpose: support multiple panels on one side without forcing all to render as separate full-width siblings.
+
+Tasks:
+
+- Add side-host stacking policy to `DockSideHost`.
+- Implement initial tabbed stack rendering through `DockTabStrip`.
+- Support ordered panels and one active panel per side by default.
+- Keep split-stack rendering as a future extension unless explicitly needed.
+- Add tests with two panels registered on the same side.
+
+Acceptance criteria:
+
+- Multiple panels per side are represented by the model.
+- `DockSideHost` can render ordered tabs and active panel content.
+- Future modules can add panels without editing shell/workspace enums.
+
+Effort: L.
+
+### Phase 8: Persistence And Reset
+
+Purpose: support local user layout preference and future cross-device settings integration.
+
+Tasks:
+
+- Create `IDockLayoutPersistence`.
+- Implement `LocalStorageDockLayoutPersistence` or project-consistent browser storage adapter.
+- Save/load `DockLayoutSnapshot` by layout key.
+- Add `ResetLayout(layoutKey)` behavior to restore descriptor defaults.
+- Design interface so later integration with user appearance/settings API is possible.
+- Add tests for snapshot serialization, restore, and reset.
+
+Acceptance criteria:
+
+- User layout preferences can be serialized into a snapshot.
+- System can reset to default layout.
+- Persistence starts local and does not block future server-side settings integration.
+
+Effort: M-L.
+
+### Phase 9: Mobile, RTL, Accessibility, And Motion Hardening
+
+Purpose: make the dock engine enterprise-grade across devices and languages.
+
+Tasks:
+
+- Ensure mobile behavior is a descriptor/layout policy, not page CSS.
+- Ensure temporary panels use consistent backdrop and scroll locking.
+- Ensure Escape closes the active temporary/overlay panel.
+- Ensure focus returns to opener after close.
+- Ensure temporary overlays trap focus or use MudBlazor behavior that traps focus.
+- Ensure persistent docked panels do not trap focus.
+- Add `aria-expanded`, `aria-controls`, labels, and region semantics.
+- Audit all new CSS for logical properties.
+- Add reduced-motion behavior to all panel transitions.
+- Test or manually verify RTL and reduced motion.
+
+Acceptance criteria:
+
+- Mobile sidebars overlay cleanly and do not cause horizontal overflow.
+- RTL does not require rewriting layout code.
+- Reduced-motion mode works.
+- Accessibility contract from `docs/ACCESSIBILITY.md` is preserved or improved.
+
+Effort: L.
+
+### Phase 10: Cleanup Old Layout Systems
+
+Purpose: remove fragmented implementations only after migration is proven.
+
+Tasks:
+
+- Remove references to `SidebarState` and `AiAssistantState`.
+- Remove old state service registrations.
+- Remove or deprecate `RightSidebar` after all usages migrate.
+- Remove `main-layout__main--ai-open` and `margin-right: 360px` behavior.
+- Remove EventList negative margin and width expansion CSS.
+- Remove duplicated width constants outside tokens/descriptors.
+- Update tests to target dock engine services and hosts.
+
+Acceptance criteria:
+
+- Old fragmented sidebar mechanisms are gone.
+- No page-specific shell panel compensation remains.
+- No duplicated panel width constants remain outside approved locations.
+
+Effort: M.
+
+### Phase 11: Documentation, Governance, And Verification
+
+Purpose: document the platform-level dock architecture and prove the refactor.
+
+Tasks:
+
+- Finalize `docs/DOCK_LAYOUT.md`.
+- Update `docs/BLAZOR.md` with a pointer to `docs/DOCK_LAYOUT.md`.
+- Update this dev-docs package after implementation decisions.
+- Consider adding architecture tests to prevent page-level shell compensation and central panel enum regressions.
+- Run build, Blazor client tests, architecture tests, accessibility tests, and feasible E2E visual tests.
+
+Required verification commands:
+
+```bash
+dotnet build --configuration Release --verbosity quiet
+```
+
+```bash
+dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet --filter FullyQualifiedName~Event.Architecture.Tests.BlazorClientArchitectureTests
+```
+
+```bash
+dotnet test --project Event.Architecture.Tests/Event.Architecture.Tests.csproj --configuration Release --verbosity quiet --filter FullyQualifiedName~Event.Architecture.Tests.AccessibilityConventionTests
+```
+
+```bash
+dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet
+```
+
+```bash
+dotnet test --project Explore.Blazor.Client.E2ETests/Explore.Blazor.Client.E2ETests.csproj --configuration Release --verbosity quiet
+```
+
+Acceptance criteria:
+
+- Build passes.
+- Blazor client tests pass.
+- Architecture/accessibility tests pass.
+- E2E visual tests pass or environment blockers are documented with manual screenshots.
+- Dock architecture is documented as a reusable platform subsystem.
+
+Effort: M.
 
 ## Success Metrics
 
@@ -609,10 +593,15 @@ Purpose: prove the refactor preserves UX and improves maintainability.
 |---|---|
 | Visual gap between customize panel and AI rail | 0 unexpected gap in desktop test case. |
 | Page-level AI compensation | 0 occurrences. |
-| Negative margin event list layout hacks | 0 occurrences. |
-| Duplicated panel width constants | 0 outside design tokens and justified fallbacks. |
+| Negative margin EventList layout hacks | 0 occurrences. |
+| Duplicated panel width constants | 0 outside tokens/descriptors and justified fallbacks. |
 | Event detail preview regression | No visual or interaction regression in desktop/mobile tests. |
-| RTL readiness | No new banned physical CSS properties in refactored panel CSS. |
+| New panel extensibility | New panels register descriptor and content without editing central enums. |
+| Multi-panel model | At least two panels can exist on the same side in state and registry. |
+| Resize state | Panel widths are controlled by `DockPanelState`. |
+| Snapshot support | Layout state can serialize, restore, and reset. |
+| Engine independence | Dock engine has no event-specific concepts. |
+| RTL readiness | No new banned physical CSS properties in refactored dock CSS. |
 | Reduced motion | Panel animations disabled/minimized under reduced motion. |
 | Test status | Build, bUnit, architecture/accessibility, and feasible E2E tests pass. |
 
@@ -625,34 +614,19 @@ Purpose: prove the refactor preserves UX and improves maintainability.
 | Accessibility services | `IAccessibilityFocusService` is required for focus save/restore around overlays. |
 | Design tokens | Widths, motion, z-index, and overlay tokens centralize layout behavior. |
 | Existing EventList settings workflows | Customize panel content logic must be preserved while moving layout ownership. |
+| Browser storage or JS interop | Initial snapshot persistence needs local client storage. |
 
-## Effort Estimate
-
-| Phase | Effort |
-|---|---|
-| Phase 1: Baseline tests | L |
-| Phase 2: Tokens and contract | S-M |
-| Phase 3: State services | M |
-| Phase 4: Shell grid | XL |
-| Phase 5: Workspace layout | XL |
-| Phase 6: Detail inspector integration | XL |
-| Phase 7: Mobile/RTL/a11y/motion hardening | L |
-| Phase 8: Cleanup | M |
-| Phase 9: Verification/docs | M |
-
-Total estimate: XL multi-session refactor. Expect 4-7 focused implementation sessions depending on test/E2E environment readiness.
-
-## Risk Assessment And Mitigations
+## Risk Assessment And Mitigation
 
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
-| Event detail preview UX regresses | Medium | High | Freeze visual tests first; migrate as overlay/inspector, not docked panel. |
-| MudDrawer behavior conflicts with custom shell grid | Medium | Medium | Use MudDrawer only for temporary/mobile overlays where appropriate; do not rely on MudLayout margins for desktop persistent panels. |
+| Event detail preview UX regresses | Medium | High | Freeze visual tests first; migrate as inspector/overlay, not docked panel. |
+| Generic engine becomes uncontrolled | Medium | High | Keep compile-time descriptor registration; do not implement external plugin loading. |
+| Scope grows too large | Medium | High | Implement core, hosts, resizing, stacking, persistence in separate phases. |
 | E2E environment is unstable | High | Medium | Add bUnit/state tests and document manual visual verification when E2E cannot run. |
 | RTL issues appear late | Medium | Medium | Use logical properties from first CSS change; audit with architecture/accessibility tests. |
-| Layout grid breaks footer behavior | Medium | High | Keep footer in main workspace region and add screenshots for short and long pages. |
-| Over-abstraction creeps in | Medium | Medium | Keep explicit `ShellLayoutState` and `WorkspacePanelState`; avoid dynamic descriptor registry in this phase. |
-| Existing page padding assumptions break | Medium | Medium | Remove negative margin hacks only after `WorkspaceLayout` owns gutters and right panel placement. |
+| Footer behavior breaks | Medium | High | Keep footer in main workspace region and add screenshots for short/long pages. |
+| Persistence conflicts with future settings API | Low | Medium | Depend on `IDockLayoutPersistence` abstraction and start with local storage only. |
 
 ## Final Acceptance Criteria
 
@@ -668,7 +642,15 @@ Total estimate: XL multi-session refactor. Expect 4-7 focused implementation ses
 - [ ] RTL does not require rewriting the layout.
 - [ ] Reduced-motion mode works.
 - [ ] Visual tests cover major panel combinations.
+- [ ] New panels can be added by registering a descriptor and content without editing central enums.
+- [ ] At least two panels can exist on the same side in the model.
+- [ ] Panel widths can be controlled by state, not only static CSS.
+- [ ] User layout preferences can be serialized into a snapshot.
+- [ ] The system can reset to default layout.
+- [ ] Future modules can define their own dock panel descriptors.
+- [ ] The dock engine does not depend on event-specific concepts.
+- [ ] Event-specific panels depend on the dock engine, not the other way around.
 
 ## Potential Risks & Unknowns
 
-The highest-risk area is preserving the event detail preview while moving it into the new overlay/inspector model. Its current behavior is visually strong because it uses a dedicated `MudOverlay` plus `MudDrawer` pattern; replacing that too aggressively could degrade desktop and mobile UX. Treat that migration as integration, not redesign. The second biggest unknown is whether the current E2E environment can reliably run the visual regression set; if not, manual screenshots plus bUnit/state tests must temporarily bridge the gap.
+The highest-risk area is preserving the event detail preview while moving it into the new inspector/overlay host. Its current behavior is visually strong because it uses a dedicated `MudOverlay` plus `MudDrawer` pattern; replacing that too aggressively could degrade desktop and mobile UX. The second highest risk is allowing the generic docking engine to become an uncontrolled plugin system. Keep registration compile-time and component-owned for now, while designing the internal model for future extensibility.
