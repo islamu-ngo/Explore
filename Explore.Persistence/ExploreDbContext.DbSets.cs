@@ -46,6 +46,7 @@ public partial class ExploreDbContext
     public DbSet<Role> Roles { get; set; }
     public DbSet<Permission> Permissions { get; set; }
     public DbSet<RolePermission> RolePermissions { get; set; }
+    public DbSet<EventRoleAssignment> EventRoleAssignments { get; set; }
 
     // ===== Actors (Federation/ATProto) =====
     public DbSet<Actor> Actors { get; set; }

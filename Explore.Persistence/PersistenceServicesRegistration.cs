@@ -245,6 +245,8 @@ public static class PersistenceServicesRegistration
         // Authorization (RBAC) Repositories
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IPermissionRepository, PermissionRepository>();
+        services.AddScoped<IEventRoleAssignmentRepository, EventRoleAssignmentRepository>();
+        services.AddScoped<IEventAuthoritySnapshotService, Services.EventAuthoritySnapshotService>();
 
         // Configuration Audit Repositories
         services.AddScoped<IConfigurationChangeLogRepository, ConfigurationChangeLogRepository>();

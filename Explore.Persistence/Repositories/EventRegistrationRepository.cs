@@ -16,10 +16,24 @@ public class EventRegistrationRepository : GenericRepository<EventRegistration, 
         _dbContext = dbContext;
     }
 
+    public async Task<EventRegistration?> GetByIdWithDetails(Guid id)
+    {
+        return await _dbContext.EventRegistrations
+            .AsNoTracking()
+            .Include(r => r.User)
+                .ThenInclude(u => u!.Pii)
+            .Include(r => r.EventSession)
+                .ThenInclude(s => s.Event)
+            .Include(r => r.ApprovalStatus)
+            .FirstOrDefaultAsync(r => r.Id == id);
+    }
+
     public async Task<EventRegistration?> GetRegistrationByUserAndSession(Guid userId, Guid eventSessionId)
     {
         return await _dbContext.EventRegistrations
             .AsNoTracking()
+            .Include(r => r.EventSession)
+                .ThenInclude(s => s.Event)
             .Include(r => r.ApprovalStatus)
             .FirstOrDefaultAsync(r => r.UserId == userId && r.EventSessionId == eventSessionId);
     }
@@ -30,6 +44,8 @@ public class EventRegistrationRepository : GenericRepository<EventRegistration, 
             .AsNoTracking()
             .Include(r => r.User)
                 .ThenInclude(u => u!.Pii)
+            .Include(r => r.EventSession)
+                .ThenInclude(s => s.Event)
             .Include(r => r.ApprovalStatus)
             .Where(r => r.EventSessionId == eventSessionId)
             .ToListAsync();

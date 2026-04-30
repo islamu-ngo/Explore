@@ -3010,6 +3010,102 @@ namespace Explore.Persistence.Migrations
                     b.ToTable("event_registration_policies", (string)null);
                 });
 
+            modelBuilder.Entity("Explore.Domain.EventRoleAssignment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<DateTime?>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at_utc");
+
+                    b.Property<DateTime?>("RevokedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at_utc");
+
+                    b.Property<Guid?>("RevokedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("revoked_by_user_id");
+
+                    b.Property<int>("RoleId")
+                        .HasColumnType("integer")
+                        .HasColumnName("role_id");
+
+                    b.Property<DateTime>("StartsAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("starts_at_utc");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_event_role_assignments");
+
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("ix_event_role_assignments_event_id");
+
+                    b.HasIndex("RoleId")
+                        .HasDatabaseName("ix_event_role_assignments_role_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_event_role_assignments_user_id");
+
+                    b.HasIndex("TenantId", "EventId", "RoleId", "Status")
+                        .HasDatabaseName("ix_event_role_assignments_tenant_event_role_status");
+
+                    b.HasIndex("TenantId", "EventId", "UserId", "RoleId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_event_role_assignments_unique_pending_active")
+                        .HasFilter("status IN (1, 2)");
+
+                    b.HasIndex("TenantId", "EventId", "UserId", "Status")
+                        .HasDatabaseName("ix_event_role_assignments_tenant_event_user_status");
+
+                    b.HasIndex("TenantId", "UserId", "EventId", "Status")
+                        .HasDatabaseName("ix_event_role_assignments_tenant_user_event_status");
+
+                    b.ToTable("event_role_assignments", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_event_role_assignments_validity_window", "expires_at_utc IS NULL OR expires_at_utc > starts_at_utc");
+                        });
+                });
+
             modelBuilder.Entity("Explore.Domain.EventSeries", b =>
                 {
                     b.Property<Guid>("Id")
@@ -10327,6 +10423,45 @@ namespace Explore.Persistence.Migrations
                     b.Navigation("RegistrationScope");
 
                     b.Navigation("SelectedEventDay");
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Explore.Domain.EventRoleAssignment", b =>
+                {
+                    b.HasOne("Explore.Domain.Event", "Event")
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_role_assignments_events_event_id");
+
+                    b.HasOne("Explore.Domain.Role", "Role")
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_role_assignments_roles_role_id");
+
+                    b.HasOne("Explore.Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_role_assignments_tenants_tenant_id");
+
+                    b.HasOne("Explore.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_event_role_assignments_users_user_id");
+
+                    b.Navigation("Event");
+
+                    b.Navigation("Role");
 
                     b.Navigation("Tenant");
 
