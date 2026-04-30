@@ -1,13 +1,22 @@
 {
   "include": [
     "docs/**/*",
+    "dev/_journal/**/*",
     "README.md",
     "CLAUDE.md",
     ".claude",
     ".claude/commands/dev-docs.md",
     ".claude/commands/dev-docs-update.md",
     ".claude/commands/plan.md",
-    ".claude/commands/task.md"
+    ".claude/commands/task.md",
+    ".github/copilot-instructions.md",
+    ".claude/agents/**/*",
+    ".claude/contract/**/*",
+    ".claude/settings.json",
+    ".claude/rules/**/*",
+    ".claude/skills/**/*",
+    ".claude/settings.json",
+    ".codex/rules/**/*"
   ],
   "output": {
     "style": "markdown",
@@ -21,7 +30,16 @@
       "docs/semantic_versioning/**/*",
       "docs/docs-website/**/*",
       ".claude/hooks/**/*",
-      ".claude/commands/"
+      ".claude/commands/",
+      ".claude/build-cache/**",
+      ".claude/context-state.json",
+      ".claude/settings.local.json",
+      ".repomix/*.md",
+      ".mcp.json",
+      ".copilot/mcp-config.json",
+      ".codex/config.toml",
+      "**/*.log",
+      ".env*"
     ],
     "useGitignore": true,
     "useDefaultPatterns": true

@@ -63,6 +63,7 @@ public static class Extensions
                     .AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation()
                     .AddMeter("Explore.Business")
+                    .AddMeter("Explore.Translation")
                     .AddMeter("Explore.Projections")
                     .AddPrometheusExporter();
             })
@@ -70,6 +71,7 @@ public static class Extensions
             {
                 tracing.AddSource(builder.Environment.ApplicationName)
                     .AddSource("Explore.Authorization")
+                    .AddSource("Explore.Hateoas.Authorization")
                     .AddSource("MQContract")
                     .AddAspNetCoreInstrumentation(tracing =>
                         // Exclude health check requests from tracing
