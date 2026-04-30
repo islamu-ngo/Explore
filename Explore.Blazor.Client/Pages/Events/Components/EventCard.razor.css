@@ -144,6 +144,17 @@
     top: 8px;
     right: 8px;
     z-index: 10;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border-radius: 999px;
+    background: oklch(1 0 0 / 0.85);
+    backdrop-filter: blur(8px);
+    padding: 2px;
+}
+
+::deep .event-card__action-menu--overlay .app-icon-button {
+    display: inline-flex;
 }
 
 ::deep .event-card__image {

@@ -1,10 +1,15 @@
 @using Microsoft.AspNetCore.Components.Authorization
+@using Explore.Blazor.Client.Helpers
 @using Explore.Blazor.Client.Pages.Landing
 @using Microsoft.Extensions.Logging
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ILogger<Home> Logger
+@inject NavigationManager Navigation
 
 <PageTitle>ISLAMU Explore</PageTitle>
+<HeadContent>
+    <link rel="canonical" href="@CanonicalUrlHelper.Build(Navigation)" />
+</HeadContent>
 
 @if (isLoading)
 {

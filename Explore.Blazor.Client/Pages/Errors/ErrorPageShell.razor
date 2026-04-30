@@ -1,0 +1,120 @@
+@* ABOUTME: Shared branded shell for public error pages with accessible messaging and CTAs. *@
+@* ABOUTME: Keeps 404, 403, and 500 layouts consistent while preserving page-specific metadata. *@
+
+@inject NavigationManager Navigation
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="error-page" role="alert" aria-labelledby="@TitleId">
+    <AppCard Class="error-page__card">
+        <MudCardContent>
+            <MudStack Spacing="4" AlignItems="AlignItems.Center" Class="error-page__content">
+                <div class="error-page__badge" aria-hidden="true">
+                    <MudIcon Icon="@Icon" Color="@IconColor" Size="Size.Large" />
+                </div>
+
+                <MudStack Spacing="1" AlignItems="AlignItems.Center" Class="error-page__heading">
+                    <MudText Typo="Typo.overline" Class="error-page__eyebrow">@StatusCode</MudText>
+                    <MudText Id="@TitleId" Typo="Typo.h3" HtmlTag="div" Align="Align.Center">@Title</MudText>
+                    <MudText Typo="Typo.body1" Align="Align.Center" Class="error-page__description">@Description</MudText>
+                </MudStack>
+
+                @if (!string.IsNullOrWhiteSpace(Detail))
+                {
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="error-page__detail">
+                        @Detail
+                    </MudAlert>
+                }
+
+                @if (ShowSearch)
+                {
+                    <div class="error-page__search" role="search" aria-label="Search events">
+                        <AppTextField T="string"
+                                      Value="@_searchTerm"
+                                      ValueChanged="OnSearchTermChanged"
+                                      Placeholder="Search events"
+                                      FullWidth="true"
+                                      Immediate="true"
+                                      DebounceInterval="150" />
+                        <AppButton OnClick="RunSearch" StartIcon="@Icons.Material.Filled.Search">
+                            Search
+                        </AppButton>
+                    </div>
+                }
+
+                <MudStack Row="true" Spacing="2" Justify="Justify.Center" Class="error-page__actions">
+                    <AppButton Href="@PrimaryHref" StartIcon="@PrimaryIcon">
+                        @PrimaryText
+                    </AppButton>
+
+                    @if (!string.IsNullOrWhiteSpace(SecondaryHref) && !string.IsNullOrWhiteSpace(SecondaryText))
+                    {
+                        <AppButton Href="@SecondaryHref" Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@SecondaryIcon">
+                            @SecondaryText
+                        </AppButton>
+                    }
+                </MudStack>
+            </MudStack>
+        </MudCardContent>
+    </AppCard>
+</MudContainer>
+
+@code {
+    private readonly string TitleId = $"error-page-title-{Guid.NewGuid():N}";
+    private string _searchTerm = string.Empty;
+
+    [Parameter]
+    public string StatusCode { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Description { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Detail { get; set; }
+
+    [Parameter]
+    public string Icon { get; set; } = Icons.Material.Filled.ErrorOutline;
+
+    [Parameter]
+    public Color IconColor { get; set; } = Color.Error;
+
+    [Parameter]
+    public string PrimaryHref { get; set; } = "/";
+
+    [Parameter]
+    public string PrimaryText { get; set; } = "Return Home";
+
+    [Parameter]
+    public string PrimaryIcon { get; set; } = Icons.Material.Filled.Home;
+
+    [Parameter]
+    public string? SecondaryHref { get; set; }
+
+    [Parameter]
+    public string? SecondaryText { get; set; }
+
+    [Parameter]
+    public string? SecondaryIcon { get; set; }
+
+    [Parameter]
+    public bool ShowSearch { get; set; }
+
+    private Task OnSearchTermChanged(string? value)
+    {
+        _searchTerm = value ?? string.Empty;
+        return Task.CompletedTask;
+    }
+
+    private void RunSearch()
+    {
+        var trimmed = _searchTerm.Trim();
+        if (string.IsNullOrWhiteSpace(trimmed))
+        {
+            Navigation.NavigateTo("/events");
+            return;
+        }
+
+        Navigation.NavigateTo($"/events?search={Uri.EscapeDataString(trimmed)}");
+    }
+}

@@ -1,0 +1,69 @@
+/* ABOUTME: Scoped BEM styles for branded public error-page layouts. */
+/* ABOUTME: Uses design-system tokens and wrapper-safe selectors for consistent spacing. */
+
+.error-page {
+    padding-block: var(--space-10, 5rem);
+}
+
+.error-page__card {
+    border: 1px solid var(--color-border-subtle, rgba(148, 163, 184, 0.28));
+    border-radius: var(--radius-2xl, 1.5rem);
+    background: linear-gradient(145deg, var(--color-surface, #ffffff), var(--color-surface-muted, #f8fafc));
+}
+
+.error-page__content {
+    padding: var(--space-8, 4rem) var(--space-6, 2rem);
+}
+
+.error-page__badge {
+    display: grid;
+    width: 5rem;
+    height: 5rem;
+    place-items: center;
+    border-radius: 999px;
+    background: var(--color-primary-container, rgba(59, 130, 246, 0.12));
+}
+
+.error-page__heading {
+    max-width: 42rem;
+}
+
+.error-page__eyebrow {
+    color: var(--color-primary, #2563eb);
+    font-weight: 700;
+    letter-spacing: 0.16em;
+}
+
+.error-page__description {
+    max-width: 36rem;
+    color: var(--color-text-secondary, #475569);
+}
+
+.error-page__detail {
+    width: min(100%, 36rem);
+}
+
+.error-page__search {
+    display: grid;
+    width: min(100%, 34rem);
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-3, 0.75rem);
+}
+
+.error-page__actions {
+    flex-wrap: wrap;
+}
+
+@media (max-width: 600px) {
+    .error-page {
+        padding-block: var(--space-6, 2rem);
+    }
+
+    .error-page__content {
+        padding: var(--space-6, 2rem) var(--space-4, 1rem);
+    }
+
+    .error-page__search {
+        grid-template-columns: 1fr;
+    }
+}

@@ -1,0 +1,41 @@
+@* ABOUTME: Branded public 500 page for server-side failures and support handoff. *@
+@* ABOUTME: Shows a safe correlation identifier while hiding stack traces and internals. *@
+
+@page "/errors/500"
+
+<PageTitle>Server Error — ISLAMU Explore</PageTitle>
+<HeadContent>
+    <meta name="robots" content="noindex, nofollow" />
+</HeadContent>
+
+<h1 class="sr-only">Something Went Wrong</h1>
+
+<ErrorPageShell StatusCode="500"
+                Title="Something Went Wrong"
+                Description="We hit an unexpected problem while processing your request. Try again from the home page or contact support with the reference below."
+                Detail="@ReferenceMessage"
+                Icon="@Icons.Material.Filled.ErrorOutline"
+                IconColor="Color.Error"
+                PrimaryHref="/"
+                PrimaryText="Return Home"
+                SecondaryHref="@SupportHref"
+                SecondaryText="Contact Support"
+                SecondaryIcon="@Icons.Material.Filled.Mail" />
+
+@code {
+    [SupplyParameterFromQuery(Name = "traceId")]
+    public string? TraceId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "correlationId")]
+    public string? CorrelationId { get; set; }
+
+    private string? ReferenceId => !string.IsNullOrWhiteSpace(CorrelationId) ? CorrelationId : TraceId;
+
+    private string ReferenceMessage => string.IsNullOrWhiteSpace(ReferenceId)
+        ? "No reference ID is available for this error."
+        : $"Reference ID: {ReferenceId}";
+
+    private string SupportHref => string.IsNullOrWhiteSpace(ReferenceId)
+        ? "/contact"
+        : $"/contact?subject={Uri.EscapeDataString($"Support request for error {ReferenceId}")}";
+}

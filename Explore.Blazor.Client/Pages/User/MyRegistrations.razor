@@ -46,11 +46,25 @@
     }
     else if (!FilteredRegistrations.Any())
     {
-        <div class="d-flex flex-column align-center justify-center py-16">
-            <MudIcon Icon="@Icons.Material.Outlined.AppRegistration" Size="Size.Large" Color="Color.Default" Style="width: 80px; height: 80px; opacity: 0.2;" />
-            <MudText Typo="Typo.h6" Class="mt-4">No registrations found</MudText>
-            <AppButton Href="/events" Class="mt-4">Explore Events</AppButton>
-        </div>
+        <AppCard Class="my-registrations__empty-state">
+            <MudCardContent Class="my-registrations__empty-content" role="status">
+                <MudIcon Icon="@Icons.Material.Outlined.AppRegistration"
+                         Size="Size.Large"
+                         Color="Color.Primary"
+                         Class="my-registrations__empty-icon" />
+                <MudText Typo="Typo.h5" HtmlTag="h2" Class="my-registrations__empty-title">
+                    No registrations yet
+                </MudText>
+                <MudText Typo="Typo.body1" Color="Color.Secondary" Class="my-registrations__empty-copy">
+                    When you register for an event, it will appear here so you can quickly find the details again.
+                </MudText>
+                <AppButton Href="/events"
+                           StartIcon="@Icons.Material.Filled.Explore"
+                           Class="my-registrations__empty-action">
+                    Browse Events
+                </AppButton>
+            </MudCardContent>
+        </AppCard>
     }
     else
     {
@@ -73,15 +87,20 @@
                                     <MudText Typo="Typo.caption" Color="Color.Secondary">@reg.StartTime?.ToString("f")</MudText>
                                 </div>
                             </MudCardContent>
-                            <MudCardActions>
-                                <AppButton Variant="Variant.Text" 
-                                           EndIcon="@Icons.Material.Filled.ArrowForward"
-                                           Href="@($"/events/{reg.EventId}")">
-                                    Details
-                                </AppButton>
-                                <MudSpacer />
-                                <AppButton Variant="Variant.Text" 
-                                           Color="Color.Error" 
+                             <MudCardActions>
+                                 <AppButton Variant="Variant.Text" 
+                                            EndIcon="@Icons.Material.Filled.ArrowForward"
+                                            Href="@($"/events/{reg.EventId}")">
+                                     Details
+                                 </AppButton>
+                                 <AppButton Variant="Variant.Text"
+                                            StartIcon="@Icons.Material.Filled.CalendarMonth"
+                                            Href="@($"/api/event/{reg.EventId}/calendar")">
+                                     Calendar
+                                 </AppButton>
+                                 <MudSpacer />
+                                 <AppButton Variant="Variant.Text" 
+                                            Color="Color.Error" 
                                            OnClick="@(() => CancelRegistration(reg.RegistrationId))">
                                     Cancel
                                 </AppButton>

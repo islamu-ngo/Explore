@@ -9,7 +9,9 @@ using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Pages.Events.Components;
 using Explore.Blazor.Client.Pages.Events.Dialogs;
 using Explore.Blazor.Client.Services;
+using Explore.Blazor.Client.Services.Docking;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Web.Virtualization;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
@@ -36,6 +38,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     [Inject] private IAccessibilityAnnouncerService AnnouncerService { get; set; } = default!;
     [Inject] private IUserSettingsService UserSettingsService { get; set; } = default!;
     [Inject] private FeatureStateContainer FeatureState { get; set; } = default!;
+    [Inject] private DockLayoutState DockLayoutState { get; set; } = default!;
 
     [PersistentState]
     public EventListState? PersistedState { get; set; }
@@ -52,7 +55,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     private bool _isTechModuleEnabled;
     private bool _eventCardClickOpensDetailPage;
 
-    // Detail drawer (right sidebar) state
+    // Detail preview state (rendered through workspace dock inspector)
     private bool _detailDrawerOpen;
     private EventListDto? _selectedEvent;
     private EventDto? _selectedEventDetail;
@@ -153,6 +156,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     protected override async Task OnInitializedAsync()
     {
         Logger.LogDebug("OnInitializedAsync starting");
+        RegisterEventDockPanels();
 
         // URL params trigger pagination mode
         if (PageParam is > 0)
@@ -708,13 +712,14 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         }
 
         // Mutual exclusion: close customization drawer
-        if (_customizationDrawerOpen) _customizationDrawerOpen = false;
+        if (_customizationDrawerOpen) CloseCustomizationDrawer();
 
         _selectedEvent = evt;
         _selectedEventDetail = null;
         _selectedEventSessions = null;
         _detailDrawerOpen = true;
         _isLoadingDetail = true;
+        DockLayoutState.Open(EventDockPanels.EventPreviewId);
 
         try
         {
@@ -743,17 +748,29 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         _selectedEventSessions = null;
         _showInlineRegistration = false;
         _showTagCatPopup = false;
+        CloseDockPanelIfRegistered(EventDockPanels.EventPreviewId);
     }
 
     private void OnDetailDrawerOpenChanged(bool open)
     {
         _detailDrawerOpen = open;
+        if (open)
+        {
+            if (DockLayoutState.GetPanel(EventDockPanels.EventPreviewId) is not null)
+            {
+                DockLayoutState.Open(EventDockPanels.EventPreviewId);
+            }
+
+            return;
+        }
+
         if (!open)
         {
             _selectedEventDetail = null;
             _selectedEventSessions = null;
             _showInlineRegistration = false;
             _showTagCatPopup = false;
+            CloseDockPanelIfRegistered(EventDockPanels.EventPreviewId);
         }
     }
 
@@ -839,11 +856,48 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     {
         if (_detailDrawerOpen) CloseDetailDrawer();
         _customizationDrawerOpen = true;
+        DockLayoutState.Open(EventDockPanels.CustomizeViewId);
     }
 
     private void CloseCustomizationDrawer()
     {
         _customizationDrawerOpen = false;
+        CloseDockPanelIfRegistered(EventDockPanels.CustomizeViewId);
+    }
+
+    private void RegisterEventDockPanels()
+    {
+        if (DockLayoutState.GetPanel(EventDockPanels.CustomizeViewId) is not null)
+        {
+            DockLayoutState.Unregister(EventDockPanels.CustomizeViewId);
+        }
+
+        if (DockLayoutState.GetPanel(EventDockPanels.EventPreviewId) is not null)
+        {
+            DockLayoutState.Unregister(EventDockPanels.EventPreviewId);
+        }
+
+        DockLayoutState.Register(EventDockPanels.CustomizeView, RenderCustomizeViewPanel);
+        DockLayoutState.Register(EventDockPanels.EventPreview, RenderEventPreviewPanel);
+    }
+
+    private RenderFragment RenderCustomizeViewPanel => builder =>
+    {
+        builder.OpenComponent<EventListCustomizationDrawer>(0);
+        builder.AddAttribute(1, nameof(EventListCustomizationDrawer.Settings), _userSettings);
+        builder.AddAttribute(2, nameof(EventListCustomizationDrawer.IsSaving), _isSaving);
+        builder.AddAttribute(3, nameof(EventListCustomizationDrawer.OnCloseRequested), EventCallback.Factory.Create(this, CloseCustomizationDrawer));
+        builder.AddAttribute(4, nameof(EventListCustomizationDrawer.OnSettingsChanged), EventCallback.Factory.Create<Dictionary<string, string>>(this, HandleSettingsChanged));
+        builder.AddAttribute(5, nameof(EventListCustomizationDrawer.OnResetRequested), EventCallback.Factory.Create(this, HandleResetSettings));
+        builder.CloseComponent();
+    };
+
+    private void CloseDockPanelIfRegistered(DockPanelId panelId)
+    {
+        if (DockLayoutState.GetPanel(panelId) is not null)
+        {
+            DockLayoutState.Close(panelId);
+        }
     }
 
     private Task HandleSettingsChanged(Dictionary<string, string> changes)
@@ -974,6 +1028,65 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         var url = Navigation.ToAbsoluteUri($"/events/{_selectedEvent.Id}").ToString();
         await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", url);
         Snackbar.Add("Link copied to clipboard", Severity.Success, options => options.VisibleStateDuration = 2000);
+    }
+
+    private async Task ShareSelectedEventAsync()
+    {
+        if (_selectedEvent is null)
+        {
+            Snackbar.Add("Sharing is unavailable for this event.", Severity.Warning);
+            return;
+        }
+
+        await ShareEventAsync(_selectedEvent);
+    }
+
+    private async Task ShareEventAsync(EventListDto eventToShare)
+    {
+        if (eventToShare.Id is not Guid eventId || eventId == Guid.Empty)
+        {
+            Snackbar.Add("Sharing is unavailable for this event.", Severity.Warning);
+            return;
+        }
+
+        var url = Explore.Blazor.Client.Helpers.CanonicalUrlHelper.Build(Navigation, $"/events/{eventId}");
+
+        try
+        {
+            var canShare = await JsRuntime.InvokeAsync<bool>("eval", "!!navigator.share");
+            if (canShare)
+            {
+                await JsRuntime.InvokeVoidAsync("navigator.share", new
+                {
+                    title = eventToShare.Title ?? "Event",
+                    url
+                });
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Native event sharing was unavailable; falling back to clipboard.");
+        }
+
+        try
+        {
+            await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", url);
+            Snackbar.Add("Link copied to clipboard", Severity.Success,
+                options => options.VisibleStateDuration = 2000);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to copy event link to clipboard");
+            Snackbar.Add("Could not copy link", Severity.Error);
+        }
+    }
+
+    private string GetSelectedEventCalendarUrl()
+    {
+        return _selectedEvent?.Id is Guid eventId && eventId != Guid.Empty
+            ? $"/api/event/{eventId}/calendar"
+            : "#";
     }
 
     private void OnLayoutModeChanged(LayoutMode mode)
@@ -1487,6 +1600,9 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        DockLayoutState.Unregister(EventDockPanels.CustomizeViewId);
+        DockLayoutState.Unregister(EventDockPanels.EventPreviewId);
+
         // Flush any pending autosave before disposing
         if (_autosaveTimer is not null)
         {

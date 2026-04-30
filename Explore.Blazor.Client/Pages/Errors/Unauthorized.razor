@@ -1,0 +1,22 @@
+@* ABOUTME: Branded public 403 page for authorization failures and guarded routes. *@
+@* ABOUTME: Gives accessible recovery actions without leaking protected-resource details. *@
+
+@page "/errors/403"
+
+<PageTitle>Access Denied — ISLAMU Explore</PageTitle>
+<HeadContent>
+    <meta name="robots" content="noindex, nofollow" />
+</HeadContent>
+
+<h1 class="sr-only">Access Denied</h1>
+
+<ErrorPageShell StatusCode="403"
+                Title="Access Denied"
+                Description="You do not have access to this page. If you expected to be here, contact support or return home."
+                Icon="@Icons.Material.Filled.Lock"
+                IconColor="Color.Warning"
+                PrimaryHref="/"
+                PrimaryText="Return Home"
+                SecondaryHref="/contact"
+                SecondaryText="Request Access"
+                SecondaryIcon="@Icons.Material.Filled.SupportAgent" />

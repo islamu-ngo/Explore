@@ -1,1 +1,35 @@
-/* Custom styles removed to favor MudBlazor components and utilities */
+/* ABOUTME: Scoped empty-state styling for the My Registrations page. */
+/* ABOUTME: Uses BEM selectors and design tokens while preserving MudBlazor layout utilities. */
+
+.my-registrations__empty-state {
+    margin-inline: auto;
+    max-width: min(100%, 40rem);
+}
+
+.my-registrations__empty-content {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    min-height: 20rem;
+    justify-content: center;
+    padding-block: var(--space-10, 4rem);
+    padding-inline: var(--space-6, 1.5rem);
+    text-align: center;
+}
+
+.my-registrations__empty-icon {
+    opacity: 0.72;
+}
+
+.my-registrations__empty-title {
+    margin-block-start: var(--space-4, 1rem);
+}
+
+.my-registrations__empty-copy {
+    margin-block-start: var(--space-2, 0.5rem);
+    max-width: 32rem;
+}
+
+.my-registrations__empty-action {
+    margin-block-start: var(--space-5, 1.25rem);
+}

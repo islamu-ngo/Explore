@@ -2,7 +2,6 @@ using Explore.Blazor.Client.Clients;
 using Explore.Blazor.Client.Constants;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Models;
-using Microsoft.Extensions.Logging;
 
 namespace Explore.Blazor.Client.Services;
 
@@ -93,7 +92,7 @@ public class EventRegistrationService : IEventRegistrationService
         try
         {
             _logger.LogInformation("[REGISTRATION SERVICE] Registering user for event: {EventId}", dto.EventId);
-            return await _apiClient.CreateEventRegistrationAsync(dto);
+            return await _apiClient.CreateEventRegistrationAsync(body: dto);
         }
         catch (ApiException ex)
         {
@@ -217,4 +216,3 @@ public class EventRegistrationService : IEventRegistrationService
         }
     }
 }
-

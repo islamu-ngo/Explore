@@ -5,6 +5,8 @@
 @inject IContactShareConsentService ConsentService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
+@inject IJSRuntime JsRuntime
+@inject ILogger<EventRegistration> Logger
 <MudDialog Class="registration-dialog">
     <DialogContent>
         @if (isLoading)
@@ -30,11 +32,32 @@
                         You have already registered for this event.<br />
                         We look forward to seeing you there!
                     </MudText>
-                    <AppButton Size="Size.Large"
-                               OnClick="Close"
-                               StartIcon="@Icons.Material.Filled.Close">
-                        Close
-                    </AppButton>
+                      <MudStack Row="true" Justify="Justify.Center" Spacing="2" Class="registration__success-actions">
+                          <AppButton Size="Size.Large"
+                                     Variant="Variant.Outlined"
+                                     Href="@GetCalendarDownloadUrl()"
+                                     StartIcon="@Icons.Material.Filled.CalendarMonth">
+                              Add to Calendar
+                          </AppButton>
+                          <AppButton Size="Size.Large"
+                                     Variant="Variant.Outlined"
+                                     OnClick="ShareEventAsync"
+                                    StartIcon="@Icons.Material.Filled.Share">
+                             Share this Event
+                         </AppButton>
+                         <AppButton Size="Size.Large"
+                                    Href="/my/registrations"
+                                    StartIcon="@Icons.Material.Filled.AppRegistration">
+                            View My Registrations
+                        </AppButton>
+                        <AppButton Size="Size.Large"
+                                   Variant="Variant.Text"
+                                   Color="Color.Default"
+                                   OnClick="Close"
+                                   StartIcon="@Icons.Material.Filled.Close">
+                            Close
+                        </AppButton>
+                    </MudStack>
                 </div>
             </div>
         }
@@ -182,11 +205,32 @@
                         Thank you for registering@(currentUser != null ? $", {currentUser.FirstName}" : "")! <br />
                         Your registration has been confirmed.
                     </MudText>
-                    <AppButton Size="Size.Large"
-                               OnClick="Close"
-                               StartIcon="@Icons.Material.Filled.Close">
-                        Close
-                    </AppButton>
+                      <MudStack Row="true" Justify="Justify.Center" Spacing="2" Class="registration__success-actions">
+                          <AppButton Size="Size.Large"
+                                     Variant="Variant.Outlined"
+                                     Href="@GetCalendarDownloadUrl()"
+                                     StartIcon="@Icons.Material.Filled.CalendarMonth">
+                              Add to Calendar
+                          </AppButton>
+                          <AppButton Size="Size.Large"
+                                     Variant="Variant.Outlined"
+                                     OnClick="ShareEventAsync"
+                                    StartIcon="@Icons.Material.Filled.Share">
+                             Share this Event
+                         </AppButton>
+                         <AppButton Size="Size.Large"
+                                    Href="/my/registrations"
+                                    StartIcon="@Icons.Material.Filled.AppRegistration">
+                            View My Registrations
+                        </AppButton>
+                        <AppButton Size="Size.Large"
+                                   Variant="Variant.Text"
+                                   Color="Color.Default"
+                                   OnClick="Close"
+                                   StartIcon="@Icons.Material.Filled.Close">
+                            Close
+                        </AppButton>
+                    </MudStack>
                 </div>
             </div>
         }
@@ -402,5 +446,53 @@
     private void Close()
     {
         DialogReference?.Close();
+    }
+
+    private async Task ShareEventAsync()
+    {
+        if (EventId == Guid.Empty)
+        {
+            Snackbar.Add("Sharing is unavailable for this event.", Severity.Warning);
+            return;
+        }
+
+        var url = CanonicalUrlHelper.Build(Navigation, $"/events/{EventId}");
+
+        try
+        {
+            var canShare = await JsRuntime.InvokeAsync<bool>("eval", "!!navigator.share");
+            if (canShare)
+            {
+                await JsRuntime.InvokeVoidAsync("navigator.share", new
+                {
+                    title = Title,
+                    url
+                });
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Native event sharing was unavailable; falling back to clipboard.");
+        }
+
+        try
+        {
+            await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", url);
+            Snackbar.Add("Link copied to clipboard", Severity.Success,
+                options => options.VisibleStateDuration = 2000);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to copy event link to clipboard");
+            Snackbar.Add("Could not copy link", Severity.Error);
+        }
+    }
+
+    private string GetCalendarDownloadUrl()
+    {
+        return EventId == Guid.Empty
+            ? "#"
+            : $"/api/event/{EventId}/calendar";
     }
 }

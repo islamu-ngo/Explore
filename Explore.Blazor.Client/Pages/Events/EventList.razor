@@ -4,13 +4,19 @@
 
 @using MudBlazor
 
+@using Explore.Blazor.Client.Components.Docking
+
 @using Explore.Blazor.Client.Clients
 
 @using Explore.Blazor.Client.Models
 
 @using Explore.Blazor.Client.Services
 
+@using Explore.Blazor.Client.Services.Docking
+
 @using Explore.Blazor.Client.Pages.Events.Components
+
+@using Explore.Blazor.Client.Helpers
 
 @using Microsoft.AspNetCore.Components
 
@@ -21,12 +27,15 @@
 
 
 <PageTitle>Explore Events</PageTitle>
+<HeadContent>
+    <link rel="canonical" href="@CanonicalUrlHelper.Build(Navigation, "/events")" />
+</HeadContent>
 
 <MudText Typo="Typo.h1" HtmlTag="h1" Class="sr-only">Explore Events</MudText>
 
 
 
-@* ── Overlay for right sidebar (detail): separate from MudDrawer so we can use LockScroll ── *@
+@* ── Detail preview backdrop: content renders through workspace DockOverlayHost ── *@
 <MudOverlay Visible="_detailDrawerOpen"
             DarkBackground="true"
             LockScroll="true"
@@ -34,26 +43,230 @@
             Class="event-list__overlay"
             ZIndex="1399" />
 
+<div class="event-list__dock-container">
+
+        @* ── Main Content Area (workspace dock host owns customization panel track) ── *@
+        <DockLayoutHost Scope="@DockScope.Workspace"
+                        Class="event-list__workspace"
+                        DataTestId="event-list-workspace-dock-host"
+                        ContentDataTestId="event-list-workspace-content">
+        <div class="event-list__page">
+
+        <main class="event-list__main">
+
+        <MudContainer Class="event-list-container pb-4" MaxWidth="MaxWidth.False" Gutters="false">
 
 
 
-<div class="event-list__drawer-container">
+            @if (!string.IsNullOrEmpty(_errorMessage))
 
-
-
-        @* ── Right Sidebar (Event Detail Preview) — MudDrawer Temporary ── *@
-
-        <MudDrawer Open="_detailDrawerOpen"
-                   OpenChanged="OnDetailDrawerOpenChanged"
-                   Anchor="Anchor.End"
-                   Variant="DrawerVariant.Temporary"
-                   Overlay="false"
-                   Elevation="1"
-                   Class="event-list__detail-drawer">
-
-            @if (_selectedEvent != null)
             {
-                <MudDrawerHeader Class="d-flex align-center gap-1 px-2 py-1">
+
+                <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-6 rounded-lg" ShowCloseIcon="true" CloseIconClicked="@(() => _errorMessage = null)">
+
+                    @_errorMessage
+
+                </MudAlert>
+
+            }
+
+            @if (!string.IsNullOrEmpty(_successMessage))
+
+            {
+
+                <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Class="mb-6 rounded-lg" ShowCloseIcon="true" CloseIconClicked="@(() => _successMessage = null)">
+
+                    @_successMessage
+
+                </MudAlert>
+
+            }
+
+
+
+            <EventFilterBar @ref="_filterBar"
+
+                            IsIslamicModuleEnabled="@_isIslamicModuleEnabled"
+
+                            IsTechModuleEnabled="@_isTechModuleEnabled"
+
+                            OnSearchRequested="@RefreshList"
+
+                            CurrentLayout="@_currentLayout"
+
+                            CurrentLayoutChanged="@OnLayoutModeChanged"
+
+                            ResultCount="@_totalCount"
+
+                            ShowResultCount="@(_eventsLoaded && HasActiveFilters())"
+
+                            EventTypes="@eventTypes"
+
+                            Categories="@categories"
+
+                            CategoryGroups="@categoryGroups"
+
+                            Locations="@locations"
+
+                            EventFormats="@eventFormats"
+
+                            Madhabs="@madhabs"
+
+                            RegistrationModes="@registrationModes"
+
+                            Languages="@languages"
+
+                            Tags="@tags"
+
+                            AudienceGenders="@audienceGenders"
+
+                            AudienceAges="@audienceAges"
+
+                            EventStatuses="@eventStatuses"
+
+                            TagGroups="@tagGroups"
+
+                            ShowCustomizationButton="@_showCustomizationButton"
+
+                            OnCustomizationRequested="OpenCustomizationDrawer" />
+
+
+
+            @{ var bp = GetGridBreakpoints(); }
+
+            @if (_isLoadingPage)
+            {
+                <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
+            }
+
+            <MudGrid Spacing="0" Justify="Justify.FlexStart" Class="@GetGridCssClass()">
+                @if (!_eventsLoaded)
+                {
+                    @for (int i = 0; i < (_currentLayout == LayoutMode.SingleRow ? 3 : 8); i++)
+                    {
+                        <MudItem xs="@bp.Xs" sm="@bp.Sm" md="@bp.Md" lg="@bp.Lg" xl="@bp.Xl">
+                            @if (_currentLayout == LayoutMode.CompactGrid)
+                            {
+                                <MudCard Class="event-card event-card--CompactGrid rounded-lg" Elevation="0">
+                                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="100%" Class="event-card__skeleton-fill" />
+                                </MudCard>
+                            }
+                            else
+                            {
+                                <MudCard Class="event-card event-card--skeleton rounded-xl border-solid border-1 mud-border-lines-default" Elevation="0">
+                                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="@(_currentLayout == LayoutMode.SingleRow ? "180px" : "200px")" />
+                                    <MudCardContent>
+                                        <MudSkeleton Width="30%" Height="20px" Class="mb-2" />
+                                        <MudSkeleton Width="80%" Height="30px" Class="mb-4" />
+                                        <MudSkeleton Width="100%" Height="20px" />
+                                        <MudSkeleton Width="100%" Height="20px" />
+                                    </MudCardContent>
+                                </MudCard>
+                            }
+                        </MudItem>
+                    }
+                }
+                else if (_browseMode == BrowseMode.Pagination)
+                {
+                    @foreach (var evt in _pagedEvents)
+                    {
+                        <MudItem @key="evt.Id" xs="@bp.Xs" sm="@bp.Sm" md="@bp.Md" lg="@bp.Lg">
+                            <EventCard Event="@evt"
+                                       Layout="@_currentLayout"
+                                       IsSelected="@(_selectedEvent?.Id == evt.Id && _detailDrawerOpen)"
+                                       CardFieldVisibility="@_cardFieldVisibility"
+                                        OnClick="SelectEvent"
+                                        OnEditRequested="NavigateToEdit"
+                                        OnDeleteRequested="OpenDeleteDialog"
+                                        OnShareRequested="ShareEventAsync" />
+                        </MudItem>
+                    }
+                }
+                else
+                {
+                    <Virtualize @ref="_virtualize" ItemsProvider="LoadEventsAsync" ItemSize="350" OverscanCount="4" Context="evt">
+                        <ItemContent>
+                            <MudItem @key="evt.Id" xs="@bp.Xs" sm="@bp.Sm" md="@bp.Md" lg="@bp.Lg">
+                                <EventCard Event="@evt"
+                                           Layout="@_currentLayout"
+                                           IsSelected="@(_selectedEvent?.Id == evt.Id && _detailDrawerOpen)"
+                                           CardFieldVisibility="@_cardFieldVisibility"
+                                            OnClick="SelectEvent"
+                                            OnEditRequested="NavigateToEdit"
+                                            OnDeleteRequested="OpenDeleteDialog"
+                                            OnShareRequested="ShareEventAsync" />
+                            </MudItem>
+                        </ItemContent>
+                        <Placeholder>
+                            <MudItem xs="@bp.Xs" sm="@bp.Sm" md="@bp.Md" lg="@bp.Lg" xl="@bp.Xl">
+                                <MudCard Class="event-card event-card--skeleton rounded-xl border-solid border-1 mud-border-lines-default" Elevation="0">
+                                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
+                                    <MudCardContent>
+                                        <MudSkeleton Width="30%" Height="20px" Class="mb-2" />
+                                        <MudSkeleton Width="80%" Height="30px" Class="mb-4" />
+                                        <MudSkeleton Width="100%" Height="20px" />
+                                        <MudSkeleton Width="100%" Height="20px" />
+                                    </MudCardContent>
+                                </MudCard>
+                            </MudItem>
+                        </Placeholder>
+                    </Virtualize>
+                }
+            </MudGrid>
+
+            @if (_browseMode == BrowseMode.Pagination && _eventsLoaded && _totalCount > 0)
+            {
+                <EventListPagination CurrentPage="@_currentPage"
+                                     TotalPages="@((_totalCount + _pageSize - 1) / _pageSize)"
+                                     PageSize="@_pageSize"
+                                     TotalCount="@_totalCount"
+                                     IsLoading="@_isLoadingPage"
+                                     CurrentPageChanged="OnPageChanged"
+                                     PageSizeChanged="OnPageSizeChanged" />
+            }
+
+
+
+            @if (_eventsLoaded && _totalCount == 0)
+
+            {
+
+                <div class="d-flex flex-column align-center justify-center py-16">
+
+                    <MudIcon Icon="@Icons.Material.Filled.EventBusy" Size="Size.Large" Color="Color.Secondary" Class="mb-4" />
+
+                    <MudText Typo="Typo.h5" Color="Color.Secondary" Align="Align.Center">No events found</MudText>
+
+                    <MudText Typo="Typo.body1" Color="Color.Secondary" Align="Align.Center" Class="mt-2">
+
+                        Try adjusting your filters or search query
+
+                    </MudText>
+
+                </div>
+
+            }
+
+
+
+            @* Result count moved to filter bar layout row *@
+
+
+
+        </MudContainer>
+
+    </main>
+
+        </div> @* .event-list__page *@
+        </DockLayoutHost>
+
+    </div> @* .event-list__dock-container *@
+
+@code {
+    private RenderFragment RenderEventPreviewPanel => @<text>
+@if (_selectedEvent != null)
+            {
+                <div class="event-list__detail-header d-flex align-center gap-1 px-2 py-1">
                     <AppIconButton Icon="@Icons.Material.Filled.KeyboardDoubleArrowRight"
                                    Size="Size.Small"
                                    OnClick="@HandleDrawerCloseClick"
@@ -104,7 +317,7 @@
                             }
                         </MudMenu>
                     }
-                </MudDrawerHeader>
+                </div>
 
                 <div class="event-list__detail-body pa-4">
 
@@ -710,7 +923,7 @@
                     }
                 </div>
 
-                @* ── Inline Registration Popup (overlays the entire drawer) ── *@
+                @* ── Inline Registration Popup (overlays the entire preview panel) ── *@
                 @if (_showInlineRegistration)
                 {
                     <div class="drawer-reg-overlay" @onclick="CloseInlineRegistration" @onclick:stopPropagation="true">
@@ -740,17 +953,31 @@
                                         You have been successfully registered for this event.
                                     </MudText>
 
-                                    <AppButton Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg mb-2"
-                                               FullWidth="true"
-                                               StartIcon="@Icons.Material.Outlined.CalendarMonth"
-                                               Disabled="true">
-                                        Add to Google Calendar
-                                    </AppButton>
+                                      <AppButton Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg mb-2"
+                                                 FullWidth="true"
+                                                 Href="@GetSelectedEventCalendarUrl()"
+                                                 StartIcon="@Icons.Material.Outlined.CalendarMonth">
+                                          Add to Calendar
+                                      </AppButton>
 
-                                    <AppButton Variant="Variant.Text" Class="rounded-lg"
-                                               FullWidth="true"
-                                               OnClick="CloseInlineRegistration">
-                                        Done
+                                      <AppButton Variant="Variant.Outlined" Class="rounded-lg mb-2"
+                                                 FullWidth="true"
+                                                 OnClick="ShareSelectedEventAsync"
+                                                 StartIcon="@Icons.Material.Filled.Share">
+                                          Share this Event
+                                      </AppButton>
+
+                                      <AppButton Variant="Variant.Filled" Class="rounded-lg mb-2"
+                                                 FullWidth="true"
+                                                 Href="/my/registrations"
+                                                StartIcon="@Icons.Material.Filled.AppRegistration">
+                                         View My Registrations
+                                     </AppButton>
+
+                                     <AppButton Variant="Variant.Text" Class="rounded-lg"
+                                                FullWidth="true"
+                                                OnClick="CloseInlineRegistration">
+                                         Done
                                     </AppButton>
                                 </div>
                             }
@@ -761,14 +988,32 @@
                                         <MudIcon Icon="@Icons.Material.Filled.EventAvailable" />
                                     </div>
                                     <MudText Typo="Typo.h6" Class="mb-2">Already Registered</MudText>
-                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
-                                        You are already registered for this event.
-                                    </MudText>
-                                    <AppButton Variant="Variant.Text" Class="rounded-lg"
-                                               FullWidth="true"
-                                               OnClick="CloseInlineRegistration">
-                                        Close
-                                    </AppButton>
+                                     <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                                         You are already registered for this event.
+                                     </MudText>
+                                      <AppButton Variant="Variant.Filled" Class="rounded-lg mb-2"
+                                                 FullWidth="true"
+                                                 Href="/my/registrations"
+                                                 StartIcon="@Icons.Material.Filled.AppRegistration">
+                                          View My Registrations
+                                      </AppButton>
+                                      <AppButton Variant="Variant.Outlined" Class="rounded-lg mb-2"
+                                                 FullWidth="true"
+                                                 OnClick="ShareSelectedEventAsync"
+                                                 StartIcon="@Icons.Material.Filled.Share">
+                                          Share this Event
+                                      </AppButton>
+                                      <AppButton Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg mb-2"
+                                                 FullWidth="true"
+                                                 Href="@GetSelectedEventCalendarUrl()"
+                                                 StartIcon="@Icons.Material.Outlined.CalendarMonth">
+                                          Add to Calendar
+                                      </AppButton>
+                                      <AppButton Variant="Variant.Text" Class="rounded-lg"
+                                                 FullWidth="true"
+                                                 OnClick="CloseInlineRegistration">
+                                         Close
+                                     </AppButton>
                                 </div>
                             }
                             else
@@ -867,228 +1112,6 @@
                     InitialAppliedIds="@_tagCatInitialIds"
                     OnSaved="HandleTagCatSaved" />
             }
-        </MudDrawer>
 
-        @* ── Main Content Area (flex container with optional sidebar) ── *@
-        <div class="event-list__page">
-
-        <main class="event-list__main">
-
-        <MudContainer Class="event-list-container pb-4" MaxWidth="MaxWidth.False" Gutters="false">
-
-
-
-            @if (!string.IsNullOrEmpty(_errorMessage))
-
-            {
-
-                <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-6 rounded-lg" ShowCloseIcon="true" CloseIconClicked="@(() => _errorMessage = null)">
-
-                    @_errorMessage
-
-                </MudAlert>
-
-            }
-
-            @if (!string.IsNullOrEmpty(_successMessage))
-
-            {
-
-                <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Class="mb-6 rounded-lg" ShowCloseIcon="true" CloseIconClicked="@(() => _successMessage = null)">
-
-                    @_successMessage
-
-                </MudAlert>
-
-            }
-
-
-
-            <EventFilterBar @ref="_filterBar"
-
-                            IsIslamicModuleEnabled="@_isIslamicModuleEnabled"
-
-                            IsTechModuleEnabled="@_isTechModuleEnabled"
-
-                            OnSearchRequested="@RefreshList"
-
-                            CurrentLayout="@_currentLayout"
-
-                            CurrentLayoutChanged="@OnLayoutModeChanged"
-
-                            ResultCount="@_totalCount"
-
-                            ShowResultCount="@(_eventsLoaded && HasActiveFilters())"
-
-                            EventTypes="@eventTypes"
-
-                            Categories="@categories"
-
-                            CategoryGroups="@categoryGroups"
-
-                            Locations="@locations"
-
-                            EventFormats="@eventFormats"
-
-                            Madhabs="@madhabs"
-
-                            RegistrationModes="@registrationModes"
-
-                            Languages="@languages"
-
-                            Tags="@tags"
-
-                            AudienceGenders="@audienceGenders"
-
-                            AudienceAges="@audienceAges"
-
-                            EventStatuses="@eventStatuses"
-
-                            TagGroups="@tagGroups"
-
-                            ShowCustomizationButton="@_showCustomizationButton"
-
-                            OnCustomizationRequested="OpenCustomizationDrawer" />
-
-
-
-            @{ var bp = GetGridBreakpoints(); }
-
-            @if (_isLoadingPage)
-            {
-                <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
-            }
-
-            <MudGrid Spacing="0" Justify="Justify.FlexStart" Class="@GetGridCssClass()">
-                @if (!_eventsLoaded)
-                {
-                    @for (int i = 0; i < (_currentLayout == LayoutMode.SingleRow ? 3 : 8); i++)
-                    {
-                        <MudItem xs="@bp.Xs" sm="@bp.Sm" md="@bp.Md" lg="@bp.Lg" xl="@bp.Xl">
-                            @if (_currentLayout == LayoutMode.CompactGrid)
-                            {
-                                <MudCard Class="event-card event-card--CompactGrid rounded-lg" Elevation="0">
-                                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="100%" Height="100%" Class="event-card__skeleton-fill" />
-                                </MudCard>
-                            }
-                            else
-                            {
-                                <MudCard Class="event-card event-card--skeleton rounded-xl border-solid border-1 mud-border-lines-default" Elevation="0">
-                                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="@(_currentLayout == LayoutMode.SingleRow ? "180px" : "200px")" />
-                                    <MudCardContent>
-                                        <MudSkeleton Width="30%" Height="20px" Class="mb-2" />
-                                        <MudSkeleton Width="80%" Height="30px" Class="mb-4" />
-                                        <MudSkeleton Width="100%" Height="20px" />
-                                        <MudSkeleton Width="100%" Height="20px" />
-                                    </MudCardContent>
-                                </MudCard>
-                            }
-                        </MudItem>
-                    }
-                }
-                else if (_browseMode == BrowseMode.Pagination)
-                {
-                    @foreach (var evt in _pagedEvents)
-                    {
-                        <MudItem @key="evt.Id" xs="@bp.Xs" sm="@bp.Sm" md="@bp.Md" lg="@bp.Lg">
-                            <EventCard Event="@evt"
-                                       Layout="@_currentLayout"
-                                       IsSelected="@(_selectedEvent?.Id == evt.Id && _detailDrawerOpen)"
-                                       CardFieldVisibility="@_cardFieldVisibility"
-                                       OnClick="SelectEvent"
-                                       OnEditRequested="NavigateToEdit"
-                                       OnDeleteRequested="OpenDeleteDialog" />
-                        </MudItem>
-                    }
-                }
-                else
-                {
-                    <Virtualize @ref="_virtualize" ItemsProvider="LoadEventsAsync" ItemSize="350" OverscanCount="4" Context="evt">
-                        <ItemContent>
-                            <MudItem @key="evt.Id" xs="@bp.Xs" sm="@bp.Sm" md="@bp.Md" lg="@bp.Lg">
-                                <EventCard Event="@evt"
-                                           Layout="@_currentLayout"
-                                           IsSelected="@(_selectedEvent?.Id == evt.Id && _detailDrawerOpen)"
-                                           CardFieldVisibility="@_cardFieldVisibility"
-                                           OnClick="SelectEvent"
-                                           OnEditRequested="NavigateToEdit"
-                                           OnDeleteRequested="OpenDeleteDialog" />
-                            </MudItem>
-                        </ItemContent>
-                        <Placeholder>
-                            <MudItem xs="@bp.Xs" sm="@bp.Sm" md="@bp.Md" lg="@bp.Lg" xl="@bp.Xl">
-                                <MudCard Class="event-card event-card--skeleton rounded-xl border-solid border-1 mud-border-lines-default" Elevation="0">
-                                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
-                                    <MudCardContent>
-                                        <MudSkeleton Width="30%" Height="20px" Class="mb-2" />
-                                        <MudSkeleton Width="80%" Height="30px" Class="mb-4" />
-                                        <MudSkeleton Width="100%" Height="20px" />
-                                        <MudSkeleton Width="100%" Height="20px" />
-                                    </MudCardContent>
-                                </MudCard>
-                            </MudItem>
-                        </Placeholder>
-                    </Virtualize>
-                }
-            </MudGrid>
-
-            @if (_browseMode == BrowseMode.Pagination && _eventsLoaded && _totalCount > 0)
-            {
-                <EventListPagination CurrentPage="@_currentPage"
-                                     TotalPages="@((_totalCount + _pageSize - 1) / _pageSize)"
-                                     PageSize="@_pageSize"
-                                     TotalCount="@_totalCount"
-                                     IsLoading="@_isLoadingPage"
-                                     CurrentPageChanged="OnPageChanged"
-                                     PageSizeChanged="OnPageSizeChanged" />
-            }
-
-
-
-            @if (_eventsLoaded && _totalCount == 0)
-
-            {
-
-                <div class="d-flex flex-column align-center justify-center py-16">
-
-                    <MudIcon Icon="@Icons.Material.Filled.EventBusy" Size="Size.Large" Color="Color.Secondary" Class="mb-4" />
-
-                    <MudText Typo="Typo.h5" Color="Color.Secondary" Align="Align.Center">No events found</MudText>
-
-                    <MudText Typo="Typo.body1" Color="Color.Secondary" Align="Align.Center" Class="mt-2">
-
-                        Try adjusting your filters or search query
-
-                    </MudText>
-
-                </div>
-
-            }
-
-
-
-            @* Result count moved to filter bar layout row *@
-
-
-
-        </MudContainer>
-
-    </main>
-
-        @* ── Customization Sidebar (right, content-pushing like left nav) ── *@
-        @if (_showCustomizationButton)
-        {
-            <RightSidebar IsOpen="_customizationDrawerOpen"
-                          OnCloseRequested="CloseCustomizationDrawer"
-                          AriaLabel="Customize event list">
-                <EventListCustomizationDrawer Settings="@_userSettings"
-                                              IsSaving="@_isSaving"
-                                              OnCloseRequested="CloseCustomizationDrawer"
-                                              OnSettingsChanged="HandleSettingsChanged"
-                                              OnResetRequested="HandleResetSettings" />
-            </RightSidebar>
-        }
-
-        </div> @* .event-list__page *@
-
-    </div> @* .event-list__drawer-container *@
+    </text>;
+}

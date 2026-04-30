@@ -11,6 +11,7 @@ using Explore.Blazor.Client.Contracts.Services.Notifications;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Services;
 using Explore.Blazor.Client.Services.Accessibility;
+using Explore.Blazor.Client.Services.Docking;
 using Explore.Blazor.Client.Services.Lookup;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -96,6 +97,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<SidebarState>();
         services.AddScoped<AiAssistantState>();
         services.AddScoped<TenantNavLinksState>();
+        services.AddScoped<DockLayoutState>();
+        services.AddScoped<IDockPanelRegistry>(provider => provider.GetRequiredService<DockLayoutState>());
+        services.AddScoped<IDockLayoutPersistence, Explore.Blazor.Client.Services.Interop.LocalStorageDockLayoutPersistence>();
 
         // User-scoped settings (auth-branching: API for authenticated, localStorage for anonymous)
         services.AddScoped<IUserSettingsService, UserSettingsService>();
