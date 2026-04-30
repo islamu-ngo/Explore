@@ -127,6 +127,7 @@ else
     app.UseHsts();
 }
 
+app.UseStatusCodePagesWithReExecute("/errors/{0}", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
 app.UseAntiforgeryTokenMiddleware();
 app.UseStartupRedirectMiddleware();

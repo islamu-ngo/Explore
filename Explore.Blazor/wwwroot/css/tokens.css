@@ -146,6 +146,15 @@
     --isl-state-active: color-mix(in oklch, var(--isl-color-primary) 16%, transparent);
     --isl-state-disabled-opacity: 0.38;
     --isl-state-focus-ring: color-mix(in oklch, var(--isl-color-primary) 40%, transparent);
+
+    /* ── Dock Layout Semantics ── */
+    --isl-dock-z-shell: 1200;
+    --isl-dock-z-workspace: 1300;
+    --isl-dock-z-backdrop: 1299;
+    --isl-dock-z-inspector: 1400;
+    --isl-dock-scrim: oklch(0 0 0 / 0.5);
+    --isl-dock-motion-duration: 300ms;
+    --isl-dock-motion-easing: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -169,6 +178,19 @@
     --isl-button-font-size: var(--isl-typography-button-size);
     --isl-button-transition: background-color 150ms ease, box-shadow 150ms ease, border-color 150ms ease, opacity 150ms ease;
     --isl-button-ring: color-mix(in oklch, var(--isl-color-primary) 30%, transparent);
+
+    /* ── Dock Panels ── */
+    --isl-dock-shell-start-width: 280px;
+    --isl-dock-shell-start-collapsed-width: 72px;
+    --isl-dock-shell-ai-width: 360px;
+    --isl-dock-workspace-end-width: 320px;
+    --isl-dock-workspace-inspector-width: 440px;
+    --isl-dock-mobile-panel-max-width: 400px;
+    --isl-dock-panel-transition: transform var(--isl-dock-motion-duration) var(--isl-dock-motion-easing),
+        visibility var(--isl-dock-motion-duration) ease,
+        width var(--isl-dock-motion-duration) ease,
+        min-width var(--isl-dock-motion-duration) ease,
+        border-color var(--isl-dock-motion-duration) ease;
 }
 
 /* ── Accessibility: Increased Contrast ──
