@@ -2513,9 +2513,14 @@ Actual delivery is milestone-driven. Milestones control implementation order and
 - Assert no Specification or Repository returns a DTO
 
 #### Task 11.2: Unit Tests For Namespaced Key Uniqueness And DisplayName Renames
+- **Status:** 🟡 LOCAL COVERAGE ADDED 2026-04-30. Unit-level identity and rename behavior is covered; database uniqueness remains a Docker/Testcontainers proof.
 - Prove `CustomPropertyIdentity.Normalize("Platform", "Foo")` and `CustomPropertyIdentity.Normalize("platform", "FOO")` yield the same machine identity
 - Prove a `DisplayName` rename does not break lookups by namespaced key
 - Prove uniqueness is enforced by EF configuration (via Testcontainers integration test)
+- **Local Evidence:**
+  - `Event.Domain.UnitTests/CustomProperties/CustomPropertyGovernanceTests.cs` proves the actual `NormalizeNamespace` + `NormalizeKey` helpers collapse case/whitespace variants into the same machine identity.
+  - `Event.Application.UnitTests/Features/CustomPropertyDefinitions/Commands/UpdateCustomPropertyDefinitionCommandHandlerTests.cs` proves a `DisplayName` rename keeps duplicate lookup/update identity bound to normalized `Namespace + Key + current Id`.
+  - Verification passed with targeted TUnit `--treenode-filter` runs for both new tests; EF uniqueness remains pending until Docker/Testcontainers PostgreSQL is available.
 
 #### Task 11.3: Unit Tests For Multi-Value Semantics And Ordering
 - Setting a multi-value property with 3 values yields 3 rows with Ordinals 0/1/2

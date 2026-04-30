@@ -405,43 +405,43 @@ ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24; Update
 ### WP-6: Calendar Integration — iCal/.ics (1-2 days)
 
 #### WP-6.1: Add Ical.Net NuGet Package
-- [ ] `dotnet add Explore.API package Ical.Net`
+- [x] Add `Ical.Net` to `Explore.API` via central package management (`Ical.Net` 5.2.1)
 - Acceptance: Package restores and builds
 
 #### WP-6.2: API — Calendar Endpoint
-- [ ] Add `GET /api/event/{id}/calendar` to `EventController`
-- [ ] `[AllowAnonymous]`
-- [ ] `Content-Type: text/calendar; charset=utf-8`
-- [ ] `Content-Disposition: attachment; filename="{sanitized-slug}.ics"`
-- [ ] VEVENT: SUMMARY, DTSTART/DTEND (UTC), LOCATION, DESCRIPTION, URL (canonical), UID (event GUID)
-- [ ] Non-negotiable checks:
-  - [ ] UID = event GUID (stable, not random)
-  - [ ] All timestamps UTC normalized
-  - [ ] Filename sanitized (strip special chars)
-  - [ ] 404 for Draft, Archived, non-existent
-  - [ ] Canonical URL matches `GetCanonicalUrl()` pattern
-- [ ] Route name: `RouteNames.GetEventCalendar`
-- Acceptance: .ics opens correctly in Calendar apps
+- [x] Add `GET /api/event/{id}/calendar` to `EventController`
+- [x] `[AllowAnonymous]`
+- [x] `Content-Type: text/calendar; charset=utf-8`
+- [x] `Content-Disposition: attachment; filename="{sanitized-slug}.ics"`
+- [x] VEVENT: SUMMARY, DTSTART/DTEND (UTC), LOCATION, DESCRIPTION, URL (canonical), UID (event GUID)
+- [x] Non-negotiable checks:
+  - [x] UID = event GUID (stable, not random)
+  - [x] All timestamps UTC normalized
+  - [x] Filename sanitized (strip special chars)
+  - [x] 404 for Draft, Archived, non-existent
+  - [x] Canonical URL matches `GetCanonicalUrl()` pattern
+- [x] Route name: `RouteNames.GetEventCalendar`
+- Acceptance: .ics opens correctly in Calendar apps — pending runtime/calendar-app smoke
 
 #### WP-6.3: Blazor — Calendar Buttons
-- [ ] `EventDetail.razor`: "Add to Calendar" button → `/api/event/{id}/calendar`
-- [ ] `MyRegistrations.razor`: per-event calendar icon button
-- [ ] Post-registration success (WP-5): calendar button
+- [x] `EventDetail.razor`: "Add to Calendar" button → `/api/event/{id}/calendar`
+- [x] `MyRegistrations.razor`: per-event calendar icon button
+- [x] Post-registration success (WP-5): calendar button
 - [ ] Optional: Google Calendar URL link
 - Acceptance: Calendar buttons work from 3 touchpoints
 
 #### WP-6.4: NSwag Client Regeneration
 - [ ] Export OpenAPI (run API)
 - [ ] Rebuild Blazor client (regenerates `EventApiClient.g.cs`)
-- [ ] Fix consuming code
-- [ ] Run client tests
-- Acceptance: Client builds cleanly
+- [x] Fix consuming code — direct download anchors used; generated client not required by UI path
+- [x] Run client tests
+- Acceptance: Client builds cleanly; OpenAPI regeneration pending runtime/API export
 
 #### WP-6.5: Tests
-- [ ] Integration: valid .ics with correct Content-Type
-- [ ] 404 for Draft/Archived events
-- [ ] UTC timestamps correct
-- Acceptance: Tests pass
+- [ ] Integration: valid .ics with correct Content-Type — pending runtime/API smoke
+- [x] 404 for Draft/Archived events — covered by `GetEventCalendarExportRequestHandlerTests`
+- [x] UTC timestamps correct — covered by `IcalNetEventCalendarFileBuilderTests`
+- Acceptance: Build, application unit, Blazor client, and architecture tests pass; runtime/API integration pending
 
 ### WP-8: HATEOAS Client Alignment (1.5 days)
 
@@ -471,36 +471,38 @@ ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24; Update
 
 ## Tier 4 — Public Readiness & Discoverability ⏳ NOT STARTED (3-4 days)
 
-### WP-15: Branded Error Pages (1 day)
+### WP-15: Branded Error Pages ✅ IMPLEMENTED — runtime smoke pending (1 day)
+
+> **2026-04-29 implementation note:** Branded 404/403/500 pages, Blazouter route registrations, server status-code re-execution middleware, and bUnit/route tests are implemented. Browser/runtime integration checks remain pending because the local Docker/Testcontainers/runtime environment is unavailable.
 
 #### WP-15.1: 404 Not Found
-- [ ] Create `Explore.Blazor.Client/Pages/Errors/NotFound.razor` with `@page "/errors/404"`
-- [ ] Branded layout: logo, "Page Not Found", search bar, CTAs ("Return Home", "Browse Events")
-- [ ] `<PageTitle>Not Found — {TenantName}</PageTitle>` and `<meta name="robots" content="noindex">`
-- Acceptance: Direct URL to `/nonexistent` shows branded 404
+- [x] Create `Explore.Blazor.Client/Pages/Errors/NotFound.razor` with `@page "/errors/404"`
+- [x] Branded layout: logo, "Page Not Found", search bar, CTAs ("Return Home", "Browse Events")
+- [x] `<PageTitle>Not Found — {TenantName}</PageTitle>` and `<meta name="robots" content="noindex">`
+- Acceptance: Direct URL to `/nonexistent` shows branded 404 — code-supported via status-code middleware; browser smoke pending
 
 #### WP-15.2: 403 Unauthorized
-- [ ] Create `Explore.Blazor.Client/Pages/Errors/Unauthorized.razor` with `@page "/errors/403"`
-- [ ] CTAs: "Request Access" (if applicable), "Return Home"
+- [x] Create `Explore.Blazor.Client/Pages/Errors/Unauthorized.razor` with `@page "/errors/403"`
+- [x] CTAs: "Request Access" (if applicable), "Return Home"
 - Acceptance: Auth failure shows branded 403
 
 #### WP-15.3: 500 Server Error
-- [ ] Create `Explore.Blazor.Client/Pages/Errors/ServerError.razor` with `@page "/errors/500"`
-- [ ] Enhance existing `Explore.Blazor/Components/Pages/Error.razor` for branded content
-- [ ] Display correlation ID for support; hide stack traces in production
-- [ ] CTAs: "Return Home", "Contact Support" (prefilled with correlation ID)
+- [x] Create `Explore.Blazor.Client/Pages/Errors/ServerError.razor` with `@page "/errors/500"`
+- [x] Enhance existing `Explore.Blazor/Components/Pages/Error.razor` for branded content
+- [x] Display correlation ID for support; hide stack traces in production
+- [x] CTAs: "Return Home", "Contact Support" (prefilled with correlation ID)
 - Acceptance: Server error shows branded 500 with correlation ID
 
 #### WP-15.4: Status Code Pages Middleware
-- [ ] In `Explore.Blazor/Program.cs`: `app.UseStatusCodePagesWithReExecute("/errors/{0}")`
-- [ ] Verify works with Blazor Server interactive routes
-- [ ] Add catch-all route in `Routes.razor` if needed
-- Acceptance: All HTTP errors redirect to branded pages
+- [x] In `Explore.Blazor/Program.cs`: `app.UseStatusCodePagesWithReExecute("/errors/{0}")`
+- [ ] Verify works with Blazor Server interactive routes — pending runtime/browser smoke
+- [x] Add catch-all route in `Routes.razor` if needed
+- Acceptance: All HTTP errors redirect to branded pages — runtime smoke pending
 
 #### WP-15.5: Tests
-- [ ] bUnit: each error page renders with correct copy + CTA
-- [ ] Integration: `/nonexistent` returns branded 404 page
-- [ ] Integration: unauthenticated `[Authorize]` endpoint returns branded 403
+- [x] bUnit: each error page renders with correct copy + CTA
+- [ ] Integration: `/nonexistent` returns branded 404 page — pending runtime/browser smoke
+- [ ] Integration: unauthenticated `[Authorize]` endpoint returns branded 403 — pending runtime/browser smoke
 - Acceptance: Tests pass
 
 **Acceptance:** Gate F "branded error pages" passes.
@@ -508,55 +510,57 @@ ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24; Update
 ### WP-16: SEO Foundation (1 day)
 
 #### WP-16.1: Sitemap Controller
-- [ ] Create `Explore.API/Controllers/SitemapController.cs`
-- [ ] `GET /sitemap.xml` → `[AllowAnonymous]`, `Content-Type: application/xml`
-- [ ] Output: static pages + all Published events (respect tenant visibility + soft-delete filter)
-- [ ] Per-URL: `<loc>`, `<lastmod>`, `<changefreq>`, `<priority>`
-- [ ] Tenant-aware: canonical host from current tenant's domain/subdomain
-- [ ] Output-cache 30 minutes
-- Acceptance: `/sitemap.xml` returns valid XML
+- [x] Create `Explore.API/Controllers/SitemapController.cs`
+- [x] `GET /sitemap.xml` → `[AllowAnonymous]`, `Content-Type: application/xml`
+- [x] Output: static pages + all Published events (respect tenant visibility + soft-delete filter)
+- [x] Per-URL: `<loc>`, `<lastmod>`, `<changefreq>`, `<priority>`
+- [x] Tenant-aware: canonical host from current tenant's domain/subdomain
+- [x] Output-cache 30 minutes
+- Acceptance: `/sitemap.xml` returns valid XML — implementation complete; runtime/API smoke pending
 
 #### WP-16.2: Robots.txt
-- [ ] Create `Explore.Blazor/wwwroot/robots.txt` (static) OR dynamic controller
-- [ ] Prod: `User-agent: * / Allow: / / Sitemap: https://{host}/sitemap.xml`
-- [ ] Dev: `Disallow: /`
-- Acceptance: `/robots.txt` returns correct content per environment
+- [x] Create `Explore.Blazor/wwwroot/robots.txt` (static) OR dynamic controller
+- [x] Prod: `User-agent: * / Allow: / / Sitemap: https://{host}/sitemap.xml`
+- [x] Dev: `Disallow: /`
+- Acceptance: `/robots.txt` returns correct content per environment — implementation complete; runtime smoke pending
 
 #### WP-16.3: Canonical URLs on Public Pages
-- [ ] Add `<link rel="canonical">` to: Home, LandingForNonUsers, LandingForUsers, OrganizationProfile, OrganizationDetails, EventList
-- [ ] Centralize canonical URL helper if not already shared
-- Acceptance: Canonical URLs on all public pages
+- [x] Add `<link rel="canonical">` to: Home, LandingForNonUsers, LandingForUsers, OrganizationProfile, OrganizationDetails, EventList
+  - Note: `Home.razor` emits the authenticated landing canonical, so the `LandingForUsers` render path is covered without duplicating canonical tags.
+- [x] Centralize canonical URL helper if not already shared
+- Acceptance: Canonical URLs on all public pages — source tests pass
 
 #### WP-16.4: Tests
-- [ ] Integration: `/sitemap.xml` returns valid XML with published events
-- [ ] Integration: Draft/Archived events absent from sitemap
-- [ ] Integration: tenant A sitemap doesn't leak tenant B events
-- [ ] Integration: `/robots.txt` returns expected content
-- Acceptance: Tests pass
+- [ ] Integration: `/sitemap.xml` returns valid XML with published events — pending runtime/API smoke
+- [ ] Integration: Draft/Archived events absent from sitemap — pending runtime/API smoke
+- [ ] Integration: tenant A sitemap doesn't leak tenant B events — pending runtime/API smoke
+- [ ] Integration: `/robots.txt` returns expected content — pending runtime/API smoke
+- [x] Unit/source tests: sitemap query handler and canonical metadata coverage
+- Acceptance: Tests pass for build, unit, architecture, and Blazor client suites; runtime/API integration pending
 
 **Acceptance:** Gate F "sitemap + robots.txt" passes.
 
 ### WP-4: My Registrations — Enhancement (0.5 day)
-- [ ] Verify NavMenu/user menu link — add if missing
-- [ ] Verify discoverability from nav AND post-registration flow
-- [ ] Add "Add to Calendar" icon per registration card (after WP-6)
-- [ ] Verify empty state UX
-- Acceptance: Gate D "user can view registration later" passes
+- [x] Verify NavMenu/user menu link — covered by `NavMenu_AuthenticatedUser_ShowsMyRegistrationsLink`
+- [x] Verify discoverability from nav AND post-registration flow — added `/my/registrations` CTAs after success/already-registered states
+- [x] Add "Add to Calendar" icon per registration card (after WP-6) — direct `/api/event/{id}/calendar` download action in `MyRegistrations.razor`
+- [x] Verify empty state UX — upgraded to accessible AppCard empty state with Browse Events CTA
+- Acceptance: Gate D "user can view registration later" passes in build/unit coverage; runtime calendar-app smoke pending
 
 ### WP-5: Post-Registration Confirmation UX (1 day)
-- [ ] Add "Add to Calendar" button (WP-6 dependency)
-- [ ] Add "Share this Event" button (reuse `ShareEventAsync` pattern)
-- [ ] Add "View My Registrations" link → `/my/registrations`
-- [ ] Keep it lightweight — 3 actions only, no workflow engine
-- [ ] bUnit test for enhanced success state
-- Acceptance: Post-registration has 3 actionable next steps
+- [x] Add "Add to Calendar" button (WP-6 dependency) — direct `.ics` download action in post-registration states
+- [x] Add "Share this Event" button (reuse `ShareEventAsync` pattern) — Web Share API with clipboard fallback
+- [x] Add "View My Registrations" link → `/my/registrations`
+- [x] Keep it lightweight — 3 actions only, no workflow engine
+- [x] bUnit test for enhanced success state — covered by `InlineRegistrationSuccess_RendersThreeActionChoices`
+- Acceptance: Post-registration has calendar, share, and registration follow-up actions; runtime calendar-app smoke pending
 
 ### WP-7: Event Sharing — Verification (0.5 day)
-- [ ] Verify share button visible on EventDetail
-- [ ] Check EventCard (list view) — add share icon if missing
-- [ ] Verify canonical URL tenant-aware in multi-tenant
-- [ ] If URL generation duplicated → centralize into shared helper
-- Acceptance: Gate D "user can share" passes
+- [x] Verify share button visible on EventDetail — covered by source test for `Share Event` + `ShareEventAsync`
+- [x] Check EventCard (list view) — added accessible share icon to event cards
+- [x] Verify canonical URL tenant-aware in multi-tenant — uses `CanonicalUrlHelper.Build(...)` from current navigation base URI
+- [x] If URL generation duplicated → centralize into shared helper — card/list share flow reuses `CanonicalUrlHelper`
+- Acceptance: Gate D "user can share" passes in build/unit coverage; runtime mobile/desktop smoke pending
 
 ---
 
@@ -565,54 +569,57 @@ ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24; Update
 ### WP-21: E2E Critical-Flow Tests (2 days)
 
 #### WP-21.1: Registration End-to-End
-- [ ] Create `Explore.Blazor.Client.E2ETests/CriticalFlows/RegistrationFlowTests.cs`
-- [ ] Playwright: login → browse → open event → register → confirmation → My Registrations
-- [ ] Uses `AppHostFixture` + `PostgreSqlContainerFixture`
-- [ ] Validates Gates C + D end-to-end
-- Acceptance: Registration E2E green
+- [x] Create `Explore.Blazor.Client.E2ETests/Flows/CriticalFlows/RegistrationFlowTests.cs`
+- [x] Playwright: login → browse → open event → register → confirmation → My Registrations — scaffolded as infrastructure-gated critical-flow test
+- [x] Uses `AppHostFixture` + `PostgreSqlContainerFixture` — local E2E PostgreSQL fixture added for scenario-owned data reset/seed
+- [ ] Validates Gates C + D end-to-end — pending Docker/Aspire/Keycloak runtime execution
+- Acceptance: Registration E2E compiles; runtime green pending full infrastructure smoke
 
 #### WP-21.2: Multi-Tenancy Isolation
-- [ ] Two tenant contexts; tenant A creates event → tenant B cannot see it
-- [ ] Validates query filters + middleware isolation
-- Acceptance: Tenant isolation E2E green
+- [x] Two tenant contexts; tenant A creates event → tenant B cannot see it — scaffolded with local `TenantIsolationScenarioSeed`
+- [ ] Validates query filters + middleware isolation — pending Docker/Aspire tenant host/header runtime execution
+- Acceptance: Tenant isolation E2E compiles; runtime green pending full infrastructure smoke
 
 #### WP-21.3: Authorization Enforcement
-- [ ] User without edit permission → no Edit button → direct API mutation returns 403
-- Acceptance: Authz enforcement E2E green
+- [x] User without edit permission → no Edit button → direct API mutation returns 403 — scaffolded in `AuthorizationEnforcementFlowTests` with protected-route redirects, 403 shell, and direct mutation denial checks
+- [ ] Runtime low-privilege browser state verifies no Edit affordance + authenticated mutation returns 403 — pending Docker/Aspire/Keycloak auth-state wiring
+- Acceptance: Authz enforcement E2E compiles; runtime green pending full infrastructure smoke
 
 #### WP-21.4: BFF Token-Forwarding Chain
-- [ ] Login → BFF → YARP → API JWT + tenant header → HAL links → Blazor renders
-- Acceptance: Token chain E2E green
+- [x] Login → BFF → YARP → API JWT + tenant header → HAL links → Blazor renders — scaffolded in `BffTokenForwardingChainFlowTests` with `/auth/status`, tenant header, proxied `/api/event`, and HAL-driven UI assertions
+- [ ] Runtime cookie-authenticated browser state verifies JWT forwarding end-to-end — pending Docker/Aspire/Keycloak auth-state wiring
+- Acceptance: Token chain E2E compiles; runtime green pending full infrastructure smoke
 
 **Acceptance:** All 4 flows green in CI (3 consecutive runs, no flakiness).
 
 ### WP-22: Snapshot Tests for HATEOAS Contracts (1 day)
 
 #### WP-22.1: Add Snapshot Library
-- [ ] Install `Verify.TUnit` (or `Verify.Xunit`) in `Event.API.IntegrationTests`
-- [ ] Configure snapshot directory: `tests/snapshots/`
+- [x] Install `Verify.TUnit` (or `Verify.Xunit`) in `Event.API.IntegrationTests` — pinned `Verify.TUnit` 31.9.4 for TUnit 1.33 compatibility
+- [x] Configure snapshot directory: `tests/snapshots/`
 - Acceptance: Library installed and configured
 
 #### WP-22.2: Snapshot EventDto Responses
 - [ ] Anonymous GET event detail → snapshot
 - [ ] Authenticated GET event detail → snapshot (more links)
 - [ ] Organizer GET event detail → snapshot (edit/delete links)
-- [ ] List response (first 5) → snapshot
-- Acceptance: Baseline event snapshots committed
+- [x] List response (first 5) → snapshot — anonymous and authenticated Contract-profile baselines committed
+- Acceptance: Initial event-list baselines committed; event detail role matrix pending
 
 #### WP-22.3: Snapshot OrganizationDto, UserDto, EventRegistrationDto
 - [ ] Public GET + authenticated GET for each
 - Acceptance: Baseline DTO snapshots committed
 
 #### WP-22.4: Snapshot ProblemDetails
-- [ ] 400, 401, 403, 404, 500 → snapshots (RFC 7807 shape)
-- Acceptance: Error contract snapshots committed
+- [x] 400 and 404 → snapshots (RFC 7807 shape) — Contract-profile baselines committed
+- [ ] 401, 403, 500 ProblemDetails snapshots
+- Acceptance: Initial error contract snapshots committed; auth/server-error variants pending
 
 #### WP-22.5: PR Policy
-- [ ] Document snapshot-review policy in testing docs
+- [x] Document snapshot-review policy in testing docs
 - Acceptance: Policy documented
 
-**Acceptance:** Baseline snapshots committed; CI confirms stability.
+**Acceptance:** Initial Contract-profile baselines are committed and focused snapshot tests pass; broader DTO/problem-details matrix remains pending.
 
 ### WP-11: Targeted Test Coverage (rolling)
 - [ ] Registration flow unit tests (approval policy, waitlist, capacity from WP-17)

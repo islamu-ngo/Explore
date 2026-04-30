@@ -247,6 +247,27 @@ Key conventions:
 - Do not test non-existent endpoints.
 - Do not test auth gates in isolation when covered by auth-family matrix tests.
 
+### API Contract Snapshot Tests
+
+Contract snapshots live in the **Contract** host profile and use `Verify.TUnit` against the EF InMemory API surface. They are for stable HTTP response contracts such as HAL links, collection envelopes, and RFC 7807 ProblemDetails shapes.
+
+Snapshot rules:
+
+- Commit `.verified.*` files under the feature snapshot directory; these are the reviewed API contract baselines.
+- Never commit `.received.*` files. Treat them as review artifacts generated when a response contract changes.
+- Scrub volatile fields before verification (`traceId`, `timestamp`, `correlationId`, generated cache-busters, and similar request-specific values).
+- Update snapshots only when the API contract change is intentional and reviewed alongside the endpoint implementation.
+- Keep Docker/PostgreSQL-dependent snapshots separate from Contract-profile snapshots; real-runtime snapshot coverage is optional and should be added only when the environment can run the required infrastructure.
+
+Run focused snapshot tests with TUnit tree filters. Example:
+
+```bash
+dotnet test --project Event.API.IntegrationTests/Event.API.IntegrationTests.csproj \
+  --configuration Release --no-build \
+  --treenode-filter "/*/*/*/EventList_AnonymousContract_MatchesSnapshot" \
+  --minimum-expected-tests 1
+```
+
 ## Blazor Client Tests (Explore.Blazor.Client.Tests)
 
 Tests Blazor component rendering, service behavior, accessibility compliance, and UI interaction patterns using [bUnit](https://bunit.dev/).

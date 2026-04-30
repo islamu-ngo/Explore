@@ -3,7 +3,7 @@
 
 # EAV Custom Properties — Execution Progress
 
-**Last updated:** 2026-04-30 (Session 6 — Phase 10.0 boundary guard verified)
+**Last updated:** 2026-04-30 (Session 6 — Phase 11.2 local identity tests verified)
 **Scope:** Cleanup Phase 9.x — Blazor admin UI for definitions, templates, runtime editors.
 **Mode:** Development (no backward compatibility required).
 
@@ -39,7 +39,7 @@
 | Cleanup | Phase 9.6 Template preview | ⏳ PENDING | — |
 | Cleanup | Phase 9.10 Org/Group cleanup | ⏳ PENDING | — |
 | Cleanup | Phase 9.11 NSwag regen | ✅ 2026-04-30 | Swagger snapshot + NSwag client regenerated; client build/regeneration succeeded; client tests pass; full solution build blocked by unrelated existing analyzer/package issues + transient locked client PDB |
-| Cleanup | Phase 11+10.0 Architecture tests | 🟡 PARTIAL 2026-04-30 | Phase 10.0 Layer 2/3 boundary guard + `docs/ARCHITECTURE.md` update verified; API roundtrips remain Docker/Testcontainers-gated |
+| Cleanup | Phase 11+10.0 Architecture tests | 🟡 PARTIAL 2026-04-30 | Phase 10.0 boundary guard + Phase 11.2 local machine-identity/display-name tests verified; API roundtrips and EF uniqueness proof remain Docker/Testcontainers-gated |
 | Cleanup | Phase 8.5.13 Prometheus metrics | ⏳ PENDING | — |
 
 ---
@@ -102,10 +102,10 @@ Closed cleanup items are no longer listed here; see the milestone snapshot and p
 
 ### Recommended Next Execution Slice
 
-**Next implementation target:** Phase 11 local-only tests (11.2/11.3/11.5/11.7) or Phase 9.6/9.6A preview admin overviews.
+**Next implementation target:** Phase 11 local-only tests (11.3/11.5/11.7) or Phase 9.6/9.6A preview admin overviews.
 
 - Phase 9.4A is closed for CreateEvent's new-session drawer. EventEdit session blueprint selection remains deferred because current event read/update DTOs do not expose the parent event template identity.
-- Current verification baseline: Phase 9.11 swagger export + generated client build succeeded; Phase 10.0 boundary guard LSP/diff checks clean and both new TUnit architecture guards pass; `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` ✅ 909 total / 908 passed / 1 known skipped. Full solution build currently fails outside these slices on unrelated existing analyzer/package issues plus one transient locked `Explore.Blazor.Client.pdb` during static-web-assets fingerprinting.
+- Current verification baseline: Phase 9.11 swagger export + generated client build succeeded; Phase 10.0 boundary guard LSP/diff checks clean and both new TUnit architecture guards pass; Phase 11.2 local domain/application unit tests pass; `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` ✅ 909 total / 908 passed / 1 known skipped. Full solution build currently fails outside these slices on unrelated existing analyzer/package issues plus one transient locked `Explore.Blazor.Client.pdb` during static-web-assets fingerprinting.
 
 ### Phase 9.4 Template Selection — ✅ CLOSED 2026-04-29
 
@@ -158,6 +158,13 @@ Closed cleanup items are no longer listed here; see the milestone snapshot and p
 - Tightened `docs/ARCHITECTURE.md` so Layer 2 typed filters compose directly while Layer 3 projection filters stay generic and custom properties that become sector-standard are promoted to typed Layer 2 schema.
 - Verification: `lsp_diagnostics` clean for `ProjectionLayerBoundaryTests.cs`; `git diff --check` clean for the architecture test + architecture doc; both new TUnit guards pass with `--treenode-filter` and `--minimum-expected-tests 1`.
 - Scope note: Phase 11 API roundtrip tests (`11.9`, `11.9B`) still require Docker/Testcontainers and remain locally blocked.
+
+### Phase 11.2 Machine Identity Local Coverage — 🟡 LOCAL COVERAGE ADDED 2026-04-30
+
+- Added `Event.Domain.UnitTests/CustomProperties/CustomPropertyGovernanceTests.cs` coverage proving namespace/key case and whitespace variants normalize to the same machine identity.
+- Added `Event.Application.UnitTests/Features/CustomPropertyDefinitions/Commands/UpdateCustomPropertyDefinitionCommandHandlerTests.cs` coverage proving a `DisplayName` rename still uses normalized `Namespace + Key + current Id` for duplicate lookup and update identity.
+- Verification: domain test LSP clean; application test LSP has warnings only; `git diff --check` clean for both test files; both targeted TUnit tests pass with `--treenode-filter` and `--minimum-expected-tests 1`.
+- Scope note: EF uniqueness enforcement for the machine identity remains a Docker/Testcontainers PostgreSQL proof and stays pending.
 
 ---
 

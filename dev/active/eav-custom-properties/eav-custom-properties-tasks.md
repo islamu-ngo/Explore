@@ -665,7 +665,10 @@ OUT of scope:
   - [ ] **11.1.7** Assert no Specification or Repository returns a DTO
 - [x] **11.1A** Add unit tests for namespace normalization and Layer 2 semantic reservation helpers
 - [x] **11.1B** Add application-unit tests for reserved namespace rejection and Layer 2 semantic collision blocking
-- [ ] **11.2** Add unit tests proving display-name renames do not break machine-key identity
+- [ ] **11.2** Add unit tests proving display-name renames do not break machine-key identity 🟡 local coverage added 2026-04-30; EF uniqueness proof remains Docker/Testcontainers-gated
+  - [x] **11.2.1** Normalize namespace/key case and whitespace variants to the same machine identity ✅ `CustomPropertyIdentity.NormalizeNamespace` + `NormalizeKey`
+  - [x] **11.2.2** Prove `DisplayName` rename preserves lookup/update identity via normalized `Namespace + Key + current Id` ✅ shared-definition update handler test
+  - [ ] **11.2.3** Prove EF uniqueness constraint for machine identity via Testcontainers/PostgreSQL
 - [ ] **11.3** Add unit tests for multi-value semantics, ordering, and duplicate rules
 - [x] **11.4** Add first unit tests for shared-definition validator enforcement and create/update/delete handler behavior
 - [ ] **11.5** Add unit tests for exposure/search/filter/export/moderation flags

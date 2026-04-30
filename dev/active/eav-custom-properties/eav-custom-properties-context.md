@@ -3,7 +3,7 @@ ABOUTME: Read this first when resuming so implementation follows the hardened ex
 
 # EAV Custom Properties - Context
 
-**Last Updated: 2026-04-30 (Phase 10.0 boundary guard verified)**
+**Last Updated: 2026-04-30 (Phase 11.2 local identity tests verified)**
 
 ---
 
@@ -51,6 +51,7 @@ ABOUTME: Read this first when resuming so implementation follows the hardened ex
 ### ✅ Current Build State
 - Phase 9.11 generated-client build: `rtk dotnet build "Explore.Blazor.Client/Explore.Blazor.Client.csproj" --configuration Release --verbosity quiet` ✅ on 2026-04-30.
 - Phase 10.0 architecture guard: LSP clean, diff check clean, and both new `ProjectionLayerBoundaryTests` TUnit guards passed with `--treenode-filter` on 2026-04-30.
+- Phase 11.2 local identity tests: domain normalization test and shared-definition display-name rename handler test passed with targeted TUnit `--treenode-filter` runs on 2026-04-30.
 - Client tests: `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` ✅ 909 total / 908 passed / 1 known skipped on 2026-04-30.
 - Full solution build: attempted via `rtk dotnet build --configuration Release --verbosity quiet`; currently fails outside Phase 9.11 on unrelated existing analyzer/package issues plus a transient locked `Explore.Blazor.Client.pdb` during static-web-assets fingerprinting.
 
@@ -79,8 +80,14 @@ ABOUTME: Read this first when resuming so implementation follows the hardened ex
 - Verification: `lsp_diagnostics` clean for the architecture test; `git diff --check` clean for `ProjectionLayerBoundaryTests.cs` + `docs/ARCHITECTURE.md`; both new TUnit guards passed with `--treenode-filter` and `--minimum-expected-tests 1`.
 - Remaining: Phase 11 API roundtrip tests (`11.9`, `11.9B`) require Docker/Testcontainers and are still locally blocked.
 
+### 🟡 Phase 11.2 — Machine Identity / DisplayName Rename Local Coverage (2026-04-30)
+- Added `NormalizedNamespaceAndKey_ShouldTreatCaseAndWhitespaceAsSameMachineIdentity` in `Event.Domain.UnitTests/CustomProperties/CustomPropertyGovernanceTests.cs` so the actual `NormalizeNamespace` + `NormalizeKey` helpers are locked against case/whitespace drift.
+- Added `Handle_WhenDisplayNameChanges_UsesNamespaceAndKeyAsMachineIdentity` in `Event.Application.UnitTests/Features/CustomPropertyDefinitions/Commands/UpdateCustomPropertyDefinitionCommandHandlerTests.cs` so shared-definition updates prove `DisplayName` changes do not alter namespace/key lookup identity.
+- Verification: domain test LSP clean; application test LSP warnings only; `git diff --check` clean for both test files; targeted TUnit `--treenode-filter` runs passed for both tests.
+- Remaining: EF uniqueness enforcement for `(TenantId, EntityTypeName, Namespace, Key)` still needs Docker/Testcontainers PostgreSQL proof.
+
 ### ⏳ Other Remaining Work
-- Phase 11 local-only tests: display-name identity, multi-value semantics, exposure/search/filter/export/moderation flags, retired historical values
+- Phase 11 local-only tests: multi-value semantics, exposure/search/filter/export/moderation flags, retired historical values
 - Phase 11 Docker-gated API roundtrips: `11.9`, `11.9B`
 - Phase 8.5.13: Prometheus metrics for projection updater
 - Gap 3: Integration tests (E Phase 4 + F Phase 3 — needs Docker)
@@ -88,7 +95,7 @@ ABOUTME: Read this first when resuming so implementation follows the hardened ex
 
 ### Git State
 - 5 prior commits on develop from earlier sessions (eda957fa, 1a7f0607, b20def51, be0e08b3, aee1fd55)
-- **Uncommitted**: Phase 9.2 + 9.3 files (all the Blazor CRUD pages + services + models), Phase 9.4/9.5 UI/runtime work, Phase 9.11 generated OpenAPI/client files, Phase 10.0 architecture/doc updates, and dev-doc updates
+- **Uncommitted**: Phase 9.2 + 9.3 files (all the Blazor CRUD pages + services + models), Phase 9.4/9.5 UI/runtime work, Phase 9.11 generated OpenAPI/client files, Phase 10.0 architecture/doc updates, Phase 11.2 unit test updates, and dev-doc updates
 - **Uncommitted broken**: Messaging infrastructure files (NOT EAV)
 - **Orphan**: `Explore.Blazor.Client/Models/EventTemplateSync/TemplateDiffResource.cs` (untracked, can delete)
 - **Stash@{0}**: still exists, safe to drop

@@ -61,8 +61,10 @@ Dependency direction is inward: presentation -> application -> domain.
 Complex filtering uses a custom Specification Pattern:
 1. `IQuerySpecification<T>` composes `IFilterSpecification<T>` + `ISortSpecification<T>` via immutable builder.
 2. `EventQuerySpecification` chains filters using AND composition: direct filters (`EventFilter`), subquery filters for junction tables (`EventSubqueryFilter`), module-conditional aspect filters (`IslamicAspectFilter`, `TechAspectFilter`), presence filters (`AspectPresenceFilter`), and projection-backed custom-property filters (`EventCustomPropertyProjectionFilter`).
-3. Filters are applied to `IQueryable<T>` in the repository — module-specific filters are silently ignored when modules are disabled.
-4. `ToCacheKeySuffix()` generates deterministic cache keys from active filter/sort state.
+3. Layer 2 typed aspect filters compose through explicit `EventQuerySpecification.And(...)` overloads. Do not route sector-standard filters such as madhab, gender mode, prayer-relative timing, tech skill level, or aspect presence through Layer 3 custom-property projections.
+4. Layer 3 projection filters stay generic (`ExactMatch`, `TextSearch`, option, range, boolean, and existence checks) and only target governed custom-property projection rows.
+5. Filters are applied to `IQueryable<T>` in the repository — module-specific filters are silently ignored when modules are disabled.
+6. `ToCacheKeySuffix()` generates deterministic cache keys from active filter/sort state.
 
 ## Event Data Layers
 1. Layer 1 stores universal semantics directly on `Event`, `EventSession`, and other first-class related entities.
@@ -70,7 +72,8 @@ Complex filtering uses a custom Specification Pattern:
 3. Layer 3 stores tenant-specific long-tail extensions through governed custom-property entities and event/session template/runtime rows.
 4. `Event` remains the parent program/container aggregate; `EventSession` remains the scheduled child aggregate.
 5. Layer 3 must not redefine or replace Layer 2 semantics; reserved namespaces and collision rules are part of the custom-properties architecture.
-6. `EventCustomPropertyProjection`, `EventSessionCustomPropertyProjection`, and aggregate event-with-sessions read views are derived query models only; source of truth remains typed schema plus event-local and session-local custom-property rows.
+6. If a custom property becomes sector-standard or discovery-critical, promote it into typed Layer 2 schema instead of adding sector-specific factories to `EventCustomPropertyProjectionFilter` or `EventSessionCustomPropertyProjectionFilter`.
+7. `EventCustomPropertyProjection`, `EventSessionCustomPropertyProjection`, and aggregate event-with-sessions read views are derived query models only; source of truth remains typed schema plus event-local and session-local custom-property rows.
 
 ## Caching Architecture (3 Layers)
 1. **Output Cache** (HTTP response level): `LookupData` (1h), `ListData` (30s, varies by `Authorization` header), `DetailData` (60s, varies by `Authorization` header), `PublicData` (1h, no auth variance). Applied via `[OutputCache]` on endpoints.
