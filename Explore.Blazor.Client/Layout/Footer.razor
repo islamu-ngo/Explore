@@ -6,7 +6,7 @@
 
 @if (_footerEnabled)
 {
-    <div class="site-footer-root @(_drawerOpenCss)">
+    <div class="site-footer-root">
     <footer class="site-footer">
         <MudContainer MaxWidth="MaxWidth.Large">
             @switch (_template)
@@ -82,10 +82,6 @@
     private bool _showCookieSettingsLink = true;
     private List<FooterLinkGroupModel> _linkGroups = [];
     private bool _showCommunityGuidelinesLink;
-
-    [Parameter] public bool DrawerOpen { get; set; }
-
-    private string _drawerOpenCss => DrawerOpen ? "site-footer-root--drawer-open" : "";
 
     protected override async Task OnInitializedAsync()
     {

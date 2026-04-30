@@ -1,10 +1,12 @@
 using System.Security.Claims;
 using Explore.Blazor.Client.Clients;
+using Explore.Blazor.Client.Components.Shell;
 using Explore.Blazor.Client.Contracts.Services.Accessibility;
 using Explore.Blazor.Client.Contracts.Services.Events;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Helpers;
 using Explore.Blazor.Client.Services;
+using Explore.Blazor.Client.Services.Docking;
 using Explore.Blazor.Client.Shared;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -57,7 +59,8 @@ public partial class NavMenu : IDisposable
     [Inject]
     protected AiAssistantState AiAssistantState { get; set; } = null!;
 
-    
+    [Inject]
+    protected DockLayoutState DockLayoutState { get; set; } = null!;
 
     private bool _dropdownOpen = false;
     private UserDto? _currentUser;
@@ -154,6 +157,35 @@ public partial class NavMenu : IDisposable
             _orgSubmenuOpen = false;
             _groupSubmenuOpen = false;
         }
+    }
+
+    private void ToggleSidebarPanel()
+    {
+        SidebarState.Toggle();
+        MirrorShellDockPanel(ShellDockPanels.LeftNavId, SidebarState.HasSidebar && SidebarState.IsOpen);
+    }
+
+    private void ToggleAiAssistantPanel()
+    {
+        AiAssistantState.Toggle();
+        MirrorShellDockPanel(ShellDockPanels.AiAssistantId, AiAssistantState.IsAvailable && AiAssistantState.IsOpen);
+    }
+
+    private void MirrorShellDockPanel(DockPanelId id, bool shouldBeOpen)
+    {
+        var panel = DockLayoutState.GetPanel(id);
+        if (panel is null || panel.State.IsOpen == shouldBeOpen)
+        {
+            return;
+        }
+
+        if (shouldBeOpen)
+        {
+            DockLayoutState.Open(id);
+            return;
+        }
+
+        DockLayoutState.Close(id);
     }
 
     private void CloseDropdown()

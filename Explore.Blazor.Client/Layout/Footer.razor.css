@@ -36,22 +36,13 @@
     overflow: hidden;
 }
 
-/* Modifier: --drawer-open
-   Adds left padding INSIDE the footer background so text doesn't
-   touch the sidebar edge while the background stays flush. */
-.site-footer-root--drawer-open ::deep .site-footer {
-    padding-left: 1.5%;
-    padding-right: 1.5%;
-}
-
 /* Decorative top gradient line */
 ::deep .site-footer::before {
     content: "";
     position: absolute;
     top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
+    inset-inline: 0;
+    block-size: 1px;
     background: linear-gradient(
         90deg,
         transparent,

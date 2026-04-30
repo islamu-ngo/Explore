@@ -1,0 +1,79 @@
+@* ABOUTME: Generic dock layout host for shell and workspace panel composition. *@
+@* ABOUTME: Renders dock sides from DockLayoutState without replacing existing layouts yet. *@
+
+@using Explore.Blazor.Client.Services.Docking
+@implements IDisposable
+@inject DockLayoutState DockLayoutState
+
+<div class="@RootClass"
+     style="@GridStyle"
+     data-testid="@DataTestId"
+     data-dock-scope="@ScopeName"
+     @attributes="AdditionalAttributes">
+    <DockSideHost Scope="@Scope" Side="DockSide.Start" />
+
+    <section class="dock-layout-host__content" data-testid="@ContentDataTestId">
+        @ChildContent
+    </section>
+
+    <DockSideHost Scope="@Scope" Side="DockSide.End" />
+    <DockSideHost Scope="@Scope" Side="DockSide.Bottom" />
+    <DockOverlayHost Scope="@Scope" />
+</div>
+
+@code {
+    [Parameter] public DockScope Scope { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string DataTestId { get; set; } = "dock-layout-host";
+    [Parameter] public string ContentDataTestId { get; set; } = "dock-layout-host-content";
+    [Parameter, EditorRequired] public RenderFragment ChildContent { get; set; } = default!;
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string ScopeName => Scope.ToString().ToLowerInvariant();
+
+    private string RootClass => string.Join(' ', new[]
+    {
+        "dock-layout-host",
+        $"dock-layout-host--{ScopeName}",
+        HasOpenDockedPanels(DockSide.Start) ? "dock-layout-host--has-start" : null,
+        HasOpenDockedPanels(DockSide.End) ? "dock-layout-host--has-end" : null,
+        HasOpenDockedPanels(DockSide.Bottom) ? "dock-layout-host--has-bottom" : null,
+        Class
+    }.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+    private string GridStyle => string.Join(' ', new[]
+    {
+        $"--dock-layout-start-width: {GetDockedInlineSize(DockSide.Start)}px;",
+        $"--dock-layout-end-width: {GetDockedInlineSize(DockSide.End)}px;"
+    });
+
+    protected override void OnInitialized()
+    {
+        DockLayoutState.Changed += OnDockLayoutChanged;
+    }
+
+    public void Dispose()
+    {
+        DockLayoutState.Changed -= OnDockLayoutChanged;
+    }
+
+    private bool HasOpenDockedPanels(DockSide side)
+    {
+        return DockLayoutState.GetPanels(Scope, side)
+            .Any(entry => entry.State is { IsOpen: true, Mode: DockMode.Docked });
+    }
+
+    private int GetDockedInlineSize(DockSide side)
+    {
+        return DockLayoutState.GetPanels(Scope, side)
+            .Where(entry => entry.State is { IsOpen: true, Mode: DockMode.Docked })
+            .Sum(entry => entry.State.Width);
+    }
+
+    private void OnDockLayoutChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+}

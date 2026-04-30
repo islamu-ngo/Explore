@@ -1,0 +1,46 @@
+/* ABOUTME: Resize handle styling for generic dock panels.
+   ABOUTME: Uses logical placement so start/end handles remain RTL-safe. */
+
+.dock-resize-handle {
+    position: absolute;
+    inset-block: 0;
+    inline-size: var(--isl-space-2);
+    z-index: 1;
+    cursor: col-resize;
+    touch-action: none;
+    outline: none;
+    background: transparent;
+
+    &:focus-visible {
+        background: color-mix(in oklch, var(--mud-palette-primary) 20%, transparent);
+        box-shadow: inset 0 0 0 2px var(--mud-palette-primary);
+    }
+
+    &:hover {
+        background: color-mix(in oklch, var(--mud-palette-primary) 12%, transparent);
+    }
+
+    &.dock-resize-handle--dragging {
+        background: color-mix(in oklch, var(--mud-palette-primary) 18%, transparent);
+    }
+}
+
+.dock-resize-handle--start {
+    inset-inline-end: calc(var(--isl-space-1) * -1);
+}
+
+.dock-resize-handle--end {
+    inset-inline-start: calc(var(--isl-space-1) * -1);
+}
+
+.dock-resize-handle__label {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}

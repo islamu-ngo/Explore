@@ -1,3 +1,5 @@
+@using Explore.Blazor.Client.Services.Docking
+@using Explore.Blazor.Client.Components.Docking
 @using Explore.Blazor.Client.Components.Shell
 @inherits LayoutComponentBase
 
@@ -17,98 +19,10 @@
         {
             <header class="main-layout__header">
                 <AnnouncementBar OnVisibilityChanged="OnAnnouncementVisibilityChanged" />
-                <NavMenu />
-            </header>
-
-            <MudDrawer id="sidebar-drawer"
-                       Open="@SidebarState.IsOpen"    
-                       OpenChanged="@OnDrawerOpenChanged"
-                       Anchor="Anchor.Start"
-                       Variant="DrawerVariant.Responsive"
-                       Breakpoint="Breakpoint.Md"     
-                       ClipMode="DrawerClipMode.Always"
-                       Elevation="0"
-                       Class="main-layout__drawer">
                 <nav aria-label="Sidebar navigation">
-                    <MudNavMenu Dense="true" Class="px-2 pt-2">
-                        <MudText Typo="Typo.h6" Class="px-4 pt-2 pb-1"
-                                 Style="font-weight: 800; letter-spacing: -0.02em;">
-                            Events
-                        </MudText>
-                        <MudNavLink Href="/events"
-                                    Icon="@Icons.Material.Filled.ManageSearch"
-                                    Match="NavLinkMatch.All">
-                            Advanced Search
-                        </MudNavLink>
-                        <MudNavLink Href="/events?sort=recent"
-                                    Icon="@Icons.Material.Filled.NewReleases">
-                            Recently Added
-                        </MudNavLink>
-                        <MudNavLink Href="/events?sort=random"
-                                    Icon="@Icons.Material.Filled.Shuffle">
-                            Random
-                        </MudNavLink>
-
-                        <MudDivider Class="my-2" />
-
-                        @if (!string.IsNullOrWhiteSpace(_brandDisplayName))
-                        {
-                            <MudText Typo="Typo.overline" Class="px-4 pb-1"
-                                     Style="font-weight: 700; letter-spacing: 0.08em; color: var(--mud-palette-text-secondary);">
-                                @_brandDisplayName
-                            </MudText>
-                        }
-                        @if (_showCommunityGuidelinesLink)
-                        {
-                            <MudNavLink Href="/community-guidelines"
-                                        Icon="@Icons.Material.Outlined.Gavel">
-                                Community Guidelines
-                            </MudNavLink>
-                        }
-                        <MudNavLink Href="/about"
-                                    Icon="@Icons.Material.Outlined.Info">
-                            About Us
-                        </MudNavLink>
-                        <MudNavLink Href="/contact"
-                                    Icon="@Icons.Material.Outlined.ContactMail">
-                            Contact
-                        </MudNavLink>
-
-                        @if (TenantNavLinksState.Links.Count > 0)
-                        {
-                            <MudDivider Class="my-2" />
-                            <MudText Typo="Typo.overline"
-                                     Class="main-layout__drawer-custom-links-label">
-                                Quick Links
-                            </MudText>
-                            @foreach (var link in TenantNavLinksState.Links)
-                            {
-                                var icon = string.IsNullOrWhiteSpace(link.Icon)
-                                    ? Icons.Material.Filled.Link
-                                    : link.Icon;
-
-                                @if (link.OpenInNewTab == true)
-                                {
-                                    <MudNavLink Href="@link.Url"
-                                                Icon="@icon"
-                                                Target="_blank"
-                                                rel="noopener noreferrer">
-                                        @link.Label
-                                    </MudNavLink>
-                                }
-                                else
-                                {
-                                    <MudNavLink Href="@link.Url"
-                                                Icon="@icon"
-                                                Match="NavLinkMatch.Prefix">
-                                        @link.Label
-                                    </MudNavLink>
-                                }
-                            }
-                        }
-                    </MudNavMenu>
+                    <NavMenu />
                 </nav>
-            </MudDrawer>
+            </header>
         }
         else
         {
@@ -126,21 +40,17 @@
             </div>
         }
 
-        <MudMainContent Class="@($"main-layout__main {(AiAssistantState.IsOpen ? "main-layout__main--ai-open" : "")}")" Style="padding-top: 0 !important;">
-            <main id="main-content" tabindex="-1" class="main-layout__content-wrapper @(SidebarState.IsOpen ? "main-layout__content-wrapper--drawer-open" : "")">
-                @Body
-            </main>
-            @if (!_hideChrome)
-            {
-                <Footer DrawerOpen="@SidebarState.IsOpen" />
-            }
-        </MudMainContent>
-
-        @* Shell-level AI assistant rail — persists across page navigations *@
-        @if (!_hideChrome)
-        {
-            <AiAssistantRail />
-        }
+        <DockLayoutHost Scope="@DockScope.Shell">
+            <MudMainContent Class="main-layout__main" Style="padding-top: 0 !important;">
+                <main id="main-content" tabindex="-1" class="main-layout__content-wrapper">
+                    @Body
+                </main>
+                @if (!_hideChrome)
+                {
+                    <Footer />
+                }
+            </MudMainContent>
+        </DockLayoutHost>
     </MudLayout>
 </MudRTLProvider>
 </div>

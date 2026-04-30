@@ -1,0 +1,73 @@
+@* ABOUTME: Renders open docked panels for one logical side of a dock layout scope. *@
+@* ABOUTME: Keeps side ordering and ARIA naming centralized for future shell/workspace hosts. *@
+
+@using Explore.Blazor.Client.Services.Docking
+@implements IDisposable
+@inject DockLayoutState DockLayoutState
+
+@if (DockedEntries.Count > 0)
+{
+    <div class="@RootClass"
+         data-testid="@DataTestId"
+         data-dock-scope="@ScopeName"
+         data-dock-side="@SideName"
+         role="region"
+         aria-label="@ResolvedAriaLabel">
+        @if (ShouldRenderStack)
+        {
+            <DockTabStrip Entries="@DockedEntries"
+                          ActivePanelId="@ActiveEntry.Descriptor.Id"
+                          AriaLabel="@($"{Scope} {Side} dock panel tabs")" />
+            <DockPanelHost Entry="@ActiveEntry"
+                           BodyRole="tabpanel"
+                           BodyLabelledById="@DockElementIds.TabId(ActiveEntry.Descriptor.Id)" />
+        }
+        else
+        {
+            <DockPanelHost Entry="@ActiveEntry" />
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public DockScope Scope { get; set; }
+    [Parameter] public DockSide Side { get; set; }
+    [Parameter] public string? AriaLabel { get; set; }
+    [Parameter] public string DataTestId { get; set; } = "dock-side-host";
+    [Parameter] public string? Class { get; set; }
+
+    private IReadOnlyList<DockPanelEntry> DockedEntries => DockLayoutState.GetPanels(Scope, Side)
+        .Where(entry => entry.State is { IsOpen: true, Mode: DockMode.Docked })
+        .ToArray();
+
+    private string ScopeName => Scope.ToString().ToLowerInvariant();
+    private string SideName => Side.ToString().ToLowerInvariant();
+    private string ResolvedAriaLabel => AriaLabel ?? $"{Scope} {Side} dock panels";
+    private bool ShouldRenderStack => DockedEntries.Count > 1;
+
+    private DockPanelEntry ActiveEntry => DockedEntries.FirstOrDefault(entry => entry.State.IsActive)
+        ?? DockedEntries[0];
+
+    private string RootClass => string.Join(' ', new[]
+    {
+        "dock-side-host",
+        $"dock-side-host--{ScopeName}",
+        $"dock-side-host--{SideName}",
+        Class
+    }.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+    protected override void OnInitialized()
+    {
+        DockLayoutState.Changed += OnDockLayoutChanged;
+    }
+
+    public void Dispose()
+    {
+        DockLayoutState.Changed -= OnDockLayoutChanged;
+    }
+
+    private void OnDockLayoutChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+}

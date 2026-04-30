@@ -1,0 +1,66 @@
+@* ABOUTME: Renders non-docked open panels for one dock scope as overlay chrome. *@
+@* ABOUTME: Keeps temporary, overlay, and inspector modes separate from persistent grid tracks. *@
+
+@using Explore.Blazor.Client.Services.Docking
+@implements IDisposable
+@inject DockLayoutState DockLayoutState
+
+@if (OverlayEntries.Count > 0)
+{
+    <div class="@RootClass"
+         data-testid="@DataTestId"
+         data-dock-scope="@ScopeName"
+         aria-live="polite">
+        @foreach (var entry in OverlayEntries)
+        {
+            <div class="@GetSlotClass(entry)" data-dock-overlay-side="@entry.Descriptor.Side.ToString().ToLowerInvariant()">
+                <DockPanelHost Entry="@entry" />
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public DockScope Scope { get; set; }
+    [Parameter] public string DataTestId { get; set; } = "dock-overlay-host";
+    [Parameter] public string? Class { get; set; }
+
+    private IReadOnlyList<DockPanelEntry> OverlayEntries => Enum.GetValues<DockSide>()
+        .SelectMany(side => DockLayoutState.GetPanels(Scope, side))
+        .Where(entry => entry.State.IsOpen && entry.State.Mode is DockMode.Overlay or DockMode.Temporary or DockMode.Inspector)
+        .OrderBy(entry => entry.State.Order)
+        .ThenBy(entry => entry.Descriptor.Title, StringComparer.Ordinal)
+        .ToArray();
+
+    private string ScopeName => Scope.ToString().ToLowerInvariant();
+
+    private string RootClass => string.Join(' ', new[]
+    {
+        "dock-overlay-host",
+        $"dock-overlay-host--{ScopeName}",
+        Class
+    }.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+    protected override void OnInitialized()
+    {
+        DockLayoutState.Changed += OnDockLayoutChanged;
+    }
+
+    public void Dispose()
+    {
+        DockLayoutState.Changed -= OnDockLayoutChanged;
+    }
+
+    private static string GetSlotClass(DockPanelEntry entry)
+    {
+        var sideName = entry.Descriptor.Side.ToString().ToLowerInvariant();
+        var modeName = entry.State.Mode.ToString().ToLowerInvariant();
+
+        return $"dock-overlay-host__slot dock-overlay-host__slot--{sideName} dock-overlay-host__slot--mode-{modeName}";
+    }
+
+    private void OnDockLayoutChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+}

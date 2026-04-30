@@ -3,11 +3,12 @@
 
 @if (IsOpen)
 {
-    <div class="right-sidebar__backdrop" @onclick="HandleBackdropClick"></div>
+    <div class="right-sidebar__backdrop" @onclick="HandleBackdropClick" aria-hidden="true"></div>
 }
 
 <aside class="right-sidebar @(IsOpen ? "right-sidebar--open" : "") @Class"
        style="--right-sidebar-width: @(Width)px;"
+       data-testid="workspace-right-sidebar"
        aria-label="@AriaLabel">
     @ChildContent
 </aside>

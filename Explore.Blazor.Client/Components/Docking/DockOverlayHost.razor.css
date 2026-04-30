@@ -1,0 +1,42 @@
+/* ABOUTME: Overlay placement for non-docked panels in a dock scope.
+   ABOUTME: Uses logical inset properties so temporary panels align with RTL direction. */
+
+.dock-overlay-host {
+    position: absolute;
+    inset: 0;
+    z-index: var(--isl-dock-z-inspector, 1400);
+    pointer-events: none;
+}
+
+.dock-overlay-host__slot {
+    position: absolute;
+    pointer-events: auto;
+    max-inline-size: 100%;
+}
+
+.dock-overlay-host__slot--start,
+.dock-overlay-host__slot--end {
+    inset-block-start: 0;
+    inset-block-end: 0;
+}
+
+.dock-overlay-host__slot--start {
+    inset-inline-start: 0;
+}
+
+.dock-overlay-host__slot--end {
+    inset-inline-end: 0;
+}
+
+.dock-overlay-host__slot--bottom {
+    inset-inline: 0;
+    inset-block-end: 0;
+}
+
+.dock-overlay-host__slot--mode-temporary {
+    z-index: var(--isl-dock-z-workspace, 1300);
+}
+
+.dock-overlay-host__slot--mode-inspector {
+    z-index: var(--isl-dock-z-inspector, 1400);
+}

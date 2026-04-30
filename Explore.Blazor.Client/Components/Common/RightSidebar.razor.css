@@ -16,14 +16,14 @@
     overflow: hidden;
     flex-shrink: 0;
 
-    transition: width 300ms ease, min-width 300ms ease, border-color 300ms ease;
-    border-left: 1px solid transparent;
+    transition: var(--isl-dock-panel-transition, width 300ms ease, min-width 300ms ease, border-color 300ms ease);
+    border-inline-start: 1px solid transparent;
 
     &.right-sidebar--open {
-        width: var(--right-sidebar-width, 320px);
-        min-width: var(--right-sidebar-width, 320px);
+        width: var(--right-sidebar-width, var(--isl-dock-workspace-end-width, 320px));
+        min-width: var(--right-sidebar-width, var(--isl-dock-workspace-end-width, 320px));
         overflow-y: auto;
-        border-left-color: var(--mud-palette-lines-default);
+        border-inline-start-color: var(--mud-palette-lines-default);
     }
 }
 
@@ -41,24 +41,32 @@
     .right-sidebar {
         position: fixed;
         top: var(--mud-appbar-height, 4rem);
-        right: 0;
+        inset-inline-end: 0;
         bottom: 0;
         height: auto;
-        z-index: 1300;
+        z-index: var(--isl-dock-z-workspace, 1300);
         background: var(--mud-palette-surface);
         box-shadow: var(--mud-elevation-8);
 
-        transition: transform 300ms ease, visibility 300ms ease;
+        transition: var(--isl-dock-panel-transition, transform 300ms ease, visibility 300ms ease);
         transform: translateX(100%);
         visibility: hidden;
 
-        width: var(--right-sidebar-width, 320px);
-        min-width: var(--right-sidebar-width, 320px);
+        width: var(--right-sidebar-width, var(--isl-dock-workspace-end-width, 320px));
+        min-width: var(--right-sidebar-width, var(--isl-dock-workspace-end-width, 320px));
         overflow-y: auto;
 
         &.right-sidebar--open {
             transform: translateX(0);
             visibility: visible;
+        }
+
+        &:dir(rtl) {
+            transform: translateX(-100%);
+        }
+
+        &.right-sidebar--open:dir(rtl) {
+            transform: translateX(0);
         }
     }
 
@@ -66,7 +74,13 @@
         display: block;
         position: fixed;
         inset: 0;
-        z-index: 1299;
-        background: rgba(0, 0, 0, 0.5);
+        z-index: var(--isl-dock-z-backdrop, 1299);
+        background: var(--isl-dock-scrim, rgba(0, 0, 0, 0.5));
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .right-sidebar {
+        transition-duration: 1ms;
     }
 }

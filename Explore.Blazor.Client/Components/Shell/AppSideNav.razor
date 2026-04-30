@@ -1,0 +1,79 @@
+@* ABOUTME: Shell side navigation content extracted for dock-host migration. *@
+@* ABOUTME: Keeps existing MainLayout drawer links reusable without changing rendering behavior. *@
+
+<nav class="app-side-nav" aria-label="@AriaLabel" data-testid="@DataTestId">
+    <MudNavMenu Dense="true" Class="px-2 pt-2">
+        <MudText Typo="Typo.h6" Class="app-side-nav__title">
+            Events
+        </MudText>
+        <MudNavLink Href="/events"
+                    Icon="@Icons.Material.Filled.ManageSearch"
+                    Match="NavLinkMatch.All">
+            Advanced Search
+        </MudNavLink>
+        <MudNavLink Href="/events?sort=recent"
+                    Icon="@Icons.Material.Filled.NewReleases">
+            Recently Added
+        </MudNavLink>
+        <MudNavLink Href="/events?sort=random"
+                    Icon="@Icons.Material.Filled.Shuffle">
+            Random
+        </MudNavLink>
+
+        <MudDivider Class="my-2" />
+
+        @if (!string.IsNullOrWhiteSpace(ResolvedBrandDisplayName))
+        {
+            <MudText Typo="Typo.overline" Class="app-side-nav__brand-label">
+                @ResolvedBrandDisplayName
+            </MudText>
+        }
+        @if (ResolvedShowCommunityGuidelinesLink)
+        {
+            <MudNavLink Href="/community-guidelines"
+                        Icon="@Icons.Material.Outlined.Gavel">
+                Community Guidelines
+            </MudNavLink>
+        }
+        <MudNavLink Href="/about"
+                    Icon="@Icons.Material.Outlined.Info">
+            About Us
+        </MudNavLink>
+        <MudNavLink Href="/contact"
+                    Icon="@Icons.Material.Outlined.ContactMail">
+            Contact
+        </MudNavLink>
+
+        @if (ResolvedTenantLinks.Count > 0)
+        {
+            <MudDivider Class="my-2" />
+            <MudText Typo="Typo.overline" Class="app-side-nav__tenant-links-label">
+                Quick Links
+            </MudText>
+            @foreach (var link in ResolvedTenantLinks.OrderBy(link => link.Order))
+            {
+                var icon = string.IsNullOrWhiteSpace(link.Icon)
+                    ? Icons.Material.Filled.Link
+                    : link.Icon;
+
+                @if (link.OpenInNewTab == true)
+                {
+                    <MudNavLink Href="@link.Url"
+                                Icon="@icon"
+                                Target="_blank"
+                                rel="noopener noreferrer">
+                        @link.Label
+                    </MudNavLink>
+                }
+                else
+                {
+                    <MudNavLink Href="@link.Url"
+                                Icon="@icon"
+                                Match="NavLinkMatch.Prefix">
+                        @link.Label
+                    </MudNavLink>
+                }
+            }
+        }
+    </MudNavMenu>
+</nav>

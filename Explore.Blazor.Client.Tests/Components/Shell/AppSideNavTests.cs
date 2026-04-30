@@ -1,0 +1,120 @@
+// ABOUTME: bUnit coverage for the extracted AppSideNav shell navigation content.
+// ABOUTME: Protects legacy MainLayout drawer links before dock host migration.
+
+using Explore.Blazor.Client.Components.Shell;
+using MudBlazor;
+
+namespace Explore.Blazor.Client.Tests.Components.Shell;
+
+public sealed class AppSideNavTests : IDisposable
+{
+    private readonly BlazorTestContext _ctx = new();
+    private readonly IPublicExperienceService _publicExperienceService;
+    private readonly TenantNavLinksState _tenantNavLinksState;
+
+    public AppSideNavTests()
+    {
+        _publicExperienceService = Substitute.For<IPublicExperienceService>();
+        _publicExperienceService.GetCachedSettingsAsync().Returns(new PublicExperienceSettingsModel());
+        _ctx.Services.AddSingleton(_publicExperienceService);
+
+        _tenantNavLinksState = new TenantNavLinksState();
+        _ctx.Services.AddSingleton(_tenantNavLinksState);
+    }
+
+    public void Dispose()
+    {
+        _ctx.Dispose();
+    }
+
+    [Test]
+    public async Task Render_ShowsCoreNavigationLinks()
+    {
+        var cut = _ctx.RenderMudComponent<AppSideNav>();
+
+        await Assert.That(cut.Markup).Contains("Advanced Search");
+        await Assert.That(cut.Markup).Contains("Recently Added");
+        await Assert.That(cut.Markup).Contains("Random");
+        await Assert.That(cut.Markup).Contains("About Us");
+        await Assert.That(cut.Markup).Contains("Contact");
+        await Assert.That(cut.Find("[data-testid='app-side-nav']").GetAttribute("aria-label")).IsEqualTo("Sidebar navigation");
+    }
+
+    [Test]
+    public async Task Render_WithBrandName_ShowsBrandLabel()
+    {
+        _publicExperienceService.GetCachedSettingsAsync().Returns(new PublicExperienceSettingsModel
+        {
+            BrandDisplayName = "Community Hub"
+        });
+
+        var cut = _ctx.RenderMudComponent<AppSideNav>();
+
+        cut.WaitForAssertion(() =>
+        {
+            if (!cut.Markup.Contains("Community Hub"))
+                throw new InvalidOperationException("Expected 'Community Hub' label");
+        });
+
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task Render_WhenCommunityGuidelinesDisabled_HidesCommunityGuidelinesLink()
+    {
+        _publicExperienceService.GetCachedSettingsAsync().Returns(new PublicExperienceSettingsModel
+        {
+            AllowUserSubmittedEvents = false,
+            AllowOrganizationSubmittedEvents = false,
+            AllowGroupSubmittedEvents = false
+        });
+
+        var cut = _ctx.RenderMudComponent<AppSideNav>();
+
+        cut.WaitForAssertion(() =>
+        {
+            if (cut.Markup.Contains("Community Guidelines"))
+                throw new InvalidOperationException("Expected 'Community Guidelines' to be hidden");
+        });
+
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task Render_WithTenantLinks_OrdersLinksAndPreservesExternalAttributes()
+    {
+        var tenantLinks = new List<TenantNavigationLinkDto>
+        {
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Label = "Second Link",
+                Url = "/second",
+                Order = 20
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Label = "First Link",
+                Url = "https://example.test/first",
+                Order = 10,
+                OpenInNewTab = true
+            }
+        };
+
+        var cut = _ctx.RenderMudComponent<DynamicComponent>(parameters => parameters
+            .Add(component => component.Type, typeof(AppSideNav))
+            .Add(component => component.Parameters, new Dictionary<string, object>
+            {
+                ["TenantLinks"] = tenantLinks
+            }));
+        
+        var firstIndex = cut.Markup.IndexOf("First Link", StringComparison.Ordinal);
+        var secondIndex = cut.Markup.IndexOf("Second Link", StringComparison.Ordinal);
+
+        await Assert.That(cut.Markup).Contains("Quick Links");
+        await Assert.That(firstIndex).IsLessThan(secondIndex);
+        await Assert.That(cut.Markup).Contains("target=\"_blank\"");
+        await Assert.That(cut.Markup).Contains("rel=\"noopener noreferrer\"");
+    }
+}
