@@ -1,0 +1,17 @@
+{
+  "pageNumber": 1,
+  "pageSize": 5,
+  "totalCount": 0,
+  "totalPages": 0,
+  "hasPrevious": false,
+  "hasNext": false,
+  "_links": {
+    "self": {
+      "href": "/api/event?pageNumber=1&pageSize=5"
+    },
+    "first": {
+      "href": "/api/event?pageNumber=1&pageSize=5"
+    }
+  },
+  "_embedded": {}
+}

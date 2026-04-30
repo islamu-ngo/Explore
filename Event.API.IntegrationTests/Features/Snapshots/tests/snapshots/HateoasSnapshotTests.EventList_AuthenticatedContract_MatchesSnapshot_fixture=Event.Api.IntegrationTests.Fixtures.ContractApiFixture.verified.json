@@ -1,0 +1,27 @@
+{
+  "pageNumber": 1,
+  "pageSize": 5,
+  "totalCount": 0,
+  "totalPages": 0,
+  "hasPrevious": false,
+  "hasNext": false,
+  "_links": {
+    "self": {
+      "href": "/api/event?pageNumber=1&pageSize=5"
+    },
+    "first": {
+      "href": "/api/event?pageNumber=1&pageSize=5"
+    },
+    "create": {
+      "href": "/api/event",
+      "title": "Create new event",
+      "method": "POST"
+    },
+    "my-events": {
+      "href": "/api/event/my",
+      "title": "My events",
+      "method": "GET"
+    }
+  },
+  "_embedded": {}
+}

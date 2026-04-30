@@ -1,9 +1,7 @@
 // ABOUTME: Component tests for MyRegistrations loading/error/empty/success states.
 // ABOUTME: Verifies user-scoped registration rendering and event/session enrichment flow.
 
-using Explore.Blazor.Client.Pages;
 using Explore.Blazor.Client.Pages.User;
-using Microsoft.AspNetCore.Components;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Pages.User;
@@ -70,11 +68,12 @@ public class MyRegistrationsTests : IDisposable
 
         // Act
         var cut = RenderMyRegistrations();
-        cut.WaitForState(() => cut.Markup.Contains("No registrations found", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
+        cut.WaitForState(() => cut.Markup.Contains("No registrations yet", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
 
         // Assert
-        await Assert.That(cut.Markup).Contains("No registrations found");
-        await Assert.That(cut.Markup).Contains("Explore Events");
+        await Assert.That(cut.Markup).Contains("No registrations yet");
+        await Assert.That(cut.Markup).Contains("Browse Events");
+        await Assert.That(cut.Markup).Contains("href=\"/events\"");
     }
 
     [Test]
@@ -131,10 +130,10 @@ public class MyRegistrationsTests : IDisposable
 
         // Act
         var cut = RenderMyRegistrations();
-        cut.WaitForState(() => cut.Markup.Contains("No registrations found", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
+        cut.WaitForState(() => cut.Markup.Contains("No registrations yet", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
 
         // Assert
-        await Assert.That(cut.Markup).Contains("No registrations found");
-        _snackbar.Received().Add(Arg.Is<string>(s => s.Contains("Error loading registrations", StringComparison.OrdinalIgnoreCase)), Severity.Error);
+        await Assert.That(cut.Markup).Contains("No registrations yet");
+        _snackbar.Received().Add(Arg.Is<string>(s => s != null && s.Contains("Error loading registrations", StringComparison.OrdinalIgnoreCase)), Severity.Error);
     }
 }

@@ -4,6 +4,7 @@
 using Explore.Blazor.Client.Contracts.Services;
 using Explore.Blazor.Client.Contracts.Services.Organizations;
 using Explore.Blazor.Client.Services;
+using Explore.Blazor.Client.Services.Docking;
 using NSubstitute;
 
 namespace Explore.Blazor.Client.Tests.Common;
@@ -83,6 +84,8 @@ public static class NavMenuTestServices
         ctx.Services.AddSingleton(groupService);
 
         ctx.Services.AddSingleton(new Explore.Blazor.Client.Services.SidebarState());
+        ctx.Services.AddScoped<DockLayoutState>();
+        ctx.Services.AddScoped<IDockPanelRegistry>(provider => provider.GetRequiredService<DockLayoutState>());
         ctx.Services.AddSingleton(MockServiceFactory.CreateNotificationService());
         ctx.Services.AddSingleton(MockServiceFactory.CreateTranslationService());
         ctx.Services.AddSingleton(Substitute.For<IHttpClientFactory>());

@@ -64,6 +64,22 @@ public class NavMenuAdminTests : IDisposable
     }
 
     [Test]
+    public async Task NavMenu_AuthenticatedUser_ShowsMyRegistrationsLink()
+    {
+        // Arrange
+        _ctx.SetAuthenticatedUser(AuthenticationTestConstants.DefaultUserId, "Regular User");
+        SetupNavMenuServices();
+
+        // Act
+        var cut = RenderNavMenu();
+        OpenDropdown(cut);
+
+        // Assert
+        await Assert.That(cut.Markup).Contains("My Registrations");
+        await Assert.That(cut.Markup).Contains("href=\"/my/registrations\"");
+    }
+
+    [Test]
     public async Task NavMenu_InstanceAdmin_ShowsAllPlatformAdminLinks()
     {
         // Arrange

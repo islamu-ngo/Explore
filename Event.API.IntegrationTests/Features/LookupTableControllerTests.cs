@@ -217,6 +217,13 @@ public class LookupTableControllerTests
     }
 
     [Test]
+    public async Task Role_GetByEventScope_ShouldReturnOk()
+    {
+        var response = await _fixture.Client.GetAsync("/api/role?scope=Event");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+    }
+
+    [Test]
     public async Task Role_GetById_WithValidId_ShouldNotReturnServerError()
     {
         var response = await _fixture.Client.GetAsync("/api/role/1");

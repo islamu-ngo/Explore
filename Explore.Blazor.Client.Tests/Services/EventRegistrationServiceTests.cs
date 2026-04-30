@@ -223,7 +223,7 @@ public class EventRegistrationServiceTests
         };
         var expectedResponse = ComponentDataBuilder.SuccessResponse();
 
-        _apiClient.CreateEventRegistrationAsync(dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _apiClient.CreateEventRegistrationAsync(Arg.Any<string?>(), Arg.Any<string?>(), dto, Arg.Any<CancellationToken>())
             .Returns(expectedResponse);
 
         // Act
@@ -245,7 +245,7 @@ public class EventRegistrationServiceTests
             RegistrationScopeId = 3,
             SelectedSessionIds = new List<Guid> { Guid.NewGuid() },
         };
-        _apiClient.CreateEventRegistrationAsync(dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _apiClient.CreateEventRegistrationAsync(Arg.Any<string?>(), Arg.Any<string?>(), dto, Arg.Any<CancellationToken>())
             .ThrowsAsync(CreateApiException("Bad Request", 400));
 
         // Act
@@ -267,14 +267,14 @@ public class EventRegistrationServiceTests
             RegistrationScopeId = 3,
             SelectedSessionIds = new List<Guid> { Guid.NewGuid() },
         };
-        _apiClient.CreateEventRegistrationAsync(Arg.Any<CreateEventRegistrationDto>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+        _apiClient.CreateEventRegistrationAsync(Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CreateEventRegistrationDto>(), Arg.Any<CancellationToken>())
             .Returns(ComponentDataBuilder.SuccessResponse());
 
         // Act
         await _service.RegisterForSessionAsync(dto);
 
         // Assert
-        await _apiClient.Received(1).CreateEventRegistrationAsync(dto, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await _apiClient.Received(1).CreateEventRegistrationAsync(Arg.Any<string?>(), Arg.Any<string?>(), dto, Arg.Any<CancellationToken>());
     }
 
     #endregion

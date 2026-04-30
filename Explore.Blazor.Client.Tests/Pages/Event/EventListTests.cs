@@ -1,9 +1,10 @@
 // ABOUTME: Focused bUnit tests for EventList loading and empty-state behavior.
 // ABOUTME: Verifies stable UX state transitions with Virtualize-backed API paging.
 
-using Explore.Blazor.Client.Models;
 using Explore.Blazor.Client.Pages.Events;
+using Explore.Blazor.Client.Services.Docking;
 using Microsoft.AspNetCore.Components.Web.Virtualization;
+using System.Reflection;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Pages.Event;
@@ -18,6 +19,7 @@ public class EventListTests : IDisposable
     private readonly ILocationService _locationService;
     private readonly IEventRegistrationService _registrationService;
     private readonly IPublicExperienceService _publicExperienceService;
+    private readonly DockLayoutState _dockLayoutState;
 
     public EventListTests()
     {
@@ -30,6 +32,7 @@ public class EventListTests : IDisposable
         _locationService = Substitute.For<ILocationService>();
         _registrationService = Substitute.For<IEventRegistrationService>();
         _publicExperienceService = Substitute.For<IPublicExperienceService>();
+        _dockLayoutState = new DockLayoutState();
 
         _ctx.Services.AddSingleton(_eventService);
         _ctx.Services.AddSingleton(_categoryService);
@@ -38,6 +41,7 @@ public class EventListTests : IDisposable
         _ctx.Services.AddSingleton(_locationService);
         _ctx.Services.AddSingleton(_registrationService);
         _ctx.Services.AddSingleton(_publicExperienceService);
+        _ctx.Services.AddSingleton(_dockLayoutState);
 
         _ctx.Services.AddSingleton(Substitute.For<IUserService>());
         _ctx.Services.AddSingleton(Substitute.For<IDialogService>());
@@ -153,6 +157,116 @@ public class EventListTests : IDisposable
         });
     }
 
+    private static async Task InvokePrivateTaskAsync(IRenderedComponent<EventList> cut, string methodName, params object?[] parameters)
+    {
+        var method = typeof(EventList)
+            .GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException($"{methodName} not found — EventList interaction contract may have changed.");
+
+        await cut.InvokeAsync(async () =>
+        {
+            var task = method.Invoke(cut.Instance, parameters) as Task
+                ?? throw new InvalidOperationException($"{methodName} did not return a Task.");
+
+            await task;
+        });
+    }
+
+    private static async Task InvokePrivateVoidAsync(IRenderedComponent<EventList> cut, string methodName)
+    {
+        var method = typeof(EventList)
+            .GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException($"{methodName} not found — EventList interaction contract may have changed.");
+
+        await cut.InvokeAsync(() => method.Invoke(cut.Instance, []));
+    }
+
+    private static T GetPrivateField<T>(EventList instance, string fieldName)
+    {
+        var field = typeof(EventList)
+            .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException($"{fieldName} not found — EventList state contract may have changed.");
+
+        return (T)field.GetValue(instance)!;
+    }
+
+    private static void SetPrivateField<T>(EventList instance, string fieldName, T value)
+    {
+        var field = typeof(EventList)
+            .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException($"{fieldName} not found — EventList state contract may have changed.");
+
+        field.SetValue(instance, value);
+    }
+
+    private async Task RenderInlineRegistrationStateAsync(
+        IRenderedComponent<EventList> cut,
+        EventListDto selectedEvent,
+        string stateField)
+    {
+        SetPrivateField(cut.Instance, "_selectedEvent", selectedEvent);
+        SetPrivateField(cut.Instance, "_detailDrawerOpen", true);
+        SetPrivateField(cut.Instance, "_showInlineRegistration", true);
+        SetPrivateField(cut.Instance, stateField, true);
+
+        _dockLayoutState.Open(EventDockPanels.EventPreviewId);
+        await cut.InvokeAsync(() => cut.Render());
+    }
+
+    private void SetupEventDetailResponses(Guid eventId)
+    {
+        SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
+
+        _eventService.GetEventByIdAsync(eventId).Returns(new EventDto
+        {
+            Id = eventId,
+            Title = "Dock Baseline Event",
+            Description = "Event used for sidebar baseline tests"
+        });
+
+        _eventService.GetSessionsByEventAsync(eventId).Returns(new List<EventSessionListDto>());
+    }
+
+    [Test]
+    public async Task Render_RegistersWorkspaceDockHostAndCustomizePanelDescriptor()
+    {
+        SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
+
+        var cut = _ctx.RenderMudComponent<EventList>();
+
+        var host = cut.Find("[data-testid='event-list-workspace-dock-host'][data-dock-scope='workspace']");
+        var customizePanel = _dockLayoutState.GetPanel(EventDockPanels.CustomizeViewId);
+        var previewPanel = _dockLayoutState.GetPanel(EventDockPanels.EventPreviewId);
+
+        await Assert.That(host).IsNotNull();
+        await Assert.That(customizePanel).IsNotNull();
+        await Assert.That(customizePanel!.Descriptor).IsEqualTo(EventDockPanels.CustomizeView);
+        await Assert.That(previewPanel).IsNotNull();
+        await Assert.That(previewPanel!.Descriptor).IsEqualTo(EventDockPanels.EventPreview);
+        await Assert.That(cut.FindAll("[data-testid='workspace-right-sidebar']").Count).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task OpeningCustomizationDrawer_RendersCustomizeViewThroughWorkspaceDock()
+    {
+        SetupPagedResult(Task.FromResult(CreateResult(1, 20, [])));
+
+        var cut = _ctx.RenderMudComponent<EventList>();
+
+        await InvokePrivateVoidAsync(cut, "OpenCustomizationDrawer");
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.That(cut.FindAll("[data-testid='dock-panel-host'][data-dock-panel-id='events.customize-view']").Count).IsEqualTo(1);
+            Assert.That(cut.Markup).Contains("Customize View");
+            Assert.That(cut.FindAll("[data-testid='workspace-right-sidebar']").Count).IsEqualTo(0);
+        });
+
+        var panel = _dockLayoutState.GetPanel(EventDockPanels.CustomizeViewId);
+        await Assert.That(panel?.State.IsOpen).IsTrue();
+        await Assert.That(panel?.State.Mode).IsEqualTo(DockMode.Docked);
+    }
+
     [Test]
     public async Task DoesNotShowEmptyState_BeforeFirstEventsLoadCompletes()
     {
@@ -210,5 +324,130 @@ public class EventListTests : IDisposable
         // Assert — event visible, empty state hidden
         await Assert.That(cut.Markup).Contains("Blazor Summit");
         await Assert.That(cut.Markup).DoesNotContain("No events found");
+    }
+
+    [Test]
+    public async Task SelectingEvent_ClosesCustomizationDrawerAndOpensDetailDrawer()
+    {
+        var eventId = Guid.NewGuid();
+        SetupEventDetailResponses(eventId);
+
+        var cut = _ctx.RenderMudComponent<EventList>();
+
+        await InvokePrivateVoidAsync(cut, "OpenCustomizationDrawer");
+        await Assert.That(GetPrivateField<bool>(cut.Instance, "_customizationDrawerOpen")).IsTrue();
+        await Assert.That(_dockLayoutState.GetPanel(EventDockPanels.CustomizeViewId)?.State.IsOpen).IsTrue();
+
+        await InvokePrivateTaskAsync(cut, "SelectEvent", new EventListDto
+        {
+            Id = eventId,
+            Title = "Dock Baseline Event"
+        });
+
+        await Assert.That(GetPrivateField<bool>(cut.Instance, "_customizationDrawerOpen")).IsFalse();
+        await Assert.That(_dockLayoutState.GetPanel(EventDockPanels.CustomizeViewId)?.State.IsOpen).IsFalse();
+        await Assert.That(GetPrivateField<bool>(cut.Instance, "_detailDrawerOpen")).IsTrue();
+        await Assert.That(_dockLayoutState.GetPanel(EventDockPanels.EventPreviewId)?.State.IsOpen).IsTrue();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.That(cut.FindAll("[data-testid='dock-panel-host'][data-dock-panel-id='events.event-preview'][data-dock-mode='inspector']").Count).IsEqualTo(1);
+            Assert.That(cut.FindAll("[data-testid='dock-resize-handle'][data-dock-resize-panel-id='events.event-preview']").Count).IsEqualTo(0);
+        });
+    }
+
+    [Test]
+    public async Task OpeningCustomizationDrawer_ClosesOpenDetailDrawer()
+    {
+        var eventId = Guid.NewGuid();
+        SetupEventDetailResponses(eventId);
+
+        var cut = _ctx.RenderMudComponent<EventList>();
+
+        await InvokePrivateTaskAsync(cut, "SelectEvent", new EventListDto
+        {
+            Id = eventId,
+            Title = "Dock Baseline Event"
+        });
+
+        await Assert.That(GetPrivateField<bool>(cut.Instance, "_detailDrawerOpen")).IsTrue();
+        await Assert.That(_dockLayoutState.GetPanel(EventDockPanels.EventPreviewId)?.State.IsOpen).IsTrue();
+
+        await InvokePrivateVoidAsync(cut, "OpenCustomizationDrawer");
+
+        await Assert.That(GetPrivateField<bool>(cut.Instance, "_detailDrawerOpen")).IsFalse();
+        await Assert.That(GetPrivateField<bool>(cut.Instance, "_customizationDrawerOpen")).IsTrue();
+        await Assert.That(_dockLayoutState.GetPanel(EventDockPanels.EventPreviewId)?.State.IsOpen).IsFalse();
+        await Assert.That(_dockLayoutState.GetPanel(EventDockPanels.CustomizeViewId)?.State.IsOpen).IsTrue();
+    }
+
+    [Test]
+    public async Task ClosingDetailDrawer_ResetsDetailPanelTransientState()
+    {
+        var eventId = Guid.NewGuid();
+        SetupEventDetailResponses(eventId);
+
+        var cut = _ctx.RenderMudComponent<EventList>();
+
+        await InvokePrivateTaskAsync(cut, "SelectEvent", new EventListDto
+        {
+            Id = eventId,
+            Title = "Dock Baseline Event"
+        });
+
+        SetPrivateField(cut.Instance, "_showInlineRegistration", true);
+        SetPrivateField(cut.Instance, "_showTagCatPopup", true);
+
+        await InvokePrivateVoidAsync(cut, "CloseDetailDrawer");
+
+        await Assert.That(GetPrivateField<bool>(cut.Instance, "_detailDrawerOpen")).IsFalse();
+        await Assert.That(_dockLayoutState.GetPanel(EventDockPanels.EventPreviewId)?.State.IsOpen).IsFalse();
+        await Assert.That(GetPrivateField<EventDto?>(cut.Instance, "_selectedEventDetail")).IsNull();
+        await Assert.That(GetPrivateField<ICollection<EventSessionListDto>?>(cut.Instance, "_selectedEventSessions")).IsNull();
+        await Assert.That(GetPrivateField<bool>(cut.Instance, "_showInlineRegistration")).IsFalse();
+        await Assert.That(GetPrivateField<bool>(cut.Instance, "_showTagCatPopup")).IsFalse();
+    }
+
+    [Test]
+    public async Task InlineRegistrationSuccess_RendersThreeActionChoices()
+    {
+        var eventId = Guid.NewGuid();
+        SetupEventDetailResponses(eventId);
+
+        var cut = _ctx.RenderMudComponent<EventList>();
+
+        await RenderInlineRegistrationStateAsync(cut, new EventListDto
+        {
+            Id = eventId,
+            Title = "Shareable Event"
+        }, "_regIsComplete");
+
+        await Assert.That(cut.Markup).Contains("Add to Calendar");
+        await Assert.That(cut.Markup).Contains($"href=\"/api/event/{eventId}/calendar\"");
+        await Assert.That(cut.Markup).Contains("Share this Event");
+        await Assert.That(cut.Markup).Contains("Add to Calendar");
+        await Assert.That(cut.Markup).Contains($"href=\"/api/event/{eventId}/calendar\"");
+        await Assert.That(cut.Markup).Contains("View My Registrations");
+        await Assert.That(cut.Markup).Contains("href=\"/my/registrations\"");
+    }
+
+    [Test]
+    public async Task InlineAlreadyRegisteredState_RendersShareAndRegistrationActions()
+    {
+        var eventId = Guid.NewGuid();
+        SetupEventDetailResponses(eventId);
+
+        var cut = _ctx.RenderMudComponent<EventList>();
+
+        await RenderInlineRegistrationStateAsync(cut, new EventListDto
+        {
+            Id = eventId,
+            Title = "Shareable Event"
+        }, "_regIsAlreadyRegistered");
+
+        await Assert.That(cut.Markup).Contains("Already Registered");
+        await Assert.That(cut.Markup).Contains("Share this Event");
+        await Assert.That(cut.Markup).Contains("View My Registrations");
+        await Assert.That(cut.Markup).Contains("href=\"/my/registrations\"");
     }
 }

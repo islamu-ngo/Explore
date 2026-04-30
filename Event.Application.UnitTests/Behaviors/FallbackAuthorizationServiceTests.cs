@@ -255,6 +255,66 @@ public class FallbackAuthorizationServiceTests
         await Assert.That(result).IsFalse();
     }
 
+    // === Event-Scoped Resource Context ===
+
+    [Test]
+    public async Task IsAllowed_EventChildMissingEventId_DeniesEvenForTenantAdmin()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var attrs = new Dictionary<string, object>
+        {
+            ["tenantId"] = TestTenantId
+        };
+
+        var result = await _service.IsAllowedAsync("event_session", Guid.NewGuid().ToString(), "update", attrs);
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowed_EventChildWithEventContext_AllowsTenantAdmin()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var attrs = CreateEventContextAttributes();
+
+        var result = await _service.IsAllowedAsync("event_session", Guid.NewGuid().ToString(), "update", attrs);
+
+        await Assert.That(result).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowed_EventRegistrationCreateMissingEventId_Denies()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+
+        var attrs = new Dictionary<string, object>
+        {
+            ["tenantId"] = TestTenantId,
+            ["eventSessionId"] = Guid.NewGuid()
+        };
+
+        var result = await _service.IsAllowedAsync("event_registration", Guid.NewGuid().ToString(), "create", attrs);
+
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task IsAllowed_EventRegistrationCreateWithEventContext_AllowsAuthenticatedUser()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+
+        var attrs = CreateEventContextAttributes();
+        attrs["eventSessionId"] = Guid.NewGuid();
+
+        var result = await _service.IsAllowedAsync("event_registration", Guid.NewGuid().ToString(), "create", attrs);
+
+        await Assert.That(result).IsTrue();
+    }
+
     // === Custom Property Definition Access ===
 
     [Test]
@@ -418,6 +478,62 @@ public class FallbackAuthorizationServiceTests
         await Assert.That(results[3]).IsTrue();  // group view: all authenticated
     }
 
+    [Test]
+    public async Task IsAllowedBatch_EventChildMissingEventContext_Denies()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns(new List<Guid>());
+
+        var checks = new List<AuthorizationCheck>
+        {
+            new(
+                "event_session",
+                Guid.NewGuid().ToString(),
+                "update",
+                new Dictionary<string, object> { ["tenantId"] = TestTenantId }),
+            new(
+                "event_session",
+                Guid.NewGuid().ToString(),
+                "update",
+                CreateEventContextAttributes())
+        };
+
+        var results = await _service.IsAllowedBatchAsync(checks);
+
+        await Assert.That(results).Count().IsEqualTo(2);
+        await Assert.That(results[0]).IsFalse();
+        await Assert.That(results[1]).IsTrue();
+    }
+
+    [Test]
+    public async Task IsAllowedBatch_EventChildDifferentTenant_DeniesTenantAdmin()
+    {
+        _adminContext.IsInstanceAdminAsync(Arg.Any<CancellationToken>()).Returns(false);
+        _adminContext.IsTenantAdminAsync(TestTenantId, Arg.Any<CancellationToken>()).Returns(true);
+        _adminContext.GetAdminOrganizationIdsAsync(Arg.Any<CancellationToken>()).Returns(new List<Guid>());
+
+        var attrs = new Dictionary<string, object>
+        {
+            ["tenantId"] = Guid.NewGuid(),
+            ["eventId"] = Guid.NewGuid()
+        };
+
+        var checks = new List<AuthorizationCheck>
+        {
+            new("event_session", Guid.NewGuid().ToString(), "update", attrs),
+            new("event_registration", Guid.NewGuid().ToString(), "create", attrs),
+            new("notification", Guid.NewGuid().ToString(), "view")
+        };
+
+        var results = await _service.IsAllowedBatchAsync(checks);
+
+        await Assert.That(results).Count().IsEqualTo(3);
+        await Assert.That(results[0]).IsFalse();
+        await Assert.That(results[1]).IsFalse();
+        await Assert.That(results[2]).IsTrue();
+    }
+
     // === Unknown Resource Kind ===
 
     [Test]
@@ -467,4 +583,10 @@ public class FallbackAuthorizationServiceTests
 
         await Assert.That(result).IsFalse();
     }
+
+    private static Dictionary<string, object> CreateEventContextAttributes() => new()
+    {
+        ["tenantId"] = TestTenantId,
+        ["eventId"] = Guid.NewGuid()
+    };
 }
