@@ -125,14 +125,14 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
             "group" => await EvaluateViewableOrgResourceAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
             "group_member" => await EvaluateGroupMemberAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
 
-            // Event resources: org-scoped (tenant admin or org admin)
-            "event" => await EvaluateOrgScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
-            "event_session" => await EvaluateOrgScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
-            "event_session_agenda_item" => await EvaluateOrgScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
-            "event_day" => await EvaluateOrgScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
-            "event_agenda_item" => await EvaluateOrgScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            // Event resources require explicit tenant/event context before inherited authority checks.
+            "event" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "event_session" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "event_session_agenda_item" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "event_day" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
+            "event_agenda_item" => await EvaluateEventScopedAccessAsync(resourceKind, resourceId, action, resourceAttributes, cancellationToken),
 
-            // Event registration: all authenticated can create, org/tenant admin can manage
+            // Event registration: all authenticated can create/view only when the parent event context is present.
             "event_registration" => await EvaluateEventRegistrationAccessAsync(resourceId, action, resourceAttributes, cancellationToken),
 
             // Contact share consent: tenant/org admin can view and export shared contacts
@@ -240,6 +240,50 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
         }
 
         return Guid.TryParse(resourceId, out var fromId) ? fromId : null;
+    }
+
+    private static bool HasRequiredEventContext(
+        string resourceKind,
+        string resourceId,
+        IDictionary<string, object>? resourceAttributes) =>
+        TryResolveEventContext(resourceKind, resourceId, resourceAttributes, out _, out _);
+
+    private static bool TryResolveEventContext(
+        string resourceKind,
+        string resourceId,
+        IDictionary<string, object>? resourceAttributes,
+        out Guid tenantId,
+        out Guid eventId)
+    {
+        tenantId = Guid.Empty;
+        eventId = Guid.Empty;
+
+        if (!TryResolveGuidAttribute(resourceAttributes, "tenantId", out tenantId))
+            return false;
+
+        if (TryResolveGuidAttribute(resourceAttributes, "eventId", out eventId))
+            return true;
+
+        return resourceKind == "event" && Guid.TryParse(resourceId, out eventId);
+    }
+
+    private static bool TryResolveGuidAttribute(
+        IDictionary<string, object>? resourceAttributes,
+        string attributeName,
+        out Guid value)
+    {
+        value = Guid.Empty;
+
+        if (resourceAttributes?.TryGetValue(attributeName, out var attributeValue) != true)
+            return false;
+
+        if (attributeValue is Guid guidValue)
+        {
+            value = guidValue;
+            return true;
+        }
+
+        return attributeValue is string stringValue && Guid.TryParse(stringValue, out value);
     }
 
     private void LogDecision(

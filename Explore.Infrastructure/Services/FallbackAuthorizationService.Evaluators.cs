@@ -157,10 +157,58 @@ public partial class FallbackAuthorizationService
         IDictionary<string, object>? resourceAttributes,
         CancellationToken cancellationToken)
     {
+        if (!TryResolveEventContext("event_registration", resourceId, resourceAttributes, out var tenantId, out _))
+        {
+            LogDecision("deny", "missing_event_context", "event_registration", resourceId, action);
+            return false;
+        }
+
+        if (tenantId != _tenantContext.TenantId)
+        {
+            LogDecision("deny", "tenant_mismatch", "event_registration", resourceId, action);
+            return false;
+        }
+
         if (action is "create" or "view")
             return true;
 
         return await EvaluateOrgScopedAccessAsync("event_registration", resourceId, action, resourceAttributes, cancellationToken);
+    }
+
+    private async Task<bool> EvaluateEventScopedAccessAsync(
+        string resourceKind,
+        string resourceId,
+        string action,
+        IDictionary<string, object>? resourceAttributes,
+        CancellationToken cancellationToken)
+    {
+        if (!TryResolveEventContext(resourceKind, resourceId, resourceAttributes, out var tenantId, out _))
+        {
+            LogDecision("deny", "missing_event_context", resourceKind, resourceId, action);
+            return false;
+        }
+
+        if (tenantId != _tenantContext.TenantId)
+        {
+            LogDecision("deny", "tenant_mismatch", resourceKind, resourceId, action);
+            return false;
+        }
+
+        if (await _adminContext.IsTenantAdminAsync(tenantId, cancellationToken))
+        {
+            LogDecision("allow", "tenant_admin=true", resourceKind, resourceId, action);
+            return true;
+        }
+
+        var orgId = ResolveOrganizationId(resourceAttributes, resourceId);
+        if (orgId.HasValue && await _adminContext.IsOrganizationAdminAsync(orgId.Value, cancellationToken))
+        {
+            LogDecision("allow", "organization_admin=true", resourceKind, resourceId, action);
+            return true;
+        }
+
+        LogDecision("deny", "no_event_authority", resourceKind, resourceId, action);
+        return false;
     }
 
     private async Task<bool> EvaluateStorageObjectAccessAsync(

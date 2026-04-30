@@ -54,6 +54,7 @@ public static class ResourceDescriptors
         dto => dto.Id.ToString(),
         dto => new Dictionary<string, object>
         {
+            ["eventId"] = dto.Id.ToString(),
             ["tenantId"] = dto.TenantId.ToString(),
             ["actorId"] = dto.ActorId.ToString()
         },
@@ -65,6 +66,7 @@ public static class ResourceDescriptors
         dto => dto.Id.ToString(),
         dto => new Dictionary<string, object>
         {
+            ["eventId"] = dto.Id.ToString(),
             ["tenantId"] = dto.TenantId.ToString(),
             ["actorId"] = dto.ActorId.ToString()
         },
@@ -164,6 +166,7 @@ public static class ResourceDescriptors
         dto => dto.Id.ToString(),
         dto => new Dictionary<string, object>
         {
+            ["eventId"] = dto.EventId.ToString(),
             ["eventSessionId"] = dto.EventSessionId.ToString(),
             ["userId"] = dto.UserId.ToString(),
             ["tenantId"] = dto.TenantId.ToString()
@@ -175,6 +178,8 @@ public static class ResourceDescriptors
         dto => dto.Id.ToString(),
         dto => new Dictionary<string, object>
         {
+            ["eventId"] = dto.EventId.ToString(),
+            ["eventSessionId"] = dto.EventSessionId.ToString(),
             ["tenantId"] = dto.TenantId.ToString()
         },
         dto => new AuthorizationScope(TenantId: dto.TenantId.ToString()));

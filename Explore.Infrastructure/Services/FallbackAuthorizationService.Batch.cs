@@ -105,8 +105,11 @@ public partial class FallbackAuthorizationService
             "group" => action is "view" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
             "group_member" => action is "view" or "create" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
             "event" or "event_session" or "event_session_agenda_item" or "event_day" or "event_agenda_item"
-                => IsAdminForOrgScope(profile, resourceAttributes, resourceId),
-            "event_registration" => action is "create" or "view" || IsAdminForOrgScope(profile, resourceAttributes, resourceId),
+                => HasEventContextForProfile(profile, resourceKind, resourceId, resourceAttributes)
+                    && (IsTenantAdminForResourceTenant(profile, resourceKind, resourceId, resourceAttributes)
+                        || IsOrgAdminFromProfile(profile, resourceAttributes, resourceId)),
+            "event_registration" => HasEventContextForProfile(profile, resourceKind, resourceId, resourceAttributes)
+                && (action is "create" or "view" || IsAdminForOrgScope(profile, resourceAttributes, resourceId)),
             "event_contact_share_consent" => action is "viewsharedcontacts" or "exportsharedcontacts"
                 && IsAdminForOrgScope(profile, resourceAttributes, resourceId),
             "storage_object" => action is "create" or "view" || profile.IsTenantAdmin,
@@ -160,5 +163,26 @@ public partial class FallbackAuthorizationService
             return true;
 
         return IsOrgAdminFromProfile(profile, resourceAttributes, resourceId);
+    }
+
+    private static bool HasEventContextForProfile(
+        AuthorityProfile profile,
+        string resourceKind,
+        string resourceId,
+        IDictionary<string, object>? resourceAttributes)
+    {
+        return TryResolveEventContext(resourceKind, resourceId, resourceAttributes, out var tenantId, out _)
+            && tenantId == profile.TenantId;
+    }
+
+    private static bool IsTenantAdminForResourceTenant(
+        AuthorityProfile profile,
+        string resourceKind,
+        string resourceId,
+        IDictionary<string, object>? resourceAttributes)
+    {
+        return profile.IsTenantAdmin
+            && TryResolveEventContext(resourceKind, resourceId, resourceAttributes, out var tenantId, out _)
+            && tenantId == profile.TenantId;
     }
 }

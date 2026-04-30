@@ -1,5 +1,5 @@
-// ABOUTME: Unified role identifiers covering Platform, Tenant, Organization, and Group scopes.
-// ABOUTME: Three roles per scope (Admin, Moderator, Member). IDs match the Role seed data.
+// ABOUTME: Unified role identifiers covering Platform, Tenant, Organization, Group, and Event scopes.
+// ABOUTME: IDs match the Role seed data and reserve contiguous ranges by scope.
 
 namespace Explore.Domain.Enums;
 
@@ -23,5 +23,11 @@ public enum RoleEnum
     // Group scope (30-39)
     GroupAdmin = 31,
     GroupModerator = 32,
-    GroupMember = 33
+    GroupMember = 33,
+
+    // Event scope (40-49)
+    EventOwner = 41,
+    EventManager = 42,
+    RegistrationManager = 43,
+    CheckInStaff = 44
 }
