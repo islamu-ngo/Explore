@@ -35,8 +35,10 @@ public class EventSessionMappingProfile : Profile
 
         // Event Session Agenda Item
         CreateMap<EventSessionAgendaItem, EventSessionAgendaItemDto>()
+            .ForMember(dest => dest.EventId, opt => opt.MapFrom(src => src.EventSession.EventId))
             .ForMember(dest => dest.EventSessionTitle, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.Title : null));
         CreateMap<EventSessionAgendaItem, EventSessionAgendaItemListDto>()
+            .ForMember(dest => dest.EventId, opt => opt.MapFrom(src => src.EventSession.EventId))
             .ForMember(dest => dest.EventSessionTitle, opt => opt.MapFrom(src => src.EventSession != null ? src.EventSession.Title : null));
         CreateMap<CreateEventSessionAgendaItemDto, EventSessionAgendaItem>();
         CreateMap<UpdateEventSessionAgendaItemDto, EventSessionAgendaItem>();

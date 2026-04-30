@@ -98,6 +98,59 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
     }
 
     [Test]
+    public async Task Handle_WhenDisplayNameChanges_UsesNamespaceAndKeyAsMachineIdentity()
+    {
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var existing = CreateExistingDefinition(tenantId);
+        existing.Namespace = "tenant.community";
+        existing.Key = "prayer_notes";
+        existing.DisplayName = "Legacy Prayer Notes";
+        var command = new UpdateCustomPropertyDefinitionCommand
+        {
+            DefinitionDto = CreateDto(existing.Id, "Renamed Prayer Notes")
+        };
+
+        _currentUserService.UserId.Returns(userId);
+        _customPropertyDefinitionRepository.GetTrackedDefinitionWithOptions(existing.Id, Arg.Any<CancellationToken>()).Returns(existing);
+        _customPropertyGovernancePolicy.EvaluateDefinition(Arg.Any<string>(), Arg.Any<string>())
+            .Returns(new CustomPropertyGovernanceEvaluation
+            {
+                NormalizedNamespace = "tenant.community",
+                NormalizedKey = "prayer_notes",
+            });
+        _customPropertyDefinitionRepository.ExistsScopedMachineKey(tenantId, EntityTypeName.Organization, "tenant.community", "prayer_notes", existing.Id)
+            .Returns(false);
+        _mapper.Map(command.DefinitionDto, existing).Returns(callInfo =>
+        {
+            existing.DisplayName = command.DefinitionDto.DisplayName;
+            return callInfo.ArgAt<CustomPropertyDefinition>(1);
+        });
+        _customPropertyDefinitionRepository.UpdateWithOptions(Arg.Any<CustomPropertyDefinition>(), Arg.Any<IReadOnlyCollection<CustomPropertyOption>>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => callInfo.Arg<CustomPropertyDefinition>());
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await _customPropertyDefinitionRepository.Received(1).ExistsScopedMachineKey(
+            tenantId,
+            EntityTypeName.Organization,
+            "tenant.community",
+            "prayer_notes",
+            existing.Id);
+        await _customPropertyDefinitionRepository.Received(1).UpdateWithOptions(
+            Arg.Is<CustomPropertyDefinition>(definition =>
+                definition.Id == existing.Id
+                && definition.Namespace == "tenant.community"
+                && definition.Key == "prayer_notes"
+                && definition.DisplayName == "Renamed Prayer Notes"
+                && definition.UpdatedBy == userId),
+            Arg.Any<IReadOnlyCollection<CustomPropertyOption>>(),
+            Arg.Any<Guid?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task Handle_WithValidRequest_UpdatesDefinitionAndReplacesOptions()
     {
         var tenantId = Guid.NewGuid();
@@ -138,7 +191,7 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
             Arg.Any<CancellationToken>());
     }
 
-    private static UpdateCustomPropertyDefinitionDto CreateDto(Guid? id = null)
+    private static UpdateCustomPropertyDefinitionDto CreateDto(Guid? id = null, string displayName = "Prayer Notes")
     {
         return new UpdateCustomPropertyDefinitionDto
         {
@@ -146,7 +199,7 @@ public class UpdateCustomPropertyDefinitionCommandHandlerTests
             EntityTypeName = EntityTypeName.Organization,
             Namespace = "Tenant Community",
             Key = "Prayer Notes",
-            DisplayName = "Prayer Notes",
+            DisplayName = displayName,
             PropertyType = PropertyType.Option,
             ExposureLevel = ExposureLevel.OrganizerOnly,
             IsActive = true,

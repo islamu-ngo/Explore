@@ -24,6 +24,15 @@ public class CustomPropertyGovernanceTests
     }
 
     [Test]
+    public async Task NormalizedNamespaceAndKey_ShouldTreatCaseAndWhitespaceAsSameMachineIdentity()
+    {
+        var firstIdentity = $"{CustomPropertyIdentity.NormalizeNamespace("Platform")}/{CustomPropertyIdentity.NormalizeKey("Foo")}";
+        var secondIdentity = $"{CustomPropertyIdentity.NormalizeNamespace(" platform ")}/{CustomPropertyIdentity.NormalizeKey(" FOO ")}";
+
+        await Assert.That(secondIdentity).IsEqualTo(firstIdentity);
+    }
+
+    [Test]
     public async Task IsReserved_ShouldRecognizeReservedRootsAndChildren()
     {
         await Assert.That(CustomPropertyNamespaces.IsReserved("platform")).IsTrue();
