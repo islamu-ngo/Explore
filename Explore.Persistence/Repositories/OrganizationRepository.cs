@@ -40,7 +40,19 @@ public class OrganizationRepository : GenericRepository<Organization, Guid>, IOr
 
     public async Task<Organization?> GetOrganizationWithDetails(Guid id)
     {
-        return await _dbContext.Organizations
+        return await OrganizationDetailsQuery()
+            .FirstOrDefaultAsync(o => o.Id == id);
+    }
+
+    public async Task<Organization?> GetOrganizationWithDetailsByActorId(Guid actorId)
+    {
+        return await OrganizationDetailsQuery()
+            .FirstOrDefaultAsync(o => o.ActorId == actorId);
+    }
+
+    private IQueryable<Organization> OrganizationDetailsQuery()
+    {
+        return _dbContext.Organizations
             .AsNoTrackingWithIdentityResolution()
             .AsSplitQuery()
             .Include(o => o.Pii)
@@ -58,8 +70,7 @@ public class OrganizationRepository : GenericRepository<Organization, Guid>, IOr
             .Include(o => o.Members)
                 .ThenInclude(m => m.Role)
             .Include(o => o.Members)
-                .ThenInclude(m => m.OrganizationPosition)
-            .FirstOrDefaultAsync(o => o.Id == id);
+                .ThenInclude(m => m.OrganizationPosition);
     }
 
     public async Task<List<Organization>> GetMyOrganizations(Guid userId)
