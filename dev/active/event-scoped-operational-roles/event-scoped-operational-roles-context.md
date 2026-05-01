@@ -3,7 +3,7 @@
 
 # Event-Scoped Operational Roles Context
 
-Last Updated: 2026-04-30 Europe/Brussels — implementation handoff after foundation + event-child fallback slices
+Last Updated: 2026-05-01 Europe/Brussels — implementation handoff after verified authority-command + local fallback slices
 
 ## User Intent
 
@@ -36,7 +36,7 @@ The plan therefore recommends:
 
 ## Current Implementation State
 
-Two implementation slices are now complete and verified with targeted builds/tests:
+Four implementation slices are now complete and verified with targeted builds/tests:
 
 ### Slice 1 — Event Role Assignment Foundation
 
@@ -57,6 +57,24 @@ Two implementation slices are now complete and verified with targeted builds/tes
 - Updated batch fallback to reject event resources whose resource `tenantId` differs from the resolved batch profile tenant.
 - Added unit tests for missing event ID denial, valid event context allow, cross-tenant batch denial, and registration create behavior.
 
+### Slice 3 — Authority Ceiling and Event Role Assignment Commands
+
+- Added `EventRoleAuthorityCeilingService` and wired it in `Explore.Application/ApplicationServicesRegistration.cs`.
+- Added assignable event-role preset DTO/query/handler so UI/API surfaces can ask for safe presets without exposing every event role blindly.
+- Added assign, revoke, update-window, and ownership-transfer commands with shared handler base logic.
+- Enforced command invariants from Oracle review: direct `EventOwner` revoke now hard-fails with `event_owner_transfer_required`; ownership transfer validates the replacement owner is effective at transfer time with `event_ownership_transfer_invalid`.
+- Added `event_role_assignment.changed` business metric and fixed metric label cardinality by using enum role names or `unknown`, not raw IDs.
+- Added focused tests for authority ceiling and command invariants.
+
+### Slice 4 — ESOR-012 Local Fallback Event-Role Permission Evaluation
+
+- `FallbackAuthorizationService` now consumes `IEventAuthoritySnapshotService` for event-scoped resource decisions.
+- Single-check fallback now preserves admin/instance bypass precedence, then evaluates per-event assignment permissions using permission codes shaped as `{resourceKind}:{action}`.
+- Batch fallback now resolves a shared authority snapshot per user/tenant/event-set slice for optimized batches and keeps small batches on the per-check path.
+- Missing tenant/event context, tenant mismatch, and other-event assignments fail closed.
+- Oracle found a blocker where `event_day:*` and `event_agenda_item:*` were fallback-supported resource kinds but missing from the seeded permission vocabulary/grants. Fixed by adding constants, seed rows, role grants, and regression tests.
+- Added regression tests for event-day/event-agenda-item role permissions, optimized-batch one-shot snapshot resolution, and per-event isolation.
+
 ### Verification Completed
 
 - `rtk dotnet build "Explore.Domain/Explore.Domain.csproj" --configuration Release --verbosity quiet` — passed.
@@ -71,6 +89,13 @@ Two implementation slices are now complete and verified with targeted builds/tes
 - `rtk dotnet build "Event.API.IntegrationTests/Event.API.IntegrationTests.csproj" --configuration Release --verbosity quiet` — passed.
 - `rtk dotnet build "Event.Persistence.IntegrationTests/Event.Persistence.IntegrationTests.csproj" --configuration Release --verbosity quiet` — passed.
 
+Latest post-Oracle ESOR-012 verification also passed:
+
+- `rtk dotnet build "Explore.Persistence/Explore.Persistence.csproj" --configuration Release --verbosity quiet` — passed with 0 errors.
+- `rtk dotnet build "Event.Application.UnitTests/Event.Application.UnitTests.csproj" --configuration Release --verbosity quiet` — passed with 0 errors.
+- `rtk dotnet test --project "Event.Application.UnitTests/Event.Application.UnitTests.csproj" --configuration Release --verbosity quiet` — passed.
+- `rtk dotnet test --project "Event.Architecture.Tests/Event.Architecture.Tests.csproj" --configuration Release --verbosity quiet` — passed.
+
 Known verification caveat: full solution build remains blocked by pre-existing unrelated issues, including `Explore.Persistence/Repositories/UserNotificationPreferenceRepository.cs` accessing `GenericRepository<UserNotificationPreference, Guid>._dbContext` plus existing analyzer/package warnings. Targeted builds/tests for this feature pass.
 
 ### Oracle Reviews Completed
@@ -79,6 +104,8 @@ Known verification caveat: full solution build remains blocked by pre-existing u
 - Event-child fallback review found two blockers that were fixed:
   1. Batch fallback originally allowed cross-tenant event resources for tenant admins because it trusted the current tenant admin profile without checking resource `tenantId`; fixed by requiring event context tenant to match `AuthorityProfile.TenantId`.
   2. New `EventId` DTO mapping was unreliable on detail/by-session paths because repositories did not include `EventSession`; fixed with `GetByIdWithDetails(...)` repository methods and parent includes.
+- Local fallback event-role review found one blocker that was fixed:
+  1. `event_day:*` and `event_agenda_item:*` permissions were supported by fallback resource-kind evaluation but absent from permission constants/seeds/role grants; fixed in `PermissionCodes`, `LookupTableSeeder`, and fallback regression tests.
 
 ## CTO Feedback Deltas Incorporated
 
@@ -157,7 +184,7 @@ Current assignment containers:
 - `Explore.Application/Features/TenantMembers/Requests/Commands/UpdateTenantMemberCommand.cs`
 - `Explore.Application/Features/GroupMembers/Requests/Commands/UpdateGroupMemberRoleCommand.cs`
 
-Foundation gap closed: authorization now has a persisted `EventId`-specific assignment model and an Application snapshot contract. Remaining work is wiring commands, authority ceiling, full fallback assignment evaluation, Cerbos parity, API/HAL, and UI.
+Foundation and Application command gaps are closed for the current slice: authorization now has a persisted `EventId`-specific assignment model, an Application snapshot contract, deterministic authority ceiling, assignment/revoke/update/transfer commands, and local fallback event-role permission evaluation. Remaining work is Cerbos payload/policy parity, API/HAL surface, and UI.
 
 ### Persistence
 
@@ -223,7 +250,7 @@ No `PermissionController` was found during exploration.
 - `cerbos/config/.cerbos.yaml`
 - `cerbos/tests/event_test.yaml`
 
-Current Cerbos principal attributes include instance, tenant, and organization membership information. There is still no Cerbos event-role assignment payload; local fallback has only the event-context fail-closed groundwork, not final event-role assignment authority. The repository intentionally supports both Cerbos and local fallback, so parity is not optional.
+Current Cerbos principal attributes include instance, tenant, and organization membership information. There is still no Cerbos event-role assignment payload. Local fallback now has final event-role assignment authority for the supported event-family resources, so the next Cerbos work must mirror this exact tenant/event/permission contract. The repository intentionally supports both Cerbos and local fallback, so parity is not optional.
 
 ### Blazor HAL Consumption
 
@@ -294,22 +321,22 @@ Oracle confirmed and hardened the plan:
 Next implementation session should start with:
 
 1. Read this context file plus `event-scoped-operational-roles-tasks.md` before coding.
-2. Continue with ESOR-011A/ESOR-010: authority ceiling and event role assignment commands (`assign`, `revoke`, `update window`, `transfer ownership`).
-3. Use the existing `EventRoleAssignment` entity, `IEventRoleAssignmentRepository`, and `IEventAuthoritySnapshotService`; do not create a generic resource-assignment abstraction.
+2. Continue with Cerbos parity and API/HAL work, not the already-completed authority-command/fallback slices.
+3. Use the existing `EventRoleAssignment` entity, `IEventRoleAssignmentRepository`, `IEventAuthoritySnapshotService`, `EventRoleAuthorityCeilingService`, and event role commands; do not create a generic resource-assignment abstraction.
 4. Preserve the canonical effective predicate: `Status == Active && StartsAtUtc <= now && (ExpiresAtUtc IS NULL OR ExpiresAtUtc > now)`.
 5. Preserve event-child fail-closed behavior: event-family fallback decisions need valid `tenantId` + `eventId`, and batch fallback must reject resource tenant mismatches.
-6. Add owner invariant and authority ceiling tests before wiring API/HAL.
-7. Defer Cerbos payload/policy changes until local fallback assignment authority and parity fixtures are complete.
+6. Add Cerbos payload/schema/policy tests that mirror the verified fallback matrix before shipping API/HAL affordances as complete.
+7. Use the local fallback tests as the executable reference for Cerbos parity.
 8. Keep all UI/HAL work role-agnostic; Blazor must consume links only.
 
 ## Verification Notes
 
-Implementation has started. The foundation and event-child fallback slices are code-complete with targeted verification. Remaining work is listed in the task checklist; no commit has been made.
+Implementation has progressed through the foundation, event-child context, authority-command, and local fallback event-role permission slices. Targeted builds/tests pass after the latest Oracle-driven fixes. Remaining work is listed in the task checklist; no commit has been made.
 
 ## Handoff Notes
 
-- Current active goal: continue event role management implementation with assignment commands, owner invariants, authority ceiling, and full fallback assignment evaluation.
-- Do not redo completed foundation work unless tests fail: `RoleScopeEnum.Event`, `EventRoleAssignment`, EF config/migration, repository, snapshot service, seed roles/permissions, and event-child fail-closed fallback are already in the working tree.
+- Current active goal: continue event role management implementation with Cerbos parity, event-team API/HAL, stale-HAL tests, and Blazor HAL consumption after the verified local fallback slice.
+- Do not redo completed foundation/command/fallback work unless tests fail: `RoleScopeEnum.Event`, `EventRoleAssignment`, EF config/migration, repository, snapshot service, seed roles/permissions, event-child fail-closed fallback, authority ceiling, event role assignment commands, and local fallback event-role permission checks are already in the working tree.
 - Important modified files from this session include:
   - `Explore.Domain/EventRoleAssignment.cs`
   - `Explore.Domain/Enums/EventRoleAssignmentStatus.cs`
@@ -318,8 +345,12 @@ Implementation has started. The foundation and event-child fallback slices are c
   - `Explore.Persistence/Configurations/Entities/EventRoleAssignmentConfiguration.cs`
   - `Explore.Persistence/Migrations/20260430162948_AddEventRoleAssignments.cs`
   - `Explore.Persistence/Services/EventAuthoritySnapshotService.cs`
+  - `Explore.Application/Authorization/EventRoleAuthorityCeilingService.cs`
+  - `Explore.Application/Features/EventRoleAssignments/**`
   - `Explore.Infrastructure/Services/FallbackAuthorizationService*.cs`
   - `Explore.Application/Authorization/ResourceDescriptors.cs`
   - `Event.Domain.UnitTests/Entities/EventRoleAssignmentTests.cs`
+  - `Event.Application.UnitTests/Authorization/EventRoleAuthorityCeilingServiceTests.cs`
+  - `Event.Application.UnitTests/Features/EventRoleAssignments/Commands/EventRoleAssignmentCommandHandlerTests.cs`
   - `Event.Application.UnitTests/Behaviors/FallbackAuthorizationServiceTests.cs`
 - The working tree contains many unrelated pre-existing modifications from other active workstreams. Use path-scoped diffs before summarizing or committing.

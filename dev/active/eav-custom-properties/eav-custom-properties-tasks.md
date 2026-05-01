@@ -669,9 +669,9 @@ OUT of scope:
   - [x] **11.2.1** Normalize namespace/key case and whitespace variants to the same machine identity ✅ `CustomPropertyIdentity.NormalizeNamespace` + `NormalizeKey`
   - [x] **11.2.2** Prove `DisplayName` rename preserves lookup/update identity via normalized `Namespace + Key + current Id` ✅ shared-definition update handler test
   - [ ] **11.2.3** Prove EF uniqueness constraint for machine identity via Testcontainers/PostgreSQL
-- [ ] **11.3** Add unit tests for multi-value semantics, ordering, and duplicate rules
+- [x] **11.3** Add unit tests for multi-value semantics, ordering, and duplicate rules ✅ 2026-04-30 event/session runtime handler validation + targeted tests
 - [x] **11.4** Add first unit tests for shared-definition validator enforcement and create/update/delete handler behavior
-- [ ] **11.5** Add unit tests for exposure/search/filter/export/moderation flags
+- [x] **11.5** Add unit tests for exposure/search/filter/export/moderation flags ✅ 2026-04-30 local application-boundary coverage for governance DTOs and aggregate-view facets
 - [x] **11.6** Add unit tests for template instantiation, provenance, and versioning (**Milestone B baseline**) ✅ 2026-03-29
 - [x] **11.6A** Add unit tests for event session template instantiation, provenance, and versioning (**Milestone C baseline**) ✅ 2026-03-29
 - [ ] **11.7** Add unit tests for retired definitions/options with historical values

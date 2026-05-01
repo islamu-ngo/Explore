@@ -3,7 +3,7 @@
 
 # EAV Custom Properties — Execution Progress
 
-**Last updated:** 2026-04-30 (Session 6 — Phase 11.2 local identity tests verified)
+**Last updated:** 2026-04-30 (Session 6 — Phase 11.5 local exposure/export/moderation coverage added)
 **Scope:** Cleanup Phase 9.x — Blazor admin UI for definitions, templates, runtime editors.
 **Mode:** Development (no backward compatibility required).
 
@@ -39,7 +39,7 @@
 | Cleanup | Phase 9.6 Template preview | ⏳ PENDING | — |
 | Cleanup | Phase 9.10 Org/Group cleanup | ⏳ PENDING | — |
 | Cleanup | Phase 9.11 NSwag regen | ✅ 2026-04-30 | Swagger snapshot + NSwag client regenerated; client build/regeneration succeeded; client tests pass; full solution build blocked by unrelated existing analyzer/package issues + transient locked client PDB |
-| Cleanup | Phase 11+10.0 Architecture tests | 🟡 PARTIAL 2026-04-30 | Phase 10.0 boundary guard + Phase 11.2 local machine-identity/display-name tests verified; API roundtrips and EF uniqueness proof remain Docker/Testcontainers-gated |
+| Cleanup | Phase 11+10.0 Architecture tests | 🟡 PARTIAL 2026-04-30 | Phase 10.0 boundary guard + Phase 11.2 local identity tests + Phase 11.3 runtime semantics + Phase 11.5 local flag coverage verified; API roundtrips and EF uniqueness proof remain Docker/Testcontainers-gated |
 | Cleanup | Phase 8.5.13 Prometheus metrics | ⏳ PENDING | — |
 
 ---
@@ -94,7 +94,7 @@
 Closed cleanup items are no longer listed here; see the milestone snapshot and phase sections below for closure evidence.
 
 1. **Retry E/F integration tests delegation** — highest value remaining, covers Gap 3 (sync + aggregate-view correctness; Docker required).
-2. **Phase 11 local test slice** — Continue non-Docker unit/architecture tests for custom-property/template flows; API roundtrips remain Docker/Testcontainers-gated.
+2. **Phase 11 local test slice** — Continue non-Docker unit/architecture tests for custom-property/template flows; 11.3 and 11.5 local slices are covered; API roundtrips remain Docker/Testcontainers-gated.
 3. **Phase 8.5.13** — Add Prometheus metrics for projection updater observability.
 4. **Phase 9.6** — Template preview admin overview for event templates.
 5. **Phase 9.6A** — Session blueprint preview admin overview.
@@ -102,10 +102,25 @@ Closed cleanup items are no longer listed here; see the milestone snapshot and p
 
 ### Recommended Next Execution Slice
 
-**Next implementation target:** Phase 11 local-only tests (11.3/11.5/11.7) or Phase 9.6/9.6A preview admin overviews.
+**Next implementation target:** Phase 11 local-only tests (11.7) or Phase 9.6/9.6A preview admin overviews.
 
 - Phase 9.4A is closed for CreateEvent's new-session drawer. EventEdit session blueprint selection remains deferred because current event read/update DTOs do not expose the parent event template identity.
-- Current verification baseline: Phase 9.11 swagger export + generated client build succeeded; Phase 10.0 boundary guard LSP/diff checks clean and both new TUnit architecture guards pass; Phase 11.2 local domain/application unit tests pass; `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` ✅ 909 total / 908 passed / 1 known skipped. Full solution build currently fails outside these slices on unrelated existing analyzer/package issues plus one transient locked `Explore.Blazor.Client.pdb` during static-web-assets fingerprinting.
+- Current verification baseline: Phase 9.11 swagger export + generated client build succeeded; Phase 10.0 boundary guard LSP/diff checks clean and both new TUnit architecture guards pass; Phase 11.2 local domain/application unit tests pass; Phase 11.3 local runtime multi-value handler tests pass; Phase 11.5 local flag tests pass in `Event.Application.UnitTests` 1029/1029; `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` ✅ 909 total / 908 passed / 1 known skipped. Full solution build currently fails outside these slices on unrelated existing analyzer/package issues plus one transient locked `Explore.Blazor.Client.pdb` during static-web-assets fingerprinting.
+
+### Phase 11.3 Multi-Value Semantics — ✅ LOCAL COVERAGE ADDED 2026-04-30
+
+- Added service-level definition checks in event and session runtime value handlers so single-value definitions reject second rows (`Ordinal > 0` on single-value writes or multiple replacement values on bulk replacement) before persistence.
+- Added shared normalized duplicate-value rejection for event and session bulk replacement plus single-value upsert handlers; text values compare case-insensitively after trimming, while option/number/bool/date values use typed identity keys and same-ordinal overwrites remain valid.
+- Added handler tests in `Event.Application.UnitTests/Features/EventCustomProperties/Commands/SetEventCustomPropertyMultiValuesCommandHandlerTests.cs`, `SetEventCustomPropertyValueCommandHandlerTests.cs`, `Event.Application.UnitTests/Features/EventSessionCustomProperties/Commands/SetEventSessionCustomPropertyMultiValuesCommandHandlerTests.cs`, and `SetEventSessionCustomPropertyValueCommandHandlerTests.cs` proving ordinal assignment, input-order preservation, single-value rejection, and duplicate normalized-value rejection.
+- Verification: LSP diagnostics clean for all modified handlers and new tests; `Event.Application.UnitTests` passes 1021/1021 after Oracle follow-up fixes.
+
+### Phase 11.5 Exposure / Export / Moderation Flags — ✅ LOCAL COVERAGE ADDED 2026-04-30
+
+- Added governance report coverage proving `ExposureLevel`, `IsSearchable`, `IsFilterable`, `IsExportable`, `IsModerationRelevant`, and `IsAnalyticsRelevant` pass from `GovernanceDefinitionRow` into `CustomPropertyGovernanceRowDto`.
+- Added aggregate list coverage proving searchable facets honor `IsSearchable`, preserve public export/moderation metadata, and exclude internal exportable facets under a public exposure ceiling.
+- Added aggregate detail coverage proving event and session public facets carry `IsExportable`/`IsModerationRelevant` while internal exportable facets are excluded from public payloads.
+- Current implementation search found no separate custom-property export composer or moderation queue service in `Explore.Application`; this slice locks the local DTO/mapper boundaries where those flags currently flow.
+- Verification: C# LSP clean for modified test files; `rtk git diff --check` clean; `Event.Application.UnitTests` passes 1029/1029.
 
 ### Phase 9.4 Template Selection — ✅ CLOSED 2026-04-29
 

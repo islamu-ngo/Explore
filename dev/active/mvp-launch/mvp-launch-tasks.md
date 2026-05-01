@@ -623,12 +623,12 @@ ABOUTME: Organized by tier for incremental delivery. Extended 2026-04-24; Update
 
 ### WP-11: Targeted Test Coverage (rolling)
 - [ ] Registration flow unit tests (approval policy, waitlist, capacity from WP-17)
-- [ ] Visibility rules (Draft hidden, Archived 404) — API integration tests
-- [ ] HATEOAS action gating (OrganizationDetails) — bUnit
-- [ ] Calendar endpoint (valid .ics, 404 non-public, UTC normalization)
-- [ ] Session persistence regression (DataProtection key ring)
-- [ ] Unsubscribe flow end-to-end (WP-14)
-- [ ] Rate limit enforcement on setup-secret (WP-19.1)
+- [x] Visibility rules (Draft hidden, Archived 404) — Contract API tests cover public list exclusion and anonymous detail 404s; PostgreSQL query-spec translation remains covered by persistence tests
+- [x] HATEOAS action gating (OrganizationDetails) — bUnit verifies Create Event, Members, and Edit affordances follow `_links.edit`
+- [x] Calendar endpoint (valid .ics, 404 non-public, UTC normalization) — controller contract covers text/calendar attachment + 404; handler/builder tests cover non-public filtering and UTC VEVENT fields
+- [x] Session persistence regression (DataProtection key ring) — persistence regression verifies EF-backed DataProtection keys can unprotect session payloads across fresh providers sharing the persisted key store
+- [x] Unsubscribe flow end-to-end (WP-14) — Contract API tests cover valid token confirmation, valid POST persistence, malformed-token generic response/no state change, and anonymous + Global rate-limit endpoint metadata
+- [x] Rate limit enforcement on setup-secret (WP-19.1) — metadata test verifies `ValidateSecret` is anonymous and wired to `SetupSecretPolicy`; stress 429 scaffold added and skipped pending enabled-host limiter enforcement fix
 - [ ] Handler coverage target: ≥70% (from current ~39%)
 - Acceptance: Critical paths guarded; handler coverage ≥70%
 

@@ -2523,10 +2523,19 @@ Actual delivery is milestone-driven. Milestones control implementation order and
   - Verification passed with targeted TUnit `--treenode-filter` runs for both new tests; EF uniqueness remains pending until Docker/Testcontainers PostgreSQL is available.
 
 #### Task 11.3: Unit Tests For Multi-Value Semantics And Ordering
+- **Status:** ✅ LOCAL COVERAGE ADDED 2026-04-30. Event/session runtime handlers now enforce definition scope, single-vs-multi constraints, replacement ordering, and duplicate normalized-value rejection before persistence, including single-value upsert duplicate checks for multi-value definitions.
 - Setting a multi-value property with 3 values yields 3 rows with Ordinals 0/1/2
 - Replacing values preserves ordering semantics
 - Single-value property rejects a second value (via service-level validation, since DB allows 1 row with Ordinal=0)
 - Duplicate normalized values for the same definition and entity scope are rejected
+- **Local Evidence:**
+  - `Explore.Application/Features/CustomProperties/CustomPropertyValueNormalization.cs` centralizes duplicate-value identity for event and session DTO/entity values.
+  - `Explore.Application/Features/EventCustomProperties/Handlers/Commands/SetEventCustomPropertyMultiValuesCommandHandler.cs` and session mirror validate definition scope, `IsMulti`, and duplicate normalized replacement values before calling `SetMultiValues(...)`.
+  - `Explore.Application/Features/EventCustomProperties/Handlers/Commands/SetEventCustomPropertyValueCommandHandler.cs` and session mirror reject non-zero ordinals for single-value definitions and duplicate normalized upserts for multi-value definitions while allowing same-ordinal overwrites.
+  - `Event.Application.UnitTests/Features/EventCustomProperties/Commands/SetEventCustomPropertyMultiValuesCommandHandlerTests.cs` proves 3-value ordinal assignment, input-order preservation on replacement, single-value multi-replacement rejection, and duplicate normalized text rejection.
+  - `Event.Application.UnitTests/Features/EventCustomProperties/Commands/SetEventCustomPropertyValueCommandHandlerTests.cs` proves single-value ordinal-1 rejection, multi-value duplicate upsert rejection, and same-ordinal overwrite allowance.
+  - `Event.Application.UnitTests/Features/EventSessionCustomProperties/Commands/SetEventSessionCustomPropertyMultiValuesCommandHandlerTests.cs` proves session-scope ordinal assignment, input-order preservation, single-value multi-replacement rejection, and duplicate normalized text rejection.
+  - `Event.Application.UnitTests/Features/EventSessionCustomProperties/Commands/SetEventSessionCustomPropertyValueCommandHandlerTests.cs` proves session single-value ordinal-1 rejection and multi-value duplicate upsert rejection.
 
 #### Task 11.4: Unit Tests For Typed Validation Rules
 - Text: MinLength/MaxLength/RegexPattern enforcement
@@ -2536,10 +2545,16 @@ Actual delivery is milestone-driven. Milestones control implementation order and
 - Manually instantiated validators (per project rule) - no DI in validator assertions
 
 #### Task 11.5: Unit Tests For Exposure / Search / Filter / Export Flags
+- **Status:** ✅ LOCAL COVERAGE ADDED 2026-04-30. Application-boundary tests now prove governance flag pass-through and aggregate-view public exposure/search/export/moderation facet behavior. Persistence/API roundtrip proof remains covered by Docker/Testcontainers-gated slices.
 - Projection row populated with correct flags
 - Discovery filter honors `IsFilterable = true` only
 - Export payload composer honors `IsExportable = true` + `ExposureLevel = Public` only
 - Moderation queue honors `IsModerationRelevant = true` only
+- **Local Evidence:**
+  - `Event.Application.UnitTests/Features/CustomPropertyGovernance/Queries/GetCustomPropertyGovernanceReportQueryHandlerTests.cs` proves governance rows preserve `ExposureLevel`, `IsSearchable`, `IsFilterable`, `IsExportable`, `IsModerationRelevant`, and `IsAnalyticsRelevant` in the DTO payload.
+  - `Event.Application.UnitTests/Features/EventAggregateViews/Queries/GetEventListAggregateViewQueryHandlerTests.cs` proves list searchable facets honor `IsSearchable` and carry public `IsExportable`/`IsModerationRelevant` metadata while public exposure excludes internal facets.
+  - `Event.Application.UnitTests/Features/EventAggregateViews/Queries/GetEventWithSessionsAggregateViewQueryHandlerTests.cs` proves event and session detail facets carry export/moderation flags only when visible under the requested public exposure ceiling.
+  - No separate custom-property export composer or moderation queue service exists in the current Application layer; these tests lock the local DTO/mapper boundaries where those flags are currently consumed.
 
 #### Task 11.6: Unit Tests For Template Instantiation, Versioning, And Sync Provenance ✅ (Milestone B)
 

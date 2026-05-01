@@ -3,16 +3,18 @@
 
 # Event-Scoped Operational Roles Tasks
 
-Last Updated: 2026-04-30 Europe/Brussels — implementation handoff after ESOR foundation + event-child fallback slices
+Last Updated: 2026-05-01 Europe/Brussels — implementation handoff after verified authority-command + local fallback slices
 
 ## Current Implementation Status
 
 - ✅ Foundation slice complete: ESOR-001 through ESOR-008 are implemented in code and verified with targeted builds/tests.
 - ✅ Initial Application snapshot contract/service complete: `IEventAuthoritySnapshotService` exists in Application and has a Persistence implementation; future work may extend it with authority source/deny metadata.
 - ✅ Event-child propagation/fail-closed fallback groundwork complete for core event-family resources: event, event session, event day, event agenda item, session agenda item, and event registration now require tenant/event context in local fallback.
-- ✅ Oracle review completed for the foundation and event-child slices; blockers were fixed.
+- ✅ Authority ceiling and event role assignment command slice complete: assignable presets, assign/revoke/update-window/ownership-transfer commands, owner invariant guards, metrics, and focused tests are implemented.
+- ✅ ESOR-012 local fallback event-role permission evaluation complete for supported event-family resources, including optimized batch snapshot resolution and per-event isolation tests.
+- ✅ Oracle review completed for foundation, event-child, command/authority, and local fallback slices; blockers were fixed.
 - ⚠️ ESOR-017 still has follow-up audit work for resource families not touched in this slice, especially contact-share consent, payment records, content review, check-in records, speaker coordination, and moderation objects.
-- ⏭️ Next implementation priority: ESOR-011A authority ceiling and ESOR-010 assignment/revoke/update/ownership-transfer commands, then full ESOR-012 event-role assignment fallback evaluation.
+- ⏭️ Next implementation priority: ESOR-013 through ESOR-016 Cerbos event-assignment payload/schema/policy/tests, then ESOR-018 parity, ESOR-019/020 API/HAL, stale-HAL tests, and Blazor UI last.
 
 ## Legend
 
@@ -123,7 +125,7 @@ Last Updated: 2026-04-30 Europe/Brussels — implementation handoff after ESOR f
   - Implemented in `Explore.Domain/EventRoleAssignment.cs` and `Explore.Domain/Enums/EventRoleAssignmentStatus.cs`.
   - Domain unit tests added in `Event.Domain.UnitTests/Entities/EventRoleAssignmentTests.cs`.
 
-### ⏭️ ESOR-004A — Define owner invariants and ownership transfer behavior
+### ✅ ESOR-004A — Define owner invariants and ownership transfer behavior
 
 - Priority: P0
 - Effort: M
@@ -143,7 +145,8 @@ Last Updated: 2026-04-30 Europe/Brussels — implementation handoff after ESOR f
 
 - Status:
   - Assignment-only ownership decision is documented and the `Event` entity still has no owner field.
-  - Command-level last-owner/transfer enforcement is not implemented yet; implement with ESOR-010.
+  - Command-level direct owner revoke and transfer enforcement is implemented with ESOR-010.
+  - Oracle hardening applied: direct `EventOwner` revocation hard-fails with `event_owner_transfer_required`, and ownership transfer validates the replacement owner is effective at transfer time with `event_ownership_transfer_invalid`.
 
 ## Phase 2 — Persistence
 
@@ -215,7 +218,7 @@ Last Updated: 2026-04-30 Europe/Brussels — implementation handoff after ESOR f
 
 - Status:
   - Implemented `Explore.Application/Contracts/Persistence/IEventRoleAssignmentRepository.cs` and `Explore.Persistence/Repositories/EventRoleAssignmentRepository.cs`.
-  - Last-owner query helper exists; command transaction/concurrency enforcement remains part of ESOR-010.
+  - Last-owner query helper exists and is consumed by the ESOR-010 command slice.
 
 ## Phase 3 — Seed Roles and Permissions
 
@@ -239,6 +242,7 @@ Last Updated: 2026-04-30 Europe/Brussels — implementation handoff after ESOR f
 - Status:
   - Implemented in `Explore.Persistence/Seed/LookupTableSeeder.cs`.
   - Includes v1 role seed, event permission scope correction for existing dev DB rows, and event role-permission mapping seed.
+  - Oracle-driven follow-up added `event_day:*` and `event_agenda_item:*` permission constants, seed rows, and event-role grants so fallback-supported resource kinds have matching seeded permissions.
 
 ## Phase 4 — Event-Child Propagation Audit
 
@@ -299,7 +303,7 @@ Last Updated: 2026-04-30 Europe/Brussels — implementation handoff after ESOR f
   - Cancellation tokens flow end to end.
   - Revoked/expired assignments appear only in history/admin views, not effective authority views.
 
-### ⏭️ ESOR-009A — Add assignable event-role presets query
+### ✅ ESOR-009A — Add assignable event-role presets query
 
 - Priority: P0
 - Effort: M
@@ -315,7 +319,11 @@ Last Updated: 2026-04-30 Europe/Brussels — implementation handoff after ESOR f
   - Non-assignable owner/finance/delete powers are not offered through normal presets.
   - Output is UI-friendly and contains no security internals.
 
-### ⏭️ ESOR-010 — Add assign/revoke/update/transfer commands
+- Status:
+  - Implemented with `Explore.Application/DTOs/EventRoleAssignment/EventRolePresetDto.cs`, `GetAssignableEventRolePresetsRequest`, and `GetAssignableEventRolePresetsRequestHandler`.
+  - Uses authority ceiling instead of exposing all event-scoped roles blindly.
+
+### ✅ ESOR-010 — Add assign/revoke/update/transfer commands
 
 - Priority: P0
 - Effort: L
@@ -334,6 +342,12 @@ Last Updated: 2026-04-30 Europe/Brussels — implementation handoff after ESOR f
   - Last-owner and ownership transfer invariants are enforced transactionally with `Version` concurrency handling.
   - Commands return `BaseCommandResponse<Guid>` or bool according to repo convention.
   - Revoked/expired assignments stop granting authorization.
+
+- Status:
+  - Implemented assign, revoke, update-window, and ownership-transfer command requests/handlers under `Explore.Application/Features/EventRoleAssignments/`.
+  - Shared command logic lives in `EventRoleAssignmentCommandHandlerBase.cs`.
+  - Tests added in `Event.Application.UnitTests/Features/EventRoleAssignments/Commands/EventRoleAssignmentCommandHandlerTests.cs`.
+  - `event_role_assignment.changed` metric added in `Explore.Application/Telemetry/BusinessMetrics.cs`; metric labels avoid raw user/event IDs.
 
 ### ✅/⏭️ ESOR-011 — Add batch event authority snapshot service
 
@@ -359,7 +373,7 @@ Last Updated: 2026-04-30 Europe/Brussels — implementation handoff after ESOR f
   - Current output includes role codes, permission codes, `IsOwner`, and `IsManager`.
   - Future command/HAL/Cerbos work may need authority source and deny-reason metadata added without leaking Persistence details.
 
-### ⏭️ ESOR-011A — Implement deterministic authority ceiling service/policy
+### ✅ ESOR-011A — Implement deterministic authority ceiling service/policy
 
 - Priority: P0
 - Effort: M
@@ -376,9 +390,15 @@ Last Updated: 2026-04-30 Europe/Brussels — implementation handoff after ESOR f
   - Tests prove `EventManager` cannot assign `EventOwner` or finance/delete capabilities.
   - Direct assignment authority and inherited authority are distinguishable in audit/debug traces.
 
+- Status:
+  - Implemented in `Explore.Application/Authorization/EventRoleAuthorityCeilingService.cs` and registered in Application DI.
+  - Reused by assignment commands and assignable preset query.
+  - Focused tests added in `Event.Application.UnitTests/Authorization/EventRoleAuthorityCeilingServiceTests.cs`.
+  - HAL-specific reuse remains pending in ESOR-020.
+
 ## Phase 6 — Local Fallback Authorization First
 
-### 🚧 ESOR-012 — Update fallback authorization parity
+### ✅ ESOR-012 — Update fallback authorization parity
 
 - Priority: P0
 - Effort: L
@@ -399,9 +419,11 @@ Last Updated: 2026-04-30 Europe/Brussels — implementation handoff after ESOR f
   - Authorization parity tests cover the new behavior.
 
 - Status:
-  - Event-context fail-closed groundwork is implemented in local fallback.
-  - Full event-role assignment evaluation is not implemented yet; it should consume `IEventAuthoritySnapshotService`/repository effective assignments after ESOR-011A/ESOR-010 groundwork.
-  - Batch fallback tenant mismatch bug found by Oracle was fixed with regression coverage.
+  - Full local fallback event-role permission evaluation is implemented in `Explore.Infrastructure/Services/FallbackAuthorizationService*.cs` using `IEventAuthoritySnapshotService`.
+  - Single-check fallback enforces tenant/event context and same-event permission matching via `{resourceKind}:{action}` permission codes.
+  - Batch fallback resolves a shared authority snapshot for optimized event batches while preserving per-event isolation.
+  - Oracle blockers fixed: cross-tenant batch mismatch denial and missing `event_day:*`/`event_agenda_item:*` permission constants/seeds/grants.
+  - Regression tests added in `Event.Application.UnitTests/Behaviors/FallbackAuthorizationServiceTests.cs` for event-day/event-agenda-item allow, optimized one-shot snapshot resolution, and other-event deny.
 
 ## Phase 7 — Cerbos Policies Second
 

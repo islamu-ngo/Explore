@@ -3,7 +3,7 @@ ABOUTME: Read this first when resuming so implementation follows the hardened ex
 
 # EAV Custom Properties - Context
 
-**Last Updated: 2026-04-30 (Phase 11.2 local identity tests verified)**
+**Last Updated: 2026-04-30 (Phase 11.5 local exposure/export/moderation coverage added)**
 
 ---
 
@@ -52,6 +52,8 @@ ABOUTME: Read this first when resuming so implementation follows the hardened ex
 - Phase 9.11 generated-client build: `rtk dotnet build "Explore.Blazor.Client/Explore.Blazor.Client.csproj" --configuration Release --verbosity quiet` ✅ on 2026-04-30.
 - Phase 10.0 architecture guard: LSP clean, diff check clean, and both new `ProjectionLayerBoundaryTests` TUnit guards passed with `--treenode-filter` on 2026-04-30.
 - Phase 11.2 local identity tests: domain normalization test and shared-definition display-name rename handler test passed with targeted TUnit `--treenode-filter` runs on 2026-04-30.
+- Phase 11.3 local multi-value semantics: event/session runtime value handlers now reject invalid single-value second rows and duplicate normalized replacement/upsert values; `Event.Application.UnitTests` passed 1021/1021 on 2026-04-30 after Oracle gap fixes.
+- Phase 11.5 local flag coverage: governance DTOs and aggregate-view facets now have tests for exposure/search/filter/export/moderation/analytics flag pass-through; C# LSP/diff checks are clean and `Event.Application.UnitTests` passes 1029/1029.
 - Client tests: `dotnet test --project Explore.Blazor.Client.Tests/Explore.Blazor.Client.Tests.csproj --configuration Release --verbosity quiet` ✅ 909 total / 908 passed / 1 known skipped on 2026-04-30.
 - Full solution build: attempted via `rtk dotnet build --configuration Release --verbosity quiet`; currently fails outside Phase 9.11 on unrelated existing analyzer/package issues plus a transient locked `Explore.Blazor.Client.pdb` during static-web-assets fingerprinting.
 
@@ -86,8 +88,26 @@ ABOUTME: Read this first when resuming so implementation follows the hardened ex
 - Verification: domain test LSP clean; application test LSP warnings only; `git diff --check` clean for both test files; targeted TUnit `--treenode-filter` runs passed for both tests.
 - Remaining: EF uniqueness enforcement for `(TenantId, EntityTypeName, Namespace, Key)` still needs Docker/Testcontainers PostgreSQL proof.
 
+### ✅ Phase 11.3 — Multi-Value Semantics / Ordering / Duplicate Rules (2026-04-30)
+- Event and session runtime multi-value handlers now call `GetDefinitionWithDetails(...)` before persistence to validate the requested entity scope and `IsMulti` contract.
+- Event/session single-value handlers now reject `Ordinal > 0` for non-multi definitions; event/session bulk replacement handlers reject more than one value for non-multi definitions.
+- Bulk replacement and single-value upsert handlers reject duplicate normalized values for the same definition+entity scope. Text values compare after `Trim().ToUpperInvariant()`, options/numbers/booleans/datetimes use typed normalized keys, and same-ordinal overwrites are excluded from duplicate checks.
+- New coverage:
+  - `Event.Application.UnitTests/Features/EventCustomProperties/Commands/SetEventCustomPropertyMultiValuesCommandHandlerTests.cs`
+  - `Event.Application.UnitTests/Features/EventCustomProperties/Commands/SetEventCustomPropertyValueCommandHandlerTests.cs`
+  - `Event.Application.UnitTests/Features/EventSessionCustomProperties/Commands/SetEventSessionCustomPropertyMultiValuesCommandHandlerTests.cs`
+  - `Event.Application.UnitTests/Features/EventSessionCustomProperties/Commands/SetEventSessionCustomPropertyValueCommandHandlerTests.cs`
+- Verification: C# LSP diagnostics clean for all modified handlers/tests; `Event.Application.UnitTests` passes 1021/1021 after Oracle follow-up fixes.
+
+### ✅ Phase 11.5 — Exposure / Search / Filter / Export / Moderation Flags (2026-04-30)
+- Added `GetCustomPropertyGovernanceReportQueryHandlerTests.Handle_MapsExposureAndGovernanceFlags` so governance report DTOs preserve `ExposureLevel`, searchable/filterable/exportable/moderation/analytics flags from repository rows.
+- Added aggregate-list tests proving `SearchableFacets` exclude non-searchable definitions, carry public `IsExportable`/`IsModerationRelevant` metadata, and do not leak internal exportable facets into public list payloads.
+- Added aggregate-detail tests proving event/session public facets carry export/moderation flags while internal exportable facets are excluded under public exposure ceiling.
+- No separate custom-property export composer or moderation queue service was found in the current Application layer; this local slice locks the current DTO/mapper flag boundary without claiming Docker-gated persistence/API proof.
+- Verification: C# LSP clean for modified test files; `rtk git diff --check` clean; `Event.Application.UnitTests` passes 1029/1029.
+
 ### ⏳ Other Remaining Work
-- Phase 11 local-only tests: multi-value semantics, exposure/search/filter/export/moderation flags, retired historical values
+- Phase 11 local-only tests: retired historical values
 - Phase 11 Docker-gated API roundtrips: `11.9`, `11.9B`
 - Phase 8.5.13: Prometheus metrics for projection updater
 - Gap 3: Integration tests (E Phase 4 + F Phase 3 — needs Docker)
@@ -95,7 +115,7 @@ ABOUTME: Read this first when resuming so implementation follows the hardened ex
 
 ### Git State
 - 5 prior commits on develop from earlier sessions (eda957fa, 1a7f0607, b20def51, be0e08b3, aee1fd55)
-- **Uncommitted**: Phase 9.2 + 9.3 files (all the Blazor CRUD pages + services + models), Phase 9.4/9.5 UI/runtime work, Phase 9.11 generated OpenAPI/client files, Phase 10.0 architecture/doc updates, Phase 11.2 unit test updates, and dev-doc updates
+- **Uncommitted**: Phase 9.2 + 9.3 files (all the Blazor CRUD pages + services + models), Phase 9.4/9.5 UI/runtime work, Phase 9.11 generated OpenAPI/client files, Phase 10.0 architecture/doc updates, Phase 11.2/11.3 unit test and handler updates, and dev-doc updates
 - **Uncommitted broken**: Messaging infrastructure files (NOT EAV)
 - **Orphan**: `Explore.Blazor.Client/Models/EventTemplateSync/TemplateDiffResource.cs` (untracked, can delete)
 - **Stash@{0}**: still exists, safe to drop

@@ -55,13 +55,13 @@ Inline-end overlay panels must slide toward their actual inline edge. In LTR tha
 
 `Explore.Blazor.Client.Components.Docking` contains the first host layer:
 
-- `DockLayoutHost` creates a scope grid with logical start/content/end tracks and a bottom row. It reads open `DockMode.Docked` panels from `DockLayoutState` and exposes width custom properties from runtime state.
-- `DockSideHost` renders ordered open docked panels for one `(DockScope, DockSide)` group.
+- `DockLayoutHost` creates a scope grid with logical start/content/end tracks and a bottom row. It reads open `DockMode.Docked` panels from `DockLayoutState`, observes MudBlazor browser breakpoints, exposes width custom properties from runtime state, and collapses docked inline widths to `0px` on `Xs`/`Sm` breakpoints.
+- `DockSideHost` renders ordered open docked panels for one `(DockScope, DockSide)` group on desktop and suppresses docked side-host rendering on mobile so temporary overlay chrome owns panel behavior.
 - `DockPanelHost` renders descriptor-driven panel chrome with accessible labels, panel ids, mode/side data attributes, tokenized width, and logical borders.
-- `DockOverlayHost` renders open `Overlay`, `Temporary`, and `Inspector` panels separately from persistent grid tracks.
+- `DockOverlayHost` renders open `Overlay`, `Temporary`, and `Inspector` panels separately from persistent grid tracks. On mobile, it also projects open docked side panels into effective `Temporary` render entries while leaving runtime state in its desktop `Docked` mode, so resize/persistence semantics remain stable across breakpoints.
 - `DockTabStrip` renders accessible tabs when a side has multiple open docked panels. `DockSideHost` keeps the tabs ordered by runtime state, displays only the active panel content, and routes tab activation back through `DockLayoutState.Activate`.
 
-These hosts are intentionally dormant until shell/workspace migration phases wire real panels into them. They may be used in tests and behind existing rendering, but they must not replace `MainLayout`, `SidebarState`, `AiAssistantState`, `RightSidebar`, or EventList drawers until the visual baseline gap is closed.
+These hosts now render the production shell and EventList workspace panels. Temporary bridge services remain only where toggles still need compatibility (`SidebarState`, `AiAssistantState`, and page-local EventList adapter booleans); do not remove those bridges until all consumers are audited and tests pass.
 
 `Explore.Blazor.Client.Components.Shell.AppSideNav` is the extracted left navigation panel content. During the migration window it remains hosted by the existing `MainLayout` `MudDrawer`; later shell migration should register the same content as the `shell.left-nav` descriptor content instead of duplicating the navigation tree.
 
