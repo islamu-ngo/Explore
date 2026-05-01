@@ -1,11 +1,6 @@
 // ABOUTME: Handler for the intent-first registration flow - creates an EventRegistrationIntent parent and its EventRegistration child access rows atomically.
 // ABOUTME: Enforces organizer policy via RegistrationPolicyRules, derives child sessions from scope, writes inside a serializable transaction.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
@@ -127,7 +122,7 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
             RegistrationScope = null!,
             SelectedEventDayId = dto.SelectedEventDayId,
             RegistrationPolicySnapshotId = parentEvent.RegistrationPolicyId,
-            ApprovalStatusId = dto.ApprovalStatusId,
+            ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
             TenantId = tenantId,
             Tenant = null!
         };
@@ -139,13 +134,19 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
                 User = null!,
                 EventSessionId = sessionId,
                 EventSession = null!,
-                ApprovalStatusId = dto.ApprovalStatusId,
+                ApprovalStatusId = (int)ApprovalStatusEnum.Approved,
                 TenantId = tenantId,
                 Tenant = null!
             })
             .ToList();
 
-        var created = await _intentRepository.CreateWithChildrenAsync(intent, childRows, cancellationToken);
+        var creationResult = await _intentRepository.CreateWithChildrenAndCapacityAsync(
+            intent,
+            childRows,
+            (int)ApprovalStatusEnum.Approved,
+            (int)ApprovalStatusEnum.Waitlisted,
+            cancellationToken);
+        var created = creationResult.Intent;
 
         if (dto.ShareEmailWithOrganizer)
         {
@@ -171,7 +172,9 @@ public class CreateEventRegistrationCommandHandler : IRequestHandler<CreateEvent
 
         response.Success = true;
         response.Id = created.Id;
-        response.Message = "Event Registration created successfully.";
+        response.Message = creationResult.HasWaitlistedSessions
+            ? "Event Registration added to the waitlist."
+            : "Event Registration created successfully.";
         _metrics.RecordRegistrationCreated(tenantId.ToString());
 
         return response;

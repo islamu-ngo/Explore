@@ -19,6 +19,16 @@ public static class PermissionCodes
     public const string EventTransferOwnership = "event:transfer-ownership";
     public const string EventManageFinance = "event:manage-finance";
 
+    // ===== Event Day =====
+    public const string EventDayCreate = "event_day:create";
+    public const string EventDayUpdate = "event_day:update";
+    public const string EventDayDelete = "event_day:delete";
+
+    // ===== Event Agenda Item =====
+    public const string EventAgendaItemCreate = "event_agenda_item:create";
+    public const string EventAgendaItemUpdate = "event_agenda_item:update";
+    public const string EventAgendaItemDelete = "event_agenda_item:delete";
+
     // ===== Event Registration =====
     public const string EventRegistrationView = "event_registration:view";
     public const string EventRegistrationManage = "event_registration:manage";

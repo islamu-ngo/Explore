@@ -4,6 +4,7 @@
 using System.Diagnostics;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Settings;
 using Microsoft.Extensions.Logging;
 
@@ -18,6 +19,7 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
 {
     private readonly IAdminContext _adminContext;
     private readonly IMachinePrincipalAccessor _machinePrincipalAccessor;
+    private readonly IEventAuthoritySnapshotService _eventAuthoritySnapshotService;
     private readonly IHierarchicalSettingsResolver _resolver;
     private readonly ITenantContext _tenantContext;
     private readonly ILogger<FallbackAuthorizationService> _logger;
@@ -54,12 +56,14 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
     public FallbackAuthorizationService(
         IAdminContext adminContext,
         IMachinePrincipalAccessor machinePrincipalAccessor,
+        IEventAuthoritySnapshotService eventAuthoritySnapshotService,
         IHierarchicalSettingsResolver resolver,
         ITenantContext tenantContext,
         ILogger<FallbackAuthorizationService> logger)
     {
         _adminContext = adminContext;
         _machinePrincipalAccessor = machinePrincipalAccessor;
+        _eventAuthoritySnapshotService = eventAuthoritySnapshotService;
         _resolver = resolver;
         _tenantContext = tenantContext;
         _logger = logger;
@@ -247,6 +251,17 @@ public partial class FallbackAuthorizationService : IAuthorizationProvider
         string resourceId,
         IDictionary<string, object>? resourceAttributes) =>
         TryResolveEventContext(resourceKind, resourceId, resourceAttributes, out _, out _);
+
+    private static bool IsEventScopedResourceKind(string resourceKind) =>
+        resourceKind is "event"
+            or "event_session"
+            or "event_session_agenda_item"
+            or "event_day"
+            or "event_agenda_item"
+            or "event_registration";
+
+    private static string PermissionCodeFor(string resourceKind, string action) =>
+        string.Concat(resourceKind, ":", action);
 
     private static bool TryResolveEventContext(
         string resourceKind,

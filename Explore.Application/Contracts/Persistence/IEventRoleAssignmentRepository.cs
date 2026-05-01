@@ -14,6 +14,13 @@ public interface IEventRoleAssignmentRepository : IGenericRepository<EventRoleAs
         int roleId,
         CancellationToken cancellationToken);
 
+    Task<EventRoleAssignment?> GetOpenByEventUserRoleAsync(
+        Guid tenantId,
+        Guid eventId,
+        Guid userId,
+        int roleId,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<EventRoleAssignment>> GetEffectiveForUserAndEventsAsync(
         Guid tenantId,
         Guid userId,

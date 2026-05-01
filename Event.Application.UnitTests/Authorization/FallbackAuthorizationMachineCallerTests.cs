@@ -5,6 +5,7 @@ using Explore.Application.Authentication;
 using Explore.Application.Authorization;
 using Explore.Application.Contracts.Identity;
 using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Services;
 using Explore.Application.Settings;
 using Explore.Domain.Constants;
 using Explore.Domain.Enums;
@@ -18,6 +19,7 @@ public class FallbackAuthorizationMachineCallerTests
 {
     private readonly IAdminContext _adminContext;
     private readonly IMachinePrincipalAccessor _machinePrincipalAccessor;
+    private readonly IEventAuthoritySnapshotService _eventAuthoritySnapshotService;
     private readonly IHierarchicalSettingsResolver _settingsResolver;
     private readonly ITenantContext _tenantContext;
     private readonly ILogger<FallbackAuthorizationService> _logger;
@@ -27,12 +29,13 @@ public class FallbackAuthorizationMachineCallerTests
     {
         _adminContext = Substitute.For<IAdminContext>();
         _machinePrincipalAccessor = Substitute.For<IMachinePrincipalAccessor>();
+        _eventAuthoritySnapshotService = Substitute.For<IEventAuthoritySnapshotService>();
         _settingsResolver = Substitute.For<IHierarchicalSettingsResolver>();
         _tenantContext = Substitute.For<ITenantContext>();
         _logger = Substitute.For<ILogger<FallbackAuthorizationService>>();
 
         _sut = new FallbackAuthorizationService(
-            _adminContext, _machinePrincipalAccessor, _settingsResolver, _tenantContext, _logger);
+            _adminContext, _machinePrincipalAccessor, _eventAuthoritySnapshotService, _settingsResolver, _tenantContext, _logger);
     }
 
     private void SetMachineContext(ExternalApiKeyOwnerType ownerType, Guid? tenantId, Guid ownerId, params string[] scopes)

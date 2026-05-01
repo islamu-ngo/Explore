@@ -55,4 +55,61 @@ public class EventRegistrationIntentRepository : GenericRepository<EventRegistra
 
         return intent;
     }
+
+    public async Task<EventRegistrationIntentCreationResult> CreateWithChildrenAndCapacityAsync(
+        EventRegistrationIntent intent,
+        IReadOnlyList<EventRegistration> children,
+        int approvedStatusId,
+        int waitlistedStatusId,
+        CancellationToken cancellationToken)
+    {
+        await using var tx = await _dbContext.Database
+            .BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+
+        var waitlistedSessionIds = new List<Guid>();
+
+        foreach (var child in children)
+        {
+            var reserved = await TryReserveSessionCapacityAsync(child.EventSessionId, cancellationToken);
+            child.ApprovalStatusId = reserved ? approvedStatusId : waitlistedStatusId;
+
+            if (!reserved)
+            {
+                waitlistedSessionIds.Add(child.EventSessionId);
+            }
+        }
+
+        intent.ApprovalStatusId = waitlistedSessionIds.Count == 0
+            ? approvedStatusId
+            : waitlistedStatusId;
+
+        await _dbContext.EventRegistrationIntents.AddAsync(intent, cancellationToken);
+
+        foreach (var child in children)
+        {
+            child.EventRegistrationIntentId = intent.Id;
+            await _dbContext.EventRegistrations.AddAsync(child, cancellationToken);
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        await tx.CommitAsync(cancellationToken);
+
+        return new EventRegistrationIntentCreationResult(intent, waitlistedSessionIds);
+    }
+
+    private async Task<bool> TryReserveSessionCapacityAsync(Guid sessionId, CancellationToken cancellationToken)
+    {
+        var affectedRows = await _dbContext.Database.ExecuteSqlInterpolatedAsync($"""
+            UPDATE event_sessions
+            SET current_audience_attendees = COALESCE(current_audience_attendees, 0) + 1
+            WHERE id = {sessionId}
+              AND is_deleted = false
+              AND (
+                  max_audience_attendees IS NULL
+                  OR COALESCE(current_audience_attendees, 0) < max_audience_attendees
+              )
+            """, cancellationToken);
+
+        return affectedRows > 0;
+    }
 }

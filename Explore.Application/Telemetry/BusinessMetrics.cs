@@ -19,6 +19,7 @@ public sealed class BusinessMetrics
     private readonly Counter<long> _registrationsCreated;
     private readonly Counter<long> _organizationsCreated;
     private readonly Counter<long> _authorizationDecisions;
+    private readonly Counter<long> _eventRoleAssignmentChanged;
     private readonly Counter<long> _externalApiKeysCreated;
     private readonly Counter<long> _externalApiKeysRevoked;
     private readonly Counter<long> _externalApiKeyAuthenticationAttempts;
@@ -54,6 +55,11 @@ public sealed class BusinessMetrics
             "explore.authorization.decisions",
             unit: "{decision}",
             description: "Total authorization decisions (allowed/denied)");
+
+        _eventRoleAssignmentChanged = meter.CreateCounter<long>(
+            "event_role_assignment.changed",
+            unit: "{change}",
+            description: "Total event-role assignment lifecycle changes by operation and outcome");
 
         _externalApiKeysCreated = meter.CreateCounter<long>(
             "explore.external_api_keys.created",
@@ -117,6 +123,14 @@ public sealed class BusinessMetrics
             new KeyValuePair<string, object?>("resource", resource),
             new KeyValuePair<string, object?>("action", action),
             new KeyValuePair<string, object?>("result", allowed ? "allowed" : "denied"));
+    }
+
+    public void RecordEventRoleAssignmentChanged(string operation, string outcome, string? roleCode = null)
+    {
+        _eventRoleAssignmentChanged.Add(1,
+            new KeyValuePair<string, object?>("operation", operation),
+            new KeyValuePair<string, object?>("outcome", outcome),
+            new KeyValuePair<string, object?>("role", roleCode ?? "unknown"));
     }
 
     public void RecordExternalApiKeyCreated(string? tenantId = null, string? ownerType = null)

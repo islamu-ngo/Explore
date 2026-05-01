@@ -1,7 +1,6 @@
 // ABOUTME: Unit tests for the single-event aggregate view query handler.
 // ABOUTME: Verifies not-found handling, exposure filtering, safe JSON parsing, and nullable module-gated aspect fields.
 
-using System.Text.Json;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Features.EventAggregateViews.Handlers.Queries;
 using Explore.Application.Features.EventAggregateViews.Requests.Queries;
@@ -58,6 +57,37 @@ public class GetEventWithSessionsAggregateViewQueryHandlerTests
         await Assert.That(result.Id.EventCustomProperties[0].Key).IsEqualTo("public-facet");
         await Assert.That(result.Id.EventSessionCustomProperties.Count).IsEqualTo(1);
         await Assert.That(result.Id.EventSessionCustomProperties[0].Key).IsEqualTo("public-session-facet");
+    }
+
+    [Test]
+    public async Task Handle_PublicCeiling_ReturnsOnlyPublicExportableFacetsWithGovernanceFlags()
+    {
+        var eventId = Guid.NewGuid();
+        ConfigureViewAndDefinitions(
+            eventId,
+            [
+                CreateEventDefinition(eventId, "tenant.custom", "public-facet", ExposureLevel.Public, isExportable: true, isModerationRelevant: true),
+                CreateEventDefinition(eventId, "tenant.custom", "internal-facet", ExposureLevel.Internal, isExportable: true, isModerationRelevant: true)
+            ],
+            [
+                CreateSessionDefinition(eventId, "tenant.session", "public-session-facet", ExposureLevel.Public, isExportable: true, isModerationRelevant: true),
+                CreateSessionDefinition(eventId, "tenant.session", "internal-session-facet", ExposureLevel.Internal, isExportable: true, isModerationRelevant: true)
+            ]);
+
+        var result = await _handler.Handle(new GetEventWithSessionsAggregateViewQuery(eventId, ExposureLevel.Public), CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        var eventFacet = result.Id!.EventCustomProperties.Single();
+        await Assert.That(eventFacet.Key).IsEqualTo("public-facet");
+        await Assert.That(eventFacet.IsExportable).IsTrue();
+        await Assert.That(eventFacet.IsModerationRelevant).IsTrue();
+        await Assert.That(eventFacet.ExposureLevel).IsEqualTo(ExposureLevel.Public);
+
+        var sessionFacet = result.Id.EventSessionCustomProperties.Single();
+        await Assert.That(sessionFacet.Key).IsEqualTo("public-session-facet");
+        await Assert.That(sessionFacet.IsExportable).IsTrue();
+        await Assert.That(sessionFacet.IsModerationRelevant).IsTrue();
+        await Assert.That(sessionFacet.ExposureLevel).IsEqualTo(ExposureLevel.Public);
     }
 
     [Test]
@@ -171,13 +201,13 @@ public class GetEventWithSessionsAggregateViewQueryHandlerTests
             Title = "Aggregate Event",
             Slug = "aggregate-event",
             Description = "desc",
-            StartAt = DateTimeOffset.Parse("2026-04-24T08:00:00+00:00"),
-            EndAt = DateTimeOffset.Parse("2026-04-24T12:00:00+00:00"),
+            StartAt = new DateTimeOffset(2026, 4, 24, 8, 0, 0, TimeSpan.Zero),
+            EndAt = new DateTimeOffset(2026, 4, 24, 12, 0, 0, TimeSpan.Zero),
             Status = "Published",
             Visibility = "Public",
             IsDeleted = false,
-            CreatedAt = DateTimeOffset.Parse("2026-04-01T00:00:00+00:00"),
-            UpdatedAt = DateTimeOffset.Parse("2026-04-02T00:00:00+00:00"),
+            CreatedAt = new DateTimeOffset(2026, 4, 1, 0, 0, 0, TimeSpan.Zero),
+            UpdatedAt = new DateTimeOffset(2026, 4, 2, 0, 0, 0, TimeSpan.Zero),
             IslamicTheme = islamicTheme,
             Madhab = "hanafi",
             IsRamadan = isRamadan,
@@ -186,8 +216,8 @@ public class GetEventWithSessionsAggregateViewQueryHandlerTests
             DifficultyLevel = "Beginner",
             TargetAudience = targetAudience,
             SessionCount = 2,
-            FirstSessionStartAt = DateTimeOffset.Parse("2026-04-24T08:00:00+00:00"),
-            LastSessionEndAt = DateTimeOffset.Parse("2026-04-24T12:00:00+00:00"),
+            FirstSessionStartAt = new DateTimeOffset(2026, 4, 24, 8, 0, 0, TimeSpan.Zero),
+            LastSessionEndAt = new DateTimeOffset(2026, 4, 24, 12, 0, 0, TimeSpan.Zero),
             HasInPersonSessions = true,
             HasVirtualSessions = true,
             AggregatedSessionIslamicThemes = null,
@@ -203,7 +233,13 @@ public class GetEventWithSessionsAggregateViewQueryHandlerTests
             CreateEventDefinition(eventId, "tenant.custom", "internal-facet", internalExposure)
         ];
 
-    private static EventCustomPropertyDefinition CreateEventDefinition(Guid eventId, string namespaceValue, string key, ExposureLevel exposureLevel)
+    private static EventCustomPropertyDefinition CreateEventDefinition(
+        Guid eventId,
+        string namespaceValue,
+        string key,
+        ExposureLevel exposureLevel,
+        bool isExportable = true,
+        bool isModerationRelevant = false)
         => new()
         {
             Id = Guid.NewGuid(),
@@ -221,8 +257,8 @@ public class GetEventWithSessionsAggregateViewQueryHandlerTests
             ExposureLevel = exposureLevel,
             IsSearchable = true,
             IsFilterable = true,
-            IsExportable = true,
-            IsModerationRelevant = false,
+            IsExportable = isExportable,
+            IsModerationRelevant = isModerationRelevant,
             IsAnalyticsRelevant = false,
             IsSystemOwned = false,
             InstantiatedAt = DateTimeOffset.UtcNow,
@@ -237,7 +273,13 @@ public class GetEventWithSessionsAggregateViewQueryHandlerTests
             CreateSessionDefinition(eventId, "tenant.session", "internal-session-facet", internalExposure)
         ];
 
-    private static EventSessionCustomPropertyDefinition CreateSessionDefinition(Guid eventId, string namespaceValue, string key, ExposureLevel exposureLevel)
+    private static EventSessionCustomPropertyDefinition CreateSessionDefinition(
+        Guid eventId,
+        string namespaceValue,
+        string key,
+        ExposureLevel exposureLevel,
+        bool isExportable = true,
+        bool isModerationRelevant = false)
         => new()
         {
             Id = Guid.NewGuid(),
@@ -255,8 +297,8 @@ public class GetEventWithSessionsAggregateViewQueryHandlerTests
             ExposureLevel = exposureLevel,
             IsSearchable = true,
             IsFilterable = true,
-            IsExportable = true,
-            IsModerationRelevant = false,
+            IsExportable = isExportable,
+            IsModerationRelevant = isModerationRelevant,
             IsAnalyticsRelevant = false,
             IsSystemOwned = false,
             InstantiatedAt = DateTimeOffset.UtcNow,

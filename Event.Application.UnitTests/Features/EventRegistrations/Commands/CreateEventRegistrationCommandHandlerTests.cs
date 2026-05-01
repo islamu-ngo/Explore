@@ -1,0 +1,189 @@
+// ABOUTME: Unit tests for event registration creation capacity and waitlist behavior.
+// ABOUTME: Verifies handlers call the capacity-aware repository contract and surface waitlist outcomes.
+
+using System.Diagnostics.Metrics;
+using Explore.Application.Contracts.Infrastructure;
+using Explore.Application.Contracts.Persistence;
+using Explore.Application.Contracts.Services;
+using Explore.Application.DTOs.EventRegistration;
+using Explore.Application.Features.EventRegistrations.Handlers.Commands;
+using Explore.Application.Features.EventRegistrations.Requests.Commands;
+using Explore.Application.Telemetry;
+using Explore.Domain;
+using Explore.Domain.Enums;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using NSubstitute;
+
+namespace Event.Application.UnitTests.Features.EventRegistrations.Commands;
+
+public sealed class CreateEventRegistrationCommandHandlerTests
+{
+    private readonly IEventRegistrationIntentRepository _intentRepository = Substitute.For<IEventRegistrationIntentRepository>();
+    private readonly IEventRepository _eventRepository = Substitute.For<IEventRepository>();
+    private readonly IUserRepository _userRepository = Substitute.For<IUserRepository>();
+    private readonly IEventDayRepository _eventDayRepository = Substitute.For<IEventDayRepository>();
+    private readonly IEventSessionRepository _eventSessionRepository = Substitute.For<IEventSessionRepository>();
+    private readonly IApprovalStatusRepository _approvalStatusRepository = Substitute.For<IApprovalStatusRepository>();
+    private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
+    private readonly IContactShareConsentService _consentService = Substitute.For<IContactShareConsentService>();
+    private readonly CreateEventRegistrationCommandHandler _handler;
+
+    public CreateEventRegistrationCommandHandlerTests()
+    {
+        _handler = new CreateEventRegistrationCommandHandler(
+            _intentRepository,
+            _eventRepository,
+            _userRepository,
+            _eventDayRepository,
+            _eventSessionRepository,
+            _approvalStatusRepository,
+            _tenantContext,
+            CreateBusinessMetrics(),
+            _consentService,
+            Substitute.For<ILogger<CreateEventRegistrationCommandHandler>>());
+    }
+
+    [Test]
+    public async Task HandleWhenCapacityIsAvailableReturnsConfirmedRegistration()
+    {
+        var tenantId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var command = CreateSessionRegistrationCommand(eventId, userId, sessionId);
+        SetupValidRegistration(tenantId, eventId, userId, sessionId);
+
+        _intentRepository.CreateWithChildrenAndCapacityAsync(
+                Arg.Any<EventRegistrationIntent>(),
+                Arg.Any<IReadOnlyList<EventRegistration>>(),
+                (int)ApprovalStatusEnum.Approved,
+                (int)ApprovalStatusEnum.Waitlisted,
+                Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var intent = callInfo.ArgAt<EventRegistrationIntent>(0);
+                intent.Id = Guid.NewGuid();
+                return new EventRegistrationIntentCreationResult(intent, []);
+            });
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Message).IsEqualTo("Event Registration created successfully.");
+        await _intentRepository.Received(1).CreateWithChildrenAndCapacityAsync(
+            Arg.Is<EventRegistrationIntent>(intent =>
+                intent != null
+                && intent.ApprovalStatusId == (int)ApprovalStatusEnum.Approved
+                && intent.TenantId == tenantId),
+            Arg.Is<IReadOnlyList<EventRegistration>>(children =>
+                children != null
+                && children.Count == 1
+                && children[0].EventSessionId == sessionId
+                && children[0].ApprovalStatusId == (int)ApprovalStatusEnum.Approved),
+            (int)ApprovalStatusEnum.Approved,
+            (int)ApprovalStatusEnum.Waitlisted,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task HandleWhenSessionIsFullReturnsWaitlistMessage()
+    {
+        var tenantId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var command = CreateSessionRegistrationCommand(eventId, userId, sessionId);
+        SetupValidRegistration(tenantId, eventId, userId, sessionId);
+
+        _intentRepository.CreateWithChildrenAndCapacityAsync(
+                Arg.Any<EventRegistrationIntent>(),
+                Arg.Any<IReadOnlyList<EventRegistration>>(),
+                (int)ApprovalStatusEnum.Approved,
+                (int)ApprovalStatusEnum.Waitlisted,
+                Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var intent = callInfo.ArgAt<EventRegistrationIntent>(0);
+                intent.Id = Guid.NewGuid();
+                intent.ApprovalStatusId = (int)ApprovalStatusEnum.Waitlisted;
+                return new EventRegistrationIntentCreationResult(intent, [sessionId]);
+            });
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.Message).IsEqualTo("Event Registration added to the waitlist.");
+    }
+
+    private void SetupValidRegistration(Guid tenantId, Guid eventId, Guid userId, Guid sessionId)
+    {
+        _tenantContext.TenantId.Returns(tenantId);
+        _eventRepository.Exists(eventId).Returns(true);
+        _userRepository.Exists(userId).Returns(true);
+        _eventRepository.GetById(eventId).Returns(CreateEvent(eventId, tenantId));
+        _eventSessionRepository.GetSessionsByEvent(eventId).Returns([CreateEventSession(eventId, tenantId, sessionId)]);
+        _intentRepository.FindExistingAsync(
+                eventId,
+                userId,
+                (int)RegistrationScopeEnum.SessionSelection,
+                null,
+                Arg.Any<CancellationToken>())
+            .Returns((EventRegistrationIntent?)null);
+    }
+
+    private static CreateEventRegistrationCommand CreateSessionRegistrationCommand(Guid eventId, Guid userId, Guid sessionId)
+    {
+        return new CreateEventRegistrationCommand
+        {
+            EventRegistrationDto = new CreateEventRegistrationDto
+            {
+                EventId = eventId,
+                UserId = userId,
+                RegistrationScopeId = (int)RegistrationScopeEnum.SessionSelection,
+                SelectedSessionIds = [sessionId]
+            }
+        };
+    }
+
+    private static Explore.Domain.Event CreateEvent(Guid eventId, Guid tenantId)
+    {
+        return new Explore.Domain.Event
+        {
+            Id = eventId,
+            Title = "Capacity Test Event",
+            Actor = null!,
+            TenantId = tenantId,
+            Tenant = null!,
+            VisibilityTypeId = (int)VisibilityTypeEnum.Public,
+            VisibilityType = null!,
+            EventStatusId = (int)EventStatusEnum.Published,
+            EventStatus = null!,
+            EventFormatId = (int)EventFormatEnum.Local,
+            EventFormat = null!,
+            RegistrationPolicyId = (int)EventRegistrationPolicyEnum.SessionSelectionOnly
+        };
+    }
+
+    private static EventSession CreateEventSession(Guid eventId, Guid tenantId, Guid sessionId)
+    {
+        return new EventSession
+        {
+            Id = sessionId,
+            EventId = eventId,
+            Event = null!,
+            TenantId = tenantId,
+            Tenant = null!,
+            StartTime = DateTimeOffset.UtcNow.AddDays(7),
+            EndTime = DateTimeOffset.UtcNow.AddDays(7).AddHours(2)
+        };
+    }
+
+    private static BusinessMetrics CreateBusinessMetrics()
+    {
+        var services = new ServiceCollection();
+        services.AddMetrics();
+        var provider = services.BuildServiceProvider();
+        return new BusinessMetrics(provider.GetRequiredService<IMeterFactory>());
+    }
+}

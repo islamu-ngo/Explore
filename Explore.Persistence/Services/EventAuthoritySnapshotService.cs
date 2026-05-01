@@ -93,11 +93,13 @@ public class EventAuthoritySnapshotService : IEventAuthoritySnapshotService
             permissionCodes.UnionWith(rolePermissionCodes);
         }
 
+        var roleIds = assignments.Select(assignment => assignment.RoleId).ToHashSet();
+
         return new EventAuthorityForUser(
             roleCodes,
             permissionCodes,
-            roleCodes.Contains(RoleEnum.EventOwner.ToString()),
-            roleCodes.Contains(RoleEnum.EventManager.ToString()) || permissionCodes.Contains(PermissionCodes.EventManageTeam));
+            roleIds.Contains((int)RoleEnum.EventOwner),
+            roleIds.Contains((int)RoleEnum.EventManager) || permissionCodes.Contains(PermissionCodes.EventManageTeam));
     }
 
     private sealed record AssignmentAuthorityRow(Guid EventId, string RoleCode, int RoleId);

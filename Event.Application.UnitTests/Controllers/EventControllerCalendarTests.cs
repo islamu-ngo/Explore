@@ -3,11 +3,11 @@
 
 using System.Text;
 using Explore.API.Controllers;
+using Explore.API.Hateoas;
 using Explore.API.Services.Calendar;
 using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.DTOs.Event;
 using Explore.Application.Features.Events.Requests.Queries;
-using Explore.Application.Hateoas;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -32,7 +32,7 @@ public sealed class EventControllerCalendarTests
     }
 
     [Test]
-    public async Task GetCalendar_ForPublishedPublicEvent_ReturnsTextCalendarAttachment()
+    public async Task GetCalendarForPublishedPublicEventReturnsTextCalendarAttachment()
     {
         var eventId = Guid.Parse("11111111-2222-3333-4444-555555555555");
         var export = new EventCalendarExportDto(
@@ -68,7 +68,7 @@ public sealed class EventControllerCalendarTests
     }
 
     [Test]
-    public async Task GetCalendar_WhenExportIsUnavailable_ReturnsNotFound()
+    public async Task GetCalendarWhenExportIsUnavailableReturnsNotFound()
     {
         var eventId = Guid.Parse("22222222-3333-4444-5555-666666666666");
         _mediator.Send(Arg.Is<GetEventCalendarExportRequest>(request => request.EventId == eventId), Arg.Any<CancellationToken>())

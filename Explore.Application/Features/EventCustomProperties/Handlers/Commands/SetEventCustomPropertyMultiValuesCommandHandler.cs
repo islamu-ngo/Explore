@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventCustomProperty.Validators;
+using Explore.Application.Features.CustomProperties;
 using Explore.Application.Features.EventCustomProperties.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
@@ -58,6 +59,35 @@ public class SetEventCustomPropertyMultiValuesCommandHandler : IRequestHandler<S
             response.Success = false;
             response.Message = "Event custom property multi-value set failed.";
             response.Errors = errors;
+            return response;
+        }
+
+        var definition = await _eventCustomPropertyRepository.GetDefinitionWithDetails(request.DefinitionId);
+        if (definition is null || definition.EventId != request.EventId)
+        {
+            response.Success = false;
+            response.Message = "Event custom property multi-value set failed.";
+            response.Errors = ["Event custom property definition was not found for the requested event."];
+            return response;
+        }
+
+        if (!definition.IsMulti && request.Values.Count > 1)
+        {
+            response.Success = false;
+            response.Message = "Event custom property multi-value set failed.";
+            response.Errors = ["Single-value custom property definitions cannot accept more than one value."];
+            return response;
+        }
+
+        var duplicateValue = request.Values
+            .GroupBy(CustomPropertyValueNormalization.CreateKey, StringComparer.Ordinal)
+            .FirstOrDefault(group => group.Count() > 1);
+
+        if (duplicateValue is not null)
+        {
+            response.Success = false;
+            response.Message = "Event custom property multi-value set failed.";
+            response.Errors = ["Duplicate normalized values are not allowed for the same definition and event."];
             return response;
         }
 

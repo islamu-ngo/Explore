@@ -6,6 +6,7 @@ using Explore.Application.Contracts.Infrastructure;
 using Explore.Application.Contracts.Persistence;
 using Explore.Application.Contracts.Services;
 using Explore.Application.DTOs.EventSessionCustomProperty.Validators;
+using Explore.Application.Features.CustomProperties;
 using Explore.Application.Features.EventSessionCustomProperties.Requests.Commands;
 using Explore.Application.Responses;
 using Explore.Domain;
@@ -50,6 +51,39 @@ public class SetEventSessionCustomPropertyValueCommandHandler : IRequestHandler<
             response.Message = "Event session custom property value set failed.";
             response.Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
             return response;
+        }
+
+        var definition = await _sessionCustomPropertyRepository.GetDefinitionWithDetails(request.ValueDto.EventSessionCustomPropertyDefinitionId);
+        if (definition is null || definition.EventSessionId != request.ValueDto.EventSessionId)
+        {
+            response.Success = false;
+            response.Message = "Event session custom property value set failed.";
+            response.Errors = ["Event session custom property definition was not found for the requested session."];
+            return response;
+        }
+
+        if (!definition.IsMulti && request.ValueDto.Ordinal > 0)
+        {
+            response.Success = false;
+            response.Message = "Event session custom property value set failed.";
+            response.Errors = ["Single-value custom property definitions only accept ordinal 0."];
+            return response;
+        }
+
+        if (definition.IsMulti)
+        {
+            var incomingKey = CustomPropertyValueNormalization.CreateKey(request.ValueDto);
+            var duplicateExistingValue = definition.Values
+                .Where(value => value.Ordinal != request.ValueDto.Ordinal)
+                .Any(value => CustomPropertyValueNormalization.CreateKey(value) == incomingKey);
+
+            if (duplicateExistingValue)
+            {
+                response.Success = false;
+                response.Message = "Event session custom property value set failed.";
+                response.Errors = ["Duplicate normalized values are not allowed for the same definition and session."];
+                return response;
+            }
         }
 
         var value = _mapper.Map<EventSessionCustomPropertyValue>(request.ValueDto);

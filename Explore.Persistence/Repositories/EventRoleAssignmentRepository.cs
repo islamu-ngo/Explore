@@ -35,6 +35,24 @@ public class EventRoleAssignmentRepository : GenericRepository<EventRoleAssignme
                 cancellationToken);
     }
 
+    public async Task<EventRoleAssignment?> GetOpenByEventUserRoleAsync(
+        Guid tenantId,
+        Guid eventId,
+        Guid userId,
+        int roleId,
+        CancellationToken cancellationToken)
+    {
+        return await _dbContext.EventRoleAssignments
+            .Include(a => a.Role)
+            .FirstOrDefaultAsync(a =>
+                a.TenantId == tenantId &&
+                a.EventId == eventId &&
+                a.UserId == userId &&
+                a.RoleId == roleId &&
+                (a.Status == EventRoleAssignmentStatus.Pending || a.Status == EventRoleAssignmentStatus.Active),
+                cancellationToken);
+    }
+
     public async Task<IReadOnlyList<EventRoleAssignment>> GetEffectiveForUserAndEventsAsync(
         Guid tenantId,
         Guid userId,

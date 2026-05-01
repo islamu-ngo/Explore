@@ -26,4 +26,15 @@ public interface IEventRegistrationIntentRepository : IGenericRepository<EventRe
         EventRegistrationIntent intent,
         IReadOnlyList<EventRegistration> children,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Inserts the parent intent and child session-access rows while atomically reserving session capacity.
+    /// Full sessions create waitlisted child rows instead of incrementing the attendee counter.
+    /// </summary>
+    Task<EventRegistrationIntentCreationResult> CreateWithChildrenAndCapacityAsync(
+        EventRegistrationIntent intent,
+        IReadOnlyList<EventRegistration> children,
+        int approvedStatusId,
+        int waitlistedStatusId,
+        CancellationToken cancellationToken);
 }

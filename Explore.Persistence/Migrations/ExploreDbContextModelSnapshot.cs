@@ -2861,7 +2861,8 @@ namespace Explore.Persistence.Migrations
 
                     b.HasIndex("EventSessionId", "UserId")
                         .IsUnique()
-                        .HasDatabaseName("ix_eventregistrations_session_user");
+                        .HasDatabaseName("ix_eventregistrations_session_user")
+                        .HasFilter("is_deleted = false");
 
                     b.ToTable("event_registrations", (string)null);
                 });

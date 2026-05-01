@@ -56,7 +56,14 @@ public class EventSessionTemplateSyncServiceTests
         quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.SyncApplyMaxChangeCount.Key, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(10);
         currentUser.UserId.Returns(Guid.NewGuid());
         unitOfWork.ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<TemplateSyncOutcomeDto>>>(), Arg.Any<CancellationToken>())
-            .Returns(call => call.Arg<Func<CancellationToken, Task<TemplateSyncOutcomeDto>>>()(CancellationToken.None));
+            .Returns(call =>
+            {
+                var transaction = call.Arg<Func<CancellationToken, Task<TemplateSyncOutcomeDto>>>();
+                if (transaction is null)
+                    throw new InvalidOperationException("Missing transaction delegate.");
+
+                return transaction(CancellationToken.None);
+            });
 
         var sessionId = Guid.NewGuid();
         var session = new EventSession { Id = sessionId, Event = null!, Tenant = null!, TenantId = Guid.NewGuid(), SourceTemplateId = Guid.NewGuid(), SourceTemplateKey = "session-template", SourceTemplateVersion = 1 };
@@ -77,10 +84,103 @@ public class EventSessionTemplateSyncServiceTests
         await projectionUpdater.Received(1).RefreshForEventSessionAsync(sessionId, Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task ApplySyncAsync_WhenRetiringOption_PreservesHistoricalValuesAndClearsDefaultOption()
+    {
+        var eventSessionRepository = Substitute.For<IEventSessionRepository>();
+        var templateRepository = Substitute.For<IEventSessionTemplateRepository>();
+        var runtimeRepository = Substitute.For<IEventSessionCustomPropertyRepository>();
+        var diffService = Substitute.For<IEventSessionTemplateDiffService>();
+        var projectionUpdater = Substitute.For<IEventSessionCustomPropertyProjectionUpdater>();
+        var auditRepository = Substitute.For<IAuditLogRepository>();
+        var quotaResolver = Substitute.For<ICustomPropertyQuotaResolver>();
+        var currentUser = Substitute.For<ICurrentUserService>();
+        var unitOfWork = Substitute.For<IUnitOfWork>();
+
+        quotaResolver.GetIntAsync(CustomPropertyQuotaSettingDefinitions.SyncApplyMaxChangeCount.Key, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(10);
+        currentUser.UserId.Returns(Guid.NewGuid());
+        unitOfWork.ExecuteInTransactionAsync(Arg.Any<Func<CancellationToken, Task<TemplateSyncOutcomeDto>>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var transaction = call.Arg<Func<CancellationToken, Task<TemplateSyncOutcomeDto>>>();
+                if (transaction is null)
+                    throw new InvalidOperationException("Missing transaction delegate.");
+
+                return transaction(CancellationToken.None);
+            });
+
+        var sessionId = Guid.NewGuid();
+        var tenantId = Guid.NewGuid();
+        var sourceTemplateId = Guid.NewGuid();
+        var session = new EventSession { Id = sessionId, Event = null!, Tenant = null!, TenantId = tenantId, SourceTemplateId = sourceTemplateId, SourceTemplateKey = "session-template", SourceTemplateVersion = 1 };
+        var runtimeDefinition = new EventSessionCustomPropertyDefinition { Id = Guid.NewGuid(), EventSessionId = sessionId, TenantId = tenantId, Namespace = "tenant.sync", Key = "session", DisplayName = "Session", PropertyType = PropertyType.Option, IsActive = true, ExposureLevel = ExposureLevel.Public, SourceTemplateId = sourceTemplateId, SourceTemplateKey = session.SourceTemplateKey, SourceTemplateVersion = 1, SourceTemplateDefinitionId = Guid.NewGuid(), InstantiatedAt = DateTimeOffset.UtcNow, ConcurrencyStamp = Guid.NewGuid() };
+        var runtimeOption = CreateRuntimeOption(runtimeDefinition.Id, runtimeDefinition.Namespace, "old_option", sourceTemplateOptionId: Guid.NewGuid(), displayName: "Old Option");
+        runtimeDefinition.DefaultOptionId = runtimeOption.Id;
+        SetRuntimeOptions(runtimeDefinition, [runtimeOption]);
+        SetRuntimeValues(runtimeDefinition,
+        [
+            new EventSessionCustomPropertyValue
+            {
+                Id = Guid.NewGuid(),
+                EventSessionCustomPropertyDefinitionId = runtimeDefinition.Id,
+                EventSessionId = sessionId,
+                TenantId = tenantId,
+                OptionId = runtimeOption.Id
+            }
+        ]);
+
+        var templateDefinition = new EventSessionTemplateCustomPropertyDefinition { Id = runtimeDefinition.SourceTemplateDefinitionId.Value, EventSessionTemplateId = sourceTemplateId, TenantId = tenantId, Namespace = runtimeDefinition.Namespace, Key = runtimeDefinition.Key, DisplayName = runtimeDefinition.DisplayName, PropertyType = PropertyType.Option, IsActive = true, ExposureLevel = ExposureLevel.Public };
+        var template = new EventSessionTemplate { Id = sourceTemplateId, EventTemplateId = Guid.NewGuid(), TenantId = tenantId, SessionTemplateKey = session.SourceTemplateKey!, DisplayName = "Session Template", Version = 2, IsPublished = true, IsActive = true };
+        SetSessionTemplateDefinitions(template, [templateDefinition]);
+        var diff = new TemplateDiffDto(2, 1, [], [], [], [], [], [new RetiredOptionDto(runtimeDefinition.Namespace, runtimeOption.Key, runtimeOption.ConcurrencyStamp)], []);
+
+        eventSessionRepository.GetById(sessionId).Returns(session, session);
+        diffService.ComputeDiffAsync(sessionId, 2, Arg.Any<CancellationToken>()).Returns(diff);
+        runtimeRepository.GetTrackedDefinitionsForSession(sessionId, Arg.Any<CancellationToken>()).Returns([runtimeDefinition]);
+        templateRepository.GetPublishedSessionTemplateVersion(sourceTemplateId, session.SourceTemplateKey!, 2, Arg.Any<CancellationToken>()).Returns(template);
+
+        var service = new EventSessionTemplateSyncService(eventSessionRepository, templateRepository, runtimeRepository, diffService, projectionUpdater, auditRepository, quotaResolver, currentUser, unitOfWork);
+        var result = await service.ApplySyncAsync(sessionId, new TemplateSyncPlanDto { TargetTemplateVersion = 2, BaseProvenanceVersion = 1, RetiredOptionKeys = [$"{runtimeDefinition.Namespace}/{runtimeOption.Key}"] }, 1, CancellationToken.None);
+
+        await Assert.That(result.Applied.Count).IsEqualTo(1);
+        await Assert.That(runtimeOption.IsActive).IsFalse();
+        await Assert.That(runtimeDefinition.DefaultOptionId).IsNull();
+        await Assert.That(runtimeDefinition.Values.Single().OptionId).IsEqualTo(runtimeOption.Id);
+    }
+
     private static void SetSessionTemplateDefinitions(EventSessionTemplate template, IEnumerable<EventSessionTemplateCustomPropertyDefinition> definitions)
     {
         var field = typeof(EventSessionTemplate).GetField("_definitions", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
         var list = (List<EventSessionTemplateCustomPropertyDefinition>)field.GetValue(template)!;
         list.AddRange(definitions);
+    }
+
+    private static EventSessionCustomPropertyOption CreateRuntimeOption(Guid definitionId, string ns, string key, Guid? sourceTemplateOptionId, string displayName)
+        => new()
+        {
+            Id = Guid.NewGuid(),
+            EventSessionCustomPropertyDefinitionId = definitionId,
+            Namespace = ns,
+            Key = key,
+            DisplayName = displayName,
+            Value = key,
+            IsActive = true,
+            SourceTemplateOptionId = sourceTemplateOptionId,
+            SourceTemplateVersion = 1,
+            ConcurrencyStamp = Guid.NewGuid()
+        };
+
+    private static void SetRuntimeOptions(EventSessionCustomPropertyDefinition definition, IEnumerable<EventSessionCustomPropertyOption> options)
+    {
+        var field = typeof(EventSessionCustomPropertyDefinition).GetField("_options", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        var list = (List<EventSessionCustomPropertyOption>)field.GetValue(definition)!;
+        list.AddRange(options);
+    }
+
+    private static void SetRuntimeValues(EventSessionCustomPropertyDefinition definition, IEnumerable<EventSessionCustomPropertyValue> values)
+    {
+        var field = typeof(EventSessionCustomPropertyDefinition).GetField("_values", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        var list = (List<EventSessionCustomPropertyValue>)field.GetValue(definition)!;
+        list.AddRange(values);
     }
 }

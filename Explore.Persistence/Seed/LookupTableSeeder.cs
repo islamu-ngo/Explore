@@ -118,12 +118,18 @@ public static class LookupTableSeeder
 
     private static async Task SeedApprovalStatusesAsync(ExploreDbContext context, CancellationToken ct)
     {
-        if (await context.Set<ApprovalStatus>().AnyAsync(ct)) return;
-
-        context.Set<ApprovalStatus>().AddRange(
+        var existingIds = await context.Set<ApprovalStatus>()
+            .Select(status => status.Id)
+            .ToListAsync(ct);
+        var missingStatuses = new[]
+        {
             new ApprovalStatus { Id = (int)ApprovalStatusEnum.Pending, MasterCode = "PENDING", FullName = "Pending", Description = "Status is pending approval of Admin verifying the Existence of Legal Entity" },
             new ApprovalStatus { Id = (int)ApprovalStatusEnum.Approved, MasterCode = "APPROVED", FullName = "Approved", Description = "Status has been approved by Admin after verifying the Existence of Legal Entity" },
-            new ApprovalStatus { Id = (int)ApprovalStatusEnum.Rejected, MasterCode = "REJECTED", FullName = "Rejected", Description = "Status has been rejected by Admin after failing to verify the Existence of Legal Entity" });
+            new ApprovalStatus { Id = (int)ApprovalStatusEnum.Rejected, MasterCode = "REJECTED", FullName = "Rejected", Description = "Status has been rejected by Admin after failing to verify the Existence of Legal Entity" },
+            new ApprovalStatus { Id = (int)ApprovalStatusEnum.Waitlisted, MasterCode = "WAITLISTED", FullName = "Waitlisted", Description = "Registration is waitlisted because the event session is currently at capacity" }
+        }.Where(status => !existingIds.Contains(status.Id));
+
+        context.Set<ApprovalStatus>().AddRange(missingStatuses);
         await context.SaveChangesAsync(ct);
     }
 
@@ -522,6 +528,8 @@ public static class LookupTableSeeder
 
         // Events group
         AddPermissions("event", "Events", RoleScopeEnum.Event, crud);
+        AddPermissions("event_day", "Events", RoleScopeEnum.Event, crud);
+        AddPermissions("event_agenda_item", "Events", RoleScopeEnum.Event, crud);
         AddPermissions("event_session", "Events", RoleScopeEnum.Event, crud);
         AddPermissions("event_session_agenda_item", "Events", RoleScopeEnum.Event, crud);
         AddPermissions("event_registration", "Events", RoleScopeEnum.Event, crud);
@@ -585,6 +593,14 @@ public static class LookupTableSeeder
             PermissionCodes.EventUpdate,
             PermissionCodes.EventDelete,
             PermissionCodes.EventPublish,
+            "event_day:view",
+            PermissionCodes.EventDayCreate,
+            PermissionCodes.EventDayUpdate,
+            PermissionCodes.EventDayDelete,
+            "event_agenda_item:view",
+            PermissionCodes.EventAgendaItemCreate,
+            PermissionCodes.EventAgendaItemUpdate,
+            PermissionCodes.EventAgendaItemDelete,
             "event_session:view",
             PermissionCodes.EventSessionCreate,
             PermissionCodes.EventSessionUpdate,
@@ -638,6 +654,14 @@ public static class LookupTableSeeder
                 PermissionCodes.EventManageOwner,
                 PermissionCodes.EventTransferOwnership,
                 PermissionCodes.EventManageFinance,
+                "event_day:view",
+                PermissionCodes.EventDayCreate,
+                PermissionCodes.EventDayUpdate,
+                PermissionCodes.EventDayDelete,
+                "event_agenda_item:view",
+                PermissionCodes.EventAgendaItemCreate,
+                PermissionCodes.EventAgendaItemUpdate,
+                PermissionCodes.EventAgendaItemDelete,
                 "event_session:view",
                 PermissionCodes.EventSessionCreate,
                 PermissionCodes.EventSessionUpdate,
@@ -660,6 +684,14 @@ public static class LookupTableSeeder
                 PermissionCodes.EventUpdate,
                 PermissionCodes.EventPublish,
                 PermissionCodes.EventManageTeam,
+                "event_day:view",
+                PermissionCodes.EventDayCreate,
+                PermissionCodes.EventDayUpdate,
+                PermissionCodes.EventDayDelete,
+                "event_agenda_item:view",
+                PermissionCodes.EventAgendaItemCreate,
+                PermissionCodes.EventAgendaItemUpdate,
+                PermissionCodes.EventAgendaItemDelete,
                 "event_session:view",
                 PermissionCodes.EventSessionCreate,
                 PermissionCodes.EventSessionUpdate,
