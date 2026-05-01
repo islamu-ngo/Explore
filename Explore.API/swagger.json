@@ -1,4 +1,4 @@
-﻿{
+{
   "openapi": "3.1.1",
   "info": {
     "title": "Event API",
@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "http://localhost/"
+      "url": "https://localhost:36287/"
     }
   ],
   "paths": {
@@ -31093,6 +31093,19 @@
         },
         "x-endpoint-class": "Public"
       }
+    },
+    "/admin/migrate": {
+      "post": {
+        "tags": [
+          "Explore.API"
+        ],
+        "operationId": "ApplyDatabaseMigrations",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -49313,6 +49326,9 @@
     },
     {
       "name": "VisibilityType"
+    },
+    {
+      "name": "Explore.API"
     }
   ]
 }

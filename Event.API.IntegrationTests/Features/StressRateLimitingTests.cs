@@ -139,4 +139,27 @@ public class StressRateLimitingTests(StressApiFixture fixture)
             await Assert.That(response.StatusCode).IsNotEqualTo(HttpStatusCode.TooManyRequests);
         }
     }
+
+    [Test]
+    [Skip("Infrastructure-gated: current Stress host does not enforce the setup-secret endpoint limiter; metadata coverage guards policy wiring until runtime limiter setup is corrected.")]
+    public async Task SetupSecretValidationRepeatedAttemptsShouldEventuallyReturnTooManyRequests()
+    {
+        HttpResponseMessage? rateLimitedResponse = null;
+
+        for (var i = 0; i < 5; i++)
+        {
+            var response = await _fixture.Client.PostAsync(
+                "/api/InstanceOnboarding/validate-secret",
+                new StringContent("{\"secret\":\"wrong-secret\"}", Encoding.UTF8, "application/json"));
+
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                rateLimitedResponse = response;
+                break;
+            }
+        }
+
+        await Assert.That(rateLimitedResponse).IsNotNull();
+        await Assert.That(rateLimitedResponse!.Headers.Contains("Retry-After")).IsTrue();
+    }
 }

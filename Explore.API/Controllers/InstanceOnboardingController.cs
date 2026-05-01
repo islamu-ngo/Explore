@@ -4,6 +4,7 @@
 using System.Security.Claims;
 using Asp.Versioning;
 using Explore.API.Attributes;
+using Explore.API.Extensions;
 using Explore.API.Filters;
 using Explore.API.Hateoas;
 using Explore.Application.Contracts.Services;
@@ -112,7 +113,7 @@ public class InstanceOnboardingController : ExploreControllerBase
     [AllowAnonymous]
     [EndpointClassification(EndpointClass.Public)]
     [HttpPost("validate-secret", Name = RouteNames.ValidateInstanceSetupSecret)]
-    [EnableRateLimiting("SetupSecret")]
+    [EnableRateLimiting(RateLimitingExtensions.SetupSecretPolicy)]
     [EndpointSummary("Validate Setup Secret")]
     [EndpointDescription("Validates the provided setup secret. Returns whether the secret is correct. Rate limited to 5 attempts per minute.")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
