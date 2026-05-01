@@ -74,16 +74,16 @@ All file and class references in this section were re-verified during the 2026-0
 | Left sidebar state | `Explore.Blazor.Client/Services/SidebarState.cs` | Tracks `IsOpen` and `HasSidebar`; not a panel registry model. |
 | AI rail state | `Explore.Blazor.Client/Services/AiAssistantState.cs` | Tracks `IsOpen` and `IsAvailable`; separate from shell layout state. |
 | AI rail component | `Explore.Blazor.Client/Components/Shell/AiAssistantRail.razor` and `.css` | Supports dock-hosted mode for `shell.ai-assistant`, suppressing legacy backdrop/fixed-position behavior while retaining stable selectors, dock tokens, and RTL-aware slide transforms. |
-| Event list page | `Explore.Blazor.Client/Pages/Events/EventList.razor` | Owns detail drawer, main event list, customization sidebar, and page-specific state. |
-| Event list code-behind | `Explore.Blazor.Client/Pages/Events/EventList.razor.cs` | Uses `_detailDrawerOpen` and `_customizationDrawerOpen`; manually enforces mutual exclusion. |
-| Event list CSS | `Explore.Blazor.Client/Pages/Events/EventList.razor.css` | Legacy width-expansion escape remains, but touched compensation now uses logical inline-end properties and dock motion tokens. |
-| Generic right sidebar | `Explore.Blazor.Client/Components/Common/RightSidebar.razor` and `.css` | Legacy sticky/fixed panel remains, but now uses stable selectors, logical inline-end positioning, dock tokens, and RTL-aware mobile transforms. |
+| Event list page | `Explore.Blazor.Client/Pages/Events/EventList.razor` | Owns the workspace `DockLayoutHost`, main event list content, Customize View panel content, and Event Preview inspector content. |
+| Event list code-behind | `Explore.Blazor.Client/Pages/Events/EventList.razor.cs` | Registers `events.customize-view` and `events.event-preview`, mirrors temporary page booleans into dock state, and enforces customize/preview mutual exclusion through the dock engine. |
+| Event list CSS | `Explore.Blazor.Client/Pages/Events/EventList.razor.css` | Legacy width-expansion escape has been removed; preview styling is retargeted to dock panel hosts with logical selectors. |
+| Generic right sidebar | `Explore.Blazor.Client/Components/Common/RightSidebar.razor` and `.css` | Legacy sticky/fixed panel remains for any other consumers, but EventList no longer depends on it. |
 | Dock engine foundation | `Explore.Blazor.Client/Services/Docking/*` | Implemented descriptor-driven state, scoped registry, snapshot normalization, capability enforcement, and tests. |
-| Dock host foundation | `Explore.Blazor.Client/Components/Docking/*` | Host components render registered docked/overlay panels; shell rendering is migrated, workspace rendering remains legacy. Start/end docked panels have keyboard-accessible pointer-drag resize foundation with pointer-capture hardening and JSInterop invocation coverage, and multiple panels on one side render through a tabbed stack foundation with coherent tabpanel linkage and keyboard focus movement. |
+| Dock host foundation | `Explore.Blazor.Client/Components/Docking/*` | Host components render registered docked/overlay panels; shell rendering and EventList workspace rendering are migrated. `DockLayoutHost` observes browser breakpoints, collapses docked widths to `0px` on mobile, and routes mobile docked panels through `DockOverlayHost` as effective temporary overlays. `DockOverlayHost` provides shared backdrop, scroll lock, Escape close, focus handoff, and focus restore for overlay/temporary/inspector/mobile-docked modes. Start/end docked panels have keyboard-accessible pointer-drag resize foundation with pointer-capture hardening and JSInterop invocation coverage, and multiple panels on one side render through a tabbed stack foundation with coherent tabpanel linkage and keyboard focus movement. |
 | Shell accessibility contract | `Explore.Blazor.Client.Tests/Layout/MainLayoutTests.cs` | Covers skip link, main landmark, header/footer/sidebar landmarks, dock-hosted shell panels, ARIA live regions, hidden-chrome accessibility anchors, and focus-on-navigate after production host migration. |
 | Dock governance guardrails | `Event.Architecture.Tests/DockLayoutArchitectureTests.cs` | Prevents central dock panel enum regressions and new page-scoped shell compensation outside known legacy migration debt. |
 | Customize view content | `Explore.Blazor.Client/Pages/Events/Components/EventListCustomizationDrawer.razor` and `.cs/.css` | Good content component; layout wrapper is page-specific. |
-| Event detail preview | `EventList.razor` | Uses `MudOverlay` plus `MudDrawer` temporary right drawer; visually strong and should be preserved. |
+| Event detail preview | `EventList.razor` | Uses `events.event-preview` as a workspace inspector through `DockOverlayHost`; `_detailDrawerOpen` remains only as a temporary backdrop/card-selection adapter. |
 
 ## Implementation Inventory
 
@@ -101,19 +101,19 @@ This inventory is updated as slices land so future sessions do not rediscover or
 | `Explore.Blazor.Client/Services/Docking/DockPanelEntry.cs` | Descriptor/content/state registry entry. | Implemented |
 | `Explore.Blazor.Client/Services/Docking/IDockPanelRegistry.cs` | Controlled panel registration abstraction. | Implemented |
 | `Explore.Blazor.Client/Services/Docking/DockLayoutState.cs` | Runtime state engine, registry implementation, and orchestration. | Implemented |
-| `Explore.Blazor.Client/Components/Docking/DockLayoutHost.razor` and `.razor.css` | Scope host and grid boundary. | Implemented as dormant host foundation |
-| `Explore.Blazor.Client/Components/Docking/DockSideHost.razor` and `.razor.css` | Ordered side panel host. | Implemented as dormant host foundation |
+| `Explore.Blazor.Client/Components/Docking/DockLayoutHost.razor` and `.razor.css` | Scope host, viewport-aware grid boundary, and mobile docked-width policy. | Implemented and production-rendered for shell/workspace; mobile docked widths collapse to `0px` through viewport policy |
+| `Explore.Blazor.Client/Components/Docking/DockSideHost.razor` and `.razor.css` | Ordered side panel host. | Implemented and suppresses docked side-host rendering on mobile so overlay chrome owns temporary behavior |
 | `Explore.Blazor.Client/Components/Docking/DockPanelHost.razor` and `.razor.css` | Individual docked/overlay panel renderer. | Implemented as dormant host foundation |
-| `Explore.Blazor.Client/Components/Docking/DockOverlayHost.razor` and `.razor.css` | Overlay/inspector/temporary panel renderer. | Implemented as dormant host foundation |
+| `Explore.Blazor.Client/Components/Docking/DockOverlayHost.razor` and `.razor.css` | Overlay/inspector/temporary panel renderer with shared backdrop, scroll lock, Escape close, focus handoff, focus restore, and mobile docked-panel projection behavior. | Implemented and hardened as Phase 9 host-level overlay/mobile foundation |
 | `Explore.Blazor.Client/Components/Docking/DockTabStrip.razor` and `.razor.css` | Accessible tab strip for multiple open docked panels on one side, including tabpanel linkage and focus movement on keyboard activation. | Implemented as dormant stack foundation |
 | `Explore.Blazor.Client/Components/Shell/ShellDockPanels.cs` | Shell-owned stable ids and descriptors for left nav and AI assistant. | Implemented behind legacy rendering with hidden-chrome/disposal and NavMenu toggle bridge coverage |
 | `Explore.Blazor.Client/Services/Docking/IDockLayoutPersistence.cs` | Snapshot load/save/delete abstraction for layout-keyed dock snapshots. | Implemented as Phase 8 non-rendering slice |
 | `Explore.Blazor.Client/Services/Interop/LocalStorageDockLayoutPersistence.cs` | Initial client-side persistence implementation behind the approved JS interop boundary. | Implemented as Phase 8 non-rendering slice |
-| `Explore.Blazor.Client/Services/Docking/DockFocusManager.cs` | Focus save/restore and active overlay focus policy. | Future phase |
+| `Explore.Blazor.Client/Services/Docking/DockFocusManager.cs` | Optional future extraction if focus policy outgrows `DockOverlayHost`. | Deferred; `DockOverlayHost` currently owns first-slice focus save/restore directly through `IAccessibilityFocusService` |
 | `Explore.Blazor.Client/Components/Docking/DockResizeHandle.razor` and `.razor.css` | Keyboard-accessible and pointer-drag resize affordance wired through `DockLayoutState.Resize`, including pointer capture, pointer identity filtering, and bUnit coverage for the pointer-capture JS helper. | Implemented as dormant resize foundation |
 | `Explore.Blazor.Client/Components/Shell/AppSideNav.razor` and `.razor.css` | Extracted shell left nav panel content while preserving the legacy `MudDrawer` host. | Implemented behind legacy rendering and registered as `shell.left-nav` content |
 | `Explore.Blazor.Client/Components/Shell/AppRightRail.razor` and `.razor.css` | Optional shell right rail wrapper for AI assistant content. | Future phase |
-| `Explore.Blazor.Client/Pages/Events/EventDockPanels.cs` | Event module dock panel descriptors. | Future phase |
+| `Explore.Blazor.Client/Pages/Events/EventDockPanels.cs` | Event module dock panel descriptors for `events.customize-view` and `events.event-preview`. | Implemented |
 | `docs/DOCK_LAYOUT.md` | Platform-level dock layout architecture document. | Implemented |
 | `Event.Architecture.Tests/DockLayoutArchitectureTests.cs` | Governance tests for descriptor-driven dock contracts. | Implemented for central enum and page compensation guardrails |
 
@@ -511,6 +511,7 @@ Tasks:
 
 - Ensure mobile behavior is a descriptor/layout policy, not page CSS.
 - Ensure temporary panels use consistent backdrop and scroll locking.
+- Route mobile docked panels through temporary overlay chrome instead of CSS-hidden side hosts.
 - Ensure Escape closes the active temporary/overlay panel.
 - Ensure focus returns to opener after close.
 - Ensure temporary overlays trap focus or use MudBlazor behavior that traps focus.
@@ -657,4 +658,4 @@ Effort: M.
 
 ## Potential Risks & Unknowns
 
-The highest-risk area is preserving the event detail preview while moving it into the new inspector/overlay host. Its current behavior is visually strong because it uses a dedicated `MudOverlay` plus `MudDrawer` pattern; replacing that too aggressively could degrade desktop and mobile UX. The second highest risk is allowing the generic docking engine to become an uncontrolled plugin system. Keep registration compile-time and component-owned for now, while designing the internal model for future extensibility.
+The highest-risk area remains proving the migrated shell/workspace overlays visually across desktop, mobile, and RTL after moving shell panels, Customize View, and Event Preview into dock hosts. Mobile docked panels now route through temporary overlay chrome at `Xs`/`Sm` breakpoints, but enabled desktop/mobile visual evidence is still needed before removing temporary adapters. The second highest risk is allowing the generic docking engine to become an uncontrolled plugin system. Keep registration compile-time and component-owned for now, while designing the internal model for future extensibility.

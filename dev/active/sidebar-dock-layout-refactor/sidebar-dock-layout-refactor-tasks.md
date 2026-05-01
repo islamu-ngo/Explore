@@ -7,9 +7,9 @@ Last Updated: 2026-04-30
 
 ## Status Summary
 
-- Overall status: Implementation started with dock engine foundation, dock host components, dormant tabbed stack rendering, extracted shell side-navigation content, shell descriptor registration, production shell `DockLayoutHost` migration, shell bridge hidden-chrome/disposal hardening, NavMenu dock-id toggle mirroring, shell accessibility/navigation contract hardening, dormant keyboard/pointer resize handle foundation with pointer-capture hardening and JSInterop invocation coverage, dock governance architecture guardrails, dock tokens/docs, stable selector/logical CSS hardening, descriptor capability enforcement, RTL-aware slide hardening, snapshot normalization, Phase 8 local persistence/reset, and Phase 1 bUnit/E2E baseline scaffolding.
-- Current phase: Phase 1 baseline coverage plus Phase 2/3/4/5/6/7/11 foundation slices are in progress; Phase 4 shell host migration is production-rendered and verified; Phase 5 customize-view workspace docking has landed; Phase 8 is implemented as a non-rendering subsystem slice. Event preview workspace migration is still pending.
-- Critical path: Visual freeze -> tokens/docs -> dock engine core -> shell host -> workspace host -> resize -> stacking -> persistence -> hardening -> cleanup. Phase 4 shell host migration and the first Phase 5 workspace customize-view slice have landed; Phase 8 persistence is implemented early by Oracle recommendation, but production hydration/autosave remains deferred until event preview migration and mobile overlay hardening.
+- Overall status: Implementation started with dock engine foundation, dock host components, dormant tabbed stack rendering, extracted shell side-navigation content, shell descriptor registration, production shell `DockLayoutHost` migration, EventList workspace `DockLayoutHost` migration for Customize View and Event Preview, mobile docked-panel routing through overlay chrome, shell bridge hidden-chrome/disposal hardening, NavMenu dock-id toggle mirroring, shell accessibility/navigation contract hardening, dormant keyboard/pointer resize handle foundation with pointer-capture hardening and JSInterop invocation coverage, dock governance architecture guardrails, dock tokens/docs, stable selector/logical CSS hardening, descriptor capability enforcement, RTL-aware slide hardening, snapshot normalization, Phase 8 local persistence/reset, and Phase 1 bUnit/E2E baseline scaffolding.
+- Current phase: Phase 1 baseline coverage plus Phase 2/3/4/5/6/7/9/11 foundation slices are in progress; Phase 4 shell host migration is production-rendered and verified; Phase 5 workspace docking has landed for both `events.customize-view` and `events.event-preview`; Phase 8 is implemented as a non-rendering subsystem slice; Phase 9 host-level overlay hardening has landed for `DockOverlayHost` panels and mobile docked panels now route through `DockOverlayHost` as temporary overlays.
+- Critical path: Visual freeze -> tokens/docs -> dock engine core -> shell host -> workspace host -> resize -> stacking -> persistence -> hardening -> cleanup. Phase 4 shell host migration, Phase 5 workspace host slices, and Phase 9 overlay/mobile docked-panel hardening slices have landed; Phase 8 persistence is implemented early by Oracle recommendation, but production hydration/autosave remains deferred until final visual coverage.
 
 ## Planning And Handoff - Complete
 
@@ -146,9 +146,9 @@ Acceptance criteria:
 - [x] Use workspace `DockLayoutHost` in `EventList.razor` or a reusable workspace wrapper.
 - [x] Register EventList customize-view dock panel descriptor and content during page lifecycle.
 - [x] Host `EventListCustomizationDrawer` as docked workspace panel.
-- [ ] Host event detail preview as inspector/overlay through `DockOverlayHost`.
+- [x] Host event detail preview as inspector/overlay through `DockOverlayHost`.
 - [x] Remove `_customizationDrawerOpen` or reduce it to temporary migration adapter only.
-- [ ] Remove `_detailDrawerOpen` or reduce it to temporary migration adapter only.
+- [x] Remove `_detailDrawerOpen` or reduce it to temporary migration adapter only.
 - [x] Remove `.event-list__page` negative margin and width expansion.
 - [x] Remove EventList dependency on `RightSidebar`.
 - [x] Preserve EventList settings behavior.
@@ -157,9 +157,9 @@ Acceptance criteria:
 Acceptance criteria:
 
 - [x] Customize View is a workspace docked panel on desktop.
-- [ ] Event Preview is a workspace inspector/overlay.
+- [x] Event Preview is a workspace inspector/overlay.
 - [ ] Customize View and AI rail align with no visible gap in enabled visual screenshots.
-- [x] Event detail preview desktop/mobile UX is preserved by leaving the existing temporary drawer path intact for this slice.
+- [x] Event detail preview desktop/mobile behavior is preserved by moving the existing preview content into `events.event-preview` while keeping `_detailDrawerOpen` as a temporary backdrop/card-selection adapter.
 - [x] Event-specific panels depend on dock engine; dock engine does not depend on event-specific panels.
 
 ## Phase 6: Resize Support - In Progress
@@ -228,15 +228,15 @@ Acceptance criteria:
 - [x] System can reset to default layout.
 - [x] Persistence starts local and does not block future server-side settings integration.
 
-## Phase 9: Mobile, RTL, Accessibility, Motion - Not Started
+## Phase 9: Mobile, RTL, Accessibility, Motion - In Progress
 
-- [ ] Ensure mobile behavior is a descriptor/layout policy, not page CSS.
-- [ ] Ensure all mobile side panels are temporary overlays.
+- [x] Ensure mobile behavior is a descriptor/layout policy, not page CSS.
+- [x] Ensure all mobile side panels are temporary overlays.
 - [x] Ensure all mobile overlays have consistent backdrop tokens for current AI rail and right sidebar components.
-- [ ] Ensure all mobile overlays lock background scroll.
+- [x] Ensure `DockOverlayHost` overlay/temporary/inspector panels lock background scroll through the shared host boundary.
 - [ ] Ensure no panel causes horizontal page overflow.
-- [ ] Ensure Escape closes temporary/overlay panels.
-- [ ] Ensure focus returns to opener after temporary/overlay panel close.
+- [x] Ensure Escape closes `DockOverlayHost` temporary/overlay/inspector panels.
+- [x] Ensure focus returns to opener after `DockOverlayHost` temporary/overlay/inspector panel close.
 - [ ] Ensure persistent desktop panels do not trap focus.
 - [ ] Ensure temporary panels trap focus or delegate to MudBlazor focus trap behavior.
 - [x] Add `aria-expanded` and `aria-controls` to panel toggles where practical.
@@ -246,10 +246,19 @@ Acceptance criteria:
 - [x] Test reduced-motion behavior through component CSS and architecture/build verification.
 - [ ] Test or manually verify full RTL shell/workspace layout after host migration.
 
+Phase 9 verification notes:
+
+- [x] `DockOverlayHost` now renders a tokenized backdrop, locks body scroll, saves/restores focus, moves focus into the active dock panel, and closes the active closeable overlay on Escape or backdrop click.
+- [x] bUnit coverage verifies overlay filtering, backdrop close, Escape close, focus save/restore, focus handoff, and scroll lock/unlock calls.
+- [x] `DockLayoutHost` observes MudBlazor viewport breakpoints and collapses docked inline widths to `0px` on mobile instead of relying on CSS compensation.
+- [x] `DockSideHost` suppresses mobile docked side-host rendering; `DockOverlayHost` projects open mobile `DockMode.Docked` panels to effective `DockMode.Temporary` render entries while preserving desktop runtime state.
+- [x] bUnit coverage verifies mobile docked panels route through overlay chrome, render as temporary panels, omit resize handles, lock scroll, and receive focus handoff.
+
 Acceptance criteria:
 
-- [ ] Accessibility contract from `docs/ACCESSIBILITY.md` is preserved or improved.
-- [ ] Refactored layout is start/end oriented and RTL-ready.
+- [x] Accessibility contract from `docs/ACCESSIBILITY.md` is preserved or improved for `DockOverlayHost` overlay/temporary/inspector panels.
+- [x] Mobile side panels route through temporary overlay chrome without reserving grid width.
+- [ ] Refactored layout is start/end oriented and RTL-ready. *(Host overlay positioning uses logical properties; full manual RTL verification remains pending.)*
 - [ ] Reduced motion disables/minimizes panel animation.
 
 ## Phase 10: Cleanup Old Layout Systems - Not Started
@@ -261,7 +270,7 @@ Acceptance criteria:
 - [ ] Remove or deprecate `Explore.Blazor.Client/Components/Common/RightSidebar.razor.css`.
 - [x] Remove `main-layout__main--ai-open` CSS.
 - [x] Remove `margin-right: 360px` behavior.
-- [ ] Remove EventList negative margin layout hack.
+- [x] Remove EventList negative margin layout hack.
 - [ ] Remove duplicate width constants outside tokens/descriptors.
 - [ ] Update tests to target dock engine services and hosts.
 
@@ -288,7 +297,7 @@ Acceptance criteria:
 Acceptance criteria:
 
 - [x] Governance guardrails protect the descriptor-driven dock contract before production host migration.
-- [ ] Build and required tests pass for the final migration. *(Shell slice passed: `Explore.Blazor.Client.Tests` 912 total/911 passed/1 pre-existing skip, `Event.Architecture.Tests` 131/131, `rtk dotnet build` 23 projects/0 errors/161 known warnings.)*
+- [x] Build and required tests pass for the current shell/workspace/mobile routing slices. *Latest: `Explore.Blazor.Client.Tests` 925 total/924 passed/1 pre-existing skip, `Event.Architecture.Tests` 133/133, `rtk dotnet build` 23 projects/0 errors/151 known warnings.*
 - [ ] Docs reflect final implementation.
 - [ ] Visual coverage proves no gap between customize panel and AI rail.
 
@@ -299,10 +308,10 @@ Acceptance criteria:
 - [x] Footer behavior remains correct.
 - [x] Left shell nav remains independent of page scroll.
 - [x] AI assistant remains independent of page scroll.
-- [ ] Event detail panel still looks good on desktop and mobile.
-- [ ] Mobile sidebars overlay cleanly and do not cause horizontal overflow.
+- [x] Event detail panel renders through the workspace inspector and preserves covered interaction behavior; enabled visual screenshot proof remains pending.
+- [x] Mobile sidebars route through overlay chrome without grid-track width; enabled/manual overflow proof remains pending.
 - [ ] No duplicated panel width constants remain.
-- [ ] No negative margin layout hacks remain.
+- [x] No EventList negative margin layout hacks remain.
 - [ ] RTL does not require rewriting the layout.
 - [ ] Reduced-motion mode works.
 - [ ] Visual tests cover major panel combinations.
@@ -317,4 +326,4 @@ Acceptance criteria:
 
 ## Quick Resume
 
-Resume from the latest incomplete phase rather than restarting Phase 1. Production shell rendering now uses `DockLayoutHost` and passed focused closeout review; the first Phase 5 workspace slice now renders EventList Customize View through `events.customize-view` in a workspace `DockLayoutHost`. Phase 8 persistence/reset is already implemented as a non-rendering subsystem slice; do not duplicate it. The current safe next work is event preview migration to `events.event-preview`, full mobile overlay scroll-lock/Escape/focus-restore hardening, or enabled E2E/manual visual baseline capture; the EventList detail preview remains the highest-risk UX preservation target.
+Resume from the latest incomplete phase rather than restarting Phase 1. Production shell rendering now uses `DockLayoutHost` and passed focused closeout review; Phase 5 workspace rendering hosts EventList Customize View through `events.customize-view` and Event Preview through `events.event-preview`; Phase 9 mobile routing sends open docked side panels through `DockOverlayHost` as temporary overlays on `Xs`/`Sm` breakpoints. Phase 8 persistence/reset is already implemented as a non-rendering subsystem slice; do not duplicate it. The current safe next work is focus-trap strategy, enabled E2E/manual visual baseline capture, full RTL/manual verification, or cleanup of remaining temporary bridge services/components once all consumers are confirmed migrated.
