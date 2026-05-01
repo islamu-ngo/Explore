@@ -21,12 +21,6 @@
     min-block-size: 0;
 }
 
-@media (max-width: 600px) {
-    .dock-layout-host {
-        grid-template-columns: 0 minmax(0, 1fr) 0;
-    }
-}
-
 @media (prefers-reduced-motion: reduce) {
     .dock-layout-host {
         transition-duration: 1ms;

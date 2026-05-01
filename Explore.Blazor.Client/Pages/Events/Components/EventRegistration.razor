@@ -196,14 +196,24 @@
             <div class="registration-shell">
                 <div class="success-content">
                     <div class="success-icon">
-                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" />
+                        <MudIcon Icon="@(isWaitlisted ? Icons.Material.Filled.HourglassTop : Icons.Material.Filled.CheckCircle)" />
                     </div>
                     <MudText Typo="Typo.h4" Class="success-title">
-                        Registration Successful!
+                        @(isWaitlisted ? "Added to Waitlist!" : "Registration Successful!")
                     </MudText>
                     <MudText Typo="Typo.body1" Class="success-message">
-                        Thank you for registering@(currentUser != null ? $", {currentUser.FirstName}" : "")! <br />
-                        Your registration has been confirmed.
+                        @if (isWaitlisted)
+                        {
+                            <span>Thank you for registering@(currentUser != null ? $", {currentUser.FirstName}" : "")!</span>
+                            <br />
+                            <span>You have been added to the waitlist because one or more selected sessions are currently full.</span>
+                        }
+                        else
+                        {
+                            <span>Thank you for registering@(currentUser != null ? $", {currentUser.FirstName}" : "")!</span>
+                            <br />
+                            <span>Your registration has been confirmed.</span>
+                        }
                     </MudText>
                       <MudStack Row="true" Justify="Justify.Center" Spacing="2" Class="registration__success-actions">
                           <AppButton Size="Size.Large"
@@ -278,6 +288,7 @@
     private UserDto? currentUser;
     private bool isSubmitting;
     private bool isRegistered;
+    private bool isWaitlisted;
     private bool isAlreadyRegistered;
     private bool isLoading = true;
 
@@ -420,8 +431,13 @@
 
             if (response?.Success == true)
             {
+                isWaitlisted = IsWaitlistResponse(response.Message);
                 isRegistered = true;
-                Snackbar.Add("You have been successfully registered!", Severity.Success);
+                Snackbar.Add(
+                    isWaitlisted
+                        ? "You have been added to the waitlist."
+                        : "You have been successfully registered!",
+                    isWaitlisted ? Severity.Info : Severity.Success);
             }
             else
             {
@@ -446,6 +462,11 @@
     private void Close()
     {
         DialogReference?.Close();
+    }
+
+    private static bool IsWaitlistResponse(string? message)
+    {
+        return message?.Contains("waitlist", StringComparison.OrdinalIgnoreCase) == true;
     }
 
     private async Task ShareEventAsync()

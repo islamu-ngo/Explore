@@ -23,6 +23,39 @@
 }
 
 /* ========================================
+   Component: dock layout
+   ======================================== */
+
+/* Workspace dock hosts own their side-panel tracks. This cross-component rule
+   must stay global because Blazor CSS isolation cannot reliably target a child
+   component inside :has(). */
+.main-layout__content-wrapper:has(.dock-layout-host--workspace) {
+    padding-inline: 0 !important;
+    padding-block-end: 0 !important;
+}
+
+.dock-layout-host--workspace > .dock-layout-host__content {
+    padding-inline: var(--layout-padding-inline, 0px) !important;
+    padding-block-end: var(--isl-space-6) !important;
+}
+
+/* Shell panels are application chrome, not page content. Keep them pinned
+   below the sticky header while the center workspace scrolls normally. */
+.dock-side-host--shell {
+    position: sticky !important;
+    inset-block-start: var(--mud-appbar-height, 4rem) !important;
+    align-self: start !important;
+    block-size: calc(100vh - var(--mud-appbar-height, 4rem)) !important;
+    max-block-size: calc(100vh - var(--mud-appbar-height, 4rem)) !important;
+    z-index: var(--isl-dock-z-shell, 1200) !important;
+}
+
+.dock-side-host--shell > .dock-panel-host {
+    block-size: 100% !important;
+    max-block-size: 100% !important;
+}
+
+/* ========================================
    Component: footer
    ======================================== */
 .footer {

@@ -202,12 +202,14 @@ public class EventListTests : IDisposable
     private async Task RenderInlineRegistrationStateAsync(
         IRenderedComponent<EventList> cut,
         EventListDto selectedEvent,
-        string stateField)
+        string stateField,
+        bool isWaitlisted = false)
     {
         SetPrivateField(cut.Instance, "_selectedEvent", selectedEvent);
         SetPrivateField(cut.Instance, "_detailDrawerOpen", true);
         SetPrivateField(cut.Instance, "_showInlineRegistration", true);
         SetPrivateField(cut.Instance, stateField, true);
+        SetPrivateField(cut.Instance, "_regIsWaitlisted", isWaitlisted);
 
         _dockLayoutState.Open(EventDockPanels.EventPreviewId);
         await cut.InvokeAsync(() => cut.Render());
@@ -425,10 +427,28 @@ public class EventListTests : IDisposable
         await Assert.That(cut.Markup).Contains("Add to Calendar");
         await Assert.That(cut.Markup).Contains($"href=\"/api/event/{eventId}/calendar\"");
         await Assert.That(cut.Markup).Contains("Share this Event");
-        await Assert.That(cut.Markup).Contains("Add to Calendar");
-        await Assert.That(cut.Markup).Contains($"href=\"/api/event/{eventId}/calendar\"");
         await Assert.That(cut.Markup).Contains("View My Registrations");
         await Assert.That(cut.Markup).Contains("href=\"/my/registrations\"");
+    }
+
+    [Test]
+    public async Task InlineRegistrationWaitlist_RendersWaitlistFeedbackAndFollowUpActions()
+    {
+        var eventId = Guid.NewGuid();
+        SetupEventDetailResponses(eventId);
+
+        var cut = _ctx.RenderMudComponent<EventList>();
+
+        await RenderInlineRegistrationStateAsync(cut, new EventListDto
+        {
+            Id = eventId,
+            Title = "Full Event"
+        }, "_regIsComplete", isWaitlisted: true);
+
+        await Assert.That(cut.Markup).Contains("You're on the Waitlist!");
+        await Assert.That(cut.Markup).Contains("You have been added to the waitlist");
+        await Assert.That(cut.Markup).Contains("Share this Event");
+        await Assert.That(cut.Markup).Contains("View My Registrations");
     }
 
     [Test]

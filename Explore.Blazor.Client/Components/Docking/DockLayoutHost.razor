@@ -1,24 +1,29 @@
 @* ABOUTME: Generic dock layout host for shell and workspace panel composition. *@
-@* ABOUTME: Renders dock sides from DockLayoutState without replacing existing layouts yet. *@
+@* ABOUTME: Routes mobile docked panels through overlay chrome instead of page compensation. *@
 
 @using Explore.Blazor.Client.Services.Docking
+@using MudBlazor
+@using MudBlazor.Services
 @implements IDisposable
+@implements IAsyncDisposable
+@implements IBrowserViewportObserver
 @inject DockLayoutState DockLayoutState
+@inject IBrowserViewportService BrowserViewportService
 
 <div class="@RootClass"
      style="@GridStyle"
      data-testid="@DataTestId"
      data-dock-scope="@ScopeName"
      @attributes="AdditionalAttributes">
-    <DockSideHost Scope="@Scope" Side="DockSide.Start" />
+    <DockSideHost Scope="@Scope" Side="DockSide.Start" IsMobile="@_isMobile" />
 
     <section class="dock-layout-host__content" data-testid="@ContentDataTestId">
         @ChildContent
     </section>
 
-    <DockSideHost Scope="@Scope" Side="DockSide.End" />
-    <DockSideHost Scope="@Scope" Side="DockSide.Bottom" />
-    <DockOverlayHost Scope="@Scope" />
+    <DockSideHost Scope="@Scope" Side="DockSide.End" IsMobile="@_isMobile" />
+    <DockSideHost Scope="@Scope" Side="DockSide.Bottom" IsMobile="@_isMobile" />
+    <DockOverlayHost Scope="@Scope" IsMobile="@_isMobile" />
 </div>
 
 @code {
@@ -32,6 +37,16 @@
     public IDictionary<string, object>? AdditionalAttributes { get; set; }
 
     private string ScopeName => Scope.ToString().ToLowerInvariant();
+    private bool _isMobile;
+    private bool _viewportSubscribed;
+
+    Guid IBrowserViewportObserver.Id { get; } = Guid.NewGuid();
+
+    ResizeOptions IBrowserViewportObserver.ResizeOptions { get; } = new()
+    {
+        ReportRate = 250,
+        NotifyOnBreakpointOnly = true
+    };
 
     private string RootClass => string.Join(' ', new[]
     {
@@ -54,19 +69,48 @@
         DockLayoutState.Changed += OnDockLayoutChanged;
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_viewportSubscribed)
+        {
+            _viewportSubscribed = true;
+            await BrowserViewportService.SubscribeAsync(this, fireImmediately: true);
+        }
+    }
+
     public void Dispose()
     {
         DockLayoutState.Changed -= OnDockLayoutChanged;
     }
 
+    public async ValueTask DisposeAsync()
+    {
+        DockLayoutState.Changed -= OnDockLayoutChanged;
+
+        if (_viewportSubscribed)
+        {
+            await BrowserViewportService.UnsubscribeAsync(this);
+        }
+    }
+
     private bool HasOpenDockedPanels(DockSide side)
     {
+        if (_isMobile)
+        {
+            return false;
+        }
+
         return DockLayoutState.GetPanels(Scope, side)
             .Any(entry => entry.State is { IsOpen: true, Mode: DockMode.Docked });
     }
 
     private int GetDockedInlineSize(DockSide side)
     {
+        if (_isMobile)
+        {
+            return 0;
+        }
+
         return DockLayoutState.GetPanels(Scope, side)
             .Where(entry => entry.State is { IsOpen: true, Mode: DockMode.Docked })
             .Sum(entry => entry.State.Width);
@@ -75,5 +119,18 @@
     private void OnDockLayoutChanged()
     {
         _ = InvokeAsync(StateHasChanged);
+    }
+
+    Task IBrowserViewportObserver.NotifyBrowserViewportChangeAsync(BrowserViewportEventArgs args)
+    {
+        var isMobile = args.Breakpoint is Breakpoint.Xs or Breakpoint.Sm;
+
+        if (_isMobile == isMobile)
+        {
+            return Task.CompletedTask;
+        }
+
+        _isMobile = isMobile;
+        return InvokeAsync(StateHasChanged);
     }
 }

@@ -945,13 +945,20 @@
                             else if (_regIsComplete)
                             {
                                 <div class="drawer-reg-popup__success">
-                                    <div class="drawer-reg-popup__icon drawer-reg-popup__icon--success">
-                                        <MudIcon Icon="@Icons.Material.Filled.Check" />
-                                    </div>
-                                    <MudText Typo="Typo.h6" Class="mb-2">You're Registered!</MudText>
-                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
-                                        You have been successfully registered for this event.
-                                    </MudText>
+                                     <div class="drawer-reg-popup__icon drawer-reg-popup__icon--success">
+                                        <MudIcon Icon="@(_regIsWaitlisted ? Icons.Material.Filled.HourglassTop : Icons.Material.Filled.Check)" />
+                                     </div>
+                                     <MudText Typo="Typo.h6" Class="mb-2">@(_regIsWaitlisted ? "You're on the Waitlist!" : "You're Registered!")</MudText>
+                                     <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                                         @if (_regIsWaitlisted)
+                                         {
+                                             <span>You have been added to the waitlist because one or more selected sessions are currently full.</span>
+                                         }
+                                         else
+                                         {
+                                             <span>You have been successfully registered for this event.</span>
+                                         }
+                                     </MudText>
 
                                       <AppButton Variant="Variant.Outlined" Color="Color.Default" Class="rounded-lg mb-2"
                                                  FullWidth="true"

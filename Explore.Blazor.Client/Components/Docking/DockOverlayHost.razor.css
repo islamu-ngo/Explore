@@ -8,6 +8,19 @@
     pointer-events: none;
 }
 
+.dock-overlay-host__backdrop {
+    position: absolute;
+    inset: 0;
+    display: block;
+    inline-size: 100%;
+    block-size: 100%;
+    padding: 0;
+    border: 0;
+    background: var(--isl-dock-backdrop-color, rgb(0 0 0 / 32%));
+    cursor: pointer;
+    pointer-events: auto;
+}
+
 .dock-overlay-host__slot {
     position: absolute;
     pointer-events: auto;
@@ -39,4 +52,16 @@
 
 .dock-overlay-host__slot--mode-inspector {
     z-index: var(--isl-dock-z-inspector, 1400);
+}
+
+@media (max-width: 600px) {
+    .dock-overlay-host__slot--start,
+    .dock-overlay-host__slot--end {
+        inset-block: 0;
+        inline-size: min(100%, 88vw);
+    }
+
+    .dock-overlay-host__slot--bottom {
+        max-block-size: min(70vh, 100%);
+    }
 }

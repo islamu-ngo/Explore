@@ -126,6 +126,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
     private bool _regIsSubmitting;
     private bool _regIsComplete;
     private bool _regIsAlreadyRegistered;
+    private bool _regIsWaitlisted;
     private bool _regShowConsentOption;
     private bool _regShareEmail;
     private string _regOrganizerName = "";
@@ -1457,6 +1458,7 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         _showInlineRegistration = false;
         _regIsComplete = false;
         _regIsAlreadyRegistered = false;
+        _regIsWaitlisted = false;
     }
 
     private void ToggleRegSession(Guid sessionId)
@@ -1511,8 +1513,13 @@ public partial class EventList : ComponentBase, IAsyncDisposable
 
             if (allSucceeded)
             {
+                _regIsWaitlisted = IsWaitlistResponse(response?.Message);
                 _regIsComplete = true;
-                Snackbar.Add("Successfully registered!", Severity.Success);
+                Snackbar.Add(
+                    _regIsWaitlisted
+                        ? "You have been added to the waitlist."
+                        : "Successfully registered!",
+                    _regIsWaitlisted ? Severity.Info : Severity.Success);
                 await LoadUserRegistrationsAsync();
             }
         }
@@ -1525,6 +1532,11 @@ public partial class EventList : ComponentBase, IAsyncDisposable
         {
             _regIsSubmitting = false;
         }
+    }
+
+    private static bool IsWaitlistResponse(string? message)
+    {
+        return message?.Contains("waitlist", StringComparison.OrdinalIgnoreCase) == true;
     }
 
     // ── Tag/Category management ──

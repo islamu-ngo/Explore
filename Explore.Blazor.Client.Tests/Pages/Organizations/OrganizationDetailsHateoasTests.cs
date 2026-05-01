@@ -4,7 +4,6 @@
 using System.Text.Json;
 using Blazouter.Services;
 using Explore.Blazor.Client.Pages.Organizations;
-using Microsoft.AspNetCore.Components;
 using MudBlazor;
 
 namespace Explore.Blazor.Client.Tests.Pages.Organizations;
@@ -40,7 +39,7 @@ public class OrganizationDetailsHateoasTests : IDisposable
     }
 
     [Test]
-    public async Task WhenApiReturnsEditLink_ShowsEditButton()
+    public async Task WhenApiReturnsEditLink_ShowsOrganizationActionAffordances()
     {
         _organizationService.GetOrganizationByIdAsync(Arg.Any<Guid>())
             .Returns(CreateOrganization(withEditLink: true));
@@ -48,11 +47,13 @@ public class OrganizationDetailsHateoasTests : IDisposable
         var cut = _ctx.RenderMudComponent<OrganizationDetails>();
         cut.WaitForState(() => !cut.Markup.Contains("Loading", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
 
+        await Assert.That(cut.Markup).Contains("Create Event");
+        await Assert.That(cut.Markup).Contains("Members");
         await Assert.That(cut.Markup).Contains("Edit");
     }
 
     [Test]
-    public async Task WhenApiDoesNotReturnEditLink_HidesEditButton()
+    public async Task WhenApiDoesNotReturnEditLink_HidesOrganizationActionAffordances()
     {
         _organizationService.GetOrganizationByIdAsync(Arg.Any<Guid>())
             .Returns(CreateOrganization(withEditLink: false));
@@ -60,6 +61,8 @@ public class OrganizationDetailsHateoasTests : IDisposable
         var cut = _ctx.RenderMudComponent<OrganizationDetails>();
         cut.WaitForState(() => !cut.Markup.Contains("Loading", StringComparison.OrdinalIgnoreCase), TimeSpan.FromSeconds(3));
 
+        await Assert.That(cut.Markup.Contains("Create Event", StringComparison.Ordinal)).IsFalse();
+        await Assert.That(cut.Markup.Contains("Members", StringComparison.Ordinal)).IsFalse();
         await Assert.That(cut.Markup.Contains("Edit", StringComparison.Ordinal)).IsFalse();
     }
 

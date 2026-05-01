@@ -35,9 +35,10 @@
     [Parameter] public string? AriaLabel { get; set; }
     [Parameter] public string DataTestId { get; set; } = "dock-side-host";
     [Parameter] public string? Class { get; set; }
+    [Parameter] public bool IsMobile { get; set; }
 
     private IReadOnlyList<DockPanelEntry> DockedEntries => DockLayoutState.GetPanels(Scope, Side)
-        .Where(entry => entry.State is { IsOpen: true, Mode: DockMode.Docked })
+        .Where(entry => !IsMobile && entry.State is { IsOpen: true, Mode: DockMode.Docked })
         .ToArray();
 
     private string ScopeName => Scope.ToString().ToLowerInvariant();
